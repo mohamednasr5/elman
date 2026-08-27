@@ -444,3 +444,97 @@
 .filter-bar .form-input {
   max-width: 300px;
 }
+
+/* ============================================
+   Admin Professional Animations
+   ============================================ */
+
+/* Page entrance */
+.admin-fade-in {
+  animation: adminFadeIn 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes adminFadeIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stat cards popping in */
+.stat-card {
+  opacity: 0;
+  animation: statCardPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.stat-card:nth-child(1) { animation-delay: 0.05s; }
+.stat-card:nth-child(2) { animation-delay: 0.12s; }
+.stat-card:nth-child(3) { animation-delay: 0.19s; }
+.stat-card:nth-child(4) { animation-delay: 0.26s; }
+.stat-card:nth-child(5) { animation-delay: 0.33s; }
+.stat-card:nth-child(6) { animation-delay: 0.40s; }
+@keyframes statCardPop {
+  from { opacity: 0; transform: scale(0.6) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Sidebar nav item hover */
+.dashboard-nav-item {
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+  border-radius: var(--radius-md);
+  position: relative;
+}
+[dir=rtl] .dashboard-nav-item:hover,
+.dashboard-nav-item:hover {
+  background: rgba(255,255,255,0.12) !important;
+  padding-right: 20px !important;
+}
+.dashboard-nav-item.active {
+  background: rgba(255,255,255,0.18) !important;
+  border-right: 3px solid var(--secondary, #F5A623) !important;
+}
+
+/* Table row hover */
+.dashboard-table tbody tr {
+  transition: background 0.15s ease;
+}
+.dashboard-table tbody tr:hover {
+  background: var(--surface-2) !important;
+}
+
+/* Spinner animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.btn.loading { position: relative; color: transparent !important; }
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+
+/* Form sections */
+.form-section {
+  animation: formIn 0.35s ease forwards;
+}
+@keyframes formIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stats grid on mobile */
+@media (max-width: 767px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Admin mobile bottom nav item icon styling */
+@media (max-width: 1023px) {
+  .dashboard-nav-item svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+}
