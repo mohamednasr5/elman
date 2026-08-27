@@ -3,7 +3,8 @@
  * Core business logic for Place, Offers and Products management
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp } from '../core/db.js';
+import { getDB } from '../core/firebase.js';
+import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp } from '../core/db.js';
 import { generatePlaceSlug } from '../utils/slug.js';
 import { WORKER_URL } from '../core/firebase.js';
 import { getIdToken } from '../core/auth.js';

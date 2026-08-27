@@ -5,6 +5,8 @@
 
 import { getDB } from './firebase.js';
 
+export { getDB };
+
 // ── Generic RTDB helpers ──
 
 export function dbRef(path) {

@@ -257,20 +257,63 @@ function _renderUser(user) {
 
 let _dp = null;
 function _setupPwa() {
+  // Capture native install prompt
   window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault(); _dp = e;
-    const b = document.getElementById('pwa-banner');
-    if (b && !sessionStorage.getItem('pwa-dismissed'))
-      setTimeout(() => { b.hidden = false; b.classList.add('visible'); }, 7000);
+    e.preventDefault();
+    _dp = e;
+    _showPwaBanner();
   });
-  document.getElementById('pwa-install-btn')?.addEventListener('click', () => {
-    _dp?.prompt(); _dp = null;
-    document.getElementById('pwa-banner')?.classList.remove('visible');
+
+  // Also check and show banner after delay on desktop/mobile if not installed/dismissed
+  setTimeout(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (!isStandalone && !sessionStorage.getItem('pwa-dismissed')) {
+      _showPwaBanner();
+    }
+  }, 3500);
+
+  // Setup click listeners immediately on document to ensure they always work
+  document.addEventListener('click', e => {
+    // Close button
+    if (e.target.closest('#pwa-banner-close')) {
+      e.preventDefault();
+      _dismissPwaBanner();
+      return;
+    }
+
+    // Install button
+    if (e.target.closest('#pwa-install-btn')) {
+      e.preventDefault();
+      if (_dp) {
+        _dp.prompt();
+        _dp.userChoice.then(() => { _dp = null; });
+      } else {
+        toast.info('لتثبيت التطبيق على الكمبيوتر: اضغط على أيقونة التثبيت ⊕ في شريط عنوان المتصفح بالأعلى');
+      }
+      _dismissPwaBanner();
+    }
   });
-  document.getElementById('pwa-banner-close')?.addEventListener('click', () => {
-    document.getElementById('pwa-banner')?.classList.remove('visible');
-    sessionStorage.setItem('pwa-dismissed','1');
-  });
+}
+
+function _showPwaBanner() {
+  const b = document.getElementById('pwa-banner');
+  if (b && !sessionStorage.getItem('pwa-dismissed')) {
+    b.removeAttribute('hidden');
+    requestAnimationFrame(() => {
+      b.classList.add('visible');
+    });
+  }
+}
+
+function _dismissPwaBanner() {
+  const b = document.getElementById('pwa-banner');
+  if (b) {
+    b.classList.remove('visible');
+    setTimeout(() => {
+      b.setAttribute('hidden', '');
+    }, 400);
+  }
+  sessionStorage.setItem('pwa-dismissed', '1');
 }
 
 function _h(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
