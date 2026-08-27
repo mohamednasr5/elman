@@ -131,7 +131,7 @@ export async function renderPlacePage($container, { slug, user }) {
               ` : ''}
               
               ${place.whatsapp ? `
-                <a href="https://wa.me/${cleanPhone(place.whatsapp)}?text=${encodeURIComponent(`مرحباً، وجدتك على دليل المنزلة وناسها وأود الاستفسار عن خدماتك`)}" 
+                <a href="https://wa.me/${formatWhatsApp(place.whatsapp)}?text=${encodeURIComponent(`مرحباً، وجدتك على دليل المنزلة وناسها وأود الاستفسار عن خدماتك`)}" 
                    target="_blank" 
                    rel="noopener" 
                    class="btn btn-whatsapp" 
@@ -496,4 +496,12 @@ function escAttr(str) {
 
 function cleanPhone(phone) {
   return phone?.replace(/\D/g, '') || '';
+}
+
+function formatWhatsApp(phone) {
+  let cleaned = cleanPhone(phone);
+  if (cleaned.startsWith('01') && cleaned.length === 11) {
+    return '2' + cleaned;
+  }
+  return cleaned;
 }

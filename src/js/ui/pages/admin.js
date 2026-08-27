@@ -14,8 +14,7 @@ import { formatDate } from '../../utils/date.js';
 
 export async function renderAdmin($container, { user, section = 'overview' }) {
   if (!user || !isAdmin(user)) {
-    window.location.href = 'index.html';
-    return;
+    return; // Handled by admin.html wrapper
   }
 
   $container.innerHTML = `

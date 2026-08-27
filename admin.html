@@ -58,13 +58,24 @@
 
   import { initPage } from './src/js/core/page-shell.js';
   import { renderAdmin } from './src/js/ui/pages/admin.js';
-  import { waitForAuth, isAdmin } from './src/js/core/auth.js';
+  import { waitForAuth, isAdmin, signOut } from './src/js/core/auth.js';
   await initPage('');
   const user = await waitForAuth();
   if (!user) {
     location.href = 'login.html';
   } else if (!isAdmin(user)) {
-    location.href = 'index.html';
+    document.getElementById('page-container').innerHTML = `
+      <div class="empty-state" style="margin-top:100px;">
+        <span class="empty-state__icon">🔒</span>
+        <h3>غير مصرح بالدخول</h3>
+        <p>الحساب الحالي (${user.email || 'بدون إيميل'}) ليس لديه صلاحيات لدخول لوحة الإدارة.</p>
+        <button class="btn btn-primary" id="btn-switch-account" style="margin-top:15px;">تسجيل الخروج والتبديل</button>
+      </div>
+    `;
+    document.getElementById('btn-switch-account').addEventListener('click', async () => {
+      await signOut();
+      location.href = 'login.html';
+    });
   } else {
     const section = new URLSearchParams(location.search).get('section') || 'overview';
     await renderAdmin(document.getElementById('page-container'), { user, section });

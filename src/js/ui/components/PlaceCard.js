@@ -29,7 +29,7 @@ export function renderPlaceCard(place) {
     : '';
 
   const waBtn = place.whatsapp
-    ? `<a href="https://wa.me/${cleanPhone(place.whatsapp)}" target="_blank" rel="noopener" class="place-card__action-btn place-card__action-btn--whatsapp" title="واتساب" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','whatsappClicks')">💬</a>`
+    ? `<a href="https://wa.me/${formatWhatsApp(place.whatsapp)}" target="_blank" rel="noopener" class="place-card__action-btn place-card__action-btn--whatsapp" title="واتساب" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','whatsappClicks')">💬</a>`
     : '';
 
   return `
@@ -93,6 +93,15 @@ function escAttr(str) {
 
 function cleanPhone(phone) {
   return phone?.replace(/\D/g, '') || '';
+}
+
+function formatWhatsApp(phone) {
+  let cleaned = cleanPhone(phone);
+  if (cleaned.startsWith('01') && cleaned.length === 11) {
+    return '2' + cleaned;
+  }
+  // If it already starts with 201, return as is
+  return cleaned;
 }
 
 function getCategoryCardCover(categoryId) {
