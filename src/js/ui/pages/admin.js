@@ -336,7 +336,9 @@ async function renderAdminOverview($container) {
   `;
 }
 
-window.navToSection = (sec) => switchAdminSection(sec, true);
+if (typeof window !== 'undefined') {
+  window.navToSection = (sec) => switchAdminSection(sec, true);
+}
 
 // ─────────────────────────────────────────────
 //  2. Places
@@ -429,7 +431,8 @@ function renderAdminPlacesTableRows(places) {
         <td>${renderStatusBadge(p.status || 'published')}</td>
         <td>
           <div style="display:flex;gap:6px">
-            <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs btn-outline" title="عرض المكان">${ICONS.eye}</a>
+            <button class="btn btn-xs btn-outline" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE" onclick="editPlaceAdmin('${escAttr(p._id)}')" title="تعديل كافة بيانات المكان أو الشخص">${ICONS.edit}</button>
+            <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs btn-outline" title="عرض صفحة المكان">${ICONS.eye}</a>
             <button class="btn btn-xs btn-danger" onclick="deletePlaceAdmin('${escAttr(p._id)}')" title="حذف المكان">${ICONS.trash}</button>
           </div>
         </td>
@@ -1276,6 +1279,201 @@ window.togglePlaceVerification = async (placeId, status) => {
   } catch (err) {
     toast.error('فشلت العملية: ' + err.message);
   }
+};
+
+window.editPlaceAdmin = async (placeId) => {
+  let place = adminCache.places ? adminCache.places[placeId] : null;
+  if (!place) {
+    place = await dbGet(`places/${placeId}`);
+  }
+  if (!place) {
+    toast.error('لم يتم العثور على بيانات هذا المكان أو الشخص');
+    return;
+  }
+
+  if (!adminCache.categories) {
+    adminCache.categories = (await getCategories()) || [];
+  }
+  const categories = adminCache.categories || [];
+
+  const areas = [
+    'المنزلة (المدينة)', 'الأحمدية', 'العزيزة', 'البصراط', 'الفروسات', 'النسايمة', 
+    'ميت شرف', 'الشبول', 'ميت مرجا سلسيل', 'ميت سلسيل', 'الجمالية', 'الروضة', 'منطقة أخرى'
+  ];
+
+  const modal = showModal({
+    title: `✏️ تعديل بيانات: ${escHtml(place.name || 'المكان')}`,
+    size: 'lg',
+    content: `
+      <form id="admin-edit-place-form" style="display:flex;flex-direction:column;gap:14px;max-height:72vh;overflow-y:auto;padding:4px 8px" onsubmit="return false;">
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label">الاسم بالعربية <span class="required">*</span></label>
+            <input type="text" id="aep-name" class="form-input" required value="${escAttr(place.name || '')}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">الاسم بالإنجليزية (اختياري)</label>
+            <input type="text" id="aep-nameEn" class="form-input" style="direction:ltr;text-align:left" value="${escAttr(place.nameEn || '')}" />
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label">التصنيف الرئيسي <span class="required">*</span></label>
+            <select id="aep-categoryId" class="form-select" required>
+              ${categories.map(c => `
+                <option value="${c.slug || c._key}" ${(place.categoryId === (c.slug || c._key)) ? 'selected' : ''}>
+                  ${c.icon || '📁'} ${c.name}
+                </option>
+              `).join('')}
+              <option value="other" ${place.customCategory ? 'selected' : ''}>✨ أخرى (تصنيف مخصص)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">تصنيف مخصص (إذا كان غير مدرج)</label>
+            <input type="text" id="aep-customCategory" class="form-input" placeholder="مثال: استوديو تصوير، رخام وجرانيت" value="${escAttr(place.customCategory || '')}" />
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label">رقم الهاتف للتواصل</label>
+            <input type="tel" id="aep-phone" class="form-input" placeholder="010XXXXXXXX" value="${escAttr(place.phone || '')}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">رقم الواتساب</label>
+            <input type="tel" id="aep-whatsapp" class="form-input" placeholder="010XXXXXXXX" value="${escAttr(place.whatsapp || '')}" />
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label">المنطقة / القرية</label>
+            <select id="aep-area" class="form-select">
+              ${areas.map(a => `<option value="${escAttr(a)}" ${(place.area === a || (!place.area && a.includes('المدينة'))) ? 'selected' : ''}>${a}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">نوع وسيلة التوصيل (إن وجد)</label>
+            <select id="aep-deliveryType" class="form-select">
+              <option value="" ${!place.deliveryType ? 'selected' : ''}>بدون (نشاط عادي)</option>
+              <option value="car" ${place.deliveryType === 'car' ? 'selected' : ''}>🚗 سيارة / تاكسي / رحلات</option>
+              <option value="motorcycle" ${place.deliveryType === 'motorcycle' ? 'selected' : ''}>🛵 موتوسيكل دليفري</option>
+              <option value="tuktuk" ${place.deliveryType === 'tuktuk' ? 'selected' : ''}>🛺 توكتوك مشاوير</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">العنوان بالتفصيل</label>
+          <input type="text" id="aep-address" class="form-input" placeholder="المنزلة - شارع البحر بجوار..." value="${escAttr(place.address || '')}" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">رابط خرائط جوجل (Google Maps Link)</label>
+          <input type="url" id="aep-mapsLink" class="form-input" placeholder="https://maps.app.goo.gl/..." value="${escAttr(place.mapsLink || '')}" />
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label">رابط صورة الغلاف (Cover Image)</label>
+            <input type="url" id="aep-coverImageUrl" class="form-input" placeholder="https://..." value="${escAttr(place.coverImageUrl || '')}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">رابط اللوجو / الصورة الشخصية (Logo)</label>
+            <input type="url" id="aep-logoUrl" class="form-input" placeholder="https://..." value="${escAttr(place.logoUrl || '')}" />
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+          <div class="form-group">
+            <label class="form-label">حالة النشر</label>
+            <select id="aep-status" class="form-select">
+              <option value="published" ${place.status === 'published' ? 'selected' : ''}>منشور (يعمل)</option>
+              <option value="pending" ${place.status === 'pending' ? 'selected' : ''}>معلق قيد المراجعة</option>
+              <option value="rejected" ${place.status === 'rejected' ? 'selected' : ''}>مرفوض</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">حالة التوثيق</label>
+            <select id="aep-isVerified" class="form-select">
+              <option value="false" ${!place.isVerified ? 'selected' : ''}>غير موثق</option>
+              <option value="true" ${place.isVerified ? 'selected' : ''}>موثق بالعلامة المعتمدة ✓</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">الوصف والنبذة التعريفية</label>
+          <textarea id="aep-description" class="form-textarea" rows="3" placeholder="اكتب وصفاً للنشاط أو الخدمات المقدمة...">${escHtml(place.description || '')}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">الخدمات والمميزات (مفصولة بفواصل)</label>
+          <input type="text" id="aep-services" class="form-input" placeholder="توصيل للمنازل، دفع بالفيزا، متاح 24 ساعة" value="${escAttr(place.services ? place.services.join('، ') : '')}" />
+        </div>
+
+      </form>
+    `,
+    buttons: [
+      {
+        label: '💾 حفظ كافة التعديلات',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async () => {
+          const name = document.getElementById('aep-name')?.value.trim();
+          if (!name) {
+            toast.error('يرجى كتابة اسم المكان أو الشخص');
+            return;
+          }
+
+          const rawServices = document.getElementById('aep-services')?.value || '';
+          const servicesArr = rawServices.split(/[،,]/).map(s => s.trim()).filter(Boolean);
+
+          const updates = {
+            name,
+            nameEn: document.getElementById('aep-nameEn')?.value.trim() || '',
+            categoryId: document.getElementById('aep-categoryId')?.value || 'general',
+            customCategory: document.getElementById('aep-customCategory')?.value.trim() || '',
+            phone: document.getElementById('aep-phone')?.value.trim() || '',
+            whatsapp: document.getElementById('aep-whatsapp')?.value.trim() || '',
+            area: document.getElementById('aep-area')?.value || 'المنزلة',
+            deliveryType: document.getElementById('aep-deliveryType')?.value || null,
+            address: document.getElementById('aep-address')?.value.trim() || '',
+            mapsLink: document.getElementById('aep-mapsLink')?.value.trim() || '',
+            coverImageUrl: document.getElementById('aep-coverImageUrl')?.value.trim() || '',
+            logoUrl: document.getElementById('aep-logoUrl')?.value.trim() || '',
+            status: document.getElementById('aep-status')?.value || 'published',
+            isVerified: document.getElementById('aep-isVerified')?.value === 'true',
+            description: document.getElementById('aep-description')?.value.trim() || '',
+            services: servicesArr,
+            updatedAt: serverTimestamp()
+          };
+
+          try {
+            await dbUpdate(`places/${placeId}`, updates);
+
+            if (adminCache.places && adminCache.places[placeId]) {
+              Object.assign(adminCache.places[placeId], updates);
+            }
+
+            toast.success('تم حفظ وتحديث بيانات المكان بنجاح ✨');
+            modal.close();
+            switchAdminSection('places', false);
+          } catch (err) {
+            console.error(err);
+            toast.error('فشل حفظ التعديلات: ' + err.message);
+          }
+        }
+      },
+      {
+        label: 'إلغاء',
+        type: 'ghost',
+        closeOnClick: true
+      }
+    ]
+  });
 };
 
 window.deletePlaceAdmin = async (placeId) => {

@@ -165,19 +165,19 @@ export async function renderPlacePage($container, { slug, user }) {
               <div class="unverified-notice__icon">ℹ️</div>
               <div style="flex:1">
                 <div style="font-weight:700;font-size:var(--font-size-sm);color:var(--text-primary);margin-bottom:2px">
-                  هذا المكان غير موثق حالياً
+                  هذا الشخص أو المكان غير موثق حالياً
                 </div>
                 <div class="unverified-notice__text">
-                  العلامة الموثقة تضمن صحة البيانات وتمنح المكان مميزات إضافة المنتجات و3 عروض يومية
+                  العلامة الموثقة تضمن صحة البيانات وتمنحك مميزات إضافية وتظهر قبل الجميع فى دليل المنزلة
                 </div>
               </div>
               ${isOwner ? `
                 <button class="btn btn-secondary btn-sm" id="btn-request-verification">
-                  طلب توثيق المكان ⭐
+                  طلب التوثيق ⭐
                 </button>
               ` : `
                 <button class="btn btn-outline btn-sm" id="btn-claim-place">
-                  أنت صاحب المكان؟
+                  أنت صاحب النشاط؟
                 </button>
               `}
             </div>
@@ -187,7 +187,7 @@ export async function renderPlacePage($container, { slug, user }) {
           ${place.description ? `
             <section class="info-card">
               <h2 class="info-card__title">
-                <span>📝</span> عن المكان
+                <span>📝</span> عن الشخص / المكان / الخدمة
               </h2>
               <p style="white-space:pre-line;color:var(--text-secondary);line-height:1.8">
                 ${escHtml(place.description)}
@@ -388,7 +388,7 @@ export async function renderPlacePage($container, { slug, user }) {
 
 function showVerificationModal(place, user, waUrl) {
   showModal({
-    title: 'طلب توثيق المكان',
+    title: 'طلب توثيق النشاط / الشخص / المكان',
     size: 'sm',
     content: `
       <div class="verification-modal__steps">
@@ -396,14 +396,14 @@ function showVerificationModal(place, user, waUrl) {
           <div class="verification-step__num">1</div>
           <div>
             <div class="verification-step__title">مراجعة إدارة المنصة</div>
-            <div class="verification-step__text">يتم تدقيق بيانات النشاط التجاري لضمان دقة الدليل لأهل المنزلة</div>
+            <div class="verification-step__text">يتم تدقيق بيانات النشاط أو المهنة لضمان دقة الدليل لأهل المنزلة</div>
           </div>
         </div>
         <div class="verification-step">
           <div class="verification-step__num">2</div>
           <div>
             <div class="verification-step__title">مميزات التوثيق الفوري</div>
-            <div class="verification-step__text">علامة التوثيق الذهبية ✓ + إضافة حتى 350 منتجاً + 3 عروض يومية + أولوية الظهور في نتائج البحث</div>
+            <div class="verification-step__text">علامة التوثيق المعتمدة ✓ + إضافة المنتجات والعروض + أولوية الظهور في نتائج البحث والتصدر في دليل المنزلة</div>
           </div>
         </div>
         <div class="verification-step">
@@ -428,7 +428,7 @@ function showVerificationModal(place, user, waUrl) {
               console.warn('Req submit error:', e);
             }
           }
-          const text = encodeURIComponent(`السلام عليكم، أود طلب توثيق مكاني على منصة المنزلة وناسها:\nاسم المكان: ${place.name}\nرابط المكان: https://elmanzala.com/place.html?slug=${place.slug}`);
+          const text = encodeURIComponent(`السلام عليكم، أود طلب توثيق نشاطي على منصة المنزلة وناسها:\nالاسم: ${place.name}\nرابط النشاط: https://elmanzala.com/place.html?slug=${place.slug}`);
           window.open(`${waUrl}?text=${text}`, '_blank');
         },
         closeOnClick: true
@@ -471,15 +471,17 @@ function showClaimModal(place, waUrl) {
 }
 
 // Lightbox helper
-window.openLightbox = (imgUrl) => {
-  const overlay = document.createElement('div');
-  overlay.className = 'lightbox-overlay';
-  overlay.innerHTML = `
-    <img src="${escAttr(imgUrl)}" class="lightbox__img" alt="صورة مكبرة" />
-  `;
-  overlay.addEventListener('click', () => overlay.remove());
-  document.body.appendChild(overlay);
-};
+if (typeof window !== 'undefined') {
+  window.openLightbox = (imgUrl) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'lightbox-overlay';
+    overlay.innerHTML = `
+      <img src="${escAttr(imgUrl)}" class="lightbox__img" alt="صورة مكبرة" />
+    `;
+    overlay.addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
+  };
+}
 
 function hasSocial(social) {
   return social && (social.facebook || social.instagram || social.tiktok || social.youtube);

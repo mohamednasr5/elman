@@ -55,9 +55,8 @@ export function renderPlaceCard(place) {
           <span class="truncate">${escHtml(place.name)}</span>
           ${verifiedBadge}
         </h3>
-        <div class="place-card__meta-row">
-          ${getCategoryBadge(place)}
-          <span class="place-card__area-tag">📍 ${escHtml(place.area || 'المنزلة')}</span>
+        <div class="place-card__category">
+          📍 ${escHtml(place.area || 'المنزلة')}
           ${deliveryBadge}
         </div>
         ${place.description ? `<p class="place-card__description">${escHtml(place.description)}</p>` : ''}
