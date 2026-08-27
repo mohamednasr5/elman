@@ -288,11 +288,90 @@ function _setupPwa() {
         _dp.prompt();
         _dp.userChoice.then(() => { _dp = null; });
       } else {
-        toast.info('لتثبيت التطبيق على الكمبيوتر: اضغط على أيقونة التثبيت ⊕ في شريط عنوان المتصفح بالأعلى');
+        _showManualInstallInstructions();
       }
       _dismissPwaBanner();
     }
   });
+}
+
+function _showManualInstallInstructions() {
+  const ua = navigator.userAgent.toLowerCase();
+  const isIos = /iphone|ipad|ipod/.test(ua);
+  const isAndroid = /android/.test(ua);
+  
+  let title = 'تثبيت التطبيق';
+  let html = '';
+
+  if (isIos) {
+    title = 'تثبيت التطبيق على الآيفون';
+    html = `
+      <div style="text-align:center;line-height:1.7;padding:10px 0;">
+        <p style="margin-bottom:15px;font-size:15px;">لتثبيت التطبيق على جهازك، اتبع الخطوات التالية:</p>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:#f8f9fa;padding:12px;border-radius:8px;">
+          <span style="font-size:24px;color:var(--primary);">1️⃣</span>
+          <span>اضغط على زر <strong>المشاركة (Share)</strong> في شريط المتصفح أسفل الشاشة <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin:0 4px;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:#f8f9fa;padding:12px;border-radius:8px;">
+          <span style="font-size:24px;color:var(--primary);">2️⃣</span>
+          <span>اختر <strong>إضافة للشاشة الرئيسية (Add to Home Screen)</strong> <span>➕</span></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;background:#f8f9fa;padding:12px;border-radius:8px;">
+          <span style="font-size:24px;color:var(--primary);">3️⃣</span>
+          <span>اضغط على <strong>إضافة (Add)</strong> بالأعلى لتأكيد التثبيت</span>
+        </div>
+      </div>
+    `;
+  } else if (isAndroid) {
+    title = 'تثبيت التطبيق على الأندرويد';
+    html = `
+      <div style="text-align:center;line-height:1.7;padding:10px 0;">
+        <p style="margin-bottom:15px;font-size:15px;">لتثبيت التطبيق على جهازك، اتبع الخطوات التالية:</p>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:#f8f9fa;padding:12px;border-radius:8px;">
+          <span style="font-size:24px;color:var(--primary);">1️⃣</span>
+          <span>اضغط على زر <strong>القائمة (⋮)</strong> في أعلى يسار متصفح جوجل كروم</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:#f8f9fa;padding:12px;border-radius:8px;">
+          <span style="font-size:24px;color:var(--primary);">2️⃣</span>
+          <span>اختر <strong>تثبيت التطبيق (Install app)</strong> أو إضافة للشاشة الرئيسية</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;background:#f8f9fa;padding:12px;border-radius:8px;">
+          <span style="font-size:24px;color:var(--primary);">3️⃣</span>
+          <span>اضغط <strong>تثبيت (Install)</strong> لتأكيد العملية</span>
+        </div>
+      </div>
+    `;
+  } else {
+    title = 'تثبيت التطبيق على الكمبيوتر';
+    html = `
+      <div style="text-align:center;line-height:1.7;padding:10px 0;">
+        <p style="margin-bottom:15px;font-size:15px;">لتثبيت التطبيق على الكمبيوتر:</p>
+        <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;">
+          اضغط على أيقونة التثبيت <strong>(⊕ أو شاشة بجوارها سهم)</strong> الموجودة في نهاية <strong>شريط عنوان المتصفح</strong> بالأعلى، ثم اختر تثبيت.
+        </div>
+      </div>
+    `;
+  }
+
+  // Import Modal dynamically to avoid circular dependencies if any, though top-level is better, we can just use the DOM
+  const m = document.createElement('div');
+  m.className = 'modal-backdrop visible';
+  m.style.zIndex = '99999';
+  m.innerHTML = `
+    <div class="modal visible">
+      <div class="modal__header">
+        <h3 class="modal__title">📱 ${title}</h3>
+        <button class="modal__close" onclick="this.closest('.modal-backdrop').remove()">×</button>
+      </div>
+      <div class="modal__body">
+        ${html}
+        <div style="margin-top:20px;text-align:center;">
+          <button class="btn btn-primary" onclick="this.closest('.modal-backdrop').remove()" style="width:100%">حسناً، فهمت</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(m);
 }
 
 function _showPwaBanner() {
