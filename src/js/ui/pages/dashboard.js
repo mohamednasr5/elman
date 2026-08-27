@@ -39,7 +39,7 @@ export async function renderDashboard($container, { user, section = 'overview', 
           <a href="dashboard.html?section=places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📍</span> أماكني
           </a>
-          <a href="dashboard.html?section=add" class="dashboard-nav-item ${section === 'add-place' ? 'active' : ''}">
+          <a href="dashboard.html?section=add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">➕</span> إضافة مكان جديد
           </a>
           
@@ -66,16 +66,18 @@ export async function renderDashboard($container, { user, section = 'overview', 
       await renderOverviewSection($mainArea, user);
     } else if (section === 'places') {
       await renderPlacesSection($mainArea, user);
-    } else if (section === 'add-place') {
+    } else if (section === 'add' || section === 'add-place') {
       await renderPlaceFormSection($mainArea, user, null);
-    } else if (section === 'edit-place') {
+    } else if (section === 'edit' || section === 'edit-place') {
       await renderPlaceFormSection($mainArea, user, placeId);
-    } else if (section === 'place-offers') {
+    } else if (section === 'offers' || section === 'place-offers') {
       await renderPlaceOffersSection($mainArea, user, placeId);
-    } else if (section === 'place-products') {
+    } else if (section === 'products' || section === 'place-products') {
       await renderPlaceProductsSection($mainArea, user, placeId);
-    } else if (section === 'place-settings') {
+    } else if (section === 'settings' || section === 'place-settings') {
       await renderPlaceSettingsSection($mainArea, user, placeId);
+    } else {
+      await renderOverviewSection($mainArea, user);
     }
   } catch (err) {
     console.error('[Dashboard] Error rendering section:', err);
