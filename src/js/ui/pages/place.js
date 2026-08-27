@@ -77,6 +77,9 @@ export async function renderPlacePage($container, { slug, user }) {
     const isOpen = isPlaceOpen(place.workingHours);
     const workingHoursList = formatWorkingHours(place.workingHours);
 
+    // Resolve Smart Google Map info (supports coords, short links, Plus codes, and addresses)
+    const mapInfo = resolveMapEmbedInfo(place);
+
     // Render Full Page
     $container.innerHTML = `
       <!-- Place Hero Cover -->
@@ -329,26 +332,32 @@ export async function renderPlacePage($container, { slug, user }) {
 
           <!-- Google Maps Card -->
           <div class="info-card">
-            <h3 class="info-card__title" style="font-size:var(--font-size-base)">
-              <span>🗺️</span> الموقع على الخريطة
-            </h3>
-            <div class="place-map">
-              ${place.location?.lat ? `
-                <iframe 
-                  src="https://maps.google.com/maps?q=${place.location.lat},${place.location.lng}&hl=ar&z=15&output=embed" 
-                  style="border:0;width:100%;height:100%" 
-                  loading="lazy" 
-                  title="موقع ${escAttr(place.name)}">
-                </iframe>
-              ` : `
-                <a href="${escAttr(place.mapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' المنزلة')}`)}" 
-                   target="_blank" 
-                   rel="noopener" 
-                   class="map-placeholder">
-                  <span style="font-size:2rem">📍</span>
-                  <span>فتح في تطبيق Google Maps</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">
+              <h3 class="info-card__title" style="margin:0;font-size:var(--font-size-base)">
+                <span>🗺️</span> الموقع على الخريطة
+              </h3>
+              ${mapInfo.directLink ? `
+                <a href="${escAttr(mapInfo.directLink)}" target="_blank" rel="noopener" class="btn btn--outline btn--sm" style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full);gap:4px">
+                  <span>📍</span> فتح في الخرائط
                 </a>
-              `}
+              ` : ''}
+            </div>
+
+            ${place.address ? `
+              <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);margin-bottom:10px;background:var(--surface-2);padding:6px 10px;border-radius:var(--radius-sm)">
+                <span style="color:var(--primary);flex-shrink:0">📌</span>
+                <span class="truncate">${escHtml(place.address)}</span>
+              </div>
+            ` : ''}
+
+            <div class="place-map" style="position:relative;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);height:230px">
+              <iframe 
+                src="${escAttr(mapInfo.embedUrl)}" 
+                style="border:0;width:100%;height:100%;display:block" 
+                loading="lazy" 
+                referrerpolicy="no-referrer-when-downgrade"
+                title="موقع ${escAttr(place.name)}">
+              </iframe>
             </div>
           </div>
 
@@ -507,4 +516,65 @@ function formatWhatsApp(phone) {
     return '2' + cleaned;
   }
   return cleaned;
+}
+
+/**
+ * Smart Resolver for Google Maps Embed and Directions URL
+ * Supports:
+ * - Direct Lat/Lng Coordinates (place.location)
+ * - Google Maps short links (e.g. https://maps.app.goo.gl/ruGRycBTGHt8Ecr2A)
+ * - Plus Codes (e.g. 5XVJ+GF مركز المنزلة)
+ * - Detailed addresses (e.g. الضهير، مركز المنزلة، محافظة الدقهلية 35642)
+ * - Fallback to Name + Area
+ */
+function resolveMapEmbedInfo(place) {
+  let embedUrl = '';
+  let directLink = place.mapsLink || '';
+
+  // 1. Direct Lat/Lng Coordinates
+  if (place.location && place.location.lat && place.location.lng) {
+    const lat = Number(place.location.lat);
+    const lng = Number(place.location.lng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=16&output=embed`;
+      if (!directLink) directLink = `https://www.google.com/maps?q=${lat},${lng}`;
+      return { embedUrl, directLink };
+    }
+  }
+
+  // 2. Coordinates inside mapsLink (@lat,lng or q=lat,lng or ll=lat,lng)
+  if (place.mapsLink) {
+    const coordMatch = place.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
+                       place.mapsLink.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                       place.mapsLink.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (coordMatch) {
+      const lat = coordMatch[1];
+      const lng = coordMatch[2];
+      embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=16&output=embed`;
+      return { embedUrl, directLink };
+    }
+  }
+
+  // 3. Address or Plus Code or Detailed location text
+  const rawAddress = (place.address || '').trim();
+  const rawArea = (place.area || '').trim();
+  const rawName = (place.name || '').trim();
+
+  let queryTarget = '';
+  if (rawAddress) {
+    queryTarget = rawAddress.includes('المنزلة') ? rawAddress : `${rawAddress}، المنزلة، الدقهلية`;
+  } else if (rawArea) {
+    queryTarget = `${rawName} ${rawArea} المنزلة الدقهلية`;
+  } else {
+    queryTarget = `${rawName} المنزلة الدقهلية`;
+  }
+
+  // Google Maps Embed Query
+  embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(queryTarget)}&hl=ar&z=16&output=embed`;
+
+  if (!directLink) {
+    directLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryTarget)}`;
+  }
+
+  return { embedUrl, directLink };
 }

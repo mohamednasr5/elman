@@ -472,14 +472,15 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           </div>
 
           <div class="form-group">
-            <label class="form-label">العنوان بالتفصيل</label>
-            <input type="text" id="p-address" class="form-input" placeholder="شارع الجيش، بجوار برج الأطباء" value="${escAttr(place?.address || '')}" />
+            <label class="form-label">العنوان بالتفصيل أو Plus Code</label>
+            <input type="text" id="p-address" class="form-input" placeholder="مثال: الضهير، مركز المنزلة أو 5XVJ+GF مركز المنزلة" value="${escAttr(place?.address || '')}" />
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">رابط خرائط جوجل (Google Maps Link)</label>
-          <input type="url" id="p-maps" class="form-input" placeholder="https://maps.app.goo.gl/..." value="${escAttr(place?.mapsLink || '')}" style="direction:ltr;text-align:left" />
+          <input type="text" id="p-maps" class="form-input" placeholder="مثال: https://maps.app.goo.gl/ruGRycBTGHt8Ecr2A" value="${escAttr(place?.mapsLink || '')}" style="direction:ltr;text-align:left" />
+          <p style="font-size:11.5px;color:var(--text-muted);margin-top:4px">💡 يمكنك وضع رابط خرائط جوجل أو كود بلس أو العنوان وسيظهر المكان على الخريطة التفاعلية فوراً.</p>
         </div>
       </div>
 

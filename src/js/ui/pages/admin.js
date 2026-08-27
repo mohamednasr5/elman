@@ -1531,13 +1531,14 @@ window.editPlaceAdmin = async (placeId) => {
         </div>
 
         <div class="form-group">
-          <label class="form-label">العنوان بالتفصيل</label>
-          <input type="text" id="aep-address" class="form-input" placeholder="المنزلة - شارع البحر بجوار..." value="${escAttr(place.address || '')}" />
+          <label class="form-label">العنوان بالتفصيل أو Plus Code</label>
+          <input type="text" id="aep-address" class="form-input" placeholder="مثال: الضهير، مركز المنزلة أو 5XVJ+GF مركز المنزلة" value="${escAttr(place.address || '')}" />
         </div>
 
         <div class="form-group">
-          <label class="form-label">رابط خرائط جوجل (Google Maps Link)</label>
-          <input type="url" id="aep-mapsLink" class="form-input" placeholder="https://maps.app.goo.gl/..." value="${escAttr(place.mapsLink || '')}" />
+          <label class="form-label">رابط خرائط جوجل (Google Maps Link) أو العنوان</label>
+          <input type="text" id="aep-mapsLink" class="form-input" placeholder="مثال: https://maps.app.goo.gl/ruGRycBTGHt8Ecr2A" value="${escAttr(place.mapsLink || '')}" />
+          <p style="font-size:11.5px;color:var(--text-muted);margin-top:4px">💡 يدعم روابط خرائط Google القصيرة، أكواد Plus Codes، والعناوين النصية لتوليد الخريطة بدقة.</p>
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
