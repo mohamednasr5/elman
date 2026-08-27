@@ -7,7 +7,7 @@
 import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings } from '../../core/db.js';
 import { createPlace, updatePlace, deletePlace, addOffer, addProduct, submitVerificationRequest } from '../../services/places.service.js';
 import { uploadImage } from '../../services/upload.service.js';
-import { translatePlaceName, generateCoverImage, generatePlaceLogo } from '../../services/ai.service.js';
+import { translatePlaceName, generateCoverImage, generatePlaceLogo, generateSeoDescription, generateSeoServices } from '../../services/ai.service.js';
 import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
@@ -378,7 +378,12 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         </div>
 
         <div class="form-group">
-          <label class="form-label">وصف المكان والخدمات المقدمة</label>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
+            <label class="form-label" style="margin-bottom:0">وصف المكان والنشاط</label>
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-desc" title="توليد وصف متوافق 100% مع محركات البحث وسيو المنزلة">
+              ✨ توليد وصف سيو (SEO) بالذكاء الاصطناعي
+            </button>
+          </div>
           <textarea id="p-desc" class="form-textarea" placeholder="اكتب نبذة عن المكان، المنتجات، التخصصات، وسنوات الخبرة...">${escHtml(place?.description || '')}</textarea>
         </div>
       </div>
@@ -515,10 +520,16 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
       <!-- Services & Tags -->
       <div class="form-section">
-        <h2 class="form-section__title"><span>✨</span> الخدمات والمميزات الإضافية</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);flex-wrap:wrap;gap:6px">
+          <h2 class="form-section__title" style="margin-bottom:0"><span>✨</span> الخدمات والكلمات المفتاحية</h2>
+          <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-services" title="اقتراح أهم الكلمات المفتاحية والخدمات للظهور في نتائج البحث الأولى">
+            ✨ توليد خدمات سيو (SEO) بالذكاء الاصطناعي
+          </button>
+        </div>
         <div class="form-group">
           <label class="form-label">اكتب الخدمات مفصولة بفواصل (، أو ,)</label>
           <input type="text" id="p-services" class="form-input" placeholder="توصيل للمنازل، دفع بالفيزا، متاح 24 ساعة، كشف منزلي" value="${escAttr(place?.services ? place.services.join('، ') : '')}" />
+          <div class="form-hint">الكلمات والخدمات المكتوبة هنا تجعل مكانك يظهر في صدارة نتائج البحث عند كتابة أي منها.</div>
         </div>
       </div>
 
@@ -633,6 +644,69 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       toast.success('تم إنشاء الشعار بالذكاء الاصطناعي بنجاح ✨');
     } catch {
       toast.error('تعذر إنشاء الشعار');
+    }
+  });
+
+  // AI SEO Description Generation
+  document.getElementById('btn-ai-gen-desc')?.addEventListener('click', async () => {
+    const name = document.getElementById('p-name')?.value.trim();
+    const catSelect = document.getElementById('p-category');
+    const catText = catSelect?.options[catSelect.selectedIndex]?.text?.replace(/^[^\s]+\s+/, '') || '';
+    const customCat = document.getElementById('p-custom-category')?.value.trim();
+    const catName = customCat || catText || '';
+    const area = document.getElementById('p-area')?.value.trim() || 'المنزلة';
+
+    if (!name) {
+      toast.warning('اكتب اسم المكان بالعربية أولاً لتوليد وصف SEO متطابق معه');
+      return;
+    }
+
+    const btn = document.getElementById('btn-ai-gen-desc');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const seoDesc = await generateSeoDescription(name, catName, area);
+      if (seoDesc) {
+        document.getElementById('p-desc').value = seoDesc;
+        toast.success('تم توليد وصف سيو (SEO) احترافي بنجاح ✨');
+      }
+    } catch {
+      toast.error('تعذر توليد الوصف، يرجى المحاولة ثانية');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  });
+
+  // AI SEO Services & Keywords Generation
+  document.getElementById('btn-ai-gen-services')?.addEventListener('click', async () => {
+    const name = document.getElementById('p-name')?.value.trim();
+    const catSelect = document.getElementById('p-category');
+    const catText = catSelect?.options[catSelect.selectedIndex]?.text?.replace(/^[^\s]+\s+/, '') || '';
+    const customCat = document.getElementById('p-custom-category')?.value.trim();
+    const catName = customCat || catText || '';
+
+    if (!name && !catName) {
+      toast.warning('اكتب اسم المكان أو اختر التصنيف أولاً لاقتراح الخدمات');
+      return;
+    }
+
+    const btn = document.getElementById('btn-ai-gen-services');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const services = await generateSeoServices(name, catName);
+      if (services) {
+        document.getElementById('p-services').value = services;
+        toast.success('تم توليد الكلمات المفتاحية والخدمات بنجاح ✨');
+      }
+    } catch {
+      toast.error('تعذر اقتراح الخدمات');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
     }
   });
 

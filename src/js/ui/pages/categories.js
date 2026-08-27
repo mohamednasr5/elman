@@ -72,8 +72,17 @@ export async function renderCategoriesPage($container) {
 }
 
 export async function renderCategoryPage($container, { slug, query, user }) {
+  const decodedSlug = slug ? decodeURIComponent(slug) : '';
   const categories = await getCategories();
-  const cat = categories?.find(c => c.slug === slug || c._key === slug);
+  const cat = categories?.find(c => 
+    c.slug === slug || 
+    c._key === slug || 
+    c.slug === decodedSlug || 
+    c.id === slug ||
+    c.id === decodedSlug ||
+    c.name === decodedSlug || 
+    c.nameEn === slug
+  );
 
   if (!cat) {
     $container.innerHTML = `

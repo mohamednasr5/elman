@@ -7,7 +7,7 @@ const DEFAULT_TITLE = 'المنزلة وناسها | دليل المنزلة ا�
 const DEFAULT_DESC  = 'دليل المنزلة الرقمي الشامل — فين في المنزلة؟ مين في المنزلة؟ عند مين في المنزلة؟ ابحث عن الأطباء، المحلات، الحرفيين والصنايعية (سباك، نجار، مبلط، كهربائي، نقاش)، والعروض والخدمات في مدينة المنزلة.';
 const DEFAULT_KEYWORDS = 'دليل المنزلة, فين في المنزلة, مين في المنزلة, عند مين في المنزلة, محلات المنزلة, أطباء المنزلة, سباك في المنزلة, نجار في المنزلة, مبلط في المنزلة, كهربائي في المنزلة, نقاش في المنزلة, صنايعية المنزلة, خدمات المنزلة, الدقهلية';
 const DEFAULT_IMAGE = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
-const SITE_URL      = window.location.origin;
+const SITE_URL      = typeof window !== 'undefined' ? window.location.origin : 'https://elmanzala.com';
 
 /**
  * Update page meta tags
