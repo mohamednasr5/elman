@@ -11,12 +11,12 @@ import { translatePlaceName, generateCoverImage } from '../../services/ai.servic
 import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
-import { navigate } from '../../core/router.js';
+// navigate removed — using direct location.href
 import { formatPrice } from '../../utils/arabic.js';
 
 export async function renderDashboard($container, { user, section = 'overview', placeId = null }) {
   if (!user) {
-    navigate('/login');
+    window.location.href = 'login.html';
     return;
   }
 
@@ -33,19 +33,19 @@ export async function renderDashboard($container, { user, section = 'overview', 
         </div>
 
         <nav class="dashboard-sidebar__nav">
-          <a href="#/dashboard" class="dashboard-nav-item ${section === 'overview' ? 'active' : ''}">
+          <a href="dashboard.html" class="dashboard-nav-item ${section === 'overview' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📊</span> نظرة عامة
           </a>
-          <a href="#/dashboard/places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
+          <a href="dashboard.html?section=places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📍</span> أماكني
           </a>
-          <a href="#/dashboard/places/add" class="dashboard-nav-item ${section === 'add-place' ? 'active' : ''}">
+          <a href="dashboard.html?section=add" class="dashboard-nav-item ${section === 'add-place' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">➕</span> إضافة مكان جديد
           </a>
           
           ${user.role === 'admin' || user.role === 'superadmin' ? `
             <div class="dashboard-nav-section">الإدارة</div>
-            <a href="#/admin" class="dashboard-nav-item" style="color:var(--secondary)">
+            <a href="admin.html" class="dashboard-nav-item" style="color:var(--secondary)">
               <span class="dashboard-nav-item__icon">⚙️</span> لوحة تحكم الإدارة
             </a>
           ` : ''}
@@ -113,7 +113,7 @@ async function renderOverviewSection($container, user) {
         <h1 class="dashboard-header__title">أهلاً بك، ${escHtml(user.name.split(' ')[0])} 👋</h1>
         <div class="dashboard-header__subtitle">إليك ملخص تفاعل الزوار مع أنشطتك وأماكنك في المنزلة</div>
       </div>
-      <a href="#/dashboard/places/add" class="btn btn-primary">
+      <a href="dashboard.html?section=add" class="btn btn-primary">
         <span>➕</span> إضافة مكان جديد
       </a>
     </div>
@@ -161,7 +161,7 @@ async function renderPlacesSection($container, user) {
         <h1 class="dashboard-header__title">إدارة أماكني</h1>
         <div class="dashboard-header__subtitle">تحكم في بيانات الأماكن، العروض، والمنتجات</div>
       </div>
-      <a href="#/dashboard/places/add" class="btn btn-primary">
+      <a href="dashboard.html?section=add" class="btn btn-primary">
         <span>➕</span> إضافة مكان جديد
       </a>
     </div>
@@ -177,7 +177,7 @@ function renderPlacesListHTML(places) {
         <div class="empty-state__icon">🏪</div>
         <h2 class="empty-state__title">لم تقم بإضافة أي مكان بعد</h2>
         <p class="empty-state__text">أضف محلك التجاري أو عيادتك أو خدمتك للظهور أمام آلاف المستخدمين في المنزلة</p>
-        <a href="#/dashboard/places/add" class="btn btn-primary btn-lg">➕ أضف مكانك الأول الآن</a>
+        <a href="dashboard.html?section=add" class="btn btn-primary btn-lg">➕ أضف مكانك الأول الآن</a>
       </div>
     `;
   }
@@ -201,15 +201,15 @@ function renderPlacesListHTML(places) {
                 </div>
                 <div class="my-place-item__meta">
                   <span class="chip chip--primary">📍 ${escHtml(place.area || 'المنزلة')}</span>
-                  <a href="#/place/${escAttr(place.slug)}" target="_blank" style="font-size:var(--font-size-xs)">🔗 الصفحة العامة</a>
+                  <a href="place.html?slug=${escAttr(place.slug)}" target="_blank" style="font-size:var(--font-size-xs)">🔗 الصفحة العامة</a>
                 </div>
               </div>
 
               <div class="my-place-item__actions">
-                <a href="#/dashboard/places/${escAttr(placeId)}" class="btn btn-sm btn-outline">✏️ تعديل</a>
-                <a href="#/dashboard/places/${escAttr(placeId)}/offers" class="btn btn-sm btn-secondary">🏷️ العروض</a>
+                <a href="dashboard.html?section=edit&id=${escAttr(placeId)}" class="btn btn-sm btn-outline">✏️ تعديل</a>
+                <a href="dashboard.html?section=offers&id=${escAttr(placeId)}" class="btn btn-sm btn-secondary">🏷️ العروض</a>
                 ${place.isVerified ? `
-                  <a href="#/dashboard/places/${escAttr(placeId)}/products" class="btn btn-sm btn-primary">🛍️ المنتجات</a>
+                  <a href="dashboard.html?section=products&id=${escAttr(placeId)}" class="btn btn-sm btn-primary">🛍️ المنتجات</a>
                 ` : ''}
               </div>
             </div>
@@ -259,7 +259,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <h1 class="dashboard-header__title">${isEdit ? `تعديل مكان: ${escHtml(place.name)}` : 'إضافة مكان جديد'}</h1>
         <div class="dashboard-header__subtitle">أدخل جميع المعلومات بدقة لضمان سهولة عثور العملاء عليك</div>
       </div>
-      <a href="#/dashboard/places" class="btn btn-outline">← عودة للأماكن</a>
+      <a href="dashboard.html?section=places" class="btn btn-outline">← عودة للأماكن</a>
     </div>
 
     <form id="place-form" class="animate-fade-in-up">
@@ -400,7 +400,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <button type="submit" class="btn btn-primary btn-lg" id="btn-save-place">
           <span>💾</span> ${isEdit ? 'حفظ التعديلات' : 'إضافة المكان إلى الدليل'}
         </button>
-        <a href="#/dashboard/places" class="btn btn-ghost btn-lg">إلغاء</a>
+        <a href="dashboard.html?section=places" class="btn btn-ghost btn-lg">إلغاء</a>
       </div>
 
     </form>
@@ -560,7 +560,7 @@ async function renderPlaceOffersSection($container, user, placeId) {
         <button class="btn btn-primary" id="btn-open-add-offer" ${offers.length >= maxAllowed ? 'disabled title="تم الوصول للحد الأقصى"' : ''}>
           <span>➕</span> إضافة عرض جديد
         </button>
-        <a href="#/dashboard/places" class="btn btn-outline">← عودة</a>
+        <a href="dashboard.html?section=places" class="btn btn-outline">← عودة</a>
       </div>
     </div>
 
@@ -683,7 +683,7 @@ async function renderPlaceProductsSection($container, user, placeId) {
         <div class="empty-state__icon">🔒</div>
         <h2>المنتجات متاحة حصرياً للأماكن الموثقة</h2>
         <p class="empty-state__text">وثّق مكانك الآن لتتمكن من إضافة حتى 350 منتجاً في دليلك الرقمي</p>
-        <a href="#/place/${place.slug}" class="btn btn-primary">طلب التوثيق</a>
+        <a href="place.html?slug=${place.slug}" class="btn btn-primary">طلب التوثيق</a>
       </div>
     `;
     return;
@@ -701,7 +701,7 @@ async function renderPlaceProductsSection($container, user, placeId) {
         <button class="btn btn-primary" id="btn-open-add-product" ${products.length >= 350 ? 'disabled' : ''}>
           <span>➕</span> إضافة منتج
         </button>
-        <a href="#/dashboard/places" class="btn btn-outline">← عودة</a>
+        <a href="dashboard.html?section=places" class="btn btn-outline">← عودة</a>
       </div>
     </div>
 

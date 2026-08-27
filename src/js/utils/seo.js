@@ -57,7 +57,7 @@ export function setPlaceSchema(place, category) {
     name: place.name,
     description: place.description || '',
     image: place.coverImageUrl || DEFAULT_IMAGE,
-    url: `${SITE_URL}/#/place/${place.slug}`,
+    url: `${SITE_URL}/place.html?slug=${place.slug}`,
     telephone: place.phone || undefined,
     address: {
       '@type': 'PostalAddress',

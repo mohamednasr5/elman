@@ -8,10 +8,10 @@ import { renderPlaceCard } from '../components/PlaceCard.js';
 import { setMeta, setBreadcrumbSchema } from '../../utils/seo.js';
 
 export async function renderCategoriesPage($container) {
-  setMeta({ title: 'التصنيفات والأنشطة', url: '/#/categories' });
+  setMeta({ title: 'التصنيفات والأنشطة', url: 'https://elmanzala.com/categories.html' });
   setBreadcrumbSchema([
-    { name: 'الرئيسية', url: '/#/' },
-    { name: 'التصنيفات', url: '/#/categories' }
+    { name: 'الرئيسية', url: 'https://elmanzala.com/' },
+    { name: 'التصنيفات', url: 'https://elmanzala.com/categories.html' }
   ]);
 
   $container.innerHTML = `
@@ -43,7 +43,7 @@ export async function renderCategoriesPage($container) {
   }
 
   grid.innerHTML = categories.map(cat => `
-    <a href="#/category/${cat.slug || cat._key}" class="category-card animate-fade-in">
+    <a href="category.html?slug=${cat.slug || cat._key}" class="category-card animate-fade-in">
       <div class="category-card__icon">${cat.icon || '📁'}</div>
       <div class="category-card__name">${escHtml(cat.name)}</div>
       ${cat.placeCount !== undefined ? `<div class="category-card__count">${cat.placeCount} مكان</div>` : ''}
@@ -60,7 +60,7 @@ export async function renderCategoryPage($container, { slug, query, user }) {
       <div class="error-page">
         <div class="error-page__content">
           <h1 class="error-page__title">التصنيف غير موجود</h1>
-          <a href="#/categories" class="btn btn-primary">تصفح كل التصنيفات</a>
+          <a href="categories.html" class="btn btn-primary">تصفح كل التصنيفات</a>
         </div>
       </div>
     `;
@@ -70,13 +70,13 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   setMeta({
     title: `${cat.name} في المنزلة — دليل الأماكن`,
     description: `دليل ${cat.name} في مدينة المنزلة — ابحث عن العناوين وأرقام الهواتف ومواعيد العمل والأسعار`,
-    url: `/#/category/${slug}`
+    url: `https://elmanzala.com/category.html?slug=${slug}`
   });
 
   setBreadcrumbSchema([
-    { name: 'الرئيسية', url: '/#/' },
-    { name: 'التصنيفات', url: '/#/categories' },
-    { name: cat.name, url: `/#/category/${slug}` }
+    { name: 'الرئيسية', url: 'https://elmanzala.com/' },
+    { name: 'التصنيفات', url: 'https://elmanzala.com/categories.html' },
+    { name: cat.name, url: `https://elmanzala.com/category.html?slug=${slug}` }
   ]);
 
   $container.innerHTML = `
@@ -111,7 +111,7 @@ export async function renderCategoryPage($container, { slug, query, user }) {
         <div class="empty-state__icon">${cat.icon || '🏪'}</div>
         <h3 class="empty-state__title">لا توجد أماكن مسجلة في هذا القسم بعد</h3>
         <p class="empty-state__text">هل تملك نشاطاً في هذا المجال؟ أضف مكانك الآن مجاناً</p>
-        <a href="#/dashboard/places/add" class="btn btn-primary">➕ إضافة مكان في قسم ${escHtml(cat.name)}</a>
+        <a href="dashboard.html?section=add" class="btn btn-primary">➕ إضافة مكان في قسم ${escHtml(cat.name)}</a>
       </div>
     `;
     return;

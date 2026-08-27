@@ -3,7 +3,7 @@
  */
 
 import { signInWithGoogle } from '../../core/auth.js';
-import { navigate } from '../../core/router.js';
+// navigate removed
 import { toast } from '../components/Toast.js';
 
 export async function renderLoginPage($container) {
@@ -49,7 +49,7 @@ export async function renderLoginPage($container) {
       const user = await signInWithGoogle();
       if (user) {
         toast.success(`أهلاً بك يا ${user.displayName || 'مستخدم'}`);
-        navigate('/dashboard');
+        window.location.href = 'dashboard.html';
       }
     } catch (err) {
       console.error('Login error:', err);

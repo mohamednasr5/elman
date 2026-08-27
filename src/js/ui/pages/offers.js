@@ -11,12 +11,12 @@ export async function renderOffersPage($container) {
   setMeta({
     title: 'العروض اليومية والخصومات في المنزلة',
     description: 'تصفح أحدث عروض وتخفيضات محلات وأنشطة مدينة المنزلة المحدثة يومياً',
-    url: '/#/offers'
+    url: 'https://elmanzala.com/offers.html'
   });
 
   setBreadcrumbSchema([
-    { name: 'الرئيسية', url: '/#/' },
-    { name: 'العروض اليومية', url: '/#/offers' }
+    { name: 'الرئيسية', url: 'https://elmanzala.com/' },
+    { name: 'العروض اليومية', url: 'https://elmanzala.com/offers.html' }
   ]);
 
   $container.innerHTML = `
@@ -49,7 +49,7 @@ export async function renderOffersPage($container) {
           <div class="empty-state__icon">🏷️</div>
           <h2 class="empty-state__title">لا توجد عروض نشطة حالياً</h2>
           <p class="empty-state__text">تأكد من متابعة الصفحة لمعرفة أحدث العروض والخصومات في المنزلة</p>
-          <a href="#/dashboard" class="btn btn-primary">أضف عرضاً لمحلك</a>
+          <a href="dashboard.html" class="btn btn-primary">أضف عرضاً لمحلك</a>
         </div>
       `;
       return;
@@ -60,7 +60,7 @@ export async function renderOffersPage($container) {
       const days = daysUntil(offer.endDate);
 
       return `
-        <article class="offer-card animate-fade-in" onclick="window.location.hash='#/place/${escAttr(offer.placeSlug || '')}'" style="cursor:pointer">
+        <article class="offer-card animate-fade-in" onclick="window.location.href='place.html?slug=${escAttr(offer.placeSlug || '')}'" style="cursor:pointer">
           <div class="offer-card__image">
             ${offer.imageUrl 
               ? `<img src="${escAttr(offer.imageUrl)}" alt="${escAttr(offer.title)}" loading="lazy" />` 

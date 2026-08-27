@@ -9,12 +9,12 @@ import { isAdmin, isSuperAdmin } from '../../core/auth.js';
 import { renderVerifiedBadge, renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
-import { navigate } from '../../core/router.js';
+// navigate removed — using direct location.href
 import { formatDate } from '../../utils/date.js';
 
 export async function renderAdmin($container, { user, section = 'overview' }) {
   if (!user || !isAdmin(user)) {
-    navigate('/');
+    window.location.href = 'index.html';
     return;
   }
 
@@ -31,36 +31,36 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         </div>
 
         <nav class="dashboard-sidebar__nav">
-          <a href="#/admin" class="dashboard-nav-item ${section === 'overview' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
+          <a href="admin.html" class="dashboard-nav-item ${section === 'overview' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
             <span>📊</span> الإحصائيات العامة
           </a>
-          <a href="#/admin/places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
+          <a href="admin.html?section=places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
             <span>📍</span> إدارة الأماكن
           </a>
-          <a href="#/admin/verification" class="dashboard-nav-item ${section === 'verification' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
+          <a href="admin.html?section=verification" class="dashboard-nav-item ${section === 'verification' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
             <span>⭐</span> طلبات التوثيق
           </a>
-          <a href="#/admin/categories" class="dashboard-nav-item ${section === 'categories' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
+          <a href="admin.html?section=categories" class="dashboard-nav-item ${section === 'categories' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
             <span>📁</span> إدارة التصنيفات
           </a>
-          <a href="#/admin/users" class="dashboard-nav-item ${section === 'users' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
+          <a href="admin.html?section=users" class="dashboard-nav-item ${section === 'users' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
             <span>👥</span> إدارة المستخدمين
           </a>
-          <a href="#/admin/offers" class="dashboard-nav-item ${section === 'offers' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
+          <a href="admin.html?section=offers" class="dashboard-nav-item ${section === 'offers' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
             <span>🏷️</span> إدارة العروض
           </a>
-          <a href="#/admin/ads" class="dashboard-nav-item ${section === 'ads' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
+          <a href="admin.html?section=ads" class="dashboard-nav-item ${section === 'ads' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
             <span>📢</span> إدارة الإعلانات
           </a>
-          <a href="#/admin/settings" class="dashboard-nav-item ${section === 'settings' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
+          <a href="admin.html?section=settings" class="dashboard-nav-item ${section === 'settings' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
             <span>⚙️</span> إعدادات الموقع
           </a>
 
           <div class="dashboard-nav-section" style="color:rgba(255,255,255,0.4)">العودة</div>
-          <a href="#/dashboard" class="dashboard-nav-item" style="color:rgba(255,255,255,0.6)">
+          <a href="dashboard.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.6)">
             <span>🏠</span> لوحة المستخدم
           </a>
-          <a href="#/" class="dashboard-nav-item" style="color:rgba(255,255,255,0.6)">
+          <a href="index.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.6)">
             <span>🌐</span> الصفحة الرئيسية
           </a>
         </nav>
@@ -161,7 +161,7 @@ async function renderAdminOverview($container) {
                   <strong>${escHtml(r.placeName)}</strong>
                   <div style="font-size:var(--font-size-xs);color:var(--text-muted)">بواسطة: ${escHtml(r.ownerName || r.ownerEmail)}</div>
                 </div>
-                <a href="#/admin/verification" class="btn btn-sm btn-secondary">مراجعة</a>
+                <a href="admin.html?section=verification" class="btn btn-sm btn-secondary">مراجعة</a>
               </div>
             `).join('')}
           </div>
@@ -178,7 +178,7 @@ async function renderAdminOverview($container) {
                 <strong>${escHtml(p.name)}</strong>
                 <div style="font-size:var(--font-size-xs);color:var(--text-muted)">${escHtml(p.area || 'المنزلة')}</div>
               </div>
-              <a href="#/place/${p.slug}" target="_blank" class="btn btn-sm btn-outline">عرض</a>
+              <a href="place.html?slug=${p.slug}" target="_blank" class="btn btn-sm btn-outline">عرض</a>
             </div>
           `).join('')}
         </div>
@@ -252,7 +252,7 @@ function renderAdminPlacesTableRows(places) {
       <td>${renderStatusBadge(p.status || 'published')}</td>
       <td>
         <div style="display:flex;gap:4px">
-          <a href="#/place/${escAttr(p.slug)}" target="_blank" class="btn btn-xs btn-outline">عرض</a>
+          <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs btn-outline">عرض</a>
           <button class="btn btn-xs btn-danger" onclick="deletePlaceAdmin('${escAttr(p._id)}')">حذف</button>
         </div>
       </td>

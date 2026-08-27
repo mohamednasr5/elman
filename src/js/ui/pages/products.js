@@ -10,12 +10,12 @@ export async function renderProductsPage($container) {
   setMeta({
     title: 'دليل المنتجات والأسعار في المنزلة',
     description: 'تصفح قائمة المنتجات والأسعار المتاحة لدى المحلات الموثقة في مدينة المنزلة',
-    url: '/#/products'
+    url: 'https://elmanzala.com/products.html'
   });
 
   setBreadcrumbSchema([
-    { name: 'الرئيسية', url: '/#/' },
-    { name: 'المنتجات', url: '/#/products' }
+    { name: 'الرئيسية', url: 'https://elmanzala.com/' },
+    { name: 'المنتجات', url: 'https://elmanzala.com/products.html' }
   ]);
 
   $container.innerHTML = `
@@ -68,14 +68,14 @@ export async function renderProductsPage($container) {
           <div class="empty-state__icon">📦</div>
           <h2 class="empty-state__title">لا توجد منتجات مسجلة بعد</h2>
           <p class="empty-state__text">المنتجات متاحة حصرياً للأماكن الموثقة</p>
-          <a href="#/dashboard" class="btn btn-primary">لوحة التحكم</a>
+          <a href="dashboard.html" class="btn btn-primary">لوحة التحكم</a>
         </div>
       `;
       return;
     }
 
     grid.innerHTML = allProducts.map(p => `
-      <article class="product-card animate-fade-in" onclick="window.location.hash='#/place/${escAttr(p.placeSlug)}'" style="cursor:pointer">
+      <article class="product-card animate-fade-in" onclick="window.location.href='place.html?slug=${escAttr(p.placeSlug)}'" style="cursor:pointer">
         <div class="product-card__image">
           ${p.imageUrl ? `<img src="${escAttr(p.imageUrl)}" alt="${escAttr(p.name)}" loading="lazy" />` : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;background:var(--surface-3)">📦</div>`}
           ${p.isFeatured ? `<span class="product-card__featured">مميز ⭐</span>` : ''}

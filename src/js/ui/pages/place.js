@@ -34,7 +34,7 @@ export async function renderPlacePage($container, { slug, user }) {
             <div class="error-page__code">404</div>
             <h1 class="error-page__title">المكان غير موجود</h1>
             <p class="error-page__text">عذراً، لم يتم العثور على هذا المكان أو قد يكون تم حذفه</p>
-            <a href="#/places" class="btn btn-primary btn-lg">تصفح دليل الأماكن</a>
+            <a href="places.html" class="btn btn-primary btn-lg">تصفح دليل الأماكن</a>
           </div>
         </div>
       `;
@@ -62,15 +62,15 @@ export async function renderPlacePage($container, { slug, user }) {
       title: `${place.name} — ${category?.name || 'دليل المنزلة'}`,
       description: place.description || `تعرف على ${place.name} في المنزلة — مواعيد العمل، أرقام التواصل، العنوان، والخدمات`,
       image: place.coverImageUrl || place.logoUrl,
-      url: `/#/place/${place.slug}`
+      url: `https://elmanzala.com/place.html?slug=${place.slug}`
     });
 
     setPlaceSchema(place, category);
     setBreadcrumbSchema([
-      { name: 'الرئيسية', url: '/#/' },
-      { name: 'الأماكن', url: '/#/places' },
-      { name: category?.name || 'القسم', url: `/#/category/${category?.slug || place.categoryId}` },
-      { name: place.name, url: `/#/place/${place.slug}` }
+      { name: 'الرئيسية', url: 'https://elmanzala.com/' },
+      { name: 'الأماكن', url: 'https://elmanzala.com/places.html' },
+      { name: category?.name || 'القسم', url: `https://elmanzala.com/category.html?slug=${category?.slug || place.categoryId}` },
+      { name: place.name, url: `https://elmanzala.com/place.html?slug=${place.slug}` }
     ]);
 
     // Working hours status
@@ -109,7 +109,7 @@ export async function renderPlacePage($container, { slug, user }) {
                 </div>
                 
                 <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap">
-                  <a href="#/category/${category?.slug || place.categoryId}" class="place-category-tag">
+                  <a href="category.html?slug=${category?.slug || place.categoryId}" class="place-category-tag">
                     ${category?.icon || '📁'} ${escHtml(category?.name || 'عام')}
                   </a>
                   ${place.nameEn ? `<span style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
@@ -151,7 +151,7 @@ export async function renderPlacePage($container, { slug, user }) {
               ` : ''}
 
               ${isOwner ? `
-                <a href="#/dashboard/places/${escAttr(placeId)}" class="btn btn-secondary">
+                <a href="dashboard.html?section=places&id=${escAttr(placeId)}" class="btn btn-secondary">
                   ⚙️ إدارة وتعديل المكان
                 </a>
               ` : ''}
@@ -427,7 +427,7 @@ function showVerificationModal(place, user, waUrl) {
               console.warn('Req submit error:', e);
             }
           }
-          const text = encodeURIComponent(`السلام عليكم، أود طلب توثيق مكاني على منصة المنزلة وناسها:\nاسم المكان: ${place.name}\nرابط المكان: https://elmanzala.com/#/place/${place.slug}`);
+          const text = encodeURIComponent(`السلام عليكم، أود طلب توثيق مكاني على منصة المنزلة وناسها:\nاسم المكان: ${place.name}\nرابط المكان: https://elmanzala.com/place.html?slug=${place.slug}`);
           window.open(`${waUrl}?text=${text}`, '_blank');
         },
         closeOnClick: true
