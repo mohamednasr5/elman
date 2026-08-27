@@ -85,6 +85,14 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
     else if (section === 'settings') await renderAdminSettings($main);
   } catch (err) {
     console.error('[Admin] Section error:', err);
+    $main.innerHTML = `
+      <div class="empty-state" style="margin-top:100px;">
+        <span class="empty-state__icon">⚠️</span>
+        <h3>حدث خطأ أثناء تحميل البيانات</h3>
+        <p style="color:var(--danger)">${escHtml(err.message || 'تعذر جلب البيانات، قد يكون بسبب صلاحيات الفايربيس.')}</p>
+        <button class="btn btn-primary" onclick="location.reload()" style="margin-top:15px;">حاول مرة أخرى</button>
+      </div>
+    `;
   }
 }
 

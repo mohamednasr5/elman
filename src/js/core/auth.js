@@ -109,33 +109,39 @@ export function isSuperAdmin(user = null) {
  * Wait for auth to be ready (returns Promise)
  */
 export function waitForAuth() {
-  if (!appState.get('authLoading')) {
-    return Promise.resolve(appState.get('user'));
-  }
   return new Promise((resolve) => {
+    if (!appState.get('authLoading')) {
+      return resolve(appState.get('user'));
+    }
+    
     let resolved = false;
+    const finish = (val) => {
+      if (resolved) return;
+      resolved = true;
+      try { unsub(); } catch (e) {}
+      resolve(val);
+    };
+
     const unsub = appState.subscribe('authLoading', (loading) => {
-      if (!loading && !resolved) {
-        resolved = true;
-        unsub();
-        resolve(appState.get('user'));
+      if (!loading) {
+        finish(appState.get('user'));
       }
     });
 
-    // Fallback timer in case auth listener is delayed
+    // Fallback timer
     setTimeout(() => {
       if (!resolved) {
-        resolved = true;
-        try { unsub(); } catch (_) {}
-        const auth = getAuth();
-        const fbUser = auth?.currentUser;
-        if (fbUser) {
-          const profile = buildBasicProfile(fbUser);
-          appState.set('user', profile);
-          appState.set('authLoading', false);
-          resolve(profile);
-        } else {
-          resolve(appState.get('user'));
+        try {
+          const auth = getAuth();
+          const fbUser = auth?.currentUser;
+          if (fbUser) {
+            const profile = buildBasicProfile(fbUser);
+            finish(profile);
+          } else {
+            finish(appState.get('user'));
+          }
+        } catch (err) {
+          finish(appState.get('user'));
         }
       }
     }, 2500);

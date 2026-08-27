@@ -1,11 +1,12 @@
 {
   "rules": {
     "users": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
-        ".write": "auth != null && auth.uid === $uid",
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
         "role": {
-          ".write": "root.child('users/' + auth.uid + '/role').val() === 'superadmin'"
+          ".write": "root.child('users/' + auth.uid + '/role').val() === 'superadmin' || auth.token.email === 'elfannanm@gmail.com' || auth.token.email === 'mohamednasrofficial@gmail.com'"
         },
         "status": {
           ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin'"
@@ -49,13 +50,18 @@
       ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
     },
     "verificationRequests": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
       "$requestId": {
-        ".read": "auth != null && (auth.uid === data.child('ownerId').val() || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
+        ".read": "auth != null && auth.uid === data.child('ownerId').val()",
         ".write": "auth != null"
       }
     },
     "slugIndex": {
       ".read": true,
+      ".write": "auth != null"
+    },
+    "categoryRequests": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
       ".write": "auth != null"
     }
   }
