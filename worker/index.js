@@ -3,7 +3,10 @@
  * Bound to R2 Bucket: elmanzala
  * OpenRouter AI Integration (Ox Alpha model)
  * Server-side Quota Enforcement (Offers & Products Limits)
+ * Telegram Bot & Instant Notification System
  */
+
+import { handleTelegramWebhook, sendAdminPushNotification, telegramApi } from './telegram.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -178,8 +181,27 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         }, 200, corsHeaders);
       }
 
+      // ── 8. Telegram Bot Webhook (POST /api/telegram/webhook) ──
+      if ((url.pathname === '/api/telegram/webhook' || url.pathname === '/telegram/webhook') && request.method === 'POST') {
+        return handleTelegramWebhook(request, env);
+      }
+
+      // ── 9. Set Telegram Webhook (GET /api/telegram/set-webhook) ──
+      if (url.pathname === '/api/telegram/set-webhook' && request.method === 'GET') {
+        const webhookUrl = url.searchParams.get('url') || `https://${url.host}/api/telegram/webhook`;
+        const res = await telegramApi('setWebhook', { url: webhookUrl }, env);
+        return jsonResponse({ success: true, webhookUrl, result: res }, 200, corsHeaders);
+      }
+
+      // ── 10. Instant Push Notification (POST /api/notify) ──
+      if (url.pathname === '/api/notify' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const res = await sendAdminPushNotification(body.type, body.data || body.payload || body, env);
+        return jsonResponse({ success: true, result: res }, 200, corsHeaders);
+      }
+
       // Health Check
-      return jsonResponse({ status: 'ok', service: 'elmanzala-worker', version: '2.0.0' }, 200, corsHeaders);
+      return jsonResponse({ status: 'ok', service: 'elmanzala-worker', version: '2.1.0' }, 200, corsHeaders);
 
     } catch (err) {
       return jsonResponse({ error: err.message || 'Internal Server Error' }, 500, corsHeaders);

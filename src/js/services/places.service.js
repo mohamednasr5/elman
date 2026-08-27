@@ -81,6 +81,23 @@ export async function createPlace(placeData, currentUser) {
     dbIncrement(`categories/${placeData.categoryId}/placeCount`, 1);
   }
 
+  // Push instant notification to Telegram Admin (async background)
+  fetch(`${WORKER_URL}/api/notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'new_place',
+      data: {
+        id: placeId,
+        name: newPlace.name,
+        categoryName: placeData.categoryName || placeData.categoryId,
+        phone: newPlace.phone,
+        area: newPlace.area,
+        ownerName: currentUser.name || currentUser.displayName || currentUser.email
+      }
+    })
+  }).catch(() => {});
+
   return placeId;
 }
 
@@ -168,6 +185,23 @@ export async function submitVerificationRequest(placeId, user, notes = '') {
   updates[`places/${placeId}/verificationStatus`] = 'verification_requested';
 
   await db.ref().update(updates);
+
+  // Push instant notification to Telegram Admin (async)
+  fetch(`${WORKER_URL}/api/notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'verification_request',
+      data: {
+        placeId,
+        placeName: place.name,
+        requesterName: user.name || user.displayName || user.email,
+        phone: user.phone || place.phone || '',
+        notes
+      }
+    })
+  }).catch(() => {});
+
   return reqId;
 }
 
