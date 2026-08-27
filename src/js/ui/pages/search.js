@@ -171,6 +171,7 @@ export async function renderSearchPage($container, { q = '', user }) {
 
 function sortSearchPlaces(places, currentUid = null) {
   const seen = new Set();
+  const sponsored = [];
   const verified = [];
   const userOwned = [];
   const others = [];
@@ -180,7 +181,10 @@ function sortSearchPlaces(places, currentUid = null) {
     if (seen.has(key)) return;
     seen.add(key);
 
-    if (place.isVerified) {
+    const isSpons = Boolean(place.isSponsored || place.isFeatured || place.isPromoted);
+    if (isSpons) {
+      sponsored.push(place);
+    } else if (place.isVerified) {
       verified.push(place);
     } else if (currentUid && place.ownerId === currentUid) {
       userOwned.push(place);
@@ -189,7 +193,7 @@ function sortSearchPlaces(places, currentUid = null) {
     }
   });
 
-  return [...verified, ...userOwned, ...others];
+  return [...sponsored, ...verified, ...userOwned, ...others];
 }
 
 function saveSearchHistory(q) {

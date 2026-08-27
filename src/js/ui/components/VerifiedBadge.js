@@ -1,6 +1,14 @@
 /**
- * المنزلة وناسها — Verified Badge Component
+ * Render sponsored / featured place badge
  */
+export function renderSponsoredBadge() {
+  return `
+    <span class="badge-sponsored" title="إعلان مميز مدفوع" aria-label="إعلان مدفوع">
+      <span class="badge-sponsored__icon">📢</span>
+      <span class="badge-sponsored__text">إعلان مدفوع</span>
+    </span>
+  `;
+}
 
 /**
  * Render verified badge HTML

@@ -131,9 +131,13 @@ export async function renderCategoryPage($container, { slug, query, user }) {
     return;
   }
 
-  // Sort verified places first
-  const currentUser = getCurrentUser() || user;
-  const sorted = places.sort((a, b) => (b.isVerified ? 1 : 0) - (a.isVerified ? 1 : 0));
+  // Sort sponsored first, then verified places
+  const sorted = places.sort((a, b) => {
+    const aSpons = Boolean(a.isSponsored || a.isFeatured || a.isPromoted) ? 1 : 0;
+    const bSpons = Boolean(b.isSponsored || b.isFeatured || b.isPromoted) ? 1 : 0;
+    if (bSpons !== aSpons) return bSpons - aSpons;
+    return (b.isVerified ? 1 : 0) - (a.isVerified ? 1 : 0);
+  });
 
   grid.innerHTML = sorted.map(p => renderPlaceCard(p)).join('');
 }

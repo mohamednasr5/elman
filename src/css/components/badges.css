@@ -126,3 +126,55 @@
   color: var(--primary);
   border: 1px solid rgba(27,79,114,0.2);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Sponsored / Featured Place Badge & Card
+   ═══════════════════════════════════════════════════════════ */
+.badge-sponsored {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  background: linear-gradient(135deg, #FF6B00 0%, #FFA800 100%);
+  color: #ffffff !important;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  user-select: none;
+  box-shadow: 0 2px 8px rgba(255, 107, 0, 0.4);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.4);
+  animation: pulseSponsored 2.8s ease-in-out infinite;
+}
+
+@keyframes pulseSponsored {
+  0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(255, 107, 0, 0.4); }
+  50% { transform: scale(1.04); box-shadow: 0 4px 14px rgba(255, 107, 0, 0.65); }
+}
+
+.place-card--sponsored {
+  border: 2px solid #FF8C00 !important;
+  box-shadow: 0 4px 16px rgba(255, 140, 0, 0.22) !important;
+  position: relative;
+}
+
+.place-card--sponsored::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #FF6B00, #FFA800, #FF6B00);
+  z-index: 6;
+}
+
+.place-card__sponsored-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+}
+

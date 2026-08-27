@@ -143,16 +143,20 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
 function sortDirectoryPlaces(places, currentUid = null) {
   const seen = new Set();
+  const sponsored = [];
   const verified = [];
   const userOwned = [];
   const others = [];
 
   places.forEach(place => {
-    const key = place.id || place._key;
-    if (seen.has(key)) return;
-    seen.add(key);
+    const k = place._key || place.id;
+    if (seen.has(k)) return;
+    seen.add(k);
 
-    if (place.isVerified) {
+    const isSpons = Boolean(place.isSponsored || place.isFeatured || place.isPromoted);
+    if (isSpons) {
+      sponsored.push(place);
+    } else if (place.isVerified) {
       verified.push(place);
     } else if (currentUid && place.ownerId === currentUid) {
       userOwned.push(place);
@@ -161,7 +165,7 @@ function sortDirectoryPlaces(places, currentUid = null) {
     }
   });
 
-  return [...verified, ...userOwned, ...others];
+  return [...sponsored, ...verified, ...userOwned, ...others];
 }
 
 function debounce(func, wait) {

@@ -1,7 +1,7 @@
 /**
- * المنزلة وناسها — Admin Control Panel (Instant SPA Edition)
- * Zero-latency navigation, SWR in-memory caching, instant tab switching,
- * responsive mobile bottom-bar, and reactive updates without page reloads.
+ * المنزلة وناسها — Admin Control Panel (Instant SPA + Sponsored Ads Edition)
+ * Zero-latency navigation, in-memory caching, responsive mobile bottom-bar,
+ * and complete Sponsored Place / Paid Ad priority controls.
  */
 
 import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories } from '../../core/db.js';
@@ -50,7 +50,8 @@ const ICONS = {
   x:         svgIcon('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
   plus:      svgIcon('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
   star:      svgIcon('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
-  clock:     svgIcon('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')
+  clock:     svgIcon('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
+  bullhorn:  svgIcon('<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>')
 };
 
 function navLink(sectionKey, href, icon, label, active) {
@@ -87,7 +88,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           ${navLink('categories',    'admin.html?section=categories',   ICONS.folder,    'التصنيفات',       section === 'categories')}
           ${navLink('users',         'admin.html?section=users',        ICONS.users,     'المستخدمون',      section === 'users')}
           ${navLink('offers',        'admin.html?section=offers',       ICONS.tag,       'العروض',          section === 'offers')}
-          ${navLink('ads',           'admin.html?section=ads',          ICONS.megaphone, 'الإعلانات',       section === 'ads')}
+          ${navLink('ads',           'admin.html?section=ads',          ICONS.megaphone, 'الإعلانات والترويج', section === 'ads')}
           ${navLink('settings',      'admin.html?section=settings',     ICONS.cog,       'الإعدادات',       section === 'settings')}
 
           <div class="dashboard-nav-section" style="color:rgba(255,255,255,0.4)">العودة</div>
@@ -111,13 +112,8 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
     </div>
   `;
 
-  // Attach instant click interceptors
   setupAdminNavigation();
-
-  // Render initial section immediately
   await switchAdminSection(section, false);
-
-  // Background preload remaining collections for instantaneous next clicks
   preloadAdminData();
 }
 
@@ -134,7 +130,6 @@ async function switchAdminSection(sectionName, pushState = true) {
     history.pushState({ section: sectionName }, '', newUrl);
   }
 
-  // Update active item in sidebar immediately
   document.querySelectorAll('#admin-sidebar-nav .dashboard-nav-item[data-section]').forEach(el => {
     el.classList.toggle('active', el.getAttribute('data-section') === sectionName);
   });
@@ -185,9 +180,6 @@ function setupAdminNavigation() {
   });
 }
 
-/**
- * Background preloader: fetches everything once so every click is instant
- */
 async function preloadAdminData() {
   if (adminCache.isPreloaded) return;
   try {
@@ -234,6 +226,7 @@ async function renderAdminOverview($container) {
   const ads          = Object.values(adminCache.ads    || {});
   const pendingReqs  = Object.values(adminCache.verificationRequests || {}).filter(r => r && r.status === 'pending');
   const verified     = places.filter(p => p.isVerified);
+  const sponsored    = places.filter(p => p.isSponsored || p.isFeatured || p.isPromoted);
 
   $container.innerHTML = `
     <div class="admin-fade-in">
@@ -257,6 +250,11 @@ async function renderAdminOverview($container) {
           <div class="stat-card__label">إجمالي الأماكن</div>
         </div>
         <div class="stat-card">
+          <div class="stat-card__icon" style="color:#FF8C00">⭐</div>
+          <div class="stat-card__value" style="color:#FF8C00">${sponsored.length}</div>
+          <div class="stat-card__label">إعلانات مدفوعة نشطة</div>
+        </div>
+        <div class="stat-card">
           <div class="stat-card__icon" style="color:var(--secondary,#F5A623)">${ICONS.shield}</div>
           <div class="stat-card__value" style="color:var(--secondary,#F5A623)">${verified.length}</div>
           <div class="stat-card__label">أنشطة موثقة</div>
@@ -267,14 +265,9 @@ async function renderAdminOverview($container) {
           <div class="stat-card__label">طلبات توثيق معلقة</div>
         </div>
         <div class="stat-card">
-          <div class="stat-card__icon" style="color:#8B5CF6">${ICONS.tag}</div>
-          <div class="stat-card__value">${offers.length}</div>
-          <div class="stat-card__label">إجمالي العروض</div>
-        </div>
-        <div class="stat-card">
           <div class="stat-card__icon" style="color:#06B6D4">${ICONS.megaphone}</div>
           <div class="stat-card__value">${ads.length}</div>
-          <div class="stat-card__label">الإعلانات النشطة</div>
+          <div class="stat-card__label">إجمالي الإعلانات</div>
         </div>
       </div>
 
@@ -338,7 +331,7 @@ async function renderAdminPlaces($container) {
       <div class="dashboard-header">
         <div>
           <h1 class="dashboard-header__title">إدارة الأماكن (${places.length})</h1>
-          <div class="dashboard-header__subtitle">التحكم في توثيق وحالة ونشر جميع أنشطة المنصة</div>
+          <div class="dashboard-header__subtitle">التحكم في التوثيق، حالة النشر، والإعلانات المدفوعة المميزة</div>
         </div>
       </div>
 
@@ -355,6 +348,7 @@ async function renderAdminPlaces($container) {
               <th>المكان</th>
               <th>التصنيف</th>
               <th>المنطقة</th>
+              <th>إعلان مدفوع ⭐</th>
               <th>التوثيق</th>
               <th>الحالة</th>
               <th>إجراءات</th>
@@ -380,30 +374,40 @@ async function renderAdminPlaces($container) {
 }
 
 function renderAdminPlacesTableRows(places) {
-  if (!places.length) return '<tr><td colspan="6" class="text-center">لا توجد أماكن مطابقة</td></tr>';
+  if (!places.length) return '<tr><td colspan="7" class="text-center">لا توجد أماكن مطابقة</td></tr>';
 
-  return places.map(p => `
-    <tr>
-      <td>
-        <strong>${escHtml(p.name)}</strong>
-        <div style="font-size:11px;color:var(--text-muted)">${p.phone || ''}</div>
-      </td>
-      <td>${escHtml(p.categoryId || 'عام')}</td>
-      <td>${escHtml(p.area || 'المنزلة')}</td>
-      <td>
-        <button class="btn btn-xs ${p.isVerified ? 'btn-danger' : 'btn-secondary'}" onclick="togglePlaceVerification('${escAttr(p._id)}', ${!p.isVerified})">
-          ${p.isVerified ? ICONS.x + ' إلغاء التوثيق' : ICONS.shield + ' توثيق'}
-        </button>
-      </td>
-      <td>${renderStatusBadge(p.status || 'published')}</td>
-      <td>
-        <div style="display:flex;gap:6px">
-          <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs btn-outline" title="عرض المكان">${ICONS.eye}</a>
-          <button class="btn btn-xs btn-danger" onclick="deletePlaceAdmin('${escAttr(p._id)}')" title="حذف المكان">${ICONS.trash}</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+  return places.map(p => {
+    const isSpons = Boolean(p.isSponsored || p.isFeatured || p.isPromoted);
+    return `
+      <tr>
+        <td>
+          <strong>${escHtml(p.name)}</strong>
+          <div style="font-size:11px;color:var(--text-muted)">${p.phone || ''}</div>
+        </td>
+        <td>${escHtml(p.categoryId || 'عام')}</td>
+        <td>${escHtml(p.area || 'المنزلة')}</td>
+        <td>
+          <button class="btn btn-xs ${isSpons ? 'btn-warning' : 'btn-outline'}" 
+                  onclick="togglePlaceSponsored('${escAttr(p._id)}', ${!isSpons})"
+                  title="${isSpons ? 'إلغاء الترويج كإعلان' : 'تعيين كإعلان مدفوع في قمة كل الصفحات'}">
+            ${isSpons ? '⭐ إعلان مميز (إلغاء)' : '📢 تعيين كإعلان'}
+          </button>
+        </td>
+        <td>
+          <button class="btn btn-xs ${p.isVerified ? 'btn-danger' : 'btn-secondary'}" onclick="togglePlaceVerification('${escAttr(p._id)}', ${!p.isVerified})">
+            ${p.isVerified ? ICONS.x + ' إلغاء التوثيق' : ICONS.shield + ' توثيق'}
+          </button>
+        </td>
+        <td>${renderStatusBadge(p.status || 'published')}</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs btn-outline" title="عرض المكان">${ICONS.eye}</a>
+            <button class="btn btn-xs btn-danger" onclick="deletePlaceAdmin('${escAttr(p._id)}')" title="حذف المكان">${ICONS.trash}</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 // ─────────────────────────────────────────────
@@ -489,7 +493,6 @@ async function renderAdminCategories($container) {
     .filter(r => r.status === 'pending');
   const allPlaces = Object.values(adminCache.places || {});
 
-  // Dynamic place counts calculation
   categories.forEach(c => {
     c.placeCount = allPlaces.filter(p => p.categoryId === (c.slug || c.nameEn)).length;
   });
@@ -753,55 +756,109 @@ async function renderAdminOffers($container) {
 }
 
 // ─────────────────────────────────────────────
-//  7. Ads
+//  7. Ads & Place Promotion (إدارة الإعلانات والترويج)
 // ─────────────────────────────────────────────
 async function renderAdminAds($container) {
-  if (!adminCache.ads) {
-    adminCache.ads = (await dbGet('ads')) || {};
+  if (!adminCache.ads || !adminCache.places) {
+    const [adsMap, placesMap] = await Promise.all([dbGet('ads'), dbGet('places')]);
+    adminCache.ads = adsMap || {};
+    adminCache.places = placesMap || {};
   }
+
   const ads = Object.entries(adminCache.ads || {}).map(([id, a]) => ({ ...a, _id: id }));
+  const sponsoredPlaces = Object.entries(adminCache.places || {})
+    .map(([id, p]) => ({ ...p, _id: id }))
+    .filter(p => p.isSponsored || p.isFeatured || p.isPromoted);
 
   $container.innerHTML = `
     <div class="admin-fade-in">
       <div class="dashboard-header">
         <div>
-          <h1 class="dashboard-header__title">إدارة الإعلانات (${ads.length})</h1>
-          <div class="dashboard-header__subtitle">إضافة وتفعيل البانرات الإعلانية في الموقع</div>
+          <h1 class="dashboard-header__title">إدارة الإعلانات وترويج الأماكن</h1>
+          <div class="dashboard-header__subtitle">تعيين الأماكن كإعلانات مدفوعة في صدارة الصفحات + إضافة بانرات مخصصة</div>
         </div>
         <button class="btn btn-primary" id="btn-add-ad">
-          ${ICONS.plus} إضافة إعلان جديد
+          ${ICONS.plus} إضافة إعلان / ترويج مكان
         </button>
       </div>
 
-      <div class="dashboard-table-wrapper">
-        <table class="dashboard-table">
-          <thead>
-            <tr>
-              <th>البانر</th>
-              <th>العنوان</th>
-              <th>الموضع</th>
-              <th>النقرات</th>
-              <th>الحالة</th>
-              <th>حذف</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${ads.length === 0 ? '<tr><td colspan="6" class="text-center">لا توجد إعلانات نشطة</td></tr>' : ads.map(a => `
+      <!-- Sponsored Places Table -->
+      <div class="form-section" style="margin-bottom:24px;border:1.5px solid #FF8C00">
+        <h2 class="form-section__title" style="color:#FF8C00">
+          <span>⭐</span> الأماكن المميزة كإعلانات مدفوعة (${sponsoredPlaces.length})
+        </h2>
+        <div class="dashboard-table-wrapper">
+          <table class="dashboard-table">
+            <thead>
               <tr>
-                <td>
-                  ${a.imageUrl ? `<img src="${escAttr(a.imageUrl)}" style="height:36px;border-radius:4px;object-fit:cover" />` : 'نص'}
-                </td>
-                <td><strong>${escHtml(a.title || '')}</strong></td>
-                <td>${escHtml(a.placement || 'homepage')}</td>
-                <td>${a.clicks || 0}</td>
-                <td>${a.isActive ? '<span class="badge badge--published">نشط</span>' : '<span class="badge badge--pending">متوقف</span>'}</td>
-                <td>
-                  <button class="btn btn-xs btn-danger" onclick="deleteAdAdmin('${escAttr(a._id)}')">${ICONS.trash} حذف</button>
-                </td>
+                <th>المكان</th>
+                <th>التصنيف</th>
+                <th>المنطقة</th>
+                <th>الأولوية في العرض</th>
+                <th>إجراء</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              ${sponsoredPlaces.length === 0 ? '<tr><td colspan="5" class="text-center">لا توجد أماكن معينة كإعلانات مدفوعة حالياً. اضغط على الزر بالأعلى لاختيار مكان.</td></tr>' : sponsoredPlaces.map(p => `
+                <tr>
+                  <td>
+                    <strong>${escHtml(p.name)}</strong>
+                    <div style="font-size:11px;color:var(--text-muted)">${p.phone || ''}</div>
+                  </td>
+                  <td>${escHtml(p.categoryId || 'عام')}</td>
+                  <td>${escHtml(p.area || 'المنزلة')}</td>
+                  <td>
+                    <span class="badge-sponsored">⭐ الأولى في كل الصفحات</span>
+                  </td>
+                  <td>
+                    <button class="btn btn-xs btn-danger" onclick="togglePlaceSponsored('${escAttr(p._id)}', false)">
+                      ${ICONS.x} إلغاء الإعلان
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- General Banner Ads Table -->
+      <div class="form-section">
+        <h2 class="form-section__title">
+          <span>${ICONS.megaphone}</span> البانرات الإعلانية العامة (${ads.length})
+        </h2>
+        <div class="dashboard-table-wrapper">
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>البانر</th>
+                <th>العنوان</th>
+                <th>الموضع</th>
+                <th>النوع</th>
+                <th>النقرات</th>
+                <th>الحالة</th>
+                <th>حذف</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ads.length === 0 ? '<tr><td colspan="7" class="text-center">لا توجد بانرات إعلانية نشطة</td></tr>' : ads.map(a => `
+                <tr>
+                  <td>
+                    ${a.imageUrl ? `<img src="${escAttr(a.imageUrl)}" style="height:36px;border-radius:4px;object-fit:cover" />` : 'نص'}
+                  </td>
+                  <td><strong>${escHtml(a.title || '')}</strong></td>
+                  <td>${escHtml(a.placement || 'homepage')}</td>
+                  <td>${a.placeId ? '<span class="chip chip--warning">مكان مميز</span>' : '<span class="chip chip--primary">بانر عام</span>'}</td>
+                  <td>${a.clicks || 0}</td>
+                  <td>${a.isActive ? '<span class="badge badge--published">نشط</span>' : '<span class="badge badge--pending">متوقف</span>'}</td>
+                  <td>
+                    <button class="btn btn-xs btn-danger" onclick="deleteAdAdmin('${escAttr(a._id)}')">${ICONS.trash} حذف</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   `;
@@ -812,70 +869,165 @@ async function renderAdminAds($container) {
 }
 
 function showAddAdModal(user, onDone) {
+  const placesList = Object.entries(adminCache.places || {}).map(([id, p]) => ({ ...p, _id: id }));
+
   const modal = showModal({
-    title: 'إضافة إعلان جديد',
+    title: 'إضافة إعلان جديد / ترويج مكان',
     content: `
       <div class="form-group">
-        <label class="form-label">عنوان الإعلان <span class="required">*</span></label>
-        <input type="text" id="ad-title" class="form-input" required />
+        <label class="form-label">نوع الإعلان <span class="required">*</span></label>
+        <select id="ad-type-selector" class="form-select">
+          <option value="place">⭐ ترويج مكان من الدليل (إعلان مدفوع يظهر أولاً)</option>
+          <option value="banner">📢 بانر إعلاني مخصص (رابط وصورة خارجية)</option>
+        </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">رابط التوجيه (URL)</label>
-        <input type="url" id="ad-link" class="form-input" placeholder="https://..." style="direction:ltr" />
+
+      <!-- Option 1: Promote Place -->
+      <div id="ad-place-group" class="form-group">
+        <label class="form-label">اختر المكان لترويجه كإعلان مدفوع <span class="required">*</span></label>
+        <select id="ad-place-id" class="form-select">
+          <option value="">-- اختر المكان من القائمة --</option>
+          ${placesList.map(p => `
+            <option value="${escAttr(p._id)}" data-name="${escAttr(p.name)}" data-slug="${escAttr(p.slug)}" data-img="${escAttr(p.coverImageUrl || p.logoUrl || '')}">
+              ${escHtml(p.name)} (${escHtml(p.categoryId || 'عام')} - ${escHtml(p.area || 'المنزلة')})
+            </option>
+          `).join('')}
+        </select>
+        <div class="form-hint">عند اختيار مكان، سيتم منحه شارة "إعلان مدفوع" وإعطائه الأولوية القصوى ليظهر أولاً في كل الصفحات والتصنيفات والبحث.</div>
       </div>
-      <div class="form-group">
-        <label class="form-label">رابط صورة الإعلان (URL)</label>
-        <input type="url" id="ad-img" class="form-input" style="direction:ltr" />
+
+      <!-- Option 2: Custom Banner Fields -->
+      <div id="ad-custom-fields" style="display:none">
+        <div class="form-group">
+          <label class="form-label">عنوان الإعلان <span class="required">*</span></label>
+          <input type="text" id="ad-title" class="form-input" placeholder="مثال: خصم 50% على جميع المأكولات" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">رابط التوجيه (URL)</label>
+          <input type="url" id="ad-link" class="form-input" placeholder="https://..." style="direction:ltr" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">رابط صورة الإعلان (URL)</label>
+          <input type="url" id="ad-img" class="form-input" style="direction:ltr" />
+        </div>
       </div>
+
       <div class="form-group">
         <label class="form-label">مكان الظهور</label>
         <select id="ad-placement" class="form-select">
-          <option value="homepage">الصفحة الرئيسية</option>
-          <option value="sidebar">الشريط الجانبي</option>
+          <option value="all">جميع الصفحات والتصنيفات (شامل)</option>
+          <option value="homepage">الصفحة الرئيسية فقط</option>
           <option value="category">صفحات التصنيفات</option>
-          <option value="all">جميع الصفحات</option>
+          <option value="sidebar">الشريط الجانبي</option>
         </select>
       </div>
     `,
     buttons: [
       {
-        label: 'حفظ الإعلان',
+        label: 'حفظ وتفعيل الإعلان',
         type: 'primary',
         closeOnClick: false,
         onClick: async () => {
-          const title = document.getElementById('ad-title')?.value.trim();
-          const link = document.getElementById('ad-link')?.value.trim();
-          const imageUrl = document.getElementById('ad-img')?.value.trim();
-          const placement = document.getElementById('ad-placement')?.value;
+          const type = document.getElementById('ad-type-selector')?.value;
+          const placement = document.getElementById('ad-placement')?.value || 'all';
 
-          if (!title) { toast.warning('يرجى كتابة عنوان الإعلان'); return; }
+          if (type === 'place') {
+            const placeSelect = document.getElementById('ad-place-id');
+            const placeId = placeSelect?.value;
+            const opt = placeSelect?.selectedOptions[0];
 
-          try {
-            const newAd = {
-              title,
-              link,
-              imageUrl,
-              placement,
-              priority: 1,
-              isActive: true,
-              startDate: Date.now(),
-              endDate: Date.now() + (30 * 24 * 60 * 60 * 1000),
-              clicks: 0,
-              createdAt: serverTimestamp(),
-              createdBy: user.uid
-            };
-            const ref = await dbPush('ads', newAd);
-            if (adminCache.ads) adminCache.ads[ref.key] = newAd;
-            toast.success('تمت إضافة الإعلان بنجاح');
-            modal.close();
-            onDone();
-          } catch (e) {
-            toast.error('فشل حفظ الإعلان');
+            if (!placeId) {
+              toast.warning('يرجى اختيار المكان المراد ترويجه');
+              return;
+            }
+
+            const placeName = opt?.dataset.name || 'مكان مميز';
+            const placeSlug = opt?.dataset.slug || placeId;
+            const placeImg = opt?.dataset.img || '';
+
+            try {
+              // 1. Set Place as Sponsored in database
+              await dbUpdate(`places/${placeId}`, {
+                isSponsored: true,
+                isFeatured: true,
+                sponsoredAt: serverTimestamp(),
+                sponsoredUntil: Date.now() + (30 * 24 * 60 * 60 * 1000)
+              });
+
+              if (adminCache.places && adminCache.places[placeId]) {
+                adminCache.places[placeId].isSponsored = true;
+                adminCache.places[placeId].isFeatured = true;
+              }
+
+              // 2. Create Ad record
+              const newAd = {
+                title: `إعلان: ${placeName}`,
+                placeId,
+                link: `place.html?slug=${placeSlug}`,
+                imageUrl: placeImg,
+                placement,
+                priority: 10,
+                isActive: true,
+                startDate: Date.now(),
+                endDate: Date.now() + (30 * 24 * 60 * 60 * 1000),
+                clicks: 0,
+                createdAt: serverTimestamp(),
+                createdBy: user.uid
+              };
+
+              const ref = await dbPush('ads', newAd);
+              if (adminCache.ads) adminCache.ads[ref.key] = newAd;
+
+              toast.success(`تم تفعيل ترويج "${placeName}" كإعلان مدفوع يظهر أولاً في كل مكان ✓`);
+              modal.close();
+              onDone();
+            } catch (err) {
+              toast.error('فشلت العملية: ' + err.message);
+            }
+          } else {
+            // Custom Banner
+            const title = document.getElementById('ad-title')?.value.trim();
+            const link = document.getElementById('ad-link')?.value.trim();
+            const imageUrl = document.getElementById('ad-img')?.value.trim();
+
+            if (!title) { toast.warning('يرجى كتابة عنوان الإعلان'); return; }
+
+            try {
+              const newAd = {
+                title,
+                link,
+                imageUrl,
+                placement,
+                priority: 1,
+                isActive: true,
+                startDate: Date.now(),
+                endDate: Date.now() + (30 * 24 * 60 * 60 * 1000),
+                clicks: 0,
+                createdAt: serverTimestamp(),
+                createdBy: user.uid
+              };
+              const ref = await dbPush('ads', newAd);
+              if (adminCache.ads) adminCache.ads[ref.key] = newAd;
+              toast.success('تمت إضافة الإعلان بنجاح ✓');
+              modal.close();
+              onDone();
+            } catch (e) {
+              toast.error('فشل حفظ الإعلان');
+            }
           }
         }
       },
       { label: 'إلغاء', type: 'ghost', closeOnClick: true }
     ]
+  });
+
+  // Toggle dynamic form visibility
+  document.getElementById('ad-type-selector')?.addEventListener('change', (e) => {
+    const isPlace = e.target.value === 'place';
+    const placeGroup = document.getElementById('ad-place-group');
+    const customFields = document.getElementById('ad-custom-fields');
+    if (placeGroup) placeGroup.style.display = isPlace ? 'block' : 'none';
+    if (customFields) customFields.style.display = isPlace ? 'none' : 'block';
   });
 }
 
@@ -985,7 +1137,7 @@ async function renderAdminSettings($container) {
       };
 
       await dbUpdate('settings', updates);
-      adminCache.settings = null; // force reload next time
+      adminCache.settings = null;
       toast.success('تم حفظ إعدادات المنصة بنجاح! ✓');
     } catch (err) {
       toast.error('فشل حفظ الإعدادات: ' + err.message);
@@ -999,6 +1151,26 @@ async function renderAdminSettings($container) {
 // ─────────────────────────────────────────────
 //  Reactive Global Action Handlers (Instant UI updates)
 // ─────────────────────────────────────────────
+
+window.togglePlaceSponsored = async (placeId, newStatus) => {
+  try {
+    const updates = {
+      isSponsored: newStatus,
+      isFeatured: newStatus,
+      sponsoredAt: newStatus ? serverTimestamp() : null
+    };
+    await dbUpdate(`places/${placeId}`, updates);
+
+    if (adminCache.places && adminCache.places[placeId]) {
+      Object.assign(adminCache.places[placeId], updates);
+    }
+
+    toast.success(newStatus ? 'تم ترويج المكان وإعطاؤه الأولوية كإعلان مدفوع في كل الصفحات ⭐' : 'تم إلغاء ترويج المكان');
+    switchAdminSection(_currentSection, false);
+  } catch (err) {
+    toast.error('فشلت العملية: ' + err.message);
+  }
+};
 
 window.togglePlaceVerification = async (placeId, status) => {
   try {
@@ -1293,6 +1465,14 @@ window.deleteOfferAdmin = async (offerId) => {
 
 window.deleteAdAdmin = async (adId) => {
   try {
+    const ad = adminCache.ads ? adminCache.ads[adId] : await dbGet(`ads/${adId}`);
+    if (ad?.placeId) {
+      await dbUpdate(`places/${ad.placeId}`, { isSponsored: false, isFeatured: false });
+      if (adminCache.places && adminCache.places[ad.placeId]) {
+        adminCache.places[ad.placeId].isSponsored = false;
+        adminCache.places[ad.placeId].isFeatured = false;
+      }
+    }
     await dbRemove(`ads/${adId}`);
     if (adminCache.ads) delete adminCache.ads[adId];
     toast.success('تم حذف الإعلان');

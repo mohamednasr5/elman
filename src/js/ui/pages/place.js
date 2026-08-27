@@ -7,7 +7,7 @@
 import { getPlaceBySlug, getCategories, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
-import { renderVerifiedBadge, renderDeliveryBadge } from '../components/VerifiedBadge.js';
+import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal } from '../components/Modal.js';
@@ -104,6 +104,7 @@ export async function renderPlacePage($container, { slug, user }) {
               <div class="place-header-card__info">
                 <div class="place-title">
                   <h1 class="place-title__name">${escHtml(place.name)}</h1>
+                  ${(place.isSponsored || place.isFeatured || place.isPromoted) ? renderSponsoredBadge() : ''}
                   ${place.isVerified ? renderVerifiedBadge() : ''}
                   ${place.deliveryType ? renderDeliveryBadge(place.deliveryType) : ''}
                 </div>

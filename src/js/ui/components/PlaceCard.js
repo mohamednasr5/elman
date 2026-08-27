@@ -2,12 +2,13 @@
  * المنزلة وناسها — PlaceCard Component
  */
 
-import { renderVerifiedBadge, renderDeliveryBadge } from './VerifiedBadge.js';
+import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from './VerifiedBadge.js';
 
 /**
  * Render a place card HTML string
  */
 export function renderPlaceCard(place) {
+  const isSponsored = Boolean(place.isSponsored || place.isFeatured || place.isPromoted);
   const catStyle = getCategoryCardCover(place.categoryId);
   const coverImg = place.coverImageUrl
     ? `<img src="${escAttr(place.coverImageUrl)}" alt="${escAttr(place.name)}" loading="lazy" />`
@@ -20,6 +21,7 @@ export function renderPlaceCard(place) {
     ? `<img src="${escAttr(place.logoUrl)}" alt="${escAttr(place.name)} logo" loading="lazy" />`
     : `<div class="place-card__logo-placeholder">${getCategoryEmoji(place.categoryId)}</div>`;
 
+  const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';
   const verifiedBadge = place.isVerified ? renderVerifiedBadge() : '';
   const deliveryBadge = place.deliveryType ? renderDeliveryBadge(place.deliveryType) : '';
   const placeUrl = `place.html?slug=${encodeURIComponent(place.slug || place.id || place._key)}`;
@@ -32,11 +34,18 @@ export function renderPlaceCard(place) {
     ? `<a href="https://wa.me/${formatWhatsApp(place.whatsapp)}" target="_blank" rel="noopener" class="place-card__action-btn place-card__action-btn--whatsapp" title="واتساب" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','whatsappClicks')">💬</a>`
     : '';
 
+  const cardClasses = [
+    'place-card',
+    isSponsored ? 'place-card--sponsored' : '',
+    place.isVerified ? 'place-card--verified' : ''
+  ].filter(Boolean).join(' ');
+
   return `
-    <article class="place-card${place.isVerified ? ' place-card--verified' : ''}" 
+    <article class="${cardClasses}" 
              role="article"
              onclick="window.location.href='${placeUrl}'"
              data-place-id="${escAttr(place._key || place.id)}">
+      ${sponsoredTag}
       <div class="place-card__cover">
         ${coverImg}
         <div class="place-card__logo">${logoImg}</div>
