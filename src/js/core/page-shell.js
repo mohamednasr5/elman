@@ -231,8 +231,8 @@ function _renderUser(user) {
         <div class="header__dropdown" id="usr-dd" role="menu">
           <a href="dashboard.html"             class="header__dropdown-item" role="menuitem">🏠 لوحتي</a>
           <a href="dashboard.html?section=add" class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>
-          ${(user.role==='admin'||user.role==='superadmin')
-            ? '<a href="admin.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ الإدارة</a>'
+          ${isAdmin(user)
+            ? '<a href="admin.html" class="header__dropdown-item" style="color:var(--secondary);font-weight:bold" role="menuitem">⚙️ لوحة الإدارة</a>'
             : ''}
           <div class="header__dropdown-divider"></div>
           <button id="logout-btn" class="header__dropdown-item header__dropdown-item--danger" role="menuitem">

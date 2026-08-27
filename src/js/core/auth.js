@@ -201,12 +201,15 @@ async function syncUserProfile(firebaseUser) {
  * Build minimal profile from Firebase user (fallback)
  */
 function buildBasicProfile(firebaseUser) {
+  const userEmail = (firebaseUser.email || '').trim().toLowerCase();
+  const isSuper = ADMIN_EMAILS.includes(userEmail);
+
   return {
     uid: firebaseUser.uid,
     name: firebaseUser.displayName || 'مستخدم',
     email: firebaseUser.email || '',
     photoURL: firebaseUser.photoURL || '',
-    role: 'user',
+    role: isSuper ? 'superadmin' : 'user',
     status: 'active',
     placeIds: {}
   };

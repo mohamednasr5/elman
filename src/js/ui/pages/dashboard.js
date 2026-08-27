@@ -11,7 +11,7 @@ import { translatePlaceName, generateCoverImage } from '../../services/ai.servic
 import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
-// navigate removed — using direct location.href
+import { isAdmin } from '../../core/auth.js';
 import { formatPrice } from '../../utils/arabic.js';
 
 export async function renderDashboard($container, { user, section = 'overview', placeId = null }) {
@@ -43,9 +43,9 @@ export async function renderDashboard($container, { user, section = 'overview', 
             <span class="dashboard-nav-item__icon">➕</span> إضافة مكان جديد
           </a>
           
-          ${user.role === 'admin' || user.role === 'superadmin' ? `
+          ${isAdmin(user) ? `
             <div class="dashboard-nav-section">الإدارة</div>
-            <a href="admin.html" class="dashboard-nav-item" style="color:var(--secondary)">
+            <a href="admin.html" class="dashboard-nav-item" style="color:var(--secondary);font-weight:bold">
               <span class="dashboard-nav-item__icon">⚙️</span> لوحة تحكم الإدارة
             </a>
           ` : ''}
