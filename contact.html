@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <title>تواصل معنا | المنزلة وناسها</title>
+  <meta name="description" content="تواصل مع إدارة منصة المنزلة وناسها لاستفساراتك وطلبات التوثيق"/>
+  <meta name="robots" content="index,follow"/>
+  <link rel="canonical" href="https://elmanzala.com/contact.html"/>
+  <meta property="og:title" content="تواصل معنا | المنزلة وناسها"/>
+  <meta property="og:description" content="تواصل مع إدارة منصة المنزلة وناسها لاستفساراتك وطلبات التوثيق"/>
+  <meta property="og:image" content="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp"/>
+  <meta property="og:locale" content="ar_EG"/>
+  <meta property="og:type" content="website"/>
+  <meta name="theme-color" content="#1B4F72"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <link rel="manifest" href="./manifest.webmanifest"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png"/>
+  <link rel="apple-touch-icon" href="./icons/icon-192x192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/>
+  <link rel="stylesheet" href="./src/css/main.css"/>
+</head>
+<body class="">
+<div id="app">
+
+  <!-- Header injected by JS -->
+  <div id="header-slot"></div>
+
+  <!-- Page Content -->
+  <main class="page-main" id="page-container" role="main">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:1rem">
+      <div class="spinner spinner-lg"></div>
+      <p style="color:var(--text-muted);font-size:.9rem">جاري التحميل...</p>
+    </div>
+  </main>
+
+  <!-- Bottom Nav injected by JS -->
+  <div id="nav-slot"></div>
+
+  <!-- PWA Banner injected by JS -->
+  <div id="pwa-slot"></div>
+
+  <!-- Footer injected by JS -->
+  <div id="footer-slot"></div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- Page Module -->
+<script type="module">
+
+  import { initPage } from './src/js/core/page-shell.js';
+  import { renderContactPage } from './src/js/ui/pages/static.js';
+  import { waitForAuth } from './src/js/core/auth.js';
+  await initPage('');
+  const user = await waitForAuth();
+  await renderContactPage(document.getElementById('page-container'), { user });
+</script>
+</body>
+</html>

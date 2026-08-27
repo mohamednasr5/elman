@@ -1,0 +1,122 @@
+/* ═══════════════════════════════════════════════════════════
+   المنزلة وناسها — Badges
+   ═══════════════════════════════════════════════════════════ */
+
+/* Verified Badge */
+.badge-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: linear-gradient(135deg, #F39C12, #E67E22);
+  color: #fff;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  box-shadow: 0 2px 6px rgba(243, 156, 18, 0.4);
+  white-space: nowrap;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.badge-verified::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%);
+}
+
+.badge-verified__icon {
+  font-size: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.badge-verified__text {
+  position: relative;
+  z-index: 1;
+}
+
+/* Verification Requested Badge */
+.badge-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: var(--warning-alpha);
+  color: var(--secondary-dark);
+  border: 1px solid var(--secondary-light);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+/* Status Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.badge--published {
+  background: var(--success-alpha);
+  color: var(--accent-dark);
+}
+
+.badge--draft {
+  background: var(--surface-3);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.badge--pending {
+  background: var(--warning-alpha);
+  color: var(--secondary-dark);
+}
+
+.badge--suspended {
+  background: var(--danger-alpha);
+  color: var(--danger);
+}
+
+.badge--rejected {
+  background: var(--danger-alpha);
+  color: var(--danger);
+}
+
+/* Count Badge (notification dot) */
+.badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: var(--danger);
+  color: #fff;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+/* Delivery type badge */
+.badge-delivery {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  background: var(--primary-alpha);
+  color: var(--primary);
+  border: 1px solid rgba(27,79,114,0.2);
+}

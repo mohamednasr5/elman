@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B4F72" />
+      <stop offset="50%" stop-color="#2980B9" />
+      <stop offset="100%" stop-color="#154360" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F39C12" />
+      <stop offset="100%" stop-color="#E67E22" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  
+  <!-- Location Pin with Mosque/City dome silhouette -->
+  <g filter="url(#shadow)">
+    <!-- Outer Location Pin -->
+    <path d="M256 70 C160 70 82 148 82 244 C82 355 235 440 247 447 C252 450 260 450 265 447 C277 440 430 355 430 244 C430 148 352 70 256 70 Z" fill="url(#gold)"/>
+    
+    <!-- Inner Circle with Deep Blue -->
+    <circle cx="256" cy="225" r="105" fill="#1B4F72" />
+    
+    <!-- Stylized Arabic Letter / Building Symbol (م) -->
+    <!-- Dome -->
+    <path d="M256 150 C230 150 220 185 220 200 L292 200 C292 185 282 150 256 150 Z" fill="#FFFFFF" opacity="0.95" />
+    <!-- Spire -->
+    <line x1="256" y1="132" x2="256" y2="150" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" />
+    <circle cx="256" cy="128" r="6" fill="#F39C12" />
+    
+    <!-- Base structure & pillars -->
+    <rect x="210" y="205" width="92" height="60" rx="8" fill="#FFFFFF" />
+    <rect x="235" y="225" width="42" height="40" rx="20" fill="#1B4F72" />
+  </g>
+  
+  <!-- Arabic Badge Text below -->
+  <text x="256" y="475" font-family="'Cairo', sans-serif" font-size="34" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">المنزلة وناسها</text>
+</svg>

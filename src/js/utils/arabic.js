@@ -1,0 +1,150 @@
+/**
+ * المنزلة وناسها — Arabic Text Utilities
+ * Normalization for better Arabic search and display
+ */
+
+/**
+ * Normalize Arabic text for search comparison.
+ * Handles common variations in Arabic letters.
+ */
+export function normalizeArabic(text) {
+  if (!text) return '';
+
+  return text
+    // Normalize Alef variants
+    .replace(/[أإآا]/g, 'ا')
+    // Normalize Hamza variants
+    .replace(/[ؤئ]/g, 'ء')
+    // Remove Tashkeel (diacritics)
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    // Normalize Teh Marbuta and Heh
+    .replace(/[ةه]/g, 'ه')
+    // Normalize Yeh variants
+    .replace(/[يى]/g, 'ي')
+    // Normalize Waw
+    .replace(/و/g, 'و')
+    // Remove Tatweel
+    .replace(/\u0640/g, '')
+    // Collapse whitespace
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Check if Arabic text A matches/contains B (normalized)
+ */
+export function arabicMatch(haystack, needle) {
+  const h = normalizeArabic(haystack);
+  const n = normalizeArabic(needle);
+  return h.includes(n);
+}
+
+/**
+ * Score text match relevance for search ranking (0-100)
+ */
+export function arabicScore(text, query) {
+  if (!text || !query) return 0;
+
+  const normalText = normalizeArabic(text);
+  const normalQuery = normalizeArabic(query);
+
+  if (!normalText || !normalQuery) return 0;
+
+  // Exact match
+  if (normalText === normalQuery) return 100;
+
+  // Starts with query
+  if (normalText.startsWith(normalQuery)) return 85;
+
+  // Contains query as whole word
+  const wordBoundary = new RegExp(`(^|\\s)${escapeRegex(normalQuery)}(\\s|$)`);
+  if (wordBoundary.test(normalText)) return 70;
+
+  // Contains query anywhere
+  if (normalText.includes(normalQuery)) return 50;
+
+  // Partial match of words
+  const queryWords = normalQuery.split(' ').filter(Boolean);
+  const matchedWords = queryWords.filter(word => normalText.includes(word));
+  if (matchedWords.length > 0) {
+    return 30 * (matchedWords.length / queryWords.length);
+  }
+
+  return 0;
+}
+
+/**
+ * Highlight matched text in HTML-safe way
+ */
+export function highlightMatch(text, query) {
+  if (!text || !query) return escapeHtml(text || '');
+
+  const normalQuery = normalizeArabic(query);
+  if (!normalQuery) return escapeHtml(text);
+
+  const escaped = escapeHtml(text);
+  const escapedQuery = escapeHtml(query);
+
+  // Simple case-insensitive highlight
+  const regex = new RegExp(`(${escapeRegex(escapedQuery)})`, 'gi');
+  return escaped.replace(regex, '<mark>$1</mark>');
+}
+
+/**
+ * Get Arabic day name
+ */
+export function getArabicDay(dayIndex) {
+  const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  return days[dayIndex] ?? '';
+}
+
+/**
+ * Get Arabic month name
+ */
+export function getArabicMonth(monthIndex) {
+  const months = [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+  ];
+  return months[monthIndex] ?? '';
+}
+
+/**
+ * Format number in Arabic/Egyptian locale
+ */
+export function formatNumber(num) {
+  if (num === null || num === undefined) return '٠';
+  return new Intl.NumberFormat('ar-EG').format(num);
+}
+
+/**
+ * Format price in EGP
+ */
+export function formatPrice(price) {
+  if (!price && price !== 0) return '';
+  return `${formatNumber(price)} ج.م`;
+}
+
+/**
+ * Calculate discount percentage
+ */
+export function calcDiscount(oldPrice, newPrice) {
+  if (!oldPrice || !newPrice || oldPrice <= newPrice) return 0;
+  return Math.round(((oldPrice - newPrice) / oldPrice) * 100);
+}
+
+// ── Private helpers ──
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

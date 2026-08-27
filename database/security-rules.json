@@ -1,0 +1,62 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
+        ".write": "auth != null && auth.uid === $uid",
+        "role": {
+          ".write": "root.child('users/' + auth.uid + '/role').val() === 'superadmin'"
+        },
+        "status": {
+          ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin'"
+        }
+      }
+    },
+    "places": {
+      ".read": true,
+      "$placeId": {
+        ".write": "auth != null && (auth.uid === data.child('ownerId').val() || !data.exists() || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
+        "isVerified": {
+          ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin'"
+        },
+        "verificationStatus": {
+          ".write": "auth != null && (newData.val() === 'verification_requested' || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+        }
+      }
+    },
+    "categories": {
+      ".read": true,
+      ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+    },
+    "offers": {
+      ".read": true,
+      "$offerId": {
+        ".write": "auth != null && (auth.uid === data.child('ownerId').val() || !data.exists() || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+      }
+    },
+    "products": {
+      ".read": true,
+      "$placeId": {
+        ".write": "auth != null && (root.child('places/' + $placeId + '/ownerId').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+      }
+    },
+    "ads": {
+      ".read": true,
+      ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+    },
+    "settings": {
+      ".read": true,
+      ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+    },
+    "verificationRequests": {
+      "$requestId": {
+        ".read": "auth != null && (auth.uid === data.child('ownerId').val() || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
+        ".write": "auth != null"
+      }
+    },
+    "slugIndex": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}

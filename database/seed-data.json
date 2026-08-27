@@ -1,0 +1,53 @@
+{
+  "categories": {
+    "pharmacy": { "id": "pharmacy", "slug": "pharmacy", "name": "صيدلية", "nameEn": "Pharmacy", "icon": "💊", "order": 1, "isActive": true, "placeCount": 0 },
+    "supermarket": { "id": "supermarket", "slug": "supermarket", "name": "سوبر ماركت", "nameEn": "Supermarket", "icon": "🛒", "order": 2, "isActive": true, "placeCount": 0 },
+    "doctor": { "id": "doctor", "slug": "doctor", "name": "دكتور وعيادات", "nameEn": "Doctor", "icon": "👨‍⚕️", "order": 3, "isActive": true, "placeCount": 0 },
+    "paint": { "id": "paint", "slug": "paint", "name": "محل بويات ودهانات", "nameEn": "Paints", "icon": "🎨", "order": 4, "isActive": true, "placeCount": 0 },
+    "herbs": { "id": "herbs", "slug": "herbs", "name": "عطارة", "nameEn": "Herbs & Spices", "icon": "🌿", "order": 5, "isActive": true, "placeCount": 0 },
+    "plumbing": { "id": "plumbing", "slug": "plumbing", "name": "محل سباكة", "nameEn": "Plumbing", "icon": "🔧", "order": 6, "isActive": true, "placeCount": 0 },
+    "feed": { "id": "feed", "slug": "feed", "name": "محل علف", "nameEn": "Feed Store", "icon": "🌾", "order": 7, "isActive": true, "placeCount": 0 },
+    "poultry": { "id": "poultry", "slug": "poultry", "name": "محل دواجن", "nameEn": "Poultry", "icon": "🍗", "order": 8, "isActive": true, "placeCount": 0 },
+    "bakery": { "id": "bakery", "slug": "bakery", "name": "مخبز وحلواني", "nameEn": "Bakery", "icon": "🍞", "order": 9, "isActive": true, "placeCount": 0 },
+    "vegetables": { "id": "vegetables", "slug": "vegetables", "name": "محل خضار وفاكهة", "nameEn": "Fruits & Vegetables", "icon": "🥬", "order": 10, "isActive": true, "placeCount": 0 },
+    "antiques": { "id": "antiques", "slug": "antiques", "name": "معرض أنتيكات", "nameEn": "Antiques", "icon": "🏺", "order": 11, "isActive": true, "placeCount": 0 },
+    "electronics": { "id": "electronics", "slug": "electronics", "name": "معرض أجهزة كهربائية", "nameEn": "Home Appliances", "icon": "📺", "order": 12, "isActive": true, "placeCount": 0 },
+    "carpet": { "id": "carpet", "slug": "carpet", "name": "معرض سجاد", "nameEn": "Carpets & Rugs", "icon": "🛋️", "order": 13, "isActive": true, "placeCount": 0 },
+    "mattress": { "id": "mattress", "slug": "mattress", "name": "معرض مراتب ومخدات", "nameEn": "Mattresses", "icon": "🛏️", "order": 14, "isActive": true, "placeCount": 0 },
+    "china": { "id": "china", "slug": "china", "name": "معرض صيني وأدوات العروسة", "nameEn": "Kitchenware & China", "icon": "🍽️", "order": 15, "isActive": true, "placeCount": 0 },
+    "electrical": { "id": "electrical", "slug": "electrical", "name": "محل كهرباء وإنارة", "nameEn": "Electrical & Lighting", "icon": "💡", "order": 16, "isActive": true, "placeCount": 0 },
+    "roastery": { "id": "roastery", "slug": "roastery", "name": "محمصة ولب ومكسرات", "nameEn": "Roastery", "icon": "🥜", "order": 17, "isActive": true, "placeCount": 0 },
+    "phones": { "id": "phones", "slug": "phones", "name": "محل صيانة وبيع الهواتف", "nameEn": "Phones & Repair", "icon": "📱", "order": 18, "isActive": true, "placeCount": 0 },
+    "grocery": { "id": "grocery", "slug": "grocery", "name": "بقالة", "nameEn": "Grocery", "icon": "🏪", "order": 19, "isActive": true, "placeCount": 0 },
+    "hypermarket": { "id": "hypermarket", "slug": "hypermarket", "name": "هايبر ماركت", "nameEn": "Hypermarket", "icon": "🏬", "order": 20, "isActive": true, "placeCount": 0 },
+    "delivery": { "id": "delivery", "slug": "delivery", "name": "خدمات التوصيل والدليفري", "nameEn": "Delivery Services", "icon": "🚀", "order": 21, "isActive": true, "allowsDeliveryType": true, "placeCount": 0 }
+  },
+  "settings": {
+    "general": {
+      "siteName": "المنزلة وناسها",
+      "siteDescription": "دليل المنزلة الرقمي — الأماكن، الأطباء، المحلات، العروض، والخدمات",
+      "primaryColor": "#1B4F72",
+      "secondaryColor": "#F39C12"
+    },
+    "contact": {
+      "whatsappLink": "https://wa.me/wasendernew",
+      "whatsappNumber": "01000000000",
+      "email": "info@elmanzala.com"
+    },
+    "social": {
+      "facebook": "https://facebook.com/elmanzala",
+      "instagram": "https://instagram.com/elmanzala"
+    },
+    "limits": {
+      "offersVerified": 3,
+      "offersUnverified": 1,
+      "productsVerified": 350,
+      "productsUnverified": 0
+    },
+    "seo": {
+      "defaultTitle": "المنزلة وناسها | دليل المنزلة الرقمي",
+      "defaultDescription": "دليل المنزلة الرقمي — ابحث عن الأطباء والمحلات والخدمات والأماكن في مدينة المنزلة بمحافظة الدقهلية",
+      "googleAnalyticsId": "G-JD2LSTR2G1"
+    }
+  }
+}

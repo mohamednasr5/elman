@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <title>المنزلة وناسها | دليل المنزلة الرقمي</title>
+  <meta name="description" content="دليل المنزلة الرقمي — ابحث عن الأطباء والمحلات والخدمات والأماكن في مدينة المنزلة بمحافظة الدقهلية"/>
+  <meta name="keywords" content="المنزلة, دليل المنزلة, محلات المنزلة, أطباء المنزلة, خدمات المنزلة, الدقهلية"/>
+  <meta name="robots" content="index,follow"/>
+  <link rel="canonical" href="https://elmanzala.com/"/>
+
+  <meta property="og:type" content="website"/>
+  <meta property="og:site_name" content="المنزلة وناسها"/>
+  <meta property="og:title" content="المنزلة وناسها | دليل المنزلة الرقمي"/>
+  <meta property="og:description" content="دليل المنزلة الرقمي — ابحث عن الأطباء والمحلات والخدمات"/>
+  <meta property="og:image" content="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp"/>
+  <meta property="og:locale" content="ar_EG"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+
+  <link rel="manifest" href="./manifest.webmanifest"/>
+  <meta name="theme-color" content="#1B4F72"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="المنزلة وناسها"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png"/>
+  <link rel="apple-touch-icon" href="./icons/icon-192x192.png"/>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/>
+  <link rel="stylesheet" href="./src/css/main.css"/>
+
+  <!-- Schema.org WebSite -->
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"WebSite","name":"المنزلة وناسها",
+   "url":"https://elmanzala.com/",
+   "potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint",
+   "urlTemplate":"https://elmanzala.com/search.html?q={search_term_string}"},
+   "query-input":"required name=search_term_string"}}
+  </script>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- Header — injected by page-shell.js -->
+  <div id="header-slot"></div>
+
+  <!-- Homepage Content -->
+  <main class="page-main" id="page-container" role="main">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:1rem">
+      <div class="spinner spinner-lg"></div>
+      <p style="color:var(--text-muted);font-size:.9rem">جاري التحميل...</p>
+    </div>
+  </main>
+
+  <!-- Bottom Nav — injected by page-shell.js -->
+  <div id="nav-slot"></div>
+
+  <!-- PWA Banner — injected by page-shell.js -->
+  <div id="pwa-slot"></div>
+
+  <!-- Footer — injected by page-shell.js -->
+  <div id="footer-slot"></div>
+
+</div>
+
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script type="module">
+  import { initPage } from './src/js/core/page-shell.js';
+  import { renderHomePage } from './src/js/ui/pages/home.js';
+  import { waitForAuth } from './src/js/core/auth.js';
+
+  // Init shared layout (header, footer, nav, PWA)
+  await initPage('index.html');
+
+  // Render homepage content
+  const user = await waitForAuth();
+  await renderHomePage(document.getElementById('page-container'), { user });
+</script>
+</body>
+</html>

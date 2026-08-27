@@ -1,0 +1,43 @@
+/* ═══════════════════════════════════════════════════════════
+   المنزلة وناسها — Typography
+   ═══════════════════════════════════════════════════════════ */
+
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap');
+
+/* Headings */
+h1 { font-size: clamp(var(--font-size-2xl), 5vw, var(--font-size-4xl)); }
+h2 { font-size: clamp(var(--font-size-xl), 3.5vw, var(--font-size-3xl)); }
+h3 { font-size: clamp(var(--font-size-lg), 2.5vw, var(--font-size-2xl)); }
+h4 { font-size: var(--font-size-xl); }
+h5 { font-size: var(--font-size-lg); }
+h6 { font-size: var(--font-size-base); }
+
+p {
+  color: var(--text-secondary);
+  line-height: var(--line-height-loose);
+}
+
+/* Text utilities */
+.text-xs      { font-size: var(--font-size-xs); }
+.text-sm      { font-size: var(--font-size-sm); }
+.text-base    { font-size: var(--font-size-base); }
+.text-lg      { font-size: var(--font-size-lg); }
+.text-xl      { font-size: var(--font-size-xl); }
+.text-2xl     { font-size: var(--font-size-2xl); }
+.text-3xl     { font-size: var(--font-size-3xl); }
+
+.font-normal    { font-weight: var(--font-weight-normal); }
+.font-medium    { font-weight: var(--font-weight-medium); }
+.font-semibold  { font-weight: var(--font-weight-semibold); }
+.font-bold      { font-weight: var(--font-weight-bold); }
+.font-extrabold { font-weight: var(--font-weight-extrabold); }
+
+.text-primary   { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-muted); }
+.text-brand     { color: var(--primary); }
+.text-accent    { color: var(--accent); }
+.text-warning   { color: var(--secondary); }
+.text-danger    { color: var(--danger); }
+.text-white     { color: #FFFFFF; }
