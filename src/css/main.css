@@ -22,6 +22,19 @@
 @import url('./pages/place.css');
 @import url('./pages/dashboard.css');
 
+/* ── Global Layout Padding for Fixed Header & Bottom Nav ── */
+.page-main {
+  padding-top: var(--header-height);
+  min-height: calc(100vh - var(--header-height));
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .page-main {
+    padding-bottom: var(--bottom-nav-height);
+  }
+}
+
 /* ── Additional Utilities ── */
 
 /* Responsive images with lazy load */

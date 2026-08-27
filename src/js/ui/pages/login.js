@@ -53,7 +53,13 @@ export async function renderLoginPage($container) {
       }
     } catch (err) {
       console.error('Login error:', err);
-      toast.error('حدث خطأ أثناء تسجيل الدخول. حاول مجدداً.');
+      if (err.code === 'auth/configuration-not-found') {
+        toast.error('يرجى تفعيل موفر تسجيل الدخول Google في لوحة تحكم Firebase (Authentication -> Sign-in method -> Google)');
+      } else if (err.code === 'auth/popup-blocked') {
+        toast.error('تم حظر النافذة المنبثقة من المتصفح، يرجى السماح بالنوافذ المنبثقة.');
+      } else {
+        toast.error('حدث خطأ أثناء تسجيل الدخول: ' + (err.message || 'حاول مجدداً'));
+      }
     } finally {
       btn.classList.remove('loading');
       btn.disabled = false;
