@@ -12,27 +12,37 @@ import { normalizeArabic, arabicScore } from '../../utils/arabic.js';
 import { getCurrentUser } from '../../core/auth.js';
 
 const CATEGORY_EMOJIS = {
-  'pharmacy':    { emoji: '💊', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
-  'supermarket': { emoji: '🛒', color: 'rgba(39,174,96,0.1)',    border: '#27AE60' },
-  'paint':       { emoji: '🎨', color: 'rgba(155,89,182,0.1)',   border: '#9B59B6' },
-  'herbs':       { emoji: '🌿', color: 'rgba(39,174,96,0.1)',    border: '#27AE60' },
-  'doctor':      { emoji: '👨‍⚕️', color: 'rgba(41,128,185,0.1)',  border: '#2980B9' },
-  'plumbing':    { emoji: '🔧', color: 'rgba(52,73,94,0.1)',     border: '#52596E' },
-  'feed':        { emoji: '🌾', color: 'rgba(243,156,18,0.1)',   border: '#F39C12' },
-  'poultry':     { emoji: '🍗', color: 'rgba(243,156,18,0.1)',   border: '#F39C12' },
-  'bakery':      { emoji: '🍞', color: 'rgba(230,126,34,0.1)',   border: '#E67E22' },
-  'vegetables':  { emoji: '🥬', color: 'rgba(39,174,96,0.1)',    border: '#27AE60' },
-  'antiques':    { emoji: '🏺', color: 'rgba(149,165,166,0.1)',  border: '#95A5A6' },
-  'electronics': { emoji: '📺', color: 'rgba(41,128,185,0.1)',   border: '#2980B9' },
-  'carpet':      { emoji: '🛋️', color: 'rgba(155,89,182,0.1)',   border: '#9B59B6' },
-  'mattress':    { emoji: '🛏️', color: 'rgba(52,152,219,0.1)',   border: '#3498DB' },
-  'china':       { emoji: '🍽️', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
-  'electrical':  { emoji: '💡', color: 'rgba(241,196,15,0.1)',   border: '#F1C40F' },
-  'roastery':    { emoji: '🥜', color: 'rgba(101,67,33,0.1)',    border: '#654321' },
-  'phones':      { emoji: '📱', color: 'rgba(41,128,185,0.1)',   border: '#2980B9' },
-  'grocery':     { emoji: '🏪', color: 'rgba(39,174,96,0.1)',    border: '#27AE60' },
-  'hypermarket': { emoji: '🏬', color: 'rgba(27,79,114,0.1)',    border: '#1B4F72' },
-  'delivery':    { emoji: '🚀', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
+  'pharmacy':      { emoji: '💊', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
+  'supermarket':   { emoji: '🛒', color: 'rgba(39,174,96,0.1)',    border: '#27AE60' },
+  'paint':         { emoji: '🎨', color: 'rgba(155,89,182,0.1)',   border: '#9B59B6' },
+  'herbs':         { emoji: '🌿', color: 'rgba(39,174,96,0.1)',    border: '#27AE60' },
+  'doctor':        { emoji: '👨‍⚕️', color: 'rgba(41,128,185,0.1)',  border: '#2980B9' },
+  'plumbing':      { emoji: '🔧', color: 'rgba(52,73,94,0.1)',     border: '#52596E' },
+  'plumber':       { emoji: '🪠', color: 'rgba(41,128,185,0.1)',  border: '#2980B9' },
+  'carpenter':     { emoji: '🪚', color: 'rgba(230,126,34,0.1)',   border: '#E67E22' },
+  'tiler':         { emoji: '🧱', color: 'rgba(155,89,182,0.1)',   border: '#9B59B6' },
+  'painter':       { emoji: '🖌️', color: 'rgba(241,196,15,0.1)',   border: '#F1C40F' },
+  'electrician':   { emoji: '⚡', color: 'rgba(243,156,18,0.1)',   border: '#F39C12' },
+  'ac-technician': { emoji: '❄️', color: 'rgba(52,152,219,0.1)',   border: '#3498DB' },
+  'blacksmith':    { emoji: '🛠️', color: 'rgba(52,73,94,0.1)',     border: '#52596E' },
+  'alumital':      { emoji: '🪟', color: 'rgba(149,165,166,0.1)',  border: '#95A5A6' },
+  'mechanic':      { emoji: '🔩', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
+  'upholsterer':   { emoji: '🛋️', color: 'rgba(155,89,182,0.1)',   border: '#9B59B6' },
+  'feed':          { emoji: '🌾', color: 'rgba(243,156,18,0.1)',   border: '#F39C12' },
+  'poultry':       { emoji: '🍗', color: 'rgba(243,156,18,0.1)',   border: '#F39C12' },
+  'bakery':        { emoji: '🍞', color: 'rgba(230,126,34,0.1)',   border: '#E67E22' },
+  'vegetables':    { emoji: '🥬', color: 'rgba(39,174,96,0.1)',    border: '#27AE60' },
+  'antiques':      { emoji: '🏺', color: 'rgba(149,165,166,0.1)',  border: '#95A5A6' },
+  'electronics':   { emoji: '📺', color: 'rgba(41,128,185,0.1)',   border: '#2980B9' },
+  'carpet':        { emoji: '🧶', color: 'rgba(155,89,182,0.1)',   border: '#9B59B6' },
+  'mattress':      { emoji: '🛏️', color: 'rgba(52,152,219,0.1)',   border: '#3498DB' },
+  'china':         { emoji: '🍽️', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
+  'electrical':    { emoji: '💡', color: 'rgba(241,196,15,0.1)',   border: '#F1C40F' },
+  'roastery':      { emoji: '🥜', color: 'rgba(101,67,33,0.1)',    border: '#654321' },
+  'phones':        { emoji: '📱', color: 'rgba(41,128,185,0.1)',   border: '#2980B9' },
+  'grocery':       { emoji: '🏪', color: 'rgba(39,174,96,0.1)',    border: '#27AE60' },
+  'hypermarket':   { emoji: '🏬', color: 'rgba(27,79,114,0.1)',    border: '#1B4F72' },
+  'delivery':      { emoji: '🚀', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
 };
 
 const DEFAULT_CAT = { emoji: '🏪', color: 'rgba(27,79,114,0.1)', border: '#1B4F72' };
@@ -64,7 +74,7 @@ export async function renderHomePage($main, { user } = {}) {
     setupHeroSearch(categories || []);
 
     // Stats bar
-    renderStatsBar((places || []).length, (categories || []).length);
+    renderStatsBar((places?.length || 0), (categories?.length || 31));
 
   } catch (err) {
     console.error('[Home] Render failed:', err);
@@ -96,23 +106,17 @@ function sortPlaces(places, currentUid = null) {
 
 function renderCategories(categories) {
   const grid = document.getElementById('categories-grid');
-  if (!grid) return;
+  if (!grid || !categories) return;
 
-  if (!categories || !categories.length) {
-    grid.innerHTML = `<p class="text-muted text-center" style="grid-column:1/-1">لا توجد تصنيفات بعد</p>`;
-    return;
-  }
-
-  grid.innerHTML = categories.map(cat => {
+  grid.innerHTML = categories.slice(0, 12).map(cat => {
     const style = CATEGORY_EMOJIS[cat.slug] || DEFAULT_CAT;
     return `
       <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}"
          class="category-card animate-fade-in"
-         style="--cat-color:${style.color};--cat-color-border:${style.border}"
+         style="--cat-color-border:${style.border}"
          aria-label="${cat.name}">
         <div class="category-card__icon">${cat.icon || style.emoji}</div>
         <div class="category-card__name">${escHtml(cat.name)}</div>
-        ${cat.placeCount ? `<div class="category-card__count">${cat.placeCount} مكان</div>` : ''}
       </a>
     `;
   }).join('');
@@ -139,8 +143,8 @@ function renderLatestPlaces(places) {
     grid.innerHTML = `
       <div class="empty-state" style="grid-column:1/-1">
         <div class="empty-state__icon">🏪</div>
-        <h3 class="empty-state__title">كن أول من يضيف مكانه في المنزلة</h3>
-        <a href="dashboard.html?section=add" class="btn btn-primary" style="margin-top:1rem">➕ إضافة مكان</a>
+        <p class="empty-state__text">لا توجد أماكن مسجلة بعد</p>
+        <a href="dashboard.html?section=add" class="btn btn-primary btn-sm" style="margin-top:1rem">أضف أول مكان</a>
       </div>
     `;
     return;
@@ -233,12 +237,12 @@ function renderStatsBar(placesCount, categoriesCount) {
     <div class="stats-bar__inner container">
       <div class="stats-bar__item">
         <div class="stats-bar__value">${placesCount || 0}+</div>
-        <div class="stats-bar__label">مكان ومحل مسجل</div>
+        <div class="stats-bar__label">مكان ومحل ومهنة مسجلة</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
       <div class="stats-bar__item">
-        <div class="stats-bar__value">${categoriesCount || 21}</div>
-        <div class="stats-bar__label">تصنيف ونشاط</div>
+        <div class="stats-bar__value">${categoriesCount || 31}</div>
+        <div class="stats-bar__label">تصنيف ومهنة وحرفة</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
       <div class="stats-bar__item">
@@ -257,7 +261,7 @@ function setupHeroSearch(categories) {
 
   const quickCats = document.getElementById('hero-quick-cats');
   if (quickCats && categories) {
-    quickCats.innerHTML = categories.slice(0, 8).map(cat => {
+    quickCats.innerHTML = categories.slice(0, 10).map(cat => {
       const style = CATEGORY_EMOJIS[cat.slug] || DEFAULT_CAT;
       return `
         <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}" class="hero__quick-cat">
@@ -283,14 +287,14 @@ function getHomeHTML() {
       <div class="hero__inner">
         <div class="hero__eyebrow animate-fade-in">
           <span aria-hidden="true">📍</span>
-          دليل مدينة المنزلة الرقمي
+          دليل المنزلة وناسها — دليلك الشامل
         </div>
         <h1 class="hero__title animate-fade-in-up" id="hero-title">
-          ابحث في <span>المنزلة</span>
-          <br />وابلغ وجهتك بسهولة
+          <span>فين في المنزلة؟</span> مين في المنزلة؟
+          <br />عند مين في المنزلة؟
         </h1>
         <p class="hero__subtitle animate-fade-in">
-          اعثر على المحلات والأطباء والخدمات والأماكن في مدينة المنزلة بنقرة واحدة
+          دليلك الرقمي لكل المحلات، الأطباء، والمهن والحرفيين (سباك، نجار، مبلط، كهربائي، نقاش) بمدينة المنزلة
         </p>
 
         <!-- Search Box -->
@@ -300,7 +304,7 @@ function getHomeHTML() {
               type="search"
               id="hero-search-input"
               class="hero-search__input"
-              placeholder="ابحث عن محل، دكتور، خدمة أو مكان في المنزلة..."
+              placeholder="ابحث: سباك، دكتور، صيدلية، نجار، مبلط، محل..."
               autocomplete="off"
             />
             <button class="hero-search__btn" id="hero-search-btn" aria-label="بحث">

@@ -10,7 +10,7 @@
 export function normalizeArabic(text) {
   if (!text) return '';
 
-  return text
+  let cleaned = text
     // Normalize Alef variants
     .replace(/[أإآا]/g, 'ا')
     // Normalize Hamza variants
@@ -29,6 +29,36 @@ export function normalizeArabic(text) {
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+
+  return cleaned;
+}
+
+/**
+ * Extract root search term by stripping common conversational question phrases
+ * e.g. "فين في المنزلة سباك" -> "سباك", "مين في المنزلة دكتور" -> "دكتور"
+ */
+export function extractSearchKeywords(text) {
+  if (!text) return '';
+  let normal = normalizeArabic(text);
+
+  // Common conversational prefixes used by people in El Manzala
+  const prefixes = [
+    /^عند مين في المنزله\s*/,
+    /^عند مين في\s*/,
+    /^فين في المنزله\s*/,
+    /^فين في\s*/,
+    /^مين في المنزله\s*/,
+    /^مين في\s*/,
+    /^دليل المنزله\s*/,
+    /^في المنزله\s*/,
+    /\s*في المنزله$/
+  ];
+
+  for (const prefix of prefixes) {
+    normal = normal.replace(prefix, '').trim();
+  }
+
+  return normal || normalizeArabic(text);
 }
 
 /**

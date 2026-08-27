@@ -7,7 +7,7 @@
 import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
-import { normalizeArabic, arabicScore } from '../../utils/arabic.js';
+import { normalizeArabic, arabicScore, extractSearchKeywords } from '../../utils/arabic.js';
 import { aiSmartSearch } from '../../services/ai.service.js';
 
 export async function renderSearchPage($container, { q = '', user }) {
@@ -40,12 +40,16 @@ export async function renderSearchPage($container, { q = '', user }) {
               ✨ بحث ذكي بالذكاء الاصطناعي
             </button>
             <span style="color:rgba(255,255,255,0.7);font-size:var(--font-size-xs)">|</span>
-            <span style="color:rgba(255,255,255,0.8);font-size:var(--font-size-xs)">كلمات شائعة:</span>
-            <button class="chip" onclick="searchFor('صيدلية')" style="cursor:pointer">💊 صيدلية</button>
+            <span style="color:rgba(255,255,255,0.8);font-size:var(--font-size-xs)">كلمات ومهن شائعة:</span>
+            <button class="chip" onclick="searchFor('سباك')" style="cursor:pointer">🪠 سباك</button>
+            <button class="chip" onclick="searchFor('نجار')" style="cursor:pointer">🪚 نجار</button>
+            <button class="chip" onclick="searchFor('مبلط')" style="cursor:pointer">🧱 مبلط</button>
+            <button class="chip" onclick="searchFor('كهربائي')" style="cursor:pointer">⚡ كهربائي</button>
+            <button class="chip" onclick="searchFor('نقاش')" style="cursor:pointer">🖌️ نقاش</button>
             <button class="chip" onclick="searchFor('دكتور')" style="cursor:pointer">👨‍⚕️ دكتور</button>
+            <button class="chip" onclick="searchFor('صيدلية')" style="cursor:pointer">💊 صيدلية</button>
             <button class="chip" onclick="searchFor('سوبر ماركت')" style="cursor:pointer">🛒 سوبر ماركت</button>
             <button class="chip" onclick="searchFor('مخبز')" style="cursor:pointer">🍞 مخبز</button>
-            <button class="chip" onclick="searchFor('سباكة')" style="cursor:pointer">🔧 سباكة</button>
           </div>
         </div>
       </div>
@@ -106,14 +110,18 @@ export async function renderSearchPage($container, { q = '', user }) {
   }
 
   function localSearch(query) {
-    const normalQ = normalizeArabic(query);
+    const rawClean = extractSearchKeywords(query);
+    const normalQ = normalizeArabic(rawClean);
 
     const scored = allPlaces.map(place => {
-      const nameScore = arabicScore(place.name, query);
-      const descScore = arabicScore(place.description, query) * 0.6;
+      const nameScore = Math.max(arabicScore(place.name, query), arabicScore(place.name, rawClean));
+      const descScore = Math.max(arabicScore(place.description, query), arabicScore(place.description, rawClean)) * 0.6;
       const areaScore = arabicScore(place.area, query) * 0.8;
-      const serviceScore = place.services?.some(s => normalizeArabic(s).includes(normalQ)) ? 70 : 0;
-      const catScore = arabicScore(place.categoryId, query) * 0.5;
+      const serviceScore = place.services?.some(s => {
+        const ns = normalizeArabic(s);
+        return ns.includes(normalQ) || ns.includes(normalizeArabic(query));
+      }) ? 75 : 0;
+      const catScore = (place.categoryId && (place.categoryId.includes(normalQ) || normalQ.includes(place.categoryId))) ? 70 : (arabicScore(place.categoryId, rawClean) * 0.6);
 
       const total = Math.max(nameScore, descScore, areaScore, serviceScore, catScore);
       return { place, total };

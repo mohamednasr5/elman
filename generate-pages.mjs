@@ -74,8 +74,8 @@ ${moduleScript}
 const pages = [
   {
     file: 'places.html',
-    title: 'دليل الأماكن',
-    desc: 'تصفح جميع المحلات والخدمات والأنشطة التجارية في مدينة المنزلة',
+    title: 'دليل الأماكن والخدمات والمهن في المنزلة',
+    desc: 'تصفح جميع المحلات والأطباء والحرفيين والمهن (سباك، نجار، مبلط، كهربائي) والأنشطة التجارية في مدينة المنزلة',
     activeNav: 'places.html',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -88,8 +88,8 @@ const pages = [
   },
   {
     file: 'categories.html',
-    title: 'تصنيفات الدليل',
-    desc: 'استكشف جميع تصنيفات الأماكن والخدمات في دليل المنزلة الرقمي',
+    title: 'تصنيفات الدليل والمهن',
+    desc: 'استكشف جميع تصنيفات الأماكن، المحلات، العيادات، والمهن الحرفية في دليل المنزلة الرقمي',
     activeNav: 'categories.html',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -99,8 +99,8 @@ const pages = [
   },
   {
     file: 'category.html',
-    title: 'تصنيف',
-    desc: 'تصفح الأماكن في هذا التصنيف بمدينة المنزلة',
+    title: 'تصنيف ومهنة',
+    desc: 'تصفح الأماكن ومقدمي الخدمات في هذا التصنيف بمدينة المنزلة',
     activeNav: 'categories.html',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -111,8 +111,8 @@ const pages = [
   },
   {
     file: 'place.html',
-    title: 'تفاصيل المكان',
-    desc: 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والموقع والعروض',
+    title: 'تفاصيل المكان أو النشاط',
+    desc: 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والعنوان والعروض والخدمات',
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -126,8 +126,8 @@ const pages = [
   },
   {
     file: 'search.html',
-    title: 'البحث في المنزلة',
-    desc: 'ابحث بالذكاء الاصطناعي عن أي مكان أو خدمة في دليل مدينة المنزلة',
+    title: 'فين في المنزلة؟ مين في المنزلة؟ عند مين في المنزلة؟ | بحث ذكي',
+    desc: 'ابحث بالذكاء الاصطناعي عن أي مكان، طبيب، أو صنايعي ومهني (سباك، نجار، مبلط، كهربائي) في دليل المنزلة',
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';

@@ -269,9 +269,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <h2 class="form-section__title"><span>📍</span> المعلومات الأساسية</h2>
         
         <div class="form-group">
-          <label class="form-label">اسم المكان أو النشاط التجاري <span class="required">*</span></label>
+          <label class="form-label">اسم المكان أو النشاط أو المهنة / الحرفي <span class="required">*</span></label>
           <div style="display:flex;gap:var(--space-2)">
-            <input type="text" id="p-name" class="form-input" required placeholder="مثال: صيدلية الأمل، مطعم البركة، دكتور أحمد علي" value="${escAttr(place?.name || '')}" />
+            <input type="text" id="p-name" class="form-input" required placeholder="مثال: ورشة نجار فلان، السباك أحمد، صيدلية الأمل، دكتور علي" value="${escAttr(place?.name || '')}" />
             <button type="button" class="btn btn-secondary" id="btn-ai-translate-name" title="ترجمة الاسم بالذكاء الاصطناعي">
               ✨ ترجمة En
             </button>

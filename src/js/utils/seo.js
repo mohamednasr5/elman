@@ -3,17 +3,19 @@
  * Dynamic meta tags, Schema.org, Open Graph per page
  */
 
-const DEFAULT_TITLE = 'المنزلة وناسها | دليل المنزلة الرقمي';
-const DEFAULT_DESC  = 'دليل المنزلة الرقمي — ابحث عن الأطباء والمحلات والخدمات والأماكن في مدينة المنزلة';
+const DEFAULT_TITLE = 'المنزلة وناسها | دليل المنزلة الرقمي — فين في المنزلة؟ مين في المنزلة؟';
+const DEFAULT_DESC  = 'دليل المنزلة الرقمي الشامل — فين في المنزلة؟ مين في المنزلة؟ عند مين في المنزلة؟ ابحث عن الأطباء، المحلات، الحرفيين والصنايعية (سباك، نجار، مبلط، كهربائي، نقاش)، والعروض والخدمات في مدينة المنزلة.';
+const DEFAULT_KEYWORDS = 'دليل المنزلة, فين في المنزلة, مين في المنزلة, عند مين في المنزلة, محلات المنزلة, أطباء المنزلة, سباك في المنزلة, نجار في المنزلة, مبلط في المنزلة, كهربائي في المنزلة, نقاش في المنزلة, صنايعية المنزلة, خدمات المنزلة, الدقهلية';
 const DEFAULT_IMAGE = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
 const SITE_URL      = window.location.origin;
 
 /**
  * Update page meta tags
  */
-export function setMeta({ title, description, image, url, type = 'website', noindex = false } = {}) {
-  const t = title ? `${title} | المنزلة وناسها` : DEFAULT_TITLE;
+export function setMeta({ title, description, keywords, image, url, type = 'website', noindex = false } = {}) {
+  const t = title ? `${title} | دليل المنزلة وناسها` : DEFAULT_TITLE;
   const d = description || DEFAULT_DESC;
+  const k = keywords || DEFAULT_KEYWORDS;
   const img = image || DEFAULT_IMAGE;
   const u = url ? `${SITE_URL}${url}` : window.location.href;
 
@@ -26,6 +28,9 @@ export function setMeta({ title, description, image, url, type = 'website', noin
   setOrCreateMeta('name', 'description', d);
   setTag('meta[property="og:description"]', 'property', 'og:description', 'content', d);
   setTag('meta[name="twitter:description"]', 'name', 'twitter:description', 'content', d);
+
+  // Keywords
+  setOrCreateMeta('name', 'keywords', k);
 
   // Image
   setTag('meta[property="og:image"]', 'property', 'og:image', 'content', img);
