@@ -52,6 +52,61 @@ function _headerHTML(active) {
 }
 
 function _bottomNavHTML(active) {
+  if (active === 'admin.html') {
+    return `
+<nav class="bottom-nav bottom-nav--admin" id="admin-mobile-bottom-nav" role="navigation" aria-label="لوحة الإدارة">
+  <button type="button" data-admin-sec="overview" class="bottom-nav__item active">
+    <span class="bottom-nav__icon">📊</span>
+    <span class="bottom-nav__label">الإحصائيات</span>
+  </button>
+  <button type="button" data-admin-sec="places" class="bottom-nav__item">
+    <span class="bottom-nav__icon">📍</span>
+    <span class="bottom-nav__label">الأماكن</span>
+  </button>
+  <button type="button" data-admin-sec="verification" class="bottom-nav__item">
+    <span class="bottom-nav__icon">🛡️</span>
+    <span class="bottom-nav__label">التوثيق</span>
+  </button>
+  <button type="button" data-admin-sec="categories" class="bottom-nav__item">
+    <span class="bottom-nav__icon">📁</span>
+    <span class="bottom-nav__label">التصنيفات</span>
+  </button>
+  <button type="button" data-admin-sec="ads" class="bottom-nav__item">
+    <span class="bottom-nav__icon">📢</span>
+    <span class="bottom-nav__label">الإعلانات</span>
+  </button>
+  <button type="button" data-admin-sec="settings" class="bottom-nav__item">
+    <span class="bottom-nav__icon">⚙️</span>
+    <span class="bottom-nav__label">الإعدادات</span>
+  </button>
+</nav>`;
+  }
+
+  if (active === 'dashboard.html') {
+    return `
+<nav class="bottom-nav bottom-nav--dashboard" id="dash-mobile-bottom-nav" role="navigation" aria-label="لوحة التحكم">
+  <button type="button" data-dash-sec="overview" class="bottom-nav__item active">
+    <span class="bottom-nav__icon">📊</span>
+    <span class="bottom-nav__label">نظرة عامة</span>
+  </button>
+  <button type="button" data-dash-sec="places" class="bottom-nav__item">
+    <span class="bottom-nav__icon">🏪</span>
+    <span class="bottom-nav__label">أماكني</span>
+  </button>
+  <div class="bottom-nav__fab">
+    <button type="button" data-dash-sec="add" class="bottom-nav__fab-btn" aria-label="إضافة مكان" title="إضافة مكان جديد">➕</button>
+  </div>
+  <button type="button" data-dash-sec="offers" class="bottom-nav__item">
+    <span class="bottom-nav__icon">🏷️</span>
+    <span class="bottom-nav__label">العروض</span>
+  </button>
+  <button type="button" data-dash-sec="products" class="bottom-nav__item">
+    <span class="bottom-nav__icon">📦</span>
+    <span class="bottom-nav__label">المنتجات</span>
+  </button>
+</nav>`;
+  }
+
   const items = [
     ['index.html',      '🏠', 'الرئيسية'],
     ['categories.html', '📋', 'التصنيفات'],

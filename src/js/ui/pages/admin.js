@@ -134,6 +134,11 @@ async function switchAdminSection(sectionName, pushState = true) {
     el.classList.toggle('active', el.getAttribute('data-section') === sectionName);
   });
 
+  // Update mobile bottom nav
+  document.querySelectorAll('#admin-mobile-bottom-nav .bottom-nav__item[data-admin-sec]').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-admin-sec') === sectionName);
+  });
+
   try {
     if      (sectionName === 'overview')      await renderAdminOverview($main);
     else if (sectionName === 'places')        await renderAdminPlaces($main);
@@ -157,21 +162,37 @@ async function switchAdminSection(sectionName, pushState = true) {
   }
 }
 
-window.refreshCurrentAdminSection = () => switchAdminSection(_currentSection, false);
+if (typeof window !== 'undefined') {
+  window.refreshCurrentAdminSection = () => switchAdminSection(_currentSection, false);
+}
 
 function setupAdminNavigation() {
   const nav = document.getElementById('admin-sidebar-nav');
-  if (!nav || nav.dataset.listening) return;
-  nav.dataset.listening = 'true';
+  if (nav && !nav.dataset.listening) {
+    nav.dataset.listening = 'true';
+    nav.addEventListener('click', (e) => {
+      const link = e.target.closest('a[data-section]');
+      if (link) {
+        e.preventDefault();
+        const section = link.getAttribute('data-section');
+        switchAdminSection(section, true);
+      }
+    });
+  }
 
-  nav.addEventListener('click', (e) => {
-    const link = e.target.closest('a[data-section]');
-    if (link) {
-      e.preventDefault();
-      const section = link.getAttribute('data-section');
-      switchAdminSection(section, true);
-    }
-  });
+  // Mobile Bottom Nav Listener
+  const mobileNav = document.getElementById('admin-mobile-bottom-nav');
+  if (mobileNav && !mobileNav.dataset.listening) {
+    mobileNav.dataset.listening = 'true';
+    mobileNav.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-admin-sec]');
+      if (btn) {
+        e.preventDefault();
+        const section = btn.getAttribute('data-admin-sec');
+        switchAdminSection(section, true);
+      }
+    });
+  }
 
   window.addEventListener('popstate', () => {
     const params = new URLSearchParams(location.search);
@@ -559,8 +580,25 @@ async function renderAdminCategories($container) {
         </div>
       ` : ''}
 
+      <!-- Live Search in Admin Categories -->
+      <div style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="position:relative;flex:1;max-width:420px">
+          <input 
+            type="search" 
+            id="admin-categories-search" 
+            class="form-input" 
+            placeholder="🔍 ابحث في التصنيفات والمهن الحالية (بالعربية أو الإنجليزية)..." 
+            style="padding-right:38px;background:var(--surface)"
+          />
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none">🔎</span>
+        </div>
+        <div id="admin-cat-filter-count" style="font-size:12.5px;color:var(--text-muted);font-weight:600">
+          عرض ${categories.length} تصنيف
+        </div>
+      </div>
+
       <div class="dashboard-table-wrapper">
-        <table class="dashboard-table">
+        <table class="dashboard-table" id="admin-categories-table">
           <thead>
             <tr>
               <th>الأيقونة</th>
@@ -572,7 +610,7 @@ async function renderAdminCategories($container) {
           </thead>
           <tbody>
             ${categories.map(c => `
-              <tr>
+              <tr data-cat-row-name="${escAttr((c.name || '').toLowerCase())}" data-cat-row-slug="${escAttr((c.slug || c.nameEn || '').toLowerCase())}">
                 <td style="font-size:1.5rem">${c.icon || '📁'}</td>
                 <td><strong>${escHtml(c.name)}</strong></td>
                 <td><code>${escHtml(c.slug || c.nameEn || '')}</code></td>
@@ -590,6 +628,26 @@ async function renderAdminCategories($container) {
       </div>
     </div>
   `;
+
+  // Live Categories Search Handler
+  const adminCatSearch = document.getElementById('admin-categories-search');
+  const catRows = document.querySelectorAll('#admin-categories-table tbody tr');
+  const catCountEl = document.getElementById('admin-cat-filter-count');
+
+  adminCatSearch?.addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    let matchCount = 0;
+    catRows.forEach(row => {
+      const name = row.getAttribute('data-cat-row-name') || '';
+      const slug = row.getAttribute('data-cat-row-slug') || '';
+      const match = !q || name.includes(q) || slug.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) matchCount++;
+    });
+    if (catCountEl) {
+      catCountEl.textContent = q ? `تم العثور على ${matchCount} من ${categories.length}` : `عرض ${categories.length} تصنيف`;
+    }
+  });
 
   document.getElementById('btn-add-category')?.addEventListener('click', () => {
     showAddCategoryModal(() => switchAdminSection('categories', false));

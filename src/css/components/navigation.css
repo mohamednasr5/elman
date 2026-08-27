@@ -315,6 +315,42 @@
   line-height: 1;
 }
 
+/* Admin & Dashboard Mobile Bottom Navbars */
+.bottom-nav--admin {
+  background: #0F273D !important;
+  border-top: 1px solid rgba(255,255,255,0.12) !important;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.3) !important;
+}
+
+.bottom-nav--admin .bottom-nav__item {
+  color: rgba(255,255,255,0.6) !important;
+  padding: 2px 1px;
+}
+
+.bottom-nav--admin .bottom-nav__label {
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bottom-nav--admin .bottom-nav__item.active {
+  color: var(--secondary, #F5A623) !important;
+}
+
+.bottom-nav--admin .bottom-nav__item.active .bottom-nav__icon {
+  background: rgba(245, 166, 35, 0.2) !important;
+}
+
+.bottom-nav--dashboard .bottom-nav__item {
+  padding: 2px 2px;
+}
+
+.bottom-nav--dashboard .bottom-nav__label {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* Center FAB button in bottom nav */
 .bottom-nav__fab {
   flex: 1;

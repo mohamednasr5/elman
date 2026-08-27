@@ -87,6 +87,13 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
     el.classList.toggle('active', isActive);
   });
 
+  // Update mobile bottom nav
+  document.querySelectorAll('#dash-mobile-bottom-nav [data-dash-sec]').forEach(el => {
+    const sec = el.getAttribute('data-dash-sec');
+    const isActive = sec === section || (sec === 'add' && (section === 'add-place' || section === 'add'));
+    el.classList.toggle('active', isActive);
+  });
+
   try {
     if (section === 'overview') {
       await renderOverviewSection($mainArea, _dashUser);
@@ -123,21 +130,35 @@ if (typeof window !== 'undefined') {
 
 function setupDashboardNavigation() {
   const container = document.querySelector('.dashboard-layout');
-  if (!container || container.dataset.listening) return;
-  container.dataset.listening = 'true';
-
-  container.addEventListener('click', (e) => {
-    const link = e.target.closest('a[href*="dashboard.html"]');
-    if (link && !link.getAttribute('target')) {
-      const url = new URL(link.href, location.href);
-      if (url.pathname.endsWith('dashboard.html') || url.pathname.endsWith('/dashboard.html')) {
-        e.preventDefault();
-        const section = url.searchParams.get('section') || 'overview';
-        const placeId = url.searchParams.get('id') || null;
-        switchDashboardSection(section, placeId, true);
+  if (container && !container.dataset.listening) {
+    container.dataset.listening = 'true';
+    container.addEventListener('click', (e) => {
+      const link = e.target.closest('a[href*="dashboard.html"]');
+      if (link && !link.getAttribute('target')) {
+        const url = new URL(link.href, location.href);
+        if (url.pathname.endsWith('dashboard.html') || url.pathname.endsWith('/dashboard.html')) {
+          e.preventDefault();
+          const section = url.searchParams.get('section') || 'overview';
+          const placeId = url.searchParams.get('id') || null;
+          switchDashboardSection(section, placeId, true);
+        }
       }
-    }
-  });
+    });
+  }
+
+  // Mobile bottom nav listener
+  const mobileNav = document.getElementById('dash-mobile-bottom-nav');
+  if (mobileNav && !mobileNav.dataset.listening) {
+    mobileNav.dataset.listening = 'true';
+    mobileNav.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-dash-sec]');
+      if (btn) {
+        e.preventDefault();
+        const section = btn.getAttribute('data-dash-sec');
+        switchDashboardSection(section, null, true);
+      }
+    });
+  }
 
   window.addEventListener('popstate', () => {
     const params = new URLSearchParams(location.search);
@@ -341,20 +362,58 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             <label class="form-label">الاسم بالإنجليزية (اختياري)</label>
             <input type="text" id="p-name-en" class="form-input" placeholder="El Amal Pharmacy" value="${escAttr(place?.nameEn || '')}" style="direction:ltr;text-align:left" />
           </div>
+        </div>
 
-          <div class="form-group">
-            <label class="form-label">التصنيف الرئيسي <span class="required">*</span></label>
-            <select id="p-category" class="form-select" required>
-              <option value="">اختر التصنيف...</option>
-              ${categories.map(c => `
-                <option value="${c.slug || c._key}" ${place?.categoryId === (c.slug || c._key) ? 'selected' : ''}>
-                  ${c.icon || '📁'} ${c.name}
-                </option>
-              `).join('')}
-              <option value="printing" ${place?.categoryId === 'printing' ? 'selected' : ''}>🖨️ مطبعة ودعاية وإعلان</option>
-              <option value="other" ${place?.customCategory ? 'selected' : ''}>✨ أخرى (اكتب تصنيفاً جديداً)</option>
-            </select>
+        <!-- Searchable Category Selector -->
+        <div class="form-group" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
+            <label class="form-label" style="margin-bottom:0;font-weight:var(--font-weight-bold)">التصنيف الرئيسي والمهنة <span class="required">*</span></label>
+            <div id="p-selected-cat-badge" style="font-size:12px;color:var(--primary);display:${place?.categoryId ? 'flex' : 'none'};align-items:center;gap:6px">
+              <span>المختار:</span>
+              <span id="p-selected-cat-name" class="chip chip--primary" style="font-weight:700">${place?.categoryId ? (categories.find(c => (c.slug || c._key) === place.categoryId)?.name || (place.customCategory ? place.customCategory : place.categoryId)) : ''}</span>
+            </div>
           </div>
+
+          <!-- Live Search Input -->
+          <div style="position:relative;margin-bottom:10px">
+            <input 
+              type="search" 
+              id="p-category-search-input" 
+              class="form-input" 
+              placeholder="🔍 ابحث في التصنيفات (اكتب أول حرفين، مثال: دكتور، سباك، صيدلية، مطعم...)" 
+              autocomplete="off"
+              style="padding-right:38px;background:var(--surface);border-color:var(--primary)"
+            />
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🔎</span>
+          </div>
+
+          <!-- Category Quick Selection Pills Box -->
+          <div id="p-category-picker-box" style="max-height:170px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;padding:6px;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--border)">
+            ${categories.map(c => `
+              <button type="button" class="category-select-pill ${place?.categoryId === (c.slug || c._key) ? 'active' : ''}" data-cat-id="${escAttr(c.slug || c._key)}" data-cat-name="${escAttr(c.name)}">
+                <span>${c.icon || '📁'}</span>
+                <span>${escHtml(c.name)}</span>
+              </button>
+            `).join('')}
+            <button type="button" class="category-select-pill ${place?.customCategory ? 'active' : ''}" data-cat-id="other" data-cat-name="أخرى (اكتب تصنيفاً جديداً)">
+              <span>✨</span>
+              <span>أخرى (اكتب تصنيفاً جديداً)</span>
+            </button>
+          </div>
+          <div id="p-cat-no-match" style="display:none;padding:8px;font-size:12px;color:var(--text-muted);text-align:center">
+            لم نجد تصنيفاً مطابقاً. يمكنك اختيار <strong style="color:var(--secondary,#F5A623);cursor:pointer" onclick="document.querySelector('[data-cat-id=other]')?.click()">✨ أخرى (اكتب تصنيفاً جديداً)</strong>
+          </div>
+
+          <!-- Hidden Synchronized Select for Form Validation & Submission -->
+          <select id="p-category" class="form-select" style="display:none" required>
+            <option value="">اختر التصنيف...</option>
+            ${categories.map(c => `
+              <option value="${c.slug || c._key}" ${place?.categoryId === (c.slug || c._key) ? 'selected' : ''}>
+                ${c.icon || '📁'} ${c.name}
+              </option>
+            `).join('')}
+            <option value="other" ${place?.customCategory ? 'selected' : ''}>✨ أخرى (اكتب تصنيفاً جديداً)</option>
+          </select>
         </div>
 
         <!-- Custom Category Input Box (shows when 'other' is selected) -->
@@ -547,6 +606,54 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   `;
 
   // ── Handlers ──
+
+  // Live Category Search Filter & Pill Selection
+  const catSearchInput = document.getElementById('p-category-search-input');
+  const catPickerBox = document.getElementById('p-category-picker-box');
+  const catPills = catPickerBox ? catPickerBox.querySelectorAll('.category-select-pill') : [];
+  const catNoMatch = document.getElementById('p-cat-no-match');
+  const hiddenSelect = document.getElementById('p-category');
+  const selectedBadge = document.getElementById('p-selected-cat-badge');
+  const selectedBadgeName = document.getElementById('p-selected-cat-name');
+
+  catSearchInput?.addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    let visibleCount = 0;
+    catPills.forEach(pill => {
+      const name = (pill.getAttribute('data-cat-name') || '').toLowerCase();
+      const id = (pill.getAttribute('data-cat-id') || '').toLowerCase();
+      const match = !q || name.includes(q) || id.includes(q);
+      pill.style.display = match ? 'inline-flex' : 'none';
+      if (match) visibleCount++;
+    });
+    if (catNoMatch) catNoMatch.style.display = visibleCount === 0 ? 'block' : 'none';
+  });
+
+  catPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const catId = pill.getAttribute('data-cat-id');
+      const catName = pill.getAttribute('data-cat-name');
+
+      catPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+
+      if (hiddenSelect) {
+        hiddenSelect.value = catId;
+        hiddenSelect.dispatchEvent(new Event('change'));
+      }
+
+      if (selectedBadge && selectedBadgeName) {
+        selectedBadgeName.textContent = catName;
+        selectedBadge.style.display = 'flex';
+      }
+
+      const deliveryGroup = document.getElementById('delivery-type-group');
+      if (deliveryGroup) deliveryGroup.style.display = (catId || '').includes('delivery') ? 'block' : 'none';
+
+      const customCatGroup = document.getElementById('custom-category-group');
+      if (customCatGroup) customCatGroup.style.display = catId === 'other' ? 'block' : 'none';
+    });
+  });
 
   // Category toggle for delivery vehicle and custom category
   document.getElementById('p-category')?.addEventListener('change', (e) => {

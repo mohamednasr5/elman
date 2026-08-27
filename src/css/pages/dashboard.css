@@ -538,3 +538,41 @@
     height: 22px !important;
   }
 }
+
+/* Category Searchable Picker Pills */
+.category-select-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  font-family: inherit;
+}
+.category-select-pill:hover {
+  border-color: var(--primary);
+  background: var(--primary-alpha);
+  transform: translateY(-1px);
+}
+.category-select-pill.active {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 2px 8px rgba(27, 79, 114, 0.3);
+}
+.category-select-pill[data-cat-id="other"] {
+  border-style: dashed;
+  border-color: var(--secondary, #F5A623);
+  color: var(--secondary, #F5A623);
+}
+.category-select-pill[data-cat-id="other"].active {
+  background: var(--secondary, #F5A623) !important;
+  color: #fff !important;
+}
+
