@@ -267,7 +267,7 @@ function _setupPwa() {
   // Also check and show banner after delay on desktop/mobile if not installed/dismissed
   setTimeout(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (!isStandalone && !sessionStorage.getItem('pwa-dismissed')) {
+    if (!isStandalone && !localStorage.getItem('pwa-dismissed')) {
       _showPwaBanner();
     }
   }, 3500);
@@ -376,7 +376,7 @@ function _showManualInstallInstructions() {
 
 function _showPwaBanner() {
   const b = document.getElementById('pwa-banner');
-  if (b && !sessionStorage.getItem('pwa-dismissed')) {
+  if (b && !localStorage.getItem('pwa-dismissed')) {
     b.removeAttribute('hidden');
     requestAnimationFrame(() => {
       b.classList.add('visible');
@@ -392,7 +392,7 @@ function _dismissPwaBanner() {
       b.setAttribute('hidden', '');
     }, 400);
   }
-  sessionStorage.setItem('pwa-dismissed', '1');
+  localStorage.setItem('pwa-dismissed', '1');
 }
 
 function _h(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

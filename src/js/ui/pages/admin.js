@@ -99,18 +99,18 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
 // ── 1. Admin Overview ──
 async function renderAdminOverview($container) {
   const [usersMap, placesMap, offersMap, adsMap, reqsMap] = await Promise.all([
-    dbGet('users') || {},
-    dbGet('places') || {},
-    dbGet('offers') || {},
-    dbGet('ads') || {},
-    dbGet('verificationRequests') || {}
+    dbGet('users'),
+    dbGet('places'),
+    dbGet('offers'),
+    dbGet('ads'),
+    dbGet('verificationRequests')
   ]);
 
-  const users = Object.values(usersMap);
-  const places = Object.values(placesMap);
-  const offers = Object.values(offersMap);
-  const ads = Object.values(adsMap);
-  const pendingReqs = Object.values(reqsMap).filter(r => r && r.status === 'pending');
+  const users = Object.values(usersMap || {});
+  const places = Object.values(placesMap || {});
+  const offers = Object.values(offersMap || {});
+  const ads = Object.values(adsMap || {});
+  const pendingReqs = Object.values(reqsMap || {}).filter(r => r && r.status === 'pending');
 
   const verifiedPlaces = places.filter(p => p.isVerified);
   const unverifiedPlaces = places.filter(p => !p.isVerified);
@@ -324,12 +324,19 @@ async function renderAdminVerification($container, user) {
 
 // ── 4. Admin Categories ──
 async function renderAdminCategories($container) {
-  const [categories, catReqsMap] = await Promise.all([
+  const [categories, catReqsMap, placesMap] = await Promise.all([
     getCategories(),
-    dbGet('categoryRequests') || {}
+    dbGet('categoryRequests'),
+    dbGet('places')
   ]);
 
-  const catRequests = Object.values(catReqsMap).filter(r => r.status === 'pending');
+  const catRequests = Object.values(catReqsMap || {}).filter(r => r.status === 'pending');
+  const allPlaces = Object.values(placesMap || {});
+
+  // Calculate dynamic place counts
+  categories.forEach(c => {
+    c.placeCount = allPlaces.filter(p => p.categoryId === (c.slug || c.nameEn)).length;
+  });
 
   $container.innerHTML = `
     <div class="dashboard-header">
@@ -839,24 +846,61 @@ window.deletePlaceAdmin = async (placeId) => {
 };
 
 window.approveVerification = async (reqId, placeId) => {
+  const months = prompt("?? ??? ???? ?? ????? ??? ????????\n(???? ??? ??????? ?? ????? ?????? ????? ????? ????)", "12");
+  if (months === null) return; // cancelled
+
+  const updates = {
+    isVerified: true,
+    verificationStatus: 'verified',
+    verifiedAt: serverTimestamp()
+  };
+
+  if (months.trim() !== '' && !isNaN(months) && Number(months) > 0) {
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + Number(months));
+    updates.verifiedUntil = expiresAt.getTime();
+  } else {
+    updates.verifiedUntil = null; // Permanent
+  }
+
   try {
     await dbUpdate(`verificationRequests/${reqId}`, {
       status: 'approved',
       reviewedAt: serverTimestamp()
     });
-    await dbUpdate(`places/${placeId}`, {
-      isVerified: true,
-      verificationStatus: 'verified',
-      verifiedAt: serverTimestamp()
+    await dbUpdate(`places/${placeId}`, updates);
+    toast.success('?? ???? ??? ??????? ?????? ??????? ??????');
+    setTimeout(() => location.reload(), 1000);
+  } catch (err) {
+    console.error(err);
+    toast.error('???? ???????? ???? ???????? ??????');
+  }
+};
+
+  if (months.trim() !== '' && !isNaN(months) && Number(months) > 0) {
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + Number(months));
+    updates.verifiedUntil = expiresAt.getTime();
+  } else {
+    updates.verifiedUntil = null; // Permanent
+  }
+
+  try {
+    await dbUpdate(erificationRequests/ + reqId, {
+      status: 'approved',
+      reviewedAt: serverTimestamp()
     });
-    toast.success('تم قبول طلب التوثيق وتفعيل علامة التوثيق ✓');
-    navigate('/admin/verification');
-  } catch {
-    toast.error('فشلت العملية');
+    await dbUpdate(places/ + placeId, updates);
+    toast.success('?? ???? ??? ??????? ?????? ??????? ??????');
+    setTimeout(() => location.reload(), 1000);
+  } catch (err) {
+    console.error(err);
+    toast.error('???? ???????? ???? ???????? ??????');
   }
 };
 
 window.rejectVerification = async (reqId, placeId) => {
+  if (!confirm('?? ??? ????? ?? ??? ??? ??????')) return;
   try {
     await dbUpdate(`verificationRequests/${reqId}`, {
       status: 'rejected',
@@ -865,10 +909,11 @@ window.rejectVerification = async (reqId, placeId) => {
     await dbUpdate(`places/${placeId}`, {
       verificationStatus: 'unverified'
     });
-    toast.info('تم رفض طلب التوثيق');
-    navigate('/admin/verification');
-  } catch {
-    toast.error('فشلت العملية');
+    toast.success('?? ??? ?????');
+    setTimeout(() => location.reload(), 1000);
+  } catch (err) {
+    console.error(err);
+    toast.error('???? ???????');
   }
 };
 
@@ -1046,3 +1091,5 @@ function escAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+
