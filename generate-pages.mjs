@@ -205,8 +205,11 @@ const pages = [
   import { waitForAuth, isAdmin } from './src/js/core/auth.js';
   await initPage('');
   const user = await waitForAuth();
-  if (!user || !isAdmin(user)) { location.href = 'index.html'; }
-  else {
+  if (!user) {
+    location.href = 'login.html';
+  } else if (!isAdmin(user)) {
+    location.href = 'index.html';
+  } else {
     const section = new URLSearchParams(location.search).get('section') || 'overview';
     await renderAdmin(document.getElementById('page-container'), { user, section });
   }`

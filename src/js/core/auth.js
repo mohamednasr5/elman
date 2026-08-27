@@ -113,12 +113,32 @@ export function waitForAuth() {
     return Promise.resolve(appState.get('user'));
   }
   return new Promise((resolve) => {
+    let resolved = false;
     const unsub = appState.subscribe('authLoading', (loading) => {
-      if (!loading) {
+      if (!loading && !resolved) {
+        resolved = true;
         unsub();
         resolve(appState.get('user'));
       }
     });
+
+    // Fallback timer in case auth listener is delayed
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        try { unsub(); } catch (_) {}
+        const auth = getAuth();
+        const fbUser = auth?.currentUser;
+        if (fbUser) {
+          const profile = buildBasicProfile(fbUser);
+          appState.set('user', profile);
+          appState.set('authLoading', false);
+          resolve(profile);
+        } else {
+          resolve(appState.get('user'));
+        }
+      }
+    }, 2500);
   });
 }
 

@@ -33,7 +33,11 @@ export async function renderCategoriesPage($container) {
     </div>
   `;
 
-  const categories = await getCategories();
+  const [categories, places] = await Promise.all([
+    getCategories(),
+    getPublishedPlaces()
+  ]);
+
   const grid = document.getElementById('all-categories-grid');
   if (!grid) return;
 
@@ -42,13 +46,23 @@ export async function renderCategoriesPage($container) {
     return;
   }
 
-  grid.innerHTML = categories.map(cat => `
-    <a href="category.html?slug=${cat.slug || cat._key}" class="category-card animate-fade-in">
-      <div class="category-card__icon">${cat.icon || '📁'}</div>
-      <div class="category-card__name">${escHtml(cat.name)}</div>
-      ${cat.placeCount !== undefined ? `<div class="category-card__count">${cat.placeCount} مكان</div>` : ''}
-    </a>
-  `).join('');
+  // Calculate live count of places for each category
+  const countMap = {};
+  places.forEach(p => {
+    const cId = p.categoryId;
+    if (cId) countMap[cId] = (countMap[cId] || 0) + 1;
+  });
+
+  grid.innerHTML = categories.map(cat => {
+    const count = countMap[cat.slug] || countMap[cat._key] || countMap[cat.id] || 0;
+    return `
+      <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}" class="category-card animate-fade-in">
+        <div class="category-card__icon">${cat.icon || '📁'}</div>
+        <div class="category-card__name">${escHtml(cat.name)}</div>
+        <div class="category-card__count">${count > 0 ? `${count} مكان` : 'استكشف الأماكن'}</div>
+      </a>
+    `;
+  }).join('');
 }
 
 export async function renderCategoryPage($container, { slug, query, user }) {
