@@ -7,7 +7,7 @@
 import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings } from '../../core/db.js';
 import { createPlace, updatePlace, deletePlace, addOffer, addProduct, submitVerificationRequest } from '../../services/places.service.js';
 import { uploadImage } from '../../services/upload.service.js';
-import { translatePlaceName, generateCoverImage } from '../../services/ai.service.js';
+import { translatePlaceName, generateCoverImage, generatePlaceLogo } from '../../services/ai.service.js';
 import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
@@ -389,9 +389,14 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
         <!-- Logo -->
         <div class="form-group">
-          <label class="form-label">شعار المكان أو الصورة الشخصية (Logo / Icon)</label>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2)">
+            <label class="form-label">شعار المكان أو الصورة الشخصية (Logo / Icon)</label>
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-logo">
+              ✨ إنشاء لوجو ذكي بالاسم
+            </button>
+          </div>
           <div class="file-upload" id="logo-upload-zone" style="padding:var(--space-4)">
-            <div class="file-upload__text">📷 اضغط لاختيار اللوجو</div>
+            <div class="file-upload__text">📷 اضغط لاختيار اللوجو أو اسحبه هنا</div>
             <input type="file" id="p-logo-file" accept="image/jpeg,image/png,image/webp" />
           </div>
           <input type="hidden" id="p-logo-url" value="${escAttr(place?.logoUrl || '')}" />
@@ -550,6 +555,30 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     } finally {
       btn.classList.remove('loading');
       btn.disabled = false;
+    }
+  });
+
+  // AI Logo Generation
+  document.getElementById('btn-ai-gen-logo')?.addEventListener('click', () => {
+    const name = document.getElementById('p-name')?.value.trim();
+    const cat = document.getElementById('p-category')?.value;
+    if (!name) {
+      toast.warning('اكتب اسم المكان أولاً لتوليد اللوجو المناسب له');
+      return;
+    }
+
+    try {
+      const logoUrl = generatePlaceLogo(name, cat);
+      document.getElementById('p-logo-url').value = logoUrl;
+      const preview = document.getElementById('logo-preview-img');
+      const wrapper = document.getElementById('logo-preview-wrapper');
+      if (preview && wrapper) {
+        preview.src = logoUrl;
+        wrapper.style.display = 'block';
+      }
+      toast.success('تم إنشاء الشعار بالذكاء الاصطناعي بنجاح ✨');
+    } catch {
+      toast.error('تعذر إنشاء الشعار');
     }
   });
 

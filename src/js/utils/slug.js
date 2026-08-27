@@ -11,17 +11,68 @@
  */
 
 const ARABIC_MAP = {
-  'ا': 'a', 'أ': 'a', 'إ': 'a', 'آ': 'a',
-  'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'j',
+  'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'aa',
+  'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'g',
   'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'z',
   'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh',
   'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z',
-  'ع': 'a', 'غ': 'gh', 'ف': 'f', 'ق': 'q',
+  'ع': 'a', 'غ': 'gh', 'ف': 'f', 'ق': 'k',
   'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
   'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y',
   'ى': 'a', 'ئ': 'y', 'ؤ': 'w', 'ء': '',
-  ' ': '-', '،': '', '؟': '', '!': '',
+  ' ': ' ', '،': '', '؟': '', '!': '',
   '.': '', ',': '', '/': '-', '\\': '-',
+};
+
+const COMMON_TERMS = {
+  'دكتور': 'Dr.',
+  'دكتورة': 'Dr.',
+  'طبيب': 'Dr.',
+  'صيدلية': 'Pharmacy',
+  'محل': 'Store',
+  'سوبر ماركت': 'Supermarket',
+  'ماركت': 'Market',
+  'هايبر': 'Hypermarket',
+  'ورشة': 'Workshop',
+  'نجار': 'Carpenter',
+  'سباك': 'Plumber',
+  'مبلط': 'Tiler',
+  'نقاش': 'Painter',
+  'كهربائي': 'Electrician',
+  'حداد': 'Blacksmith',
+  'ألوميتال': 'Alumital',
+  'مطبعة': 'Printing Press',
+  'دعاية': 'Advertising',
+  'مخبز': 'Bakery',
+  'حلواني': 'Pastry & Sweets',
+  'عطارة': 'Spices & Herbs',
+  'علف': 'Feeds',
+  'دواجن': 'Poultry',
+  'فراخ': 'Poultry',
+  'معرض': 'Showroom',
+  'سجاد': 'Carpets',
+  'مراتب': 'Mattresses',
+  'أجهزة': 'Appliances',
+  'مكتب': 'Office',
+  'شركة': 'Company',
+  'مركز': 'Center',
+  'استوديو': 'Studio',
+  'ستوديو': 'Studio',
+  'كافيه': 'Cafe',
+  'مقهى': 'Cafe',
+  'مطعم': 'Restaurant',
+  'أسماك': 'Fish Restaurant',
+  'مشويات': 'Grill',
+  'شاورما': 'Shawarma',
+  'فول': 'Foul',
+  'فلافل': 'Falafel',
+  'كوافير': 'Salon',
+  'حلاق': 'Barber Shop',
+  'مغسلة': 'Laundry',
+  'مستشفى': 'Hospital',
+  'عيادة': 'Clinic',
+  'معمل': 'Lab',
+  'تحاليل': 'Medical Lab'
 };
 
 /**
@@ -33,6 +84,32 @@ export function transliterateArabic(text) {
     .split('')
     .map(char => ARABIC_MAP[char] ?? char)
     .join('');
+}
+
+/**
+ * Convert Arabic business name into proper capitalized English business name
+ */
+export function transliterateToEnglishName(text) {
+  if (!text) return '';
+  let result = text.trim();
+
+  // Replace recognized business terms
+  Object.keys(COMMON_TERMS).forEach(term => {
+    const reg = new RegExp(`(^|\\s)${term}(\\s|$)`, 'gi');
+    result = result.replace(reg, `$1${COMMON_TERMS[term]}$2`);
+  });
+
+  // Transliterate remaining Arabic words
+  const words = result.split(/\s+/).map(word => {
+    // If it is English already, keep it
+    if (/^[A-Za-z0-9.'&-]+$/.test(word)) return word;
+    // Transliterate Arabic word
+    const latin = transliterateArabic(word);
+    // Capitalize first letter
+    return latin.charAt(0).toUpperCase() + latin.slice(1).toLowerCase();
+  });
+
+  return words.join(' ').trim();
 }
 
 /**
