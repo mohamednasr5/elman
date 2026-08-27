@@ -1,1095 +1,342 @@
-/**
- * المنزلة وناسها — Admin Control Panel
- * Comprehensive admin panel: stats, user management, place verification,
- * categories CRUD, offers, products, ads, verification requests, and site settings.
- */
-
 import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories } from '../../core/db.js';
-import { isAdmin, isSuperAdmin } from '../../core/auth.js';
-import { renderVerifiedBadge, renderStatusBadge } from '../components/VerifiedBadge.js';
+import { isAdmin } from '../../core/auth.js';
+import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
-// navigate removed — using direct location.href
 import { formatDate } from '../../utils/date.js';
 
-export async function renderAdmin($container, { user, section = 'overview' }) {
-  if (!user || !isAdmin(user)) {
-    return; // Handled by admin.html wrapper
+function svgIcon(path, opts = '') {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${opts}>${path}</svg>`;
+}
+const ICONS = {
+  chart: svgIcon('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
+  pin: svgIcon('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'),
+  shield: svgIcon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>'),
+  folder: svgIcon('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'),
+  users: svgIcon('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  tag: svgIcon('<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>'),
+  megaphone: svgIcon('<path d="m3 11 19-9-9 19-2-8-8-2z"/>'),
+  cog: svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
+  home: svgIcon('<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'),
+  globe: svgIcon('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>'),
+  trash: svgIcon('<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'),
+  edit: svgIcon('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>'),
+  eye: svgIcon('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'),
+  check: svgIcon('<polyline points="20 6 9 17 4 12"/>'),
+  x: svgIcon('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  plus: svgIcon('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
+  star: svgIcon('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>')
+};
+
+export async function renderAdmin() {
+  const container = document.getElementById('app');
+  if (!container) return;
+  
+  if (!isAdmin()) {
+    window.location.href = 'index.html';
+    return;
+  }
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const section = urlParams.get('section') || 'dashboard';
+
+  let contentHtml = '';
+  try {
+    if (section === 'dashboard') contentHtml = await renderDashboard();
+    else if (section === 'verification') contentHtml = await renderVerification();
+    else if (section === 'places') contentHtml = await renderPlaces();
+    else if (section === 'settings') contentHtml = await renderSettings();
+    else contentHtml = `<h2>القسم غير موجود</h2>`;
+  } catch (e) {
+    contentHtml = `<div class="error-msg">حدث خطأ: ${escHtml(e.message)}</div>`;
   }
 
-  $container.innerHTML = `
-    <div class="dashboard-layout">
-      <!-- Admin Sidebar -->
-      <aside class="dashboard-sidebar" style="background:#0F273D;color:#fff">
-        <div class="dashboard-sidebar__user" style="border-color:rgba(255,255,255,0.1)">
-          <img src="${user.photoURL || './icons/icon-72x72.png'}" class="dashboard-sidebar__avatar" alt="${user.name}" />
-          <div>
-            <div class="dashboard-sidebar__name" style="color:#fff">${escHtml(user.name)}</div>
-            <div class="dashboard-sidebar__role" style="color:var(--secondary)">إدارة المنصة ⭐</div>
-          </div>
+  container.innerHTML = `
+    <div class="admin-layout admin-fade-in">
+      <aside class="admin-sidebar">
+        <div class="sidebar-header">
+          <h3>لوحة الإدارة</h3>
         </div>
-
-        <nav class="dashboard-sidebar__nav">
-          <a href="admin.html" class="dashboard-nav-item ${section === 'overview' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
-            <span>📊</span> الإحصائيات العامة
+        <nav class="sidebar-nav">
+          <a href="admin.html?section=dashboard" class="dashboard-nav-item ${section === 'dashboard' ? 'active' : ''}">
+            ${ICONS.chart} الرئيسية
           </a>
-          <a href="admin.html?section=places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
-            <span>📍</span> إدارة الأماكن
+          <a href="admin.html?section=verification" class="dashboard-nav-item ${section === 'verification' ? 'active' : ''}">
+            ${ICONS.shield} طلبات التوثيق
           </a>
-          <a href="admin.html?section=verification" class="dashboard-nav-item ${section === 'verification' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
-            <span>⭐</span> طلبات التوثيق
+          <a href="admin.html?section=places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
+            ${ICONS.pin} الأماكن
           </a>
-          <a href="admin.html?section=categories" class="dashboard-nav-item ${section === 'categories' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
-            <span>📁</span> إدارة التصنيفات
-          </a>
-          <a href="admin.html?section=users" class="dashboard-nav-item ${section === 'users' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
-            <span>👥</span> إدارة المستخدمين
-          </a>
-          <a href="admin.html?section=offers" class="dashboard-nav-item ${section === 'offers' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
-            <span>🏷️</span> إدارة العروض
-          </a>
-          <a href="admin.html?section=ads" class="dashboard-nav-item ${section === 'ads' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
-            <span>📢</span> إدارة الإعلانات
-          </a>
-          <a href="admin.html?section=settings" class="dashboard-nav-item ${section === 'settings' ? 'active' : ''}" style="color:rgba(255,255,255,0.8)">
-            <span>⚙️</span> إعدادات الموقع
-          </a>
-
-          <div class="dashboard-nav-section" style="color:rgba(255,255,255,0.4)">العودة</div>
-          <a href="dashboard.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.6)">
-            <span>🏠</span> لوحة المستخدم
-          </a>
-          <a href="index.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.6)">
-            <span>🌐</span> الصفحة الرئيسية
+          <a href="admin.html?section=settings" class="dashboard-nav-item ${section === 'settings' ? 'active' : ''}">
+            ${ICONS.cog} الإعدادات
           </a>
         </nav>
       </aside>
-
-      <!-- Admin Main Area -->
-      <main class="dashboard-content" id="admin-main-area">
-        <div class="spinner spinner-lg" style="margin:4rem auto"></div>
+      <main class="admin-content">
+        ${contentHtml}
       </main>
     </div>
   `;
 
-  const $main = document.getElementById('admin-main-area');
-
-  try {
-    if (section === 'overview') await renderAdminOverview($main);
-    else if (section === 'places') await renderAdminPlaces($main);
-    else if (section === 'verification') await renderAdminVerification($main, user);
-    else if (section === 'categories') await renderAdminCategories($main);
-    else if (section === 'users') await renderAdminUsers($main, user);
-    else if (section === 'offers') await renderAdminOffers($main);
-    else if (section === 'ads') await renderAdminAds($main, user);
-    else if (section === 'settings') await renderAdminSettings($main);
-  } catch (err) {
-    console.error('[Admin] Section error:', err);
-    $main.innerHTML = `
-      <div class="empty-state" style="margin-top:100px;">
-        <span class="empty-state__icon">⚠️</span>
-        <h3>حدث خطأ أثناء تحميل البيانات</h3>
-        <p style="color:var(--danger)">${escHtml(err.message || 'تعذر جلب البيانات، قد يكون بسبب صلاحيات الفايربيس.')}</p>
-        <button class="btn btn-primary" onclick="location.reload()" style="margin-top:15px;">حاول مرة أخرى</button>
-      </div>
-    `;
-  }
+  if (section === 'places') bindPlacesEvents();
+  if (section === 'settings') bindSettingsEvents();
+  if (section === 'verification') bindVerificationEvents();
 }
 
-// ── 1. Admin Overview ──
-async function renderAdminOverview($container) {
-  const [usersMap, placesMap, offersMap, adsMap, reqsMap] = await Promise.all([
-    dbGet('users'),
-    dbGet('places'),
-    dbGet('offers'),
-    dbGet('ads'),
-    dbGet('verificationRequests')
-  ]);
-
-  const users = Object.values(usersMap || {});
-  const places = Object.values(placesMap || {});
-  const offers = Object.values(offersMap || {});
-  const ads = Object.values(adsMap || {});
-  const pendingReqs = Object.values(reqsMap || {}).filter(r => r && r.status === 'pending');
-
-  const verifiedPlaces = places.filter(p => p.isVerified);
-  const unverifiedPlaces = places.filter(p => !p.isVerified);
-
-  $container.innerHTML = `
-    <div class="admin-header">
-      <h1 class="admin-header__title">لوحة التحكم الشاملة — المنزلة وناسها</h1>
-      <p class="admin-header__subtitle">مراقبة وإدارة جميع أقسام المنصة والمستخدمين والأماكن</p>
-    </div>
-
-    <!-- KPIs -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-card__icon">👥</div>
-        <div class="stat-card__value">${users.length}</div>
-        <div class="stat-card__label">المستخدمين المسجلين</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__icon">📍</div>
-        <div class="stat-card__value">${places.length}</div>
-        <div class="stat-card__label">إجمالي الأماكن</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__icon">⭐</div>
-        <div class="stat-card__value" style="color:var(--secondary)">${verifiedPlaces.length}</div>
-        <div class="stat-card__label">أماكن موثقة</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__icon">⏳</div>
-        <div class="stat-card__value" style="color:var(--danger)">${pendingReqs.length}</div>
-        <div class="stat-card__label">طلبات توثيق معلقة</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__icon">🏷️</div>
-        <div class="stat-card__value">${offers.length}</div>
-        <div class="stat-card__label">إجمالي العروض</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-card__icon">📢</div>
-        <div class="stat-card__value">${ads.length}</div>
-        <div class="stat-card__label">الإعلانات النشطة</div>
-      </div>
-    </div>
-
-    <!-- Quick Sections -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--space-6);margin-top:var(--space-6)">
-      <!-- Pending Verification -->
-      <div class="form-section">
-        <h2 class="form-section__title"><span>⭐</span> أحدث طلبات التوثيق (${pendingReqs.length})</h2>
-        ${pendingReqs.length === 0 ? '<p class="text-muted">لا توجد طلبات توثيق معلقة</p>' : `
-          <div style="display:flex;flex-direction:column;gap:var(--space-3)">
-            ${pendingReqs.slice(0, 5).map(r => `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3);background:var(--surface-2);border-radius:var(--radius-md)">
-                <div>
-                  <strong>${escHtml(r.placeName)}</strong>
-                  <div style="font-size:var(--font-size-xs);color:var(--text-muted)">بواسطة: ${escHtml(r.ownerName || r.ownerEmail)}</div>
-                </div>
-                <a href="admin.html?section=verification" class="btn btn-sm btn-secondary">مراجعة</a>
-              </div>
-            `).join('')}
-          </div>
-        `}
-      </div>
-
-      <!-- Recent Places -->
-      <div class="form-section">
-        <h2 class="form-section__title"><span>📍</span> أحدث الأماكن المضافة</h2>
-        <div style="display:flex;flex-direction:column;gap:var(--space-3)">
-          ${places.slice(-5).reverse().map(p => `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3);background:var(--surface-2);border-radius:var(--radius-md)">
-              <div>
-                <strong>${escHtml(p.name)}</strong>
-                <div style="font-size:var(--font-size-xs);color:var(--text-muted)">${escHtml(p.area || 'المنزلة')}</div>
-              </div>
-              <a href="place.html?slug=${p.slug}" target="_blank" class="btn btn-sm btn-outline">عرض</a>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// ── 2. Admin Places ──
-async function renderAdminPlaces($container) {
+async function renderDashboard() {
   const placesMap = await dbGet('places') || {};
-  const places = Object.entries(placesMap).map(([id, p]) => ({ ...p, _id: id }));
-
-  $container.innerHTML = `
-    <div class="dashboard-header">
-      <div>
-        <h1 class="dashboard-header__title">إدارة الأماكن (${places.length})</h1>
-        <div class="dashboard-header__subtitle">التحكم في توثيق وحالة ونشر الأماكن</div>
-      </div>
-    </div>
-
-    <!-- Search filter -->
-    <div class="filter-bar">
-      <input type="search" id="admin-place-search" class="form-input" placeholder="بحث باسم المكان..." />
-    </div>
-
-    <!-- Places Table -->
-    <div class="dashboard-table-wrapper">
-      <table class="dashboard-table">
-        <thead>
-          <tr>
-            <th>المكان</th>
-            <th>التصنيف</th>
-            <th>المنطقة</th>
-            <th>التوثيق</th>
-            <th>الحالة</th>
-            <th>إجراءات</th>
-          </tr>
-        </thead>
-        <tbody id="admin-places-tbody">
-          ${renderAdminPlacesTableRows(places)}
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  // Search filter
-  document.getElementById('admin-place-search')?.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase();
-    const filtered = places.filter(p => p.name?.toLowerCase().includes(q) || p.area?.toLowerCase().includes(q));
-    document.getElementById('admin-places-tbody').innerHTML = renderAdminPlacesTableRows(filtered);
-  });
-}
-
-function renderAdminPlacesTableRows(places) {
-  if (!places.length) return '<tr><td colspan="6" class="text-center">لا توجد أماكن</td></tr>';
-
-  return places.map(p => `
-    <tr>
-      <td>
-        <strong>${escHtml(p.name)}</strong>
-        <div style="font-size:11px;color:var(--text-muted)">${p.phone || ''}</div>
-      </td>
-      <td>${escHtml(p.categoryId || 'عام')}</td>
-      <td>${escHtml(p.area || 'المنزلة')}</td>
-      <td>
-        <button class="btn btn-xs ${p.isVerified ? 'btn-danger' : 'btn-secondary'}" onclick="togglePlaceVerification('${escAttr(p._id)}', ${!p.isVerified})">
-          ${p.isVerified ? '✓ موثق (إلغاء)' : 'توثيق ⭐'}
-        </button>
-      </td>
-      <td>${renderStatusBadge(p.status || 'published')}</td>
-      <td>
-        <div style="display:flex;gap:4px">
-          <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs btn-outline">عرض</a>
-          <button class="btn btn-xs btn-danger" onclick="deletePlaceAdmin('${escAttr(p._id)}')">حذف</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-// ── 3. Admin Verification Requests ──
-async function renderAdminVerification($container, user) {
-  const reqsMap = await dbGet('verificationRequests') || {};
-  const reqs = Object.values(reqsMap).sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
-
-  $container.innerHTML = `
-    <div class="dashboard-header">
-      <div>
-        <h1 class="dashboard-header__title">طلبات التوثيق (${reqs.length})</h1>
-        <div class="dashboard-header__subtitle">مراجعة واعتماد طلبات توثيق الأنشطة التجارية</div>
-      </div>
-    </div>
-
-    <div class="dashboard-table-wrapper">
-      <table class="dashboard-table">
-        <thead>
-          <tr>
-            <th>اسم المكان</th>
-            <th>مقدم الطلب</th>
-            <th>تاريخ الطلب</th>
-            <th>الحالة</th>
-            <th>الإجراء</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${reqs.length === 0 ? '<tr><td colspan="5" class="text-center">لا توجد طلبات توثيق</td></tr>' : reqs.map(r => `
-            <tr>
-              <td><strong>${escHtml(r.placeName)}</strong></td>
-              <td>${escHtml(r.ownerName || r.ownerEmail)}</td>
-              <td>${formatDate(r.requestedAt)}</td>
-              <td>
-                <span class="badge ${r.status === 'approved' ? 'badge--published' : (r.status === 'rejected' ? 'badge--rejected' : 'badge--pending')}">
-                  ${r.status === 'approved' ? 'معتمد ✓' : (r.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة')}
-                </span>
-              </td>
-              <td>
-                ${r.status === 'pending' ? `
-                  <div style="display:flex;gap:4px">
-                    <button class="btn btn-xs btn-success" onclick="approveVerification('${escAttr(r.id)}', '${escAttr(r.placeId)}')">
-                      ✓ اعتماد
-                    </button>
-                    <button class="btn btn-xs btn-danger" onclick="rejectVerification('${escAttr(r.id)}', '${escAttr(r.placeId)}')">
-                      ✕ رفض
-                    </button>
-                  </div>
-                ` : 'مكتمل'}
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-// ── 4. Admin Categories ──
-async function renderAdminCategories($container) {
-  const [categories, catReqsMap, placesMap] = await Promise.all([
-    getCategories(),
-    dbGet('categoryRequests'),
-    dbGet('places')
-  ]);
-
-  const catRequests = Object.values(catReqsMap || {}).filter(r => r.status === 'pending');
-  const allPlaces = Object.values(placesMap || {});
-
-  // Calculate dynamic place counts
-  categories.forEach(c => {
-    c.placeCount = allPlaces.filter(p => p.categoryId === (c.slug || c.nameEn)).length;
-  });
-
-  $container.innerHTML = `
-    <div class="dashboard-header">
-      <div>
-        <h1 class="dashboard-header__title">إدارة وتدقيق التصنيفات (${categories.length})</h1>
-        <div class="dashboard-header__subtitle">إضافة وتعديل وحذف تصنيفات الدليل واعتماد المقترحات الجديدة</div>
-      </div>
-      <button class="btn btn-primary" id="btn-add-category">
-        <span>➕</span> إضافة تصنيف جديد
-      </button>
-    </div>
-
-    <!-- Pending Category Requests -->
-    ${catRequests.length > 0 ? `
-      <div class="form-section animate-fade-in" style="margin-bottom:var(--space-6);border:1.5px solid var(--secondary)">
-        <h2 class="form-section__title" style="color:var(--secondary)">
-          <span>🔔</span> طلبات التصنيفات الجديدة المقترحة من أصحاب الأنشطة (${catRequests.length})
-        </h2>
-        <div class="dashboard-table-wrapper">
-          <table class="dashboard-table">
-            <thead>
-              <tr>
-                <th>التصنيف المقترح</th>
-                <th>اسم المكان التابع له</th>
-                <th>صاحب الحساب</th>
-                <th>إجراءات الإدارة</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${catRequests.map(req => `
-                <tr>
-                  <td><strong style="font-size:1.1rem;color:var(--primary)">✨ ${escHtml(req.categoryName)}</strong></td>
-                  <td>${escHtml(req.placeName || 'غير محدد')}</td>
-                  <td>${escHtml(req.ownerName || 'مستخدم')}</td>
-                  <td>
-                    <div style="display:flex;gap:6px">
-                      <button class="btn btn-xs btn-success" onclick="approveCategoryRequest('${escAttr(req.id)}', '${escAttr(req.categoryName)}')">
-                        ✓ اعتماد وتفعيل
-                      </button>
-                      <button class="btn btn-xs btn-outline" onclick="editAndApproveCategoryRequest('${escAttr(req.id)}', '${escAttr(req.categoryName)}')">
-                        ✏️ تعديل واعتماد
-                      </button>
-                      <button class="btn btn-xs btn-danger" onclick="rejectCategoryRequest('${escAttr(req.id)}')">
-                        ✕ رفض
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    ` : ''}
-
-    <div class="dashboard-table-wrapper">
-      <table class="dashboard-table">
-        <thead>
-          <tr>
-            <th>الأيقونة</th>
-            <th>اسم التصنيف</th>
-            <th>الاسم بالإنجليزية / Slug</th>
-            <th>عدد الأماكن</th>
-            <th>إجراءات</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${categories.map(c => `
-            <tr>
-              <td style="font-size:1.5rem">${c.icon || '📁'}</td>
-              <td><strong>${escHtml(c.name)}</strong></td>
-              <td>${escHtml(c.slug || c.nameEn || '')}</td>
-              <td>${c.placeCount || 0}</td>
-              <td>
-                <div style="display:flex;gap:4px">
-                  <button class="btn btn-xs btn-outline" onclick="editCategoryAdmin('${escAttr(c._key || c.slug)}', '${escAttr(c.name)}', '${escAttr(c.icon || '📁')}')">تعديل</button>
-                  <button class="btn btn-xs btn-danger" onclick="deleteCategoryAdmin('${escAttr(c._key || c.slug)}')">حذف</button>
-                </div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  document.getElementById('btn-add-category')?.addEventListener('click', () => {
-    showAddCategoryModal(() => renderAdminCategories($container));
-  });
-}
-
-function showAddCategoryModal(onDone) {
-  const modal = showModal({
-    title: 'إضافة تصنيف جديد',
-    content: `
-      <form id="add-cat-form">
-        <div class="form-group">
-          <label class="form-label">اسم التصنيف بالعربية <span class="required">*</span></label>
-          <input type="text" id="cat-name-ar" class="form-input" required placeholder="مثال: ورشة نجارة، ستوديو تصوير" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">الاسم بالإنجليزية (Slug) <span class="required">*</span></label>
-          <input type="text" id="cat-name-en" class="form-input" required placeholder="carpentry" style="direction:ltr" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">الأيقونة (Emoji أو Icon) <span class="required">*</span></label>
-          <input type="text" id="cat-icon" class="form-input" required placeholder="🪑" />
-        </div>
-      </form>
-    `,
-    buttons: [
-      {
-        label: 'حفظ التصنيف',
-        type: 'primary',
-        onClick: async () => {
-          const name = document.getElementById('cat-name-ar')?.value.trim();
-          const slug = document.getElementById('cat-name-en')?.value.trim().toLowerCase();
-          const icon = document.getElementById('cat-icon')?.value.trim() || '📁';
-
-          if (!name || !slug) {
-            toast.warning('يرجى ملء الاسم والـ Slug');
-            return;
-          }
-
-          try {
-            await dbSet(`categories/${slug}`, {
-              id: slug,
-              slug,
-              name,
-              nameEn: slug,
-              icon,
-              order: Date.now(),
-              isActive: true,
-              placeCount: 0,
-              createdAt: serverTimestamp()
-            });
-            toast.success('تمت إضافة التصنيف');
-            modal.close();
-            onDone();
-          } catch (err) {
-            toast.error(err.message || 'فشل حفظ التصنيف');
-          }
-        },
-        closeOnClick: false
-      },
-      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
-    ]
-  });
-}
-
-// ── 5. Admin Users ──
-async function renderAdminUsers($container, currentUser) {
+  const places = Object.values(placesMap);
   const usersMap = await dbGet('users') || {};
   const users = Object.values(usersMap);
-
-  $container.innerHTML = `
-    <div class="dashboard-header">
-      <div>
-        <h1 class="dashboard-header__title">إدارة المستخدمين (${users.length})</h1>
-        <div class="dashboard-header__subtitle">التحكم في صلاحيات المستخدمين وحالة الحسابات</div>
+  const verificationMap = await dbGet('verification_requests') || {};
+  const verifications = Object.values(verificationMap);
+  const pendingVerifications = verifications.filter(v => v.status === 'pending').length;
+  
+  return `
+    <h2>إحصائيات عامة</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">${ICONS.pin}</div>
+        <div class="stat-info">
+          <h4>الأماكن</h4>
+          <p>${places.length}</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">${ICONS.users}</div>
+        <div class="stat-info">
+          <h4>المستخدمين</h4>
+          <p>${users.length}</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">${ICONS.shield}</div>
+        <div class="stat-info">
+          <h4>طلبات توثيق جديدة</h4>
+          <p>${pendingVerifications}</p>
+        </div>
       </div>
     </div>
+  `;
+}
 
-    <div class="dashboard-table-wrapper">
+async function renderVerification() {
+  const reqsMap = await dbGet('verification_requests') || {};
+  const reqs = Object.entries(reqsMap).map(([id, req]) => ({ id, ...req }));
+  reqs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  if (!reqs.length) {
+    return `<h2>طلبات التوثيق</h2><p>لا توجد طلبات حالياً.</p>`;
+  }
+
+  let rows = '';
+  for (const req of reqs) {
+    rows += `
+      <tr>
+        <td>${escHtml(req.placeName || 'غير معروف')}</td>
+        <td>${escHtml(req.ownerName || req.userId)}</td>
+        <td>${escHtml(req.status)}</td>
+        <td>${req.verifiedUntil ? formatDate(req.verifiedUntil) : '-'}</td>
+        <td>
+          ${req.status === 'pending' ? `
+            <button class="btn btn-sm btn-success" onclick="window.approveVerification('${escAttr(req.id)}', '${escAttr(req.placeId)}')">موافقة</button>
+            <button class="btn btn-sm btn-danger" onclick="window.rejectVerification('${escAttr(req.id)}')">رفض</button>
+          ` : ''}
+        </td>
+      </tr>
+    `;
+  }
+
+  return `
+    <h2>طلبات التوثيق</h2>
+    <div class="table-responsive">
       <table class="dashboard-table">
         <thead>
           <tr>
-            <th>المستخدم</th>
-            <th>البريد الإلكتروني</th>
-            <th>الصلاحية</th>
+            <th>المكان</th>
+            <th>صاحب الطلب</th>
             <th>الحالة</th>
+            <th>صالح حتى</th>
             <th>إجراءات</th>
           </tr>
         </thead>
         <tbody>
-          ${users.map(u => `
-            <tr>
-              <td>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <img src="${u.photoURL || './icons/icon-72x72.png'}" style="width:32px;height:32px;border-radius:50%" />
-                  <strong>${escHtml(u.name || 'مستخدم')}</strong>
-                </div>
-              </td>
-              <td>${escHtml(u.email || '')}</td>
-              <td>
-                <span class="chip ${u.role === 'admin' || u.role === 'superadmin' ? 'chip--warning' : 'chip--primary'}">
-                  ${u.role || 'user'}
-                </span>
-              </td>
-              <td>${u.status === 'suspended' ? '<span class="badge badge--suspended">موقوف</span>' : '<span class="badge badge--published">نشط</span>'}</td>
-              <td>
-                <button class="btn btn-xs ${u.status === 'suspended' ? 'btn-success' : 'btn-danger'}" onclick="toggleUserStatus('${escAttr(u.uid)}', '${u.status === 'suspended' ? 'active' : 'suspended'}')">
-                  ${u.status === 'suspended' ? 'تفعيل' : 'إيقاف'}
-                </button>
-              </td>
-            </tr>
-          `).join('')}
+          ${rows}
         </tbody>
       </table>
     </div>
   `;
 }
 
-// ── 6. Admin Offers ──
-async function renderAdminOffers($container) {
-  const offersMap = await dbGet('offers') || {};
-  const offers = Object.entries(offersMap).map(([id, o]) => ({ ...o, _id: id }));
-
-  $container.innerHTML = `
-    <div class="dashboard-header">
-      <div>
-        <h1 class="dashboard-header__title">إدارة العروض (${offers.length})</h1>
-      </div>
-    </div>
-
-    <div class="dashboard-table-wrapper">
-      <table class="dashboard-table">
-        <thead>
-          <tr>
-            <th>العرض</th>
-            <th>المكان</th>
-            <th>السعر</th>
-            <th>الحالة</th>
-            <th>حذف</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${offers.length === 0 ? '<tr><td colspan="5" class="text-center">لا توجد عروض</td></tr>' : offers.map(o => `
-            <tr>
-              <td><strong>${escHtml(o.title)}</strong></td>
-              <td>${escHtml(o.placeName || '')}</td>
-              <td>${o.newPrice} ج.م</td>
-              <td>${o.status || 'active'}</td>
-              <td>
-                <button class="btn btn-xs btn-danger" onclick="deleteOfferAdmin('${escAttr(o._id)}')">حذف</button>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-// ── 7. Admin Ads ──
-async function renderAdminAds($container, user) {
-  const adsMap = await dbGet('ads') || {};
-  const ads = Object.entries(adsMap).map(([id, a]) => ({ ...a, _id: id }));
-
-  $container.innerHTML = `
-    <div class="dashboard-header">
-      <div>
-        <h1 class="dashboard-header__title">إدارة الإعلانات (${ads.length})</h1>
-        <div class="dashboard-header__subtitle">إضافة وتفعيل البانرات الإعلانية في الموقع</div>
-      </div>
-      <button class="btn btn-primary" id="btn-add-ad">
-        <span>➕</span> إضافة إعلان جديد
-      </button>
-    </div>
-
-    <div class="dashboard-table-wrapper">
-      <table class="dashboard-table">
-        <thead>
-          <tr>
-            <th>البانر</th>
-            <th>العنوان</th>
-            <th>الموضع</th>
-            <th>النقرات</th>
-            <th>الحالة</th>
-            <th>حذف</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${ads.length === 0 ? '<tr><td colspan="6" class="text-center">لا توجد إعلانات</td></tr>' : ads.map(a => `
-            <tr>
-              <td>
-                ${a.imageUrl ? `<img src="${escAttr(a.imageUrl)}" style="height:36px;border-radius:4px" />` : 'نص'}
-              </td>
-              <td><strong>${escHtml(a.title || '')}</strong></td>
-              <td>${escHtml(a.placement || 'homepage')}</td>
-              <td>${a.clicks || 0}</td>
-              <td>${a.isActive ? '<span class="badge badge--published">نشط</span>' : '<span class="badge badge--suspended">متوقف</span>'}</td>
-              <td>
-                <button class="btn btn-xs btn-danger" onclick="deleteAdAdmin('${escAttr(a._id)}')">حذف</button>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  document.getElementById('btn-add-ad')?.addEventListener('click', () => {
-    showAddAdModal(user, () => renderAdminAds($container, user));
-  });
-}
-
-function showAddAdModal(user, onDone) {
-  const modal = showModal({
-    title: 'إضافة إعلان جديد',
-    content: `
-      <form id="add-ad-form">
-        <div class="form-group">
-          <label class="form-label">عنوان الإعلان <span class="required">*</span></label>
-          <input type="text" id="ad-title" class="form-input" required />
-        </div>
-        <div class="form-group">
-          <label class="form-label">رابط التوجيه (URL)</label>
-          <input type="url" id="ad-link" class="form-input" placeholder="https://..." style="direction:ltr" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">رابط صورة الإعلان (URL)</label>
-          <input type="url" id="ad-img" class="form-input" style="direction:ltr" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">مكان الظهور</label>
-          <select id="ad-placement" class="form-select">
-            <option value="homepage">الصفحة الرئيسية</option>
-            <option value="sidebar">الشريط الجانبي</option>
-            <option value="category">صفحات التصنيفات</option>
-            <option value="all">جميع الصفحات</option>
-          </select>
-        </div>
-      </form>
-    `,
-    buttons: [
-      {
-        label: 'حفظ الإعلان',
-        type: 'primary',
-        onClick: async () => {
-          const title = document.getElementById('ad-title')?.value.trim();
-          const link = document.getElementById('ad-link')?.value.trim();
-          const imageUrl = document.getElementById('ad-img')?.value.trim();
-          const placement = document.getElementById('ad-placement')?.value;
-
-          if (!title) { toast.warning('اكتب عنوان الإعلان'); return; }
-
-          try {
-            await dbPush('ads', {
-              title,
-              link,
-              imageUrl,
-              placement,
-              priority: 1,
-              isActive: true,
-              startDate: Date.now(),
-              endDate: Date.now() + (30 * 24 * 60 * 60 * 1000),
-              clicks: 0,
-              createdAt: serverTimestamp(),
-              createdBy: user.uid
-            });
-            toast.success('تمت إضافة الإعلان');
-            modal.close();
-            onDone();
-          } catch (e) {
-            toast.error('فشل حفظ الإعلان');
-          }
-        },
-        closeOnClick: false
-      },
-      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
-    ]
-  });
-}
-
-// ── 8. Admin Settings ──
-async function renderAdminSettings($container) {
-  const settings = await getSettings() || {};
-
-  $container.innerHTML = `
-    <div class="dashboard-header">
-      <div>
-        <h1 class="dashboard-header__title">إعدادات المنصة الشاملة</h1>
-        <div class="dashboard-header__subtitle">تحكم كامل في نصوص وروابط وحدود المنصة دون الحاجة لتعديل الكود</div>
-      </div>
-    </div>
-
-    <form id="admin-settings-form">
-      <!-- General & Branding -->
-      <div class="form-section">
-        <h2 class="form-section__title"><span>🎨</span> الهوية العامة</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">اسم الموقع</label>
-            <input type="text" id="s-site-name" class="form-input" value="${escAttr(settings.general?.siteName || 'المنزلة وناسها')}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">اللون الرئيسي (Primary Color Hex)</label>
-            <input type="color" id="s-color" class="form-input" style="height:48px;padding:4px" value="${escAttr(settings.general?.primaryColor || '#1B4F72')}" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">وصف الموقع (Tagline)</label>
-          <input type="text" id="s-desc" class="form-input" value="${escAttr(settings.general?.siteDescription || 'دليل المنزلة الرقمي')}" />
-        </div>
-      </div>
-
-      <!-- WhatsApp & Contact -->
-      <div class="form-section">
-        <h2 class="form-section__title"><span>💬</span> واتساب والتواصل مع الإدارة</h2>
-        <div class="form-group">
-          <label class="form-label">رابط واتساب الإدارة لطلب التوثيق <span class="required">*</span></label>
-          <input type="url" id="s-wa-link" class="form-input" style="direction:ltr;text-align:left" value="${escAttr(settings.contact?.whatsappLink || 'https://wa.me/wasendernew')}" />
-          <div class="form-hint">هذا الرابط يُفتح عند ضغط صاحب المكان على "طلب التوثيق عبر WhatsApp"</div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">بريد الدعم الفني</label>
-            <input type="email" id="s-email" class="form-input" style="direction:ltr;text-align:left" value="${escAttr(settings.contact?.email || 'info@elmanzala.com')}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">رابط فيسبوك المنصة</label>
-            <input type="url" id="s-fb" class="form-input" style="direction:ltr;text-align:left" value="${escAttr(settings.social?.facebook || '')}" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Limits -->
-      <div class="form-section">
-        <h2 class="form-section__title"><span>⚙️</span> حدود العروض والمنتجات</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">عروض المكان الموثق (يومياً)</label>
-            <input type="number" id="s-lim-off-ver" class="form-input" value="${settings.limits?.offersVerified || 3}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">عروض المكان غير الموثق (يومياً)</label>
-            <input type="number" id="s-lim-off-unver" class="form-input" value="${settings.limits?.offersUnverified || 1}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">الحد الأقصى للمنتجات للموثق</label>
-            <input type="number" id="s-lim-prod-ver" class="form-input" value="${settings.limits?.productsVerified || 350}" />
-          </div>
-        </div>
-      </div>
-
-      <div style="padding-bottom:var(--space-8)">
-        <button type="submit" class="btn btn-primary btn-lg" id="btn-save-settings">
-          <span>💾</span> حفظ جميع الإعدادات
-        </button>
-      </div>
-    </form>
-  `;
-
-  document.getElementById('admin-settings-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('btn-save-settings');
-    btn.classList.add('loading');
-    btn.disabled = true;
+function bindVerificationEvents() {
+  window.approveVerification = async (reqId, placeId) => {
+    const months = prompt("أدخل عدد الأشهر للتوثيق (مثال: 12):", "12");
+    if (!months || isNaN(months) || months <= 0) return;
+    
+    const d = new Date();
+    d.setMonth(d.getMonth() + parseInt(months));
+    const verifiedUntil = d.getTime();
 
     try {
-      const updates = {
-        'general/siteName': document.getElementById('s-site-name').value,
-        'general/primaryColor': document.getElementById('s-color').value,
-        'general/siteDescription': document.getElementById('s-desc').value,
-        'contact/whatsappLink': document.getElementById('s-wa-link').value,
-        'contact/email': document.getElementById('s-email').value,
-        'social/facebook': document.getElementById('s-fb').value,
-        'limits/offersVerified': Number(document.getElementById('s-lim-off-ver').value) || 3,
-        'limits/offersUnverified': Number(document.getElementById('s-lim-off-unver').value) || 1,
-        'limits/productsVerified': Number(document.getElementById('s-lim-prod-ver').value) || 350,
-      };
-
-      await dbUpdate('settings', updates);
-      toast.success('تم حفظ إعدادات المنصة بنجاح!');
-    } catch (err) {
-      toast.error('فشل حفظ الإعدادات');
-    } finally {
-      btn.classList.remove('loading');
-      btn.disabled = false;
+      await dbUpdate(`verification_requests/${reqId}`, {
+        status: 'approved',
+        verifiedUntil,
+        updatedAt: serverTimestamp()
+      });
+      if (placeId) {
+        await dbUpdate(`places/${placeId}`, {
+          isVerified: true,
+          verifiedUntil
+        });
+      }
+      toast('تم الموافقة على التوثيق', 'success');
+      location.reload();
+    } catch (e) {
+      toast('حدث خطأ', 'error');
     }
-  });
-}
-
-// ── Admin Global Action Helpers ──
-window.togglePlaceVerification = async (placeId, status) => {
-  try {
-    await dbUpdate(`places/${placeId}`, {
-      isVerified: status,
-      verificationStatus: status ? 'verified' : 'unverified',
-      verifiedAt: status ? serverTimestamp() : null
-    });
-    toast.success(status ? 'تم توثيق المكان ومنحه العلامة الذهبية ✓' : 'تم إلغاء التوثيق');
-    navigate('/admin/places');
-  } catch {
-    toast.error('فشلت العملية');
-  }
-};
-
-window.deletePlaceAdmin = async (placeId) => {
-  const ok = await showConfirm({
-    title: 'حذف المكان نهائياً',
-    message: 'هل أنت متأكد من حذف هذا المكان من المنصة؟',
-    confirmType: 'danger'
-  });
-  if (ok) {
-    try {
-      const place = await dbGet(`places/${placeId}`);
-      if (place?.slug) await dbRemove(`slugIndex/${place.slug}`);
-      await dbRemove(`places/${placeId}`);
-      toast.success('تم حذف المكان');
-      navigate('/admin/places');
-    } catch {
-      toast.error('فشل الحذف');
-    }
-  }
-};
-
-window.approveVerification = async (reqId, placeId) => {
-  const months = prompt("?? ??? ???? ?? ????? ??? ????????\n(???? ??? ??????? ?? ????? ?????? ????? ????? ????)", "12");
-  if (months === null) return; // cancelled
-
-  const updates = {
-    isVerified: true,
-    verificationStatus: 'verified',
-    verifiedAt: serverTimestamp()
   };
 
-  if (months.trim() !== '' && !isNaN(months) && Number(months) > 0) {
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + Number(months));
-    updates.verifiedUntil = expiresAt.getTime();
-  } else {
-    updates.verifiedUntil = null; // Permanent
-  }
-
-  try {
-    await dbUpdate(`verificationRequests/${reqId}`, {
-      status: 'approved',
-      reviewedAt: serverTimestamp()
-    });
-    await dbUpdate(`places/${placeId}`, updates);
-    toast.success('?? ???? ??? ??????? ?????? ??????? ??????');
-    setTimeout(() => location.reload(), 1000);
-  } catch (err) {
-    console.error(err);
-    toast.error('???? ???????? ???? ???????? ??????');
-  }
-};
-
-  if (months.trim() !== '' && !isNaN(months) && Number(months) > 0) {
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + Number(months));
-    updates.verifiedUntil = expiresAt.getTime();
-  } else {
-    updates.verifiedUntil = null; // Permanent
-  }
-
-  try {
-    await dbUpdate(erificationRequests/ + reqId, {
-      status: 'approved',
-      reviewedAt: serverTimestamp()
-    });
-    await dbUpdate(places/ + placeId, updates);
-    toast.success('?? ???? ??? ??????? ?????? ??????? ??????');
-    setTimeout(() => location.reload(), 1000);
-  } catch (err) {
-    console.error(err);
-    toast.error('???? ???????? ???? ???????? ??????');
-  }
-};
-
-window.rejectVerification = async (reqId, placeId) => {
-  if (!confirm('?? ??? ????? ?? ??? ??? ??????')) return;
-  try {
-    await dbUpdate(`verificationRequests/${reqId}`, {
-      status: 'rejected',
-      reviewedAt: serverTimestamp()
-    });
-    await dbUpdate(`places/${placeId}`, {
-      verificationStatus: 'unverified'
-    });
-    toast.success('?? ??? ?????');
-    setTimeout(() => location.reload(), 1000);
-  } catch (err) {
-    console.error(err);
-    toast.error('???? ???????');
-  }
-};
-
-window.deleteCategoryAdmin = async (catId) => {
-  const ok = await showConfirm({ title: 'حذف التصنيف', message: 'هل أنت متأكد من حذف هذا التصنيف؟' });
-  if (ok) {
-    await dbRemove(`categories/${catId}`);
-    toast.success('تم حذف التصنيف');
-    window.location.href = 'admin.html?section=categories';
-  }
-};
-
-window.editCategoryAdmin = async (catId, currentName, currentIcon) => {
-  const modal = showModal({
-    title: 'تعديل التصنيف',
-    content: `
-      <form id="edit-cat-form">
-        <div class="form-group">
-          <label class="form-label">اسم التصنيف بالعربية</label>
-          <input type="text" id="edit-cat-name" class="form-input" value="${escAttr(currentName)}" required />
-        </div>
-        <div class="form-group">
-          <label class="form-label">الأيقونة (Emoji)</label>
-          <input type="text" id="edit-cat-icon" class="form-input" value="${escAttr(currentIcon)}" required />
-        </div>
-      </form>
-    `,
-    buttons: [
-      {
-        label: 'حفظ التعديلات',
-        type: 'primary',
-        onClick: async () => {
-          const name = document.getElementById('edit-cat-name')?.value.trim();
-          const icon = document.getElementById('edit-cat-icon')?.value.trim() || '📁';
-          if (!name) return;
-          try {
-            await dbUpdate(`categories/${catId}`, { name, icon });
-            toast.success('تم تحديث التصنيف بنجاح');
-            modal.close();
-            window.location.href = 'admin.html?section=categories';
-          } catch {
-            toast.error('فشل التحديث');
-          }
-        }
-      },
-      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
-    ]
-  });
-};
-
-window.approveCategoryRequest = async (reqId, categoryName) => {
-  try {
-    const slug = 'cat_' + Date.now().toString(36);
-    await dbSet(`categories/${slug}`, {
-      id: slug,
-      slug,
-      name: categoryName,
-      nameEn: slug,
-      icon: '✨',
-      order: Date.now(),
-      isActive: true,
-      placeCount: 1,
-      createdAt: serverTimestamp()
-    });
-
-    await dbUpdate(`categoryRequests/${reqId}`, {
-      status: 'approved',
-      approvedAt: serverTimestamp()
-    });
-
-    toast.success(`تم اعتماد تصنيف "${categoryName}" وإضافته في الدليل بنجاح!`);
-    window.location.href = 'admin.html?section=categories';
-  } catch (err) {
-    toast.error('فشل الاعتماد');
-  }
-};
-
-window.editAndApproveCategoryRequest = async (reqId, initialName) => {
-  const modal = showModal({
-    title: 'تعديل وتفعيل التصنيف المقترح',
-    content: `
-      <form id="approve-cat-form">
-        <div class="form-group">
-          <label class="form-label">اسم التصنيف النهائي</label>
-          <input type="text" id="appr-cat-name" class="form-input" value="${escAttr(initialName)}" required />
-        </div>
-        <div class="form-group">
-          <label class="form-label">اختر أيقونة مناسبة</label>
-          <input type="text" id="appr-cat-icon" class="form-input" value="✨" required />
-        </div>
-      </form>
-    `,
-    buttons: [
-      {
-        label: 'اعتماد وإضافة للدليل',
-        type: 'primary',
-        onClick: async () => {
-          const name = document.getElementById('appr-cat-name')?.value.trim();
-          const icon = document.getElementById('appr-cat-icon')?.value.trim() || '📁';
-          if (!name) return;
-
-          try {
-            const slug = 'cat_' + Date.now().toString(36);
-            await dbSet(`categories/${slug}`, {
-              id: slug,
-              slug,
-              name,
-              nameEn: slug,
-              icon,
-              order: Date.now(),
-              isActive: true,
-              placeCount: 1,
-              createdAt: serverTimestamp()
-            });
-
-            await dbUpdate(`categoryRequests/${reqId}`, {
-              status: 'approved',
-              finalName: name,
-              approvedAt: serverTimestamp()
-            });
-
-            toast.success(`تم اعتماد تصنيف "${name}" بنجاح!`);
-            modal.close();
-            window.location.href = 'admin.html?section=categories';
-          } catch {
-            toast.error('فشلت العملية');
-          }
-        }
-      },
-      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
-    ]
-  });
-};
-
-window.rejectCategoryRequest = async (reqId) => {
-  const ok = await showConfirm({ title: 'رفض التصنيف', message: 'هل أنت متأكد من رفض هذا التصنيف المقترح؟' });
-  if (ok) {
+  window.rejectVerification = async (reqId) => {
+    if (!confirm('هل أنت متأكد من رفض الطلب؟')) return;
     try {
-      await dbUpdate(`categoryRequests/${reqId}`, {
+      await dbUpdate(`verification_requests/${reqId}`, {
         status: 'rejected',
-        rejectedAt: serverTimestamp()
+        updatedAt: serverTimestamp()
       });
-      toast.info('تم رفض التصنيف المقترح');
-      window.location.href = 'admin.html?section=categories';
-    } catch {
-      toast.error('فشلت العملية');
+      toast('تم رفض الطلب', 'success');
+      location.reload();
+    } catch (e) {
+      toast('حدث خطأ', 'error');
     }
+  };
+}
+
+async function renderPlaces() {
+  const placesMap = await dbGet('places') || {};
+  let places = Object.entries(placesMap).map(([id, p]) => ({ id, ...p }));
+  
+  return `
+    <h2>الأماكن</h2>
+    <input type="text" id="adminPlaceSearch" placeholder="بحث في الأماكن..." class="form-control" style="margin-bottom: 15px;">
+    <div class="table-responsive">
+      <table class="dashboard-table">
+        <thead>
+          <tr>
+            <th>الاسم</th>
+            <th>القسم</th>
+            <th>موثق</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="adminPlacesTbody">
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function bindPlacesEvents() {
+  const searchInput = document.getElementById('adminPlaceSearch');
+  const tbody = document.getElementById('adminPlacesTbody');
+  
+  const loadPlaces = async () => {
+    const placesMap = await dbGet('places') || {};
+    window.allAdminPlaces = Object.entries(placesMap).map(([id, p]) => ({ id, ...p }));
+    renderTable(window.allAdminPlaces);
+  };
+
+  const renderTable = (list) => {
+    if(!tbody) return;
+    tbody.innerHTML = list.map(p => `
+      <tr>
+        <td>${escHtml(p.name)}</td>
+        <td>${escHtml(p.category)}</td>
+        <td>${p.isVerified ? 'نعم' : 'لا'}</td>
+        <td>
+          <a class="btn btn-sm btn-primary" href="place.html?id=${escAttr(p.id)}" target="_blank">${ICONS.eye}</a>
+          <button class="btn btn-sm ${p.isVerified ? 'btn-warning' : 'btn-success'}" onclick="window.toggleVerifyPlace('${escAttr(p.id)}', ${p.isVerified})">
+            ${p.isVerified ? 'إلغاء التوثيق' : 'توثيق'}
+          </button>
+          <button class="btn btn-sm btn-danger" onclick="window.deletePlace('${escAttr(p.id)}')">${ICONS.trash}</button>
+        </td>
+      </tr>
+    `).join('');
+  };
+
+  if(searchInput && tbody) {
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = window.allAdminPlaces.filter(p => p.name?.toLowerCase().includes(q) || p.category?.toLowerCase().includes(q));
+      renderTable(filtered);
+    });
+    loadPlaces();
   }
-};
 
-window.toggleUserStatus = async (uid, newStatus) => {
-  await dbUpdate(`users/${uid}`, { status: newStatus });
-  toast.success('تم تحديث حالة المستخدم');
-  navigate('/admin/users');
-};
+  window.toggleVerifyPlace = async (id, isVerified) => {
+    if (!confirm(isVerified ? 'إلغاء التوثيق؟' : 'توثيق هذا المكان؟')) return;
+    try {
+      await dbUpdate(`places/${id}`, {
+        isVerified: !isVerified,
+        verifiedUntil: !isVerified ? (new Date().setFullYear(new Date().getFullYear() + 1)) : null
+      });
+      toast('تم التحديث', 'success');
+      loadPlaces();
+    } catch(e) { toast('خطأ', 'error'); }
+  };
 
-window.deleteOfferAdmin = async (offerId) => {
-  await dbRemove(`offers/${offerId}`);
-  toast.success('تم حذف العرض');
-  navigate('/admin/offers');
-};
+  window.deletePlace = async (id) => {
+    if (!confirm('حذف هذا المكان نهائياً؟')) return;
+    try {
+      await dbRemove(`places/${id}`);
+      toast('تم الحذف', 'success');
+      loadPlaces();
+    } catch(e) { toast('خطأ', 'error'); }
+  };
+}
 
-window.deleteAdAdmin = async (adId) => {
-  await dbRemove(`ads/${adId}`);
-  toast.success('تم حذف الإعلان');
-  navigate('/admin/ads');
-};
+async function renderSettings() {
+  const settings = await getSettings() || {};
+  return `
+    <h2>الإعدادات</h2>
+    <form id="adminSettingsForm" class="form-section">
+      <div class="form-group">
+        <label>اسم الموقع</label>
+        <input type="text" id="siteName" class="form-control" value="${escAttr(settings.siteName || 'المنزلة وناسها')}">
+      </div>
+      <div class="form-group">
+        <label>وصف الموقع</label>
+        <textarea id="siteDesc" class="form-control">${escHtml(settings.siteDesc || '')}</textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">حفظ الإعدادات</button>
+    </form>
+  `;
+}
+
+function bindSettingsEvents() {
+  const form = document.getElementById('adminSettingsForm');
+  if(!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    btn.classList.add('loading');
+    try {
+      const name = document.getElementById('siteName').value;
+      const desc = document.getElementById('siteDesc').value;
+      await dbUpdate('settings/site', { siteName: name, siteDesc: desc, updatedAt: serverTimestamp() });
+      toast('تم حفظ الإعدادات', 'success');
+    } catch(e) {
+      toast('حدث خطأ', 'error');
+    } finally {
+      btn.classList.remove('loading');
+    }
+  });
+}
 
 function escHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
 function escAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-
-
