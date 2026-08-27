@@ -419,6 +419,9 @@ function renderAdminPlacesTableRows(places) {
         <td>
           <strong>${escHtml(p.name)}</strong>
           <div style="font-size:11px;color:var(--text-muted)">${p.phone || ''}</div>
+          <div style="font-size:11px;margin-top:3px">
+            ${p.ownerId ? `<span style="color:#7E22CE;font-weight:600">👤 المالك: ${escHtml(p.ownerName || p.ownerEmail || p.ownerId.slice(0, 8))}</span>` : `<span style="color:var(--text-muted)">👤 المالك: بدون مستخدم (المنصة)</span>`}
+          </div>
         </td>
         <td>${escHtml(p.categoryId || 'عام')}</td>
         <td>${escHtml(p.area || 'المنزلة')}</td>
@@ -430,7 +433,8 @@ function renderAdminPlacesTableRows(places) {
         </td>
         <td>${renderStatusBadge(p.status || 'published')}</td>
         <td>
-          <div style="display:flex;gap:6px">
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="btn btn-xs btn-outline" style="background:#FAF5FF;color:#7E22CE;border-color:#E9D5FF" onclick="transferPlaceOwnershipAdmin('${escAttr(p._id)}')" title="نقل ملكية هذا المكان لمستخدم مسجل">${ICONS.users} نقل</button>
             <button class="btn btn-xs btn-outline" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE" onclick="editPlaceAdmin('${escAttr(p._id)}')" title="تعديل كافة بيانات المكان أو الشخص">${ICONS.edit}</button>
             <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs btn-outline" title="عرض صفحة المكان">${ICONS.eye}</a>
             <button class="btn btn-xs btn-danger" onclick="deletePlaceAdmin('${escAttr(p._id)}')" title="حذف المكان">${ICONS.trash}</button>
@@ -1279,6 +1283,167 @@ window.togglePlaceVerification = async (placeId, status) => {
   } catch (err) {
     toast.error('فشلت العملية: ' + err.message);
   }
+};
+
+window.transferPlaceOwnershipAdmin = async (placeId) => {
+  let place = adminCache.places ? adminCache.places[placeId] : null;
+  if (!place) {
+    place = await dbGet(`places/${placeId}`);
+  }
+  if (!place) {
+    toast.error('لم يتم العثور على بيانات المكان');
+    return;
+  }
+
+  if (!adminCache.users) {
+    adminCache.users = (await dbGet('users')) || {};
+  }
+  const users = Object.entries(adminCache.users || {}).map(([uid, u]) => ({
+    uid: u.uid || uid,
+    displayName: u.displayName || u.name || 'مستخدم بدون اسم',
+    email: u.email || '',
+    phone: u.phone || '',
+    photoURL: u.photoURL || ''
+  }));
+
+  const currentOwnerText = place.ownerId 
+    ? (place.ownerName || place.ownerEmail || place.ownerId) 
+    : 'بدون مستخدم (ملك المنصة مباشرة)';
+
+  const modal = showModal({
+    title: `🔄 نقل ملكية: ${escHtml(place.name || 'المكان')}`,
+    size: 'md',
+    content: `
+      <div style="display:flex;flex-direction:column;gap:14px;padding:4px">
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;font-size:13px">
+          <div style="margin-bottom:4px"><strong>النشاط الحالي:</strong> ${escHtml(place.name)}</div>
+          <div style="color:var(--primary);font-weight:600"><strong>المالك الحالي:</strong> ${escHtml(currentOwnerText)}</div>
+        </div>
+
+        <p style="font-size:12.5px;color:var(--text-secondary);margin:0;line-height:1.6">
+          اختر المستخدم الذي ترغب في نقل ملكية هذا المكان إليه. سيتمكن هذا المستخدم بعد ذلك من إدارة وتعديل المكان وإضافة العروض والمنتجات من لوحة تحكمه الخاصة.
+        </p>
+
+        <!-- Live Search for Users -->
+        <div style="position:relative">
+          <input 
+            type="search" 
+            id="transfer-user-search-input" 
+            class="form-input" 
+            placeholder="🔍 ابحث في المستخدمين (بالاسم، الإيميل، أو رقم الهاتف)..." 
+            autocomplete="off"
+            style="padding-right:36px"
+          />
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none">🔎</span>
+        </div>
+
+        <!-- Users Selection Area -->
+        <div id="transfer-users-list" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface);display:flex;flex-direction:column;gap:2px;padding:4px">
+          
+          <!-- Option: No Owner (Platform Only) -->
+          <label class="transfer-user-item" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background 0.15s">
+            <input type="radio" name="transfer-selected-user" value="none" ${!place.ownerId ? 'checked' : ''} />
+            <div style="font-size:1.2rem">🏢</div>
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:13px;color:var(--text-primary)">بدون مالك (تابع للمنصة مباشرة)</div>
+              <div style="font-size:11px;color:var(--text-muted)">إلغاء ارتباط المكان بأي مستخدم</div>
+            </div>
+          </label>
+
+          ${users.map(u => {
+            const isSelected = place.ownerId === u.uid;
+            return `
+              <label class="transfer-user-item" data-uname="${escAttr(u.displayName.toLowerCase())}" data-uemail="${escAttr(u.email.toLowerCase())}" data-uphone="${escAttr(u.phone)}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background 0.15s">
+                <input type="radio" name="transfer-selected-user" value="${escAttr(u.uid)}" data-name="${escAttr(u.displayName)}" data-email="${escAttr(u.email)}" ${isSelected ? 'checked' : ''} />
+                <div style="width:34px;height:34px;border-radius:50%;background:var(--primary-alpha);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">
+                  ${u.photoURL ? `<img src="${escAttr(u.photoURL)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" />` : (u.displayName ? u.displayName.charAt(0) : '👤')}
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:700;font-size:13px;color:var(--text-primary)" class="truncate">${escHtml(u.displayName)}</div>
+                  <div style="font-size:11px;color:var(--text-muted)" class="truncate">${escHtml(u.email || u.phone || 'بدون إيميل')}</div>
+                </div>
+                ${isSelected ? '<span class="chip chip--success" style="font-size:10px;padding:1px 6px">المالك الحالي</span>' : ''}
+              </label>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `,
+    buttons: [
+      {
+        label: '🔄 تأكيد ونقل الملكية الآن',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async () => {
+          const selectedRadio = document.querySelector('input[name="transfer-selected-user"]:checked');
+          if (!selectedRadio) {
+            toast.warning('يرجى اختيار مستخدم من القائمة لنقل الملكية إليه');
+            return;
+          }
+
+          const selectedVal = selectedRadio.value;
+          let updates = {};
+
+          if (selectedVal === 'none') {
+            updates = {
+              ownerId: null,
+              ownerEmail: null,
+              ownerName: null,
+              updatedAt: serverTimestamp()
+            };
+          } else {
+            const targetUser = users.find(u => u.uid === selectedVal);
+            updates = {
+              ownerId: selectedVal,
+              ownerEmail: targetUser?.email || '',
+              ownerName: targetUser?.displayName || targetUser?.email || 'مستخدم',
+              updatedAt: serverTimestamp()
+            };
+          }
+
+          try {
+            await dbUpdate(`places/${placeId}`, updates);
+
+            if (adminCache.places && adminCache.places[placeId]) {
+              Object.assign(adminCache.places[placeId], updates);
+            }
+
+            toast.success(selectedVal === 'none' 
+              ? `تم إلغاء ارتباط المكان وأصبح تابعاً للمنصة مباشرة` 
+              : `تم نقل ملكية "${place.name}" بنجاح! سيظهر للمستخدم الآن في لوحة تحكمه.`
+            );
+            modal.close();
+            switchAdminSection('places', false);
+          } catch (err) {
+            console.error(err);
+            toast.error('فشل نقل الملكية: ' + err.message);
+          }
+        }
+      },
+      {
+        label: 'إلغاء',
+        type: 'ghost',
+        closeOnClick: true
+      }
+    ]
+  });
+
+  // Setup Live User Search Filter inside Modal
+  setTimeout(() => {
+    const searchInput = document.getElementById('transfer-user-search-input');
+    const userItems = document.querySelectorAll('.transfer-user-item');
+    searchInput?.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      userItems.forEach(item => {
+        const uname = item.getAttribute('data-uname') || '';
+        const uemail = item.getAttribute('data-uemail') || '';
+        const uphone = item.getAttribute('data-uphone') || '';
+        const isNoOwner = !item.hasAttribute('data-uname');
+        const match = isNoOwner || !q || uname.includes(q) || uemail.includes(q) || uphone.includes(q);
+        item.style.display = match ? 'flex' : 'none';
+      });
+    });
+  }, 100);
 };
 
 window.editPlaceAdmin = async (placeId) => {
