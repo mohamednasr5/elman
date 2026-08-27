@@ -79,12 +79,20 @@ export function getCurrentUser() {
   return appState.get('user');
 }
 
+// ── Authorized Admin Emails ──
+export const ADMIN_EMAILS = [
+  'elfannanm@gmail.com',
+  'mohamednasrofficial@gmail.com'
+];
+
 /**
  * Check if user is admin or superadmin
  */
 export function isAdmin(user = null) {
   const u = user || getCurrentUser();
-  return u && (u.role === 'admin' || u.role === 'superadmin');
+  if (!u) return false;
+  const email = (u.email || '').trim().toLowerCase();
+  return ADMIN_EMAILS.includes(email) || u.role === 'admin' || u.role === 'superadmin';
 }
 
 /**
@@ -92,7 +100,9 @@ export function isAdmin(user = null) {
  */
 export function isSuperAdmin(user = null) {
   const u = user || getCurrentUser();
-  return u && u.role === 'superadmin';
+  if (!u) return false;
+  const email = (u.email || '').trim().toLowerCase();
+  return ADMIN_EMAILS.includes(email) || u.role === 'superadmin';
 }
 
 /**
@@ -138,6 +148,9 @@ async function syncUserProfile(firebaseUser) {
 
   const snapshot = await userRef.once('value');
   const now = firebase.database.ServerValue.TIMESTAMP;
+  const userEmail = (firebaseUser.email || '').trim().toLowerCase();
+  const isSuper = ADMIN_EMAILS.includes(userEmail);
+  const defaultRole = isSuper ? 'superadmin' : 'user';
 
   if (!snapshot.exists()) {
     // New user — create full profile
@@ -149,7 +162,7 @@ async function syncUserProfile(firebaseUser) {
       createdAt: now,
       lastLoginAt: now,
       status: 'active',
-      role: 'user',
+      role: defaultRole,
       placeIds: {},
       metadata: {
         totalPlaces: 0,
@@ -158,10 +171,9 @@ async function syncUserProfile(firebaseUser) {
     };
 
     await userRef.set(profile);
-    // Return with timestamp as number (approximated)
     return { ...profile, createdAt: Date.now(), lastLoginAt: Date.now() };
   } else {
-    // Existing user — update lastLoginAt and possibly name/photo if changed
+    // Existing user — update lastLoginAt and elevate role if admin email
     const existing = snapshot.val();
 
     const updates = {
@@ -170,6 +182,10 @@ async function syncUserProfile(firebaseUser) {
       photoURL: firebaseUser.photoURL || existing.photoURL,
     };
 
+    if (isSuper && existing.role !== 'superadmin' && existing.role !== 'admin') {
+      updates.role = 'superadmin';
+    }
+
     // Check account status
     if (existing.status === 'suspended') {
       await getAuth().signOut();
@@ -177,7 +193,7 @@ async function syncUserProfile(firebaseUser) {
     }
 
     await userRef.update(updates);
-    return { ...existing, ...updates, lastLoginAt: Date.now() };
+    return { ...existing, ...updates, role: updates.role || existing.role || defaultRole, lastLoginAt: Date.now() };
   }
 }
 
