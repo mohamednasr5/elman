@@ -196,6 +196,36 @@ export async function initPage(activeFile = '') {
   /* 8. Service Worker */
   if ('serviceWorker' in navigator)
     navigator.serviceWorker.register('./sw.js').catch(() => {});
+
+  /* 9. Instant Link Prefetching for 0ms page loads */
+  _setupInstantPrefetch();
+}
+
+function _setupInstantPrefetch() {
+  const prefetched = new Set();
+  const prefetch = (href) => {
+    if (!href) return;
+    try {
+      const url = new URL(href, location.href);
+      if (url.origin === location.origin && !prefetched.has(url.href)) {
+        prefetched.add(url.href);
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = url.href;
+        document.head.appendChild(link);
+      }
+    } catch (_) {}
+  };
+
+  document.addEventListener('mouseover', (e) => {
+    const a = e.target.closest('a[href]');
+    if (a) prefetch(a.href);
+  }, { passive: true });
+
+  document.addEventListener('touchstart', (e) => {
+    const a = e.target.closest('a[href]');
+    if (a) prefetch(a.href);
+  }, { passive: true });
 }
 
 /* ─────────────────────────────────────────────────────────

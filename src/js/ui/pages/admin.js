@@ -1,7 +1,7 @@
 /**
- * المنزلة وناسها — Admin Control Panel
- * Comprehensive admin panel: stats, places, verification requests,
- * categories CRUD, users, offers, ads, and platform settings.
+ * المنزلة وناسها — Admin Control Panel (Instant SPA Edition)
+ * Zero-latency navigation, SWR in-memory caching, instant tab switching,
+ * responsive mobile bottom-bar, and reactive updates without page reloads.
  */
 
 import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories } from '../../core/db.js';
@@ -10,6 +10,22 @@ import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { formatDate } from '../../utils/date.js';
+
+// ── In-Memory Cache Store for 0ms Tab Switching ──
+const adminCache = {
+  users: null,
+  places: null,
+  offers: null,
+  ads: null,
+  verificationRequests: null,
+  categoryRequests: null,
+  categories: null,
+  settings: null,
+  isPreloaded: false
+};
+
+let _currentUser = null;
+let _currentSection = 'overview';
 
 // ── SVG Icon Helper ──
 function svgIcon(path) {
@@ -37,18 +53,20 @@ const ICONS = {
   clock:     svgIcon('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>')
 };
 
-function navLink(href, icon, label, active) {
-  return `<a href="${href}" class="dashboard-nav-item${active ? ' active' : ''}">
+function navLink(sectionKey, href, icon, label, active) {
+  return `<a href="${href}" data-section="${sectionKey}" class="dashboard-nav-item${active ? ' active' : ''}">
     <span style="display:inline-flex;align-items:center">${icon}</span>
     <span>${label}</span>
   </a>`;
 }
 
 // ─────────────────────────────────────────────
-//  MAIN ENTRY
+//  MAIN ENTRY POINT
 // ─────────────────────────────────────────────
 export async function renderAdmin($container, { user, section = 'overview' }) {
   if (!user || !isAdmin(user)) return;
+  _currentUser = user;
+  _currentSection = section;
 
   $container.innerHTML = `
     <div class="dashboard-layout">
@@ -62,19 +80,25 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           </div>
         </div>
 
-        <nav class="dashboard-sidebar__nav">
-          ${navLink('admin.html',                      ICONS.chart,     'الإحصائيات',     section === 'overview')}
-          ${navLink('admin.html?section=places',       ICONS.pin,       'الأماكن',         section === 'places')}
-          ${navLink('admin.html?section=verification', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
-          ${navLink('admin.html?section=categories',   ICONS.folder,    'التصنيفات',       section === 'categories')}
-          ${navLink('admin.html?section=users',        ICONS.users,     'المستخدمون',      section === 'users')}
-          ${navLink('admin.html?section=offers',       ICONS.tag,       'العروض',          section === 'offers')}
-          ${navLink('admin.html?section=ads',          ICONS.megaphone, 'الإعلانات',       section === 'ads')}
-          ${navLink('admin.html?section=settings',     ICONS.cog,       'الإعدادات',       section === 'settings')}
+        <nav class="dashboard-sidebar__nav" id="admin-sidebar-nav">
+          ${navLink('overview',      'admin.html',                      ICONS.chart,     'الإحصائيات',     section === 'overview')}
+          ${navLink('places',        'admin.html?section=places',       ICONS.pin,       'الأماكن',         section === 'places')}
+          ${navLink('verification',  'admin.html?section=verification', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
+          ${navLink('categories',    'admin.html?section=categories',   ICONS.folder,    'التصنيفات',       section === 'categories')}
+          ${navLink('users',         'admin.html?section=users',        ICONS.users,     'المستخدمون',      section === 'users')}
+          ${navLink('offers',        'admin.html?section=offers',       ICONS.tag,       'العروض',          section === 'offers')}
+          ${navLink('ads',           'admin.html?section=ads',          ICONS.megaphone, 'الإعلانات',       section === 'ads')}
+          ${navLink('settings',      'admin.html?section=settings',     ICONS.cog,       'الإعدادات',       section === 'settings')}
 
           <div class="dashboard-nav-section" style="color:rgba(255,255,255,0.4)">العودة</div>
-          ${navLink('dashboard.html', ICONS.home,  'لوحة المستخدم',   false)}
-          ${navLink('index.html',     ICONS.globe, 'الصفحة الرئيسية', false)}
+          <a href="dashboard.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.7)">
+            <span style="display:inline-flex;align-items:center">${ICONS.home}</span>
+            <span>لوحة المستخدم</span>
+          </a>
+          <a href="index.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.7)">
+            <span style="display:inline-flex;align-items:center">${ICONS.globe}</span>
+            <span>الصفحة الرئيسية</span>
+          </a>
         </nav>
       </aside>
 
@@ -87,47 +111,128 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
     </div>
   `;
 
+  // Attach instant click interceptors
+  setupAdminNavigation();
+
+  // Render initial section immediately
+  await switchAdminSection(section, false);
+
+  // Background preload remaining collections for instantaneous next clicks
+  preloadAdminData();
+}
+
+/**
+ * Instant SPA Section Switcher (0ms perceived latency)
+ */
+async function switchAdminSection(sectionName, pushState = true) {
+  _currentSection = sectionName;
   const $main = document.getElementById('admin-main-area');
+  if (!$main) return;
+
+  if (pushState) {
+    const newUrl = sectionName === 'overview' ? 'admin.html' : `admin.html?section=${sectionName}`;
+    history.pushState({ section: sectionName }, '', newUrl);
+  }
+
+  // Update active item in sidebar immediately
+  document.querySelectorAll('#admin-sidebar-nav .dashboard-nav-item[data-section]').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-section') === sectionName);
+  });
 
   try {
-    if      (section === 'overview')      await renderAdminOverview($main);
-    else if (section === 'places')        await renderAdminPlaces($main);
-    else if (section === 'verification')  await renderAdminVerification($main, user);
-    else if (section === 'categories')    await renderAdminCategories($main);
-    else if (section === 'users')         await renderAdminUsers($main, user);
-    else if (section === 'offers')        await renderAdminOffers($main);
-    else if (section === 'ads')           await renderAdminAds($main, user);
-    else if (section === 'settings')      await renderAdminSettings($main);
+    if      (sectionName === 'overview')      await renderAdminOverview($main);
+    else if (sectionName === 'places')        await renderAdminPlaces($main);
+    else if (sectionName === 'verification')  await renderAdminVerification($main);
+    else if (sectionName === 'categories')    await renderAdminCategories($main);
+    else if (sectionName === 'users')         await renderAdminUsers($main);
+    else if (sectionName === 'offers')        await renderAdminOffers($main);
+    else if (sectionName === 'ads')           await renderAdminAds($main);
+    else if (sectionName === 'settings')      await renderAdminSettings($main);
+    else                                      await renderAdminOverview($main);
   } catch (err) {
-    console.error('[Admin] Section error:', err);
+    console.error('[Admin] Switch section error:', err);
     $main.innerHTML = `
-      <div class="empty-state" style="margin-top:80px">
+      <div class="empty-state" style="margin-top:60px">
         <span class="empty-state__icon">⚠️</span>
         <h3>حدث خطأ أثناء تحميل البيانات</h3>
-        <p style="color:var(--danger);max-width:440px;margin:.5rem auto">${escHtml(err.message || 'تعذر جلب البيانات، يرجى المحاولة مرة أخرى.')}</p>
-        <button class="btn btn-primary" onclick="location.reload()" style="margin-top:16px">إعادة المحاولة</button>
+        <p style="color:var(--danger);max-width:440px;margin:.5rem auto">${escHtml(err.message || 'تعذر عرض القسم')}</p>
+        <button class="btn btn-primary" onclick="window.refreshCurrentAdminSection()" style="margin-top:16px">إعادة المحاولة</button>
       </div>
     `;
   }
+}
+
+window.refreshCurrentAdminSection = () => switchAdminSection(_currentSection, false);
+
+function setupAdminNavigation() {
+  const nav = document.getElementById('admin-sidebar-nav');
+  if (!nav || nav.dataset.listening) return;
+  nav.dataset.listening = 'true';
+
+  nav.addEventListener('click', (e) => {
+    const link = e.target.closest('a[data-section]');
+    if (link) {
+      e.preventDefault();
+      const section = link.getAttribute('data-section');
+      switchAdminSection(section, true);
+    }
+  });
+
+  window.addEventListener('popstate', () => {
+    const params = new URLSearchParams(location.search);
+    const section = params.get('section') || 'overview';
+    switchAdminSection(section, false);
+  });
+}
+
+/**
+ * Background preloader: fetches everything once so every click is instant
+ */
+async function preloadAdminData() {
+  if (adminCache.isPreloaded) return;
+  try {
+    const [u, p, o, a, v, c, cat, s] = await Promise.all([
+      adminCache.users || dbGet('users'),
+      adminCache.places || dbGet('places'),
+      adminCache.offers || dbGet('offers'),
+      adminCache.ads || dbGet('ads'),
+      adminCache.verificationRequests || dbGet('verificationRequests'),
+      adminCache.categoryRequests || dbGet('categoryRequests'),
+      adminCache.categories || getCategories(),
+      adminCache.settings || getSettings()
+    ]);
+    adminCache.users = u || {};
+    adminCache.places = p || {};
+    adminCache.offers = o || {};
+    adminCache.ads = a || {};
+    adminCache.verificationRequests = v || {};
+    adminCache.categoryRequests = c || {};
+    adminCache.categories = cat || [];
+    adminCache.settings = s || {};
+    adminCache.isPreloaded = true;
+  } catch (_) {}
 }
 
 // ─────────────────────────────────────────────
 //  1. Overview
 // ─────────────────────────────────────────────
 async function renderAdminOverview($container) {
-  const [usersMap, placesMap, offersMap, adsMap, reqsMap] = await Promise.all([
-    dbGet('users'),
-    dbGet('places'),
-    dbGet('offers'),
-    dbGet('ads'),
-    dbGet('verificationRequests')
-  ]);
+  if (!adminCache.places || !adminCache.users) {
+    const [u, p, o, a, v] = await Promise.all([
+      dbGet('users'), dbGet('places'), dbGet('offers'), dbGet('ads'), dbGet('verificationRequests')
+    ]);
+    adminCache.users = u || {};
+    adminCache.places = p || {};
+    adminCache.offers = o || {};
+    adminCache.ads = a || {};
+    adminCache.verificationRequests = v || {};
+  }
 
-  const users        = Object.values(usersMap  || {});
-  const places       = Object.values(placesMap || {});
-  const offers       = Object.values(offersMap || {});
-  const ads          = Object.values(adsMap    || {});
-  const pendingReqs  = Object.values(reqsMap   || {}).filter(r => r && r.status === 'pending');
+  const users        = Object.values(adminCache.users  || {});
+  const places       = Object.values(adminCache.places || {});
+  const offers       = Object.values(adminCache.offers || {});
+  const ads          = Object.values(adminCache.ads    || {});
+  const pendingReqs  = Object.values(adminCache.verificationRequests || {}).filter(r => r && r.status === 'pending');
   const verified     = places.filter(p => p.isVerified);
 
   $container.innerHTML = `
@@ -188,7 +293,7 @@ async function renderAdminOverview($container) {
                     <strong>${escHtml(r.placeName)}</strong>
                     <div style="font-size:var(--font-size-xs);color:var(--text-muted)">${escHtml(r.ownerName || r.ownerEmail || '')}</div>
                   </div>
-                  <a href="admin.html?section=verification" class="btn btn-sm btn-secondary">مراجعة</a>
+                  <button class="btn btn-sm btn-secondary" onclick="window.navToSection('verification')">مراجعة</button>
                 </div>
               `).join('')}
             </div>
@@ -217,12 +322,16 @@ async function renderAdminOverview($container) {
   `;
 }
 
+window.navToSection = (sec) => switchAdminSection(sec, true);
+
 // ─────────────────────────────────────────────
 //  2. Places
 // ─────────────────────────────────────────────
 async function renderAdminPlaces($container) {
-  const placesMap = await dbGet('places');
-  const places = Object.entries(placesMap || {}).map(([id, p]) => ({ ...p, _id: id }));
+  if (!adminCache.places) {
+    adminCache.places = (await dbGet('places')) || {};
+  }
+  const places = Object.entries(adminCache.places || {}).map(([id, p]) => ({ ...p, _id: id }));
 
   $container.innerHTML = `
     <div class="admin-fade-in">
@@ -301,8 +410,10 @@ function renderAdminPlacesTableRows(places) {
 //  3. Verification Requests
 // ─────────────────────────────────────────────
 async function renderAdminVerification($container) {
-  const reqsMap = await dbGet('verificationRequests');
-  const reqs = Object.entries(reqsMap || {}).map(([id, r]) => ({ ...r, id }))
+  if (!adminCache.verificationRequests) {
+    adminCache.verificationRequests = (await dbGet('verificationRequests')) || {};
+  }
+  const reqs = Object.entries(adminCache.verificationRequests || {}).map(([id, r]) => ({ ...r, id }))
     .sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
 
   $container.innerHTML = `
@@ -363,16 +474,20 @@ async function renderAdminVerification($container) {
 //  4. Categories
 // ─────────────────────────────────────────────
 async function renderAdminCategories($container) {
-  const [categories, catReqsMap, placesMap] = await Promise.all([
-    getCategories(),
-    dbGet('categoryRequests'),
-    dbGet('places')
-  ]);
+  if (!adminCache.categories || !adminCache.categoryRequests) {
+    const [cat, catReqs, p] = await Promise.all([
+      getCategories(), dbGet('categoryRequests'), dbGet('places')
+    ]);
+    adminCache.categories = cat || [];
+    adminCache.categoryRequests = catReqs || {};
+    adminCache.places = p || {};
+  }
 
-  const catRequests = Object.entries(catReqsMap || {})
+  const categories = adminCache.categories;
+  const catRequests = Object.entries(adminCache.categoryRequests || {})
     .map(([id, r]) => ({ ...r, id }))
     .filter(r => r.status === 'pending');
-  const allPlaces = Object.values(placesMap || {});
+  const allPlaces = Object.values(adminCache.places || {});
 
   // Dynamic place counts calculation
   categories.forEach(c => {
@@ -467,7 +582,7 @@ async function renderAdminCategories($container) {
   `;
 
   document.getElementById('btn-add-category')?.addEventListener('click', () => {
-    showAddCategoryModal(() => renderAdminCategories($container));
+    showAddCategoryModal(() => switchAdminSection('categories', false));
   });
 }
 
@@ -504,7 +619,7 @@ function showAddCategoryModal(onDone) {
           }
 
           try {
-            await dbSet(\`categories/\${slug}\`, {
+            const newCat = {
               id: slug,
               slug,
               name,
@@ -514,7 +629,9 @@ function showAddCategoryModal(onDone) {
               isActive: true,
               placeCount: 0,
               createdAt: serverTimestamp()
-            });
+            };
+            await dbSet(`categories/${slug}`, newCat);
+            if (adminCache.categories) adminCache.categories.push(newCat);
             toast.success('تمت إضافة التصنيف بنجاح');
             modal.close();
             onDone();
@@ -532,14 +649,16 @@ function showAddCategoryModal(onDone) {
 //  5. Users
 // ─────────────────────────────────────────────
 async function renderAdminUsers($container) {
-  const usersMap = await dbGet('users');
-  const users = Object.values(usersMap || {});
+  if (!adminCache.users) {
+    adminCache.users = (await dbGet('users')) || {};
+  }
+  const users = Object.values(adminCache.users || {});
 
   $container.innerHTML = `
     <div class="admin-fade-in">
       <div class="dashboard-header">
         <div>
-          <h1 class="dashboard-header__title">إدارة المستخدمين (\${users.length})</h1>
+          <h1 class="dashboard-header__title">إدارة المستخدمين (${users.length})</h1>
           <div class="dashboard-header__subtitle">التحكم في صلاحيات وحالة حسابات الأعضاء</div>
         </div>
       </div>
@@ -556,24 +675,24 @@ async function renderAdminUsers($container) {
             </tr>
           </thead>
           <tbody>
-            \${users.map(u => `
+            ${users.map(u => `
               <tr>
                 <td>
                   <div style="display:flex;align-items:center;gap:8px">
-                    <img src="\${u.photoURL || './icons/icon-72x72.png'}" style="width:34px;height:34px;border-radius:50%;object-fit:cover" />
-                    <strong>\${escHtml(u.name || 'مستخدم')}</strong>
+                    <img src="${u.photoURL || './icons/icon-72x72.png'}" style="width:34px;height:34px;border-radius:50%;object-fit:cover" />
+                    <strong>${escHtml(u.name || 'مستخدم')}</strong>
                   </div>
                 </td>
-                <td style="font-size:var(--font-size-sm)">\${escHtml(u.email || '')}</td>
+                <td style="font-size:var(--font-size-sm)">${escHtml(u.email || '')}</td>
                 <td>
-                  <span class="chip \${u.role === 'admin' || u.role === 'superadmin' ? 'chip--warning' : 'chip--primary'}">
-                    \${u.role || 'user'}
+                  <span class="chip ${u.role === 'admin' || u.role === 'superadmin' ? 'chip--warning' : 'chip--primary'}">
+                    ${u.role || 'user'}
                   </span>
                 </td>
-                <td>\${u.status === 'suspended' ? '<span class="badge badge--rejected">موقوف</span>' : '<span class="badge badge--published">نشط</span>'}</td>
+                <td>${u.status === 'suspended' ? '<span class="badge badge--rejected">موقوف</span>' : '<span class="badge badge--published">نشط</span>'}</td>
                 <td>
-                  <button class="btn btn-xs \${u.status === 'suspended' ? 'btn-success' : 'btn-danger'}" onclick="toggleUserStatus('\${escAttr(u.uid)}', '\${u.status === 'suspended' ? 'active' : 'suspended'}')">
-                    \${u.status === 'suspended' ? ICONS.check + ' تفعيل' : ICONS.x + ' إيقاف'}
+                  <button class="btn btn-xs ${u.status === 'suspended' ? 'btn-success' : 'btn-danger'}" onclick="toggleUserStatus('${escAttr(u.uid)}', '${u.status === 'suspended' ? 'active' : 'suspended'}')">
+                    ${u.status === 'suspended' ? ICONS.check + ' تفعيل' : ICONS.x + ' إيقاف'}
                   </button>
                 </td>
               </tr>
@@ -589,14 +708,16 @@ async function renderAdminUsers($container) {
 //  6. Offers
 // ─────────────────────────────────────────────
 async function renderAdminOffers($container) {
-  const offersMap = await dbGet('offers');
-  const offers = Object.entries(offersMap || {}).map(([id, o]) => ({ ...o, _id: id }));
+  if (!adminCache.offers) {
+    adminCache.offers = (await dbGet('offers')) || {};
+  }
+  const offers = Object.entries(adminCache.offers || {}).map(([id, o]) => ({ ...o, _id: id }));
 
   $container.innerHTML = `
     <div class="admin-fade-in">
       <div class="dashboard-header">
         <div>
-          <h1 class="dashboard-header__title">إدارة العروض (\${offers.length})</h1>
+          <h1 class="dashboard-header__title">إدارة العروض (${offers.length})</h1>
           <div class="dashboard-header__subtitle">مراجعة وحذف عروض الأنشطة التجارية</div>
         </div>
       </div>
@@ -613,14 +734,14 @@ async function renderAdminOffers($container) {
             </tr>
           </thead>
           <tbody>
-            \${offers.length === 0 ? '<tr><td colspan="5" class="text-center">لا توجد عروض حالياً</td></tr>' : offers.map(o => `
+            ${offers.length === 0 ? '<tr><td colspan="5" class="text-center">لا توجد عروض حالياً</td></tr>' : offers.map(o => `
               <tr>
-                <td><strong>\${escHtml(o.title || '')}</strong></td>
-                <td>\${escHtml(o.placeName || '')}</td>
-                <td><strong>\${o.newPrice || 0} ج.م</strong></td>
-                <td><span class="badge \${o.status === 'active' ? 'badge--published' : 'badge--pending'}">\${o.status || 'active'}</span></td>
+                <td><strong>${escHtml(o.title || '')}</strong></td>
+                <td>${escHtml(o.placeName || '')}</td>
+                <td><strong>${o.newPrice || 0} ج.م</strong></td>
+                <td><span class="badge ${o.status === 'active' ? 'badge--published' : 'badge--pending'}">${o.status || 'active'}</span></td>
                 <td>
-                  <button class="btn btn-xs btn-danger" onclick="deleteOfferAdmin('\${escAttr(o._id)}')">\${ICONS.trash} حذف</button>
+                  <button class="btn btn-xs btn-danger" onclick="deleteOfferAdmin('${escAttr(o._id)}')">${ICONS.trash} حذف</button>
                 </td>
               </tr>
             `).join('')}
@@ -634,15 +755,17 @@ async function renderAdminOffers($container) {
 // ─────────────────────────────────────────────
 //  7. Ads
 // ─────────────────────────────────────────────
-async function renderAdminAds($container, user) {
-  const adsMap = await dbGet('ads');
-  const ads = Object.entries(adsMap || {}).map(([id, a]) => ({ ...a, _id: id }));
+async function renderAdminAds($container) {
+  if (!adminCache.ads) {
+    adminCache.ads = (await dbGet('ads')) || {};
+  }
+  const ads = Object.entries(adminCache.ads || {}).map(([id, a]) => ({ ...a, _id: id }));
 
   $container.innerHTML = `
     <div class="admin-fade-in">
       <div class="dashboard-header">
         <div>
-          <h1 class="dashboard-header__title">إدارة الإعلانات (\${ads.length})</h1>
+          <h1 class="dashboard-header__title">إدارة الإعلانات (${ads.length})</h1>
           <div class="dashboard-header__subtitle">إضافة وتفعيل البانرات الإعلانية في الموقع</div>
         </div>
         <button class="btn btn-primary" id="btn-add-ad">
@@ -684,7 +807,7 @@ async function renderAdminAds($container, user) {
   `;
 
   document.getElementById('btn-add-ad')?.addEventListener('click', () => {
-    showAddAdModal(user, () => renderAdminAds($container, user));
+    showAddAdModal(_currentUser, () => switchAdminSection('ads', false));
   });
 }
 
@@ -728,7 +851,7 @@ function showAddAdModal(user, onDone) {
           if (!title) { toast.warning('يرجى كتابة عنوان الإعلان'); return; }
 
           try {
-            await dbPush('ads', {
+            const newAd = {
               title,
               link,
               imageUrl,
@@ -740,7 +863,9 @@ function showAddAdModal(user, onDone) {
               clicks: 0,
               createdAt: serverTimestamp(),
               createdBy: user.uid
-            });
+            };
+            const ref = await dbPush('ads', newAd);
+            if (adminCache.ads) adminCache.ads[ref.key] = newAd;
             toast.success('تمت إضافة الإعلان بنجاح');
             modal.close();
             onDone();
@@ -758,7 +883,10 @@ function showAddAdModal(user, onDone) {
 //  8. Settings
 // ─────────────────────────────────────────────
 async function renderAdminSettings($container) {
-  const settings = await getSettings() || {};
+  if (!adminCache.settings) {
+    adminCache.settings = (await getSettings()) || {};
+  }
+  const settings = adminCache.settings;
 
   $container.innerHTML = `
     <div class="admin-fade-in">
@@ -857,6 +985,7 @@ async function renderAdminSettings($container) {
       };
 
       await dbUpdate('settings', updates);
+      adminCache.settings = null; // force reload next time
       toast.success('تم حفظ إعدادات المنصة بنجاح! ✓');
     } catch (err) {
       toast.error('فشل حفظ الإعدادات: ' + err.message);
@@ -868,18 +997,22 @@ async function renderAdminSettings($container) {
 }
 
 // ─────────────────────────────────────────────
-//  Global Action Handlers (window.*)
+//  Reactive Global Action Handlers (Instant UI updates)
 // ─────────────────────────────────────────────
 
 window.togglePlaceVerification = async (placeId, status) => {
   try {
-    await dbUpdate(`places/${placeId}`, {
+    const updates = {
       isVerified: status,
       verificationStatus: status ? 'verified' : 'unverified',
       verifiedAt: status ? serverTimestamp() : null
-    });
+    };
+    await dbUpdate(`places/${placeId}`, updates);
+    if (adminCache.places && adminCache.places[placeId]) {
+      Object.assign(adminCache.places[placeId], updates);
+    }
     toast.success(status ? 'تم توثيق المكان وتفعيل العلامة الزرقاء ✓' : 'تم إلغاء التوثيق');
-    setTimeout(() => location.reload(), 700);
+    switchAdminSection(_currentSection, false);
   } catch (err) {
     toast.error('فشلت العملية: ' + err.message);
   }
@@ -893,11 +1026,12 @@ window.deletePlaceAdmin = async (placeId) => {
   });
   if (ok) {
     try {
-      const place = await dbGet(`places/${placeId}`);
+      const place = adminCache.places ? adminCache.places[placeId] : await dbGet(`places/${placeId}`);
       if (place?.slug) await dbRemove(`slugIndex/${place.slug}`);
       await dbRemove(`places/${placeId}`);
+      if (adminCache.places) delete adminCache.places[placeId];
       toast.success('تم حذف المكان بنجاح');
-      window.location.href = 'admin.html?section=places';
+      switchAdminSection('places', false);
     } catch (err) {
       toast.error('فشل الحذف: ' + err.message);
     }
@@ -928,8 +1062,17 @@ window.approveVerification = async (reqId, placeId) => {
       reviewedAt: serverTimestamp()
     });
     await dbUpdate(`places/${placeId}`, updates);
+
+    if (adminCache.verificationRequests && adminCache.verificationRequests[reqId]) {
+      adminCache.verificationRequests[reqId].status = 'approved';
+      adminCache.verificationRequests[reqId].verifiedUntil = updates.verifiedUntil;
+    }
+    if (adminCache.places && adminCache.places[placeId]) {
+      Object.assign(adminCache.places[placeId], updates);
+    }
+
     toast.success('تم قبول طلب التوثيق وتفعيل العلامة الزرقاء للمكان ✓');
-    setTimeout(() => location.reload(), 800);
+    switchAdminSection(_currentSection, false);
   } catch (err) {
     console.error(err);
     toast.error('فشلت العملية: ' + err.message);
@@ -946,8 +1089,13 @@ window.rejectVerification = async (reqId, placeId) => {
     await dbUpdate(`places/${placeId}`, {
       verificationStatus: 'unverified'
     });
+
+    if (adminCache.verificationRequests && adminCache.verificationRequests[reqId]) {
+      adminCache.verificationRequests[reqId].status = 'rejected';
+    }
+
     toast.success('تم رفض الطلب');
-    setTimeout(() => location.reload(), 700);
+    switchAdminSection(_currentSection, false);
   } catch (err) {
     console.error(err);
     toast.error('فشلت العملية');
@@ -958,8 +1106,11 @@ window.deleteCategoryAdmin = async (catId) => {
   const ok = await showConfirm({ title: 'حذف التصنيف', message: 'هل أنت متأكد من حذف هذا التصنيف؟' });
   if (ok) {
     await dbRemove(`categories/${catId}`);
+    if (adminCache.categories) {
+      adminCache.categories = adminCache.categories.filter(c => (c._key || c.slug) !== catId);
+    }
     toast.success('تم حذف التصنيف');
-    window.location.href = 'admin.html?section=categories';
+    switchAdminSection('categories', false);
   }
 };
 
@@ -987,9 +1138,13 @@ window.editCategoryAdmin = async (catId, currentName, currentIcon) => {
           if (!name) return;
           try {
             await dbUpdate(`categories/${catId}`, { name, icon });
+            if (adminCache.categories) {
+              const cat = adminCache.categories.find(c => (c._key || c.slug) === catId);
+              if (cat) { cat.name = name; cat.icon = icon; }
+            }
             toast.success('تم تحديث التصنيف بنجاح');
             modal.close();
-            window.location.href = 'admin.html?section=categories';
+            switchAdminSection('categories', false);
           } catch {
             toast.error('فشل التحديث');
           }
@@ -1003,7 +1158,7 @@ window.editCategoryAdmin = async (catId, currentName, currentIcon) => {
 window.approveCategoryRequest = async (reqId, categoryName) => {
   try {
     const slug = 'cat_' + Date.now().toString(36);
-    await dbSet(`categories/${slug}`, {
+    const newCat = {
       id: slug,
       slug,
       name: categoryName,
@@ -1013,15 +1168,20 @@ window.approveCategoryRequest = async (reqId, categoryName) => {
       isActive: true,
       placeCount: 1,
       createdAt: serverTimestamp()
-    });
-
+    };
+    await dbSet(`categories/${slug}`, newCat);
     await dbUpdate(`categoryRequests/${reqId}`, {
       status: 'approved',
       approvedAt: serverTimestamp()
     });
 
+    if (adminCache.categories) adminCache.categories.push(newCat);
+    if (adminCache.categoryRequests && adminCache.categoryRequests[reqId]) {
+      adminCache.categoryRequests[reqId].status = 'approved';
+    }
+
     toast.success(`تم اعتماد تصنيف "${categoryName}" وإضافته في الدليل بنجاح!`);
-    window.location.href = 'admin.html?section=categories';
+    switchAdminSection('categories', false);
   } catch (err) {
     toast.error('فشل الاعتماد');
   }
@@ -1052,7 +1212,7 @@ window.editAndApproveCategoryRequest = async (reqId, initialName) => {
 
           try {
             const slug = 'cat_' + Date.now().toString(36);
-            await dbSet(`categories/${slug}`, {
+            const newCat = {
               id: slug,
               slug,
               name,
@@ -1062,17 +1222,22 @@ window.editAndApproveCategoryRequest = async (reqId, initialName) => {
               isActive: true,
               placeCount: 1,
               createdAt: serverTimestamp()
-            });
-
+            };
+            await dbSet(`categories/${slug}`, newCat);
             await dbUpdate(`categoryRequests/${reqId}`, {
               status: 'approved',
               finalName: name,
               approvedAt: serverTimestamp()
             });
 
+            if (adminCache.categories) adminCache.categories.push(newCat);
+            if (adminCache.categoryRequests && adminCache.categoryRequests[reqId]) {
+              adminCache.categoryRequests[reqId].status = 'approved';
+            }
+
             toast.success(`تم اعتماد تصنيف "${name}" بنجاح!`);
             modal.close();
-            window.location.href = 'admin.html?section=categories';
+            switchAdminSection('categories', false);
           } catch {
             toast.error('فشلت العملية');
           }
@@ -1091,8 +1256,11 @@ window.rejectCategoryRequest = async (reqId) => {
         status: 'rejected',
         rejectedAt: serverTimestamp()
       });
+      if (adminCache.categoryRequests && adminCache.categoryRequests[reqId]) {
+        adminCache.categoryRequests[reqId].status = 'rejected';
+      }
       toast.info('تم رفض التصنيف المقترح');
-      window.location.href = 'admin.html?section=categories';
+      switchAdminSection('categories', false);
     } catch {
       toast.error('فشلت العملية');
     }
@@ -1102,8 +1270,11 @@ window.rejectCategoryRequest = async (reqId) => {
 window.toggleUserStatus = async (uid, newStatus) => {
   try {
     await dbUpdate(`users/${uid}`, { status: newStatus });
+    if (adminCache.users && adminCache.users[uid]) {
+      adminCache.users[uid].status = newStatus;
+    }
     toast.success('تم تحديث حالة المستخدم');
-    setTimeout(() => location.reload(), 700);
+    switchAdminSection('users', false);
   } catch (err) {
     toast.error('فشلت العملية');
   }
@@ -1112,8 +1283,9 @@ window.toggleUserStatus = async (uid, newStatus) => {
 window.deleteOfferAdmin = async (offerId) => {
   try {
     await dbRemove(`offers/${offerId}`);
+    if (adminCache.offers) delete adminCache.offers[offerId];
     toast.success('تم حذف العرض');
-    setTimeout(() => location.reload(), 700);
+    switchAdminSection('offers', false);
   } catch (err) {
     toast.error('فشل الحذف');
   }
@@ -1122,8 +1294,9 @@ window.deleteOfferAdmin = async (offerId) => {
 window.deleteAdAdmin = async (adId) => {
   try {
     await dbRemove(`ads/${adId}`);
+    if (adminCache.ads) delete adminCache.ads[adId];
     toast.success('تم حذف الإعلان');
-    setTimeout(() => location.reload(), 700);
+    switchAdminSection('ads', false);
   } catch (err) {
     toast.error('فشل الحذف');
   }

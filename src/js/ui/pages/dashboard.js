@@ -14,11 +14,15 @@ import { toast } from '../components/Toast.js';
 import { isAdmin } from '../../core/auth.js';
 import { formatPrice } from '../../utils/arabic.js';
 
+let _dashUser = null;
+let _dashPlacesCache = null;
+
 export async function renderDashboard($container, { user, section = 'overview', placeId = null }) {
   if (!user) {
     window.location.href = 'login.html';
     return;
   }
+  _dashUser = user;
 
   $container.innerHTML = `
     <div class="dashboard-layout">
@@ -32,14 +36,14 @@ export async function renderDashboard($container, { user, section = 'overview', 
           </div>
         </div>
 
-        <nav class="dashboard-sidebar__nav">
-          <a href="dashboard.html" class="dashboard-nav-item ${section === 'overview' ? 'active' : ''}">
+        <nav class="dashboard-sidebar__nav" id="dashboard-sidebar-nav">
+          <a href="dashboard.html" data-section="overview" class="dashboard-nav-item ${section === 'overview' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📊</span> نظرة عامة
           </a>
-          <a href="dashboard.html?section=places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
+          <a href="dashboard.html?section=places" data-section="places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📍</span> أماكني
           </a>
-          <a href="dashboard.html?section=add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}">
+          <a href="dashboard.html?section=add" data-section="add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">➕</span> إضافة مكان جديد
           </a>
           
@@ -59,25 +63,47 @@ export async function renderDashboard($container, { user, section = 'overview', 
     </div>
   `;
 
+  setupDashboardNavigation();
+  await switchDashboardSection(section, placeId, false);
+}
+
+export async function switchDashboardSection(section = 'overview', placeId = null, pushState = true) {
   const $mainArea = document.getElementById('dashboard-main-area');
+  if (!$mainArea) return;
+
+  if (pushState) {
+    let newUrl = 'dashboard.html';
+    if (section && section !== 'overview') {
+      newUrl += `?section=${section}`;
+      if (placeId) newUrl += `&id=${placeId}`;
+    }
+    history.pushState({ section, placeId }, '', newUrl);
+  }
+
+  // Update active sidebar tab
+  document.querySelectorAll('#dashboard-sidebar-nav .dashboard-nav-item[data-section]').forEach(el => {
+    const sec = el.getAttribute('data-section');
+    const isActive = sec === section || (sec === 'add' && section === 'add-place');
+    el.classList.toggle('active', isActive);
+  });
 
   try {
     if (section === 'overview') {
-      await renderOverviewSection($mainArea, user);
+      await renderOverviewSection($mainArea, _dashUser);
     } else if (section === 'places') {
-      await renderPlacesSection($mainArea, user);
+      await renderPlacesSection($mainArea, _dashUser);
     } else if (section === 'add' || section === 'add-place') {
-      await renderPlaceFormSection($mainArea, user, null);
+      await renderPlaceFormSection($mainArea, _dashUser, null);
     } else if (section === 'edit' || section === 'edit-place') {
-      await renderPlaceFormSection($mainArea, user, placeId);
+      await renderPlaceFormSection($mainArea, _dashUser, placeId);
     } else if (section === 'offers' || section === 'place-offers') {
-      await renderPlaceOffersSection($mainArea, user, placeId);
+      await renderPlaceOffersSection($mainArea, _dashUser, placeId);
     } else if (section === 'products' || section === 'place-products') {
-      await renderPlaceProductsSection($mainArea, user, placeId);
+      await renderPlaceProductsSection($mainArea, _dashUser, placeId);
     } else if (section === 'settings' || section === 'place-settings') {
-      await renderPlaceSettingsSection($mainArea, user, placeId);
+      await renderPlaceSettingsSection($mainArea, _dashUser, placeId);
     } else {
-      await renderOverviewSection($mainArea, user);
+      await renderOverviewSection($mainArea, _dashUser);
     }
   } catch (err) {
     console.error('[Dashboard] Error rendering section:', err);
@@ -85,10 +111,38 @@ export async function renderDashboard($container, { user, section = 'overview', 
       <div class="empty-state">
         <div class="empty-state__icon">⚠️</div>
         <h2 class="empty-state__title">حدث خطأ أثناء تحميل البيانات</h2>
-        <button class="btn btn-primary" onclick="location.reload()">تحديث</button>
+        <button class="btn btn-primary" onclick="window.switchDashboardSection('${section}', '${placeId||''}', false)">إعادة المحاولة</button>
       </div>
     `;
   }
+}
+
+window.switchDashboardSection = switchDashboardSection;
+
+function setupDashboardNavigation() {
+  const container = document.querySelector('.dashboard-layout');
+  if (!container || container.dataset.listening) return;
+  container.dataset.listening = 'true';
+
+  container.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href*="dashboard.html"]');
+    if (link && !link.getAttribute('target')) {
+      const url = new URL(link.href, location.href);
+      if (url.pathname.endsWith('dashboard.html') || url.pathname.endsWith('/dashboard.html')) {
+        e.preventDefault();
+        const section = url.searchParams.get('section') || 'overview';
+        const placeId = url.searchParams.get('id') || null;
+        switchDashboardSection(section, placeId, true);
+      }
+    }
+  });
+
+  window.addEventListener('popstate', () => {
+    const params = new URLSearchParams(location.search);
+    const section = params.get('section') || 'overview';
+    const placeId = params.get('id') || null;
+    switchDashboardSection(section, placeId, false);
+  });
 }
 
 // ── 1. Overview Section ──

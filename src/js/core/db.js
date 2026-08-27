@@ -7,22 +7,58 @@ import { getDB } from './firebase.js';
 
 export { getDB };
 
+// ── Ultra-Fast In-Memory Cache (0ms response) ──
+const _dbMemoryCache = new Map();
+const _dbPendingPromises = new Map();
+
+function getCached(key, maxAgeMs = 30000) {
+  const item = _dbMemoryCache.get(key);
+  if (item && (Date.now() - item.ts < maxAgeMs)) {
+    return item.data;
+  }
+  return null;
+}
+
+function setCache(key, data) {
+  _dbMemoryCache.set(key, { data, ts: Date.now() });
+  return data;
+}
+
+export function clearDbCache(prefix = '') {
+  if (!prefix) {
+    _dbMemoryCache.clear();
+  } else {
+    for (const k of _dbMemoryCache.keys()) {
+      if (k.startsWith(prefix)) _dbMemoryCache.delete(k);
+    }
+  }
+}
+
 // ── Generic RTDB helpers ──
 
 export function dbRef(path) {
   return getDB().ref(path);
 }
 
-export async function dbGet(path) {
+export async function dbGet(path, useCache = true) {
+  if (useCache) {
+    const cached = getCached('path:' + path);
+    if (cached !== null) return cached;
+  }
+  
   const snap = await getDB().ref(path).once('value');
-  return snap.exists() ? snap.val() : null;
+  const val = snap.exists() ? snap.val() : null;
+  if (useCache) setCache('path:' + path, val);
+  return val;
 }
 
 export async function dbSet(path, data) {
+  clearDbCache();
   await getDB().ref(path).set(data);
 }
 
 export async function dbUpdate(path, updates) {
+  clearDbCache();
   await getDB().ref(path).update(updates);
 }
 
@@ -122,6 +158,10 @@ export async function getPlaceBySlug(slug) {
 
 /** Get all published places (paginated) */
 export async function getPublishedPlaces({ limit = 20, lastKey = null } = {}) {
+  const cacheKey = `published_${limit}_${lastKey || ''}`;
+  const cached = getCached(cacheKey, 20000);
+  if (cached) return cached;
+
   let query = getDB().ref('places')
     .orderByChild('status')
     .equalTo('published')
@@ -139,11 +179,15 @@ export async function getPublishedPlaces({ limit = 20, lastKey = null } = {}) {
     places.push({ _key: child.key, ...child.val() });
   });
 
-  return places;
+  return setCache(cacheKey, places);
 }
 
 /** Get places by category */
 export async function getPlacesByCategory(categoryId, limit = 20) {
+  const cacheKey = `places_cat_${categoryId}_${limit}`;
+  const cached = getCached(cacheKey, 20000);
+  if (cached) return cached;
+
   const snap = await getDB().ref('places')
     .orderByChild('categoryId')
     .equalTo(categoryId)
@@ -157,11 +201,16 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
     places.push({ _key: child.key, ...child.val() });
   });
 
-  return places.filter(p => p.status === 'published');
+  const res = places.filter(p => p.status === 'published');
+  return setCache(cacheKey, res);
 }
 
 /** Get places by owner */
 export async function getPlacesByOwner(uid) {
+  const cacheKey = `places_owner_${uid}`;
+  const cached = getCached(cacheKey, 15000);
+  if (cached) return cached;
+
   const snap = await getDB().ref('places')
     .orderByChild('ownerId')
     .equalTo(uid)
@@ -174,11 +223,15 @@ export async function getPlacesByOwner(uid) {
     places.push({ _key: child.key, ...child.val() });
   });
 
-  return places;
+  return setCache(cacheKey, places);
 }
 
 /** Get all categories (ordered) */
 export async function getCategories() {
+  const cacheKey = 'categories_all';
+  const cached = getCached(cacheKey, 60000);
+  if (cached) return cached;
+
   const snap = await getDB().ref('categories')
     .orderByChild('order')
     .once('value');
@@ -193,16 +246,20 @@ export async function getCategories() {
     }
   });
 
-  return cats;
+  return setCache(cacheKey, cats);
 }
 
 /** Get active offers (not expired) */
 export async function getActiveOffers(limit = 20) {
+  const cacheKey = `offers_active_${limit}`;
+  const cached = getCached(cacheKey, 20000);
+  if (cached) return cached;
+
   const now = Date.now();
   const snap = await getDB().ref('offers')
     .orderByChild('status')
     .equalTo('active')
-    .limitToFirst(limit * 2) // Fetch extra, filter client-side
+    .limitToFirst(limit * 2)
     .once('value');
 
   if (!snap.exists()) return [];
@@ -215,7 +272,8 @@ export async function getActiveOffers(limit = 20) {
     }
   });
 
-  return offers.slice(0, limit);
+  const res = offers.slice(0, limit);
+  return setCache(cacheKey, res);
 }
 
 /** Get offers for a place */
@@ -257,6 +315,10 @@ export async function getPlaceProducts(placeId, { limit = 50, page = 1 } = {}) {
 
 /** Get active ads by placement */
 export async function getAds(placement = 'homepage') {
+  const cacheKey = `ads_${placement}`;
+  const cached = getCached(cacheKey, 30000);
+  if (cached) return cached;
+
   const now = Date.now();
   const snap = await getDB().ref('ads').once('value');
   if (!snap.exists()) return [];
@@ -274,12 +336,13 @@ export async function getAds(placement = 'homepage') {
     }
   });
 
-  return ads.sort((a, b) => b.priority - a.priority);
+  const res = ads.sort((a, b) => b.priority - a.priority);
+  return setCache(cacheKey, res);
 }
 
 /** Get site settings */
 export async function getSettings() {
-  return dbGet('settings');
+  return dbGet('settings', true);
 }
 
 /** Increment place view stat */
