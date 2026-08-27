@@ -62,6 +62,81 @@ export function extractSearchKeywords(text) {
 }
 
 /**
+ * Intelligent Semantic Intent & Synonym Expansion
+ * Maps search terms to related Egyptian Arabic keywords, categories, and vehicle types.
+ */
+export function expandArabicSearchIntent(rawQuery) {
+  if (!rawQuery) return [];
+  const clean = normalizeArabic(extractSearchKeywords(rawQuery));
+  const tokens = clean.split(/\s+/).filter(Boolean);
+
+  const SYNONYM_CLUSTERS = [
+    // 1. Cars, Rides, Deliveries, Vehicles
+    ['سيارة', 'عربية', 'عربيات', 'سيارات', 'تاكسي', 'مشوار', 'مشاوير', 'سواق', 'رحلات', 'توصيل', 'شاحنة', 'دليفري', 'car', 'delivery', 'تكاتك', 'توكتوك', 'توك توك', 'موتوسيكل', 'موتسيكل', 'موتوسيكلات'],
+    
+    // 2. Doctors, Clinics, Medical
+    ['دكتور', 'دكاترة', 'طبيب', 'اطباء', 'عيادة', 'عيادات', 'كشف', 'استشاري', 'اخصائي', 'مستشفى', 'معمل', 'تحاليل', 'doctor', 'clinic', 'medical'],
+
+    // 3. Pharmacy, Medicine
+    ['صيدلية', 'صيدليات', 'دواء', 'ادوية', 'علاج', 'روشتة', 'مستلزمات طبية', 'pharmacy'],
+
+    // 4. Plumbing
+    ['سباك', 'سباكة', 'مواسير', 'حنفية', 'حنفيات', 'خلاط', 'خلاطات', 'فلتر', 'فلاتر', 'سخان', 'سخانات', 'تسريب', 'تسريب مياه', 'صحي', 'ادوات صحية', 'plumber'],
+
+    // 5. Carpentry & Furniture
+    ['نجار', 'نجارة', 'موبيليا', 'خشب', 'اثاث', 'غرف نوم', 'انتريه', 'سفرة', 'ابواب', 'شبابيك', 'مطابخ', 'carpenter'],
+
+    // 6. Electricity
+    ['كهربائي', 'كهرباء', 'اضاءة', 'ليد', 'فيشة', 'مفاتيح كهرباء', 'لوحة كهرباء', 'تاسيس كهرباء', 'اسلاك', 'نجف', 'electrician'],
+
+    // 7. Tiles & Ceramics
+    ['مبلط', 'سيراميك', 'بورسلين', 'بلاط', 'ارضيات', 'تركيب سيراميك', 'رخام', 'جرانيت', 'tiler', 'marble'],
+
+    // 8. Painting & Decor
+    ['نقاش', 'نقاشة', 'دهان', 'دهانات', 'بويات', 'الوان', 'ديكور', 'ورق حائط', 'تشطيب', 'painter'],
+
+    // 9. Food & Restaurants
+    ['مطعم', 'مطاعم', 'اكل', 'وجبات', 'مشويات', 'شاورما', 'بيتزا', 'كريب', 'فول', 'طعمية', 'كشري', 'سمك', 'اسماك', 'مأكولات', 'ساندوتش', 'restaurant', 'food'],
+
+    // 10. Cafes & Drinks
+    ['كافيه', 'كافيهات', 'قهوة', 'مقهى', 'شاي', 'عصير', 'عصائر', 'مشروبات', 'cafe', 'coffee'],
+
+    // 11. Phones & Tech
+    ['موبايل', 'موبايلات', 'هاتف', 'هواتف', 'تليفون', 'تليفونات', 'جوال', 'شاحن', 'جراب', 'شاشة', 'صيانة موبايل', 'كمبيوتر', 'لاب توب', 'mobile', 'phones'],
+
+    // 12. Bakery & Sweets
+    ['مخبز', 'فرن', 'افران', 'عيش', 'خبز', 'حلواني', 'حلويات', 'تورتة', 'جاتوه', 'معجنات', 'bakery'],
+
+    // 13. Barber & Beauty
+    ['حلاق', 'حلاقة', 'كوافير', 'صالون', 'تجميل', 'شعر', 'مكياج', 'تجهيز عرسان', 'barber', 'beauty'],
+
+    // 14. Auto Mechanics
+    ['ميكانيكي', 'عفشة', 'كاوتش', 'غيار زيت', 'صيانة سيارات', 'تصليح عربيات', 'بطاريات', 'قطع غيار', 'mechanic'],
+
+    // 15. Clothing & Fashion
+    ['ملابس', 'لبس', 'ازياء', 'فستان', 'فساتين', 'بدل', 'عبايات', 'بنطلون', 'قميص', 'بوتيك', 'clothing', 'fashion'],
+
+    // 16. Supermarket & Groceries
+    ['سوبر ماركت', 'ماركت', 'هايبر', 'بقالة', 'خضار', 'فاكهة', 'جبن', 'البان', 'سلع غذائية', 'supermarket']
+  ];
+
+  const expanded = new Set([clean, ...tokens]);
+
+  for (const cluster of SYNONYM_CLUSTERS) {
+    const normalizedCluster = cluster.map(normalizeArabic);
+    const hasMatch = tokens.some(t => normalizedCluster.some(c => c.includes(t) || t.includes(c))) ||
+                     normalizedCluster.some(c => c.includes(clean) || clean.includes(c));
+    if (hasMatch) {
+      cluster.forEach(word => {
+        expanded.add(normalizeArabic(word));
+      });
+    }
+  }
+
+  return Array.from(expanded);
+}
+
+/**
  * Check if Arabic text A matches/contains B (normalized)
  */
 export function arabicMatch(haystack, needle) {

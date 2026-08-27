@@ -7,7 +7,7 @@
 import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
-import { normalizeArabic, arabicScore, extractSearchKeywords } from '../../utils/arabic.js';
+import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent } from '../../utils/arabic.js';
 import { aiSearch, aiSmartSearch } from '../../services/ai.service.js';
 
 export async function renderSearchPage($container, { q = '', user }) {
@@ -112,18 +112,63 @@ export async function renderSearchPage($container, { q = '', user }) {
   function localSearch(query) {
     const rawClean = extractSearchKeywords(query);
     const normalQ = normalizeArabic(rawClean);
+    const queryIntents = expandArabicSearchIntent(query);
 
     const scored = allPlaces.map(place => {
+      // 1. Direct Name, Description & Area Match
       const nameScore = Math.max(arabicScore(place.name, query), arabicScore(place.name, rawClean));
-      const descScore = Math.max(arabicScore(place.description, query), arabicScore(place.description, rawClean)) * 0.6;
+      const descScore = Math.max(arabicScore(place.description, query), arabicScore(place.description, rawClean)) * 0.7;
       const areaScore = arabicScore(place.area, query) * 0.8;
-      const serviceScore = place.services?.some(s => {
-        const ns = normalizeArabic(s);
-        return ns.includes(normalQ) || ns.includes(normalizeArabic(query));
-      }) ? 75 : 0;
-      const catScore = (place.categoryId && (place.categoryId.includes(normalQ) || normalQ.includes(place.categoryId))) ? 70 : (arabicScore(place.categoryId, rawClean) * 0.6);
 
-      const total = Math.max(nameScore, descScore, areaScore, serviceScore, catScore);
+      // 2. Services Matching (Direct + Semantic Intent)
+      let serviceScore = 0;
+      if (place.services && Array.isArray(place.services)) {
+        place.services.forEach(s => {
+          const ns = normalizeArabic(s);
+          if (ns.includes(normalQ) || normalQ.includes(ns)) serviceScore = Math.max(serviceScore, 85);
+          if (queryIntents.some(intent => ns.includes(intent) || intent.includes(ns))) {
+            serviceScore = Math.max(serviceScore, 75);
+          }
+        });
+      }
+
+      // 3. Category & Custom Category Matching
+      let catScore = 0;
+      const catVal = normalizeArabic(`${place.customCategory || ''} ${place.categoryName || ''} ${place.categoryId || ''}`);
+      if (catVal.includes(normalQ) || normalQ.includes(catVal)) {
+        catScore = 90;
+      } else if (queryIntents.some(intent => catVal.includes(intent) || intent.includes(catVal))) {
+        catScore = 80;
+      }
+
+      // 4. Delivery Vehicle Type Matching (car -> سيارة/عربية, tuktuk -> توكتوك, motorcycle -> موتوسيكل)
+      let deliveryScore = 0;
+      if (place.deliveryType) {
+        const dt = normalizeArabic(place.deliveryType);
+        const dtMap = {
+          'car': ['سيارة', 'عربية', 'عربيات', 'مشوار', 'مشاوير', 'تاكسي', 'رحلات', 'توصيل', 'شاحنة'],
+          'tuktuk': ['توكتوك', 'توك توك', 'تكاتك', 'مشاوير', 'توصيل'],
+          'motorcycle': ['موتوسيكل', 'موتسيكل', 'موتوسيكلات', 'دليفري', 'توصيل']
+        };
+        const dtSynonyms = (dtMap[place.deliveryType] || []).map(normalizeArabic);
+        if (queryIntents.some(intent => dtSynonyms.includes(intent) || dt.includes(intent) || intent.includes(dt))) {
+          deliveryScore = 85;
+        }
+      }
+
+      // 5. Semantic Intent Cross-Field Match
+      let semanticScore = 0;
+      const fullPlaceText = normalizeArabic(
+        `${place.name || ''} ${place.description || ''} ${place.area || ''} ${place.categoryName || ''} ${place.customCategory || ''} ${place.categoryId || ''} ${(place.services || []).join(' ')}`
+      );
+
+      queryIntents.forEach(intent => {
+        if (intent && intent.length >= 2 && fullPlaceText.includes(intent)) {
+          semanticScore = Math.max(semanticScore, 70);
+        }
+      });
+
+      const total = Math.max(nameScore, descScore, areaScore, serviceScore, catScore, deliveryScore, semanticScore);
       return { place, total };
     })
     .filter(item => item.total > 0)

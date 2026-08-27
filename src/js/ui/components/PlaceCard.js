@@ -55,8 +55,9 @@ export function renderPlaceCard(place) {
           <span class="truncate">${escHtml(place.name)}</span>
           ${verifiedBadge}
         </h3>
-        <div class="place-card__category">
-          📍 ${escHtml(place.area || 'المنزلة')}
+        <div class="place-card__meta-row">
+          ${getCategoryBadge(place)}
+          <span class="place-card__area-tag">📍 ${escHtml(place.area || 'المنزلة')}</span>
           ${deliveryBadge}
         </div>
         ${place.description ? `<p class="place-card__description">${escHtml(place.description)}</p>` : ''}
@@ -134,3 +135,57 @@ function getCategoryCardCover(categoryId) {
 function getCategoryEmoji(categoryId) {
   return getCategoryCardCover(categoryId).icon;
 }
+
+export function getCategoryBadge(place) {
+  const catName = place.customCategory || place.categoryName || '';
+  const catId = (place.categoryId || '').toLowerCase();
+
+  const dict = {
+    'doctor':      { name: 'طبيب وعيادات', icon: '👨‍⚕️', bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
+    'pharmacy':    { name: 'صيدلية', icon: '💊', bg: '#ECFDF5', color: '#047857', border: '#A7F3D0' },
+    'supermarket': { name: 'سوبر ماركت', icon: '🛒', bg: '#EEF2FF', color: '#4338CA', border: '#C7D2FE' },
+    'plumber':     { name: 'سباك', icon: '🪠', bg: '#F0FDFA', color: '#0F766E', border: '#99F6E4' },
+    'carpenter':   { name: 'نجار وموبيليا', icon: '🪚', bg: '#FFFBEB', color: '#B45309', border: '#FDE68A' },
+    'tiler':       { name: 'مبلط سيراميك', icon: '🧱', bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' },
+    'painter':     { name: 'نقاش ودهانات', icon: '🖌️', bg: '#FAF5FF', color: '#7E22CE', border: '#E9D5FF' },
+    'electrician': { name: 'كهربائي', icon: '⚡', color: '#B45309', bg: '#FEF3C7', border: '#FDE68A' },
+    'restaurant':  { name: 'مطعم ومأكولات', icon: '🍽️', color: '#C2410C', bg: '#FFF7ED', border: '#FFEDD5' },
+    'cafe':        { name: 'كافيه ومشروبات', icon: '☕', color: '#78350F', bg: '#FEF3C7', border: '#FDE68A' },
+    'mobile':      { name: 'صيانة وموبايل', icon: '📱', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+    'phones':      { name: 'صيانة وموبايل', icon: '📱', color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+    'clothing':    { name: 'ملابس وأزياء', icon: '👗', color: '#BE185D', bg: '#FDF2F8', border: '#FBCFE8' },
+    'gym':         { name: 'جيم ورياضة', icon: '🏋️', color: '#B91C1C', bg: '#FEF2F2', border: '#FECACA' },
+    'printing':    { name: 'مطبعة ودعاية', icon: '🖨️', color: '#334155', bg: '#F8FAFC', border: '#E2E8F0' },
+    'bakery':      { name: 'مخبز وحلواني', icon: '🍞', color: '#B45309', bg: '#FFFBEB', border: '#FDE68A' },
+    'delivery':    { name: 'خدمات توصيل', icon: '🚀', color: '#B91C1C', bg: '#FEF2F2', border: '#FECACA' },
+    'barber':      { name: 'حلاق وتصفيف', icon: '💈', color: '#1E293B', bg: '#F1F5F9', border: '#CBD5E1' },
+    'mechanic':    { name: 'ميكانيكي سيارات', icon: '🔧', color: '#334155', bg: '#F8FAFC', border: '#E2E8F0' },
+    'marble':      { name: 'رخام وجرانيت', icon: '🪨', bg: '#F1F5F9', color: '#334155', border: '#CBD5E1' },
+    'ai':          { name: 'ذكاء اصطناعي وبرمجة', icon: '💻', color: '#4338CA', bg: '#EEF2FF', border: '#C7D2FE' }
+  };
+
+  let meta = dict[catId];
+  if (!meta) {
+    const raw = (catName + ' ' + catId + ' ' + (place.name || '')).toLowerCase();
+    for (const [k, v] of Object.entries(dict)) {
+      if (raw.includes(k) || raw.includes(v.name) || (k === 'doctor' && (raw.includes('دكتور') || raw.includes('طبيب') || raw.includes('عيادة'))) || (k === 'marble' && raw.includes('رخام')) || (k === 'phones' && (raw.includes('هاتف') || raw.includes('هواتف') || raw.includes('موبايل')))) {
+        meta = v;
+        break;
+      }
+    }
+  }
+
+  const displayName = catName || meta?.name || (place.categoryId ? place.categoryId : 'نشاط تجاري');
+  const displayIcon = meta?.icon || '📁';
+  const bg = meta?.bg || 'var(--primary-alpha)';
+  const color = meta?.color || 'var(--primary)';
+  const border = meta?.border || 'rgba(27, 79, 114, 0.2)';
+
+  return `
+    <span class="place-card__category-badge" style="background:${bg};color:${color};border-color:${border}">
+      <span class="place-card__category-icon">${displayIcon}</span>
+      <span class="place-card__category-text">${escHtml(displayName)}</span>
+    </span>
+  `;
+}
+
