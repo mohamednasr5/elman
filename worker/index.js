@@ -192,6 +192,7 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
  */
 async function callOpenRouterAI(prompt, env) {
   const apiKey = env.OPENROUTER_API_KEY || 'sk-or-v1-openrouter-free';
+  const model = env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-exp:free';
 
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -203,7 +204,13 @@ async function callOpenRouterAI(prompt, env) {
         'X-Title': 'Elmanzala Platform'
       },
       body: JSON.stringify({
-        model: 'ox/alpha', // or openrouter standard
+        model: model,
+        models: [
+          'google/gemini-2.0-flash-exp:free',
+          'meta-llama/llama-3.3-70b-instruct:free',
+          'deepseek/deepseek-chat:free',
+          'qwen/qwen-2.5-72b-instruct:free'
+        ],
         messages: [
           { role: 'system', content: 'You are an intelligent local directory assistant for El Manzala city, Egypt. Provide concise, direct outputs.' },
           { role: 'user', content: prompt }

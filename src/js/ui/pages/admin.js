@@ -317,18 +317,66 @@ async function renderAdminVerification($container, user) {
 
 // ── 4. Admin Categories ──
 async function renderAdminCategories($container) {
-  const categories = await getCategories();
+  const [categories, catReqsMap] = await Promise.all([
+    getCategories(),
+    dbGet('categoryRequests') || {}
+  ]);
+
+  const catRequests = Object.values(catReqsMap).filter(r => r.status === 'pending');
 
   $container.innerHTML = `
     <div class="dashboard-header">
       <div>
-        <h1 class="dashboard-header__title">إدارة التصنيفات (${categories.length})</h1>
-        <div class="dashboard-header__subtitle">إضافة وتعديل وحذف تصنيفات الدليل</div>
+        <h1 class="dashboard-header__title">إدارة وتدقيق التصنيفات (${categories.length})</h1>
+        <div class="dashboard-header__subtitle">إضافة وتعديل وحذف تصنيفات الدليل واعتماد المقترحات الجديدة</div>
       </div>
       <button class="btn btn-primary" id="btn-add-category">
         <span>➕</span> إضافة تصنيف جديد
       </button>
     </div>
+
+    <!-- Pending Category Requests -->
+    ${catRequests.length > 0 ? `
+      <div class="form-section animate-fade-in" style="margin-bottom:var(--space-6);border:1.5px solid var(--secondary)">
+        <h2 class="form-section__title" style="color:var(--secondary)">
+          <span>🔔</span> طلبات التصنيفات الجديدة المقترحة من أصحاب الأنشطة (${catRequests.length})
+        </h2>
+        <div class="dashboard-table-wrapper">
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>التصنيف المقترح</th>
+                <th>اسم المكان التابع له</th>
+                <th>صاحب الحساب</th>
+                <th>إجراءات الإدارة</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${catRequests.map(req => `
+                <tr>
+                  <td><strong style="font-size:1.1rem;color:var(--primary)">✨ ${escHtml(req.categoryName)}</strong></td>
+                  <td>${escHtml(req.placeName || 'غير محدد')}</td>
+                  <td>${escHtml(req.ownerName || 'مستخدم')}</td>
+                  <td>
+                    <div style="display:flex;gap:6px">
+                      <button class="btn btn-xs btn-success" onclick="approveCategoryRequest('${escAttr(req.id)}', '${escAttr(req.categoryName)}')">
+                        ✓ اعتماد وتفعيل
+                      </button>
+                      <button class="btn btn-xs btn-outline" onclick="editAndApproveCategoryRequest('${escAttr(req.id)}', '${escAttr(req.categoryName)}')">
+                        ✏️ تعديل واعتماد
+                      </button>
+                      <button class="btn btn-xs btn-danger" onclick="rejectCategoryRequest('${escAttr(req.id)}')">
+                        ✕ رفض
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ` : ''}
 
     <div class="dashboard-table-wrapper">
       <table class="dashboard-table">
@@ -349,7 +397,10 @@ async function renderAdminCategories($container) {
               <td>${escHtml(c.slug || c.nameEn || '')}</td>
               <td>${c.placeCount || 0}</td>
               <td>
-                <button class="btn btn-xs btn-danger" onclick="deleteCategoryAdmin('${escAttr(c._key || c.slug)}')">حذف</button>
+                <div style="display:flex;gap:4px">
+                  <button class="btn btn-xs btn-outline" onclick="editCategoryAdmin('${escAttr(c._key || c.slug)}', '${escAttr(c.name)}', '${escAttr(c.icon || '📁')}')">تعديل</button>
+                  <button class="btn btn-xs btn-danger" onclick="deleteCategoryAdmin('${escAttr(c._key || c.slug)}')">حذف</button>
+                </div>
               </td>
             </tr>
           `).join('')}
@@ -819,7 +870,145 @@ window.deleteCategoryAdmin = async (catId) => {
   if (ok) {
     await dbRemove(`categories/${catId}`);
     toast.success('تم حذف التصنيف');
-    navigate('/admin/categories');
+    window.location.href = 'admin.html?section=categories';
+  }
+};
+
+window.editCategoryAdmin = async (catId, currentName, currentIcon) => {
+  const modal = showModal({
+    title: 'تعديل التصنيف',
+    content: `
+      <form id="edit-cat-form">
+        <div class="form-group">
+          <label class="form-label">اسم التصنيف بالعربية</label>
+          <input type="text" id="edit-cat-name" class="form-input" value="${escAttr(currentName)}" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">الأيقونة (Emoji)</label>
+          <input type="text" id="edit-cat-icon" class="form-input" value="${escAttr(currentIcon)}" required />
+        </div>
+      </form>
+    `,
+    buttons: [
+      {
+        label: 'حفظ التعديلات',
+        type: 'primary',
+        onClick: async () => {
+          const name = document.getElementById('edit-cat-name')?.value.trim();
+          const icon = document.getElementById('edit-cat-icon')?.value.trim() || '📁';
+          if (!name) return;
+          try {
+            await dbUpdate(`categories/${catId}`, { name, icon });
+            toast.success('تم تحديث التصنيف بنجاح');
+            modal.close();
+            window.location.href = 'admin.html?section=categories';
+          } catch {
+            toast.error('فشل التحديث');
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+};
+
+window.approveCategoryRequest = async (reqId, categoryName) => {
+  try {
+    const slug = 'cat_' + Date.now().toString(36);
+    await dbSet(`categories/${slug}`, {
+      id: slug,
+      slug,
+      name: categoryName,
+      nameEn: slug,
+      icon: '✨',
+      order: Date.now(),
+      isActive: true,
+      placeCount: 1,
+      createdAt: serverTimestamp()
+    });
+
+    await dbUpdate(`categoryRequests/${reqId}`, {
+      status: 'approved',
+      approvedAt: serverTimestamp()
+    });
+
+    toast.success(`تم اعتماد تصنيف "${categoryName}" وإضافته في الدليل بنجاح!`);
+    window.location.href = 'admin.html?section=categories';
+  } catch (err) {
+    toast.error('فشل الاعتماد');
+  }
+};
+
+window.editAndApproveCategoryRequest = async (reqId, initialName) => {
+  const modal = showModal({
+    title: 'تعديل وتفعيل التصنيف المقترح',
+    content: `
+      <form id="approve-cat-form">
+        <div class="form-group">
+          <label class="form-label">اسم التصنيف النهائي</label>
+          <input type="text" id="appr-cat-name" class="form-input" value="${escAttr(initialName)}" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">اختر أيقونة مناسبة</label>
+          <input type="text" id="appr-cat-icon" class="form-input" value="✨" required />
+        </div>
+      </form>
+    `,
+    buttons: [
+      {
+        label: 'اعتماد وإضافة للدليل',
+        type: 'primary',
+        onClick: async () => {
+          const name = document.getElementById('appr-cat-name')?.value.trim();
+          const icon = document.getElementById('appr-cat-icon')?.value.trim() || '📁';
+          if (!name) return;
+
+          try {
+            const slug = 'cat_' + Date.now().toString(36);
+            await dbSet(`categories/${slug}`, {
+              id: slug,
+              slug,
+              name,
+              nameEn: slug,
+              icon,
+              order: Date.now(),
+              isActive: true,
+              placeCount: 1,
+              createdAt: serverTimestamp()
+            });
+
+            await dbUpdate(`categoryRequests/${reqId}`, {
+              status: 'approved',
+              finalName: name,
+              approvedAt: serverTimestamp()
+            });
+
+            toast.success(`تم اعتماد تصنيف "${name}" بنجاح!`);
+            modal.close();
+            window.location.href = 'admin.html?section=categories';
+          } catch {
+            toast.error('فشلت العملية');
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+};
+
+window.rejectCategoryRequest = async (reqId) => {
+  const ok = await showConfirm({ title: 'رفض التصنيف', message: 'هل أنت متأكد من رفض هذا التصنيف المقترح؟' });
+  if (ok) {
+    try {
+      await dbUpdate(`categoryRequests/${reqId}`, {
+        status: 'rejected',
+        rejectedAt: serverTimestamp()
+      });
+      toast.info('تم رفض التصنيف المقترح');
+      window.location.href = 'admin.html?section=categories';
+    } catch {
+      toast.error('فشلت العملية');
+    }
   }
 };
 

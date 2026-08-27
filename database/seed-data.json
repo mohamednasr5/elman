@@ -29,8 +29,8 @@
     "roastery": { "id": "roastery", "slug": "roastery", "name": "محمصة ولب ومكسرات", "nameEn": "Roastery", "icon": "🥜", "order": 27, "isActive": true, "placeCount": 0 },
     "phones": { "id": "phones", "slug": "phones", "name": "محل صيانة وبيع الهواتف", "nameEn": "Phones & Repair", "icon": "📱", "order": 28, "isActive": true, "placeCount": 0 },
     "grocery": { "id": "grocery", "slug": "grocery", "name": "بقالة", "nameEn": "Grocery", "icon": "🏪", "order": 29, "isActive": true, "placeCount": 0 },
-    "hypermarket": { "id": "hypermarket", "slug": "hypermarket", "name": "هايبر ماركت", "nameEn": "Hypermarket", "icon": "🏬", "order": 30, "isActive": true, "placeCount": 0 },
-    "delivery": { "id": "delivery", "slug": "delivery", "name": "خدمات التوصيل والدليفري", "nameEn": "Delivery Services", "icon": "🚀", "order": 31, "isActive": true, "allowsDeliveryType": true, "placeCount": 0 }
+    "delivery": { "id": "delivery", "slug": "delivery", "name": "خدمات التوصيل والدليفري", "nameEn": "Delivery Services", "icon": "🚀", "order": 31, "isActive": true, "allowsDeliveryType": true, "placeCount": 0 },
+    "printing": { "id": "printing", "slug": "printing", "name": "مطبعة ودعاية وإعلان", "nameEn": "Printing & Advertising", "icon": "🖨️", "order": 32, "isActive": true, "placeCount": 0 }
   },
   "settings": {
     "general": {

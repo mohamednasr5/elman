@@ -295,8 +295,21 @@ async function renderPlaceFormSection($container, user, placeId = null) {
                   ${c.icon || '📁'} ${c.name}
                 </option>
               `).join('')}
+              <option value="printing" ${place?.categoryId === 'printing' ? 'selected' : ''}>🖨️ مطبعة ودعاية وإعلان</option>
+              <option value="other" ${place?.customCategory ? 'selected' : ''}>✨ أخرى (اكتب تصنيفاً جديداً)</option>
             </select>
           </div>
+        </div>
+
+        <!-- Custom Category Input Box (shows when 'other' is selected) -->
+        <div class="form-group animate-fade-in" id="custom-category-group" style="${place?.customCategory ? '' : 'display:none'}">
+          <label class="form-label">اكتب اسم التصنيف الجديد <span class="required">*</span></label>
+          <div style="display:flex;gap:var(--space-2)">
+            <input type="text" id="p-custom-category" class="form-input" placeholder="مثال: مطبعة، ستوديو تصوير، مركز تدريب، محل حيوانات أليفة" value="${escAttr(place?.customCategory || '')}" />
+          </div>
+          <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:4px">
+            💡 سيتم إرسال هذا التصنيف للإدارة لاعتماده وإضافته في دليل المنزلة وناسها.
+          </p>
         </div>
 
         <!-- Vehicle Type for Delivery -->
@@ -388,6 +401,59 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         </div>
       </div>
 
+      <!-- Working Hours Section -->
+      <div class="form-section">
+        <h2 class="form-section__title"><span>🕒</span> مواعيد وساعات العمل</h2>
+        
+        <!-- Quick 24/7 Toggle -->
+        <div class="form-group" style="margin-bottom:var(--space-4);background:var(--surface-2);padding:var(--space-4);border-radius:var(--radius-md);border:1px solid var(--border)">
+          <label style="display:flex;align-items:center;gap:var(--space-3);cursor:pointer;font-weight:var(--font-weight-bold)">
+            <input type="checkbox" id="p-always-open" style="width:18px;height:18px" ${place?.alwaysOpen ? 'checked' : ''} />
+            <span>🟢 مفتوح دائماً على مدار 24 ساعة (طوال أيام الأسبوع)</span>
+          </label>
+        </div>
+
+        <div id="working-hours-schedule" style="${place?.alwaysOpen ? 'display:none' : ''}">
+          <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-3)">
+            حدد أوقات العمل لكل يوم أو علم على "مغلق" لأيام العطلات:
+          </p>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${[
+              { key: 'saturday', label: 'السبت' },
+              { key: 'sunday', label: 'الأحد' },
+              { key: 'monday', label: 'الاثنين' },
+              { key: 'tuesday', label: 'الثلاثاء' },
+              { key: 'wednesday', label: 'الأربعاء' },
+              { key: 'thursday', label: 'الخميس' },
+              { key: 'friday', label: 'الجمعة' }
+            ].map(day => {
+              const h = place?.workingHours?.[day.key] || { open: '09:00', close: '22:00', closed: false };
+              return `
+                <div style="display:flex;align-items:center;gap:var(--space-2);background:var(--surface-2);padding:6px 12px;border-radius:var(--radius-md);flex-wrap:wrap">
+                  <div style="min-width:70px;font-weight:var(--font-weight-semibold)">${day.label}</div>
+                  
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <span style="font-size:var(--font-size-xs);color:var(--text-muted)">من:</span>
+                    <input type="time" id="wh-${day.key}-open" class="form-input" style="padding:4px 8px;font-size:var(--font-size-xs);width:110px" value="${escAttr(h.open || '09:00')}" ${h.closed ? 'disabled' : ''} />
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <span style="font-size:var(--font-size-xs);color:var(--text-muted)">إلى:</span>
+                    <input type="time" id="wh-${day.key}-close" class="form-input" style="padding:4px 8px;font-size:var(--font-size-xs);width:110px" value="${escAttr(h.close || '22:00')}" ${h.closed ? 'disabled' : ''} />
+                  </div>
+
+                  <label style="margin-right:auto;display:flex;align-items:center;gap:4px;cursor:pointer;font-size:var(--font-size-xs);color:var(--danger)">
+                    <input type="checkbox" id="wh-${day.key}-closed" onchange="toggleDayHours('${day.key}', this.checked)" ${h.closed ? 'checked' : ''} />
+                    <span>مغلق</span>
+                  </label>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
       <!-- Services & Tags -->
       <div class="form-section">
         <h2 class="form-section__title"><span>✨</span> الخدمات والمميزات الإضافية</h2>
@@ -410,11 +476,23 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
   // ── Handlers ──
 
-  // Category toggle for delivery vehicle
+  // Category toggle for delivery vehicle and custom category
   document.getElementById('p-category')?.addEventListener('change', (e) => {
-    const isDelivery = e.target.value.includes('delivery');
-    const group = document.getElementById('delivery-type-group');
-    if (group) group.style.display = isDelivery ? 'block' : 'none';
+    const val = e.target.value;
+    const isDelivery = val.includes('delivery');
+    const isOther = val === 'other';
+
+    const deliveryGroup = document.getElementById('delivery-type-group');
+    if (deliveryGroup) deliveryGroup.style.display = isDelivery ? 'block' : 'none';
+
+    const customCatGroup = document.getElementById('custom-category-group');
+    if (customCatGroup) customCatGroup.style.display = isOther ? 'block' : 'none';
+  });
+
+  // Always Open 24/7 toggle
+  document.getElementById('p-always-open')?.addEventListener('change', (e) => {
+    const schedule = document.getElementById('working-hours-schedule');
+    if (schedule) schedule.style.display = e.target.checked ? 'none' : 'block';
   });
 
   // AI Name Translation
@@ -506,10 +584,38 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       const rawServices = document.getElementById('p-services')?.value || '';
       const services = rawServices.split(/[,،]/).map(s => s.trim()).filter(Boolean);
 
+      const categoryVal = document.getElementById('p-category').value;
+      const customCategory = categoryVal === 'other' ? (document.getElementById('p-custom-category')?.value.trim() || '') : null;
+
+      if (categoryVal === 'other' && !customCategory) {
+        toast.warning('يرجى كتابة اسم التصنيف الجديد');
+        saveBtn.classList.remove('loading');
+        saveBtn.disabled = false;
+        return;
+      }
+
+      const alwaysOpen = document.getElementById('p-always-open')?.checked || false;
+      const days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+      const workingHours = {};
+
+      if (alwaysOpen) {
+        days.forEach(d => {
+          workingHours[d] = { open: '00:00', close: '23:59', closed: false };
+        });
+      } else {
+        days.forEach(d => {
+          const closed = document.getElementById(`wh-${d}-closed`)?.checked || false;
+          const open = document.getElementById(`wh-${d}-open`)?.value || '09:00';
+          const close = document.getElementById(`wh-${d}-close`)?.value || '22:00';
+          workingHours[d] = { open, close, closed };
+        });
+      }
+
       const placeData = {
         name: document.getElementById('p-name').value,
         nameEn: document.getElementById('p-name-en').value,
-        categoryId: document.getElementById('p-category').value,
+        categoryId: categoryVal === 'other' ? 'other' : categoryVal,
+        customCategory: customCategory,
         deliveryType: document.getElementById('p-delivery-type')?.value || null,
         description: document.getElementById('p-desc').value,
         phone: document.getElementById('p-phone').value,
@@ -519,6 +625,8 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         mapsLink: document.getElementById('p-maps').value,
         coverImageUrl: document.getElementById('p-cover-url').value,
         logoUrl: document.getElementById('p-logo-url').value,
+        alwaysOpen,
+        workingHours,
         services
       };
 
@@ -530,7 +638,23 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         toast.success('تمت إضافة المكان بنجاح إلى الدليل! 🎉');
       }
 
-      navigate('/dashboard/places');
+      // If user proposed custom category, also register it in categoryRequests node for admin review
+      if (customCategory) {
+        try {
+          const catReqRef = getDB().ref('categoryRequests').push();
+          await catReqRef.set({
+            id: catReqRef.key,
+            categoryName: customCategory,
+            placeName: placeData.name,
+            ownerName: user.name || user.displayName || 'مستخدم',
+            ownerUid: user.uid,
+            status: 'pending',
+            createdAt: serverTimestamp()
+          });
+        } catch (_) {}
+      }
+
+      window.location.href = 'dashboard.html?section=places';
     } catch (err) {
       console.error('Save place error:', err);
       toast.error(err.message || 'فشل حفظ المكان');
@@ -840,6 +964,13 @@ function setupFileUpload(zoneId, inputId, onFileSelected) {
     }
   });
 }
+
+window.toggleDayHours = (dayKey, isClosed) => {
+  const openInput = document.getElementById(`wh-${dayKey}-open`);
+  const closeInput = document.getElementById(`wh-${dayKey}-close`);
+  if (openInput) openInput.disabled = isClosed;
+  if (closeInput) closeInput.disabled = isClosed;
+};
 
 function escHtml(str) {
   if (!str) return '';

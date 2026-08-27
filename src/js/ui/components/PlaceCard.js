@@ -8,9 +8,13 @@ import { renderVerifiedBadge, renderDeliveryBadge } from './VerifiedBadge.js';
  * Render a place card HTML string
  */
 export function renderPlaceCard(place) {
+  const catStyle = getCategoryCardCover(place.categoryId);
   const coverImg = place.coverImageUrl
-    ? `<img src="${escAttr(place.coverImageUrl)}" alt="${escAttr(place.name)}" loading="lazy" class="lazy" />`
-    : `<div class="place-card__cover-placeholder">${getCategoryEmoji(place.categoryId)}</div>`;
+    ? `<img src="${escAttr(place.coverImageUrl)}" alt="${escAttr(place.name)}" loading="lazy" />`
+    : `<div class="place-card__cover-placeholder" style="background:${catStyle.gradient}">
+        <span class="place-card__cover-icon">${catStyle.icon}</span>
+        <span class="place-card__cover-tag">${escHtml(catStyle.label)}</span>
+       </div>`;
 
   const logoImg = place.logoUrl
     ? `<img src="${escAttr(place.logoUrl)}" alt="${escAttr(place.name)} logo" loading="lazy" />`
@@ -91,6 +95,24 @@ function cleanPhone(phone) {
   return phone?.replace(/\D/g, '') || '';
 }
 
+function getCategoryCardCover(categoryId) {
+  const map = {
+    'doctor':      { icon: '👨‍⚕️', label: 'دكتور وعيادات', gradient: 'linear-gradient(135deg, #1B4F72 0%, #2980B9 100%)' },
+    'pharmacy':    { icon: '💊', label: 'صيدلية', gradient: 'linear-gradient(135deg, #C0392B 0%, #E74C3C 100%)' },
+    'supermarket': { icon: '🛒', label: 'سوبر ماركت', gradient: 'linear-gradient(135deg, #1E8449 0%, #27AE60 100%)' },
+    'plumber':     { icon: '🪠', label: 'سباك (فني سباكة)', gradient: 'linear-gradient(135deg, #1A5276 0%, #2E86C1 100%)' },
+    'carpenter':   { icon: '🪚', label: 'نجار وموبيليا', gradient: 'linear-gradient(135deg, #B9770E 0%, #E67E22 100%)' },
+    'tiler':       { icon: '🧱', label: 'مبلط سيراميك', gradient: 'linear-gradient(135deg, #6C3483 0%, #8E44AD 100%)' },
+    'painter':     { icon: '🖌️', label: 'نقاش ودهانات', gradient: 'linear-gradient(135deg, #D4AC0D 0%, #F1C40F 100%)' },
+    'electrician': { icon: '⚡', label: 'كهربائي منازل', gradient: 'linear-gradient(135deg, #D35400 0%, #E67E22 100%)' },
+    'printing':    { icon: '🖨️', label: 'مطبعة ودعاية', gradient: 'linear-gradient(135deg, #2C3E50 0%, #4CA1AF 100%)' },
+    'bakery':      { icon: '🍞', label: 'مخبز وحلواني', gradient: 'linear-gradient(135deg, #D68910 0%, #F39C12 100%)' },
+    'phones':      { icon: '📱', label: 'صيانة وموبايل', gradient: 'linear-gradient(135deg, #2E4053 0%, #5D6D7E 100%)' },
+    'delivery':    { icon: '🚀', label: 'خدمات توصيل', gradient: 'linear-gradient(135deg, #922B21 0%, #C0392B 100%)' }
+  };
+  return map[categoryId] || { icon: '🏪', label: 'المنزلة وناسها', gradient: 'linear-gradient(135deg, #1B4F72 0%, #154360 100%)' };
+}
+
 function getCategoryEmoji(categoryId) {
-  return '🏪';
+  return getCategoryCardCover(categoryId).icon;
 }
