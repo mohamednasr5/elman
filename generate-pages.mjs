@@ -170,7 +170,7 @@ const pages = [
   import { waitForAuth } from './src/js/core/auth.js';
   await initPage('');
   const user = await waitForAuth();
-  if (user) { location.href = 'dashboard.html'; }
+  if (user) { window.location.replace('dashboard.html'); }
   else await renderLoginPage(document.getElementById('page-container'));`
   },
   {
@@ -185,7 +185,7 @@ const pages = [
   import { waitForAuth } from './src/js/core/auth.js';
   await initPage('dashboard.html');
   const user = await waitForAuth();
-  if (!user) { location.href = 'login.html'; }
+  if (!user) { window.location.replace('login.html'); }
   else {
     const params = new URLSearchParams(location.search);
     const section = params.get('section') || 'overview';

@@ -49,7 +49,9 @@ export async function renderLoginPage($container) {
       const user = await signInWithGoogle();
       if (user) {
         toast.success(`أهلاً بك يا ${user.displayName || 'مستخدم'}`);
-        window.location.href = 'dashboard.html';
+        setTimeout(() => {
+          window.location.replace('dashboard.html');
+        }, 800);
       }
     } catch (err) {
       console.error('Login error:', err);

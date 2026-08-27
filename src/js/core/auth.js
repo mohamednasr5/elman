@@ -144,7 +144,7 @@ export function waitForAuth() {
           finish(appState.get('user'));
         }
       }
-    }, 2500);
+    }, 5000);
   });
 }
 
