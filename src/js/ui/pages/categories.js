@@ -1,10 +1,7 @@
-/**
- * المنزلة وناسها — Categories Page & Category Detail Page
- */
-
 import { getCategories, getPlacesByCategory, getPublishedPlaces } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard } from '../components/PlaceCard.js';
+import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { setMeta, setBreadcrumbSchema } from '../../utils/seo.js';
 
 export async function renderCategoriesPage($container) {
@@ -27,6 +24,9 @@ export async function renderCategoriesPage($container) {
     </div>
 
     <div class="container section">
+      <!-- Dedicated Sponsored Showcase Section -->
+      <div id="categories-sponsored-showcase" style="margin-bottom:var(--space-6)"></div>
+
       <div class="categories-grid" id="all-categories-grid">
         ${Array(12).fill('<div class="skeleton-category-card"><div class="skeleton-category-card__icon skeleton"></div><div class="skeleton-category-card__name skeleton"></div></div>').join('')}
       </div>
@@ -37,6 +37,12 @@ export async function renderCategoriesPage($container) {
     getCategories(),
     getPublishedPlaces()
   ]);
+
+  // Mount Sponsored Showcase
+  mountSponsoredShowcase('categories-sponsored-showcase', places || [], {
+    title: 'إعلانات وأنشطة مميزة',
+    subtitle: 'أنشطة تجارية موصى بها من كافة الأقسام'
+  });
 
   const grid = document.getElementById('all-categories-grid');
   if (!grid) return;

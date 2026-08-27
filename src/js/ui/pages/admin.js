@@ -378,6 +378,19 @@ function renderAdminPlacesTableRows(places) {
 
   return places.map(p => {
     const isSpons = Boolean(p.isSponsored || p.isFeatured || p.isPromoted);
+    const isExpired = isSpons && p.sponsoredUntil && p.sponsoredUntil <= Date.now();
+    const isCurrentlyActive = isSpons && !isExpired;
+
+    let buttonHtml = '';
+    if (isCurrentlyActive) {
+      const expText = p.sponsoredUntil ? `ينتهي: ${formatDate(p.sponsoredUntil)}` : 'دائم';
+      buttonHtml = `<button class="btn btn-xs btn-success" onclick="togglePlaceSponsored('${escAttr(p._id)}', false)" title="${expText} - انقر للإلغاء">⭐ نشط (${expText}) ✕</button>`;
+    } else if (isExpired) {
+      buttonHtml = `<button class="btn btn-xs btn-warning" onclick="togglePlaceSponsored('${escAttr(p._id)}', true)" title="انتهت مدة الإعلان - انقر للتجديد">⚠️ انتهى الإعلان (تجديد)</button>`;
+    } else {
+      buttonHtml = `<button class="btn btn-xs btn-outline" onclick="togglePlaceSponsored('${escAttr(p._id)}', true)" title="تعيين كإعلان مدفوع في قمة كل الصفحات">📢 تعيين كإعلان</button>`;
+    }
+
     return `
       <tr>
         <td>
@@ -386,13 +399,7 @@ function renderAdminPlacesTableRows(places) {
         </td>
         <td>${escHtml(p.categoryId || 'عام')}</td>
         <td>${escHtml(p.area || 'المنزلة')}</td>
-        <td>
-          <button class="btn btn-xs ${isSpons ? 'btn-warning' : 'btn-outline'}" 
-                  onclick="togglePlaceSponsored('${escAttr(p._id)}', ${!isSpons})"
-                  title="${isSpons ? 'إلغاء الترويج كإعلان' : 'تعيين كإعلان مدفوع في قمة كل الصفحات'}">
-            ${isSpons ? '⭐ إعلان مميز (إلغاء)' : '📢 تعيين كإعلان'}
-          </button>
-        </td>
+        <td>${buttonHtml}</td>
         <td>
           <button class="btn btn-xs ${p.isVerified ? 'btn-danger' : 'btn-secondary'}" onclick="togglePlaceVerification('${escAttr(p._id)}', ${!p.isVerified})">
             ${p.isVerified ? ICONS.x + ' إلغاء التوثيق' : ICONS.shield + ' توثيق'}
@@ -893,7 +900,11 @@ function showAddAdModal(user, onDone) {
             </option>
           `).join('')}
         </select>
-        <div class="form-hint">عند اختيار مكان، سيتم منحه شارة "إعلان مدفوع" وإعطائه الأولوية القصوى ليظهر أولاً في كل الصفحات والتصنيفات والبحث.</div>
+        <div style="margin-top:10px">
+          <label class="form-label">مدة الإعلان (بالأيام) <span class="required">*</span></label>
+          <input type="number" id="ad-place-days" class="form-input" value="30" placeholder="عدد الأيام (مثال: 7 أو 30 أو 90)" />
+        </div>
+        <div class="form-hint">عند اختيار مكان، سيتم منحه شارة "إعلان مدفوع" وإعطائه الأولوية القصوى ليظهر أولاً في كل الصفحات حتى تاريخ انتهاء المدة المحددة.</div>
       </div>
 
       <!-- Option 2: Custom Banner Fields -->
@@ -935,6 +946,7 @@ function showAddAdModal(user, onDone) {
             const placeSelect = document.getElementById('ad-place-id');
             const placeId = placeSelect?.value;
             const opt = placeSelect?.selectedOptions[0];
+            const daysNum = Number(document.getElementById('ad-place-days')?.value) || 30;
 
             if (!placeId) {
               toast.warning('يرجى اختيار المكان المراد ترويجه');
@@ -944,6 +956,7 @@ function showAddAdModal(user, onDone) {
             const placeName = opt?.dataset.name || 'مكان مميز';
             const placeSlug = opt?.dataset.slug || placeId;
             const placeImg = opt?.dataset.img || '';
+            const expiresAt = Date.now() + (daysNum * 24 * 60 * 60 * 1000);
 
             try {
               // 1. Set Place as Sponsored in database
@@ -951,12 +964,13 @@ function showAddAdModal(user, onDone) {
                 isSponsored: true,
                 isFeatured: true,
                 sponsoredAt: serverTimestamp(),
-                sponsoredUntil: Date.now() + (30 * 24 * 60 * 60 * 1000)
+                sponsoredUntil: expiresAt
               });
 
               if (adminCache.places && adminCache.places[placeId]) {
                 adminCache.places[placeId].isSponsored = true;
                 adminCache.places[placeId].isFeatured = true;
+                adminCache.places[placeId].sponsoredUntil = expiresAt;
               }
 
               // 2. Create Ad record
@@ -969,7 +983,7 @@ function showAddAdModal(user, onDone) {
                 priority: 10,
                 isActive: true,
                 startDate: Date.now(),
-                endDate: Date.now() + (30 * 24 * 60 * 60 * 1000),
+                endDate: expiresAt,
                 clicks: 0,
                 createdAt: serverTimestamp(),
                 createdBy: user.uid
@@ -1159,13 +1173,29 @@ window.togglePlaceSponsored = async (placeId, newStatus) => {
       isFeatured: newStatus,
       sponsoredAt: newStatus ? serverTimestamp() : null
     };
+
+    if (newStatus) {
+      const days = prompt('كم عدد أيام استمرار هذا الإعلان؟\n(اكتب عدد الأيام مثل: 7 أو 15 أو 30 أو 90، أو اتركه فارغاً ليكون إعلان دائم)', '30');
+      if (days === null) return; // User cancelled
+
+      if (days.trim() !== '' && !isNaN(days) && Number(days) > 0) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + Number(days));
+        updates.sponsoredUntil = expiresAt.getTime();
+      } else {
+        updates.sponsoredUntil = null; // Permanent
+      }
+    } else {
+      updates.sponsoredUntil = null;
+    }
+
     await dbUpdate(`places/${placeId}`, updates);
 
     if (adminCache.places && adminCache.places[placeId]) {
       Object.assign(adminCache.places[placeId], updates);
     }
 
-    toast.success(newStatus ? 'تم ترويج المكان وإعطاؤه الأولوية كإعلان مدفوع في كل الصفحات ⭐' : 'تم إلغاء ترويج المكان');
+    toast.success(newStatus ? 'تم ترويج المكان وتحديد مدة الإعلان بنجاح ⭐' : 'تم إلغاء ترويج المكان');
     switchAdminSection(_currentSection, false);
   } catch (err) {
     toast.error('فشلت العملية: ' + err.message);

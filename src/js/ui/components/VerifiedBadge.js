@@ -3,7 +3,7 @@
  */
 export function renderSponsoredBadge() {
   return `
-    <span class="badge-sponsored" title="إعلان مميز مدفوع" aria-label="إعلان مدفوع">
+    <span class="badge-sponsored" title="هذا الشخص أو المحل دفع مقابل مادي لظهور هذا الإعلان هنا" aria-label="هذا الشخص أو المحل دفع مقابل مادي لظهور هذا الإعلان هنا">
       <span class="badge-sponsored__icon">📢</span>
       <span class="badge-sponsored__text">إعلان مدفوع</span>
     </span>

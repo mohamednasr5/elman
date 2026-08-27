@@ -1,8 +1,5 @@
-/**
- * المنزلة وناسها — Daily Offers Page
- */
-
-import { getActiveOffers } from '../../core/db.js';
+import { getActiveOffers, getPublishedPlaces } from '../../core/db.js';
+import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { daysUntil, formatDateRange } from '../../utils/date.js';
 import { setMeta, setBreadcrumbSchema } from '../../utils/seo.js';
@@ -32,6 +29,9 @@ export async function renderOffersPage($container) {
     </div>
 
     <div class="container section">
+      <!-- Dedicated Sponsored Showcase Section -->
+      <div id="offers-sponsored-showcase" style="margin-bottom:var(--space-6)"></div>
+
       <div class="places-grid" id="offers-page-grid">
         ${Array(6).fill('<div class="skeleton-place-card" style="height:280px"><div class="skeleton-place-card__cover skeleton"></div></div>').join('')}
       </div>
@@ -39,7 +39,16 @@ export async function renderOffersPage($container) {
   `;
 
   try {
-    const offers = await getActiveOffers(50);
+    const [offers, places] = await Promise.all([
+      getActiveOffers(50),
+      getPublishedPlaces()
+    ]);
+
+    // Mount Sponsored Showcase
+    mountSponsoredShowcase('offers-sponsored-showcase', places || [], {
+      title: 'إعلانات وعروض مميزة من الرعاة',
+      subtitle: 'أنشطة ومحلات تقدم عروض وخدمات مميزة'
+    });
     const grid = document.getElementById('offers-page-grid');
     if (!grid) return;
 

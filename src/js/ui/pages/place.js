@@ -104,7 +104,7 @@ export async function renderPlacePage($container, { slug, user }) {
               <div class="place-header-card__info">
                 <div class="place-title">
                   <h1 class="place-title__name">${escHtml(place.name)}</h1>
-                  ${(place.isSponsored || place.isFeatured || place.isPromoted) ? renderSponsoredBadge() : ''}
+                  ${((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
                   ${place.isVerified ? renderVerifiedBadge() : ''}
                   ${place.deliveryType ? renderDeliveryBadge(place.deliveryType) : ''}
                 </div>

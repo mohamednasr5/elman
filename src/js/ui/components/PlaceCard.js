@@ -8,7 +8,7 @@ import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '
  * Render a place card HTML string
  */
 export function renderPlaceCard(place) {
-  const isSponsored = Boolean(place.isSponsored || place.isFeatured || place.isPromoted);
+  const isSponsored = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
   const catStyle = getCategoryCardCover(place.categoryId);
   const coverImg = place.coverImageUrl
     ? `<img src="${escAttr(place.coverImageUrl)}" alt="${escAttr(place.name)}" loading="lazy" />`

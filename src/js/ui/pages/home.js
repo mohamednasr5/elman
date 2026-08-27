@@ -6,6 +6,7 @@
 import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings } from '../../core/db.js';
 import { appState } from '../../core/state.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
+import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { daysUntil } from '../../utils/date.js';
 import { normalizeArabic, arabicScore } from '../../utils/arabic.js';
@@ -63,6 +64,11 @@ export async function renderHomePage($main, { user } = {}) {
     const sortedPlaces = sortPlaces(places || [], currentUser?.uid);
 
     // Render sections
+    mountSponsoredShowcase('home-sponsored-container', places || [], {
+      title: 'أماكن وإعلانات مميزة في المنزلة',
+      subtitle: 'أنشطة تجارية وخدمات موصى بها ومعتمدة في المدينة'
+    });
+
     renderCategories(categories || []);
     renderVerifiedPlaces(sortedPlaces.filter(p => p.isVerified).slice(0, 8));
     renderLatestPlaces(sortedPlaces.slice(0, 8));
@@ -93,7 +99,7 @@ function sortPlaces(places, currentUid = null) {
     if (seen.has(k)) return;
     seen.add(k);
 
-    const isSpons = Boolean(place.isSponsored || place.isFeatured || place.isPromoted);
+    const isSpons = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
     if (isSpons) {
       sponsored.push(place);
     } else if (place.isVerified) {
@@ -324,6 +330,9 @@ function getHomeHTML() {
 
     <!-- Stats Bar -->
     <div class="stats-bar" id="stats-bar"></div>
+
+    <!-- Dedicated Sponsored Showcase Section -->
+    <div class="container section" style="padding-bottom:0" id="home-sponsored-container"></div>
 
     <!-- Categories Section -->
     <section class="section">

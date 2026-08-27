@@ -181,7 +181,7 @@ function sortSearchPlaces(places, currentUid = null) {
     if (seen.has(key)) return;
     seen.add(key);
 
-    const isSpons = Boolean(place.isSponsored || place.isFeatured || place.isPromoted);
+    const isSpons = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
     if (isSpons) {
       sponsored.push(place);
     } else if (place.isVerified) {
