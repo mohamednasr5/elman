@@ -8,7 +8,7 @@ import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { normalizeArabic, arabicScore, extractSearchKeywords } from '../../utils/arabic.js';
-import { aiSmartSearch } from '../../services/ai.service.js';
+import { aiSearch, aiSmartSearch } from '../../services/ai.service.js';
 
 export async function renderSearchPage($container, { q = '', user }) {
   $container.innerHTML = `

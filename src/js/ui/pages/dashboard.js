@@ -117,7 +117,9 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
   }
 }
 
-window.switchDashboardSection = switchDashboardSection;
+if (typeof window !== 'undefined') {
+  window.switchDashboardSection = switchDashboardSection;
+}
 
 function setupDashboardNavigation() {
   const container = document.querySelector('.dashboard-layout');

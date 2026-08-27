@@ -3,7 +3,7 @@
  * Cache Strategy: Network-First for dynamic API/DB, Cache-First for static assets
  */
 
-const CACHE_VERSION = 'v1.0.1';
+const CACHE_VERSION = 'v1.0.2';
 const STATIC_CACHE  = `elmanzala-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `elmanzala-dynamic-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `elmanzala-images-${CACHE_VERSION}`;
