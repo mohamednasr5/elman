@@ -3,7 +3,7 @@
  * Cache Strategy: Network-First for dynamic API/DB, Cache-First for static assets
  */
 
-const CACHE_VERSION = 'v1.0.2';
+const CACHE_VERSION = 'v1.0.3';
 const STATIC_CACHE  = `elmanzala-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `elmanzala-dynamic-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `elmanzala-images-${CACHE_VERSION}`;
@@ -68,7 +68,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
-  // Real-time Firebase & API requests -> Bypass SW
+  // Real-time Firebase RTDB & API requests -> Bypass SW to keep real-time sync
   if (
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
@@ -84,23 +84,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets (CSS, JS, Fonts) -> Cache First
+  // Static assets (CSS, JS, Fonts) -> Cache First with background revalidation
   if (
     url.pathname.match(/\.(css|js|woff2|woff|ttf)$/) ||
     url.hostname.includes('fonts.gstatic.com') ||
     url.hostname.includes('fonts.googleapis.com')
   ) {
-    event.respondWith(cacheFirstStrategy(request, STATIC_CACHE));
+    event.respondWith(staleWhileRevalidateStrategy(request, STATIC_CACHE));
     return;
   }
 
-  // Navigation requests -> Network First with Offline Fallback
+  // Navigation requests -> Instant 0ms Stale-While-Revalidate with real-time background sync
   if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
-    event.respondWith(networkFirstStrategy(request, DYNAMIC_CACHE));
+    event.respondWith(staleWhileRevalidateStrategy(request, DYNAMIC_CACHE));
     return;
   }
 
-  event.respondWith(networkFirstStrategy(request, DYNAMIC_CACHE));
+  event.respondWith(staleWhileRevalidateStrategy(request, DYNAMIC_CACHE));
 });
 
 async function cacheFirstStrategy(request, cacheName, maxAge = null) {
@@ -123,26 +123,34 @@ async function cacheFirstStrategy(request, cacheName, maxAge = null) {
   return fetchAndCache(request, cache);
 }
 
-async function networkFirstStrategy(request, cacheName) {
+/**
+ * Stale-While-Revalidate (Instant 0ms UI load + Silent background network update)
+ */
+async function staleWhileRevalidateStrategy(request, cacheName) {
   const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
 
-  try {
-    const response = await fetch(request);
-    if (response && response.status === 200) {
-      cache.put(request, response.clone());
+  const fetchPromise = fetch(request).then((networkResponse) => {
+    if (networkResponse && networkResponse.status === 200) {
+      cache.put(request, networkResponse.clone());
     }
-    return response;
-  } catch {
-    const cached = await cache.match(request);
-    if (cached) return cached;
+    return networkResponse;
+  }).catch(() => null);
 
-    if (request.mode === 'navigate') {
-      const offlinePage = await caches.match(OFFLINE_PAGE);
-      if (offlinePage) return offlinePage;
-    }
-
-    return new Response('Offline', { status: 503, statusText: 'Offline' });
+  // Return instantly from cache if available
+  if (cached) {
+    return cached;
   }
+
+  const networkResponse = await fetchPromise;
+  if (networkResponse) return networkResponse;
+
+  if (request.mode === 'navigate') {
+    const offlinePage = await caches.match(OFFLINE_PAGE);
+    if (offlinePage) return offlinePage;
+  }
+
+  return new Response('Offline', { status: 503, statusText: 'Offline' });
 }
 
 async function fetchAndCache(request, cache) {
@@ -162,3 +170,4 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+

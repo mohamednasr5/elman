@@ -226,6 +226,17 @@ function _setupInstantPrefetch() {
     const a = e.target.closest('a[href]');
     if (a) prefetch(a.href);
   }, { passive: true });
+
+  // Eager prefetch core pages when browser is idle (0ms navigation everywhere)
+  const corePages = ['index.html', 'places.html', 'categories.html', 'offers.html', 'search.html'];
+  const idlePrefetch = () => {
+    corePages.forEach(p => prefetch(p));
+  };
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(idlePrefetch, { timeout: 1500 });
+  } else {
+    setTimeout(idlePrefetch, 800);
+  }
 }
 
 /* ─────────────────────────────────────────────────────────

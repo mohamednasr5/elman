@@ -157,8 +157,27 @@ export async function renderSearchPage($container, { q = '', user }) {
   };
 
   searchBtn?.addEventListener('click', () => performSearch(searchInput.value, false));
+  
+  // Instant Live Search as you type (0ms latency)
+  let _searchDebounce = null;
+  searchInput?.addEventListener('input', (e) => {
+    clearTimeout(_searchDebounce);
+    const val = e.target.value;
+    if (!val.trim()) {
+      gridEl.innerHTML = '';
+      metaEl.innerHTML = 'أدخل كلمة البحث للبدء';
+      return;
+    }
+    _searchDebounce = setTimeout(() => {
+      performSearch(val, false);
+    }, 60);
+  });
+
   searchInput?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') performSearch(searchInput.value, false);
+    if (e.key === 'Enter') {
+      clearTimeout(_searchDebounce);
+      performSearch(searchInput.value, false);
+    }
   });
 
   aiSearchBtn?.addEventListener('click', () => performSearch(searchInput.value || 'أفضل الأماكن', true));

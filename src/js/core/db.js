@@ -7,30 +7,66 @@ import { getDB } from './firebase.js';
 
 export { getDB };
 
-// ── Ultra-Fast In-Memory Cache (0ms response) ──
+// ── Ultra-Fast Multi-Tier SWR Cache (0ms Instant Navigation) ──
 const _dbMemoryCache = new Map();
 const _dbPendingPromises = new Map();
 
-function getCached(key, maxAgeMs = 30000) {
-  const item = _dbMemoryCache.get(key);
-  if (item && (Date.now() - item.ts < maxAgeMs)) {
-    return item.data;
+function getCached(key, maxAgeMs = 180000) {
+  // 1. In-Memory Cache (0.01ms)
+  const mem = _dbMemoryCache.get(key);
+  if (mem && (Date.now() - mem.ts < maxAgeMs)) {
+    return mem.data;
   }
+
+  // 2. Persistent LocalStorage (0.5ms cold-start)
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('__db_' + key);
+      if (stored) {
+        const item = JSON.parse(stored);
+        if (item && (Date.now() - item.ts < maxAgeMs * 2)) {
+          _dbMemoryCache.set(key, item);
+          return item.data;
+        }
+      }
+    }
+  } catch (_) {}
+
   return null;
 }
 
 function setCache(key, data) {
-  _dbMemoryCache.set(key, { data, ts: Date.now() });
+  const item = { data, ts: Date.now() };
+  _dbMemoryCache.set(key, item);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('__db_' + key, JSON.stringify(item));
+    }
+  } catch (_) {}
   return data;
 }
 
 export function clearDbCache(prefix = '') {
   if (!prefix) {
     _dbMemoryCache.clear();
+    try {
+      if (typeof localStorage !== 'undefined') {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('__db_'))
+          .forEach(k => localStorage.removeItem(k));
+      }
+    } catch (_) {}
   } else {
     for (const k of _dbMemoryCache.keys()) {
       if (k.startsWith(prefix)) _dbMemoryCache.delete(k);
     }
+    try {
+      if (typeof localStorage !== 'undefined') {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('__db_' + prefix))
+          .forEach(k => localStorage.removeItem(k));
+      }
+    } catch (_) {}
   }
 }
 
