@@ -10,6 +10,7 @@ import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { formatDate } from '../../utils/date.js';
+import { extractCoordinates } from '../../utils/maps.js';
 
 // ── In-Memory Cache Store for 0ms Tab Switching ──
 const adminCache = {
@@ -109,6 +110,42 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           <div class="spinner spinner-lg"></div>
         </div>
       </main>
+
+      <!-- Admin Mobile Bottom Bar for PWA -->
+      <nav class="admin-mobile-bottom-bar" id="admin-mobile-bottom-nav" aria-label="شريط إدارة الهاتف">
+        <button type="button" class="admin-bottom-tab ${section === 'overview' ? 'active' : ''}" data-admin-sec="overview">
+          <span class="admin-bottom-tab__icon">${ICONS.chart}</span>
+          <span class="admin-bottom-tab__label">الإحصائيات</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${section === 'places' ? 'active' : ''}" data-admin-sec="places">
+          <span class="admin-bottom-tab__icon">${ICONS.pin}</span>
+          <span class="admin-bottom-tab__label">الأماكن</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${section === 'verification' ? 'active' : ''}" data-admin-sec="verification">
+          <span class="admin-bottom-tab__icon">${ICONS.shield}</span>
+          <span class="admin-bottom-tab__label">التوثيق</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${section === 'categories' ? 'active' : ''}" data-admin-sec="categories">
+          <span class="admin-bottom-tab__icon">${ICONS.folder}</span>
+          <span class="admin-bottom-tab__label">التصنيفات</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${section === 'users' ? 'active' : ''}" data-admin-sec="users">
+          <span class="admin-bottom-tab__icon">${ICONS.users}</span>
+          <span class="admin-bottom-tab__label">المستخدمين</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${section === 'offers' ? 'active' : ''}" data-admin-sec="offers">
+          <span class="admin-bottom-tab__icon">${ICONS.tag}</span>
+          <span class="admin-bottom-tab__label">العروض</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${section === 'ads' ? 'active' : ''}" data-admin-sec="ads">
+          <span class="admin-bottom-tab__icon">${ICONS.megaphone}</span>
+          <span class="admin-bottom-tab__label">الإعلانات</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${section === 'settings' ? 'active' : ''}" data-admin-sec="settings">
+          <span class="admin-bottom-tab__icon">${ICONS.cog}</span>
+          <span class="admin-bottom-tab__label">الإعدادات</span>
+        </button>
+      </nav>
     </div>
   `;
 
@@ -1580,6 +1617,40 @@ window.editPlaceAdmin = async (placeId) => {
           <input type="text" id="aep-services" class="form-input" placeholder="توصيل للمنازل، دفع بالفيزا، متاح 24 ساعة" value="${escAttr(place.services ? place.services.join('، ') : '')}" />
         </div>
 
+        <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
+          <label class="form-label" style="font-weight:700;margin-bottom:8px">🌐 روابط التواصل الاجتماعي والموقع الإلكتروني</label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+            <div class="form-group">
+              <label class="form-label" style="font-size:11px">📘 Facebook</label>
+              <input type="url" id="aep-social-facebook" class="form-input" placeholder="https://facebook.com/..." value="${escAttr(place.social?.facebook || '')}" style="direction:ltr" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:11px">✖️ X (Twitter)</label>
+              <input type="url" id="aep-social-x" class="form-input" placeholder="https://x.com/..." value="${escAttr(place.social?.x || place.social?.twitter || '')}" style="direction:ltr" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:11px">📷 Instagram</label>
+              <input type="url" id="aep-social-instagram" class="form-input" placeholder="https://instagram.com/..." value="${escAttr(place.social?.instagram || '')}" style="direction:ltr" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:11px">🎵 TikTok</label>
+              <input type="url" id="aep-social-tiktok" class="form-input" placeholder="https://tiktok.com/@..." value="${escAttr(place.social?.tiktok || '')}" style="direction:ltr" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:11px">🧵 Threads</label>
+              <input type="url" id="aep-social-threads" class="form-input" placeholder="https://threads.net/@..." value="${escAttr(place.social?.threads || '')}" style="direction:ltr" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:11px">▶️ YouTube</label>
+              <input type="url" id="aep-social-youtube" class="form-input" placeholder="https://youtube.com/@..." value="${escAttr(place.social?.youtube || '')}" style="direction:ltr" />
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:8px">
+            <label class="form-label" style="font-size:11px">🌍 الموقع الإلكتروني الرسمي (Website)</label>
+            <input type="url" id="aep-social-website" class="form-input" placeholder="https://..." value="${escAttr(place.social?.website || '')}" style="direction:ltr" />
+          </div>
+        </div>
+
       </form>
     `,
     buttons: [
@@ -1614,8 +1685,28 @@ window.editPlaceAdmin = async (placeId) => {
             isVerified: document.getElementById('aep-isVerified')?.value === 'true',
             description: document.getElementById('aep-description')?.value.trim() || '',
             services: servicesArr,
+            social: {
+              facebook: document.getElementById('aep-social-facebook')?.value.trim() || '',
+              x: document.getElementById('aep-social-x')?.value.trim() || '',
+              twitter: document.getElementById('aep-social-x')?.value.trim() || '',
+              instagram: document.getElementById('aep-social-instagram')?.value.trim() || '',
+              tiktok: document.getElementById('aep-social-tiktok')?.value.trim() || '',
+              threads: document.getElementById('aep-social-threads')?.value.trim() || '',
+              youtube: document.getElementById('aep-social-youtube')?.value.trim() || '',
+              website: document.getElementById('aep-social-website')?.value.trim() || ''
+            },
             updatedAt: serverTimestamp()
           };
+
+          const mapsLinkVal = document.getElementById('aep-mapsLink')?.value.trim() || '';
+          const addressVal = document.getElementById('aep-address')?.value.trim() || '';
+          let coords = await extractCoordinates(mapsLinkVal);
+          if (!coords && addressVal) {
+            coords = await extractCoordinates(addressVal);
+          }
+          if (coords && coords.lat && coords.lng) {
+            updates.location = { lat: coords.lat, lng: coords.lng };
+          }
 
           try {
             await dbUpdate(`places/${placeId}`, updates);

@@ -4,7 +4,7 @@
  * AI translation, AI cover generator, and verification requests.
  */
 
-import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings } from '../../core/db.js';
+import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications } from '../../core/db.js';
 import { createPlace, updatePlace, deletePlace, addOffer, addProduct, submitVerificationRequest } from '../../services/places.service.js';
 import { uploadImage } from '../../services/upload.service.js';
 import { translatePlaceName, generateCoverImage, generatePlaceLogo, generateSeoDescription, generateSeoServices } from '../../services/ai.service.js';
@@ -13,6 +13,7 @@ import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { isAdmin } from '../../core/auth.js';
 import { formatPrice } from '../../utils/arabic.js';
+import { extractCoordinates } from '../../utils/maps.js';
 
 let _dashUser = null;
 let _dashPlacesCache = null;
@@ -23,6 +24,13 @@ export async function renderDashboard($container, { user, section = 'overview', 
     return;
   }
   _dashUser = user;
+
+  // Fetch initial notifications count
+  let unreadNotifsCount = 0;
+  try {
+    const userNotifs = await getUserNotifications(user.uid);
+    unreadNotifsCount = userNotifs.filter(n => !n.isRead).length;
+  } catch (_) {}
 
   $container.innerHTML = `
     <div class="dashboard-layout">
@@ -45,6 +53,10 @@ export async function renderDashboard($container, { user, section = 'overview', 
           </a>
           <a href="dashboard.html?section=add" data-section="add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">➕</span> إضافة مكان جديد
+          </a>
+          <a href="dashboard.html?section=notifications" data-section="notifications" class="dashboard-nav-item ${section === 'notifications' ? 'active' : ''}">
+            <span class="dashboard-nav-item__icon">🔔</span> الإشعارات والزيارات
+            <span id="sidebar-notifs-badge" class="badge badge--danger" style="margin-right:auto;font-size:11px;padding:2px 6px;${unreadNotifsCount > 0 ? '' : 'display:none'}">${unreadNotifsCount}</span>
           </a>
           
           ${isAdmin(user) ? `
@@ -109,6 +121,8 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
       await renderPlaceProductsSection($mainArea, _dashUser, placeId);
     } else if (section === 'settings' || section === 'place-settings') {
       await renderPlaceSettingsSection($mainArea, _dashUser, placeId);
+    } else if (section === 'notifications') {
+      await renderDashboardNotifications($mainArea, _dashUser);
     } else {
       await renderOverviewSection($mainArea, _dashUser);
     }
@@ -480,7 +494,21 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <div class="form-group">
           <label class="form-label">رابط خرائط جوجل (Google Maps Link)</label>
           <input type="text" id="p-maps" class="form-input" placeholder="مثال: https://maps.app.goo.gl/ruGRycBTGHt8Ecr2A" value="${escAttr(place?.mapsLink || '')}" style="direction:ltr;text-align:left" />
-          <p style="font-size:11.5px;color:var(--text-muted);margin-top:4px">💡 يمكنك وضع رابط خرائط جوجل أو كود بلس أو العنوان وسيظهر المكان على الخريطة التفاعلية فوراً.</p>
+          <p style="font-size:11.5px;color:var(--text-muted);margin-top:4px">💡 يمكنك وضع رابط خرائط جوجل أو كود بلس أو العنوان وسيتم استخراج وتثبيت موقعك الفعلي بدقة على الخريطة.</p>
+          <div id="map-live-preview-box" style="margin-top:8px;${place?.location?.lat ? '' : 'display:none'}">
+            ${place?.location?.lat ? `
+              <div style="padding:8px 12px;background:rgba(16, 185, 129, 0.08);border:1px solid rgba(16, 185, 129, 0.3);border-radius:var(--radius-md)">
+                <div style="font-size:12px;font-weight:700;color:#059669;margin-bottom:6px;display:flex;align-items:center;gap:6px">
+                  <span>✅</span> تم استخراج الموقع الجغرافي بدقة (${Number(place.location.lat).toFixed(4)}, ${Number(place.location.lng).toFixed(4)})
+                </div>
+                <iframe 
+                  src="https://maps.google.com/maps?q=${place.location.lat},${place.location.lng}&hl=ar&z=17&output=embed" 
+                  style="border:0;width:100%;height:150px;border-radius:var(--radius-sm);display:block" 
+                  loading="lazy">
+                </iframe>
+              </div>
+            ` : ''}
+          </div>
         </div>
       </div>
 
@@ -577,6 +605,55 @@ async function renderPlaceFormSection($container, user, placeId = null) {
               `;
             }).join('')}
           </div>
+        </div>
+      </div>
+
+      <!-- Social Media & Website Links -->
+      <div class="form-section">
+        <h2 class="form-section__title"><span>🌐</span> وسائل التواصل الاجتماعي والموقع</h2>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-3)">
+          أضف روابط حساباتك الرسمية، وسيتم عرض الأيقونات الأصلية للأشياء المكتوبة فقط في صفحة المكان:
+        </p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">📘 رابط صفحة Facebook</label>
+            <input type="url" id="p-social-facebook" class="form-input" placeholder="https://facebook.com/yourpage" value="${escAttr(place?.social?.facebook || '')}" style="direction:ltr;text-align:left" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">✖️ رابط حساب منصة X (تويتر)</label>
+            <input type="url" id="p-social-x" class="form-input" placeholder="https://x.com/yourhandle" value="${escAttr(place?.social?.x || place?.social?.twitter || '')}" style="direction:ltr;text-align:left" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">📷 رابط حساب Instagram</label>
+            <input type="url" id="p-social-instagram" class="form-input" placeholder="https://instagram.com/yourprofile" value="${escAttr(place?.social?.instagram || '')}" style="direction:ltr;text-align:left" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">🎵 رابط حساب TikTok</label>
+            <input type="url" id="p-social-tiktok" class="form-input" placeholder="https://tiktok.com/@youraccount" value="${escAttr(place?.social?.tiktok || '')}" style="direction:ltr;text-align:left" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">🧵 رابط حساب Threads</label>
+            <input type="url" id="p-social-threads" class="form-input" placeholder="https://threads.net/@youraccount" value="${escAttr(place?.social?.threads || '')}" style="direction:ltr;text-align:left" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">▶️ رابط قناة YouTube</label>
+            <input type="url" id="p-social-youtube" class="form-input" placeholder="https://youtube.com/@yourchannel" value="${escAttr(place?.social?.youtube || '')}" style="direction:ltr;text-align:left" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">🌍 رابط الموقع الإلكتروني الرسمي (Website)</label>
+          <input type="url" id="p-social-website" class="form-input" placeholder="https://www.yourwebsite.com" value="${escAttr(place?.social?.website || '')}" style="direction:ltr;text-align:left" />
         </div>
       </div>
 
@@ -840,6 +917,46 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     toast.success('تم رفع اللوجو');
   });
 
+  // Live Google Maps Coordinate Auto-Extraction
+  let _currentCoords = place?.location || null;
+
+  async function updateMapPreview() {
+    const rawMap = document.getElementById('p-maps')?.value.trim() || '';
+    const rawAddress = document.getElementById('p-address')?.value.trim() || '';
+
+    let coords = await extractCoordinates(rawMap);
+    if (!coords && rawAddress) {
+      coords = await extractCoordinates(rawAddress);
+    }
+
+    const previewBox = document.getElementById('map-live-preview-box');
+    if (coords && coords.lat && coords.lng) {
+      _currentCoords = { lat: coords.lat, lng: coords.lng };
+      if (previewBox) {
+        previewBox.style.display = 'block';
+        previewBox.innerHTML = `
+          <div style="padding:8px 12px;background:rgba(16, 185, 129, 0.08);border:1px solid rgba(16, 185, 129, 0.3);border-radius:var(--radius-md)">
+            <div style="font-size:12px;font-weight:700;color:#059669;margin-bottom:6px;display:flex;align-items:center;gap:6px">
+              <span>✅</span> تم استخراج وتثبيت الموقع الجغرافي بدقة (${Number(coords.lat).toFixed(4)}, ${Number(coords.lng).toFixed(4)})
+            </div>
+            <iframe 
+              src="https://maps.google.com/maps?q=${coords.lat},${coords.lng}&hl=ar&z=17&output=embed" 
+              style="border:0;width:100%;height:150px;border-radius:var(--radius-sm);display:block" 
+              loading="lazy">
+            </iframe>
+          </div>
+        `;
+      }
+    }
+  }
+
+  document.getElementById('p-maps')?.addEventListener('change', updateMapPreview);
+  document.getElementById('p-maps')?.addEventListener('input', () => {
+    clearTimeout(window._mapDebounce);
+    window._mapDebounce = setTimeout(updateMapPreview, 600);
+  });
+  document.getElementById('p-address')?.addEventListener('change', updateMapPreview);
+
   // Form Submit
   document.getElementById('place-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -890,11 +1007,22 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         area: document.getElementById('p-area').value,
         address: document.getElementById('p-address').value,
         mapsLink: document.getElementById('p-maps').value,
+        location: _currentCoords,
         coverImageUrl: document.getElementById('p-cover-url').value,
         logoUrl: document.getElementById('p-logo-url').value,
         alwaysOpen,
         workingHours,
-        services
+        services,
+        social: {
+          facebook: document.getElementById('p-social-facebook')?.value.trim() || '',
+          x: document.getElementById('p-social-x')?.value.trim() || '',
+          twitter: document.getElementById('p-social-x')?.value.trim() || '',
+          instagram: document.getElementById('p-social-instagram')?.value.trim() || '',
+          tiktok: document.getElementById('p-social-tiktok')?.value.trim() || '',
+          threads: document.getElementById('p-social-threads')?.value.trim() || '',
+          youtube: document.getElementById('p-social-youtube')?.value.trim() || '',
+          website: document.getElementById('p-social-website')?.value.trim() || ''
+        }
       };
 
       if (isEdit) {
@@ -1238,6 +1366,142 @@ window.toggleDayHours = (dayKey, isClosed) => {
   if (openInput) openInput.disabled = isClosed;
   if (closeInput) closeInput.disabled = isClosed;
 };
+
+/**
+ * Render Dashboard Notifications Section (Profile visitors & alerts)
+ */
+async function renderDashboardNotifications($container, user) {
+  $container.innerHTML = `<div class="spinner spinner-lg" style="margin:4rem auto"></div>`;
+  const notifications = await getUserNotifications(user.uid);
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  $container.innerHTML = `
+    <div class="dashboard-header animate-fade-in-up" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-6)">
+      <div>
+        <h1 class="dashboard-title" style="margin-bottom:4px;display:flex;align-items:center;gap:8px">
+          <span>🔔</span> سجل الإشعارات وزوار البروفايل
+          ${unreadCount > 0 ? `<span class="badge badge--danger" style="font-size:12px;padding:2px 8px">${unreadCount} جديد</span>` : ''}
+        </h1>
+        <p class="dashboard-subtitle" style="margin:0;color:var(--text-muted);font-size:13px">
+          تعرف على الأشخاص والزوار الذين شاهدوا أنشطتك وأماكنك اليوم مع التوقيت الدقيق
+        </p>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        ${notifications.length > 0 ? `
+          <button class="btn btn-sm btn-outline" id="btn-mark-all-read" style="font-size:12px">
+            ✓ تحديد الكل كمقروء
+          </button>
+          <button class="btn btn-sm btn-ghost" id="btn-clear-all-notifs" style="color:var(--danger);font-size:12px">
+            🗑️ مسح الكل
+          </button>
+        ` : ''}
+      </div>
+    </div>
+
+    ${notifications.length === 0 ? `
+      <div class="empty-state" style="background:var(--surface);border-radius:var(--radius-lg);padding:3rem 1.5rem;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:3.5rem;margin-bottom:12px">🔕</div>
+        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">لا توجد إشعارات جديدة حالياً</h3>
+        <p style="color:var(--text-muted);font-size:13px;max-width:400px;margin:0 auto">
+          عندما يقوم الزوار بتصفح أماكنك أو بروفايلك ستصلك تنبيهات فورية هنا بأسماء الزوار وتوقيت الزيارة.
+        </p>
+      </div>
+    ` : `
+      <div class="notifications-list" style="display:flex;flex-direction:column;gap:10px">
+        ${notifications.map(n => {
+          const isUnread = !n.isRead;
+          const timeStr = formatTimeAgo(n.createdAt);
+          const isGuest = n.isGuest || !n.visitorUid;
+
+          return `
+            <div class="notification-card" style="background:${isUnread ? 'rgba(27, 79, 114, 0.05)' : 'var(--surface)'};border:1px solid ${isUnread ? 'var(--primary)' : 'var(--border)'};border-radius:var(--radius-md);padding:12px 16px;display:flex;align-items:center;gap:14px;transition:all 0.2s">
+              
+              <!-- Avatar -->
+              <div style="width:44px;height:44px;border-radius:50%;background:${isGuest ? 'var(--surface-3)' : 'var(--primary-alpha)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1.5px solid var(--border)">
+                ${n.visitorPhoto ? `
+                  <img src="${escAttr(n.visitorPhoto)}" alt="${escAttr(n.visitorName)}" style="width:100%;height:100%;object-fit:cover" />
+                ` : `
+                  <span style="font-size:1.3rem">${isGuest ? '👤' : (n.visitorName?.charAt(0) || '👤')}</span>
+                `}
+              </div>
+
+              <!-- Content -->
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                  <div style="font-weight:700;font-size:13.5px;color:var(--text-primary)">
+                    ${isGuest ? `<span style="color:var(--text-muted)">زائر (غير مسجل)</span>` : escHtml(n.visitorName)}
+                  </div>
+                  <div style="font-size:11px;color:var(--text-muted)">
+                    ⏱️ ${timeStr}
+                  </div>
+                </div>
+
+                <div style="font-size:12.5px;color:var(--text-secondary);margin-top:2px">
+                  ${isGuest ? 'قام زائر بتصفح' : 'قام بزيارة وتصفح'} صفحة <strong>${escHtml(n.placeName || 'المكان')}</strong>
+                </div>
+              </div>
+
+              ${isUnread ? `
+                <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0" title="إشعار غير مقروء"></div>
+              ` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `}
+  `;
+
+  // Setup Button Handlers
+  document.getElementById('btn-mark-all-read')?.addEventListener('click', async () => {
+    await markAllNotificationsAsRead(user.uid);
+    toast.success('تم تحديد جميع الإشعارات كمقروءة');
+    await renderDashboardNotifications($container, user);
+    updateNotificationBadges(user.uid);
+  });
+
+  document.getElementById('btn-clear-all-notifs')?.addEventListener('click', async () => {
+    const ok = await showConfirm({
+      title: 'مسح جميع الإشعارات',
+      message: 'هل أنت متأكد من رغبتك في حذف كافة سجلات الزيارات والإشعارات؟',
+      confirmText: 'نعم، حذف الكل',
+      cancelText: 'إلغاء'
+    });
+    if (ok) {
+      await clearAllNotifications(user.uid);
+      toast.success('تم مسح جميع الإشعارات بنجاح');
+      await renderDashboardNotifications($container, user);
+      updateNotificationBadges(user.uid);
+    }
+  });
+}
+
+async function updateNotificationBadges(uid) {
+  try {
+    const notifs = await getUserNotifications(uid);
+    const unread = notifs.filter(n => !n.isRead).length;
+    const badge = document.getElementById('sidebar-notifs-badge');
+    if (badge) {
+      badge.textContent = unread;
+      badge.style.display = unread > 0 ? 'inline-block' : 'none';
+    }
+  } catch (_) {}
+}
+
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return 'حديثاً';
+  const diff = Date.now() - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return 'منذ لحظات';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `منذ ${minutes} دقيقة`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `منذ ${hours} ساعة`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'أمس';
+  if (days < 7) return `منذ ${days} أيام`;
+  return new Date(timestamp).toLocaleDateString('ar-EG');
+}
 
 function escHtml(str) {
   if (!str) return '';

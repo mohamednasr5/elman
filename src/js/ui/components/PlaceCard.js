@@ -9,7 +9,7 @@ import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '
  */
 export function renderPlaceCard(place) {
   const isSponsored = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
-  const catStyle = getCategoryCardCover(place.categoryId);
+  const catStyle = getCategoryCardCover(place);
   const coverImg = place.coverImageUrl
     ? `<img src="${escAttr(place.coverImageUrl)}" alt="${escAttr(place.name)}" loading="lazy" />`
     : `<div class="place-card__cover-placeholder" style="background:${catStyle.gradient}">
@@ -19,7 +19,7 @@ export function renderPlaceCard(place) {
 
   const logoImg = place.logoUrl
     ? `<img src="${escAttr(place.logoUrl)}" alt="${escAttr(place.name)} logo" loading="lazy" />`
-    : `<div class="place-card__logo-placeholder">${getCategoryEmoji(place.categoryId)}</div>`;
+    : `<div class="place-card__logo-placeholder">${catStyle.icon}</div>`;
 
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';
   const verifiedBadge = place.isVerified ? renderVerifiedBadge() : '';
@@ -113,7 +113,12 @@ function formatWhatsApp(phone) {
   return cleaned;
 }
 
-function getCategoryCardCover(categoryId) {
+function getCategoryCardCover(placeOrCatId) {
+  const isObj = placeOrCatId && typeof placeOrCatId === 'object';
+  const categoryId = (isObj ? placeOrCatId.categoryId : placeOrCatId) || '';
+  const customCat = isObj ? (placeOrCatId.customCategory || placeOrCatId.categoryName || '') : '';
+  const name = isObj ? (placeOrCatId.name || '') : '';
+
   const map = {
     'doctor':      { icon: '👨‍⚕️', label: 'دكتور وعيادات', gradient: 'linear-gradient(135deg, #1B4F72 0%, #2980B9 100%)' },
     'pharmacy':    { icon: '💊', label: 'صيدلية', gradient: 'linear-gradient(135deg, #C0392B 0%, #E74C3C 100%)' },
@@ -128,7 +133,31 @@ function getCategoryCardCover(categoryId) {
     'phones':      { icon: '📱', label: 'صيانة وموبايل', gradient: 'linear-gradient(135deg, #2E4053 0%, #5D6D7E 100%)' },
     'delivery':    { icon: '🚀', label: 'خدمات توصيل', gradient: 'linear-gradient(135deg, #922B21 0%, #C0392B 100%)' }
   };
-  return map[categoryId] || { icon: '🏪', label: 'المنزلة وناسها', gradient: 'linear-gradient(135deg, #1B4F72 0%, #154360 100%)' };
+
+  if (map[categoryId]) return map[categoryId];
+
+  // Semantic custom search
+  const raw = (customCat + ' ' + name + ' ' + categoryId).toLowerCase();
+  let icon = '🏪';
+  let label = customCat || 'دليل المنزلة';
+
+  if (raw.includes('تصوير') || raw.includes('فوتو') || raw.includes('استوديو')) { icon = '📸'; }
+  else if (raw.includes('رخام') || raw.includes('جرانيت')) { icon = '🏛️'; }
+  else if (raw.includes('برمج') || raw.includes('كمبيوتر') || raw.includes('سوفت وير')) { icon = '💻'; }
+  else if (raw.includes('حلو') || raw.includes('تورت') || raw.includes('باتيسري')) { icon = '🍰'; }
+  else if (raw.includes('ورد') || raw.includes('زهور')) { icon = '💐'; }
+  else if (raw.includes('ميكاب') || raw.includes('بيوتي') || raw.includes('كوافير')) { icon = '💄'; }
+  else if (raw.includes('ملابس') || raw.includes('فستان') || raw.includes('أزياء')) { icon = '👗'; }
+  else if (raw.includes('عقار') || raw.includes('شقق') || raw.includes('مقاول')) { icon = '🏢'; }
+  else if (raw.includes('سيار') || raw.includes('عرب') || raw.includes('ميكانيك')) { icon = '🚗'; }
+  else if (raw.includes('توكتوك') || raw.includes('موتوسيكل')) { icon = '🛵'; }
+  else if (raw.includes('مطعم') || raw.includes('أكل') || raw.includes('مشويات')) { icon = '🍽️'; }
+  else if (raw.includes('كافيه') || raw.includes('قهوة') || raw.includes('مشروبات')) { icon = '☕'; }
+  else if (raw.includes('صيدل') || raw.includes('دواء')) { icon = '💊'; }
+  else if (raw.includes('دكتور') || raw.includes('طبيب') || raw.includes('عياد')) { icon = '🩺'; }
+  else if (raw.includes('ماركت') || raw.includes('سوبر')) { icon = '🛒'; }
+
+  return { icon, label, gradient: 'linear-gradient(135deg, #1B4F72 0%, #154360 100%)' };
 }
 
 function getCategoryEmoji(categoryId) {

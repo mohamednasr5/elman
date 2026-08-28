@@ -400,3 +400,70 @@
 
 .unverified-notice__icon { font-size: 1.5rem; color: var(--text-muted); }
 .unverified-notice__text { font-size: var(--font-size-sm); color: var(--text-muted); }
+
+/* Branded Social Media Buttons */
+.social-brand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.social-brand-btn svg {
+  flex-shrink: 0;
+}
+
+.social-brand-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.social-brand-btn--fb:hover {
+  background: rgba(24, 119, 242, 0.08);
+  border-color: #1877F2;
+  color: #1877F2;
+}
+
+.social-brand-btn--x:hover {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: #000;
+  color: #000;
+}
+
+.social-brand-btn--ig:hover {
+  background: rgba(225, 48, 108, 0.08);
+  border-color: #E1306C;
+  color: #E1306C;
+}
+
+.social-brand-btn--tt:hover {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: #000;
+  color: #000;
+}
+
+.social-brand-btn--th:hover {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: #000;
+  color: #000;
+}
+
+.social-brand-btn--yt:hover {
+  background: rgba(255, 0, 0, 0.08);
+  border-color: #FF0000;
+  color: #FF0000;
+}
+
+.social-brand-btn--web:hover {
+  background: rgba(2, 132, 199, 0.08);
+  border-color: #0284C7;
+  color: #0284C7;
+}

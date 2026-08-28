@@ -50,16 +50,17 @@ export async function renderPlacePage($container, { slug, user }) {
     ]);
 
     const category = categories?.find(c => c._key === place.categoryId || c.slug === place.categoryId);
+    const catInfo = resolvePlaceCategoryInfo(place, category);
     const currentUser = getCurrentUser() || user;
     const isOwner = currentUser && currentUser.uid === place.ownerId;
     const placeId = place.id || place._key;
 
-    // Track View Count
-    trackPlaceView(placeId);
+    // Track View Count & Profile Visitor
+    trackPlaceView(place, currentUser);
 
     // Update SEO
     setMeta({
-      title: `${place.name} — ${category?.name || 'دليل المنزلة'}`,
+      title: `${place.name} — ${catInfo.name || 'دليل المنزلة'}`,
       description: place.description || `تعرف على ${place.name} في المنزلة — مواعيد العمل، أرقام التواصل، العنوان، والخدمات`,
       image: place.coverImageUrl || place.logoUrl,
       url: `https://elmanzala.com/place.html?slug=${place.slug}`
@@ -69,7 +70,7 @@ export async function renderPlacePage($container, { slug, user }) {
     setBreadcrumbSchema([
       { name: 'الرئيسية', url: 'https://elmanzala.com/' },
       { name: 'الأماكن', url: 'https://elmanzala.com/places.html' },
-      { name: category?.name || 'القسم', url: `https://elmanzala.com/category.html?slug=${category?.slug || place.categoryId}` },
+      { name: catInfo.name || 'القسم', url: `https://elmanzala.com/category.html?slug=${catInfo.slug}` },
       { name: place.name, url: `https://elmanzala.com/place.html?slug=${place.slug}` }
     ]);
 
@@ -86,7 +87,7 @@ export async function renderPlacePage($container, { slug, user }) {
       <section class="place-hero">
         ${place.coverImageUrl
           ? `<img src="${escAttr(place.coverImageUrl)}" alt="${escAttr(place.name)}" class="place-hero__cover" />`
-          : `<div class="place-hero__cover-placeholder">${category?.icon || '🏪'}</div>`
+          : `<div class="place-hero__cover-placeholder">${catInfo.icon || '🏪'}</div>`
         }
         <div class="place-hero__overlay"></div>
       </section>
@@ -101,7 +102,7 @@ export async function renderPlacePage($container, { slug, user }) {
               <div class="place-logo">
                 ${place.logoUrl
                   ? `<img src="${escAttr(place.logoUrl)}" alt="${escAttr(place.name)} logo" />`
-                  : `<div class="place-logo__placeholder">${category?.icon || '🏪'}</div>`
+                  : `<div class="place-logo__placeholder">${catInfo.icon || '🏪'}</div>`
                 }
               </div>
               <div class="place-header-card__info">
@@ -113,8 +114,8 @@ export async function renderPlacePage($container, { slug, user }) {
                 </div>
                 
                 <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap">
-                  <a href="category.html?slug=${category?.slug || place.categoryId}" class="place-category-tag">
-                    ${category?.icon || '📁'} ${escHtml(category?.name || 'عام')}
+                  <a href="category.html?slug=${catInfo.slug}" class="place-category-tag">
+                    ${catInfo.icon} ${escHtml(catInfo.name)}
                   </a>
                   ${place.nameEn ? `<span style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
                 </div>
@@ -315,17 +316,55 @@ export async function renderPlacePage($container, { slug, user }) {
             </div>
           </div>
 
-          <!-- Social Media Links -->
+          <!-- Social Media Links (وسائل التواصل الاجتماعي) -->
           ${hasSocial(place.social) ? `
             <div class="info-card">
               <h3 class="info-card__title" style="font-size:var(--font-size-base)">
-                <span>🌐</span> وسائل التواصل
+                <span>🌐</span> وسائل التواصل والموقع
               </h3>
-              <div class="social-links">
-                ${place.social.facebook ? `<a href="${escAttr(place.social.facebook)}" target="_blank" rel="noopener" class="social-link">📘 فيسبوك</a>` : ''}
-                ${place.social.instagram ? `<a href="${escAttr(place.social.instagram)}" target="_blank" rel="noopener" class="social-link">📷 إنستجرام</a>` : ''}
-                ${place.social.tiktok ? `<a href="${escAttr(place.social.tiktok)}" target="_blank" rel="noopener" class="social-link">🎵 تيك توك</a>` : ''}
-                ${place.social.youtube ? `<a href="${escAttr(place.social.youtube)}" target="_blank" rel="noopener" class="social-link">▶️ يوتيوب</a>` : ''}
+              <div class="social-links" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+                ${place.social?.facebook ? `
+                  <a href="${escAttr(place.social.facebook)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--fb" title="فيسبوك">
+                    ${SOCIAL_ICONS.facebook}
+                    <span>فيسبوك</span>
+                  </a>
+                ` : ''}
+                ${(place.social?.x || place.social?.twitter) ? `
+                  <a href="${escAttr(place.social.x || place.social.twitter)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--x" title="منصة X (تويتر)">
+                    ${SOCIAL_ICONS.x}
+                    <span>منصة X</span>
+                  </a>
+                ` : ''}
+                ${place.social?.instagram ? `
+                  <a href="${escAttr(place.social.instagram)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--ig" title="إنستجرام">
+                    ${SOCIAL_ICONS.instagram}
+                    <span>إنستجرام</span>
+                  </a>
+                ` : ''}
+                ${place.social?.tiktok ? `
+                  <a href="${escAttr(place.social.tiktok)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--tt" title="تيك توك">
+                    ${SOCIAL_ICONS.tiktok}
+                    <span>تيك توك</span>
+                  </a>
+                ` : ''}
+                ${place.social?.threads ? `
+                  <a href="${escAttr(place.social.threads)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--th" title="ثريدز">
+                    ${SOCIAL_ICONS.threads}
+                    <span>ثريدز</span>
+                  </a>
+                ` : ''}
+                ${place.social?.youtube ? `
+                  <a href="${escAttr(place.social.youtube)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--yt" title="يوتيوب">
+                    ${SOCIAL_ICONS.youtube}
+                    <span>يوتيوب</span>
+                  </a>
+                ` : ''}
+                ${place.social?.website ? `
+                  <a href="${escAttr(place.social.website)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--web" title="الموقع الإلكتروني الرسمي">
+                    ${SOCIAL_ICONS.website}
+                    <span>الموقع الرسمي</span>
+                  </a>
+                ` : ''}
               </div>
             </div>
           ` : ''}
@@ -493,7 +532,88 @@ if (typeof window !== 'undefined') {
 }
 
 function hasSocial(social) {
-  return social && (social.facebook || social.instagram || social.tiktok || social.youtube);
+  if (!social || typeof social !== 'object') return false;
+  return Boolean(
+    social.facebook ||
+    social.instagram ||
+    social.tiktok ||
+    social.youtube ||
+    social.threads ||
+    social.x ||
+    social.twitter ||
+    social.website
+  );
+}
+
+const SOCIAL_ICONS = {
+  facebook: `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`,
+  x: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
+  instagram: `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"><rect width="20" height="20" x="2" y="2" rx="5" fill="url(#ig-grad)"/><path fill="#fff" d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zm5.2-8.4a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0z"/><defs><linearGradient id="ig-grad" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse"><stop stop-color="#f09433"/><stop offset=".25" stop-color="#e6683c"/><stop offset=".5" stop-color="#dc2743"/><stop offset=".75" stop-color="#cc2366"/><stop offset="1" stop-color="#bc1888"/></linearGradient></defs></svg>`,
+  tiktok: `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.89 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3 15.67 6.34 6.34 0 0 0 9.34 22a6.34 6.34 0 0 0 6.34-6.33V9.28a8.28 8.28 0 0 0 3.91 1.05v-3.45a4.85 4.85 0 0 1-.02-.19z"/></svg>`,
+  threads: `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12.186 24C5.467 24 .017 18.598.017 11.933.017 5.268 5.467-.134 12.186-.134c6.72 0 12.17 5.402 12.17 12.067 0 6.665-5.45 12.067-12.17 12.067zm0-2.317c5.441 0 9.853-4.366 9.853-9.75 0-5.385-4.412-9.75-9.853-9.75-5.441 0-9.853 4.365-9.853 9.75 0 5.384 4.412 9.75 9.853 9.75zm1.536-5.834c-1.39 0-2.333-.708-2.333-2.023 0-1.314.943-2.023 2.333-2.023 1.39 0 2.333.709 2.333 2.023 0 1.315-.943 2.023-2.333 2.023z"/></svg>`,
+  youtube: `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`,
+  website: `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`
+};
+
+export function resolvePlaceCategoryInfo(place, category = null) {
+  const customCat = (place.customCategory || place.categoryName || '').trim();
+  const catId = (place.categoryId || '').toLowerCase();
+  
+  let name = '';
+  if (customCat && customCat !== 'other' && customCat !== 'أخرى' && customCat !== 'عام') {
+    name = customCat;
+  } else if (category && category.name && category.name !== 'أخرى' && category.name !== 'عام') {
+    name = category.name;
+  } else if (place.categoryName && place.categoryName !== 'أخرى' && place.categoryName !== 'عام') {
+    name = place.categoryName;
+  } else {
+    name = customCat || 'خدمات وأنشطة';
+  }
+
+  // AI Semantic Icon Matching
+  let icon = category?.icon;
+  if (!icon || icon === '📁' || catId === 'other') {
+    const raw = (name + ' ' + (place.name || '') + ' ' + (place.description || '')).toLowerCase();
+    
+    if (raw.includes('تصوير') || raw.includes('فوتو') || raw.includes('استوديو') || raw.includes('كاميرا')) icon = '📸';
+    else if (raw.includes('رخام') || raw.includes('جرانيت') || raw.includes('محجر') || raw.includes('بلاط')) icon = '🏛️';
+    else if (raw.includes('برمج') || raw.includes('كمبيوتر') || raw.includes('سوفت وير') || raw.includes('موقع') || raw.includes('تطوير') || raw.includes('سايبر')) icon = '💻';
+    else if (raw.includes('تعليم') || raw.includes('سنتر') || raw.includes('درس') || raw.includes('مدرس') || raw.includes('حضانة') || raw.includes('كورس') || raw.includes('أكاديم')) icon = '📚';
+    else if (raw.includes('حلو') || raw.includes('تورت') || raw.includes('كيك') || raw.includes('شوكول') || raw.includes('باتيسري') || raw.includes('بسبوس')) icon = '🍰';
+    else if (raw.includes('ورد') || raw.includes('زهور') || raw.includes('هد') || raw.includes('بوكيه') || raw.includes('تغليف')) icon = '💐';
+    else if (raw.includes('ميكاب') || raw.includes('بيوتي') || raw.includes('تجميل') || raw.includes('كوافير') || raw.includes('صالون')) icon = '💄';
+    else if (raw.includes('ملابس') || raw.includes('فستان') || raw.includes('عباي') || raw.includes('أتيليه') || raw.includes('خياط') || raw.includes('ترزي') || raw.includes('أزياء')) icon = '👗';
+    else if (raw.includes('بدل') || raw.includes('رجالي') || raw.includes('قميص') || raw.includes('كلاسيك')) icon = '👔';
+    else if (raw.includes('حذاء') || raw.includes('أحذية') || raw.includes('كوتش') || raw.includes('شنط') || raw.includes('جلود')) icon = '👟';
+    else if (raw.includes('عقار') || raw.includes('شقق') || raw.includes('مقاول') || raw.includes('بناء') || raw.includes('تشطيب') || raw.includes('ديكور') || raw.includes('معمار')) icon = '🏢';
+    else if (raw.includes('عرب') || raw.includes('سيار') || raw.includes('ميكانيك') || raw.includes('قطع غيار') || raw.includes('زيوت') || raw.includes('كاوتش') || raw.includes('تأجير')) icon = '🚗';
+    else if (raw.includes('توكتوك') || raw.includes('موتوسيكل') || raw.includes('دراج') || raw.includes('دليفري') || raw.includes('مشاوير')) icon = '🛵';
+    else if (raw.includes('دهان') || raw.includes('نقاش') || raw.includes('بويات') || raw.includes('ألوان')) icon = '🎨';
+    else if (raw.includes('نجار') || raw.includes('موبيليا') || raw.includes('غرف') || raw.includes('أثاث') || raw.includes('خشب')) icon = '🪚';
+    else if (raw.includes('سباك') || raw.includes('فلتر') || raw.includes('فلاتر') || raw.includes('مواسير') || raw.includes('أدوات صحية')) icon = '🪠';
+    else if (raw.includes('كهرب') || raw.includes('أجهزة') || raw.includes('إلكترون') || raw.includes('تكييف') || raw.includes('تبريد')) icon = '⚡';
+    else if (raw.includes('بيطر') || raw.includes('أعلاف') || raw.includes('دواجن') || raw.includes('فراخ') || raw.includes('كتاكيت') || raw.includes('طيور') || raw.includes('كلاب') || raw.includes('قطط')) icon = '🐾';
+    else if (raw.includes('سمك') || raw.includes('أسماك') || raw.includes('فسيخ') || raw.includes('رنجة') || raw.includes('جمبري') || raw.includes('بحري')) icon = '🐟';
+    else if (raw.includes('جزار') || raw.includes('لحوم') || raw.includes('كبدة') || raw.includes('مشويات') || raw.includes('كباب')) icon = '🥩';
+    else if (raw.includes('خضار') || raw.includes('فاكه') || raw.includes('خضروات') || raw.includes('فواكه')) icon = '🥦';
+    else if (raw.includes('عطار') || raw.includes('بهارات') || raw.includes('أعشاب') || raw.includes('توابل')) icon = '🌿';
+    else if (raw.includes('بصريات') || raw.includes('نظارات') || raw.includes('عدسات') || raw.includes('عيون')) icon = '👓';
+    else if (raw.includes('جيم') || raw.includes('رياض') || raw.includes('فتنس') || raw.includes('كمال أجسام') || raw.includes('تخسيس')) icon = '🏋️';
+    else if (raw.includes('ألعاب') || raw.includes('بلايستيشن') || raw.includes('بلاي ستيشن') || raw.includes('أطفال') || raw.includes('ملاهي')) icon = '🎮';
+    else if (raw.includes('سياح') || raw.includes('رحلات') || raw.includes('طيران') || raw.includes('حجز') || raw.includes('عمرة')) icon = '✈️';
+    else if (raw.includes('مطعم') || raw.includes('أكل') || raw.includes('كريب') || raw.includes('شاورما') || raw.includes('بيتزا') || raw.includes('فطائر')) icon = '🍽️';
+    else if (raw.includes('كافيه') || raw.includes('قهوة') || raw.includes('بن') || raw.includes('شاي') || raw.includes('عصائر') || raw.includes('مشروبات')) icon = '☕';
+    else if (raw.includes('صيدل') || raw.includes('دواء') || raw.includes('أدوية') || raw.includes('علاج')) icon = '💊';
+    else if (raw.includes('دكتور') || raw.includes('طبيب') || raw.includes('عياد') || raw.includes('استشاري') || raw.includes('أخصائي') || raw.includes('أسنان') || raw.includes('معمل') || raw.includes('تحاليل')) icon = '🩺';
+    else if (raw.includes('سوبر') || raw.includes('ماركت') || raw.includes('بقالة') || raw.includes('هايبر')) icon = '🛒';
+    else if (raw.includes('مكتب') || raw.includes('أدوات مدرسية') || raw.includes('طباعة') || raw.includes('تصوير مستندات')) icon = '📖';
+    else if (raw.includes('حلاق') || raw.includes('تصفيف') || raw.includes('شعر')) icon = '💈';
+    else if (raw.includes('موبايل') || raw.includes('هاتف') || raw.includes('هواتف') || raw.includes('صيانة موبايل')) icon = '📱';
+    else icon = '✨';
+  }
+
+  const slug = category?.slug || place.categoryId || 'other';
+  return { name, icon, slug };
 }
 
 function escHtml(str) {

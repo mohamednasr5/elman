@@ -200,8 +200,76 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         return jsonResponse({ success: true, result: res }, 200, corsHeaders);
       }
 
+      // ── 11. Google Maps Short Link & Location Resolver (POST /api/maps/resolve) ──
+      if (url.pathname === '/api/maps/resolve' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const inputUrl = (body.url || '').trim();
+        if (!inputUrl) {
+          return jsonResponse({ error: 'الرابط مطلوب' }, 400, corsHeaders);
+        }
+
+        try {
+          // Direct coordinate regex in URL
+          const directMatch = inputUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                              inputUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                              inputUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                              inputUrl.match(/(-?\d+\.\d{3,})\s*,\s*(-?\d+\.\d{3,})/);
+          if (directMatch) {
+            return jsonResponse({
+              success: true,
+              lat: parseFloat(directMatch[1]),
+              lng: parseFloat(directMatch[2]),
+              source: 'regex'
+            }, 200, corsHeaders);
+          }
+
+          // Fetch the page with user-agent to resolve short link
+          const res = await fetch(inputUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            redirect: 'follow'
+          });
+
+          const finalUrl = res.url || '';
+          const html = await res.text();
+
+          // Check final redirect URL
+          const urlMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                           finalUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+          if (urlMatch) {
+            return jsonResponse({
+              success: true,
+              lat: parseFloat(urlMatch[1]),
+              lng: parseFloat(urlMatch[2]),
+              finalUrl,
+              source: 'redirect_url'
+            }, 200, corsHeaders);
+          }
+
+          // Check HTML contents (e.g. meta static map or pb data)
+          const staticMapMatch = html.match(/center=(-?\d+\.\d+)%2C(-?\d+\.\d+)/) ||
+                                 html.match(/center=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                                 html.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
+                                 html.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/);
+          if (staticMapMatch) {
+            return jsonResponse({
+              success: true,
+              lat: parseFloat(staticMapMatch[1]),
+              lng: parseFloat(staticMapMatch[2]),
+              finalUrl,
+              source: 'html_meta'
+            }, 200, corsHeaders);
+          }
+
+          return jsonResponse({ success: false, error: 'Could not extract exact coordinates' }, 200, corsHeaders);
+        } catch (err) {
+          return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+        }
+      }
+
       // Health Check
-      return jsonResponse({ status: 'ok', service: 'elmanzala-worker', version: '2.1.0' }, 200, corsHeaders);
+      return jsonResponse({ status: 'ok', service: 'elmanzala-worker', version: '2.2.0' }, 200, corsHeaders);
 
     } catch (err) {
       return jsonResponse({ error: err.message || 'Internal Server Error' }, 500, corsHeaders);

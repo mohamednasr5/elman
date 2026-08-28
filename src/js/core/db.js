@@ -381,9 +381,73 @@ export async function getSettings() {
   return dbGet('settings', true);
 }
 
-/** Increment place view stat */
-export async function trackPlaceView(placeId) {
+/** Increment place view stat and notify place owner about profile visitors */
+export async function trackPlaceView(place, visitor = null) {
+  if (!place) return;
+  const placeId = typeof place === 'string' ? place : (place.id || place._key);
+  if (!placeId) return;
+
+  // 1. Increment raw views counter
   await dbIncrement(`places/${placeId}/stats/views`);
+
+  // 2. If place has an owner, log profile visit notification (session debounced)
+  const ownerId = typeof place === 'object' ? place.ownerId : null;
+  if (ownerId) {
+    // Don't notify if the owner is visiting their own page
+    if (visitor && visitor.uid === ownerId) return;
+
+    // Check session storage to avoid spamming the same owner multiple times per browser session
+    const sessionKey = `visited_place_${placeId}`;
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      if (sessionStorage.getItem(sessionKey)) return;
+      sessionStorage.setItem(sessionKey, '1');
+    }
+
+    const notification = {
+      type: 'profile_view',
+      placeId: placeId,
+      placeName: place.name || 'المكان',
+      visitorUid: visitor?.uid || null,
+      visitorName: visitor ? (visitor.displayName || visitor.name || visitor.email || 'مستخدم مسجل') : 'زائر (غير مسجل)',
+      visitorPhoto: visitor?.photoURL || '',
+      isGuest: !visitor,
+      createdAt: Date.now(),
+      isRead: false
+    };
+
+    try {
+      await dbPush(`userNotifications/${ownerId}`, notification);
+    } catch (_) {}
+  }
+}
+
+/** Get notifications for a user */
+export async function getUserNotifications(uid) {
+  if (!uid) return [];
+  const map = await dbGet(`userNotifications/${uid}`) || {};
+  return Object.entries(map).map(([id, n]) => ({
+    id,
+    ...n
+  })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+/** Mark all notifications as read */
+export async function markAllNotificationsAsRead(uid) {
+  if (!uid) return;
+  const map = await dbGet(`userNotifications/${uid}`) || {};
+  const updates = {};
+  Object.keys(map).forEach(key => {
+    updates[`userNotifications/${uid}/${key}/isRead`] = true;
+  });
+  if (Object.keys(updates).length > 0) {
+    await dbUpdate('', updates);
+  }
+}
+
+/** Clear / Delete all notifications */
+export async function clearAllNotifications(uid) {
+  if (!uid) return;
+  await dbRemove(`userNotifications/${uid}`);
 }
 
 /** Increment place stat */

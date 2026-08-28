@@ -576,3 +576,80 @@
   color: #fff !important;
 }
 
+/* ============================================
+   Admin Mobile Bottom Bar (PWA & Mobile Screen)
+   ============================================ */
+.admin-mobile-bottom-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: #0F273D;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  z-index: 9999;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 8px;
+  gap: 4px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  scrollbar-width: none;
+}
+
+.admin-mobile-bottom-bar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .admin-mobile-bottom-bar {
+    display: flex;
+    align-items: center;
+  }
+  body:has(.admin-mobile-bottom-bar) .dashboard-content,
+  body .dashboard-content {
+    padding-bottom: 80px;
+  }
+}
+
+.admin-bottom-tab {
+  flex: 0 0 auto;
+  min-width: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.65);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  outline: none;
+  font-family: inherit;
+}
+
+.admin-bottom-tab:hover,
+.admin-bottom-tab.active {
+  color: #fff;
+  background: rgba(255,255,255,0.12);
+}
+
+.admin-bottom-tab.active {
+  color: var(--secondary, #F5A623);
+  font-weight: 700;
+}
+
+.admin-bottom-tab__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.admin-bottom-tab__label {
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
