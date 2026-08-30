@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview } from '../../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, parseBulkReviews, adminBulkAddReviews, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG } from '../../core/db.js';
 import { isAdmin } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
@@ -519,7 +519,10 @@ async function renderAdminReviews($container) {
           <h1 class="dashboard-header__title">إدارة التقييمات والمراجعات (${totalReviews})</h1>
           <div class="dashboard-header__subtitle">التحكم في تقييمات الأماكن، وإضافة مراجعات بأسماء عملاء، وتعديل أو حذف أي تقييم</div>
         </div>
-        <div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary" id="btn-admin-bulk-reviews" style="border-radius:var(--radius-full);gap:6px">
+            <span>📦</span> إضافة تقييمات مجمعة (Bulk)
+          </button>
           <button class="btn btn-primary" id="btn-admin-add-review" style="border-radius:var(--radius-full);gap:6px">
             <span>➕</span> إضافة تقييم باسم عميل
           </button>
@@ -715,7 +718,15 @@ async function renderAdminReviews($container) {
   document.getElementById('admin-reviews-filter-place')?.addEventListener('change', renderReviewsRows);
   document.getElementById('admin-reviews-filter-stars')?.addEventListener('change', renderReviewsRows);
 
-  // Add Review button listener
+  // Bulk Reviews Import button listener
+  document.getElementById('btn-admin-bulk-reviews')?.addEventListener('click', () => {
+    openAdminBulkReviewsModal(placesList, async () => {
+      adminCache.reviews = null;
+      await renderAdminReviews($container);
+    });
+  });
+
+  // Add Single Review button listener
   document.getElementById('btn-admin-add-review')?.addEventListener('click', () => {
     openAdminAddReviewModal(placesList, usersList, async () => {
       adminCache.reviews = null;
@@ -913,6 +924,170 @@ async function renderAdminReviews($container) {
       const customGroup = document.getElementById('group-custom-user');
       if (regGroup) regGroup.style.display = isCustom ? 'none' : 'block';
       if (customGroup) customGroup.style.display = isCustom ? 'block' : 'none';
+    });
+  }
+
+  function openAdminBulkReviewsModal(places, onSuccess) {
+    let currentParsed = [];
+
+    const modal = showModal({
+      title: '📦 إضافة تقييمات ومراجعات مجمعة (Bulk Reviews Import)',
+      size: 'lg',
+      content: `
+        <div style="display:flex;flex-direction:column;gap:14px">
+          
+          <!-- Place Selector -->
+          <div class="form-group" style="margin:0">
+            <label class="form-label">اختر المكان المطلوب إضافة التقييمات عليه <span class="required">*</span></label>
+            <select id="bulk-rev-place" class="form-select" required>
+              <option value="">-- اختر المكان --</option>
+              ${places.map(p => {
+                const isHammad = (p.slug === HAMMAD_PLACE_SLUG || p.name?.includes('محمد حماد'));
+                return `<option value="${escAttr(p.id)}" ${isHammad ? 'selected' : ''}>${escHtml(p.name)} ${isHammad ? '⭐ (مهندس محمد حماد)' : ''}</option>`;
+              }).join('')}
+            </select>
+          </div>
+
+          <!-- Quick Template Actions -->
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;background:var(--surface-2);padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--border)">
+            <span style="font-size:12px;color:var(--text-secondary)">
+              💡 يمكنك لصق جدول Markdown أو نص مفصول بـ | أو Tab من Excel.
+            </span>
+            <button type="button" class="btn btn-sm btn-outline" id="btn-load-hammad-50" style="font-size:11.5px;padding:4px 12px;border-radius:var(--radius-full);background:var(--surface)">
+              ⚡ تعبئة جدول الـ 50 تقييم الجاهزة
+            </button>
+          </div>
+
+          <!-- Bulk Textarea -->
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
+              <span>الصق التقييمات هنا <span class="required">*</span></span>
+              <span id="bulk-counter-label" style="font-size:11.5px;color:var(--primary);font-weight:700">0 تقييم مستخرج</span>
+            </label>
+            <textarea 
+              id="bulk-rev-raw-text" 
+              class="form-textarea" 
+              rows="7" 
+              placeholder="| # | اسم العميل | التقييم | نص التقييم |&#10;| 1 | أحمد محمود | ⭐⭐⭐⭐⭐ | تعامل ممتاز جدًا ورائع |&#10;| 2 | Mohamed Hassan | 5 | شغل احترافي وممتاز |" 
+              style="font-family:monospace;font-size:12px;direction:rtl"
+              required></textarea>
+          </div>
+
+          <!-- Live Preview Container -->
+          <div id="bulk-preview-wrapper" style="display:none;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface)">
+            <div style="background:var(--surface-2);padding:8px 12px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+              <span>معاينة البيانات المستخرجة:</span>
+              <span id="bulk-valid-count" style="color:var(--success)">0 صالح للإضافة</span>
+            </div>
+            <div style="max-height:180px;overflow-y:auto;font-size:12px">
+              <table class="dashboard-table" style="margin:0">
+                <thead>
+                  <tr>
+                    <th style="padding:6px 10px">#</th>
+                    <th style="padding:6px 10px">الاسم</th>
+                    <th style="padding:6px 10px">النجوم</th>
+                    <th style="padding:6px 10px">نص التقييم</th>
+                  </tr>
+                </thead>
+                <tbody id="bulk-preview-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;background:rgba(245,166,35,0.08);padding:8px 12px;border-radius:var(--radius-sm)">
+            🔒 <strong>قاعدة عدم التكرار:</strong> سيقوم النظام تلقائياً بفحص كل اسم عميل والتأكد من عدم وجود تقييم مسبق لنفس الاسم على هذا المكان، مع منع تكرار أي اسم داخل نفس الدفعة نهائياً.
+          </div>
+
+        </div>
+      `,
+      buttons: [
+        {
+          label: '🚀 فحص وإضافة التقييمات فوراً',
+          type: 'primary',
+          closeOnClick: false,
+          onClick: async () => {
+            const placeId = document.getElementById('bulk-rev-place')?.value;
+            if (!placeId) {
+              toast.warning('يرجى اختيار المكان أولاً');
+              return;
+            }
+
+            const rawText = document.getElementById('bulk-rev-raw-text')?.value || '';
+            const items = parseBulkReviews(rawText);
+
+            if (!items.length) {
+              toast.warning('لم يتم استخراج أي تقييم صالح. تأكد من صحة التنسيق أو اضغط تعبئة الـ 50 تقييم الجاهزة.');
+              return;
+            }
+
+            try {
+              toast.info(`جاري حفظ ${items.length} تقييم وفحص الأسماء...`);
+              const res = await adminBulkAddReviews(placeId, items);
+
+              if (res.addedCount > 0) {
+                toast.success(`تمت إضافة ${res.addedCount} تقييم بنجاح! ⭐`);
+              }
+              if (res.skippedCount > 0) {
+                toast.warning(`تم تخطي ${res.skippedCount} اسم مكرر لمنع التكرار على نفس المكان.`);
+              }
+
+              modal.close();
+              if (onSuccess) onSuccess();
+            } catch (err) {
+              toast.error(err.message || 'فشل استيراد التقييمات');
+            }
+          }
+        },
+        { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+      ]
+    });
+
+    const textarea = document.getElementById('bulk-rev-raw-text');
+    const counterLabel = document.getElementById('bulk-counter-label');
+    const previewWrapper = document.getElementById('bulk-preview-wrapper');
+    const previewTbody = document.getElementById('bulk-preview-tbody');
+    const validCountEl = document.getElementById('bulk-valid-count');
+
+    function updateLivePreview() {
+      const text = textarea?.value || '';
+      currentParsed = parseBulkReviews(text);
+
+      if (counterLabel) {
+        counterLabel.textContent = `${currentParsed.length} تقييم مستخرج`;
+      }
+
+      if (currentParsed.length > 0) {
+        if (previewWrapper) previewWrapper.style.display = 'block';
+        if (validCountEl) validCountEl.textContent = `${currentParsed.length} تقييم صالح`;
+        if (previewTbody) {
+          previewTbody.innerHTML = currentParsed.map((item, idx) => `
+            <tr>
+              <td style="padding:6px 10px;color:var(--text-muted)">${idx + 1}</td>
+              <td style="padding:6px 10px;font-weight:700;white-space:nowrap">${escHtml(item.name)}</td>
+              <td style="padding:6px 10px;color:#F59E0B;white-space:nowrap">${'★'.repeat(item.rating)} (${item.rating})</td>
+              <td style="padding:6px 10px;color:var(--text-primary);max-width:250px" class="truncate">${escHtml(item.comment)}</td>
+            </tr>
+          `).join('');
+        }
+      } else {
+        if (previewWrapper) previewWrapper.style.display = 'none';
+      }
+    }
+
+    textarea?.addEventListener('input', updateLivePreview);
+
+    document.getElementById('btn-load-hammad-50')?.addEventListener('click', () => {
+      const formattedTable = [
+        '| # | اسم العميل | التقييم | نص التقييم |',
+        '|---|---|---|---|',
+        ...HAMMAD_TESTIMONIALS.map((t, idx) => `| ${idx + 1} | ${t.name} | ⭐⭐⭐⭐⭐ | ${t.comment} |`)
+      ].join('\n');
+
+      if (textarea) {
+        textarea.value = formattedTable;
+        updateLivePreview();
+        toast.info('تم تحميل جدول الـ 50 تقييم في المربع بنجاح! جاهز للإضافة ⚡');
+      }
     });
   }
 }

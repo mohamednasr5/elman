@@ -558,16 +558,56 @@ export async function trackPlaceStat(placeId, stat) {
 export const HAMMAD_PLACE_SLUG = 'mhnds-mhmd-hmad-5lQJ1o';
 
 export const HAMMAD_TESTIMONIALS = [
-  'افضل مهندس ذكاء اصطناعي فى المنزلة كلها بلا منازع',
-  'افضل شخص تعملوا عنده اعلانات وتسويق رقمي في الدقهلية',
-  'المهندس محمد عملت معاه اعلانات كتيرة وجابت عملاء والحمدلله',
-  'بصراحة شغل الراجل ده روعة وقمة في الإتقان',
-  'عن جد شكرا ياهندسة انت فنان وعبقري تسلم ايدك',
-  'الراجل ده ثقة 100% عن جد ياجماعة وتعامل راقي جدا',
-  'شغل عالي واحترافي جداً ونتائج الإعلانات ممتازة ربنا يباركلك',
-  'ما شاء الله قمة في الذوق والاحترافية والالتزام بالمواعيد',
-  'تسويق احترافي ونتائج حقيقية سريعة جداً أنصح بشدة بالتعامل معه',
-  'أفضل وأسرع دعم فني وتعامل راقي جداً وإنسان محترم'
+  { name: 'أحمد محمود', rating: 5, comment: 'تعامل ممتاز جدًا، والنتيجة النهائية للإعلان بالذكاء الاصطناعي كانت احترافية ومبهرة.' },
+  { name: 'Mohamed Hassan', rating: 5, comment: 'مهندس محمد حماد فاهم جدًا في الذكاء الاصطناعي وتصميم الإعلانات، والشغل طلع أفضل مما كنت متوقع.' },
+  { name: 'محمد السيد', rating: 5, comment: 'من أفضل الناس اللي تعاملت معاهم في مجال البرمجة والتصميم، اهتمام بالتفاصيل وسرعة في التنفيذ.' },
+  { name: 'Ahmed Elsayed', rating: 5, comment: 'عمل لي موقع احترافي وسريع جدًا، والتعامل كان محترم من أول خطوة لحد التسليم.' },
+  { name: 'محمود علي', rating: 5, comment: 'إعلان بالذكاء الاصطناعي بشكل مختلف تمامًا عن الإعلانات التقليدية، شغل احترافي جدًا.' },
+  { name: 'Omar Hassan', rating: 5, comment: 'Professional work and excellent communication. The website looks modern and works perfectly.' },
+  { name: 'مصطفى محمد', rating: 5, comment: 'تجربة ممتازة جدًا، المهندس محمد عنده أفكار إبداعية وبيفهم المطلوب بسرعة.' },
+  { name: 'Karim Ahmed', rating: 5, comment: 'Very creative AI advertising work. The final result was impressive and professional.' },
+  { name: 'إسلام أحمد', rating: 5, comment: 'الموقع اتعمل بشكل احترافي جدًا ومتوافق مع الموبايل والكمبيوتر، وشغل نضيف بصراحة.' },
+  { name: 'Mahmoud Samir', rating: 5, comment: 'Excellent service, great attention to detail, and very professional website development.' },
+  { name: 'خالد محمد', rating: 5, comment: 'أكثر شيء عجبني هو الاهتمام بالتفاصيل وسهولة التواصل والتعديلات.' },
+  { name: 'Youssef Ali', rating: 5, comment: 'The AI commercial was creative, cinematic, and much better than I expected.' },
+  { name: 'عمرو حسن', rating: 5, comment: 'شغل ممتاز وسرعة في التنفيذ، وأنصح بالتعامل معه لأي شخص محتاج إعلان احترافي.' },
+  { name: 'Mostafa Adel', rating: 5, comment: 'Great experience from start to finish. The website is fast, clean, and modern.' },
+  { name: 'محمد عادل', rating: 5, comment: 'المهندس محمد حماد متميز جدًا في البرمجة والذكاء الاصطناعي، والنتيجة تستحق الإشادة.' },
+  { name: 'Ahmed Gamal', rating: 5, comment: 'Very professional developer. He understood the idea and turned it into a real working website.' },
+  { name: 'حسام محمود', rating: 5, comment: 'الإعلان كان مميز جدًا وخصوصًا طريقة استخدام الذكاء الاصطناعي في المشاهد والتفاصيل.' },
+  { name: 'Hossam Mohamed', rating: 5, comment: 'Excellent creativity and professional execution. Highly recommended.' },
+  { name: 'طارق أحمد', rating: 5, comment: 'تعامل راقي وشغل احترافي جدًا، والأهم إن كل حاجة اتنفذت بالشكل اللي اتفقنا عليه.' },
+  { name: 'Tarek Mostafa', rating: 5, comment: 'Amazing website design and very smooth user experience. Really good work.' },
+  { name: 'إبراهيم محمد', rating: 5, comment: 'موقع احترافي جدًا وسهل الاستخدام، والمهندس كان متابع كل التفاصيل باستمرار.' },
+  { name: 'Ibrahim Hassan', rating: 5, comment: 'Professional service, fast response, and excellent final result.' },
+  { name: 'علي محمود', rating: 5, comment: 'تجربة ممتازة، خصوصًا في تحويل فكرة بسيطة إلى إعلان بالذكاء الاصطناعي بشكل سينمائي.' },
+  { name: 'Ali Ahmed', rating: 5, comment: 'Creative, professional, and very easy to work with. The final result exceeded expectations.' },
+  { name: 'محمود حسن', rating: 5, comment: 'شغل محترم جدًا واهتمام كبير بالتفاصيل، سواء في التصميم أو البرمجة.' },
+  { name: 'Mahmoud Abdelrahman', rating: 5, comment: 'The website is modern, responsive, and very easy for customers to use.' },
+  { name: 'عبد الرحمن علي', rating: 5, comment: 'المهندس محمد عنده قدرة ممتازة على فهم فكرة المشروع وتحويلها لحل عملي.' },
+  { name: 'Abdelrahman Mohamed', rating: 5, comment: 'Excellent AI advertising concept and very professional implementation.' },
+  { name: 'سامح محمد', rating: 5, comment: 'من التجارب الممتازة جدًا، سرعة في الرد وتنفيذ احترافي والتزام بالمواعيد.' },
+  { name: 'Sameh Ahmed', rating: 5, comment: 'Very satisfied with the website development. Everything looks clean and professional.' },
+  { name: 'شريف أحمد', rating: 5, comment: 'الإعلان ظهر بشكل احترافي جدًا وساعدني أوصل فكرة النشاط بطريقة مختلفة.' },
+  { name: 'Sherif Hassan', rating: 5, comment: 'Great attention to detail and excellent communication throughout the project.' },
+  { name: 'رامي محمود', rating: 5, comment: 'شغل ممتاز جدًا، خصوصًا في الأفكار الجديدة الخاصة بإعلانات الذكاء الاصطناعي.' },
+  { name: 'Ramy Adel', rating: 5, comment: 'Creative AI video production and professional website development. Highly recommended.' },
+  { name: 'وليد حسن', rating: 5, comment: 'الموقع سريع وشكله ممتاز على الموبايل، والتعامل كان في منتهى الاحترام.' },
+  { name: 'Waleed Mohamed', rating: 5, comment: 'Professional work and quick support whenever I needed an adjustment.' },
+  { name: 'ياسر أحمد', rating: 5, comment: 'تجربة ناجحة جدًا، التصميم والبرمجة والإعلان كلهم بمستوى احترافي.' },
+  { name: 'Yasser Ali', rating: 5, comment: 'Excellent service and impressive results. The website looks exactly like a modern business platform.' },
+  { name: 'حمدي محمد', rating: 5, comment: 'المهندس محمد حماد مبدع في استخدام أدوات الذكاء الاصطناعي، والنتيجة كانت مميزة جدًا.' },
+  { name: 'Hamdy Hassan', rating: 5, comment: 'Very creative and professional. The AI advertisement looks cinematic and engaging.' },
+  { name: 'أشرف محمود', rating: 5, comment: 'شغل ممتاز والتزام كبير، والموقع أصبح أسهل بكثير للعملاء في التعامل مع النشاط.' },
+  { name: 'Ashraf Ahmed', rating: 5, comment: 'Great developer with strong technical and creative skills.' },
+  { name: 'بيشوي سامي', rating: 5, comment: 'تعامل ممتاز وفهم سريع للمطلوب، والنتيجة النهائية كانت احترافية جدًا.' },
+  { name: 'Bishoy Samy', rating: 5, comment: 'Excellent experience. Professional website, clean design, and great communication.' },
+  { name: 'مروان أحمد', rating: 5, comment: 'الإعلان بالذكاء الاصطناعي كان مختلفًا تمامًا ولفت الانتباه من أول مشاهدة.' },
+  { name: 'Marwan Hassan', rating: 5, comment: 'Really impressive AI commercial and excellent production quality.' },
+  { name: 'فادي محمد', rating: 5, comment: 'شغل احترافي جدًا من ناحية التصميم والبرمجة، وكل التفاصيل كانت منظمة.' },
+  { name: 'Fady Adel', rating: 5, comment: 'Very professional service. The website is fast, responsive, and beautifully designed.' },
+  { name: 'أحمد عبد الله', rating: 5, comment: 'تجربة ممتازة وأنصح به لأي صاحب مشروع يريد موقعًا احترافيًا أو إعلانًا بالذكاء الاصطناعي.' },
+  { name: 'Ahmed Abdullah', rating: 5, comment: 'Excellent work, creative ideas, professional execution, and very good customer support.' }
 ];
 
 /** Get all reviews for a place */
@@ -585,16 +625,15 @@ export async function getPlaceReviews(placeId) {
     const isHammad = (place && (place.slug === HAMMAD_PLACE_SLUG || (place.name && place.name.includes('محمد حماد')))) || placeId === HAMMAD_PLACE_SLUG || placeId.includes('mhmd-hmad');
     
     if (isHammad && list.length === 0) {
-      const seededNames = ['أحمد إبراهيم', 'محمود السعيد', 'د. خالد النجار', 'م. سامح الشناوي', 'عمر عبد الرحمن', 'كريم الدسوقي'];
-      list = HAMMAD_TESTIMONIALS.slice(0, 6).map((comment, idx) => ({
+      list = HAMMAD_TESTIMONIALS.map((item, idx) => ({
         id: `seed_hammad_${idx}`,
         placeId,
         placeName: place?.name || 'مهندس محمد حماد',
         placeSlug: HAMMAD_PLACE_SLUG,
-        userName: seededNames[idx % seededNames.length],
+        userName: item.name,
         userPhoto: '',
-        rating: 5,
-        comment,
+        rating: item.rating || 5,
+        comment: item.comment,
         createdAt: Date.now() - (idx + 1) * 86400000 * 2,
         updatedAt: Date.now() - (idx + 1) * 86400000 * 2,
         editCount: 0
@@ -623,24 +662,6 @@ export async function getAllReviews() {
             placeSlug: placeData.slug || r.placeSlug,
             ...r
           });
-        }
-      }
-    }
-
-    // Also check standalone placeReviews node if accessible
-    const legacyMap = await dbGet('placeReviews') || {};
-    if (legacyMap && typeof legacyMap === 'object') {
-      for (const [placeId, reviewsMap] of Object.entries(legacyMap)) {
-        if (reviewsMap && typeof reviewsMap === 'object') {
-          for (const [reviewId, r] of Object.entries(reviewsMap)) {
-            if (!all.some(x => x.id === reviewId)) {
-              all.push({
-                id: reviewId,
-                placeId,
-                ...r
-              });
-            }
-          }
         }
       }
     }
@@ -693,7 +714,7 @@ export async function recalculatePlaceRating(placeId) {
   }
 }
 
-/** Add a review to a place (Logged-in user) */
+/** Add a review to a place (Logged-in user) - STRICT NO DUPLICATE RULE */
 export async function addPlaceReview({ placeId, placeName, placeSlug, user, rating, comment }) {
   if (!user || !placeId) throw new Error('يجب تسجيل الدخول لإضافة تقييم');
   
@@ -701,12 +722,18 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   if (!cleanComment) throw new Error('يرجى كتابة نص التقييم');
 
   const numRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+  const userName = user.name || user.displayName || 'مستخدم مسجل';
+  const normName = userName.trim().toLowerCase();
 
-  // Check if user already reviewed this place
+  // Strict Rule: Check if user or name already reviewed this place
   const existingReviews = await getPlaceReviews(placeId);
-  const userExisting = existingReviews.find(r => r.userId === user.uid);
+  const userExisting = existingReviews.find(r => 
+    r.userId === user.uid ||
+    (normName && (r.userName || '').trim().toLowerCase() === normName)
+  );
+
   if (userExisting) {
-    throw new Error('لقد قمت بتقييم هذا المكان مسبقاً، يمكنك تعديل تقييمك الحالي');
+    throw new Error('لقد قمت بإضافة تقييم لهذا المكان مسبقاً! مسموح بتقييم واحد فقط لكل عميل (يمكنك تعديل تقييمك الحالي أو حذفه).');
   }
 
   const reviewId = `rev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -716,7 +743,7 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     placeName: placeName || 'المكان',
     placeSlug: placeSlug || '',
     userId: user.uid,
-    userName: user.name || user.displayName || 'مستخدم مسجل',
+    userName: userName,
     userPhoto: user.photoURL || '',
     rating: numRating,
     comment: cleanComment,
@@ -725,10 +752,8 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     editCount: 0
   };
 
-  // Write inside places/${placeId}/reviews/${reviewId} (Open & authorized in RTDB)
+  // Write inside places/${placeId}/reviews/${reviewId}
   await dbSet(`places/${placeId}/reviews/${reviewId}`, reviewData);
-  try { await dbSet(`placeReviews/${placeId}/${reviewId}`, reviewData); } catch (_) {}
-
   await recalculatePlaceRating(placeId);
   return reviewData;
 }
@@ -737,7 +762,7 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
 export async function updatePlaceReview(placeId, reviewId, { rating, comment }, user) {
   if (!user || !placeId || !reviewId) throw new Error('بيانات غير صحيحة');
 
-  let review = await dbGet(`places/${placeId}/reviews/${reviewId}`) || await dbGet(`placeReviews/${placeId}/${reviewId}`);
+  let review = await dbGet(`places/${placeId}/reviews/${reviewId}`);
   if (!review) throw new Error('التقييم غير موجود');
 
   // Check if place is Mohamed Hammad (Locked from regular users)
@@ -771,8 +796,6 @@ export async function updatePlaceReview(placeId, reviewId, { rating, comment }, 
   };
 
   await dbUpdate(`places/${placeId}/reviews/${reviewId}`, updates);
-  try { await dbUpdate(`placeReviews/${placeId}/${reviewId}`, updates); } catch (_) {}
-
   await recalculatePlaceRating(placeId);
   return { ...review, ...updates };
 }
@@ -781,7 +804,7 @@ export async function updatePlaceReview(placeId, reviewId, { rating, comment }, 
 export async function deletePlaceReview(placeId, reviewId, user) {
   if (!user || !placeId || !reviewId) throw new Error('بيانات غير صحيحة');
 
-  let review = await dbGet(`places/${placeId}/reviews/${reviewId}`) || await dbGet(`placeReviews/${placeId}/${reviewId}`);
+  let review = await dbGet(`places/${placeId}/reviews/${reviewId}`);
   if (!review) return;
 
   // Protect Hammad's place
@@ -796,17 +819,28 @@ export async function deletePlaceReview(placeId, reviewId, user) {
   }
 
   await dbRemove(`places/${placeId}/reviews/${reviewId}`);
-  try { await dbRemove(`placeReviews/${placeId}/${reviewId}`); } catch (_) {}
-
   await recalculatePlaceRating(placeId);
 }
 
-/** Admin: Add review in the name of any user */
+/** Admin: Add review in the name of any user - STRICT NO DUPLICATE NAME */
 export async function adminAddReview({ placeId, placeName, placeSlug, userId, userName, userPhoto, rating, comment }) {
   if (!placeId) throw new Error('المكان مطلوب');
+  const cleanName = (userName || 'عميل موثوق').trim();
   const cleanComment = sanitizeReviewText(comment);
   if (!cleanComment) throw new Error('يرجى كتابة نص التقييم');
   const numRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+
+  // Check for duplicate client name or userId
+  const existingReviews = await getPlaceReviews(placeId);
+  const normName = cleanName.toLowerCase();
+  const duplicate = existingReviews.find(r => 
+    (userId && r.userId === userId) ||
+    (normName && (r.userName || '').trim().toLowerCase() === normName)
+  );
+
+  if (duplicate) {
+    throw new Error(`العميل (${cleanName}) مسجل له تقييم مسبقاً على هذا المكان! لا يمكن تكرار اسم العميل.`);
+  }
 
   const reviewId = `adm_rev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const reviewData = {
@@ -815,7 +849,7 @@ export async function adminAddReview({ placeId, placeName, placeSlug, userId, us
     placeName: placeName || 'المكان',
     placeSlug: placeSlug || '',
     userId: userId || `custom_${Date.now()}`,
-    userName: userName || 'عميل موثوق',
+    userName: cleanName,
     userPhoto: userPhoto || '',
     rating: numRating,
     comment: cleanComment,
@@ -826,10 +860,184 @@ export async function adminAddReview({ placeId, placeName, placeSlug, userId, us
   };
 
   await dbSet(`places/${placeId}/reviews/${reviewId}`, reviewData);
-  try { await dbSet(`placeReviews/${placeId}/${reviewId}`, reviewData); } catch (_) {}
-
   await recalculatePlaceRating(placeId);
   return reviewData;
+}
+
+/**
+ * Intelligent Bulk Reviews Parser
+ * Parses Markdown Tables, Pipe-delimited, Tab-delimited (Excel/Sheets), CSV, or line entries
+ */
+export function parseBulkReviews(rawText) {
+  if (!rawText || typeof rawText !== 'string') return [];
+  const lines = rawText.split(/\r?\n/);
+  const parsed = [];
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+
+    // Skip Markdown Table separator / header lines
+    if (/^\|?\s*#?\s*\|\s*اسم العميل/i.test(line) || /^\|?\s*[-:]+\s*\|/.test(line)) {
+      continue;
+    }
+
+    let name = '';
+    let rating = 5;
+    let comment = '';
+
+    if (line.includes('|')) {
+      // Pipe separated / Markdown table row
+      const cells = line.split('|').map(c => c.trim()).filter(c => c !== '');
+      if (cells.length >= 3) {
+        // Formats: [# / ID, Name, Rating, Comment] OR [Name, Rating, Comment]
+        let nameIdx = 0;
+        let ratingIdx = 1;
+        let commentIdx = 2;
+
+        if (/^\d+$/.test(cells[0]) && cells.length >= 4) {
+          nameIdx = 1;
+          ratingIdx = 2;
+          commentIdx = 3;
+        }
+
+        name = cells[nameIdx] || '';
+        const rawRating = cells[ratingIdx] || '';
+        comment = cells.slice(commentIdx).join(' ');
+
+        // Extract rating number from ⭐ or digits
+        const starCount = (rawRating.match(/⭐|★/g) || []).length;
+        const digitMatch = rawRating.match(/\b([1-5])\b/);
+        if (starCount > 0) rating = starCount;
+        else if (digitMatch) rating = parseInt(digitMatch[1], 10);
+      } else if (cells.length === 2) {
+        name = cells[0];
+        comment = cells[1];
+      }
+    } else if (line.includes('\t')) {
+      // Tab separated (from Excel or Google Sheets)
+      const cells = line.split('\t').map(c => c.trim()).filter(Boolean);
+      if (cells.length >= 3) {
+        if (/^\d+$/.test(cells[0]) && cells.length >= 4) {
+          name = cells[1];
+          const rawRating = cells[2];
+          comment = cells.slice(3).join(' ');
+          const starCount = (rawRating.match(/⭐|★/g) || []).length;
+          const digitMatch = rawRating.match(/\b([1-5])\b/);
+          rating = starCount > 0 ? starCount : (digitMatch ? parseInt(digitMatch[1], 10) : 5);
+        } else {
+          name = cells[0];
+          const rawRating = cells[1];
+          comment = cells.slice(2).join(' ');
+          const starCount = (rawRating.match(/⭐|★/g) || []).length;
+          const digitMatch = rawRating.match(/\b([1-5])\b/);
+          rating = starCount > 0 ? starCount : (digitMatch ? parseInt(digitMatch[1], 10) : 5);
+        }
+      } else if (cells.length === 2) {
+        name = cells[0];
+        comment = cells[1];
+      }
+    } else {
+      // Line format: "Name - 5 - Comment" or "Name: Comment"
+      const dashParts = line.split(/\s*[-–—]\s*/);
+      if (dashParts.length >= 2) {
+        name = dashParts[0].replace(/^\d+[\.\)]\s*/, '').trim();
+        comment = dashParts.slice(1).join(' - ').trim();
+      } else {
+        const colonParts = line.split(/[:：]/);
+        if (colonParts.length >= 2) {
+          name = colonParts[0].replace(/^\d+[\.\)]\s*/, '').trim();
+          comment = colonParts.slice(1).join(':').trim();
+        }
+      }
+    }
+
+    // Clean and validate
+    name = name.replace(/^#?\d+[\.\)]\s*/, '').trim();
+    comment = sanitizeReviewText(comment);
+    rating = Math.min(5, Math.max(1, rating || 5));
+
+    if (name && comment && name.length >= 2 && comment.length >= 5) {
+      parsed.push({ name, rating, comment });
+    }
+  }
+
+  return parsed;
+}
+
+/**
+ * Admin Bulk Add Reviews - STRICT NO DUPLICATE NAMES
+ */
+export async function adminBulkAddReviews(placeId, items = []) {
+  if (!placeId || !items.length) {
+    throw new Error('بيانات المكان أو التقييمات فارغة');
+  }
+
+  const place = await dbGet(`places/${placeId}`);
+  if (!place) throw new Error('المكان غير موجود في قاعدة البيانات');
+
+  const existingReviews = await getPlaceReviews(placeId);
+  const existingNames = new Set(
+    existingReviews.map(r => (r.userName || '').trim().toLowerCase())
+  );
+
+  let addedCount = 0;
+  let skippedCount = 0;
+  const skippedNames = [];
+  const updates = {};
+  const now = Date.now();
+
+  items.forEach((item, index) => {
+    const cleanName = (item.name || '').trim();
+    const normName = cleanName.toLowerCase();
+    const cleanComment = sanitizeReviewText(item.comment);
+    const numRating = Math.min(5, Math.max(1, parseInt(item.rating, 10) || 5));
+
+    if (!cleanName || !cleanComment) {
+      skippedCount++;
+      return;
+    }
+
+    // Strict duplicate check: In existing database or earlier in this same batch
+    if (existingNames.has(normName)) {
+      skippedCount++;
+      skippedNames.push(cleanName);
+      return;
+    }
+
+    existingNames.add(normName);
+    const reviewId = `bulk_${now}_${index}_${Math.random().toString(36).substring(2, 6)}`;
+    
+    updates[`places/${placeId}/reviews/${reviewId}`] = {
+      id: reviewId,
+      placeId,
+      placeName: place.name || 'المكان',
+      placeSlug: place.slug || '',
+      userId: `bulk_${now}_${index}`,
+      userName: cleanName,
+      userPhoto: '',
+      rating: numRating,
+      comment: cleanComment,
+      createdAt: now - (index * 60000 * 15), // Stagger timestamps naturally
+      updatedAt: now - (index * 60000 * 15),
+      editCount: 0,
+      isAdminGenerated: true
+    };
+
+    addedCount++;
+  });
+
+  if (addedCount > 0) {
+    await dbUpdate('', updates);
+    await recalculatePlaceRating(placeId);
+  }
+
+  return {
+    success: true,
+    addedCount,
+    skippedCount,
+    skippedNames
+  };
 }
 
 /** Admin: Update review */
@@ -843,8 +1051,6 @@ export async function adminUpdateReview(placeId, reviewId, updates) {
   }
   updates.updatedAt = Date.now();
   await dbUpdate(`places/${placeId}/reviews/${reviewId}`, updates);
-  try { await dbUpdate(`placeReviews/${placeId}/${reviewId}`, updates); } catch (_) {}
-
   await recalculatePlaceRating(placeId);
 }
 
@@ -852,8 +1058,6 @@ export async function adminUpdateReview(placeId, reviewId, updates) {
 export async function adminDeleteReview(placeId, reviewId) {
   if (!placeId || !reviewId) return;
   await dbRemove(`places/${placeId}/reviews/${reviewId}`);
-  try { await dbRemove(`placeReviews/${placeId}/${reviewId}`); } catch (_) {}
-
   await recalculatePlaceRating(placeId);
 }
 
