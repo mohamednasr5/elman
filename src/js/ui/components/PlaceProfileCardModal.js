@@ -30,7 +30,9 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
   const theme = CARD_COLOR_THEMES.find(t => t.id === _selectedThemeId) || CARD_COLOR_THEMES[0];
   const placeName = place.name || 'اسم النشاط';
   const categoryName = category.name || place.categoryName || place.customCategory || 'نشاط تجاري وخدمات';
-  const placeArea = place.area || place.address || 'المنزلة والمطرية';
+  const fullAddress = (place.address && String(place.address).trim())
+    ? place.address.trim()
+    : ((place.area && String(place.area).trim()) ? place.area.trim() : 'مدينة المنزلة');
   
   // Resolve exact image URLs
   const coverUrl = place.coverImageUrl || place.coverImage || place.image || place.photos?.[0] || '';
@@ -102,15 +104,15 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
             <div class="manhom-card-content" id="live-manhom-card-content" style="background: linear-gradient(180deg, ${theme.start} 0%, ${theme.mid} 40%, ${theme.end} 100%)">
               <h2 class="manhom-card-name">
                 <span>${placeName}</span>
-                ${place.isVerified ? '<span class="manhom-card-verified-badge" title="موثق">✓</span>' : ''}
+                ${checkIsPlaceVerified(place) ? '<span class="manhom-card-verified-badge" title="موثق">✓</span>' : ''}
               </h2>
 
               <p class="manhom-card-category">
                 ${categoryName}
               </p>
 
-              <div class="manhom-card-location">
-                <span>📍 ${placeArea}</span>
+              <div class="manhom-card-location" title="${fullAddress}">
+                <span>📍 ${fullAddress}</span>
               </div>
 
               <!-- Phone & WhatsApp Badges -->
@@ -199,7 +201,7 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
       await generateAndDownloadPlaceCard({
         place,
         categoryName,
-        placeArea,
+        fullAddress,
         theme: activeTheme,
         coverUrl,
         logoUrl,
@@ -220,7 +222,7 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
 /**
  * محرك رسم وتوليد الصورة بدقة فائقة عبر HTML5 Canvas مع إسناد الغلاف والشعار وجهات الاتصال
  */
-async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, theme, coverUrl, logoUrl, phone, whatsapp }) {
+async function generateAndDownloadPlaceCard({ place, categoryName, fullAddress, theme, coverUrl, logoUrl, phone, whatsapp }) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
@@ -344,6 +346,50 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
     ctx.restore();
   }
 
+function checkIsPlaceVerified(place) {
+  if (!place) return false;
+  return Boolean(
+    place.isVerified === true ||
+    place.isVerified === 'true' ||
+    place.isVerified === 1 ||
+    place.isVerified === '1' ||
+    (place.verifiedUntil && Number(place.verifiedUntil) > Date.now()) ||
+    place.verificationStatus === 'approved' ||
+    place.status === 'verified'
+  );
+}
+
+function drawCanvasVerifiedBadge(ctx, centerX, centerY, radius = 18) {
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 3;
+
+  // Sky Blue Gradient Circle
+  const grad = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+  grad.addColorStop(0, '#38BDF8');
+  grad.addColorStop(1, '#0284C7');
+  
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // White Border
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Crisp White Checkmark
+  ctx.shadowColor = 'transparent';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('✓', centerX, centerY + 1);
+  ctx.restore();
+}
+
   // Draw crisp white border around Avatar Box
   ctx.save();
   ctx.strokeStyle = '#FFFFFF';
@@ -352,26 +398,39 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
   ctx.stroke();
   ctx.restore();
 
-  // 6. Place Name on Colored Gradient
+  // 6. Place Name on Colored Gradient with Verified Badge
   ctx.save();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 58px "Cairo", "Segoe UI", sans-serif';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.30)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 4;
   
   const nameY = 670;
   const nameText = place.name || 'اسم النشاط';
-  ctx.fillText(nameText, W / 2, nameY);
+  const isVerified = checkIsPlaceVerified(place);
 
-  // If verified, draw blue badge
-  if (place.isVerified) {
+  if (isVerified) {
     const textWidth = ctx.measureText(nameText).width;
-    const badgeX = (W / 2) + (textWidth / 2) + 32;
-    ctx.fillStyle = '#38BDF8';
-    ctx.font = 'bold 36px sans-serif';
-    ctx.fillText('✓', badgeX, nameY);
+    const badgeRadius = 20;
+    const gap = 16;
+    const totalWidth = textWidth + gap + (badgeRadius * 2);
+    
+    // Centered group with badge on left in RTL
+    const startX = (W - totalWidth) / 2;
+    const badgeCenterX = startX + badgeRadius;
+    
+    // Draw Name text
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(nameText, startX + (badgeRadius * 2) + gap, nameY);
+    
+    // Draw Verified Badge
+    drawCanvasVerifiedBadge(ctx, badgeCenterX, nameY, badgeRadius);
+  } else {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(nameText, W / 2, nameY);
   }
   ctx.restore();
 
@@ -383,12 +442,30 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
   ctx.fillText(categoryName, W / 2, 750);
   ctx.restore();
 
-  // 8. Area / Location Tag
+  // 8. Full Address / Location Tag
   ctx.save();
   ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.font = '500 30px "Cairo", "Segoe UI", sans-serif';
-  ctx.fillText(`📍 ${placeArea}`, W / 2, 810);
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.90)';
+  
+  const addrText = `📍 ${fullAddress || 'مدينة المنزلة'}`;
+  let fontSize = 30;
+  if (addrText.length > 55) {
+    fontSize = 24;
+  } else if (addrText.length > 40) {
+    fontSize = 27;
+  }
+  ctx.font = `500 ${fontSize}px "Cairo", "Segoe UI", sans-serif`;
+  
+  // Auto-fit long addresses to prevent clipping
+  const maxAddrWidth = 1040;
+  const measuredWidth = ctx.measureText(addrText).width;
+  if (measuredWidth > maxAddrWidth) {
+    const scale = maxAddrWidth / measuredWidth;
+    ctx.font = `500 ${Math.max(19, Math.floor(fontSize * scale))}px "Cairo", "Segoe UI", sans-serif`;
+  }
+  
+  ctx.fillText(addrText, W / 2, 815);
   ctx.restore();
 
   // 9. Phone & WhatsApp Contacts Capsule Pill
