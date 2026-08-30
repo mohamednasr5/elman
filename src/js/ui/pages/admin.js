@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG } from '../../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG } from '../../core/db.js';
 import { isAdmin } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
@@ -570,11 +570,37 @@ async function renderAdminReviews($container) {
         </div>
       </div>
 
+      <!-- Bulk Actions Toolbar -->
+      <div id="admin-reviews-bulk-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);padding:10px 16px;border-radius:var(--radius-md)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;cursor:pointer;margin:0">
+            <input type="checkbox" id="admin-reviews-select-all" style="width:16px;height:16px;cursor:pointer" />
+            <span>تحديد الكل</span>
+          </label>
+          <span id="admin-reviews-selected-count" style="font-size:12px;color:var(--text-muted);font-weight:600">0 محدد</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-sm btn-danger" id="btn-delete-selected-reviews" style="font-size:12px;padding:5px 14px;border-radius:var(--radius-md);display:none;font-weight:700">
+            <span>🗑️</span> حذف المحدد (<span id="btn-delete-count">0</span>)
+          </button>
+          <button type="button" class="btn btn-sm btn-outline" id="btn-delete-filtered-negative" style="font-size:12px;padding:5px 14px;border-radius:var(--radius-md);color:var(--danger);border-color:rgba(239,68,68,0.3);background:var(--surface)">
+            <span>⚠️</span> حذف كل السلبي (1-2 نجوم)
+          </button>
+          <button type="button" class="btn btn-sm btn-outline" id="btn-delete-all-filtered" style="font-size:12px;padding:5px 14px;border-radius:var(--radius-md);color:var(--text-secondary);background:var(--surface)">
+            <span>🧹</span> حذف كل المعروض حالياً
+          </button>
+        </div>
+      </div>
+
       <!-- Reviews Table -->
       <div class="dashboard-table-wrapper" style="background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden">
         <table class="dashboard-table">
           <thead>
             <tr>
+              <th style="width:40px;text-align:center">
+                <input type="checkbox" id="admin-reviews-th-select-all" style="cursor:pointer;width:15px;height:15px" title="تحديد / إلغاء تحديد الكل" />
+              </th>
               <th>المكان</th>
               <th>العميل / المستخدم</th>
               <th>التقييم</th>
@@ -591,12 +617,33 @@ async function renderAdminReviews($container) {
     </div>
   `;
 
+  let currentFilteredReviews = [];
+
+  function updateBulkSelectionUI() {
+    const checkedBoxes = document.querySelectorAll('.admin-review-checkbox:checked');
+    const count = checkedBoxes.length;
+    const selectedCountEl = document.getElementById('admin-reviews-selected-count');
+    const deleteBtn = document.getElementById('btn-delete-selected-reviews');
+    const deleteCountSpan = document.getElementById('btn-delete-count');
+    const masterSelect = document.getElementById('admin-reviews-select-all');
+    const thSelect = document.getElementById('admin-reviews-th-select-all');
+
+    if (selectedCountEl) selectedCountEl.textContent = `${count} محدد`;
+    if (deleteCountSpan) deleteCountSpan.textContent = count;
+    if (deleteBtn) deleteBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+
+    const allBoxes = document.querySelectorAll('.admin-review-checkbox');
+    const isAllChecked = allBoxes.length > 0 && count === allBoxes.length;
+    if (masterSelect) masterSelect.checked = isAllChecked;
+    if (thSelect) thSelect.checked = isAllChecked;
+  }
+
   function renderReviewsRows() {
     const searchVal = (document.getElementById('admin-reviews-search')?.value || '').trim().toLowerCase();
     const placeFilter = document.getElementById('admin-reviews-filter-place')?.value || '';
     const starsFilter = document.getElementById('admin-reviews-filter-stars')?.value || '';
 
-    const filtered = allReviews.filter(r => {
+    currentFilteredReviews = allReviews.filter(r => {
       if (placeFilter && r.placeId !== placeFilter) return false;
       
       const numStars = Number(r.rating) || 5;
@@ -621,24 +668,28 @@ async function renderAdminReviews($container) {
     const tbody = document.getElementById('admin-reviews-table-body');
     if (!tbody) return;
 
-    if (filtered.length === 0) {
+    if (currentFilteredReviews.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" class="text-center" style="padding:2.5rem;color:var(--text-muted)">
+          <td colspan="7" class="text-center" style="padding:2.5rem;color:var(--text-muted)">
             لا توجد تقييمات مطابقة للبحث
           </td>
         </tr>
       `;
+      updateBulkSelectionUI();
       return;
     }
 
-    tbody.innerHTML = filtered.map(r => {
+    tbody.innerHTML = currentFilteredReviews.map(r => {
       const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
       const placeObj = adminCache.places?.[r.placeId];
       const placeSlug = placeObj?.slug || r.placeSlug || r.placeId;
 
       return `
         <tr>
+          <td style="text-align:center">
+            <input type="checkbox" class="admin-review-checkbox" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="cursor:pointer;width:15px;height:15px" />
+          </td>
           <td>
             <div style="font-weight:700;color:var(--primary);display:flex;align-items:center;gap:6px">
               <span>📍</span>
@@ -686,6 +737,13 @@ async function renderAdminReviews($container) {
       `;
     }).join('');
 
+    // Checkbox change events
+    tbody.querySelectorAll('.admin-review-checkbox').forEach(cb => {
+      cb.addEventListener('change', updateBulkSelectionUI);
+    });
+
+    updateBulkSelectionUI();
+
     // Attach row button events
     tbody.querySelectorAll('.btn-edit-review-admin').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -719,6 +777,113 @@ async function renderAdminReviews($container) {
       });
     });
   }
+
+  // Toggle select all
+  function toggleSelectAll(checked) {
+    document.querySelectorAll('.admin-review-checkbox').forEach(cb => {
+      cb.checked = checked;
+    });
+    updateBulkSelectionUI();
+  }
+
+  document.getElementById('admin-reviews-select-all')?.addEventListener('change', (e) => {
+    toggleSelectAll(e.target.checked);
+  });
+  document.getElementById('admin-reviews-th-select-all')?.addEventListener('change', (e) => {
+    toggleSelectAll(e.target.checked);
+  });
+
+  // Delete Selected Reviews Button
+  document.getElementById('btn-delete-selected-reviews')?.addEventListener('click', async () => {
+    const checkedBoxes = Array.from(document.querySelectorAll('.admin-review-checkbox:checked'));
+    if (!checkedBoxes.length) return;
+
+    const ok = await showConfirm({
+      title: 'حذف التقييمات المحددة',
+      message: `هل أنت متأكد من رغبتك في حذف ${checkedBoxes.length} تقييم محدد نهائياً؟ سيتم تحديث متوسط تقييمات الأماكن تلقائياً.`,
+      confirmText: 'نعم، حذف المحدد',
+      cancelText: 'إلغاء'
+    });
+
+    if (ok) {
+      try {
+        const toDelete = checkedBoxes.map(cb => ({
+          placeId: cb.getAttribute('data-pid'),
+          id: cb.getAttribute('data-rid')
+        }));
+        toast.info(`جاري حذف ${toDelete.length} تقييم وتحديث التقييمات...`);
+        const res = await adminBulkDeleteReviews(toDelete);
+        toast.success(`تم حذف ${res.deletedCount} تقييم بنجاح وتحديث الأماكن ⭐`);
+        adminCache.reviews = null;
+        await renderAdminReviews($container);
+      } catch (err) {
+        toast.error(err.message || 'فشل حذف التقييمات');
+      }
+    }
+  });
+
+  // Delete All Negative Reviews
+  document.getElementById('btn-delete-filtered-negative')?.addEventListener('click', async () => {
+    const negativeReviews = allReviews.filter(r => (Number(r.rating) || 5) <= 2);
+    if (!negativeReviews.length) {
+      toast.info('لا توجد أي تقييمات سلبية (1-2 نجوم) حالياً');
+      return;
+    }
+
+    const placeFilter = document.getElementById('admin-reviews-filter-place')?.value;
+    const targetList = placeFilter ? negativeReviews.filter(r => r.placeId === placeFilter) : negativeReviews;
+
+    if (!targetList.length) {
+      toast.info('لا توجد تقييمات سلبية لهذا المكان المحدد');
+      return;
+    }
+
+    const ok = await showConfirm({
+      title: 'حذف كل التقييمات السلبية (1-2 نجوم)',
+      message: `هل أنت متأكد من حذف ${targetList.length} تقييم سلبي (1-2 نجوم)؟ سيتم تحديث تقييمات الأماكن المتأثرة فوراً.`,
+      confirmText: 'نعم، حذف الكل السلبي',
+      cancelText: 'إلغاء'
+    });
+
+    if (ok) {
+      try {
+        toast.info(`جاري حذف ${targetList.length} تقييم سلبي...`);
+        const res = await adminBulkDeleteReviews(targetList);
+        toast.success(`تم حذف ${res.deletedCount} تقييم سلبي بنجاح! ⭐`);
+        adminCache.reviews = null;
+        await renderAdminReviews($container);
+      } catch (err) {
+        toast.error(err.message || 'فشل حذف التقييمات السلبية');
+      }
+    }
+  });
+
+  // Delete All Filtered Reviews
+  document.getElementById('btn-delete-all-filtered')?.addEventListener('click', async () => {
+    if (!currentFilteredReviews.length) {
+      toast.warning('لا توجد أي تقييمات معروضة للحذف');
+      return;
+    }
+
+    const ok = await showConfirm({
+      title: 'حذف جميع التقييمات المعروضة في الفلتر',
+      message: `هل أنت متأكد من رغبتك في حذف جميع التقييمات الظاهرة حالياً (${currentFilteredReviews.length} تقييم) نهائياً؟`,
+      confirmText: 'نعم، حذف الكل المعروض',
+      cancelText: 'إلغاء'
+    });
+
+    if (ok) {
+      try {
+        toast.info(`جاري حذف ${currentFilteredReviews.length} تقييم...`);
+        const res = await adminBulkDeleteReviews(currentFilteredReviews);
+        toast.success(`تم حذف ${res.deletedCount} تقييم بنجاح وتحديث الأماكن ⭐`);
+        adminCache.reviews = null;
+        await renderAdminReviews($container);
+      } catch (err) {
+        toast.error(err.message || 'فشل حذف التقييمات');
+      }
+    }
+  });
 
   // Initial render
   renderReviewsRows();

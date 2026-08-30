@@ -869,6 +869,62 @@ export async function adminAddReview({ placeId, placeName, placeSlug, userId, us
   return reviewData;
 }
 
+/** Admin: Update any review */
+export async function adminUpdateReview(placeId, reviewId, { rating, comment }) {
+  if (!placeId || !reviewId) throw new Error('المكان والتقييم مطلوبان');
+  const cleanComment = sanitizeReviewText(comment);
+  const numRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+  
+  const updates = {
+    rating: numRating,
+    comment: cleanComment,
+    updatedAt: Date.now()
+  };
+
+  await dbUpdate(`places/${placeId}/reviews/${reviewId}`, updates);
+  await recalculatePlaceRating(placeId);
+  return updates;
+}
+
+/** Admin: Delete single review */
+export async function adminDeleteReview(placeId, reviewId) {
+  if (!placeId || !reviewId) throw new Error('المكان والتقييم مطلوبان');
+  await dbRemove(`places/${placeId}/reviews/${reviewId}`);
+  await recalculatePlaceRating(placeId);
+}
+
+/** Admin: Bulk delete reviews (with automatic place rating recalculation) */
+export async function adminBulkDeleteReviews(reviewsList = []) {
+  if (!reviewsList.length) return { deletedCount: 0 };
+
+  const placeMap = {};
+  reviewsList.forEach(r => {
+    const pId = r.placeId;
+    const rId = r.id || r.reviewId;
+    if (pId && rId) {
+      if (!placeMap[pId]) placeMap[pId] = [];
+      placeMap[pId].push(rId);
+    }
+  });
+
+  let deletedCount = 0;
+  for (const [placeId, rIds] of Object.entries(placeMap)) {
+    const CHUNK_SIZE = 500;
+    for (let i = 0; i < rIds.length; i += CHUNK_SIZE) {
+      const chunk = rIds.slice(i, i + CHUNK_SIZE);
+      const updates = {};
+      chunk.forEach(rid => {
+        updates[rid] = null; // deletes field in Firebase RTDB
+      });
+      await dbUpdate(`places/${placeId}/reviews`, updates);
+      deletedCount += chunk.length;
+    }
+    await recalculatePlaceRating(placeId).catch(() => {});
+  }
+
+  return { deletedCount };
+}
+
 /**
  * Intelligent Bulk Reviews Parser
  * Parses Markdown Tables, Pipe-delimited, Tab-delimited (Excel/Sheets), CSV, or line entries
