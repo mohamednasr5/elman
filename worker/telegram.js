@@ -6,12 +6,38 @@
 const FIREBASE_DB_URL = 'https://elmanzla-default-rtdb.firebaseio.com';
 
 /**
+ * Dynamically resolves Telegram Bot Token & Admin Chat ID from Env OR Firebase Database
+ */
+export async function resolveTelegramCredentials(env) {
+  let token = env?.TELEGRAM_BOT_TOKEN;
+  let adminId = env?.TELEGRAM_ADMIN_ID;
+
+  // Fallback: Fetch directly from Firebase Realtime Database settings/telegram
+  if (!token || !adminId) {
+    try {
+      const res = await fetch(`${FIREBASE_DB_URL}/settings/telegram.json`);
+      if (res.ok) {
+        const tg = await res.json();
+        if (tg) {
+          if (!token && tg.botToken) token = tg.botToken.trim();
+          if (!adminId && tg.adminChatId) adminId = String(tg.adminChatId).trim();
+        }
+      }
+    } catch (e) {
+      console.warn('[Telegram] Could not fetch credentials from Firebase:', e);
+    }
+  }
+
+  return { token, adminId };
+}
+
+/**
  * Send HTTP request to Telegram Bot API
  */
 export async function telegramApi(method, body, env) {
-  const token = env.TELEGRAM_BOT_TOKEN;
+  const { token } = await resolveTelegramCredentials(env);
   if (!token) {
-    console.warn('[Telegram] TELEGRAM_BOT_TOKEN is not set.');
+    console.warn('[Telegram] TELEGRAM_BOT_TOKEN is not configured in Worker or Firebase settings.');
     return { ok: false, description: 'Bot token not set' };
   }
 
@@ -783,8 +809,8 @@ async function sendSponsoredShowcase(chatId, env, editMessageId = null) {
  * Send Instant Push Notification to Admin Telegram
  */
 export async function sendAdminPushNotification(type, payload, env) {
-  const chatId = env.TELEGRAM_ADMIN_ID;
-  if (!chatId) return { ok: false, error: 'No admin chat ID configured' };
+  const { adminId: chatId } = await resolveTelegramCredentials(env);
+  if (!chatId) return { ok: false, error: 'No admin chat ID configured in Worker env nor in Firebase settings/telegram' };
 
   let text = '';
   let keyboard = null;

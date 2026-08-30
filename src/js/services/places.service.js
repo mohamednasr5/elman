@@ -4,7 +4,7 @@
  */
 
 import { getDB } from '../core/firebase.js';
-import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp } from '../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification } from '../core/db.js';
 import { generatePlaceSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';
 import { WORKER_URL } from '../core/firebase.js';
@@ -122,22 +122,15 @@ export async function createPlace(placeData, currentUser) {
     dbIncrement(`categories/${placeData.categoryId}/placeCount`, 1);
   }
 
-  // Push instant notification to Telegram Admin (async background)
-  fetch(`${WORKER_URL}/api/notify`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      type: 'new_place',
-      data: {
-        id: placeId,
-        name: newPlace.name,
-        categoryName: placeData.categoryName || placeData.categoryId,
-        phone: newPlace.phone,
-        area: newPlace.area,
-        ownerName: currentUser.name || currentUser.displayName || currentUser.email
-      }
-    })
-  }).catch(() => {});
+  // Push instant notification to Telegram Admin
+  sendTelegramAdminNotification('new_place', {
+    id: placeId,
+    name: newPlace.name,
+    categoryName: placeData.categoryName || placeData.categoryId,
+    phone: newPlace.phone,
+    area: newPlace.area,
+    ownerName: currentUser.name || currentUser.displayName || currentUser.email
+  });
 
   return placeId;
 }

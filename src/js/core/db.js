@@ -895,24 +895,64 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   await dbSet(`places/${placeId}/reviews/${reviewId}`, reviewData);
   await recalculatePlaceRating(placeId);
 
-  // Send Instant Telegram Notification to Admin Bot (Async background)
-  fetch(`${WORKER_URL}/api/notify`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      type: 'new_review',
-      data: {
-        placeId,
-        placeName: placeName || 'المكان',
-        placeSlug: placeSlug || '',
-        userName: userName,
-        rating: numRating,
-        comment: cleanComment
-      }
-    })
-  }).catch(() => {});
+  // Send Instant Dual-Channel Notification to Admin Telegram Bot
+  sendTelegramAdminNotification('new_review', {
+    placeId,
+    placeName: placeName || 'المكان',
+    placeSlug: placeSlug || '',
+    userName: userName,
+    rating: numRating,
+    comment: cleanComment
+  });
 
   return reviewData;
+}
+
+/**
+ * Robust Dual-Dispatch Telegram Admin Notification (Cloudflare Worker + Direct Fallback)
+ */
+export async function sendTelegramAdminNotification(type, payload) {
+  // 1. Try sending via Cloudflare Worker
+  try {
+    const res = await fetch(`${WORKER_URL}/api/notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, data: payload })
+    });
+    if (res.ok) return;
+  } catch (_) {}
+
+  // 2. Direct Browser-to-Telegram Fallback via Firebase Settings
+  try {
+    const settings = await getSettings();
+    const botToken = settings?.telegram?.botToken;
+    const chatId = settings?.telegram?.adminChatId;
+    if (!botToken || !chatId) return;
+
+    let text = '';
+    if (type === 'new_review') {
+      const starStr = '⭐'.repeat(Math.min(5, Math.max(1, payload.rating || 5)));
+      text = `🔔 *تعليق جديد على مكان في المنزلة!*\n\n🏢 *المكان / * ${payload.placeName || 'المكان'}\n👤 *صاحب التعليق / * ${payload.userName || 'عميل'}\n⭐ *التقييم / * ${payload.rating || 5} ${starStr}\n💬 *نص التعليق / *\n"${payload.comment || ''}"`;
+    } else if (type === 'review_reported') {
+      text = `🚩 *تم الإبلاغ عن تعليق كمسيء!*\n\n🏢 *المكان / * ${payload.placeName || 'المكان'}\n👤 *كاتب التعليق / * ${payload.userName || 'عميل'}\n💬 *التعليق / * "${payload.comment || ''}"\n⚠️ *سبب الإبلاغ / * ${payload.reason || 'محتوى غير لائق'}\n👤 *المُبلّغ / * ${payload.reporterName || 'مستخدم'}`;
+    } else if (type === 'new_place') {
+      text = `🏢 *تمت إضافة مكان جديد للمنصة:*\n\n📌 *الاسم:* ${payload.name}\n📂 *التصنيف:* ${payload.categoryName || 'عام'}\n📞 *الهاتف:* \`${payload.phone || 'غير مسجل'}\`\n📍 *المنطقة:* ${payload.area || 'المنزلة'}`;
+    } else if (type === 'verification_request') {
+      text = `🛡️ *طلب توثيق جديد ورد الآن!*\n\n🏢 *المكان:* ${payload.placeName}\n👤 *مقدم الطلب:* ${payload.requesterName || payload.requesterEmail}\n📞 *الهاتف:* \`${payload.phone || 'غير مسجل'}\``;
+    } else {
+      text = `📢 *إشعار من المنصة:*\n\n${JSON.stringify(payload, null, 2)}`;
+    }
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'Markdown'
+      })
+    });
+  } catch (_) {}
 }
 
 /**
@@ -936,21 +976,14 @@ export async function reportPlaceReview({ placeId, reviewId, reason = 'محتو�
   await dbUpdate(`places/${placeId}/reviews/${reviewId}`, updates);
 
   // Send Telegram Alert to Admin
-  fetch(`${WORKER_URL}/api/notify`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      type: 'review_reported',
-      data: {
-        placeId,
-        placeName: review.placeName || 'المكان',
-        userName: review.userName || 'عميل',
-        comment: review.comment || '',
-        reason,
-        reporterName
-      }
-    })
-  }).catch(() => {});
+  sendTelegramAdminNotification('review_reported', {
+    placeId,
+    placeName: review.placeName || 'المكان',
+    userName: review.userName || 'عميل',
+    comment: review.comment || '',
+    reason,
+    reporterName
+  });
 
   return { ...review, ...updates };
 }

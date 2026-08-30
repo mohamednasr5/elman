@@ -193,6 +193,17 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         return jsonResponse({ success: true, webhookUrl, result: res }, 200, corsHeaders);
       }
 
+      // ── 9b. Test Telegram Notification (POST /api/telegram/test) ──
+      if (url.pathname === '/api/telegram/test' && (request.method === 'POST' || request.method === 'GET')) {
+        const body = await request.json().catch(() => ({}));
+        const testRes = await sendAdminPushNotification('contact_message', {
+          name: 'مدير المنصة (اختبار الاتصال)',
+          contact: 'لوحة التحكم',
+          message: '🔔 رسالة تجريبية لتأكيد عمل إشعارات بوت تليجرام بنجاح 100% على منصة المنزلة وناسها!'
+        }, env);
+        return jsonResponse({ success: true, result: testRes }, 200, corsHeaders);
+      }
+
       // ── 10. Instant Push Notification (POST /api/notify) ──
       if (url.pathname === '/api/notify' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));

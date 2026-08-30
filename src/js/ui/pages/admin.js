@@ -2492,6 +2492,45 @@ async function renderAdminSettings($container) {
           </div>
         </div>
 
+        <!-- Telegram Bot Notifications Settings -->
+        <div class="form-section" style="border:1px solid rgba(0, 136, 204, 0.3);background:rgba(0, 136, 204, 0.03)">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:var(--space-3)">
+            <h2 class="form-section__title" style="margin-bottom:0;color:#0088cc">
+              <span>✈️</span> إعدادات بوت تليجرام للإشعارات الفورية
+            </h2>
+            <span class="badge" style="background:#0088cc;color:#fff;font-size:11px">Telegram Bot Engine</span>
+          </div>
+
+          <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:var(--space-3);line-height:1.6">
+            يقوم البوت بإرسال إشعارات فورية للإدارة عند إضافة أماكن جديدة، طلبات التوثيق، التعليقات الجديدة، بلاغات الإساءة، ورسائل تواصل معنا، مع إمكانية التوثيق والرفض بضغطة زر من تليجرام مباشرة.
+          </p>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">توكن البوت (Bot Token من @BotFather)</label>
+              <input type="text" id="s-tg-token" class="form-input" placeholder="مثال: 123456789:ABCdefGHIjklMNOpqrSTUvwxYZ" style="direction:ltr;text-align:left" value="${escAttr(settings.telegram?.botToken || '')}" />
+              <div class="form-hint">احصل عليه مجاناً عبر فتح محادثة مع @BotFather في تليجرام وإنشاء بوت.</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">معرف شات الإدارة (Admin Chat ID)</label>
+              <input type="text" id="s-tg-chat-id" class="form-input" placeholder="مثال: 123456789" style="direction:ltr;text-align:left" value="${escAttr(settings.telegram?.adminChatId || '')}" />
+              <div class="form-hint">احصل على معرف حسابك الشخصي عبر مراسلة @userinfobot في تليجرام.</div>
+            </div>
+          </div>
+
+          <!-- Telegram Action Buttons -->
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:var(--space-2)">
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-tg-test-notify" style="background:#0088cc;color:#fff;border-color:#0088cc">
+              <span>🔔</span> إرسال رسالة تجريبية وفحص الاتصال
+            </button>
+            <button type="button" class="btn btn-sm btn-ghost" id="btn-tg-set-webhook">
+              <span>🔗</span> إعادة ربط الويب هوك (Set Webhook)
+            </button>
+          </div>
+          <div id="tg-test-status" style="display:none;margin-top:10px;font-size:12.5px;padding:8px 12px;border-radius:var(--radius-md)"></div>
+        </div>
+
         <!-- Limits -->
         <div class="form-section">
           <h2 class="form-section__title"><span>${ICONS.cog}</span> حدود العروض والمنتجات</h2>
@@ -2520,6 +2559,83 @@ async function renderAdminSettings($container) {
     </div>
   `;
 
+  // Telegram Test Notification Handler
+  document.getElementById('btn-tg-test-notify')?.addEventListener('click', async () => {
+    const token = document.getElementById('s-tg-token')?.value.trim();
+    const chatId = document.getElementById('s-tg-chat-id')?.value.trim();
+    const statusBox = document.getElementById('tg-test-status');
+
+    if (!token || !chatId) {
+      toast.warning('يرجى كتابة توكن البوت ومعرف الشات أولاً');
+      return;
+    }
+
+    const btn = document.getElementById('btn-tg-test-notify');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      // 1. Direct Telegram API call from browser
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: `🎉 *مرحباً بك في نظام إشعارات المنزلة وناسها!*\n\n✅ تم اختبار الاتصال ببوت تليجرام بنجاح وهو يعمل الآن بكفاءة 100% لاستقبال جميع إشعارات المنصة.\n\n⏰ الوقت: ${new Date().toLocaleTimeString('ar-EG')}`,
+          parse_mode: 'Markdown'
+        })
+      });
+
+      const data = await res.json();
+      if (data.ok) {
+        toast.success('تم إرسال الرسالة التجريبية إلى تليجرام بنجاح! تفقد هاتفك 📱');
+        if (statusBox) {
+          statusBox.style.display = 'block';
+          statusBox.style.background = 'rgba(16, 185, 129, 0.1)';
+          statusBox.style.color = '#059669';
+          statusBox.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+          statusBox.innerHTML = '✅ <strong>الاتصال ناجح:</strong> تم إرسال الرسالة إلى تليجرام وتأكيد جاهزية البوت.';
+        }
+      } else {
+        throw new Error(data.description || 'فشل الاتصال بتليجرام');
+      }
+    } catch (err) {
+      toast.error('خطأ: ' + err.message);
+      if (statusBox) {
+        statusBox.style.display = 'block';
+        statusBox.style.background = 'rgba(239, 68, 68, 0.1)';
+        statusBox.style.color = '#dc2626';
+        statusBox.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        statusBox.innerHTML = `❌ <strong>فشل الاتصال:</strong> ${escHtml(err.message)}<br><small>تأكد من صحة التوكن ومن أنك قمت ببدء المحادثة مع البوت عبر الضغط على Start.</small>`;
+      }
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  });
+
+  // Telegram Set Webhook Handler
+  document.getElementById('btn-tg-set-webhook')?.addEventListener('click', async () => {
+    const token = document.getElementById('s-tg-token')?.value.trim();
+    if (!token) {
+      toast.warning('اكتب توكن البوت أولاً');
+      return;
+    }
+
+    try {
+      const webhookUrl = `https://elmanzala.nonm1724.workers.dev/api/telegram/webhook`;
+      const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+      const data = await res.json();
+      if (data.ok) {
+        toast.success('تم ربط الـ Webhook مع سيرفر المنصة بنجاح 🔗');
+      } else {
+        throw new Error(data.description || 'فشل ضبط الويب هوك');
+      }
+    } catch (err) {
+      toast.error('خطأ: ' + err.message);
+    }
+  });
+
   document.getElementById('admin-settings-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btn-save-settings');
@@ -2534,6 +2650,8 @@ async function renderAdminSettings($container) {
         'contact/whatsappLink': document.getElementById('s-wa-link').value,
         'contact/email': document.getElementById('s-email').value,
         'social/facebook': document.getElementById('s-fb').value,
+        'telegram/botToken': (document.getElementById('s-tg-token')?.value || '').trim(),
+        'telegram/adminChatId': (document.getElementById('s-tg-chat-id')?.value || '').trim(),
         'limits/offersVerified': Number(document.getElementById('s-lim-off-ver').value) || 3,
         'limits/offersUnverified': Number(document.getElementById('s-lim-off-unver').value) || 1,
         'limits/productsVerified': Number(document.getElementById('s-lim-prod-ver').value) || 350,
