@@ -1261,27 +1261,6 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', specia
   return results;
 }
 
-/** Admin: Update review */
-export async function adminUpdateReview(placeId, reviewId, updates) {
-  if (!placeId || !reviewId) return;
-  if (updates.comment) {
-    updates.comment = sanitizeReviewText(updates.comment);
-  }
-  if (updates.rating) {
-    updates.rating = Math.min(5, Math.max(1, parseInt(updates.rating, 10) || 5));
-  }
-  updates.updatedAt = Date.now();
-  await dbUpdate(`places/${placeId}/reviews/${reviewId}`, updates);
-  await recalculatePlaceRating(placeId);
-}
-
-/** Admin: Delete review */
-export async function adminDeleteReview(placeId, reviewId) {
-  if (!placeId || !reviewId) return;
-  await dbRemove(`places/${placeId}/reviews/${reviewId}`);
-  await recalculatePlaceRating(placeId);
-}
-
 /** Auto-assign a 5-star review for Mohamed Hammad when a new user registers */
 export async function autoAssignHammadReview(user) {
   if (!user || !user.uid) return;

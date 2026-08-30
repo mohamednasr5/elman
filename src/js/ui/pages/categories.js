@@ -3,6 +3,10 @@ import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard } from '../components/PlaceCard.js';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { setMeta, setBreadcrumbSchema } from '../../utils/seo.js';
+import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../utils/maps.js';
+import { toast } from '../components/Toast.js';
+
+let _catUserLocation = null;
 
 export async function renderCategoriesPage($container) {
   setMeta({ title: 'التصنيفات والأنشطة', url: 'https://elmanzala.com/categories.html' });
@@ -131,6 +135,7 @@ export async function renderCategoryPage($container, { slug, query, user }) {
         </div>
         <select id="cat-sort-filter" class="form-select" style="max-width:210px;margin:0">
           <option value="default">⭐ الافتراضي (المميز والموثق)</option>
+          <option value="nearest">📍 الأقرب إليّ (حسب موقعي GPS)</option>
           <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
           <option value="most-reviews">💬 الأكثر تقييماً وتفاعلاً</option>
           <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
@@ -161,11 +166,23 @@ export async function renderCategoryPage($container, { slug, query, user }) {
     return;
   }
 
-  function renderSortedPlaces() {
+  async function renderSortedPlaces() {
     const sortBy = sortSelect?.value || 'default';
     let places = [...rawPlaces];
 
-    if (sortBy === 'highest-rating') {
+    if (sortBy === 'nearest') {
+      if (!_catUserLocation) {
+        toast.info('جاري تحديد موقعك الجغرافي لحساب المسافات... 📍');
+        try {
+          _catUserLocation = await getUserLocation();
+          toast.success('تم تحديد موقعك! تم ترتيب الأماكن حسب الأقرب لموقعك 📍');
+        } catch (err) {
+          toast.warning('تعذر الوصول للـ GPS، تم الترتيب حسب المسافة من مركز المنزلة');
+          _catUserLocation = MANZALA_CENTER;
+        }
+      }
+      places = sortPlacesByDistance(places, _catUserLocation);
+    } else if (sortBy === 'highest-rating') {
       places.sort((a, b) => (Number(b.rating) || 5.0) - (Number(a.rating) || 5.0));
     } else if (sortBy === 'most-reviews') {
       places.sort((a, b) => (Number(b.reviewCount) || 0) - (Number(a.reviewCount) || 0));

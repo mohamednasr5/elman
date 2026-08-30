@@ -56,8 +56,9 @@ export function renderPlaceCard(place) {
           ${verifiedBadge}
         </h3>
         <div class="place-card__category" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap">
-          <div>
-            📍 ${escHtml(place.area || 'المنزلة')}
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span>📍 ${escHtml(place.area || 'المنزلة')}</span>
+            ${place._distanceStr ? `<span class="badge" style="background:rgba(16,185,129,0.12);color:var(--success);font-size:10.5px;padding:1px 6px;border-radius:var(--radius-sm);font-weight:700">على بعد ${escHtml(place._distanceStr)}</span>` : ''}
             ${deliveryBadge}
           </div>
           ${(() => {

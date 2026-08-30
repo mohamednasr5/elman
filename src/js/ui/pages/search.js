@@ -10,6 +10,10 @@ import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCar
 import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent } from '../../utils/arabic.js';
 import { aiSearch, aiSmartSearch } from '../../services/ai.service.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
+import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../utils/maps.js';
+import { toast } from '../components/Toast.js';
+
+let _searchUserLocation = null;
 
 export async function renderSearchPage($container, { q = '', user }) {
   $container.innerHTML = `
@@ -61,8 +65,9 @@ export async function renderSearchPage($container, { q = '', user }) {
         <div class="search-results-meta" id="search-meta" style="margin:0">
           ${q ? `نتائج البحث عن: "<strong>${escHtml(q)}</strong>"` : 'أدخل كلمة البحث للبدء'}
         </div>
-        <select id="search-sort-filter" class="form-select" style="max-width:200px;margin:0">
+        <select id="search-sort-filter" class="form-select" style="max-width:210px;margin:0">
           <option value="relevance">🎯 الأكثر مطابقة</option>
+          <option value="nearest">📍 الأقرب إليّ (حسب موقعي GPS)</option>
           <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
           <option value="most-reviews">💬 الأكثر تقييماً</option>
           <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
@@ -201,7 +206,19 @@ export async function renderSearchPage($container, { q = '', user }) {
     const sortBy = searchSort?.value || 'relevance';
     let sorted = [...places];
 
-    if (sortBy === 'highest-rating') {
+    if (sortBy === 'nearest') {
+      if (!_searchUserLocation) {
+        toast.info('جاري تحديد موقعك الجغرافي لترتيب النتائج بالأقرب إليك... 📍');
+        try {
+          _searchUserLocation = await getUserLocation();
+          toast.success('تم تحديد موقعك! تم ترتيب الأماكن حسب الأقرب لموقعك 📍');
+        } catch (err) {
+          toast.warning('تعذر الوصول للـ GPS، تم الترتيب حسب المسافة من مركز المنزلة');
+          _searchUserLocation = MANZALA_CENTER;
+        }
+      }
+      sorted = sortPlacesByDistance(sorted, _searchUserLocation);
+    } else if (sortBy === 'highest-rating') {
       sorted.sort((a, b) => (Number(b.rating) || 5.0) - (Number(a.rating) || 5.0));
     } else if (sortBy === 'most-reviews') {
       sorted.sort((a, b) => (Number(b.reviewCount) || 0) - (Number(a.reviewCount) || 0));
@@ -222,9 +239,9 @@ export async function renderSearchPage($container, { q = '', user }) {
     }
   }
 
-  searchSort?.addEventListener('change', () => {
+  searchSort?.addEventListener('change', async () => {
     if (currentResults.length > 0) {
-      renderResults(currentResults);
+      await renderResults(currentResults);
     }
   });
 

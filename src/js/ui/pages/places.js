@@ -1,14 +1,13 @@
-/**
- * المنزلة وناسها — Places Listing Page
- * Filterable and searchable directory with verified places priority
- */
-
 import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore } from '../../utils/arabic.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
+import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../utils/maps.js';
+import { toast } from '../components/Toast.js';
+
+let _userLocationCoords = null;
 
 export async function renderPlacesPage($container, { query = {}, user }) {
   $container.innerHTML = `
@@ -47,6 +46,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
         <select id="places-sort-filter" class="form-select" style="max-width:210px">
           <option value="default">⭐ الافتراضي (المميز والموثق)</option>
+          <option value="nearest">📍 الأقرب إليّ (حسب موقعي GPS)</option>
           <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
           <option value="most-reviews">💬 الأكثر تقييماً وتفاعلاً</option>
           <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
@@ -98,7 +98,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     const grid = document.getElementById('places-directory-grid');
     const countMeta = document.getElementById('places-count-meta');
 
-    function applyFilters() {
+    async function applyFilters() {
       const q = searchInput?.value.trim() || '';
       const selectedCat = catSelect?.value || '';
       const onlyVerified = verifiedSelect?.value === 'verified';
@@ -133,9 +133,21 @@ export async function renderPlacesPage($container, { query = {}, user }) {
           .map(item => item.place);
       }
 
-      // Sorting & Negative Sentiment Filter
+      // Sorting & Location Distance Filter
       let sorted = [];
-      if (sortBy === 'highest-rating') {
+      if (sortBy === 'nearest') {
+        if (!_userLocationCoords) {
+          toast.info('جاري تحديد موقعك الجغرافي لحساب الأماكن الأقرب إليك... 📍');
+          try {
+            _userLocationCoords = await getUserLocation();
+            toast.success('تم تحديد موقعك! تم ترتيب الأماكن من الأقرب إلى الأبعد 📍');
+          } catch (err) {
+            toast.warning('تعذر الوصول للـ GPS، تم الترتيب حسب المسافة من مركز المنزلة');
+            _userLocationCoords = MANZALA_CENTER;
+          }
+        }
+        sorted = sortPlacesByDistance(filtered, _userLocationCoords);
+      } else if (sortBy === 'highest-rating') {
         sorted = filtered.sort((a, b) => (Number(b.rating) || 5.0) - (Number(a.rating) || 5.0));
       } else if (sortBy === 'most-reviews') {
         sorted = filtered.sort((a, b) => (Number(b.reviewCount) || 0) - (Number(a.reviewCount) || 0));
@@ -150,7 +162,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       }
 
       // Render
-      countMeta.textContent = `تم العثور على ${sorted.length} مكان في المنزلة`;
+      countMeta.textContent = `تم العثور على ${sorted.length} مكان في المنزلة ${sortBy === 'nearest' ? '• مرتبة بالأقرب لموقعك' : ''}`;
 
       if (sorted.length === 0) {
         grid.innerHTML = `
