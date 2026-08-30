@@ -142,7 +142,11 @@ export async function renderPlacesPage($container, { query = {}, user }) {
             _userLocationCoords = await getUserLocation();
             toast.success('تم تحديد موقعك! تم ترتيب الأماكن من الأقرب إلى الأبعد 📍');
           } catch (err) {
-            toast.warning('تعذر الوصول للـ GPS، تم الترتيب حسب المسافة من مركز المنزلة');
+            if (err.code === 1) {
+              toast.warning('يرجى السماح للمتصفح بالوصول للموقع (Allow Location) في شريط العنوان 📍');
+            } else {
+              toast.info('تم الترتيب حسب المسافة من مركز المنزلة 📍');
+            }
             _userLocationCoords = MANZALA_CENTER;
           }
         }

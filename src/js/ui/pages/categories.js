@@ -177,7 +177,11 @@ export async function renderCategoryPage($container, { slug, query, user }) {
           _catUserLocation = await getUserLocation();
           toast.success('تم تحديد موقعك! تم ترتيب الأماكن حسب الأقرب لموقعك 📍');
         } catch (err) {
-          toast.warning('تعذر الوصول للـ GPS، تم الترتيب حسب المسافة من مركز المنزلة');
+          if (err.code === 1) {
+            toast.warning('يرجى السماح للمتصفح بالوصول للموقع (Allow Location) في شريط العنوان 📍');
+          } else {
+            toast.info('تم الترتيب حسب المسافة من مركز المنزلة 📍');
+          }
           _catUserLocation = MANZALA_CENTER;
         }
       }
