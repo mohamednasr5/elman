@@ -1069,6 +1069,14 @@ export async function adminBulkAddReviews(placeId, items = []) {
     existingNames.add(normName);
     const reviewId = `bulk_${now}_${index}_${Math.random().toString(36).substring(2, 6)}`;
     
+    // Distribute timestamps naturally across months and days of the year (past 1-360 days)
+    const totalItems = Math.max(1, items.length);
+    const dayProgress = (index / totalItems) * 330; // Spread across ~11 months
+    const jitterDays = (Math.random() * 6) - 3; // +/- 3 days random jitter
+    const finalDaysAgo = Math.max(0, dayProgress + jitterDays);
+    const randomMsInDay = Math.floor(Math.random() * 86400000);
+    const reviewTime = Math.floor(now - (finalDaysAgo * 86400000) - randomMsInDay);
+
     updates[reviewId] = {
       id: reviewId,
       placeId,
@@ -1079,8 +1087,8 @@ export async function adminBulkAddReviews(placeId, items = []) {
       userPhoto: '',
       rating: numRating,
       comment: cleanComment,
-      createdAt: now - (index * 60000 * 5), // Stagger timestamps naturally
-      updatedAt: now - (index * 60000 * 5),
+      createdAt: reviewTime,
+      updatedAt: reviewTime,
       editCount: 0,
       isAdminGenerated: true
     };
@@ -1108,7 +1116,7 @@ export async function adminBulkAddReviews(placeId, items = []) {
 }
 
 /**
- * Mega Synthetic Reviews Generator (Generates up to 5,000 unique Egyptian dialect reviews with customizable star ranges and specialty)
+ * Mega Synthetic Reviews Generator (Generates up to 5,000 unique 100% Arabic Egyptian dialect reviews with customizable star ranges and specialty)
  */
 export function generateSyntheticReviews({ count = 50, starRange = '4-5', specialty = '', placeName = '', categoryName = '' }) {
   const targetCount = Math.min(5000, Math.max(1, parseInt(count, 10) || 50));
@@ -1152,7 +1160,7 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', specia
     'Baz', 'Attia', 'Younis', 'Mansour', 'Soliman', 'Fahmy', 'Radwan', 'Zaki', 'Osman', 'Awad'
   ];
 
-  // Authentic Egyptian Dialect Comments with Place & Specialty Integration
+  // 100% Authentic Egyptian Dialect Arabic Comments with Place & Specialty Integration
   const TEMPLATES_5 = [
     `بصراحة ${pName} في ${spec} مفيش بعد كده، دقة واحترافية والتزام في المواعيد وناس محترمة جداً.`,
     `من أفضل الأماكن في المنزلة لـ ${spec}، تعامل راقي وشغل مظبوط على الفرازة تسلم إيديكم.`,
@@ -1165,10 +1173,13 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', specia
     `من أحسن التجارب اللي مريت بيها، جودة في ${spec} ومعاملة في قمة الذوق والاحترام.`,
     `مكان محترم وموثوق، والخدمة في ${spec} طلعت أحسن من اللي طلبته بكتير.`,
     `قمة في الأمانة والاحترافية، شكراً جزيلاً لـ ${pName} على الشغل النظيف.`,
-    `Excellent service in ${spec} by ${pName}. Very professional, fast, and top quality!`,
-    `Highly recommended for anyone looking for the best ${spec} in El Manzala.`,
-    `Outstanding work and great attention to detail. 5 stars all the way!`,
-    `Very creative, reliable, and professional team. Exceeded all my expectations in ${spec}.`
+    `بجد ناس في منتهى الذوق والأمانة، وخدمة ${spec} عندهم ممتازة ومفيهاش أي غلطة.`,
+    `كل الشكر والتقدير لـ ${pName}، متميزين جداً في ${spec} وسرعة في الإنجاز.`,
+    `أفضل خدمة وتجربة تعامل في المنزلة كلها، شغل ${spec} ممتاز ربنا يباركلهم.`,
+    `دقة في المواعيد وجودة وسعر ممتاز في ${spec}، أنصح بالتعامل معاهم بشدة.`,
+    `والله العظيم قمة في الذوق والاحتراف، ${pName} أحسن من يقدم ${spec}.`,
+    `شغل نظيف ومرتب، وأسعار مناسبة جداً مقارنة بالجودة العالية لـ ${spec}.`,
+    `استجابة سريعة جداً وخدمة عملاء ممتازة، ${pName} الاختيار الأول دائماً في ${spec}.`
   ];
 
   const TEMPLATES_4 = [
@@ -1177,9 +1188,10 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', specia
     `تجربة طيبة وتعامل محترم، شكراً لكم على المجهود المميز في ${spec}.`,
     `جودة العمل عالية ومطابقة لما تم الاتفاق عليه، أنصح بتجربة ${pName}.`,
     `مكان محترم وخدمة سريعة في ${spec}، بالتوفيق دائمًا.`,
-    `Good service and friendly communication from ${pName}. Overall very satisfied with ${spec}.`,
-    `High quality work in ${spec} with great support. Looking forward to dealing with them again.`,
-    `Solid experience, very polite staff and good results in ${spec}.`
+    `تعاملت معاهم في ${spec} والخدمة ممتازة، السعر كان ممكن يكون أفضل لكن الجودة كويسة جداً.`,
+    `مكان كويس وموثوق وناس محترمة جداً وشغل ${spec} عندهم مظبوط.`,
+    `تجربة ممتازة بوجه عام وخدمة ${spec} طلعت كويسة جداً.`,
+    `ناس محترمة وسريعين في الرد، وخدمة ${spec} جيدة ومطابقة للطلب.`
   ];
 
   const TEMPLATES_3 = [
@@ -1187,18 +1199,21 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', specia
     `تعامل عادي من ${pName} والنتيجة في ${spec} متوسطة كما هو متوقع.`,
     `تجربة مقبولة ولكن هناك مجال للتحسين في مواعيد تسليم ${spec}.`,
     `الخدمة جيدة لكن أسعار ${spec} تحتاج إعادة نظر لتناسب الجميع.`,
-    `Average service in ${spec}, acceptable results but communication could be improved.`
+    `المكان كويس بس الزحمة مأثرة شوية على سرعة تقديم ${spec}.`,
+    `مستوى الخدمة في ${spec} متوسط، معقول لكن يحتاج اهتمام أكثر بالتفاصيل.`
   ];
 
   const TEMPLATES_2 = [
     `الخدمة في ${spec} تحتاج تحسين ملحوظ في سرعة الاستجابة والالتزام بالمواعيد.`,
     `التجربة مع ${pName} في ${spec} لم تكن على المستوى المطلوب، نأمل التطوير مستقبلاً.`,
-    `للأسف فيه تأخير ملحوظ في تنفيذ ${spec} وضعف في خدمة ما بعد البيع.`,
-    `Need major improvements in customer service and response time for ${spec}.`
+    `للأسف فيه تأخير ملحوظ في تنفيذ ${spec} وضعف في سرعة الرد على العملاء.`,
+    `الأسعار مرتفعة مقارنة بمستوى الخدمة المقدمة في ${spec}.`
   ];
 
   const TEMPLATES_1 = [
-    'خدمة سيئة وتحتاج مراجعة شاملة في التعامل مع العملاء.'
+    'خدمة سيئة وغير مرضية، وتحتاج مراجعة شاملة في الالتزام بالمواعيد والتعامل.',
+    'تجربة غير موفقة نهائياً للأسف في هذا المكان، تأخير كبير وعدم اهتمام بالعميل.',
+    'مستوى الخدمة ضعيف جداً ولا أنصح بالتعامل حتى يتم تحسين الجودة.'
   ];
 
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];

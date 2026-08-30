@@ -97,7 +97,7 @@ export async function renderSearchPage($container, { q = '', user }) {
 
   const currentUser = getCurrentUser() || user;
 
-  function performSearch(queryText, isAi = false) {
+  async function performSearch(queryText, isAi = false) {
     const query = queryText.trim();
     if (!query) {
       metaEl.innerHTML = 'يرجى إدخال كلمة للبحث';
@@ -109,22 +109,22 @@ export async function renderSearchPage($container, { q = '', user }) {
 
     if (isAi) {
       metaEl.innerHTML = `✨ جاري التحليل الذكي للبحث عن "<strong>${escHtml(query)}</strong>"...`;
-      aiSmartSearch(query, allPlaces).then(aiRes => {
+      aiSmartSearch(query, allPlaces).then(async (aiRes) => {
         if (aiRes && aiRes.results && aiRes.results.length > 0) {
           const matchedIds = new Set(aiRes.results.map(r => r.id));
           const results = allPlaces.filter(p => matchedIds.has(p._key || p.id));
-          renderResults(results, `✨ نتائج ذكية مقترحة لـ "<strong>${escHtml(query)}</strong>" (${results.length})`);
+          await renderResults(results, `✨ نتائج ذكية مقترحة لـ "<strong>${escHtml(query)}</strong>" (${results.length})`);
         } else {
           // Fallback to local
-          localSearch(query);
+          await localSearch(query);
         }
-      }).catch(() => localSearch(query));
+      }).catch(async () => await localSearch(query));
     } else {
-      localSearch(query);
+      await localSearch(query);
     }
   }
 
-  function localSearch(query) {
+  async function localSearch(query) {
     const rawClean = extractSearchKeywords(query);
     const normalQ = normalizeArabic(rawClean);
     const queryIntents = expandArabicSearchIntent(query);
@@ -192,13 +192,13 @@ export async function renderSearchPage($container, { q = '', user }) {
 
     // Sorting rule: Verified first -> User owned -> Others
     const finalResults = sortSearchPlaces(scored, currentUser?.uid);
-    renderResults(finalResults, `تم العثور على <strong>${finalResults.length}</strong> مكان لـ "<strong>${escHtml(query)}</strong>"`);
+    await renderResults(finalResults, `تم العثور على <strong>${finalResults.length}</strong> مكان لـ "<strong>${escHtml(query)}</strong>"`);
   }
 
   let currentResults = [];
   let currentMeta = '';
 
-  function renderResults(places, metaText) {
+  async function renderResults(places, metaText) {
     currentResults = places;
     if (metaText) currentMeta = metaText;
     metaEl.innerHTML = currentMeta;
