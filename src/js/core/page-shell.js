@@ -21,11 +21,11 @@ function _headerHTML(active) {
   return `
 <header class="header" id="site-header" role="banner">
   <div class="header__inner container">
-    <a href="index.html" class="header__logo" aria-label="المنزلة وناسها">
+    <a href="index.html" class="header__logo" aria-label="دليل المنزلة والمطرية الرقمي">
       <img src="./icons/icon-72x72.png" alt="" class="header__logo-icon" width="36" height="36"/>
       <div class="header__logo-text">
-        <span class="header__logo-name">المنزلة وناسها</span>
-        <span class="header__logo-tagline">دليل المنزلة الرقمي</span>
+        <span class="header__logo-name">دليل المنزلة والمطرية</span>
+        <span class="header__logo-tagline">الدليل الرقمي الشامل للمدن والقرى المجاورة</span>
       </div>
     </a>
 
@@ -33,7 +33,7 @@ function _headerHTML(active) {
       <div class="form-input-wrapper">
         <span class="form-input-icon">🔍</span>
         <input type="search" id="header-search-input" class="form-input"
-               placeholder="ابحث في المنزلة..." autocomplete="off"/>
+               placeholder="ابحث في المنزلة والمطرية والقرى..." autocomplete="off"/>
       </div>
     </div>
 
@@ -156,14 +156,14 @@ function _footerHTML() {
     <div class="footer__grid">
       <div class="footer__brand">
         <a href="index.html" class="footer__logo">
-          <img src="./icons/icon-72x72.png" alt="شعار المنزلة وناسها" width="40" height="40"/>
-          <span class="footer__logo-name">المنزلة وناسها</span>
+          <img src="./icons/icon-72x72.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="40" height="40"/>
+          <span class="footer__logo-name">دليل المنزلة والمطرية الرقمي</span>
         </a>
         <p class="footer__description">
-          دليلك الرقمي الشامل في مدينة المنزلة — ابحث عن الأطباء والمحلات والخدمات كلها في مكان واحد.
+          دليلك الرقمي الشامل لجميع الأماكن، المحلات، العيادات، الحرفيين والخدمات في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، ميت شريف، وكافة القرى المجاورة بمحافظة الدقهلية.
         </p>
         <div class="footer__apk-download" id="footer-apk-container" style="margin-top:18px">
-          <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="apk-pro-download-btn" id="footer-apk-download-btn" title="تحميل تطبيق دليل المنزلة للأندرويد APK">
+          <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="apk-pro-download-btn" id="footer-apk-download-btn" title="تحميل تطبيق دليل المنزلة والمطرية للأندرويد APK">
             <div class="apk-btn-icon-box">
               <svg class="android-svg-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                 <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.996-3.4572c.1557-.2698.0632-.6141-.2066-.7698-.2693-.1552-.6135-.0632-.7692.2066l-2.0231 3.5042c-1.4286-.6507-3.0373-1.0135-4.8786-1.0135-1.8412 0-3.45.3628-4.8785 1.0135L5.0995 5.301c-.1557-.2698-.5-.3618-.7692-.2066-.2698.1557-.3623.5-.2066.7698l1.996 3.4572C2.6806 11.2334.3333 15.1165.3333 19.6667h23.3334c0-4.5502-2.3473-8.4333-5.7867-10.3453"/>
@@ -211,7 +211,7 @@ function _footerHTML() {
       </div>
     </div>
     <div class="footer__bottom">
-      <p class="footer__copyright">© 2026 المنزلة وناسها. جميع الحقوق محفوظة.</p>
+      <p class="footer__copyright">© 2026 دليل المنزلة والمطرية الرقمي (المنزلة وناسها). جميع الحقوق محفوظة.</p>
       <div class="footer__bottom-links">
         <a href="privacy.html" class="footer__bottom-link">الخصوصية</a>
         <a href="terms.html"   class="footer__bottom-link">الشروط</a>
@@ -227,7 +227,7 @@ function _pwaBannerHTML() {
 <div class="pwa-banner" id="pwa-banner" hidden>
   <img src="./icons/icon-72x72.png" alt="" class="pwa-banner__icon" width="48" height="48"/>
   <div class="pwa-banner__content">
-    <div class="pwa-banner__title">ثبّت دليل المنزلة وناسها</div>
+    <div class="pwa-banner__title">ثبّت دليل المنزلة والمطرية الرقمي</div>
     <div class="pwa-banner__text">تصفّح أسرع وتجربة أفضل على هاتفك</div>
   </div>
   <div class="pwa-banner__actions">

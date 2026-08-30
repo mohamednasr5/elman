@@ -12,11 +12,13 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
-  <title>${title} | المنزلة وناسها</title>
+  <title>${title} | دليل المنزلة والمطرية الرقمي</title>
   <meta name="description" content="${desc}"/>
+  <meta name="keywords" content="دليل المنزلة والمطرية الرقمي, المنزلة, المطرية دقهلية, العصافرة, الجمالية, ميت سلسيل, البصراط, العزيزة, الأحمدية, الروضة, الحوتة, النسايمة, ميت خضير, ميت شريف, محلات, أطباء, حرفيين, خدمات الدقهلية"/>
   <meta name="robots" content="index,follow"/>
   <link rel="canonical" href="https://elmanzala.com/${file}"/>
-  <meta property="og:title" content="${title} | المنزلة وناسها"/>
+  <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي"/>
+  <meta property="og:title" content="${title} | دليل المنزلة والمطرية الرقمي"/>
   <meta property="og:description" content="${desc}"/>
   <meta property="og:image" content="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp"/>
   <meta property="og:locale" content="ar_EG"/>
@@ -24,6 +26,7 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
   <meta name="theme-color" content="#1B4F72"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
   <link rel="manifest" href="./manifest.webmanifest"/>
   <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png"/>
   <link rel="apple-touch-icon" href="./icons/icon-192x192.png"/>
@@ -74,8 +77,8 @@ ${moduleScript}
 const pages = [
   {
     file: 'places.html',
-    title: 'دليل الأماكن والخدمات والمهن في المنزلة',
-    desc: 'تصفح جميع المحلات والأطباء والحرفيين والمهن (سباك، نجار، مبلط، كهربائي) والأنشطة التجارية في مدينة المنزلة',
+    title: 'دليل الأماكن والمحلات والمهن في المنزلة والمطرية والقرى',
+    desc: 'تصفح جميع المحلات والأطباء والحرفيين والمهن (سباك، نجار، مبلط، كهربائي) والأنشطة التجارية في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، والقرى المجاورة',
     activeNav: 'places.html',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -88,8 +91,8 @@ const pages = [
   },
   {
     file: 'categories.html',
-    title: 'تصنيفات الدليل والمهن',
-    desc: 'استكشف جميع تصنيفات الأماكن، المحلات، العيادات، والمهن الحرفية في دليل المنزلة الرقمي',
+    title: 'تصنيفات الدليل والمهن والأنشطة',
+    desc: 'استكشف جميع تصنيفات الأماكن، المحلات، العيادات، والمهن الحرفية في دليل المنزلة والمطرية الرقمي',
     activeNav: 'categories.html',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -100,7 +103,7 @@ const pages = [
   {
     file: 'category.html',
     title: 'تصنيف ومهنة',
-    desc: 'تصفح الأماكن ومقدمي الخدمات في هذا التصنيف بمدينة المنزلة',
+    desc: 'تصفح الأماكن ومقدمي الخدمات في هذا التصنيف بالمنزلة، المطرية، والقرى المجاورة',
     activeNav: 'categories.html',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -112,7 +115,7 @@ const pages = [
   {
     file: 'place.html',
     title: 'تفاصيل المكان أو النشاط',
-    desc: 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والعنوان والعروض والخدمات',
+    desc: 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والعنوان والعروض والخدمات في المنزلة والمطرية',
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -127,8 +130,8 @@ const pages = [
   },
   {
     file: 'search.html',
-    title: 'فين في المنزلة؟ مين في المنزلة؟ عند مين في المنزلة؟ | بحث ذكي',
-    desc: 'ابحث بالذكاء الاصطناعي عن أي مكان، طبيب، أو صنايعي ومهني (سباك، نجار، مبلط، كهربائي) في دليل المنزلة',
+    title: 'فين في المنزلة والمطرية؟ | بحث ذكي وسريع بالـ AI',
+    desc: 'ابحث بالذكاء الاصطناعي عن أي مكان، طبيب، أو صنايعي ومهني (سباك، نجار، مبلط، كهربائي) في المنزلة والمطرية والقرى المجاورة',
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -139,8 +142,8 @@ const pages = [
   },
   {
     file: 'offers.html',
-    title: 'العروض اليومية',
-    desc: 'اطلع على أحدث عروض وتخفيضات محلات وخدمات مدينة المنزلة المحدثة يومياً',
+    title: 'العروض اليومية في المنزلة والمطرية',
+    desc: 'اطلع على أحدث عروض وتخفيضات محلات وخدمات المنزلة والمطرية والقرى المجاورة المحدثة يومياً',
     activeNav: 'offers.html',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -151,7 +154,7 @@ const pages = [
   {
     file: 'products.html',
     title: 'دليل المنتجات والأسعار',
-    desc: 'استعرض قائمة المنتجات والأسعار المتاحة من المحلات الموثقة في مدينة المنزلة',
+    desc: 'استعرض قائمة المنتجات والأسعار المتاحة من المحلات الموثقة في المنزلة والمطرية',
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';

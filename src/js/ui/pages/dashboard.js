@@ -486,13 +486,31 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">المنطقة داخل المنزلة</label>
-            <input type="text" id="p-area" class="form-input" placeholder="مثال: وسط البلد، شارع البحر، القومية، المعهد الديني" value="${escAttr(place?.area || 'المنزلة')}" />
+            <label class="form-label">المدينة / القرية / المنطقة <span class="required">*</span></label>
+            <input type="text" id="p-area" list="areas-datalist" class="form-input" placeholder="اختر أو اكتب المدينة أو القرية..." value="${escAttr(place?.area || 'المنزلة')}" />
+            <datalist id="areas-datalist">
+              <option value="المنزلة (المدينة)"></option>
+              <option value="المطرية (دقهلية)"></option>
+              <option value="العصافرة"></option>
+              <option value="الجمالية"></option>
+              <option value="ميت سلسيل"></option>
+              <option value="البصراط"></option>
+              <option value="العزيزة"></option>
+              <option value="الأحمدية"></option>
+              <option value="الروضة"></option>
+              <option value="الحوتة"></option>
+              <option value="النسايمة"></option>
+              <option value="ميت خضير"></option>
+              <option value="ميت شريف"></option>
+              <option value="الشبول"></option>
+              <option value="ميت مرجا سلسيل"></option>
+              <option value="الكردي"></option>
+            </datalist>
           </div>
 
           <div class="form-group">
-            <label class="form-label">العنوان بالتفصيل أو Plus Code</label>
-            <input type="text" id="p-address" class="form-input" placeholder="مثال: الضهير، مركز المنزلة أو 5XVJ+GF مركز المنزلة" value="${escAttr(place?.address || '')}" />
+            <label class="form-label">العنوان بالتفصيل أو الشارع</label>
+            <input type="text" id="p-address" class="form-input" placeholder="مثال: شارع البحر، بجوار المسجد الكبير" value="${escAttr(place?.address || '')}" />
           </div>
         </div>
 

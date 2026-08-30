@@ -20,7 +20,7 @@ export async function renderSearchPage($container, { q = '', user }) {
     <div class="search-page-header">
       <div class="container text-center">
         <h1 style="font-size:var(--font-size-3xl);font-weight:800;color:#fff;margin-bottom:var(--space-4)">
-          البحث في المنزلة
+          البحث في دليل المنزلة والمطرية الرقمي
         </h1>
         
         <!-- Search Form -->
@@ -30,7 +30,7 @@ export async function renderSearchPage($container, { q = '', user }) {
               type="search"
               id="search-page-input"
               class="hero-search__input"
-              placeholder="ابحث عن محل، دكتور، صيدلية، سباك، معرض..."
+              placeholder="ابحث عن مكان، دكتور، صيدلية، سباك، محل في المنزلة والمطرية والقرى..."
               value="${escAttr(q)}"
               autocomplete="off"
             />
@@ -45,16 +45,20 @@ export async function renderSearchPage($container, { q = '', user }) {
               ✨ بحث ذكي بالذكاء الاصطناعي
             </button>
             <span style="color:rgba(255,255,255,0.7);font-size:var(--font-size-xs)">|</span>
-            <span style="color:rgba(255,255,255,0.8);font-size:var(--font-size-xs)">كلمات ومهن شائعة:</span>
-            <button class="chip" onclick="searchFor('سباك')" style="cursor:pointer">🪠 سباك</button>
-            <button class="chip" onclick="searchFor('نجار')" style="cursor:pointer">🪚 نجار</button>
-            <button class="chip" onclick="searchFor('مبلط')" style="cursor:pointer">🧱 مبلط</button>
-            <button class="chip" onclick="searchFor('كهربائي')" style="cursor:pointer">⚡ كهربائي</button>
-            <button class="chip" onclick="searchFor('نقاش')" style="cursor:pointer">🖌️ نقاش</button>
-            <button class="chip" onclick="searchFor('دكتور')" style="cursor:pointer">👨‍⚕️ دكتور</button>
-            <button class="chip" onclick="searchFor('صيدلية')" style="cursor:pointer">💊 صيدلية</button>
-            <button class="chip" onclick="searchFor('سوبر ماركت')" style="cursor:pointer">🛒 سوبر ماركت</button>
-            <button class="chip" onclick="searchFor('مخبز')" style="cursor:pointer">🍞 مخبز</button>
+            <span style="color:rgba(255,255,255,0.8);font-size:var(--font-size-xs)">المدن والقرى:</span>
+            <button class="chip" onclick="searchFor('المنزلة')" style="cursor:pointer">🏙️ المنزلة</button>
+            <button class="chip" onclick="searchFor('المطرية')" style="cursor:pointer">🌊 المطرية</button>
+            <button class="chip" onclick="searchFor('العصافرة')" style="cursor:pointer">🌾 العصافرة</button>
+            <button class="chip" onclick="searchFor('الجمالية')" style="cursor:pointer">🏛️ الجمالية</button>
+            <button class="chip" onclick="searchFor('ميت سلسيل')" style="cursor:pointer">🏢 ميت سلسيل</button>
+            <button class="chip" onclick="searchFor('البصراط')" style="cursor:pointer">🏡 البصراط</button>
+            <button class="chip" onclick="searchFor('العزيزة')" style="cursor:pointer">🌴 العزيزة</button>
+            <button class="chip" onclick="searchFor('الأحمدية')" style="cursor:pointer">🌾 الأحمدية</button>
+            <button class="chip" onclick="searchFor('الروضة')" style="cursor:pointer">🌺 الروضة</button>
+            <button class="chip" onclick="searchFor('الحوتة')" style="cursor:pointer">🐟 الحوتة</button>
+            <button class="chip" onclick="searchFor('النسايمة')" style="cursor:pointer">🌳 النسايمة</button>
+            <button class="chip" onclick="searchFor('ميت خضير')" style="cursor:pointer">🏘️ ميت خضير</button>
+            <button class="chip" onclick="searchFor('ميت شريف')" style="cursor:pointer">🏡 ميت شريف</button>
           </div>
         </div>
       </div>

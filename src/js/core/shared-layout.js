@@ -200,17 +200,17 @@ export function getSharedHeaderHTML(activePage = '') {
   return `
   <header class="header" id="site-header" role="banner">
     <div class="header__inner container">
-      <a href="index.html" class="header__logo" aria-label="المنزلة وناسها">
+      <a href="index.html" class="header__logo" aria-label="دليل المنزلة والمطرية الرقمي">
         <img src="./icons/icon-72x72.png" alt="شعار" class="header__logo-icon" width="36" height="36"/>
         <div class="header__logo-text">
-          <span class="header__logo-name">المنزلة وناسها</span>
-          <span class="header__logo-tagline">دليل المنزلة الرقمي</span>
+          <span class="header__logo-name">دليل المنزلة والمطرية</span>
+          <span class="header__logo-tagline">الدليل الرقمي الشامل للمدن والقرى المجاورة</span>
         </div>
       </a>
       <div class="header__search" role="search">
         <div class="form-input-wrapper">
           <span class="form-input-icon">🔍</span>
-          <input type="search" id="header-search-input" class="form-input" placeholder="ابحث في المنزلة..." autocomplete="off"/>
+          <input type="search" id="header-search-input" class="form-input" placeholder="ابحث في المنزلة والمطرية والقرى..." autocomplete="off"/>
         </div>
       </div>
       <button class="header__search-btn" id="mobile-search-btn" aria-label="بحث">🔍</button>
@@ -237,7 +237,7 @@ export function getSharedBottomNavHTML(activePage = '') {
       <span class="bottom-nav__icon">📋</span><span class="bottom-nav__label">التصنيفات</span>
     </a>
     <div class="bottom-nav__fab">
-      <button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="مساعد المنزلة الصوتي الذكي" title="مساعد المنزلة الصوتي الذكي (M)">
+      <button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="مساعد المنزلة والمطرية الصوتي الذكي" title="مساعد المنزلة والمطرية الصوتي الذكي (M)">
         <span class="fab-letter-m">M</span>
         <span class="fab-pulse-ring"></span>
         <span class="fab-pulse-ring ring-2"></span>
@@ -260,12 +260,14 @@ export function getSharedFooterHTML() {
       <div class="footer__grid">
         <div class="footer__brand">
           <a href="index.html" class="footer__logo">
-            <img src="./icons/icon-72x72.png" alt="شعار المنزلة وناسها" width="40" height="40"/>
-            <span class="footer__logo-name">المنزلة وناسها</span>
+            <img src="./icons/icon-72x72.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="40" height="40"/>
+            <span class="footer__logo-name">دليل المنزلة والمطرية الرقمي</span>
           </a>
-          <p class="footer__description">دليلك الرقمي الشامل في مدينة المنزلة — ابحث عن الأطباء والمحلات والخدمات كلها في مكان واحد.</p>
+          <p class="footer__description">
+            دليلك الرقمي الشامل لجميع الأماكن، المحلات، العيادات، الحرفيين والخدمات في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، ميت شريف، وكافة القرى المجاورة بمحافظة الدقهلية.
+          </p>
           <div class="footer__apk-download" id="footer-apk-container" style="margin-top:18px">
-            <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="apk-pro-download-btn" id="footer-apk-download-btn" title="تحميل تطبيق دليل المنزلة للأندرويد APK">
+            <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="apk-pro-download-btn" id="footer-apk-download-btn" title="تحميل تطبيق دليل المنزلة والمطرية للأندرويد APK">
               <div class="apk-btn-icon-box">
                 <svg class="android-svg-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                   <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.996-3.4572c.1557-.2698.0632-.6141-.2066-.7698-.2693-.1552-.6135-.0632-.7692.2066l-2.0231 3.5042c-1.4286-.6507-3.0373-1.0135-4.8786-1.0135-1.8412 0-3.45.3628-4.8785 1.0135L5.0995 5.301c-.1557-.2698-.5-.3618-.7692-.2066-.2698.1557-.3623.5-.2066.7698l1.996 3.4572C2.6806 11.2334.3333 15.1165.3333 19.6667h23.3334c0-4.5502-2.3473-8.4333-5.7867-10.3453"/>
@@ -273,7 +275,7 @@ export function getSharedFooterHTML() {
               </div>
               <div class="apk-btn-text-box">
                 <span class="apk-btn-sub">تطبيق الأندرويد المباشر</span>
-                <span class="apk-btn-main">تحميل تطبيق المنزلة APK</span>
+                <span class="apk-btn-main">تحميل تطبيق الدليل APK</span>
               </div>
               <div class="apk-btn-arrow-box">
                 <svg class="download-arrow-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -289,18 +291,18 @@ export function getSharedFooterHTML() {
           <h3 class="footer__col-title">روابط سريعة</h3>
           <ul class="footer__links">
             <li><a href="index.html"      class="footer__link">الصفحة الرئيسية</a></li>
-            <li><a href="places.html"     class="footer__link">دليل الأماكن</a></li>
-            <li><a href="categories.html" class="footer__link">التصنيفات</a></li>
+            <li><a href="places.html"     class="footer__link">دليل الأماكن والمهن</a></li>
+            <li><a href="categories.html" class="footer__link">التصنيفات والأنشطة</a></li>
             <li><a href="offers.html"     class="footer__link">العروض اليومية</a></li>
             <li><a href="products.html"   class="footer__link">المنتجات</a></li>
           </ul>
         </div>
         <div>
-          <h3 class="footer__col-title">الخدمات</h3>
+          <h3 class="footer__col-title">الخدمات والدليل</h3>
           <ul class="footer__links">
-            <li><a href="dashboard.html?section=add" class="footer__link">إضافة مكان</a></li>
+            <li><a href="dashboard.html?section=add" class="footer__link">إضافة مكان أو نشاط</a></li>
             <li><a href="dashboard.html"  class="footer__link">لوحة التحكم</a></li>
-            <li><a href="search.html"     class="footer__link">بحث متقدم</a></li>
+            <li><a href="search.html"     class="footer__link">بحث بالذكاء الاصطناعي</a></li>
           </ul>
         </div>
         <div>
@@ -314,7 +316,7 @@ export function getSharedFooterHTML() {
         </div>
       </div>
       <div class="footer__bottom">
-        <p class="footer__copyright">© 2026 المنزلة وناسها. جميع الحقوق محفوظة.</p>
+        <p class="footer__copyright">© 2026 دليل المنزلة والمطرية الرقمي (المنزلة وناسها). جميع الحقوق محفوظة.</p>
         <div class="footer__bottom-links">
           <a href="privacy.html" class="footer__bottom-link">الخصوصية</a>
           <a href="terms.html"   class="footer__bottom-link">الشروط</a>

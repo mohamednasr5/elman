@@ -56,32 +56,49 @@ export async function renderHomePage($main, { user } = {}) {
   try {
     const [categories, places, offers, ads] = await Promise.all([
       getCategories(),
-      getPublishedPlaces({ limit: 16 }),
+      getPublishedPlaces({ limit: 40 }),
       getActiveOffers(8),
       getAds('homepage')
     ]);
 
     const currentUser = getCurrentUser() || user;
-    const sortedPlaces = sortPlaces(places || [], currentUser?.uid);
+    const allPlaces = places || [];
 
     // Render sections
-    mountSponsoredShowcase('home-sponsored-container', places || [], {
-      title: 'أماكن وإعلانات مميزة في المنزلة',
+    mountSponsoredShowcase('home-sponsored-container', allPlaces, {
+      title: 'أماكن وإعلانات مميزة في المنزلة والمطرية',
       subtitle: 'أنشطة تجارية وخدمات موصى بها ومعتمدة في المدينة'
     });
 
     renderCategories(categories || []);
-    renderVerifiedPlaces(sortedPlaces.filter(p => p.isVerified).slice(0, 8));
-    renderLatestPlaces(sortedPlaces.slice(0, 8));
+    
+    // Verified Places: Verified places only, sponsored first, then newest
+    const verifiedPlaces = allPlaces
+      .filter(p => p.isVerified)
+      .sort((a, b) => {
+        const aSpons = isPlaceSponsored(a);
+        const bSpons = isPlaceSponsored(b);
+        if (aSpons && !bSpons) return -1;
+        if (!aSpons && bSpons) return 1;
+        const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
+        const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
+        return timeB - timeA;
+      });
+    renderVerifiedPlaces(verifiedPlaces.slice(0, 8));
+
+    // Latest Places (أحدث الأماكن): Sponsored first ALWAYS, then newest added places regardless of verification
+    const latestPlaces = sortLatestPlaces(allPlaces, currentUser?.uid);
+    renderLatestPlaces(latestPlaces.slice(0, 8));
+
     renderOffers(offers || []);
-    renderDeliveryServices((places || []).filter(p => p.categoryId?.includes('delivery') || p.deliveryType));
+    renderDeliveryServices(allPlaces.filter(p => p.categoryId?.includes('delivery') || p.deliveryType));
     renderAds(ads || []);
 
     // Setup hero search
     setupHeroSearch(categories || []);
 
     // Stats bar
-    renderStatsBar((places?.length || 0), (categories?.length || 31));
+    renderStatsBar((allPlaces.length || 0), (categories?.length || 31));
 
     // First visit welcome video popup (1.mp4)
     checkAndShowFirstVisitVideo();
@@ -91,31 +108,40 @@ export async function renderHomePage($main, { user } = {}) {
   }
 }
 
-function sortPlaces(places, currentUid = null) {
+function isPlaceSponsored(place) {
+  if (!place) return false;
+  return Boolean(
+    (place.isSponsored || place.isFeatured || place.isPromoted) &&
+    (!place.sponsoredUntil || place.sponsoredUntil > Date.now())
+  );
+}
+
+function sortLatestPlaces(places, currentUid = null) {
   const seen = new Set();
   const sponsored = [];
-  const verified = [];
-  const userOwned = [];
-  const others = [];
+  const regular = [];
 
-  places.forEach(place => {
+  // Sort raw places by newest creation time first
+  const sortedByTime = [...places].sort((a, b) => {
+    const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
+    const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
+    return timeB - timeA;
+  });
+
+  sortedByTime.forEach(place => {
     const k = place._key || place.id;
     if (seen.has(k)) return;
     seen.add(k);
 
-    const isSpons = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
-    if (isSpons) {
+    if (isPlaceSponsored(place)) {
       sponsored.push(place);
-    } else if (place.isVerified) {
-      verified.push(place);
-    } else if (currentUid && place.ownerId === currentUid) {
-      userOwned.push(place);
     } else {
-      others.push(place);
+      regular.push(place);
     }
   });
 
-  return [...sponsored, ...verified, ...userOwned, ...others];
+  // Sponsored first, followed directly by the newest added places
+  return [...sponsored, ...regular];
 }
 
 function renderCategories(categories) {
@@ -260,7 +286,12 @@ function renderStatsBar(placesCount, categoriesCount) {
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
       <div class="stats-bar__item">
-        <div class="stats-bar__value">المنزلة</div>
+        <div class="stats-bar__value">13+</div>
+        <div class="stats-bar__label">مدينة وقرية مغطاة بالكامل</div>
+      </div>
+      <div class="stats-bar__divider" aria-hidden="true"></div>
+      <div class="stats-bar__item">
+        <div class="stats-bar__value">المنزلة والمطرية</div>
         <div class="stats-bar__label">محافظة الدقهلية</div>
       </div>
     </div>
@@ -305,20 +336,36 @@ function setupHeroSearch(categories) {
 }
 
 function getHomeHTML() {
+  const towns = [
+    { name: 'المنزلة', icon: '🏙️', desc: 'المدينة والمركز' },
+    { name: 'المطرية', icon: '🌊', desc: 'مدينة الصيادين والبحيرة' },
+    { name: 'العصافرة', icon: '🌾', desc: 'قرية العصافرة' },
+    { name: 'الجمالية', icon: '🏛️', desc: 'مركز ومدينة الجمالية' },
+    { name: 'ميت سلسيل', icon: '🏢', desc: 'مركز ومدينة ميت سلسيل' },
+    { name: 'البصراط', icon: '🏡', desc: 'قرية البصراط' },
+    { name: 'العزيزة', icon: '🌴', desc: 'قرية العزيزة' },
+    { name: 'الأحمدية', icon: '🌾', desc: 'قرية الأحمدية' },
+    { name: 'الروضة', icon: '🌺', desc: 'قرية الروضة' },
+    { name: 'الحوتة', icon: '🐟', desc: 'قرية الحوتة' },
+    { name: 'النسايمة', icon: '🌳', desc: 'قرية النسايمة' },
+    { name: 'ميت خضير', icon: '🏘️', desc: 'قرية ميت خضير' },
+    { name: 'ميت شريف', icon: '🏡', desc: 'قرية ميت شريف (شرف)' }
+  ];
+
   return `
     <!-- Hero Section -->
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero__inner">
         <div class="hero__eyebrow animate-fade-in">
           <span aria-hidden="true">📍</span>
-          دليل المنزلة وناسها — دليلك الشامل
+          دليل المنزلة والمطرية الرقمي — المنزلة وناسها
         </div>
         <h1 class="hero__title animate-fade-in-up" id="hero-title">
-          <span>فين في المنزلة؟</span> مين في المنزلة؟
-          <br />عند مين في المنزلة؟
+          <span>فين في المنزلة والمطرية؟</span> مين في المنزلة والمطرية؟
+          <br />دليلك الشامل للمدن والقرى المجاورة
         </h1>
         <p class="hero__subtitle animate-fade-in">
-          دليلك الرقمي لكل المحلات، الأطباء، والمهن والحرفيين (سباك، نجار، مبلط، كهربائي، نقاش) بمدينة المنزلة
+          دليلك الرقمي الشامل لجميع الأماكن، المحلات، الأطباء والعيادات، والمهن والحرفيين (سباك، نجار، مبلط، كهربائي، نقاش) في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، وميت شريف.
         </p>
 
         <!-- Search Box -->
@@ -328,7 +375,7 @@ function getHomeHTML() {
               type="search"
               id="hero-search-input"
               class="hero-search__input"
-              placeholder="ابحث: سباك، دكتور، صيدلية، نجار، مبلط، محل..."
+              placeholder="ابحث: سباك، دكتور، صيدلية، مطعم في المنزلة، المطرية، القرى..."
               autocomplete="off"
             />
             <button class="hero-search__btn" id="hero-search-btn" aria-label="بحث">
@@ -344,6 +391,31 @@ function getHomeHTML() {
 
     <!-- Stats Bar -->
     <div class="stats-bar" id="stats-bar"></div>
+
+    <!-- Towns & Villages Directory Section -->
+    <section class="section" style="background:var(--surface);padding-block:var(--space-8);border-bottom:1px solid var(--border)">
+      <div class="container">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-wrap:wrap;gap:8px">
+          <div>
+            <h2 class="section-title" style="margin-bottom:2px">
+              <span>🗺️</span> استكشف حسب المدينة والقرية
+            </h2>
+            <p style="font-size:13px;color:var(--text-muted);margin:0">تصفح الخدمات والأنشطة التجارية في المنزلة والمطرية وكافة القرى المجاورة</p>
+          </div>
+          <a href="places.html" class="section-link">كل المدن والقرى ←</a>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-top:14px">
+          ${towns.map(t => `
+            <a href="places.html?q=${encodeURIComponent(t.name)}" class="category-card" style="padding:12px 8px;text-align:center;text-decoration:none;border-radius:var(--radius-md);transition:all 0.2s ease" title="دليل أماكن وخدمات ${t.name}">
+              <div style="font-size:24px;margin-bottom:4px">${t.icon}</div>
+              <div style="font-weight:700;font-size:13.5px;color:var(--text-primary)">${t.name}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${t.desc}</div>
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    </section>
 
     <!-- Dedicated Sponsored Showcase Section -->
     <div class="container section" style="padding-bottom:0" id="home-sponsored-container"></div>

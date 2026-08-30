@@ -3,17 +3,23 @@
  * Dynamic meta tags, Schema.org, Open Graph per page
  */
 
-const DEFAULT_TITLE = 'المنزلة وناسها | دليل المنزلة الرقمي — فين في المنزلة؟ مين في المنزلة؟';
-const DEFAULT_DESC  = 'دليل المنزلة الرقمي الشامل — فين في المنزلة؟ مين في المنزلة؟ عند مين في المنزلة؟ ابحث عن الأطباء، المحلات، الحرفيين والصنايعية (سباك، نجار، مبلط، كهربائي، نقاش)، والعروض والخدمات في مدينة المنزلة.';
-const DEFAULT_KEYWORDS = 'دليل المنزلة, فين في المنزلة, مين في المنزلة, عند مين في المنزلة, محلات المنزلة, أطباء المنزلة, سباك في المنزلة, نجار في المنزلة, مبلط في المنزلة, كهربائي في المنزلة, نقاش في المنزلة, صنايعية المنزلة, خدمات المنزلة, الدقهلية';
+const DEFAULT_TITLE = 'دليل المنزلة والمطرية الرقمي | المنزلة وناسها — المنزلة، المطرية، العصافرة، والقرى المجاورة';
+const DEFAULT_DESC  = 'دليل المنزلة والمطرية الرقمي الشامل — دليلك الأكبر لجميع المحلات، الأطباء، العيادات، الحرفيين والصنايعية (سباك، كهربائي، نجار، نقاش)، والخدمات في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، ميت شريف، وكافة القرى المجاورة بمحافظة الدقهلية.';
+const DEFAULT_KEYWORDS = 'دليل المنزلة والمطرية الرقمي, دليل المنزلة, دليل المطرية دقهلية, دليل العصافرة, دليل الجمالية, دليل ميت سلسيل, دليل البصراط, دليل العزيزة, دليل الاحمدية, دليل الروضة, دليل الحوتة, دليل النسايمة, دليل ميت خضير, دليل ميت شريف, محلات المنزلة, دكتور في المنزلة, دكتور في المطرية, سباك في المنزلة, كهربائي في المطرية, صيدليات المنزلة والمطرية, خدمات الدقهلية, بحيرة المنزلة';
 const DEFAULT_IMAGE = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
 const SITE_URL      = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : 'https://elmanzala.com';
+
+const REGIONAL_COVERAGE_AREAS = [
+  'المنزلة', 'المطرية', 'العصافرة', 'الجمالية', 'ميت سلسيل',
+  'البصراط', 'العزيزة', 'الأحمدية', 'الروضة', 'الحوتة',
+  'النسايمة', 'ميت خضير', 'ميت شريف', 'الشبول', 'ميت مرجا سلسيل', 'محافظة الدقهلية'
+];
 
 /**
  * Update page meta tags
  */
 export function setMeta({ title, description, keywords, image, url, type = 'website', noindex = false } = {}) {
-  const t = title ? `${title} | دليل المنزلة وناسها` : DEFAULT_TITLE;
+  const t = title ? `${title} | دليل المنزلة والمطرية الرقمي` : DEFAULT_TITLE;
   const d = description || DEFAULT_DESC;
   const k = keywords || DEFAULT_KEYWORDS;
   const img = image || DEFAULT_IMAGE;
@@ -64,11 +70,12 @@ export function setPlaceSchema(place, category) {
     image: place.coverImageUrl || DEFAULT_IMAGE,
     url: `${SITE_URL}/place.html?slug=${place.slug}`,
     telephone: place.phone || undefined,
+    areaServed: REGIONAL_COVERAGE_AREAS,
     address: {
       '@type': 'PostalAddress',
       streetAddress: place.address || '',
-      addressLocality: 'المنزلة',
-      addressRegion: 'Dakahlia',
+      addressLocality: place.area || 'المنزلة والمطرية',
+      addressRegion: 'الدقهلية (Dakahlia)',
       addressCountry: 'EG'
     },
     geo: place.location?.lat ? {
@@ -80,9 +87,14 @@ export function setPlaceSchema(place, category) {
     sameAs: [
       place.social?.facebook,
       place.social?.instagram,
+      place.social?.website
     ].filter(Boolean),
     priceRange: '$$',
-    aggregateRating: undefined
+    aggregateRating: place.rating ? {
+      '@type': 'AggregateRating',
+      ratingValue: Number(place.rating).toFixed(1),
+      reviewCount: Math.max(1, place.reviewCount || 1)
+    } : undefined
   };
 
   // Remove undefined fields

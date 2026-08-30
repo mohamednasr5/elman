@@ -10,11 +10,19 @@ import { toast } from '../components/Toast.js';
 let _userLocationCoords = null;
 
 export async function renderPlacesPage($container, { query = {}, user }) {
+  const towns = [
+    'المنزلة', 'المطرية', 'العصافرة', 'الجمالية', 'ميت سلسيل',
+    'البصراط', 'العزيزة', 'الأحمدية', 'الروضة', 'الحوتة',
+    'النسايمة', 'ميت خضير', 'ميت شريف', 'الشبول', 'ميت مرجا سلسيل'
+  ];
+
   $container.innerHTML = `
     <div class="search-page-header">
       <div class="container text-center">
-        <h1 style="color:#fff;font-size:var(--font-size-3xl);margin-bottom:var(--space-2)">دليل الأماكن والخدمات</h1>
-        <p style="color:rgba(255,255,255,0.8);max-width:540px;margin:0 auto">استكشف جميع الأنشطة التجارية والخدمات المسجلة في مدينة المنزلة</p>
+        <h1 style="color:#fff;font-size:var(--font-size-3xl);margin-bottom:var(--space-2)">دليل الأماكن والخدمات والمهن</h1>
+        <p style="color:rgba(255,255,255,0.85);max-width:620px;margin:0 auto;line-height:1.6">
+          استكشف جميع الأنشطة التجارية والعيادات والمهن في المنزلة، المطرية، العصافرة، الجمالية، والقرى المجاورة
+        </p>
       </div>
     </div>
 
@@ -24,7 +32,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
       <!-- Filter Bar -->
       <div class="filter-bar">
-        <div style="position:relative;flex:1;min-width:220px">
+        <div style="position:relative;flex:1;min-width:200px">
           <input 
             type="search" 
             id="places-search-filter" 
@@ -34,22 +42,26 @@ export async function renderPlacesPage($container, { query = {}, user }) {
             style="margin:0;padding-left:45px"
           />
         </div>
+
+        <select id="places-area-filter" class="form-select" style="max-width:180px">
+          <option value="">🏙️ جميع المدن والقرى</option>
+          ${towns.map(t => `<option value="${escAttr(t)}">${t}</option>`).join('')}
+        </select>
         
-        <select id="places-category-filter" class="form-select" style="max-width:220px">
+        <select id="places-category-filter" class="form-select" style="max-width:190px">
           <option value="">جميع التصنيفات</option>
         </select>
 
-        <select id="places-verified-filter" class="form-select" style="max-width:160px">
+        <select id="places-verified-filter" class="form-select" style="max-width:150px">
           <option value="">كل الحالات</option>
           <option value="verified" ${query.filter === 'verified' ? 'selected' : ''}>الموثقة فقط ✓</option>
         </select>
 
-        <select id="places-sort-filter" class="form-select" style="max-width:210px">
+        <select id="places-sort-filter" class="form-select" style="max-width:200px">
           <option value="default">⭐ الافتراضي (المميز والموثق)</option>
-          <option value="nearest">📍 الأقرب إليّ (حسب موقعي GPS)</option>
-          <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
-          <option value="most-reviews">💬 الأكثر تقييماً وتفاعلاً</option>
-          <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
+          <option value="nearest">📍 الأقرب إليّ (GPS)</option>
+          <option value="highest-rating">★ الأعلى تقييماً</option>
+          <option value="most-reviews">💬 الأكثر تفاعلاً</option>
           <option value="newest">🆕 الأحدث إضافة</option>
         </select>
       </div>
@@ -93,6 +105,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     }
 
     const searchInput = document.getElementById('places-search-filter');
+    const areaSelect = document.getElementById('places-area-filter');
     const verifiedSelect = document.getElementById('places-verified-filter');
     const sortSelect = document.getElementById('places-sort-filter');
     const grid = document.getElementById('places-directory-grid');
@@ -100,11 +113,17 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
     async function applyFilters() {
       const q = searchInput?.value.trim() || '';
+      const selectedArea = areaSelect?.value || '';
       const selectedCat = catSelect?.value || '';
       const onlyVerified = verifiedSelect?.value === 'verified';
       const sortBy = sortSelect?.value || 'default';
 
       let filtered = [...places];
+
+      // Filter by area / town
+      if (selectedArea) {
+        filtered = filtered.filter(p => (p.area || '').includes(selectedArea) || (p.address || '').includes(selectedArea));
+      }
 
       // Filter by category
       if (selectedCat) {
@@ -124,6 +143,8 @@ export async function renderPlacesPage($container, { query = {}, user }) {
             const score = Math.max(
               arabicScore(p.name, q),
               arabicScore(p.description, q) * 0.7,
+              arabicScore(p.area || '', q) * 0.9,
+              arabicScore(p.address || '', q) * 0.8,
               p.services?.some(s => normalizeArabic(s).includes(normalQ)) ? 60 : 0
             );
             return { place: p, score };
@@ -156,7 +177,6 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       } else if (sortBy === 'most-reviews') {
         sorted = filtered.sort((a, b) => (Number(b.reviewCount) || 0) - (Number(a.reviewCount) || 0));
       } else if (sortBy === 'negative') {
-        // Places with low rating or sorted lowest first
         sorted = filtered.sort((a, b) => (Number(a.rating) || 5.0) - (Number(b.rating) || 5.0));
       } else if (sortBy === 'newest') {
         sorted = filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -166,14 +186,14 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       }
 
       // Render
-      countMeta.textContent = `تم العثور على ${sorted.length} مكان في المنزلة ${sortBy === 'nearest' ? '• مرتبة بالأقرب لموقعك' : ''}`;
+      countMeta.textContent = `تم العثور على ${sorted.length} مكان في دليل المنزلة والمطرية والقرى ${sortBy === 'nearest' ? '• مرتبة بالأقرب لموقعك' : ''}`;
 
       if (sorted.length === 0) {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column:1/-1">
             <div class="empty-state__icon">🔍</div>
             <h3 class="empty-state__title">لا توجد نتائج تطابق بحثك</h3>
-            <p class="empty-state__text">جرب البحث بكلمات أخرى أو اختر تصنيفاً مختلفاً</p>
+            <p class="empty-state__text">جرب البحث بكلمات أخرى أو اختر مدينة/قرية أو تصنيفاً مختلفاً</p>
           </div>
         `;
       } else {
@@ -183,6 +203,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
     // Event listeners
     searchInput?.addEventListener('input', debounce(applyFilters, 250));
+    areaSelect?.addEventListener('change', applyFilters);
     catSelect?.addEventListener('change', applyFilters);
     verifiedSelect?.addEventListener('change', applyFilters);
     sortSelect?.addEventListener('change', applyFilters);
@@ -203,31 +224,38 @@ export async function renderPlacesPage($container, { query = {}, user }) {
   }
 }
 
+function isPlaceSponsored(place) {
+  if (!place) return false;
+  return Boolean(
+    (place.isSponsored || place.isFeatured || place.isPromoted) &&
+    (!place.sponsoredUntil || place.sponsoredUntil > Date.now())
+  );
+}
+
 function sortDirectoryPlaces(places, currentUid = null) {
   const seen = new Set();
   const sponsored = [];
-  const verified = [];
-  const userOwned = [];
-  const others = [];
+  const regular = [];
 
-  places.forEach(place => {
+  const sortedByTime = [...places].sort((a, b) => {
+    const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
+    const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
+    return timeB - timeA;
+  });
+
+  sortedByTime.forEach(place => {
     const k = place._key || place.id;
     if (seen.has(k)) return;
     seen.add(k);
 
-    const isSpons = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
-    if (isSpons) {
+    if (isPlaceSponsored(place)) {
       sponsored.push(place);
-    } else if (place.isVerified) {
-      verified.push(place);
-    } else if (currentUid && place.ownerId === currentUid) {
-      userOwned.push(place);
     } else {
-      others.push(place);
+      regular.push(place);
     }
   });
 
-  return [...sponsored, ...verified, ...userOwned, ...others];
+  return [...sponsored, ...regular];
 }
 
 function debounce(func, wait) {
