@@ -120,7 +120,8 @@ const pages = [
   import { waitForAuth } from './src/js/core/auth.js';
   await initPage('');
   const user = await waitForAuth();
-  const slug = new URLSearchParams(location.search).get('slug') || '';
+  const params = new URLSearchParams(location.search);
+  const slug = params.get('slug') || params.get('id') || '';
   if (!slug) { location.href = 'places.html'; }
   else await renderPlacePage(document.getElementById('page-container'), { slug, user });`
   },

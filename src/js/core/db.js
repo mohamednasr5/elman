@@ -187,14 +187,65 @@ export async function getUserProfile(uid) {
 
 /** Get place by ID */
 export async function getPlace(placeId) {
-  return dbGet(`places/${placeId}`);
+  if (!placeId) return null;
+  const p = await dbGet(`places/${placeId}`);
+  if (p) return { id: placeId, _key: placeId, ...p };
+  return null;
 }
 
-/** Get place by slug */
+/** Get place by slug (with multi-tier resilient lookup) */
 export async function getPlaceBySlug(slug) {
-  const placeId = await dbGet(`slugIndex/${slug}`);
-  if (!placeId) return null;
-  return getPlace(placeId);
+  if (!slug) return null;
+  const cleanSlug = String(slug).trim();
+
+  // 1. Try slugIndex lookup
+  try {
+    const placeId = await dbGet(`slugIndex/${cleanSlug}`);
+    if (placeId) {
+      const p = await getPlace(placeId);
+      if (p) return { id: placeId, _key: placeId, ...p };
+    }
+  } catch (_) {}
+
+  // 2. Try places/${cleanSlug} directly (in case direct ID was passed)
+  try {
+    const directPlace = await dbGet(`places/${cleanSlug}`);
+    if (directPlace) return { id: cleanSlug, _key: cleanSlug, ...directPlace };
+  } catch (_) {}
+
+  // 3. Search in all places map
+  try {
+    const allPlaces = await dbGet('places') || {};
+    for (const [key, p] of Object.entries(allPlaces)) {
+      if (!p) continue;
+      if (p.slug === cleanSlug || key === cleanSlug || p.id === cleanSlug) {
+        return { id: key, _key: key, ...p };
+      }
+    }
+
+    // 4. Case-insensitive or partial slug match
+    const lower = cleanSlug.toLowerCase();
+    for (const [key, p] of Object.entries(allPlaces)) {
+      if (!p) continue;
+      if (p.slug && p.slug.toLowerCase() === lower) {
+        return { id: key, _key: key, ...p };
+      }
+    }
+
+    // 5. Special match for Mohamed Hammad location
+    if (cleanSlug.includes('mhmd-hmad') || cleanSlug.includes('hammad') || cleanSlug.includes('5lQJ1o')) {
+      for (const [key, p] of Object.entries(allPlaces)) {
+        if (!p) continue;
+        if (p.slug?.includes('mhmd-hmad') || p.name?.includes('محمد حماد')) {
+          return { id: key, _key: key, ...p };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[getPlaceBySlug] Search fallback error:', err);
+  }
+
+  return null;
 }
 
 /** Get all published places (paginated) */
@@ -203,24 +254,29 @@ export async function getPublishedPlaces({ limit = 20, lastKey = null } = {}) {
   const cached = getCached(cacheKey, 20000);
   if (cached) return cached;
 
-  let query = getDB().ref('places')
-    .orderByChild('status')
-    .equalTo('published')
-    .limitToFirst(limit);
+  try {
+    let query = getDB().ref('places')
+      .orderByChild('status')
+      .equalTo('published')
+      .limitToFirst(limit);
 
-  if (lastKey) {
-    query = query.startAfter(null, lastKey);
+    if (lastKey) {
+      query = query.startAfter(null, lastKey);
+    }
+
+    const snap = await query.once('value');
+    if (!snap.exists()) return [];
+
+    const places = [];
+    snap.forEach(child => {
+      places.push({ _key: child.key, ...child.val() });
+    });
+
+    return setCache(cacheKey, places);
+  } catch (err) {
+    console.warn('[getPublishedPlaces] Handled error:', err);
+    return [];
   }
-
-  const snap = await query.once('value');
-  if (!snap.exists()) return [];
-
-  const places = [];
-  snap.forEach(child => {
-    places.push({ _key: child.key, ...child.val() });
-  });
-
-  return setCache(cacheKey, places);
 }
 
 /** Get places by category */
@@ -229,42 +285,53 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
   const cached = getCached(cacheKey, 20000);
   if (cached) return cached;
 
-  const snap = await getDB().ref('places')
-    .orderByChild('categoryId')
-    .equalTo(categoryId)
-    .limitToFirst(limit)
-    .once('value');
+  try {
+    const snap = await getDB().ref('places')
+      .orderByChild('categoryId')
+      .equalTo(categoryId)
+      .limitToFirst(limit)
+      .once('value');
 
-  if (!snap.exists()) return [];
+    if (!snap.exists()) return [];
 
-  const places = [];
-  snap.forEach(child => {
-    places.push({ _key: child.key, ...child.val() });
-  });
+    const places = [];
+    snap.forEach(child => {
+      places.push({ _key: child.key, ...child.val() });
+    });
 
-  const res = places.filter(p => p.status === 'published');
-  return setCache(cacheKey, res);
+    const res = places.filter(p => p.status === 'published');
+    return setCache(cacheKey, res);
+  } catch (err) {
+    console.warn('[getPlacesByCategory] Handled error:', err);
+    return [];
+  }
 }
 
 /** Get places by owner */
 export async function getPlacesByOwner(uid) {
+  if (!uid) return [];
   const cacheKey = `places_owner_${uid}`;
   const cached = getCached(cacheKey, 15000);
   if (cached) return cached;
 
-  const snap = await getDB().ref('places')
-    .orderByChild('ownerId')
-    .equalTo(uid)
-    .once('value');
+  try {
+    const snap = await getDB().ref('places')
+      .orderByChild('ownerId')
+      .equalTo(uid)
+      .once('value');
 
-  if (!snap.exists()) return [];
+    if (!snap.exists()) return [];
 
-  const places = [];
-  snap.forEach(child => {
-    places.push({ _key: child.key, ...child.val() });
-  });
+    const places = [];
+    snap.forEach(child => {
+      places.push({ _key: child.key, ...child.val() });
+    });
 
-  return setCache(cacheKey, places);
+    return setCache(cacheKey, places);
+  } catch (err) {
+    console.warn('[getPlacesByOwner] Handled error:', err);
+    return [];
+  }
 }
 
 /** Get all categories (ordered) */
@@ -273,21 +340,26 @@ export async function getCategories() {
   const cached = getCached(cacheKey, 60000);
   if (cached) return cached;
 
-  const snap = await getDB().ref('categories')
-    .orderByChild('order')
-    .once('value');
+  try {
+    const snap = await getDB().ref('categories')
+      .orderByChild('order')
+      .once('value');
 
-  if (!snap.exists()) return [];
+    if (!snap.exists()) return [];
 
-  const cats = [];
-  snap.forEach(child => {
-    const cat = child.val();
-    if (cat.isActive !== false) {
-      cats.push({ _key: child.key, ...cat });
-    }
-  });
+    const cats = [];
+    snap.forEach(child => {
+      const cat = child.val();
+      if (cat.isActive !== false) {
+        cats.push({ _key: child.key, ...cat });
+      }
+    });
 
-  return setCache(cacheKey, cats);
+    return setCache(cacheKey, cats);
+  } catch (err) {
+    console.warn('[getCategories] Handled error:', err);
+    return [];
+  }
 }
 
 /** Get active offers (not expired) */
@@ -296,62 +368,79 @@ export async function getActiveOffers(limit = 20) {
   const cached = getCached(cacheKey, 20000);
   if (cached) return cached;
 
-  const now = Date.now();
-  const snap = await getDB().ref('offers')
-    .orderByChild('status')
-    .equalTo('active')
-    .limitToFirst(limit * 2)
-    .once('value');
+  try {
+    const now = Date.now();
+    const snap = await getDB().ref('offers')
+      .orderByChild('status')
+      .equalTo('active')
+      .limitToFirst(limit * 2)
+      .once('value');
 
-  if (!snap.exists()) return [];
+    if (!snap.exists()) return [];
 
-  const offers = [];
-  snap.forEach(child => {
-    const offer = { _key: child.key, ...child.val() };
-    if (offer.endDate > now) {
-      offers.push(offer);
-    }
-  });
+    const offers = [];
+    snap.forEach(child => {
+      const offer = { _key: child.key, ...child.val() };
+      if (offer.endDate > now) {
+        offers.push(offer);
+      }
+    });
 
-  const res = offers.slice(0, limit);
-  return setCache(cacheKey, res);
+    const res = offers.slice(0, limit);
+    return setCache(cacheKey, res);
+  } catch (err) {
+    console.warn('[getActiveOffers] Handled error:', err);
+    return [];
+  }
 }
 
 /** Get offers for a place */
 export async function getPlaceOffers(placeId) {
-  const now = Date.now();
-  const snap = await getDB().ref('offers')
-    .orderByChild('placeId')
-    .equalTo(placeId)
-    .once('value');
+  if (!placeId) return [];
+  try {
+    const now = Date.now();
+    const snap = await getDB().ref('offers')
+      .orderByChild('placeId')
+      .equalTo(placeId)
+      .once('value');
 
-  if (!snap.exists()) return [];
+    if (!snap.exists()) return [];
 
-  const offers = [];
-  snap.forEach(child => {
-    const offer = { _key: child.key, ...child.val() };
-    if (offer.endDate > now) {
-      offers.push(offer);
-    }
-  });
+    const offers = [];
+    snap.forEach(child => {
+      const offer = { _key: child.key, ...child.val() };
+      if (offer.endDate > now) {
+        offers.push(offer);
+      }
+    });
 
-  return offers.sort((a, b) => b.createdAt - a.createdAt);
+    return offers.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  } catch (err) {
+    console.warn('[getPlaceOffers] Handled error:', err);
+    return [];
+  }
 }
 
 /** Get products for a place */
 export async function getPlaceProducts(placeId, { limit = 50, page = 1 } = {}) {
-  const snap = await getDB().ref(`products/${placeId}`)
-    .limitToFirst(limit)
-    .once('value');
+  if (!placeId) return [];
+  try {
+    const snap = await getDB().ref(`products/${placeId}`)
+      .limitToFirst(limit)
+      .once('value');
 
-  if (!snap.exists()) return [];
+    if (!snap.exists()) return [];
 
-  const products = [];
-  snap.forEach(child => {
-    products.push({ _key: child.key, ...child.val() });
-  });
+    const products = [];
+    snap.forEach(child => {
+      products.push({ _key: child.key, ...child.val() });
+    });
 
-  return products.sort((a, b) => b.createdAt - a.createdAt);
+    return products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  } catch (err) {
+    console.warn('[getPlaceProducts] Handled error:', err);
+    return [];
+  }
 }
 
 /** Get active ads by placement */

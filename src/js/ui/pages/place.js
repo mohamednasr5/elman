@@ -41,39 +41,42 @@ export async function renderPlacePage($container, { slug, user }) {
       return;
     }
 
-    // Parallel load
+    const placeId = place.id || place._key;
+
+    // Parallel load with safe fallbacks
     const [categories, offers, products, settings, reviews] = await Promise.all([
-      getCategories(),
-      getPlaceOffers(place.id || place._key),
-      getPlaceProducts(place.id || place._key),
-      getSettings(),
-      getPlaceReviews(place.id || place._key)
+      getCategories().catch(() => []),
+      getPlaceOffers(placeId).catch(() => []),
+      getPlaceProducts(placeId).catch(() => []),
+      getSettings().catch(() => ({})),
+      getPlaceReviews(placeId).catch(() => [])
     ]);
 
     const category = categories?.find(c => c._key === place.categoryId || c.slug === place.categoryId);
     const catInfo = resolvePlaceCategoryInfo(place, category);
     const currentUser = getCurrentUser() || user;
     const isOwner = currentUser && currentUser.uid === place.ownerId;
-    const placeId = place.id || place._key;
 
-    // Track View Count & Profile Visitor
-    trackPlaceView(place, currentUser);
+    // Track View Count & Profile Visitor safely
+    try { trackPlaceView(place, currentUser); } catch (_) {}
 
-    // Update SEO
-    setMeta({
-      title: `${place.name} — ${catInfo.name || 'دليل المنزلة'}`,
-      description: place.description || `تعرف على ${place.name} في المنزلة — مواعيد العمل، أرقام التواصل، العنوان، والخدمات`,
-      image: place.coverImageUrl || place.logoUrl,
-      url: `https://elmanzala.com/place.html?slug=${place.slug}`
-    });
+    // Update SEO safely
+    try {
+      setMeta({
+        title: `${place.name} — ${catInfo.name || 'دليل المنزلة'}`,
+        description: place.description || `تعرف على ${place.name} في المنزلة — مواعيد العمل، أرقام التواصل، العنوان، والخدمات`,
+        image: place.coverImageUrl || place.logoUrl,
+        url: `https://elmanzala.com/place.html?slug=${place.slug}`
+      });
 
-    setPlaceSchema(place, category);
-    setBreadcrumbSchema([
-      { name: 'الرئيسية', url: 'https://elmanzala.com/' },
-      { name: 'الأماكن', url: 'https://elmanzala.com/places.html' },
-      { name: catInfo.name || 'القسم', url: `https://elmanzala.com/category.html?slug=${catInfo.slug}` },
-      { name: place.name, url: `https://elmanzala.com/place.html?slug=${place.slug}` }
-    ]);
+      setPlaceSchema(place, category);
+      setBreadcrumbSchema([
+        { name: 'الرئيسية', url: 'https://elmanzala.com/' },
+        { name: 'الأماكن', url: 'https://elmanzala.com/places.html' },
+        { name: catInfo.name || 'القسم', url: `https://elmanzala.com/category.html?slug=${catInfo.slug}` },
+        { name: place.name, url: `https://elmanzala.com/place.html?slug=${place.slug}` }
+      ]);
+    } catch (_) {}
 
     // Working hours status
     const isOpen = isPlaceOpen(place.workingHours);
