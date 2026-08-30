@@ -4,7 +4,7 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, HAMMAD_PLACE_SLUG } from '../../core/db.js';
+import { getPlaceBySlug, getCategories, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, HAMMAD_PLACE_SLUG } from '../../core/db.js';
 import { getCurrentUser, signInWithGoogle } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '../components/VerifiedBadge.js';
@@ -56,6 +56,7 @@ export async function renderPlacePage($container, { slug, user }) {
     const catInfo = resolvePlaceCategoryInfo(place, category);
     const currentUser = getCurrentUser() || user;
     const isOwner = currentUser && currentUser.uid === place.ownerId;
+    const isFollowing = currentUser ? await isFollowingPlace(placeId, currentUser.uid).catch(() => false) : false;
 
     // ── Reviews / Ratings Summary ──
     const safeReviews = Array.isArray(reviews) ? reviews : [];
@@ -134,10 +135,18 @@ export async function renderPlacePage($container, { slug, user }) {
                     ${place.deliveryType ? renderDeliveryBadge(place.deliveryType) : ''}
                   </div>
 
-                  <button type="button" class="btn btn-sm btn-outline btn-share-place-trigger" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:4px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);background:var(--surface);border-color:var(--border)" title="مشاركة بطاقة هذا المكان">
-                    <span>📤</span>
-                    <span>مشاركة المكان</span>
-                  </button>
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    <button type="button" class="btn btn-sm btn-outline btn-follow-place-trigger ${isFollowing ? 'following' : ''}" id="btn-follow-place" data-pid="${escAttr(placeId)}" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:4px 12px;${isFollowing ? 'background:rgba(16,185,129,0.12);color:var(--success);border-color:var(--success);font-weight:700' : 'background:var(--surface);border-color:var(--border)'}" title="متابعة المكان ومشاهدة عروضه في حسابك">
+                      <span class="follow-icon">${isFollowing ? '✓' : '🔔'}</span>
+                      <span class="follow-label">${isFollowing ? 'متابع' : 'متابعة'}</span>
+                      ${place.followersCount ? `<span class="follow-count-badge" style="opacity:0.8;font-size:11px">(${place.followersCount})</span>` : ''}
+                    </button>
+
+                    <button type="button" class="btn btn-sm btn-outline btn-share-place-trigger" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:4px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);background:var(--surface);border-color:var(--border)" title="مشاركة بطاقة هذا المكان">
+                      <span>📤</span>
+                      <span>مشاركة</span>
+                    </button>
+                  </div>
                 </div>
                 
                 <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin-top:4px">
@@ -193,11 +202,6 @@ export async function renderPlacePage($container, { slug, user }) {
                 </a>
               ` : ''}
 
-              <button type="button" class="btn btn-outline btn-share-place-trigger" title="مشاركة بطاقة المكان">
-                <span>📤</span>
-                <span>مشاركة المكان</span>
-              </button>
-
               ${isOwner ? `
                 <a href="dashboard.html?section=places&id=${escAttr(placeId)}" class="btn btn-secondary btn--full-mobile">
                   <span>⚙️</span>
@@ -219,15 +223,14 @@ export async function renderPlacePage($container, { slug, user }) {
                   العلامة الموثقة تضمن صحة البيانات وتمنحك مميزات إضافية وتظهر قبل الجميع فى دليل المنزلة
                 </div>
               </div>
-              ${isOwner ? `
-                <button class="btn btn-secondary btn-sm" id="btn-request-verification">
-                  طلب التوثيق ⭐
+              <div class="unverified-notice__actions">
+                <button class="btn btn-sm btn-primary" id="btn-request-verification">
+                  <span>🛡️</span> طلب التوثيق الآن
                 </button>
-              ` : `
-                <button class="btn btn-outline btn-sm" id="btn-claim-place">
-                  أنت صاحب النشاط؟
+                <button class="btn btn-sm btn-outline" id="btn-claim-place">
+                  أنا صاحب هذا المكان
                 </button>
-              `}
+              </div>
             </div>
           ` : ''}
 
@@ -347,38 +350,17 @@ export async function renderPlacePage($container, { slug, user }) {
               </div>
             </div>
 
-            <!-- Google-Style Rating Summary Box -->
-            <div class="reviews-summary-box" style="display:grid;grid-template-columns:1fr 1.5fr;gap:20px;background:var(--surface-2);padding:16px 20px;border-radius:var(--radius-lg);margin-bottom:var(--space-5);align-items:center">
-              
-              <!-- Big Score Column -->
-              <div style="text-align:center;border-left:1px solid var(--border);padding-left:16px">
-                <div style="font-size:3.2rem;font-weight:800;line-height:1;color:var(--text-primary);margin-bottom:4px">
-                  ${avgRating.toFixed(1)}
-                </div>
-                <div style="color:#F59E0B;font-size:1.4rem;letter-spacing:2px;margin-bottom:4px">
-                  ${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))}
-                </div>
-                <div style="font-size:12px;color:var(--text-muted)">
-                  استناداً إلى ${totalReviews} تقييم
-                </div>
-              </div>
-
-              <!-- Star Distribution Progress Bars -->
-              <div style="display:flex;flex-direction:column;gap:6px">
-                ${[5, 4, 3, 2, 1].map(stars => {
-                  const cnt = starCounts[stars] || 0;
-                  const pct = totalReviews > 0 ? Math.round((cnt / totalReviews) * 100) : (stars === 5 ? 100 : 0);
-                  return `
-                    <div style="display:flex;align-items:center;gap:8px;font-size:11.5px">
-                      <span style="min-width:28px;text-align:left;color:var(--text-secondary);font-weight:600">${stars} ★</span>
-                      <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
-                        <div style="width:${pct}%;height:100%;background:#F59E0B;border-radius:4px;transition:width 0.4s ease"></div>
-                      </div>
-                      <span style="min-width:24px;color:var(--text-muted);font-size:11px">${cnt}</span>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
+            <!-- Reviews Sentiment Filter Tabs -->
+            <div class="reviews-sentiment-tabs" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm btn-outline review-filter-tab active" data-sentiment="all" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);background:var(--primary-alpha);font-weight:700">
+                الكل (${totalReviews})
+              </button>
+              <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="positive" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);color:var(--success);border-color:rgba(16,185,129,0.3)">
+                👍 إيجابي 3-5 نجوم (${safeReviews.filter(r => (Number(r.rating) || 5) >= 3).length})
+              </button>
+              <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="negative" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);color:var(--danger);border-color:rgba(239,68,68,0.3)">
+                👎 سلبي 1-2 نجوم (${safeReviews.filter(r => (Number(r.rating) || 5) <= 2).length})
+              </button>
             </div>
 
             <!-- Reviews List -->
@@ -388,14 +370,14 @@ export async function renderPlacePage($container, { slug, user }) {
                 <p style="font-size:13.5px;margin:0">كن أول من يكتب تقييماً وتجربة حقيقية عن هذا المكان!</p>
               </div>
             ` : `
-              <div class="reviews-list" style="display:flex;flex-direction:column;gap:12px">
+              <div class="reviews-list" id="place-reviews-list" style="display:flex;flex-direction:column;gap:12px">
                 ${safeReviews.map(r => {
                   const isMine = currentUser && currentUser.uid === r.userId;
                   const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
                   const timeStr = formatDate(r.createdAt || Date.now());
 
                   return `
-                    <div class="review-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;transition:all 0.2s">
+                    <div class="review-card" data-stars="${rStars}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;transition:all 0.2s">
                       
                       <!-- Header: User Info + Stars -->
                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
@@ -654,6 +636,12 @@ export async function renderPlacePage($container, { slug, user }) {
 
     // Setup Place Sharing Handlers (Web Share + Modal)
     setupPlaceSharing(place);
+
+    // Setup Place Following System
+    setupPlaceFollowing(placeId, currentUser);
+
+    // Setup Reviews Sentiment Filter Tabs
+    setupReviewsSentimentFilter();
 
   } catch (err) {
     console.error('[PlacePage] Render error:', err);
@@ -1191,6 +1179,111 @@ function openCustomShareModal({ placeName, placeAddress, placeUrl, ogProxyUrl, c
     } catch (_) {
       toast.info('الرابط: ' + placeUrl);
     }
+  });
+}
+
+/**
+ * Setup Follow Place Button Live Toggle
+ */
+function setupPlaceFollowing(placeId, currentUser) {
+  const btn = document.getElementById('btn-follow-place');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    if (!currentUser) {
+      toast.info('يرجى تسجيل الدخول أولاً لتتمكن من متابعة هذا المكان ومشاهدة عروضه في حسابك');
+      setTimeout(() => {
+        window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href);
+      }, 1200);
+      return;
+    }
+
+    const isNowFollowing = btn.classList.contains('following');
+    const iconEl = btn.querySelector('.follow-icon');
+    const labelEl = btn.querySelector('.follow-label');
+    const countBadge = btn.querySelector('.follow-count-badge');
+
+    try {
+      if (isNowFollowing) {
+        await unfollowPlace(placeId, currentUser);
+        btn.classList.remove('following');
+        btn.style.background = 'var(--surface)';
+        btn.style.color = '';
+        btn.style.borderColor = 'var(--border)';
+        btn.style.fontWeight = 'normal';
+        if (iconEl) iconEl.textContent = '🔔';
+        if (labelEl) labelEl.textContent = 'متابعة';
+        if (countBadge) {
+          const c = Math.max(0, parseInt(countBadge.textContent.replace(/\D/g, ''), 10) - 1);
+          countBadge.textContent = c > 0 ? `(${c})` : '';
+        }
+        toast.info('تم إلغاء متابعة المكان');
+      } else {
+        await followPlace(placeId, currentUser);
+        btn.classList.add('following');
+        btn.style.background = 'rgba(16,185,129,0.12)';
+        btn.style.color = 'var(--success)';
+        btn.style.borderColor = 'var(--success)';
+        btn.style.fontWeight = '700';
+        if (iconEl) iconEl.textContent = '✓';
+        if (labelEl) labelEl.textContent = 'متابع';
+        if (countBadge) {
+          const c = (parseInt(countBadge.textContent.replace(/\D/g, ''), 10) || 0) + 1;
+          countBadge.textContent = `(${c})`;
+        }
+        toast.success('تمت متابعة المكان بنجاح! ستظهر عروضه فوراً في قسم المتابعة بحسابك ⭐');
+      }
+    } catch (err) {
+      toast.error(err.message || 'حدث خطأ أثناء المتابعة');
+    }
+  });
+}
+
+/**
+ * Setup Reviews Sentiment Filter (All / Positive 3-5 / Negative 1-2)
+ */
+function setupReviewsSentimentFilter() {
+  const tabs = document.querySelectorAll('.review-filter-tab');
+  const reviewCards = document.querySelectorAll('#place-reviews-list .review-card');
+  if (!tabs.length || !reviewCards.length) return;
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => {
+        t.classList.remove('active');
+        t.style.background = '';
+        t.style.fontWeight = 'normal';
+      });
+
+      tab.classList.add('active');
+      tab.style.background = 'var(--primary-alpha)';
+      tab.style.fontWeight = '700';
+
+      const sentiment = tab.getAttribute('data-sentiment');
+      let visibleCount = 0;
+
+      reviewCards.forEach(card => {
+        const stars = parseInt(card.getAttribute('data-stars'), 10) || 5;
+        if (sentiment === 'all') {
+          card.style.display = 'block';
+          visibleCount++;
+        } else if (sentiment === 'positive') {
+          if (stars >= 3) {
+            card.style.display = 'block';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+          }
+        } else if (sentiment === 'negative') {
+          if (stars <= 2) {
+            card.style.display = 'block';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+          }
+        }
+      });
+    });
   });
 }
 

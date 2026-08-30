@@ -56,8 +56,16 @@ export async function renderSearchPage($container, { q = '', user }) {
     </div>
 
     <div class="container section">
-      <div class="search-results-meta" id="search-meta">
-        ${q ? `نتائج البحث عن: "<strong>${escHtml(q)}</strong>"` : 'أدخل كلمة البحث للبدء'}
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-4)">
+        <div class="search-results-meta" id="search-meta" style="margin:0">
+          ${q ? `نتائج البحث عن: "<strong>${escHtml(q)}</strong>"` : 'أدخل كلمة البحث للبدء'}
+        </div>
+        <select id="search-sort-filter" class="form-select" style="max-width:200px;margin:0">
+          <option value="relevance">🎯 الأكثر مطابقة</option>
+          <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
+          <option value="most-reviews">💬 الأكثر تقييماً</option>
+          <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
+        </select>
       </div>
 
       <div class="places-grid" id="search-results-grid">
@@ -68,6 +76,7 @@ export async function renderSearchPage($container, { q = '', user }) {
 
   const searchInput = document.getElementById('search-page-input');
   const searchBtn = document.getElementById('search-page-btn');
+  const searchSort = document.getElementById('search-sort-filter');
   const aiSearchBtn = document.getElementById('btn-ai-search');
   const metaEl = document.getElementById('search-meta');
   const gridEl = document.getElementById('search-results-grid');
@@ -180,10 +189,26 @@ export async function renderSearchPage($container, { q = '', user }) {
     renderResults(finalResults, `تم العثور على <strong>${finalResults.length}</strong> مكان لـ "<strong>${escHtml(query)}</strong>"`);
   }
 
-  function renderResults(places, metaText) {
-    metaEl.innerHTML = metaText;
+  let currentResults = [];
+  let currentMeta = '';
 
-    if (places.length === 0) {
+  function renderResults(places, metaText) {
+    currentResults = places;
+    if (metaText) currentMeta = metaText;
+    metaEl.innerHTML = currentMeta;
+
+    const sortBy = searchSort?.value || 'relevance';
+    let sorted = [...places];
+
+    if (sortBy === 'highest-rating') {
+      sorted.sort((a, b) => (Number(b.rating) || 5.0) - (Number(a.rating) || 5.0));
+    } else if (sortBy === 'most-reviews') {
+      sorted.sort((a, b) => (Number(b.reviewCount) || 0) - (Number(a.reviewCount) || 0));
+    } else if (sortBy === 'negative') {
+      sorted.sort((a, b) => (Number(a.rating) || 5.0) - (Number(b.rating) || 5.0));
+    }
+
+    if (sorted.length === 0) {
       gridEl.innerHTML = `
         <div class="empty-state" style="grid-column:1/-1">
           <div class="empty-state__icon">🔍</div>
@@ -192,9 +217,15 @@ export async function renderSearchPage($container, { q = '', user }) {
         </div>
       `;
     } else {
-      gridEl.innerHTML = places.map(p => renderPlaceCard(p)).join('');
+      gridEl.innerHTML = sorted.map(p => renderPlaceCard(p)).join('');
     }
   }
+
+  searchSort?.addEventListener('change', () => {
+    if (currentResults.length > 0) {
+      renderResults(currentResults);
+    }
+  });
 
   window.searchFor = (keyword) => {
     if (searchInput) searchInput.value = keyword;

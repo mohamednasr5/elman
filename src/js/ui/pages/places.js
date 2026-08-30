@@ -36,9 +36,17 @@ export async function renderPlacesPage($container, { query = {}, user }) {
           <option value="">جميع التصنيفات</option>
         </select>
 
-        <select id="places-verified-filter" class="form-select" style="max-width:180px">
-          <option value="">كل الأماكن</option>
+        <select id="places-verified-filter" class="form-select" style="max-width:160px">
+          <option value="">كل الحالات</option>
           <option value="verified" ${query.filter === 'verified' ? 'selected' : ''}>الموثقة فقط ✓</option>
+        </select>
+
+        <select id="places-sort-filter" class="form-select" style="max-width:210px">
+          <option value="default">⭐ الافتراضي (المميز والموثق)</option>
+          <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
+          <option value="most-reviews">💬 الأكثر تقييماً وتفاعلاً</option>
+          <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
+          <option value="newest">🆕 الأحدث إضافة</option>
         </select>
       </div>
 
@@ -82,6 +90,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
     const searchInput = document.getElementById('places-search-filter');
     const verifiedSelect = document.getElementById('places-verified-filter');
+    const sortSelect = document.getElementById('places-sort-filter');
     const grid = document.getElementById('places-directory-grid');
     const countMeta = document.getElementById('places-count-meta');
 
@@ -89,6 +98,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       const q = searchInput?.value.trim() || '';
       const selectedCat = catSelect?.value || '';
       const onlyVerified = verifiedSelect?.value === 'verified';
+      const sortBy = sortSelect?.value || 'default';
 
       let filtered = [...places];
 
@@ -119,8 +129,21 @@ export async function renderPlacesPage($container, { query = {}, user }) {
           .map(item => item.place);
       }
 
-      // Final Sorting rule: Verified first -> Current User's -> Others
-      const sorted = sortDirectoryPlaces(filtered, currentUser?.uid);
+      // Sorting & Negative Sentiment Filter
+      let sorted = [];
+      if (sortBy === 'highest-rating') {
+        sorted = filtered.sort((a, b) => (Number(b.rating) || 5.0) - (Number(a.rating) || 5.0));
+      } else if (sortBy === 'most-reviews') {
+        sorted = filtered.sort((a, b) => (Number(b.reviewCount) || 0) - (Number(a.reviewCount) || 0));
+      } else if (sortBy === 'negative') {
+        // Places with low rating or sorted lowest first
+        sorted = filtered.sort((a, b) => (Number(a.rating) || 5.0) - (Number(b.rating) || 5.0));
+      } else if (sortBy === 'newest') {
+        sorted = filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      } else {
+        // Default: Verified first -> Current User's -> Others
+        sorted = sortDirectoryPlaces(filtered, currentUser?.uid);
+      }
 
       // Render
       countMeta.textContent = `تم العثور على ${sorted.length} مكان في المنزلة`;
@@ -142,6 +165,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     searchInput?.addEventListener('input', debounce(applyFilters, 250));
     catSelect?.addEventListener('change', applyFilters);
     verifiedSelect?.addEventListener('change', applyFilters);
+    sortSelect?.addEventListener('change', applyFilters);
 
     // Initial render
     applyFilters();

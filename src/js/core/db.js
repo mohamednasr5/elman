@@ -1052,10 +1052,12 @@ export async function adminBulkAddReviews(placeId, items = []) {
 }
 
 /**
- * Mega Synthetic Reviews Generator (Generates up to 5,000 unique reviews with customizable star ranges)
+ * Mega Synthetic Reviews Generator (Generates up to 5,000 unique Egyptian dialect reviews with customizable star ranges and specialty)
  */
-export function generateSyntheticReviews({ count = 50, starRange = '4-5', placeName = '', categoryName = '' }) {
+export function generateSyntheticReviews({ count = 50, starRange = '4-5', specialty = '', placeName = '', categoryName = '' }) {
   const targetCount = Math.min(5000, Math.max(1, parseInt(count, 10) || 50));
+  const spec = (specialty || categoryName || 'النشاط والخدمات').trim();
+  const pName = (placeName || 'المكان').trim();
 
   const FIRST_NAMES_AR_M = [
     'أحمد', 'محمد', 'محمود', 'مصطفى', 'كريم', 'عمر', 'طارق', 'حسام', 'إبراهيم', 'عمرو',
@@ -1063,7 +1065,7 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', placeN
     'خالد', 'عادل', 'سامح', 'حسن', 'عبد الرحمن', 'ماجد', 'تامر', 'هيثم', 'وائل', 'علاء',
     'هشام', 'مدحت', 'إيهاب', 'زياد', 'بلال', 'معتز', 'أكرم', 'حازم', 'عصام', 'ضياء',
     'باسم', 'نبيل', 'وجدي', 'مايكل', 'مينا', 'جورج', 'أنطون', 'كيرلس', 'أبانوب', 'رفيق',
-    'هاني', 'عماد', 'سامي', 'ماهر', 'مجدي', 'صلاح', 'أيمن', 'عاطف', 'نبيل', 'نادر'
+    'هاني', 'عماد', 'سامي', 'ماهر', 'مجدي', 'صلاح', 'أيمن', 'عاطف', 'نادر', 'يحيى'
   ];
 
   const FIRST_NAMES_AR_F = [
@@ -1094,54 +1096,52 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', placeN
     'Baz', 'Attia', 'Younis', 'Mansour', 'Soliman', 'Fahmy', 'Radwan', 'Zaki', 'Osman', 'Awad'
   ];
 
-  // Comment Templates by Star Rating
+  // Authentic Egyptian Dialect Comments with Place & Specialty Integration
   const TEMPLATES_5 = [
-    'تعامل ممتاز جدًا، والنتيجة النهائية كانت احترافية ومبهرة.',
-    'من أفضل الناس اللي تعاملت معاهم، اهتمام بالتفاصيل وسرعة في التنفيذ.',
-    'شغل احترافي وسريع جدًا، والتعامل كان محترم من أول خطوة لحد التسليم.',
-    'خدمة ممتازة، قمة في الذوق والاحترافية والالتزام بالمواعيد.',
-    'تجربة ممتازة جدًا، فهم سريع للمطلوب وأفكار إبداعية غير تقليدية.',
-    'أنصح بشدة بالتعامل معهم، جودة عالية ونتائج فاقت كل التوقعات.',
-    'ما شاء الله تبارك الله، قمة في الإتقان والأمانة والاحتراف في الشغل.',
-    'سرعة في الرد ودعم فني مستمر وأسلوب راقي ومحترم جدًا.',
-    'خدمة تستحق 5 نجوم بكل جدارة، دقة متناهية وشغل عالي المستوى.',
-    'تجربة فريدة ومميزة، العمل تم على أكمل وجه وبأفضل مما تمنيت.',
-    'قمة الاحترافية، شكراً جزيلاً على المجهود الرائع والدقة.',
-    'Professional service, fast response, and outstanding execution.',
-    'Excellent experience from start to finish. Highly recommended!',
-    'Great attention to detail, modern work, and very smooth communication.',
-    'Very creative, professional, and reliable. Exceeded all expectations.',
-    'Top quality service and wonderful support. 10/10 recommendation.',
-    'The best experience ever! High quality and very polite team.'
+    `بصراحة ${pName} في ${spec} مفيش بعد كده، دقة واحترافية والتزام في المواعيد وناس محترمة جداً.`,
+    `من أفضل الأماكن في المنزلة لـ ${spec}، تعامل راقي وشغل مظبوط على الفرازة تسلم إيديكم.`,
+    `تعاملت مع ${pName} وبجد تجربة ممتازة، شاطرين جداً في ${spec} وسريعين والأسعار مناسبة.`,
+    `شغل عالي واحترافي جداً في ${spec}، والنتيجة كانت فوق الممتازة ومرضية لأبعد حد.`,
+    `أحسن وأشطر حد في المنزلة والدقهلية في مجال ${spec}، ربنا يوفقكم دايماً.`,
+    `ما شاء الله تبارك الله، أمانة وإتقان وسرعة في الرد، أنصح أي حد محتاج ${spec} يتعامل مع ${pName}.`,
+    `خدمة 5 نجوم واستقبال ممتاز، ${pName} رقم 1 في ${spec} بلا منازع.`,
+    `تجربة هايلة، ${pName} ناس فاهمة في ${spec} جداً وعندهم ذوق عالي في التعامل وسرعة تنفيذ.`,
+    `من أحسن التجارب اللي مريت بيها، جودة في ${spec} ومعاملة في قمة الذوق والاحترام.`,
+    `مكان محترم وموثوق، والخدمة في ${spec} طلعت أحسن من اللي طلبته بكتير.`,
+    `قمة في الأمانة والاحترافية، شكراً جزيلاً لـ ${pName} على الشغل النظيف.`,
+    `Excellent service in ${spec} by ${pName}. Very professional, fast, and top quality!`,
+    `Highly recommended for anyone looking for the best ${spec} in El Manzala.`,
+    `Outstanding work and great attention to detail. 5 stars all the way!`,
+    `Very creative, reliable, and professional team. Exceeded all my expectations in ${spec}.`
   ];
 
   const TEMPLATES_4 = [
-    'خدمة جيدة جدًا وتعامل راقي ومحترم، تجربة موفقة ومرضية.',
-    'شغل نضيف ومنظم، فقط استغرق وقتاً قليلاً لكن النتيجة ممتازة.',
-    'تجربة طيبة وتعامل محترم، شكراً لكم على المجهود.',
-    'جودة العمل عالية ومطابقة لما تم الاتفاق عليه، أنصح بالتجربة.',
-    'مكان محترم وخدمة سريعة إلى حد كبير، بالتوفيق دائمًا.',
-    'Good service and friendly communication. Overall very satisfied.',
-    'High quality work with great support. Looking forward to dealing with them again.',
-    'Solid experience, very polite and good results.'
+    `خدمة جيدة جداً في ${spec} وتعامل راقي ومحترم، تجربة موفقة ومرضية.`,
+    `شغل نظيف ومنظم من ${pName}، فقط استغرق وقتاً قليلاً لكن النتيجة في ${spec} ممتازة.`,
+    `تجربة طيبة وتعامل محترم، شكراً لكم على المجهود المميز في ${spec}.`,
+    `جودة العمل عالية ومطابقة لما تم الاتفاق عليه، أنصح بتجربة ${pName}.`,
+    `مكان محترم وخدمة سريعة في ${spec}، بالتوفيق دائمًا.`,
+    `Good service and friendly communication from ${pName}. Overall very satisfied with ${spec}.`,
+    `High quality work in ${spec} with great support. Looking forward to dealing with them again.`,
+    `Solid experience, very polite staff and good results in ${spec}.`
   ];
 
   const TEMPLATES_3 = [
-    'الخدمة مقبولة وجيدة في المجمل، لكن تحتاج بعض التطوير والسرعة.',
-    'تعامل عادي والنتيجة متوسطة كما هو متوقع.',
-    'تجربة مقبولة ولكن هناك مجال للتحسين في المواعيد.',
-    'الخدمة جيدة لكن الأسعار تحتاج إعادة نظر قليلاً.',
-    'Average service, acceptable results but communication could be improved.'
+    `الخدمة في ${spec} مقبولة وجيدة في المجمل، لكن تحتاج بعض التطوير والسرعة في التنفيذ.`,
+    `تعامل عادي من ${pName} والنتيجة في ${spec} متوسطة كما هو متوقع.`,
+    `تجربة مقبولة ولكن هناك مجال للتحسين في مواعيد تسليم ${spec}.`,
+    `الخدمة جيدة لكن أسعار ${spec} تحتاج إعادة نظر لتناسب الجميع.`,
+    `Average service in ${spec}, acceptable results but communication could be improved.`
   ];
 
   const TEMPLATES_2 = [
-    'الخدمة تحتاج تحسين ملحوظ في سرعة الاستجابة والمواعيد.',
-    'التجربة لم تكن على المستوى المطلوب، نأمل التطوير مستقبلاً.',
-    'Need major improvements in customer service and response time.'
+    `الخدمة في ${spec} تحتاج تحسين ملحوظ في سرعة الاستجابة والالتزام بالمواعيد.`,
+    `التجربة مع ${pName} في ${spec} لم تكن على المستوى المطلوب، نأمل التطوير مستقبلاً.`,
+    `للأسف فيه تأخير ملحوظ في تنفيذ ${spec} وضعف في خدمة ما بعد البيع.`,
+    `Need major improvements in customer service and response time for ${spec}.`
   ];
 
   const TEMPLATES_1 = [
-    'تجربة غير موفقة وتأخير ملحوظ في الرد والتنفيذ.',
     'خدمة سيئة وتحتاج مراجعة شاملة في التعامل مع العملاء.'
   ];
 
@@ -1268,10 +1268,110 @@ export async function autoAssignHammadReview(user) {
     };
 
     await dbSet(`places/${hammadPlaceId}/reviews/${reviewId}`, reviewData);
-    try { await dbSet(`placeReviews/${hammadPlaceId}/${reviewId}`, reviewData); } catch (_) {}
-
     await dbUpdate(`places/${hammadPlaceId}`, { rating: 5.0, reviewCount: (existing.length + 1) });
   } catch (err) {
     console.warn('[AutoReview] Hammad review error:', err);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  FOLLOW PLACES SYSTEM (متابعة الأماكن وعروضها)
+// ─────────────────────────────────────────────
+
+/** Check if user follows a place */
+export async function isFollowingPlace(placeId, userId) {
+  if (!placeId || !userId) return false;
+  try {
+    const follow = await dbGet(`users/${userId}/following/${placeId}`);
+    return !!follow;
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Follow a place */
+export async function followPlace(placeId, user) {
+  if (!placeId || !user || !user.uid) throw new Error('يجب تسجيل الدخول لمتابعة المكان');
+  
+  const now = Date.now();
+  await dbSet(`users/${user.uid}/following/${placeId}`, {
+    followedAt: now,
+    placeId
+  });
+
+  await dbSet(`places/${placeId}/followers/${user.uid}`, {
+    userId: user.uid,
+    userName: user.name || user.displayName || 'متابع',
+    userPhoto: user.photoURL || '',
+    followedAt: now
+  });
+
+  // Increment followersCount
+  try {
+    const place = await dbGet(`places/${placeId}`);
+    const currentCount = Number(place?.followersCount) || 0;
+    await dbUpdate(`places/${placeId}`, { followersCount: currentCount + 1 });
+  } catch (_) {}
+
+  return true;
+}
+
+/** Unfollow a place */
+export async function unfollowPlace(placeId, user) {
+  if (!placeId || !user || !user.uid) return;
+
+  await dbRemove(`users/${user.uid}/following/${placeId}`);
+  await dbRemove(`places/${placeId}/followers/${user.uid}`);
+
+  // Decrement followersCount
+  try {
+    const place = await dbGet(`places/${placeId}`);
+    const currentCount = Math.max(0, (Number(place?.followersCount) || 1) - 1);
+    await dbUpdate(`places/${placeId}`, { followersCount: currentCount });
+  } catch (_) {}
+
+  return false;
+}
+
+/** Get all places followed by user */
+export async function getUserFollowedPlaces(userId) {
+  if (!userId) return [];
+  try {
+    const followingMap = await dbGet(`users/${userId}/following`) || {};
+    const placeIds = Object.keys(followingMap);
+    if (!placeIds.length) return [];
+
+    const placesList = [];
+    for (const pId of placeIds) {
+      const p = await dbGet(`places/${pId}`);
+      if (p) placesList.push({ id: pId, ...p });
+    }
+    return placesList;
+  } catch (err) {
+    console.warn('[getUserFollowedPlaces] error:', err);
+    return [];
+  }
+}
+
+/** Get all active offers from places followed by user */
+export async function getUserFollowedOffers(userId) {
+  if (!userId) return [];
+  try {
+    const places = await getUserFollowedPlaces(userId);
+    if (!places.length) return [];
+    
+    const placeIds = new Set(places.map(p => p.id));
+    const allOffersMap = await dbGet('offers') || {};
+    const now = Date.now();
+
+    const offers = Object.entries(allOffersMap)
+      .map(([id, o]) => ({ id, ...o }))
+      .filter(o => placeIds.has(o.placeId) && o.status === 'active' && (!o.expiresAt || o.expiresAt > now))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    return offers;
+  } catch (err) {
+    console.warn('[getUserFollowedOffers] error:', err);
+    return [];
   }
 }

@@ -556,9 +556,11 @@ async function renderAdminReviews($container) {
             ${placesList.map(p => `<option value="${escAttr(p.id)}">${escHtml(p.name)}</option>`).join('')}
           </select>
         </div>
-        <div style="min-width:130px">
+        <div style="min-width:160px">
           <select id="admin-reviews-filter-stars" class="form-select" style="margin:0">
-            <option value="">كل النجوم</option>
+            <option value="">كل التقييمات</option>
+            <option value="positive">إيجابي (3 - 5 نجوم) 👍</option>
+            <option value="negative">سلبي (1 - 2 نجوم) 👎</option>
             <option value="5">5 نجوم ★★★★★</option>
             <option value="4">4 نجوم ★★★★☆</option>
             <option value="3">3 نجوم ★★★☆☆</option>
@@ -596,7 +598,15 @@ async function renderAdminReviews($container) {
 
     const filtered = allReviews.filter(r => {
       if (placeFilter && r.placeId !== placeFilter) return false;
-      if (starsFilter && String(r.rating) !== starsFilter) return false;
+      
+      const numStars = Number(r.rating) || 5;
+      if (starsFilter === 'positive') {
+        if (numStars < 3) return false;
+      } else if (starsFilter === 'negative') {
+        if (numStars > 2) return false;
+      } else if (starsFilter && String(r.rating) !== starsFilter) {
+        return false;
+      }
       if (searchVal) {
         const placeName = (r.placeName || '').toLowerCase();
         const userName = (r.userName || '').toLowerCase();
@@ -951,10 +961,16 @@ async function renderAdminReviews($container) {
           <!-- Mega Generator Controls Box -->
           <div style="background:var(--surface-2);padding:14px;border-radius:var(--radius-md);border:1px solid var(--border);display:flex;flex-direction:column;gap:10px">
             <div style="font-weight:700;font-size:13px;color:var(--primary);display:flex;align-items:center;gap:6px">
-              <span>⚡</span> أداة توليد التعليقات التلقائية الذكية (حتى 5000 تقييم فريد)
+              <span>⚡</span> أداة توليد التعليقات التلقائية بالذكاء الاصطناعي (حتى 5000 تقييم مصري فريد)
             </div>
 
             <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px">
+              <!-- Specialty input -->
+              <div class="form-group" style="margin:0">
+                <label class="form-label" style="font-size:12px">تخصص أو نشاط المكان <span class="required">*</span></label>
+                <input type="text" id="gen-rev-specialty" class="form-input" placeholder="مثال: برمجة وذكاء اصطناعي، عيادة أسنان، مطعم، محل ملابس..." value="برمجة ومواقع وذكاء اصطناعي" style="font-size:12px;padding:6px 10px" />
+              </div>
+
               <!-- Count selector -->
               <div class="form-group" style="margin:0">
                 <label class="form-label" style="font-size:12px">عدد التقييمات المطلوب</label>
@@ -971,15 +987,17 @@ async function renderAdminReviews($container) {
                 <input type="number" id="gen-rev-custom-count" class="form-input" placeholder="اكتب العدد (1 - 5000)" min="1" max="5000" style="display:none;margin-top:6px;font-size:12px;padding:6px" />
               </div>
 
-              <!-- Star Rating Range selector -->
+              <!-- Star Rating Range selector with Positive / Negative filter -->
               <div class="form-group" style="margin:0">
-                <label class="form-label" style="font-size:12px">نطاق التقييم بالنجوم</label>
+                <label class="form-label" style="font-size:12px">نوع التقييم بالنجوم</label>
                 <select id="gen-rev-stars" class="form-select" style="font-size:12.5px;padding:6px 10px">
-                  <option value="4-5" selected>من 4 إلى 5 نجوم (★★★★ - ★★★★★)</option>
-                  <option value="5">5 نجوم فقط (★★★★★)</option>
-                  <option value="3-4">من 3 إلى 4 نجوم (★★★ - ★★★★)</option>
-                  <option value="2-4">من 2 إلى 4 نجوم (★★ - ★★★★)</option>
-                  <option value="1-2">من 1 إلى 2 نجوم (★ - ★★)</option>
+                  <option value="positive" selected>إيجابي — من 3 إلى 5 نجوم (الأكثر طلباً) 👍</option>
+                  <option value="negative">سلبي — من 1 إلى 2 نجوم 👎</option>
+                  <option value="4-5">ممتاز جداً — 4 إلى 5 نجوم ★★★★★</option>
+                  <option value="5">5 نجوم فقط ★★★★★</option>
+                  <option value="3-4">متوسط إلى جيد — 3 إلى 4 نجوم ★★★★☆</option>
+                  <option value="2-4">منوع — 2 إلى 4 نجوم ★★★☆☆</option>
+                  <option value="1-2">ضعيف وسلبي — 1 إلى 2 نجوم ★☆☆☆☆</option>
                   <option value="all">تشكيلة طبيعية شاملة (1 - 5 نجوم)</option>
                 </select>
               </div>
@@ -988,7 +1006,7 @@ async function renderAdminReviews($container) {
             <!-- Action Buttons -->
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px">
               <button type="button" class="btn btn-sm btn-primary" id="btn-run-synthetic-generator" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:6px">
-                <span>⚡</span> توليد وتعبئة التعليقات تلقائياً
+                <span>✨</span> توليد التقييمات باسم وتخصص المكان فوراً
               </button>
               <button type="button" class="btn btn-sm btn-outline" id="btn-load-hammad-50" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);background:var(--surface)">
                 <span>⭐</span> تعبئة الـ 50 تقييم الأصلية لمهندس محمد حماد
@@ -1124,6 +1142,16 @@ async function renderAdminReviews($container) {
       }
     });
 
+    // Auto update specialty when place changes
+    document.getElementById('bulk-rev-place')?.addEventListener('change', (e) => {
+      const selectedId = e.target.value;
+      const targetPlace = places.find(p => p.id === selectedId);
+      const specInput = document.getElementById('gen-rev-specialty');
+      if (targetPlace && specInput) {
+        specInput.value = targetPlace.categoryName || targetPlace.category || targetPlace.description || 'الخدمات والنشاط';
+      }
+    });
+
     // Run Generator
     document.getElementById('btn-run-synthetic-generator')?.addEventListener('click', () => {
       const countSelect = document.getElementById('gen-rev-count')?.value;
@@ -1133,12 +1161,13 @@ async function renderAdminReviews($container) {
       }
       count = Math.min(5000, Math.max(1, count));
 
-      const starRange = document.getElementById('gen-rev-stars')?.value || '4-5';
+      const starRange = document.getElementById('gen-rev-stars')?.value || 'positive';
+      const specialty = document.getElementById('gen-rev-specialty')?.value || '';
       const placeSelect = document.getElementById('bulk-rev-place');
       const placeName = placeSelect?.options[placeSelect.selectedIndex]?.textContent || '';
 
-      toast.info(`جاري توليد ${count} تقييم فريد بنطاق (${starRange} نجوم)...`);
-      const generated = generateSyntheticReviews({ count, starRange, placeName });
+      toast.info(`جاري توليد ${count} تقييم فريد في مجال (${specialty || 'النشاط'})...`);
+      const generated = generateSyntheticReviews({ count, starRange, specialty, placeName });
 
       const formattedTable = [
         '| # | اسم العميل | التقييم | نص التقييم |',
@@ -1149,7 +1178,7 @@ async function renderAdminReviews($container) {
       if (textarea) {
         textarea.value = formattedTable;
         updateLivePreview();
-        toast.success(`تم توليد ${generated.length} تقييم فريد وتعبئتها في الجدول بنجاح! ⚡`);
+        toast.success(`تم توليد ${generated.length} تقييم فريد بتخصص (${specialty}) وتعبئتها في الجدول بنجاح! ✨`);
       }
     });
 

@@ -4,7 +4,7 @@
  * AI translation, AI cover generator, and verification requests.
  */
 
-import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications } from '../../core/db.js';
+import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace } from '../../core/db.js';
 import { createPlace, updatePlace, deletePlace, addOffer, addProduct, submitVerificationRequest } from '../../services/places.service.js';
 import { uploadImage } from '../../services/upload.service.js';
 import { translatePlaceName, generateCoverImage, generatePlaceLogo, generateSeoDescription, generateSeoServices } from '../../services/ai.service.js';
@@ -50,6 +50,9 @@ export async function renderDashboard($container, { user, section = 'overview', 
           </a>
           <a href="dashboard.html?section=places" data-section="places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📍</span> أماكني
+          </a>
+          <a href="dashboard.html?section=following" data-section="following" class="dashboard-nav-item ${section === 'following' ? 'active' : ''}">
+            <span class="dashboard-nav-item__icon">⭐</span> متابعاتي وعروضها
           </a>
           <a href="dashboard.html?section=add" data-section="add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">➕</span> إضافة مكان جديد
@@ -121,6 +124,8 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
       await renderPlaceProductsSection($mainArea, _dashUser, placeId);
     } else if (section === 'settings' || section === 'place-settings') {
       await renderPlaceSettingsSection($mainArea, _dashUser, placeId);
+    } else if (section === 'following') {
+      await renderFollowingSection($mainArea, _dashUser);
     } else if (section === 'notifications') {
       await renderDashboardNotifications($mainArea, _dashUser);
     } else {
@@ -1511,4 +1516,144 @@ function escHtml(str) {
 function escAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/**
+ * Render Followed Places & Active Offers Section
+ */
+async function renderFollowingSection($container, user) {
+  $container.innerHTML = `
+    <div class="dashboard-section-header">
+      <div>
+        <h1 class="dashboard-section-title">⭐ الأماكن المتابعة وعروضها الحصرية</h1>
+        <p class="dashboard-section-subtitle">تابع أنشطتك المفضلة في المنزلة وشاهد عروضهم الحصرية فور نزولها</p>
+      </div>
+    </div>
+    <div class="spinner spinner-lg" style="margin:3rem auto"></div>
+  `;
+
+  try {
+    const [places, offers] = await Promise.all([
+      getUserFollowedPlaces(user.uid),
+      getUserFollowedOffers(user.uid)
+    ]);
+
+    if (!places.length) {
+      $container.innerHTML = `
+        <div class="dashboard-section-header">
+          <div>
+            <h1 class="dashboard-section-title">⭐ الأماكن المتابعة وعروضها الحصرية</h1>
+            <p class="dashboard-section-subtitle">تابع أنشطتك المفضلة في المنزلة وشاهد عروضهم الحصرية فور نزولها</p>
+          </div>
+        </div>
+
+        <div class="empty-state" style="padding:4rem 1rem;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div class="empty-state__icon">🔔</div>
+          <h2 class="empty-state__title">لم تقم بمتابعة أي مكان بعد</h2>
+          <p class="empty-state__text">عندما تقوم بالضغط على زر "متابعة المكان" في صفحة أي نشاط، ستظهر جميع عروضه وتحديثاته هنا أولاً بأول</p>
+          <a href="places.html" class="btn btn-primary" style="margin-top:1rem">استكشف دليل الأماكن في المنزلة</a>
+        </div>
+      `;
+      return;
+    }
+
+    $container.innerHTML = `
+      <div class="dashboard-section-header">
+        <div>
+          <h1 class="dashboard-section-title">⭐ الأماكن المتابعة (${places.length})</h1>
+          <p class="dashboard-section-subtitle">عروض وخصومات حية من الأماكن التي تتابعها</p>
+        </div>
+      </div>
+
+      <!-- Live Offers Grid from Followed Places -->
+      ${offers.length > 0 ? `
+        <div style="margin-bottom:var(--space-6)">
+          <h2 style="font-size:1.2rem;font-weight:800;color:var(--primary);margin-bottom:var(--space-3);display:flex;align-items:center;gap:8px">
+            <span>🏷️</span> العروض الحالية من متابعاتك (${offers.length})
+          </h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:var(--space-4)">
+            ${offers.map(offer => `
+              <div class="offer-card" style="border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-lg);overflow:hidden">
+                <div class="offer-card__image" style="height:150px">
+                  ${offer.imageUrl ? `<img src="${escAttr(offer.imageUrl)}" alt="${escAttr(offer.title)}" style="width:100%;height:100%;object-fit:cover" />` : `<div style="padding:2rem;text-align:center;font-size:2.5rem">🏷️</div>`}
+                  ${offer.discountPercent ? `<span class="offer-card__discount-badge">-${offer.discountPercent}%</span>` : ''}
+                </div>
+                <div class="offer-card__body" style="padding:14px">
+                  <h3 class="offer-card__title" style="font-size:15px;margin-bottom:6px">${escHtml(offer.title)}</h3>
+                  <div class="offer-card__price" style="margin-bottom:10px">
+                    <span class="offer-card__price-new" style="font-weight:700;color:var(--primary);font-size:16px">${formatPrice(offer.newPrice)}</span>
+                    ${offer.oldPrice ? `<span class="offer-card__price-old" style="text-decoration:line-through;color:var(--text-muted);font-size:13px;margin-right:8px">${formatPrice(offer.oldPrice)}</span>` : ''}
+                  </div>
+                  <a href="place.html?slug=${escAttr(offer.placeSlug || offer.placeId)}" class="btn btn-sm btn-outline" style="width:100%;justify-content:center;font-size:12.5px;border-radius:var(--radius-md)">
+                    عرض المكان والتواصل
+                  </a>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Followed Places Cards List -->
+      <h2 style="font-size:1.2rem;font-weight:800;color:var(--text-primary);margin-bottom:var(--space-3);display:flex;align-items:center;gap:8px">
+        <span>📍</span> الأنشطة والأماكن التي تتابعها
+      </h2>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:var(--space-4)">
+        ${places.map(p => `
+          <div class="stat-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:50px;height:50px;border-radius:var(--radius-md);overflow:hidden;background:#1B4F72;flex-shrink:0">
+                <img src="${escAttr(p.logoUrl || p.coverImageUrl || './icons/icon-72x72.png')}" alt="${escAttr(p.name)}" style="width:100%;height:100%;object-fit:cover" />
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:14px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  ${escHtml(p.name)}
+                </div>
+                <div style="font-size:12px;color:var(--text-muted)">
+                  📍 ${escHtml(p.address || p.area || 'المنزلة')}
+                </div>
+                <div style="font-size:11.5px;color:#F59E0B;font-weight:700">
+                  ★ ${(Number(p.rating) || 5.0).toFixed(1)} (${p.reviewCount || 0} تقييم)
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:auto">
+              <a href="place.html?slug=${escAttr(p.slug || p.id)}" class="btn btn-sm btn-primary" style="flex:1;justify-content:center;font-size:12px;border-radius:var(--radius-md)">
+                عرض الصفحة
+              </a>
+              <button type="button" class="btn btn-sm btn-outline btn-dash-unfollow" data-pid="${escAttr(p.id)}" style="font-size:12px;border-radius:var(--radius-md);color:var(--danger);border-color:var(--border)" title="إلغاء المتابعة">
+                إلغاء
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    // Unfollow buttons handler
+    $container.querySelectorAll('.btn-dash-unfollow').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pId = btn.getAttribute('data-pid');
+        try {
+          await unfollowPlace(pId, user);
+          toast.info('تم إلغاء المتابعة');
+          await renderFollowingSection($container, user);
+        } catch (err) {
+          toast.error('حدث خطأ أثناء إلغاء المتابعة');
+        }
+      });
+    });
+
+  } catch (err) {
+    console.error('[renderFollowingSection] error:', err);
+    $container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state__icon">⚠️</div>
+        <h2 class="empty-state__title">فشل تحميل المتابعات</h2>
+        <button class="btn btn-primary" onclick="window.switchDashboardSection('following', null, false)">إعادة المحاولة</button>
+      </div>
+    `;
+  }
 }
