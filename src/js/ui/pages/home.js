@@ -97,6 +97,9 @@ export async function renderHomePage($main, { user } = {}) {
     // Setup hero search
     setupHeroSearch(categories || []);
 
+    // Setup villages and towns quick search filter
+    setupVillagesSearch();
+
     // Stats bar
     renderStatsBar((allPlaces.length || 0), (categories?.length || 31));
 
@@ -335,21 +338,76 @@ function setupHeroSearch(categories) {
   });
 }
 
+function setupVillagesSearch() {
+  const input = document.getElementById('villages-filter-input');
+  const items = document.querySelectorAll('.village-grid-item');
+  if (!input || !items.length) return;
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    items.forEach(el => {
+      const name = (el.getAttribute('data-name') || '').toLowerCase();
+      el.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+    });
+  });
+}
+
 function getHomeHTML() {
-  const towns = [
+  const villageList = [
     { name: 'المنزلة', icon: '🏙️', desc: 'المدينة والمركز' },
-    { name: 'المطرية', icon: '🌊', desc: 'مدينة الصيادين والبحيرة' },
+    { name: 'المطرية', icon: '🌊', desc: 'مدينة وبحيرة المنزلة' },
     { name: 'العصافرة', icon: '🌾', desc: 'قرية العصافرة' },
-    { name: 'الجمالية', icon: '🏛️', desc: 'مركز ومدينة الجمالية' },
-    { name: 'ميت سلسيل', icon: '🏢', desc: 'مركز ومدينة ميت سلسيل' },
+    { name: 'الفروسات', icon: '🐎', desc: 'قرية الفروسات' },
     { name: 'البصراط', icon: '🏡', desc: 'قرية البصراط' },
+    { name: 'المنزلة الجديدة', icon: '🏢', desc: 'المنزلة الجديدة' },
+    { name: 'ميت شريف', icon: '🌿', desc: 'قرية ميت شريف' },
+    { name: 'العامرة', icon: '🌾', desc: 'قرية العامرة' },
+    { name: 'الستايتة', icon: '🏘️', desc: 'قرية الستايتة' },
+    { name: 'كفر حجاج', icon: '🏡', desc: 'كفر حجاج' },
+    { name: 'ميت خضير', icon: '🌴', desc: 'قرية ميت خضير' },
     { name: 'العزيزة', icon: '🌴', desc: 'قرية العزيزة' },
+    { name: 'دار السلام', icon: '🕊️', desc: 'قرية دار السلام' },
+    { name: 'الشبول', icon: '🌊', desc: 'قرية الشبول' },
     { name: 'الأحمدية', icon: '🌾', desc: 'قرية الأحمدية' },
-    { name: 'الروضة', icon: '🌺', desc: 'قرية الروضة' },
-    { name: 'الحوتة', icon: '🐟', desc: 'قرية الحوتة' },
     { name: 'النسايمة', icon: '🌳', desc: 'قرية النسايمة' },
-    { name: 'ميت خضير', icon: '🏘️', desc: 'قرية ميت خضير' },
-    { name: 'ميت شريف', icon: '🏡', desc: 'قرية ميت شريف (شرف)' }
+    { name: 'أولاد علم', icon: '🏡', desc: 'أولاد علم' },
+    { name: 'خندق الموز', icon: '🍌', desc: 'خندق الموز' },
+    { name: 'الحوتة', icon: '🐟', desc: 'قرية الحوتة' },
+    { name: 'القزاقزة', icon: '🏘️', desc: 'قرية القزاقزة' },
+    { name: 'الشريفية', icon: '🌿', desc: 'قرية الشريفية' },
+    { name: 'أولاد سراج', icon: '🏡', desc: 'أولاد سراج' },
+    { name: 'أولاد نور', icon: '✨', desc: 'أولاد نور' },
+    { name: 'الزعاترة', icon: '🌾', desc: 'قرية الزعاترة' },
+    { name: 'القتايلة', icon: '🏘️', desc: 'قرية القتايلة' },
+    { name: 'البصايلة', icon: '🏡', desc: 'قرية البصايلة' },
+    { name: 'الهنايدة', icon: '🌴', desc: 'قرية الهنايدة' },
+    { name: 'أولاد بانا', icon: '🏡', desc: 'أولاد بانا' },
+    { name: 'أولاد حانا', icon: '🌾', desc: 'أولاد حانا' },
+    { name: 'القطشة', icon: '🏘️', desc: 'قرية القطشة' },
+    { name: 'المحارقة', icon: '🔥', desc: 'قرية المحارقة' },
+    { name: 'الطوابرة', icon: '🧱', desc: 'قرية الطوابرة' },
+    { name: 'العمارنة', icon: '🏡', desc: 'قرية العمارنة' },
+    { name: 'الجماملة', icon: '🐪', desc: 'قرية الجماملة' },
+    { name: 'إصلاح أبو الأخضر', icon: '🌱', desc: 'إصلاح أبو الأخضر' },
+    { name: 'عزبة المفارق', icon: '🛣️', desc: 'عزبة المفارق' },
+    { name: 'الإسكندرية الجديدة', icon: '🌊', desc: 'الإسكندرية الجديدة' },
+    { name: 'مصر الجديدة', icon: '🏛️', desc: 'مصر الجديدة' },
+    { name: 'الجوابر', icon: '🏘️', desc: 'قرية الجوابر' },
+    { name: 'المواجد', icon: '🌾', desc: 'قرية المواجد' },
+    { name: 'الضهير', icon: '🏡', desc: 'قرية الضهير' },
+    { name: 'أولاد صبور', icon: '🌳', desc: 'أولاد صبور' },
+    { name: 'أبو خضير', icon: '🌴', desc: 'أبو خضير' },
+    { name: 'بطل شميس', icon: '🌾', desc: 'بطل شميس' },
+    { name: 'حي البساتين', icon: '🌺', desc: 'حي البساتين' },
+    { name: 'الخلايفة', icon: '🏘️', desc: 'الخلايفة' },
+    { name: 'العرب والنجوع', icon: '⛺', desc: 'العرب والنجوع' },
+    { name: 'الجباسات', icon: '⛏️', desc: 'الجباسات' },
+    { name: 'الجسر الواقي', icon: '🛡️', desc: 'الجسر الواقي' },
+    { name: 'طريق الشونة', icon: '🛣️', desc: 'طريق الشونة' },
+    { name: 'المثلث', icon: '🔺', desc: 'منطقة المثلث' },
+    { name: 'المجاير', icon: '🏘️', desc: 'قرية المجاير' },
+    { name: 'شرق السكة الحديد', icon: '🚆', desc: 'شرق السكة الحديد' },
+    { name: 'القبلية', icon: '🧭', desc: 'المنطقة القبلية' }
   ];
 
   return `
@@ -395,22 +453,26 @@ function getHomeHTML() {
     <!-- Towns & Villages Directory Section -->
     <section class="section" style="background:var(--surface);padding-block:var(--space-8);border-bottom:1px solid var(--border)">
       <div class="container">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-wrap:wrap;gap:12px">
           <div>
             <h2 class="section-title" style="margin-bottom:2px">
-              <span>🗺️</span> استكشف حسب المدينة والقرية
+              <span>🗺️</span> استكشف حسب المدينة والقرية (${villageList.length})
             </h2>
             <p style="font-size:13px;color:var(--text-muted);margin:0">تصفح الخدمات والأنشطة التجارية في المنزلة والمطرية وكافة القرى المجاورة</p>
           </div>
-          <a href="places.html" class="section-link">كل المدن والقرى ←</a>
+          
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="text" id="villages-filter-input" placeholder="🔍 ابحث عن قريتك أو مدينتك..." class="form-input" style="font-size:12.5px;padding:6px 12px;width:210px;margin:0" />
+            <a href="places.html" class="section-link" style="white-space:nowrap">كل المدن والقرى ←</a>
+          </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-top:14px">
-          ${towns.map(t => `
-            <a href="places.html?q=${encodeURIComponent(t.name)}" class="category-card" style="padding:12px 8px;text-align:center;text-decoration:none;border-radius:var(--radius-md);transition:all 0.2s ease" title="دليل أماكن وخدمات ${t.name}">
-              <div style="font-size:24px;margin-bottom:4px">${t.icon}</div>
-              <div style="font-weight:700;font-size:13.5px;color:var(--text-primary)">${t.name}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${t.desc}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-top:14px" id="villages-grid-container">
+          ${villageList.map(t => `
+            <a href="places.html?q=${encodeURIComponent(t.name)}" class="category-card village-grid-item" data-name="${escAttr(t.name)}" style="padding:12px 8px;text-align:center;text-decoration:none;border-radius:var(--radius-md);transition:all 0.2s ease;display:flex;flex-direction:column;align-items:center" title="دليل أماكن وخدمات ${t.name}">
+              <div style="font-size:22px;margin-bottom:4px">${t.icon}</div>
+              <div style="font-weight:700;font-size:13px;color:var(--text-primary)">${t.name}</div>
+              <div style="font-size:10.5px;color:var(--text-muted);margin-top:2px">${t.desc}</div>
             </a>
           `).join('')}
         </div>

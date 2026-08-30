@@ -1461,11 +1461,12 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', specia
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
   function pickRating() {
+    if (starRange === 'negative' || starRange === '1-2') return Math.random() < 0.5 ? 2 : 1;
+    if (starRange === 'positive' || starRange === '3-5') return [3, 4, 5, 5][Math.floor(Math.random() * 4)];
     if (starRange === '5') return 5;
     if (starRange === '4-5') return Math.random() < 0.75 ? 5 : 4;
     if (starRange === '3-4') return Math.random() < 0.5 ? 4 : 3;
     if (starRange === '2-4') return [2, 3, 4][Math.floor(Math.random() * 3)];
-    if (starRange === '1-2') return Math.random() < 0.5 ? 2 : 1;
     if (starRange === '1') return 1;
     if (starRange === '2') return 2;
     if (starRange === '3') return 3;

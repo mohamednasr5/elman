@@ -1386,7 +1386,20 @@ function setupPlaceFollowing(placeId, currentUser) {
 function setupReviewsSentimentFilter() {
   const tabs = document.querySelectorAll('.review-filter-tab');
   const reviewCards = document.querySelectorAll('#place-reviews-list .review-card');
+  const reviewsList = document.getElementById('place-reviews-list');
   if (!tabs.length || !reviewCards.length) return;
+
+  let emptyMsg = document.getElementById('sentiment-filter-empty-msg');
+  if (!emptyMsg && reviewsList) {
+    emptyMsg = document.createElement('div');
+    emptyMsg.id = 'sentiment-filter-empty-msg';
+    emptyMsg.style.display = 'none';
+    emptyMsg.style.textAlign = 'center';
+    emptyMsg.style.padding = '2rem 1rem';
+    emptyMsg.style.color = 'var(--text-muted)';
+    emptyMsg.style.fontSize = '13.5px';
+    reviewsList.appendChild(emptyMsg);
+  }
 
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1424,6 +1437,17 @@ function setupReviewsSentimentFilter() {
           }
         }
       });
+
+      if (emptyMsg) {
+        if (visibleCount === 0) {
+          emptyMsg.style.display = 'block';
+          emptyMsg.innerHTML = sentiment === 'negative'
+            ? '<span>✨ لا توجد أي تقييمات سلبية مسجلة لهذا المكان حتى الآن.</span>'
+            : '<span>لا توجد تقييمات مطابقة لهذا الفلتر.</span>';
+        } else {
+          emptyMsg.style.display = 'none';
+        }
+      }
     });
   });
 }
