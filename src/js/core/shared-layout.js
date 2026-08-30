@@ -18,6 +18,7 @@ export async function initSharedLayout(activeHref = '') {
   _setupHeaderSearch();
   _setupPwaBanner();
   _setActiveLinks(activeHref);
+  _checkApkPwaEnvironment();
 
   onAuthStateChange((user) => {
     _renderUserSection(user);
@@ -28,6 +29,27 @@ export async function initSharedLayout(activeHref = '') {
     if (settings?.contact?.whatsappLink) {
       document.querySelectorAll('[data-wa-link]').forEach(el => {
         el.href = settings.contact.whatsappLink;
+      });
+    }
+  } catch (_) {}
+}
+
+function _checkApkPwaEnvironment() {
+  try {
+    const isStandalone = (
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) ||
+      (window.matchMedia && window.matchMedia('(display-mode: minimal-ui)').matches) ||
+      window.navigator.standalone === true ||
+      (document.referrer && document.referrer.includes('android-app://')) ||
+      (navigator.userAgent && (navigator.userAgent.includes('wv') || (navigator.userAgent.includes('Android') && navigator.userAgent.includes('Version/')))) ||
+      (new URLSearchParams(window.location.search).get('source') === 'apk') ||
+      (new URLSearchParams(window.location.search).get('source') === 'pwa')
+    );
+
+    if (isStandalone) {
+      document.querySelectorAll('#footer-apk-container, .footer__apk-download').forEach(el => {
+        el.style.display = 'none';
       });
     }
   } catch (_) {}
@@ -200,6 +222,11 @@ export function getSharedFooterHTML() {
             <span class="footer__logo-name">المنزلة وناسها</span>
           </a>
           <p class="footer__description">دليلك الرقمي الشامل في مدينة المنزلة — ابحث عن الأطباء والمحلات والخدمات كلها في مكان واحد.</p>
+          <div class="footer__apk-download" id="footer-apk-container" style="margin-top:16px">
+            <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="apk-download-btn-link" id="footer-apk-download-link" title="تحميل تطبيق دليل المنزلة للأندرويد APK" style="display:inline-block;max-width:250px;transition:transform 0.2s,filter 0.2s">
+              <img src="./assets/apk-download-banner.png" alt="حمل تطبيق دليل المنزلة على هاتفك الاندرويد APK" style="width:100%;height:auto;border-radius:10px;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.25)" onerror="this.src='./icons/apk-download-banner.png'"/>
+            </a>
+          </div>
         </div>
         <div>
           <h3 class="footer__col-title">روابط سريعة</h3>

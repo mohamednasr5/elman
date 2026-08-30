@@ -339,3 +339,25 @@ img.lazy.error {
     left: 54px !important;
   }
 }
+
+/* ========================================================
+   APK Download Banner (Hidden in PWA / Standalone / APK)
+   ======================================================== */
+.apk-download-btn-link {
+  display: inline-block;
+  max-width: 250px;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+.apk-download-btn-link:hover {
+  transform: translateY(-3px) scale(1.02);
+  filter: brightness(1.08);
+}
+.apk-download-btn-link:active {
+  transform: translateY(0) scale(0.98);
+}
+
+@media all and (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  #footer-apk-container, .footer__apk-download, .apk-download-btn-link {
+    display: none !important;
+  }
+}

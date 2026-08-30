@@ -150,6 +150,11 @@ function _footerHTML() {
         <p class="footer__description">
           دليلك الرقمي الشامل في مدينة المنزلة — ابحث عن الأطباء والمحلات والخدمات كلها في مكان واحد.
         </p>
+        <div class="footer__apk-download" id="footer-apk-container" style="margin-top:16px">
+          <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="apk-download-btn-link" id="footer-apk-download-link" title="تحميل تطبيق دليل المنزلة للأندرويد APK" style="display:inline-block;max-width:250px;transition:transform 0.2s,filter 0.2s">
+            <img src="./assets/apk-download-banner.png" alt="حمل تطبيق دليل المنزلة على هاتفك الاندرويد APK" style="width:100%;height:auto;border-radius:10px;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.25)" onerror="this.src='./icons/apk-download-banner.png'"/>
+          </a>
+        </div>
       </div>
       <div>
         <h3 class="footer__col-title">روابط سريعة</h3>
@@ -193,10 +198,10 @@ function _footerHTML() {
 function _pwaBannerHTML() {
   return `
 <div class="pwa-banner" id="pwa-banner" hidden>
-  <img src="./icons/icon-72x72.png" alt="" class="pwa-banner__icon" width="52" height="52"/>
+  <img src="./icons/icon-72x72.png" alt="" class="pwa-banner__icon" width="48" height="48"/>
   <div class="pwa-banner__content">
-    <div class="pwa-banner__title">ثبّت التطبيق</div>
-    <div class="pwa-banner__text">المنزلة وناسها — وصول أسرع</div>
+    <div class="pwa-banner__title">ثبّت دليل المنزلة وناسها</div>
+    <div class="pwa-banner__text">تصفّح أسرع وتجربة أفضل على هاتفك</div>
   </div>
   <div class="pwa-banner__actions">
     <button class="btn btn-primary btn-sm" id="pwa-install-btn">تثبيت</button>
@@ -219,12 +224,15 @@ export async function initPage(activeFile = '') {
   _inject('nav-slot',     _bottomNavHTML(activeFile));
   _inject('pwa-slot',     _pwaBannerHTML());
 
-  /* 3. Scroll shadow on header */
+  /* 3. Check standalone APK/PWA environment to hide APK download button */
+  _checkApkPwaEnvironment();
+
+  /* 4. Scroll shadow on header */
   const hdr = document.getElementById('site-header');
   window.addEventListener('scroll', () =>
     hdr?.classList.toggle('scrolled', scrollY > 8), { passive: true });
 
-  /* 4. Header search */
+  /* 5. Header search */
   document.getElementById('header-search-input')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.value.trim())
       location.href = `search.html?q=${encodeURIComponent(e.target.value.trim())}`;

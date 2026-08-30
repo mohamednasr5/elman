@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>404 — الصفحة غير موجودة | بحيرة المنزلة وناسها</title>
+  <meta name="description" content="عذراً، الصفحة التي تبحث عنها غير موجودة في دليل المنزلة وناسها." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" />
+  <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png" />
+  <link rel="stylesheet" href="./src/css/main.css" />
+
+  <style>
+    :root {
+      --lake-deep: #051923;
+      --lake-mid: #003554;
+      --lake-teal: #006494;
+      --lake-surface: #0582ca;
+      --lake-accent: #00a6fb;
+      --sand-gold: #F5A623;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: #04121a;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      overflow-x: hidden;
+      position: relative;
+      user-select: none;
+    }
+
+    /* Ambient Sky with Moon & Stars */
+    .sky-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 58%;
+      background: radial-gradient(circle at 50% 18%, #16384c 0%, #081d2a 60%, #030e15 100%);
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .moon {
+      position: absolute;
+      top: 14%;
+      right: 18%;
+      width: 80px;
+      height: 80px;
+      background: radial-gradient(circle, #fffdf2 40%, #ffefa6 80%, rgba(255,239,166,0) 100%);
+      border-radius: 50%;
+      box-shadow: 0 0 45px rgba(255, 239, 166, 0.6), 0 0 90px rgba(0, 166, 251, 0.3);
+      animation: moonGlow 4s ease-in-out infinite alternate;
+    }
+
+    @keyframes moonGlow {
+      from { transform: scale(1); box-shadow: 0 0 35px rgba(255, 239, 166, 0.5); }
+      to { transform: scale(1.05); box-shadow: 0 0 65px rgba(255, 239, 166, 0.8), 0 0 110px rgba(0, 166, 251, 0.45); }
+    }
+
+    /* Flying Seagulls / Water birds */
+    .seagull {
+      position: absolute;
+      color: rgba(255, 255, 255, 0.65);
+      animation: flyBird 16s linear infinite;
+    }
+    .seagull:nth-child(1) { top: 22%; right: -60px; animation-duration: 18s; transform: scale(0.9); }
+    .seagull:nth-child(2) { top: 12%; right: -60px; animation-duration: 22s; animation-delay: 5s; transform: scale(0.65); }
+    .seagull:nth-child(3) { top: 28%; right: -60px; animation-duration: 26s; animation-delay: 11s; transform: scale(0.5); }
+
+    @keyframes flyBird {
+      0% { right: -60px; transform: translateY(0) scale(0.8); }
+      50% { transform: translateY(-25px) scale(0.8); }
+      100% { right: 110%; transform: translateY(0) scale(0.8); }
+    }
+
+    /* Lake Shore Reeds */
+    .reeds-left, .reeds-right {
+      position: absolute;
+      bottom: 40%;
+      z-index: 4;
+      opacity: 0.85;
+      pointer-events: none;
+    }
+    .reeds-left { left: -10px; }
+    .reeds-right { right: -10px; transform: scaleX(-1); }
+
+    /* Foreground Content Card */
+    .content-wrap {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      max-width: 640px;
+      width: 90%;
+      margin-top: 3.5rem;
+      padding: 24px 28px;
+      background: rgba(5, 25, 35, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(0, 166, 251, 0.35);
+      border-radius: 24px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 166, 251, 0.2);
+      animation: floatCard 4s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatCard {
+      from { transform: translateY(0); }
+      to { transform: translateY(-8px); }
+    }
+
+    .error-code {
+      font-size: 5.5rem;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #FFF 0%, #00a6fb 50%, #F5A623 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+      text-shadow: 0 10px 30px rgba(0, 166, 251, 0.4);
+    }
+
+    .error-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .error-desc {
+      font-size: 0.98rem;
+      color: rgba(255, 255, 255, 0.82);
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
+    /* Auto Redirect Countdown */
+    .redirect-box {
+      background: rgba(0, 100, 148, 0.25);
+      border: 1px solid rgba(0, 166, 251, 0.3);
+      padding: 10px 18px;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #F5A623;
+    }
+
+    .countdown-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #F5A623;
+      color: #04121a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 15px;
+      box-shadow: 0 0 15px rgba(245, 166, 35, 0.5);
+    }
+
+    .progress-bar-wrap {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #F5A623, #00a6fb);
+      transition: width 1s linear;
+    }
+
+    /* Actions Buttons */
+    .btn-group {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-home {
+      background: linear-gradient(135deg, #1B4F72 0%, #2980B9 100%);
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.25);
+      box-shadow: 0 6px 20px rgba(27, 79, 114, 0.4);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-home:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 166, 251, 0.5);
+      color: #fff;
+    }
+
+    .btn-sound {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      border: 1px solid rgba(255,255,255,0.2);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-sound:hover {
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    /* Lake Waves & Animated Fishing Boats */
+    .lake-container {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      z-index: 5;
+      overflow: hidden;
+      margin-top: auto;
+    }
+
+    /* Wooden Fishing Boat 1 */
+    .boat-wrapper-1 {
+      position: absolute;
+      bottom: 220px;
+      left: 15%;
+      z-index: 6;
+      animation: boatRock 4.2s ease-in-out infinite, boatDrift 35s linear infinite;
+    }
+
+    /* Wooden Fishing Boat 2 */
+    .boat-wrapper-2 {
+      position: absolute;
+      bottom: 245px;
+      right: 20%;
+      z-index: 4;
+      transform: scale(0.65);
+      animation: boatRock 3.5s ease-in-out infinite reverse, boatDriftReverse 42s linear infinite;
+    }
+
+    @keyframes boatRock {
+      0% { transform: translateY(0) rotate(-2.5deg); }
+      50% { transform: translateY(-12px) rotate(3deg); }
+      100% { transform: translateY(0) rotate(-2.5deg); }
+    }
+
+    @keyframes boatDrift {
+      0% { left: -100px; }
+      100% { left: 110%; }
+    }
+
+    @keyframes boatDriftReverse {
+      0% { right: -80px; }
+      100% { right: 110%; }
+    }
+
+    /* Layered Waves */
+    .wave {
+      position: absolute;
+      left: 0;
+      width: 200%;
+      height: 120px;
+      background-repeat: repeat-x;
+    }
+
+    .wave-back {
+      bottom: 190px;
+      opacity: 0.55;
+      z-index: 3;
+      animation: waveFlow 12s linear infinite;
+    }
+
+    .wave-mid {
+      bottom: 140px;
+      opacity: 0.8;
+      z-index: 5;
+      animation: waveFlow 8s linear infinite reverse;
+    }
+
+    .wave-front {
+      bottom: 0;
+      height: 170px;
+      background: linear-gradient(180deg, #004d73 0%, #00283d 40%, #01131e 100%);
+      z-index: 7;
+      width: 100%;
+    }
+
+    @keyframes waveFlow {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* Swimming Fish in Deep Waters */
+    .underwater-scene {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 160px;
+      z-index: 8;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .fish {
+      position: absolute;
+      animation: swimFish linear infinite;
+    }
+
+    .fish-1 { bottom: 85px; left: -80px; animation-duration: 14s; animation-delay: 0s; }
+    .fish-2 { bottom: 40px; left: -80px; animation-duration: 18s; animation-delay: 4s; transform: scale(0.75); }
+    .fish-3 { bottom: 110px; right: -80px; animation-name: swimFishLeft; animation-duration: 16s; animation-delay: 7s; transform: scale(0.65) scaleX(-1); }
+    .fish-4 { bottom: 25px; right: -80px; animation-name: swimFishLeft; animation-duration: 20s; animation-delay: 11s; transform: scale(0.85) scaleX(-1); }
+    .fish-5 { bottom: 65px; left: -80px; animation-duration: 22s; animation-delay: 8s; transform: scale(0.5); }
+
+    @keyframes swimFish {
+      0% { left: -80px; transform: translateY(0); }
+      25% { transform: translateY(-8px); }
+      50% { transform: translateY(6px); }
+      75% { transform: translateY(-5px); }
+      100% { left: 110%; transform: translateY(0); }
+    }
+
+    @keyframes swimFishLeft {
+      0% { right: -80px; transform: scaleX(-1) translateY(0); }
+      25% { transform: scaleX(-1) translateY(8px); }
+      50% { transform: scaleX(-1) translateY(-6px); }
+      75% { transform: scaleX(-1) translateY(5px); }
+      100% { right: 110%; transform: scaleX(-1) translateY(0); }
+    }
+
+    /* Bubbles */
+    .bubble {
+      position: absolute;
+      bottom: 0;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(0,166,251,0.25));
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 50%;
+      animation: riseBubble linear infinite;
+    }
+    .b1 { left: 20%; width: 12px; height: 12px; animation-duration: 6s; animation-delay: 1s; }
+    .b2 { left: 35%; width: 18px; height: 18px; animation-duration: 8s; animation-delay: 3s; }
+    .b3 { left: 60%; width: 10px; height: 10px; animation-duration: 5s; animation-delay: 2s; }
+    .b4 { left: 78%; width: 15px; height: 15px; animation-duration: 7s; animation-delay: 0.5s; }
+    .b5 { left: 88%; width: 8px; height: 8px; animation-duration: 6.5s; animation-delay: 4.5s; }
+
+    @keyframes riseBubble {
+      0% { bottom: -20px; opacity: 0; transform: translateX(0); }
+      20% { opacity: 0.8; }
+      80% { opacity: 0.8; }
+      100% { bottom: 160px; opacity: 0; transform: translateX(20px); }
+    }
+
+    @media (max-width: 767px) {
+      .content-wrap { margin-top: 2rem; padding: 20px 18px; }
+      .error-code { font-size: 4.2rem; }
+      .error-title { font-size: 1.3rem; }
+      .lake-container { height: 310px; }
+      .boat-wrapper-1 { bottom: 180px; transform: scale(0.85); }
+      .boat-wrapper-2 { bottom: 200px; transform: scale(0.55); }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Sky Layer with Moon & Birds -->
+  <div class="sky-container">
+    <div class="moon"></div>
+
+    <!-- Seagulls -->
+    <svg class="seagull" width="38" height="24" viewBox="0 0 38 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <path d="M2 18C10 6 18 16 19 16C20 16 28 6 36 18" />
+    </svg>
+    <svg class="seagull" width="38" height="24" viewBox="0 0 38 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <path d="M2 18C10 6 18 16 19 16C20 16 28 6 36 18" />
+    </svg>
+    <svg class="seagull" width="38" height="24" viewBox="0 0 38 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <path d="M2 18C10 6 18 16 19 16C20 16 28 6 36 18" />
+    </svg>
+
+    <!-- Lake Reeds (بوص بحيرة المنزلة) -->
+    <svg class="reeds-left" width="120" height="90" viewBox="0 0 120 90" fill="#04121a">
+      <path d="M10 90 Q 20 40 15 0 Q 30 50 35 90 Z" />
+      <path d="M30 90 Q 45 30 55 10 Q 50 50 60 90 Z" />
+      <path d="M50 90 Q 75 35 85 5 Q 75 55 80 90 Z" />
+      <path d="M70 90 Q 95 45 110 20 Q 95 65 100 90 Z" />
+    </svg>
+
+    <svg class="reeds-right" width="120" height="90" viewBox="0 0 120 90" fill="#04121a">
+      <path d="M10 90 Q 20 40 15 0 Q 30 50 35 90 Z" />
+      <path d="M30 90 Q 45 30 55 10 Q 50 50 60 90 Z" />
+      <path d="M50 90 Q 75 35 85 5 Q 75 55 80 90 Z" />
+      <path d="M70 90 Q 95 45 110 20 Q 95 65 100 90 Z" />
+    </svg>
+  </div>
+
+  <!-- Interactive 404 Glass Card -->
+  <div class="content-wrap">
+    <div class="error-code">404</div>
+    <h1 class="error-title">عذراً.. الصفحة تاهت في مياه بحيرة المنزلة! 🛶</h1>
+    <p class="error-desc">
+      الصفحة التي طلبتها غير موجودة أو تم نقلها إلى مكان آخر داخل الدليل. استمتع بمشهد مراكب الصيد وأسماك البحيرة ريثما نعيدك إلى بر الأمان.
+    </p>
+
+    <!-- Countdown Box -->
+    <div class="redirect-box">
+      <div class="countdown-circle" id="countdown-num">10</div>
+      <span>سيتم تحويلك تلقائياً إلى الصفحة الرئيسية خلال <span id="countdown-text">10</span> ثوانٍ</span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-bar"></div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="btn-group" style="margin-top: 20px;">
+      <a href="index.html" class="btn-home" id="btn-home-now">
+        <span>🏠</span>
+        <span>العودة للرئيسية فوراً</span>
+      </a>
+      <button type="button" class="btn-sound" id="btn-lake-audio" title="تشغيل / كتم صوت أمواج بحيرة المنزلة">
+        <span id="sound-icon">🔊</span>
+        <span id="sound-label">صوت مياه البحيرة</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Lake Surface, Boats & Underwater Fish Scene -->
+  <div class="lake-container">
+    
+    <!-- Traditional Manzala Fishing Boat 1 -->
+    <div class="boat-wrapper-1">
+      <svg width="130" height="95" viewBox="0 0 130 95" fill="none">
+        <!-- Mast & Sail (شراع المركب) -->
+        <path d="M65 5 L65 65" stroke="#E5E7EB" stroke-width="2.5" stroke-linecap="round" />
+        <path d="M65 8 L105 50 L65 58 Z" fill="rgba(255, 255, 255, 0.85)" />
+        <path d="M63 15 L32 52 L63 56 Z" fill="rgba(245, 166, 35, 0.85)" />
+        <!-- Lantern (فانوس الصياد) -->
+        <circle cx="65" cy="18" r="4" fill="#F59E0B" filter="drop-shadow(0 0 8px #F59E0B)" />
+        <!-- Wooden Hull (جسم المركب الخشبي) -->
+        <path d="M12 62 Q 65 64 118 62 L106 82 Q 65 86 24 82 Z" fill="#8B4513" stroke="#5C2C16" stroke-width="2" />
+        <path d="M18 64 Q 65 67 112 64" stroke="#D97706" stroke-width="2.5" />
+        <!-- Fisherman Silhouette (الصياد والمجداف) -->
+        <circle cx="50" cy="53" r="5" fill="#2C1810" />
+        <path d="M46 58 L54 58 L52 66 L46 66 Z" fill="#2C1810" />
+        <path d="M42 60 L80 82" stroke="#5C2C16" stroke-width="2" stroke-linecap="round" />
+      </svg>
+    </div>
+
+    <!-- Distant Fishing Boat 2 -->
+    <div class="boat-wrapper-2">
+      <svg width="120" height="90" viewBox="0 0 120 90" fill="none">
+        <path d="M60 10 L60 60" stroke="#FFF" stroke-width="2" />
+        <path d="M60 12 L95 48 L60 54 Z" fill="rgba(255, 255, 255, 0.6)" />
+        <circle cx="60" cy="20" r="3" fill="#F59E0B" filter="drop-shadow(0 0 6px #F59E0B)" />
+        <path d="M15 58 Q 60 60 105 58 L96 75 Q 60 78 24 75 Z" fill="#5C2C16" />
+      </svg>
+    </div>
+
+    <!-- Parallax Waves SVG -->
+    <svg class="wave wave-back" viewBox="0 0 1200 120" preserveAspectRatio="none">
+      <path d="M0 40 Q 150 10 300 40 T 600 40 T 900 40 T 1200 40 L 1200 120 L 0 120 Z" fill="#005B88" />
+    </svg>
+
+    <svg class="wave wave-mid" viewBox="0 0 1200 120" preserveAspectRatio="none">
+      <path d="M0 30 Q 150 60 300 30 T 600 30 T 900 30 T 1200 30 L 1200 120 L 0 120 Z" fill="#0077B6" />
+    </svg>
+
+    <div class="wave wave-front"></div>
+
+    <!-- Underwater Scene with Swimming Tilapia & Mullet Fish (أسماك بحيرة المنزلة) -->
+    <div class="underwater-scene">
+      
+      <!-- Fish 1: Bolti (بلطي منزلاوي أزرق) -->
+      <div class="fish fish-1">
+        <svg width="65" height="35" viewBox="0 0 65 35" fill="none">
+          <path d="M18 17 Q 35 5 50 17 Q 35 29 18 17 Z" fill="#00A6FB" />
+          <path d="M50 17 L62 8 L58 17 L62 26 Z" fill="#0077B6" />
+          <path d="M30 7 L38 2 L42 8 Z" fill="#006494" />
+          <path d="M28 27 L36 33 L38 27 Z" fill="#006494" />
+          <circle cx="24" cy="15" r="2.5" fill="#FFF" />
+          <circle cx="23.5" cy="15" r="1.2" fill="#030E15" />
+          <path d="M29 12 Q 32 17 29 22" stroke="#004E75" stroke-width="1.5" />
+        </svg>
+      </div>
+
+      <!-- Fish 2: Bouri (بوري ذهبي فضي) -->
+      <div class="fish fish-2">
+        <svg width="75" height="30" viewBox="0 0 75 30" fill="none">
+          <path d="M15 15 Q 40 4 60 15 Q 40 26 15 15 Z" fill="#E2E8F0" />
+          <path d="M25 9 Q 45 6 55 12" stroke="#F5A623" stroke-width="1.8" />
+          <path d="M60 15 L72 6 L68 15 L72 24 Z" fill="#CBD5E1" />
+          <circle cx="22" cy="13" r="2" fill="#030E15" />
+        </svg>
+      </div>
+
+      <!-- Fish 3: Small Swimmer -->
+      <div class="fish fish-3">
+        <svg width="55" height="28" viewBox="0 0 55 28" fill="none">
+          <path d="M14 14 Q 30 4 44 14 Q 30 24 14 14 Z" fill="#38BDF8" />
+          <path d="M44 14 L53 7 L50 14 L53 21 Z" fill="#0284C7" />
+          <circle cx="20" cy="12" r="2" fill="#FFF" />
+        </svg>
+      </div>
+
+      <!-- Fish 4: Golden Tilapia -->
+      <div class="fish fish-4">
+        <svg width="70" height="36" viewBox="0 0 70 36" fill="none">
+          <path d="M20 18 Q 38 6 55 18 Q 38 30 20 18 Z" fill="#F59E0B" />
+          <path d="M55 18 L68 9 L64 18 L68 27 Z" fill="#D97706" />
+          <circle cx="26" cy="16" r="2.5" fill="#FFF" />
+          <circle cx="25.5" cy="16" r="1.2" fill="#000" />
+        </svg>
+      </div>
+
+      <!-- Fish 5: Fast baby fish -->
+      <div class="fish fish-5">
+        <svg width="45" height="22" viewBox="0 0 45 22" fill="none">
+          <path d="M12 11 Q 25 3 36 11 Q 25 19 12 11 Z" fill="#7DD3FC" />
+          <path d="M36 11 L44 5 L41 11 L44 17 Z" fill="#38BDF8" />
+        </svg>
+      </div>
+
+      <!-- Floating Bubbles -->
+      <div class="bubble b1"></div>
+      <div class="bubble b2"></div>
+      <div class="bubble b3"></div>
+      <div class="bubble b4"></div>
+      <div class="bubble b5"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────────
+    //  10-Second Auto Redirect Engine
+    // ─────────────────────────────────────────────
+    let timeLeft = 10;
+    const countNumEl = document.getElementById('countdown-num');
+    const countTextEl = document.getElementById('countdown-text');
+    const progressBar = document.getElementById('progress-bar');
+
+    const interval = setInterval(() => {
+      timeLeft--;
+      if (countNumEl) countNumEl.textContent = timeLeft;
+      if (countTextEl) countTextEl.textContent = timeLeft;
+      if (progressBar) progressBar.style.width = (timeLeft * 10) + '%';
+
+      if (timeLeft <= 0) {
+        clearInterval(interval);
+        window.location.href = 'index.html';
+      }
+    }, 1000);
+
+    // ─────────────────────────────────────────────
+    //  Web Audio API — Lake Waters & Waves Synthesizer
+    // ─────────────────────────────────────────────
+    let audioCtx = null;
+    let isPlaying = false;
+    let noiseNode = null;
+    let gainNode = null;
+    let lfoNode = null;
+
+    function initLakeAudio() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        audioCtx = new AudioContext();
+
+        // 1. Pink Noise Buffer for Realistic Water Sounds
+        const bufferSize = audioCtx.sampleRate * 2;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+          output[i] *= 0.11;
+          b6 = white * 0.115926;
+        }
+
+        noiseNode = audioCtx.createBufferSource();
+        noiseNode.buffer = noiseBuffer;
+        noiseNode.loop = true;
+
+        // 2. Lowpass Filter to mimic water depth
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(420, audioCtx.currentTime);
+
+        // 3. LFO to simulate continuous gentle wave rhythm
+        lfoNode = audioCtx.createOscillator();
+        lfoNode.frequency.setValueAtTime(0.25, audioCtx.currentTime);
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.setValueAtTime(160, audioCtx.currentTime);
+        lfoNode.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+
+        // 4. Master Volume Gain
+        gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(0.35, audioCtx.currentTime);
+
+        noiseNode.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        noiseNode.start();
+        lfoNode.start();
+        isPlaying = true;
+        updateAudioUI();
+      } catch (e) {
+        console.warn('[Audio] Web Audio API init error:', e);
+      }
+    }
+
+    function toggleLakeAudio() {
+      if (!audioCtx) {
+        initLakeAudio();
+        return;
+      }
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+        isPlaying = true;
+      } else if (isPlaying) {
+        gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+        isPlaying = false;
+      } else {
+        gainNode.gain.setTargetAtTime(0.35, audioCtx.currentTime, 0.1);
+        isPlaying = true;
+      }
+      updateAudioUI();
+    }
+
+    function updateAudioUI() {
+      const soundIcon = document.getElementById('sound-icon');
+      const soundLabel = document.getElementById('sound-label');
+      if (isPlaying) {
+        if (soundIcon) soundIcon.textContent = '🌊';
+        if (soundLabel) soundLabel.textContent = 'صوت البحيرة (يعمل)';
+      } else {
+        if (soundIcon) soundIcon.textContent = '🔇';
+        if (soundLabel) soundLabel.textContent = 'تشغيل صوت البحيرة';
+      }
+    }
+
+    document.getElementById('btn-lake-audio')?.addEventListener('click', toggleLakeAudio);
+
+    // Try auto-play on first click anywhere on page
+    document.addEventListener('click', () => {
+      if (!audioCtx) {
+        initLakeAudio();
+      }
+    }, { once: true });
+  </script>
+</body>
+</html>
