@@ -6,6 +6,7 @@ import { initFirebase } from './firebase.js';
 import { initAuth, signOut, waitForAuth, onAuthStateChange, isAdmin } from './auth.js';
 import { getSettings } from './db.js';
 import { toast } from '../ui/components/Toast.js';
+import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
 
 /* ─────────────────────────────────────────────────────────
    HTML BUILDERS
@@ -130,7 +131,12 @@ function _bottomNavHTML(active) {
     <span class="bottom-nav__label">${items[1][2]}</span>
   </a>
   <div class="bottom-nav__fab">
-    <a href="search.html" class="bottom-nav__fab-btn" aria-label="بحث">🔍</a>
+    <button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="مساعد المنزلة الصوتي الذكي" title="مساعد المنزلة الصوتي الذكي (M)">
+      <span class="fab-letter-m">M</span>
+      <span class="fab-pulse-ring"></span>
+      <span class="fab-pulse-ring ring-2"></span>
+      <span class="fab-mic-badge">🎙️</span>
+    </button>
   </div>
   <a href="${items[2][0]}" class="bottom-nav__item${items[2][0]===active?' active':''}">
     <span class="bottom-nav__icon">${items[2][1]}</span>
@@ -254,7 +260,10 @@ export async function initPage(activeFile = '') {
   /* 5. Attach theme toggle listener to header button */
   _bindThemeToggle();
 
-  /* 6. Scroll shadow on header */
+  /* 6. Attach M Voice Assistant FAB listener */
+  bindGlobalVoiceAssistantFab();
+
+  /* 7. Scroll shadow on header */
   const hdr = document.getElementById('site-header');
   window.addEventListener('scroll', () =>
     hdr?.classList.toggle('scrolled', scrollY > 8), { passive: true });

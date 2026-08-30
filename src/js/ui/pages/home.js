@@ -512,6 +512,26 @@ function checkAndShowFirstVisitVideo() {
         <!-- Video Player (1.mp4) -->
         <div style="position: relative; width: 100%; background: #000; display: flex; align-items: center; justify-content: center;">
           <video id="welcome-intro-video" src="1.mp4" playsinline autoplay controls style="width: 100%; max-height: 65vh; display: block; object-fit: contain;"></video>
+          
+          <!-- Sound Banner if browser blocks unmuted autoplay -->
+          <div id="unmute-helper-banner" style="
+            display: none;
+            position: absolute;
+            bottom: 65px;
+            background: rgba(16, 185, 129, 0.95);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.4);
+            animation: bounceMute 1.2s infinite ease-in-out;
+            z-index: 10;
+          ">
+            🔊 اضغط هنا لتشغيل الصوت مباشرة
+          </div>
         </div>
 
         <!-- Footer Actions -->
@@ -541,6 +561,7 @@ function checkAndShowFirstVisitVideo() {
     });
 
     const videoEl = document.getElementById('welcome-intro-video');
+    const unmuteBanner = document.getElementById('unmute-helper-banner');
 
     function closeWelcomeModal() {
       try {
@@ -565,11 +586,35 @@ function checkAndShowFirstVisitVideo() {
     if (videoEl) {
       videoEl.addEventListener('ended', closeWelcomeModal);
 
-      // Attempt autoplay
-      videoEl.play().catch(() => {
-        videoEl.muted = true;
-        videoEl.play().catch(() => {});
-      });
+      // Force unmuted audio
+      videoEl.muted = false;
+      videoEl.volume = 1.0;
+
+      // Attempt playing with full audio
+      const playPromise = videoEl.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          // Playing with sound successfully
+          if (unmuteBanner) unmuteBanner.style.display = 'none';
+        }).catch(() => {
+          // If browser blocked unmuted autoplay, play muted first then show helper
+          videoEl.muted = true;
+          videoEl.play().catch(() => {});
+          if (unmuteBanner) unmuteBanner.style.display = 'block';
+
+          // On any user interaction, immediately unmute and restore full volume
+          const unmuteHandler = () => {
+            videoEl.muted = false;
+            videoEl.volume = 1.0;
+            if (unmuteBanner) unmuteBanner.style.display = 'none';
+            document.removeEventListener('click', unmuteHandler);
+            document.removeEventListener('touchstart', unmuteHandler);
+          };
+          document.addEventListener('click', unmuteHandler, { once: true });
+          document.addEventListener('touchstart', unmuteHandler, { once: true });
+          unmuteBanner?.addEventListener('click', unmuteHandler);
+        });
+      }
     }
 
     document.getElementById('btn-close-welcome-video')?.addEventListener('click', closeWelcomeModal);

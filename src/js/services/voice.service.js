@@ -256,3 +256,309 @@ export function mountVoiceSearchButton({ inputEl, buttonContainerEl, onSearch })
 
   return voice;
 }
+
+/**
+ * ─────────────────────────────────────────────────────────────
+ *  MANZALA GLOBAL VOICE ASSISTANT MODAL (مساعد المنزلة الصوتي)
+ * ─────────────────────────────────────────────────────────────
+ */
+let _activeVoiceModal = null;
+let _modalVoiceInstance = null;
+
+export async function openManzalaVoiceAssistantModal() {
+  // Close any existing instance
+  if (_activeVoiceModal) {
+    closeManzalaVoiceAssistantModal();
+  }
+
+  const modalBackdrop = document.createElement('div');
+  modalBackdrop.className = 'manzala-voice-modal-backdrop';
+  modalBackdrop.id = 'manzala-voice-modal-backdrop';
+
+  modalBackdrop.innerHTML = `
+    <div class="manzala-voice-modal-card" role="dialog" aria-modal="true">
+      <!-- Header -->
+      <div class="mvm-header">
+        <div class="mvm-title-wrap">
+          <span class="mvm-badge-icon">M</span>
+          <div>
+            <h3 class="mvm-title">مساعد المنزلة الصوتي الذكي</h3>
+            <p class="mvm-subtitle">تحدث بحرية.. وسنعثر لك على المكان فوراً</p>
+          </div>
+        </div>
+        <button type="button" class="mvm-close-btn" id="mvm-close-btn" aria-label="إغلاق">✕</button>
+      </div>
+
+      <!-- Assistant Central Orb & Wave Animation -->
+      <div class="mvm-center-stage">
+        <div class="mvm-orb-wrapper" id="mvm-orb-btn" role="button" title="اضغط للتحدث أو إعادة الاستماع">
+          <div class="mvm-orb-core">
+            <span class="mvm-orb-letter">M</span>
+          </div>
+          <div class="mvm-orb-pulse pulse-1"></div>
+          <div class="mvm-orb-pulse pulse-2"></div>
+        </div>
+
+        <!-- Live Waveform Bars -->
+        <div class="mvm-waveform" id="mvm-waveform">
+          <span class="wave-bar wb-1"></span>
+          <span class="wave-bar wb-2"></span>
+          <span class="wave-bar wb-3"></span>
+          <span class="wave-bar wb-4"></span>
+          <span class="wave-bar wb-5"></span>
+          <span class="wave-bar wb-6"></span>
+          <span class="wave-bar wb-7"></span>
+        </div>
+
+        <!-- Live Status Label -->
+        <div class="mvm-status" id="mvm-status-text">
+          🎙️ جاري الاستماع.. قل ما تبحث عنه الآن
+        </div>
+
+        <!-- Live Transcription Bubble -->
+        <div class="mvm-transcript-box" id="mvm-transcript-box">
+          <span class="mvm-transcript-placeholder">مثال: "عاوز صيدلية قريبة", "دكتور عظام", "مطعم كريب", "سباك"...</span>
+        </div>
+      </div>
+
+      <!-- Quick Suggestion Chips -->
+      <div class="mvm-quick-chips">
+        <span class="mvm-chips-label">أو اختر سريعاً:</span>
+        <div class="mvm-chips-scroll">
+          <button type="button" class="mvm-chip" data-query="صيدلية">💊 صيدلية</button>
+          <button type="button" class="mvm-chip" data-query="دكتور">🩺 دكتور</button>
+          <button type="button" class="mvm-chip" data-query="مطعم">🍕 مطعم</button>
+          <button type="button" class="mvm-chip" data-query="كافيه">☕ كافيه</button>
+          <button type="button" class="mvm-chip" data-query="سباك">🪠 سباك</button>
+          <button type="button" class="mvm-chip" data-query="نجار">🪚 نجار</button>
+          <button type="button" class="mvm-chip" data-query="سوبر ماركت">🛒 سوبر ماركت</button>
+          <button type="button" class="mvm-chip" data-query="قاعة افراح">👑 قاعات أفراح</button>
+        </div>
+      </div>
+
+      <!-- Instant Live Results Preview Container -->
+      <div class="mvm-results-container" id="mvm-results-container" style="display:none">
+        <div class="mvm-results-header">
+          <span class="mvm-results-title" id="mvm-results-title">أقرب الأماكن المطابقة:</span>
+        </div>
+        <div class="mvm-results-list" id="mvm-results-list"></div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modalBackdrop);
+  _activeVoiceModal = modalBackdrop;
+
+  requestAnimationFrame(() => {
+    modalBackdrop.classList.add('visible');
+  });
+
+  const statusText = document.getElementById('mvm-status-text');
+  const transcriptBox = document.getElementById('mvm-transcript-box');
+  const waveform = document.getElementById('mvm-waveform');
+  const orbBtn = document.getElementById('mvm-orb-btn');
+  const resultsContainer = document.getElementById('mvm-results-container');
+  const resultsList = document.getElementById('mvm-results-list');
+  const resultsTitle = document.getElementById('mvm-results-title');
+
+  // Initialize Speech Recognition for Assistant
+  _modalVoiceInstance = new VoiceSearch({
+    onStart: () => {
+      if (statusText) statusText.innerHTML = '🟢 <span style="color:var(--success,#10B981);font-weight:800">استمع إليك الآن..</span> تفضل بالحديث';
+      if (waveform) waveform.classList.add('active');
+      if (orbBtn) orbBtn.classList.add('listening');
+    },
+    onInterim: (interim) => {
+      if (transcriptBox) {
+        transcriptBox.innerHTML = `<span class="mvm-live-interim">"${interim}"</span>`;
+      }
+    },
+    onResult: async (cleaned, raw) => {
+      const query = cleaned || raw;
+      if (transcriptBox) {
+        transcriptBox.innerHTML = `<span class="mvm-final-query">🔍 "${query}"</span>`;
+      }
+      if (statusText) {
+        statusText.innerHTML = '⚡ <span style="color:var(--secondary,#F5A623);font-weight:800">تم التعرف! جاري جلب الأماكن فوراً...</span>';
+      }
+      if (waveform) waveform.classList.remove('active');
+      if (orbBtn) orbBtn.classList.remove('listening');
+
+      // Fetch and display instant matching places
+      await executeVoiceAssistantSearch(query);
+    },
+    onEnd: () => {
+      if (waveform) waveform.classList.remove('active');
+      if (orbBtn) orbBtn.classList.remove('listening');
+      if (statusText && !transcriptBox?.querySelector('.mvm-final-query')) {
+        statusText.innerHTML = '🎙️ اضغط على حرف <strong>M</strong> في المنتصف للتحدث مجدداً';
+      }
+    },
+    onError: () => {
+      if (waveform) waveform.classList.remove('active');
+      if (orbBtn) orbBtn.classList.remove('listening');
+      if (statusText) {
+        statusText.innerHTML = '⚠️ اضغط على حرف <strong>M</strong> للتحدث مرة أخرى';
+      }
+    }
+  });
+
+  // Start listening immediately
+  _modalVoiceInstance.start();
+
+  // Orb click to toggle / restart listening
+  orbBtn?.addEventListener('click', () => {
+    if (_modalVoiceInstance.isListening) {
+      _modalVoiceInstance.stop();
+    } else {
+      _modalVoiceInstance.start();
+    }
+  });
+
+  // Chip buttons click
+  modalBackdrop.querySelectorAll('.mvm-chip').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const q = btn.getAttribute('data-query');
+      if (transcriptBox) {
+        transcriptBox.innerHTML = `<span class="mvm-final-query">🔍 "${q}"</span>`;
+      }
+      await executeVoiceAssistantSearch(q);
+    });
+  });
+
+  // Close Handlers
+  document.getElementById('mvm-close-btn')?.addEventListener('click', closeManzalaVoiceAssistantModal);
+  modalBackdrop.addEventListener('click', (e) => {
+    if (e.target === modalBackdrop) {
+      closeManzalaVoiceAssistantModal();
+    }
+  });
+
+  async function executeVoiceAssistantSearch(query) {
+    if (!query) return;
+    if (resultsContainer) resultsContainer.style.display = 'block';
+    if (resultsList) {
+      resultsList.innerHTML = `
+        <div style="padding:15px;text-align:center;color:var(--text-muted)">
+          <div class="spinner spinner-sm" style="margin:0 auto 8px"></div>
+          جاري البحث عن أفضل النتائج في المنزلة...
+        </div>
+      `;
+    }
+
+    try {
+      const { getPublishedPlaces, getCategories } = await import('../core/db.js');
+      const { normalizeArabic, arabicScore } = await import('../utils/arabic.js');
+
+      const [places, categories] = await Promise.all([
+        getPublishedPlaces({ limit: 60 }),
+        getCategories()
+      ]);
+
+      const normQ = normalizeArabic(query).toLowerCase();
+
+      // Find direct matching places
+      const scored = (places || []).map(p => {
+        const nameScore = arabicScore(p.name || '', query);
+        const descScore = arabicScore(p.description || '', query);
+        const catScore = arabicScore(p.categoryId || '', query);
+        const servScore = (p.services || []).some(s => normalizeArabic(s).includes(normQ)) ? 0.8 : 0;
+        const total = Math.max(nameScore, descScore * 0.7, catScore * 0.9, servScore);
+        return { place: p, score: total };
+      }).filter(item => item.score > 0.15 || normalizeArabic(item.place.name || '').includes(normQ) || (item.place.area && normalizeArabic(item.place.area).includes(normQ)))
+        .sort((a, b) => b.score - a.score);
+
+      const topPlaces = scored.slice(0, 3).map(s => s.place);
+
+      if (topPlaces.length > 0) {
+        if (resultsTitle) resultsTitle.innerHTML = `🎯 وجدنا لك ${scored.length} مكان مطابق لـ "<strong>${escapeHtml(query)}</strong>":`;
+        resultsList.innerHTML = `
+          ${topPlaces.map(p => `
+            <div class="mvm-place-row" onclick="window.location.href='place.html?slug=${encodeURIComponent(p.slug || p.id)}'">
+              <div class="mvm-place-avatar">
+                ${p.logoUrl 
+                  ? `<img src="${escapeHtml(p.logoUrl)}" alt="${escapeHtml(p.name)}" />`
+                  : `<div class="mvm-avatar-fallback">${escapeHtml((p.name || 'م')[0])}</div>`
+                }
+              </div>
+              <div class="mvm-place-info">
+                <div class="mvm-place-name">
+                  <span>${escapeHtml(p.name)}</span>
+                  ${p.isVerified ? '<span style="color:#10B981;font-size:11px">✓ موثق</span>' : ''}
+                </div>
+                <div class="mvm-place-meta">
+                  <span>📍 ${escapeHtml(p.area || 'المنزلة')}</span>
+                  ${p.phone ? `<span style="direction:ltr">📞 ${escapeHtml(p.phone)}</span>` : ''}
+                </div>
+              </div>
+              <a href="place.html?slug=${encodeURIComponent(p.slug || p.id)}" class="btn btn-sm btn-primary" style="border-radius:8px;padding:4px 12px;font-size:12px;white-space:nowrap">عرض المكان ←</a>
+            </div>
+          `).join('')}
+
+          <div style="margin-top:10px;text-align:center">
+            <a href="search.html?q=${encodeURIComponent(query)}" class="btn btn-secondary btn-sm" style="width:100%;border-radius:10px;font-weight:700">
+              🔍 عرض كافة نتائج البحث (${scored.length} مكان) ←
+            </a>
+          </div>
+        `;
+      } else {
+        if (resultsTitle) resultsTitle.innerHTML = `لم نجد نتائج مباشرة لـ "${escapeHtml(query)}"`;
+        resultsList.innerHTML = `
+          <div style="padding:12px;text-align:center">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">يمكنك البحث المتقدم في الدليل بكافة الكلمات المرادفة:</p>
+            <a href="search.html?q=${encodeURIComponent(query)}" class="btn btn-primary btn-sm" style="border-radius:8px">
+              🔍 الانتقال لصفحة البحث الشاملة
+            </a>
+          </div>
+        `;
+      }
+    } catch (err) {
+      console.warn('[VoiceAssistant] search error:', err);
+      if (resultsList) {
+        resultsList.innerHTML = `
+          <div style="text-align:center;padding:10px">
+            <a href="search.html?q=${encodeURIComponent(query)}" class="btn btn-primary btn-sm">الانتقال لنتائج البحث ←</a>
+          </div>
+        `;
+      }
+    }
+  }
+}
+
+export function closeManzalaVoiceAssistantModal() {
+  if (_modalVoiceInstance) {
+    _modalVoiceInstance.stop();
+    _modalVoiceInstance = null;
+  }
+  if (_activeVoiceModal) {
+    _activeVoiceModal.classList.remove('visible');
+    setTimeout(() => {
+      if (_activeVoiceModal && _activeVoiceModal.parentNode) {
+        _activeVoiceModal.parentNode.removeChild(_activeVoiceModal);
+      }
+      _activeVoiceModal = null;
+    }, 300);
+  }
+}
+
+/**
+ * Attach Voice Assistant Modal Click Handler to all M FAB buttons across the site
+ */
+export function bindGlobalVoiceAssistantFab() {
+  document.querySelectorAll('#global-voice-assistant-fab, .bottom-nav__voice-assistant-fab').forEach(btn => {
+    if (!btn.dataset.bound) {
+      btn.dataset.bound = 'true';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openManzalaVoiceAssistantModal();
+      });
+    }
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+

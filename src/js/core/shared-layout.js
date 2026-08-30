@@ -7,6 +7,7 @@ import { initFirebase } from './firebase.js';
 import { initAuth, signInWithGoogle, signOut, getCurrentUser, onAuthStateChange } from './auth.js';
 import { getSettings } from './db.js';
 import { toast } from '../ui/components/Toast.js';
+import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
 
 /**
  * @param {string} activeHref - مثال: 'places.html' لتلوين الرابط النشط
@@ -21,6 +22,7 @@ export async function initSharedLayout(activeHref = '') {
   _setActiveLinks(activeHref);
   _checkApkPwaEnvironment();
   _bindThemeToggle();
+  bindGlobalVoiceAssistantFab();
 
   onAuthStateChange((user) => {
     _renderUserSection(user);
@@ -235,7 +237,12 @@ export function getSharedBottomNavHTML(activePage = '') {
       <span class="bottom-nav__icon">📋</span><span class="bottom-nav__label">التصنيفات</span>
     </a>
     <div class="bottom-nav__fab">
-      <a href="search.html" class="bottom-nav__fab-btn" aria-label="بحث">🔍</a>
+      <button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="مساعد المنزلة الصوتي الذكي" title="مساعد المنزلة الصوتي الذكي (M)">
+        <span class="fab-letter-m">M</span>
+        <span class="fab-pulse-ring"></span>
+        <span class="fab-pulse-ring ring-2"></span>
+        <span class="fab-mic-badge">🎙️</span>
+      </button>
     </div>
     <a href="offers.html"     class="bottom-nav__item${activePage==='offers.html'?' active':''}">
       <span class="bottom-nav__icon">🏷️</span><span class="bottom-nav__label">العروض</span>
