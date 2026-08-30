@@ -94,7 +94,7 @@ async function handleMessage(msg, env) {
   if (env.TELEGRAM_ADMIN_ID && String(chatId) !== String(env.TELEGRAM_ADMIN_ID)) {
     await telegramApi('sendMessage', {
       chat_id: chatId,
-      text: `⚠️ عذراً ${fromUser}، هذا البوت مخصص فقط لإدارة منصة دليل المنزلة وناسها. المعرف الخاص بك هو: \`${chatId}\``,
+      text: `⚠️ عذراً ${fromUser}، هذا البوت مخصص فقط لإدارة منصة دليل المنزلة والمطرية الرقمي. المعرف الخاص بك هو: \`${chatId}\``,
       parse_mode: 'Markdown'
     }, env);
     return;

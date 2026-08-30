@@ -12,8 +12,8 @@ import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '..
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { isAdmin } from '../../core/auth.js';
-import { formatPrice } from '../../utils/arabic.js';
-import { extractCoordinates } from '../../utils/maps.js';
+import { formatPrice, arabicMatch } from '../../utils/arabic.js';
+import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 
 let _dashUser = null;
 let _dashPlacesCache = null;
@@ -351,6 +351,11 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
   const categories = await getCategories();
 
+  const currentArea = place?.area ? place.area.trim() : 'المنزلة';
+  const isCustomArea = Boolean(currentArea && !MANZALA_VILLAGES_LIST.includes(currentArea));
+  const currentAreaVal = isCustomArea ? 'other' : currentArea;
+  const currentAreaName = isCustomArea ? currentArea : (currentArea || 'المنزلة');
+
   $container.innerHTML = `
     <div class="dashboard-header">
       <div>
@@ -442,7 +447,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             <input type="text" id="p-custom-category" class="form-input" placeholder="مثال: مطبعة، ستوديو تصوير، مركز تدريب، محل حيوانات أليفة" value="${escAttr(place?.customCategory || '')}" />
           </div>
           <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:4px">
-            💡 سيتم إرسال هذا التصنيف للإدارة لاعتماده وإضافته في دليل المنزلة وناسها.
+            💡 سيتم إرسال هذا التصنيف للإدارة لاعتماده وإضافته في دليل المنزلة والمطرية الرقمي.
           </p>
         </div>
 
@@ -484,34 +489,59 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">المدينة / القرية / المنطقة <span class="required">*</span></label>
-            <input type="text" id="p-area" list="areas-datalist" class="form-input" placeholder="اختر أو اكتب المدينة أو القرية..." value="${escAttr(place?.area || 'المنزلة')}" />
-            <datalist id="areas-datalist">
-              <option value="المنزلة (المدينة)"></option>
-              <option value="المطرية (دقهلية)"></option>
-              <option value="العصافرة"></option>
-              <option value="الجمالية"></option>
-              <option value="ميت سلسيل"></option>
-              <option value="البصراط"></option>
-              <option value="العزيزة"></option>
-              <option value="الأحمدية"></option>
-              <option value="الروضة"></option>
-              <option value="الحوتة"></option>
-              <option value="النسايمة"></option>
-              <option value="ميت خضير"></option>
-              <option value="ميت شريف"></option>
-              <option value="الشبول"></option>
-              <option value="ميت مرجا سلسيل"></option>
-              <option value="الكردي"></option>
-            </datalist>
+        <!-- Searchable Area / Village Selector -->
+        <div class="form-group" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
+            <label class="form-label" style="margin-bottom:0;font-weight:var(--font-weight-bold)">المنطقة داخل المنزلة / المطرية <span class="required">*</span></label>
+            <div id="p-selected-area-badge" style="font-size:12px;color:var(--primary);display:flex;align-items:center;gap:6px">
+              <span>المختار:</span>
+              <span id="p-selected-area-name" class="chip chip--primary" style="font-weight:700">${escHtml(currentAreaName)}</span>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">العنوان بالتفصيل أو الشارع</label>
-            <input type="text" id="p-address" class="form-input" placeholder="مثال: شارع البحر، بجوار المسجد الكبير" value="${escAttr(place?.address || '')}" />
+          <!-- Live Smart Search Input -->
+          <div style="position:relative;margin-bottom:10px">
+            <input 
+              type="search" 
+              id="p-area-search-input" 
+              class="form-input" 
+              placeholder="🔍 ابحث بالاسم عن قريتك أو منطقتك (54 قرية ومدينة)..." 
+              autocomplete="off"
+              style="padding-right:38px;background:var(--surface);border-color:var(--primary)"
+            />
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🗺️</span>
           </div>
+
+          <!-- Area Quick Selection Pills Box -->
+          <div id="p-area-picker-box" style="max-height:160px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;padding:6px;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--border)">
+            ${MANZALA_VILLAGES_LIST.map(v => `
+              <button type="button" class="area-select-pill ${currentAreaVal === v ? 'active' : ''}" data-area-name="${escAttr(v)}">
+                <span>📍</span>
+                <span>${escHtml(v)}</span>
+              </button>
+            `).join('')}
+            <button type="button" class="area-select-pill ${isCustomArea ? 'active' : ''}" data-area-name="other">
+              <span>✏️</span>
+              <span>بلد أو قرية أخرى...</span>
+            </button>
+          </div>
+          <div id="p-area-no-match" style="display:none;padding:8px;font-size:12px;color:var(--text-muted);text-align:center">
+            لم نجد قرية مطابقة. يمكنك اختيار <strong style="color:var(--secondary,#F5A623);cursor:pointer" onclick="document.querySelector('[data-area-name=other]')?.click()">✏️ بلد أو قرية أخرى...</strong> وكتابتها يدوياً.
+          </div>
+
+          <!-- Hidden Input for Form Submission -->
+          <input type="hidden" id="p-area" value="${escAttr(currentAreaVal)}" />
+
+          <!-- Custom Area Text Input (Shows when 'other' is selected) -->
+          <div class="form-group animate-fade-in" id="custom-area-group" style="margin-top:10px;${isCustomArea ? '' : 'display:none'}">
+            <label class="form-label" style="font-size:12.5px;font-weight:700">اكتب اسم البلد أو القرية الجديدة <span class="required">*</span></label>
+            <input type="text" id="p-custom-area" class="form-input" placeholder="مثال: ميت مرجا سلسيل، الكردي، أو أي قرية أخرى..." value="${escAttr(isCustomArea ? place?.area : '')}" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">العنوان بالتفصيل أو الشارع</label>
+          <input type="text" id="p-address" class="form-input" placeholder="مثال: شارع البحر، بجوار المسجد الكبير" value="${escAttr(place?.address || '')}" />
         </div>
 
         <div class="form-group">
@@ -767,6 +797,56 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
     const customCatGroup = document.getElementById('custom-category-group');
     if (customCatGroup) customCatGroup.style.display = isOther ? 'block' : 'none';
+  });
+
+  // Live Area Search Filter & Pill Selection
+  const areaSearchInput = document.getElementById('p-area-search-input');
+  const areaPickerBox = document.getElementById('p-area-picker-box');
+  const areaPills = areaPickerBox ? areaPickerBox.querySelectorAll('.area-select-pill') : [];
+  const areaNoMatch = document.getElementById('p-area-no-match');
+  const hiddenAreaInput = document.getElementById('p-area');
+  const customAreaGroup = document.getElementById('custom-area-group');
+  const customAreaInput = document.getElementById('p-custom-area');
+  const selectedAreaBadgeName = document.getElementById('p-selected-area-name');
+
+  areaSearchInput?.addEventListener('input', (e) => {
+    const q = e.target.value.trim();
+    let visibleCount = 0;
+    areaPills.forEach(pill => {
+      const name = pill.getAttribute('data-area-name') || '';
+      const text = pill.textContent || '';
+      const match = !q || arabicMatch(name, q) || arabicMatch(text, q);
+      pill.style.display = match ? 'inline-flex' : 'none';
+      if (match) visibleCount++;
+    });
+    if (areaNoMatch) areaNoMatch.style.display = visibleCount === 0 ? 'block' : 'none';
+  });
+
+  areaPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const areaName = pill.getAttribute('data-area-name');
+      areaPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+
+      if (areaName === 'other') {
+        if (customAreaGroup) customAreaGroup.style.display = 'block';
+        if (customAreaInput) {
+          customAreaInput.focus();
+          if (hiddenAreaInput) hiddenAreaInput.value = customAreaInput.value.trim() || 'المنزلة';
+          if (selectedAreaBadgeName) selectedAreaBadgeName.textContent = customAreaInput.value.trim() || 'بلد مخصص';
+        }
+      } else {
+        if (customAreaGroup) customAreaGroup.style.display = 'none';
+        if (hiddenAreaInput) hiddenAreaInput.value = areaName;
+        if (selectedAreaBadgeName) selectedAreaBadgeName.textContent = areaName;
+      }
+    });
+  });
+
+  customAreaInput?.addEventListener('input', () => {
+    const val = customAreaInput.value.trim();
+    if (hiddenAreaInput) hiddenAreaInput.value = val || 'المنزلة';
+    if (selectedAreaBadgeName) selectedAreaBadgeName.textContent = val || 'بلد مخصص';
   });
 
   // Always Open 24/7 toggle
@@ -1027,7 +1107,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         description: document.getElementById('p-desc').value,
         phone: document.getElementById('p-phone').value,
         whatsapp: document.getElementById('p-whatsapp').value,
-        area: document.getElementById('p-area').value,
+        area: (document.getElementById('p-area')?.value === 'other' 
+          ? (document.getElementById('p-custom-area')?.value.trim() || 'المنزلة') 
+          : (document.getElementById('p-area')?.value || 'المنزلة')),
         address: document.getElementById('p-address').value,
         mapsLink: document.getElementById('p-maps').value,
         location: _currentCoords,

@@ -31,9 +31,9 @@ export async function renderLoginPage($container) {
         </div>
 
         <div style="text-align:right;font-size:var(--font-size-xs);color:var(--text-secondary);line-height:2">
-          <div>✓ إضافة مكانك في دليل المنزلة الرقمي مجاناً</div>
+          <div>✓ إضافة مكانك في دليل المنزلة والمطرية الرقمي مجاناً</div>
           <div>✓ إضافة صور النشاط وساعات العمل وأرقام الهواتف والواتساب</div>
-          <div>✓ نشر العروض اليومية والتخفيضات لأهل المنزلة</div>
+          <div>✓ نشر العروض اليومية والتخفيضات لأهل المنزلة والمطرية والقرى</div>
           <div>✓ طلب علامة التوثيق الذهبية وإضافة كتالوج المنتجات</div>
         </div>
       </div>

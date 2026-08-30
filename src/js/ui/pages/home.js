@@ -7,9 +7,8 @@ import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings
 import { appState } from '../../core/state.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
-import { formatPrice, calcDiscount } from '../../utils/arabic.js';
+import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { daysUntil } from '../../utils/date.js';
-import { normalizeArabic, arabicScore } from '../../utils/arabic.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
 
@@ -289,7 +288,7 @@ function renderStatsBar(placesCount, categoriesCount) {
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
       <div class="stats-bar__item">
-        <div class="stats-bar__value">13+</div>
+        <div class="stats-bar__value">54+</div>
         <div class="stats-bar__label">مدينة وقرية مغطاة بالكامل</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
@@ -344,10 +343,12 @@ function setupVillagesSearch() {
   if (!input || !items.length) return;
 
   input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase();
+    const q = input.value.trim();
     items.forEach(el => {
-      const name = (el.getAttribute('data-name') || '').toLowerCase();
-      el.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+      const name = el.getAttribute('data-name') || '';
+      const text = el.textContent || '';
+      const match = !q || arabicMatch(name, q) || arabicMatch(text, q);
+      el.style.display = match ? 'flex' : 'none';
     });
   });
 }
@@ -554,10 +555,10 @@ function getHomeHTML() {
       <div class="container text-center">
         <div style="font-size:3rem;margin-bottom:var(--space-4)">🏪</div>
         <h2 style="color:#fff;font-size:var(--font-size-2xl);font-weight:800;margin-bottom:var(--space-3)">
-          أضف مكانك في دليل المنزلة
+          أضف مكانك في دليل المنزلة والمطرية الرقمي
         </h2>
         <p style="color:rgba(255,255,255,0.8);max-width:480px;margin:0 auto var(--space-6)">
-          سجّل محلك أو خدمتك الآن وكن جزءاً من أكبر دليل رقمي لمدينة المنزلة
+          سجّل محلك أو خدمتك الآن وكن جزءاً من أكبر دليل رقمي لمدينتي المنزلة والمطرية وكافة القرى المجاورة
         </p>
         <a href="dashboard.html?section=add" class="btn btn-secondary btn-xl">
           <span>➕</span> أضف مكانك الآن — مجاناً
@@ -624,7 +625,7 @@ function checkAndShowFirstVisitVideo() {
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
           <div style="display: flex; align-items: center; gap: 8px; color: #fff; font-weight: 700; font-size: 14px;">
             <span>👋</span>
-            <span>مرحباً بك في منصة ودليل المنزلة وناسها</span>
+            <span>مرحباً بك في دليل المنزلة والمطرية الرقمي</span>
           </div>
           <button id="btn-close-welcome-video" style="
             background: rgba(255, 255, 255, 0.12);

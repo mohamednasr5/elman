@@ -4,17 +4,13 @@ import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCar
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore } from '../../utils/arabic.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
-import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../utils/maps.js';
+import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { toast } from '../components/Toast.js';
 
 let _userLocationCoords = null;
 
 export async function renderPlacesPage($container, { query = {}, user }) {
-  const towns = [
-    'المنزلة', 'المطرية', 'العصافرة', 'الجمالية', 'ميت سلسيل',
-    'البصراط', 'العزيزة', 'الأحمدية', 'الروضة', 'الحوتة',
-    'النسايمة', 'ميت خضير', 'ميت شريف', 'الشبول', 'ميت مرجا سلسيل'
-  ];
+  const towns = MANZALA_VILLAGES_LIST;
 
   $container.innerHTML = `
     <div class="search-page-header">
@@ -87,7 +83,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     // Mount Sponsored Showcase
     mountSponsoredShowcase('places-sponsored-showcase', places || [], {
       title: 'إعلانات وأنشطة مميزة',
-      subtitle: 'أبرز الأنشطة التجارية في دليل المنزلة'
+      subtitle: 'أبرز الأنشطة التجارية في دليل المنزلة والمطرية الرقمي'
     });
 
     const currentUser = getCurrentUser() || user;

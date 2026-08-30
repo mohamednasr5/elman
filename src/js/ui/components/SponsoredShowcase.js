@@ -57,7 +57,7 @@ export function mountSponsoredShowcase(target, places = [], options = {}) {
         </div>
 
         <div class="sponsored-showcase-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <a href="https://wa.me/wasendernew?text=${encodeURIComponent('مرحباً، أود حجز إعلان مميز يظهر في دليل المنزلة')}" 
+          <a href="https://wa.me/wasendernew?text=${encodeURIComponent('مرحباً، أود حجز إعلان مميز يظهر في دليل المنزلة والمطرية الرقمي')}" 
              target="_blank" 
              rel="noopener" 
              class="btn btn-sm btn-secondary sponsored-cta-btn" 

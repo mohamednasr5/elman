@@ -154,7 +154,7 @@ function getCategoryCardCover(placeOrCatId) {
   // Semantic custom search
   const raw = (customCat + ' ' + name + ' ' + categoryId).toLowerCase();
   let icon = '🏪';
-  let label = customCat || 'دليل المنزلة';
+  let label = customCat || 'دليل المنزلة والمطرية الرقمي';
 
   if (raw.includes('تصوير') || raw.includes('فوتو') || raw.includes('استوديو')) { icon = '📸'; }
   else if (raw.includes('رخام') || raw.includes('جرانيت')) { icon = '🏛️'; }

@@ -54,7 +54,7 @@ export async function renderPlacePage($container, { slug, user }) {
             <div style="font-size:64px;margin-bottom:16px">🚫</div>
             <h1 class="error-page__title" style="color:var(--danger,#EF4444);font-size:24px;margin-bottom:12px">هذا النشاط محظور حالياً</h1>
             <p class="error-page__text" style="color:var(--text-muted);line-height:1.6;margin-bottom:24px">
-              تم حظر أو تعليق عرض هذا المكان مؤقتاً لمخالفة شروط وسياسات الاستخدام الخاصة بدليل المنزلة وناسها.
+              تم حظر أو تعليق عرض هذا المكان مؤقتاً لمخالفة شروط وسياسات الاستخدام الخاصة بدليل المنزلة والمطرية الرقمي.
             </p>
             <a href="places.html" class="btn btn-primary btn-lg">العودة لدليل الأماكن</a>
           </div>
@@ -101,8 +101,8 @@ export async function renderPlacePage($container, { slug, user }) {
     // Update SEO safely
     try {
       setMeta({
-        title: `${place.name} — ${catInfo.name || 'دليل المنزلة'}`,
-        description: place.description || `تعرف على ${place.name} في المنزلة — مواعيد العمل، أرقام التواصل، العنوان، والخدمات`,
+        title: `${place.name} — ${catInfo.name || 'دليل المنزلة والمطرية الرقمي'}`,
+        description: place.description || `تعرف على ${place.name} في المنزلة والمطرية — مواعيد العمل، أرقام التواصل، العنوان، والخدمات`,
         image: place.coverImageUrl || place.logoUrl,
         url: `https://elmanzala.com/place.html?slug=${place.slug}`
       });
@@ -205,7 +205,7 @@ export async function renderPlacePage($container, { slug, user }) {
               ` : ''}
               
               ${place.whatsapp ? `
-                <a href="https://wa.me/${formatWhatsApp(place.whatsapp)}?text=${encodeURIComponent(`مرحباً، وجدتك على دليل المنزلة وناسها وأود الاستفسار عن خدماتك`)}" 
+                <a href="https://wa.me/${formatWhatsApp(place.whatsapp)}?text=${encodeURIComponent(`مرحباً، وجدتك على دليل المنزلة والمطرية الرقمي وأود الاستفسار عن خدماتك`)}" 
                    target="_blank" 
                    rel="noopener" 
                    class="btn btn-whatsapp" 
@@ -246,7 +246,7 @@ export async function renderPlacePage($container, { slug, user }) {
                   هذا الشخص أو المكان غير موثق حالياً
                 </div>
                 <div class="unverified-notice__text">
-                  العلامة الموثقة تضمن صحة البيانات وتمنحك مميزات إضافية وتظهر قبل الجميع فى دليل المنزلة
+                  العلامة الموثقة تضمن صحة البيانات وتمنحك مميزات إضافية وتظهر قبل الجميع فى دليل المنزلة والمطرية الرقمي
                 </div>
               </div>
               <div class="unverified-notice__actions">
@@ -813,7 +813,7 @@ function showVerificationModal(place, user, waUrl) {
           <div class="verification-step__num">2</div>
           <div>
             <div class="verification-step__title">مميزات التوثيق الفوري</div>
-            <div class="verification-step__text">علامة التوثيق المعتمدة ✓ + إضافة المنتجات والعروض + أولوية الظهور في نتائج البحث والتصدر في دليل المنزلة</div>
+            <div class="verification-step__text">علامة التوثيق المعتمدة ✓ + إضافة المنتجات والعروض + أولوية الظهور في نتائج البحث والتصدر في دليل المنزلة والمطرية الرقمي</div>
           </div>
         </div>
         <div class="verification-step">
@@ -1228,7 +1228,7 @@ function setupPlaceSharing(place) {
 📌 العنوان: ${placeAddress}
 🔗 رابط المكان على الدليل: ${placeUrl}
 
-✨ تم مشاركة هذه البطاقة من دليل المنزلة الرقمي.. أنتم كمان ممكن تضيفوا محلكم أو شركتكم مجاناً معنا من هنا:
+✨ تم مشاركة هذه البطاقة من دليل المنزلة والمطرية الرقمي.. أنتم كمان ممكن تضيفوا محلكم أو شركتكم مجاناً معنا من هنا:
 🌐 https://dalilmanzala.com`;
 
   triggers.forEach(btn => {
@@ -1237,7 +1237,7 @@ function setupPlaceSharing(place) {
       if (navigator.share) {
         try {
           await navigator.share({
-            title: `${placeName} | دليل المنزلة`,
+            title: `${placeName} | دليل المنزلة والمطرية الرقمي`,
             text: shareText,
             url: ogProxyUrl
           });
@@ -1279,7 +1279,7 @@ function openCustomShareModal({ placeName, placeAddress, placeUrl, ogProxyUrl, c
         </div>
 
         <div style="font-size:12px;color:var(--text-secondary);background:var(--surface-2);padding:10px 12px;border-radius:var(--radius-md);line-height:1.6;border:1px solid var(--border)">
-          ✨ تم مشاركة هذه البطاقة من دليل المنزلة الرقمي..<br/>
+          ✨ تم مشاركة هذه البطاقة من دليل المنزلة والمطرية الرقمي..<br/>
           أنتم كمان ممكن تضيفوا محلكم أو شركتكم مجاناً معنا من هنا:<br/>
           <a href="https://dalilmanzala.com" target="_blank" rel="noopener" style="color:var(--primary);font-weight:700">dalilmanzala.com</a>
         </div>

@@ -5,32 +5,38 @@
 
 /**
  * Normalize Arabic text for search comparison.
- * Handles common variations in Arabic letters.
+ * Handles all common variations in Arabic letters (أ إ آ ا ٱ, ؤ و, ي ى ئ, ة ه, Tashkeel, Hamzas, Tatweel).
  */
 export function normalizeArabic(text) {
   if (!text) return '';
 
-  let cleaned = text
-    // Normalize Alef variants
-    .replace(/[أإآا]/g, 'ا')
-    // Normalize Hamza variants
-    .replace(/[ؤئ]/g, 'ء')
-    // Remove Tashkeel (diacritics)
-    .replace(/[\u064B-\u065F\u0670]/g, '')
-    // Normalize Teh Marbuta and Heh
+  return String(text)
+    // Normalize all forms of Alef (أ, إ, آ, ا, ٱ) to plain Alef
+    .replace(/[أإآاٱ]/g, 'ا')
+    // Normalize Waw with Hamza (ؤ) to Waw (و)
+    .replace(/ؤ/g, 'و')
+    // Normalize Yeh variants (ي, ى, ئ) to plain Yeh (ي)
+    .replace(/[يىئ]/g, 'ي')
+    // Normalize Teh Marbuta (ة) to Heh (ه)
     .replace(/[ةه]/g, 'ه')
-    // Normalize Yeh variants
-    .replace(/[يى]/g, 'ي')
-    // Normalize Waw
-    .replace(/و/g, 'و')
-    // Remove Tatweel
-    .replace(/\u0640/g, '')
+    // Remove Tashkeel (diacritics: Fatha, Damma, Kasra, Tanween, Shadda, Sukun) & Tatweel
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    // Remove standalone Hamza variants & quotes
+    .replace(/[ء`'"]/g, '')
+    // Remove punctuation
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()؟،\\|]/g, ' ')
     // Collapse whitespace
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+}
 
-  return cleaned;
+/**
+ * Remove definite article (ال) from the beginning of Arabic words
+ */
+export function stripAl(text) {
+  if (!text) return '';
+  return text.split(/\s+/).map(w => (w.startsWith('ال') && w.length > 3) ? w.slice(2) : w).join(' ');
 }
 
 /**
@@ -137,12 +143,41 @@ export function expandArabicSearchIntent(rawQuery) {
 }
 
 /**
- * Check if Arabic text A matches/contains B (normalized)
+ * Check if Arabic text A matches/contains B (smart & flexible)
+ * Handles letter normalization, with/without 'ال', word-level matching
  */
 export function arabicMatch(haystack, needle) {
+  if (!needle) return true;
+  if (!haystack) return false;
+
   const h = normalizeArabic(haystack);
   const n = normalizeArabic(needle);
-  return h.includes(n);
+
+  if (!n) return true;
+  if (!h) return false;
+
+  // 1. Direct contains after full normalization
+  if (h.includes(n)) return true;
+
+  // 2. Query without 'ال' matching haystack
+  const nNoAl = stripAl(n);
+  if (nNoAl && nNoAl !== n && h.includes(nNoAl)) return true;
+
+  // 3. Haystack without 'ال' matching query or query without 'ال'
+  const hNoAl = stripAl(h);
+  if (hNoAl && (hNoAl.includes(n) || (nNoAl && hNoAl.includes(nNoAl)))) return true;
+
+  // 4. Token-by-token matching (e.g. multi-word search)
+  const nTokens = n.split(/\s+/).filter(Boolean);
+  if (nTokens.length > 1) {
+    const allTokensMatch = nTokens.every(tok => {
+      const tokNoAl = stripAl(tok);
+      return h.includes(tok) || (tokNoAl && h.includes(tokNoAl)) || (hNoAl && hNoAl.includes(tok));
+    });
+    if (allTokensMatch) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -159,21 +194,33 @@ export function arabicScore(text, query) {
   // Exact match
   if (normalText === normalQuery) return 100;
 
+  // Exact match without 'ال'
+  const nQueryNoAl = stripAl(normalQuery);
+  const nTextNoAl = stripAl(normalText);
+  if (nTextNoAl === nQueryNoAl) return 95;
+
   // Starts with query
   if (normalText.startsWith(normalQuery)) return 85;
+  if (nTextNoAl.startsWith(nQueryNoAl)) return 80;
 
   // Contains query as whole word
   const wordBoundary = new RegExp(`(^|\\s)${escapeRegex(normalQuery)}(\\s|$)`);
   if (wordBoundary.test(normalText)) return 70;
 
   // Contains query anywhere
-  if (normalText.includes(normalQuery)) return 50;
+  if (normalText.includes(normalQuery)) return 55;
+  if (nQueryNoAl && normalText.includes(nQueryNoAl)) return 50;
+  if (nTextNoAl && nTextNoAl.includes(normalQuery)) return 50;
+  if (nTextNoAl && nQueryNoAl && nTextNoAl.includes(nQueryNoAl)) return 45;
 
   // Partial match of words
   const queryWords = normalQuery.split(' ').filter(Boolean);
-  const matchedWords = queryWords.filter(word => normalText.includes(word));
+  const matchedWords = queryWords.filter(word => {
+    const wordNoAl = stripAl(word);
+    return normalText.includes(word) || (wordNoAl && normalText.includes(wordNoAl));
+  });
   if (matchedWords.length > 0) {
-    return 30 * (matchedWords.length / queryWords.length);
+    return 35 * (matchedWords.length / queryWords.length);
   }
 
   return 0;

@@ -180,7 +180,7 @@ const pages = [
   {
     file: 'dashboard.html',
     title: 'لوحة التحكم',
-    desc: 'إدارة أماكنك وعروضك ومنتجاتك في دليل المنزلة الرقمي',
+    desc: 'إدارة أماكنك وعروضك ومنتجاتك في دليل المنزلة والمطرية الرقمي',
     activeNav: 'dashboard.html',
     bodyClass: 'dashboard-page',
     moduleScript: `
@@ -200,7 +200,7 @@ const pages = [
   {
     file: 'admin.html',
     title: 'لوحة الإدارة',
-    desc: 'إدارة شاملة لمنصة المنزلة وناسها — الأماكن والمستخدمين والإعدادات',
+    desc: 'إدارة شاملة لمنصة دليل المنزلة والمطرية الرقمي — الأماكن والمستخدمين والإعدادات',
     activeNav: '',
     bodyClass: 'dashboard-page',
     moduleScript: `
@@ -232,7 +232,7 @@ const pages = [
   {
     file: 'privacy.html',
     title: 'سياسة الخصوصية',
-    desc: 'سياسة الخصوصية وحماية البيانات لمنصة المنزلة وناسها',
+    desc: 'سياسة الخصوصية وحماية البيانات لمنصة دليل المنزلة والمطرية الرقمي',
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -243,7 +243,7 @@ const pages = [
   {
     file: 'terms.html',
     title: 'شروط الاستخدام',
-    desc: 'شروط وأحكام استخدام منصة المنزلة وناسها',
+    desc: 'شروط وأحكام استخدام منصة دليل المنزلة والمطرية الرقمي',
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
@@ -254,7 +254,7 @@ const pages = [
   {
     file: 'contact.html',
     title: 'تواصل معنا',
-    desc: 'تواصل مع إدارة منصة المنزلة وناسها لاستفساراتك وطلبات التوثيق',
+    desc: 'تواصل مع إدارة منصة دليل المنزلة والمطرية الرقمي لاستفساراتك وطلبات التوثيق',
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';

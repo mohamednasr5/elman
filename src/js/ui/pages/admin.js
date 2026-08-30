@@ -10,7 +10,8 @@ import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { formatDate } from '../../utils/date.js';
-import { extractCoordinates } from '../../utils/maps.js';
+import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
+import { arabicMatch } from '../../utils/arabic.js';
 
 // ── In-Memory Cache Store for 0ms Tab Switching ──
 const adminCache = {
@@ -433,11 +434,14 @@ async function renderAdminPlaces($container) {
   `;
 
   document.getElementById('admin-place-search')?.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase();
+    const q = e.target.value.trim();
     const filtered = places.filter(p => 
-      (p.name || '').toLowerCase().includes(q) || 
-      (p.area || '').toLowerCase().includes(q) ||
-      (p.categoryId || '').toLowerCase().includes(q)
+      !q ||
+      arabicMatch(p.name, q) || 
+      arabicMatch(p.area, q) ||
+      arabicMatch(p.address, q) ||
+      arabicMatch(p.categoryName || p.categoryId, q) ||
+      arabicMatch(p.description, q)
     );
     document.getElementById('admin-places-tbody').innerHTML = renderAdminPlacesTableRows(filtered);
   });
@@ -1381,11 +1385,25 @@ async function renderAdminReviews($container) {
       content: `
         <form id="form-admin-add-rev" style="display:flex;flex-direction:column;gap:14px">
           
-          <!-- Place Selector -->
+          <!-- Place Selector with Live Search -->
           <div class="form-group" style="margin:0">
-            <label class="form-label">اختر المكان المطلوب <span class="required">*</span></label>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label class="form-label" style="margin:0;font-weight:700">اختر المكان المطلوب <span class="required">*</span></label>
+              <span id="add-rev-place-match-count" style="font-size:11px;color:var(--text-muted)">${places.length} مكان متاح</span>
+            </div>
+            <div style="position:relative;margin-bottom:6px">
+              <input 
+                type="search" 
+                id="add-rev-place-search" 
+                class="form-input" 
+                placeholder="🔍 اكتب اسم المحل أو النشاط للبحث السريع..." 
+                autocomplete="off" 
+                style="padding-right:32px;font-size:12.5px"
+              />
+              <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔎</span>
+            </div>
             <select id="add-rev-place" class="form-select" required>
-              <option value="">-- اختر المكان --</option>
+              <option value="">-- اختر المكان من القائمة (${places.length} مكان) --</option>
               ${places.map(p => `<option value="${escAttr(p.id)}" data-slug="${escAttr(p.slug || '')}">${escHtml(p.name)}</option>`).join('')}
             </select>
           </div>
@@ -1497,6 +1515,37 @@ async function renderAdminReviews($container) {
       ]
     });
 
+    // Live search filter for add-rev-place
+    const addRevSearch = document.getElementById('add-rev-place-search');
+    const addRevSelect = document.getElementById('add-rev-place');
+    const addRevMatchCount = document.getElementById('add-rev-place-match-count');
+
+    addRevSearch?.addEventListener('input', (e) => {
+      const q = e.target.value.trim();
+      let matchedCount = 0;
+      let firstMatchedId = null;
+
+      Array.from(addRevSelect.options).forEach((opt, idx) => {
+        if (idx === 0) return;
+        const text = opt.textContent || '';
+        const match = !q || arabicMatch(text, q);
+        opt.hidden = !match;
+        opt.style.display = match ? 'block' : 'none';
+        if (match) {
+          matchedCount++;
+          if (!firstMatchedId) firstMatchedId = opt.value;
+        }
+      });
+
+      if (addRevMatchCount) {
+        addRevMatchCount.textContent = q ? `${matchedCount} مطابق للبحث` : `${places.length} مكان متاح`;
+      }
+
+      if (q && matchedCount > 0 && firstMatchedId) {
+        addRevSelect.value = firstMatchedId;
+      }
+    });
+
     // Toggle custom/registered user fields
     document.getElementById('add-rev-user-type')?.addEventListener('change', (e) => {
       const isCustom = e.target.value === 'custom';
@@ -1516,11 +1565,25 @@ async function renderAdminReviews($container) {
       content: `
         <div style="display:flex;flex-direction:column;gap:14px">
           
-          <!-- Place Selector -->
+          <!-- Place Selector with Live Search -->
           <div class="form-group" style="margin:0">
-            <label class="form-label">اختر المكان المطلوب إضافة التقييمات عليه <span class="required">*</span></label>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label class="form-label" style="margin:0;font-weight:700">اختر المكان المطلوب إضافة التقييمات عليه <span class="required">*</span></label>
+              <span id="bulk-place-match-count" style="font-size:11px;color:var(--text-muted)">${places.length} مكان متاح</span>
+            </div>
+            <div style="position:relative;margin-bottom:6px">
+              <input 
+                type="search" 
+                id="bulk-rev-place-search" 
+                class="form-input" 
+                placeholder="🔍 اكتب اسم المحل أو النشاط للبحث السريع..." 
+                autocomplete="off" 
+                style="padding-right:32px;font-size:12.5px"
+              />
+              <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔎</span>
+            </div>
             <select id="bulk-rev-place" class="form-select" required>
-              <option value="">-- اختر المكان --</option>
+              <option value="">-- اختر المكان من القائمة (${places.length} مكان) --</option>
               ${places.map(p => {
                 const isHammad = (p.slug === HAMMAD_PLACE_SLUG || p.name?.includes('محمد حماد'));
                 return `<option value="${escAttr(p.id)}" ${isHammad ? 'selected' : ''}>${escHtml(p.name)} ${isHammad ? '⭐ (مهندس محمد حماد)' : ''}</option>`;
@@ -1709,6 +1772,38 @@ async function renderAdminReviews($container) {
       const customInput = document.getElementById('gen-rev-custom-count');
       if (customInput) {
         customInput.style.display = e.target.value === 'custom' ? 'block' : 'none';
+      }
+    });
+
+    // Live Search Filter for Bulk Review Place Dropdown
+    const bulkPlaceSearch = document.getElementById('bulk-rev-place-search');
+    const bulkPlaceSelect = document.getElementById('bulk-rev-place');
+    const bulkPlaceMatchCount = document.getElementById('bulk-place-match-count');
+
+    bulkPlaceSearch?.addEventListener('input', (e) => {
+      const q = e.target.value.trim();
+      let matchedCount = 0;
+      let firstMatchedId = null;
+
+      Array.from(bulkPlaceSelect.options).forEach((opt, idx) => {
+        if (idx === 0) return;
+        const text = opt.textContent || '';
+        const match = !q || arabicMatch(text, q);
+        opt.hidden = !match;
+        opt.style.display = match ? 'block' : 'none';
+        if (match) {
+          matchedCount++;
+          if (!firstMatchedId) firstMatchedId = opt.value;
+        }
+      });
+
+      if (bulkPlaceMatchCount) {
+        bulkPlaceMatchCount.textContent = q ? `${matchedCount} مطابق للبحث` : `${places.length} مكان متاح`;
+      }
+
+      if (q && matchedCount > 0 && firstMatchedId) {
+        bulkPlaceSelect.value = firstMatchedId;
+        bulkPlaceSelect.dispatchEvent(new Event('change'));
       }
     });
 
@@ -2468,7 +2563,7 @@ async function renderAdminSettings($container) {
           </div>
           <div class="form-group">
             <label class="form-label">وصف الموقع (Tagline)</label>
-            <input type="text" id="s-desc" class="form-input" value="${escAttr(settings.general?.siteDescription || 'دليل المنزلة الرقمي — الأماكن، المحلات، الأطباء، العروض، والخدمات')}" />
+            <input type="text" id="s-desc" class="form-input" value="${escAttr(settings.general?.siteDescription || 'دليل المنزلة والمطرية الرقمي — الأماكن، المحلات، الأطباء، العروض، والخدمات')}" />
           </div>
         </div>
 
@@ -2904,10 +2999,8 @@ window.editPlaceAdmin = async (placeId) => {
   }
   const categories = adminCache.categories || [];
 
-  const areas = [
-    'المنزلة (المدينة)', 'الأحمدية', 'العزيزة', 'البصراط', 'الفروسات', 'النسايمة', 
-    'ميت شرف', 'الشبول', 'ميت مرجا سلسيل', 'ميت سلسيل', 'الجمالية', 'الروضة', 'منطقة أخرى'
-  ];
+  const placeArea = (place.area || '').trim();
+  const isCustomArea = Boolean(placeArea && !MANZALA_VILLAGES_LIST.includes(placeArea));
 
   const modal = showModal({
     title: `✏️ تعديل بيانات: ${escHtml(place.name || 'المكان')}`,
@@ -2957,10 +3050,14 @@ window.editPlaceAdmin = async (placeId) => {
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
           <div class="form-group">
-            <label class="form-label">المنطقة / القرية</label>
+            <label class="form-label">المنطقة داخل المنزلة / المطرية <span class="required">*</span></label>
             <select id="aep-area" class="form-select">
-              ${areas.map(a => `<option value="${escAttr(a)}" ${(place.area === a || (!place.area && a.includes('المدينة'))) ? 'selected' : ''}>${a}</option>`).join('')}
+              ${MANZALA_VILLAGES_LIST.map(a => `<option value="${escAttr(a)}" ${(placeArea === a || (!placeArea && a === 'المنزلة')) ? 'selected' : ''}>📍 ${a}</option>`).join('')}
+              <option value="other" ${isCustomArea ? 'selected' : ''}>✏️ بلد أو قرية أخرى...</option>
             </select>
+            <div id="aep-custom-area-group" style="margin-top:8px;${isCustomArea ? '' : 'display:none'}">
+              <input type="text" id="aep-custom-area" class="form-input" placeholder="اكتب اسم البلد أو القرية هنا..." value="${escAttr(isCustomArea ? placeArea : '')}" style="font-size:12.5px" />
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">نوع وسيلة التوصيل (إن وجد)</label>
@@ -3081,7 +3178,9 @@ window.editPlaceAdmin = async (placeId) => {
             customCategory: document.getElementById('aep-customCategory')?.value.trim() || '',
             phone: document.getElementById('aep-phone')?.value.trim() || '',
             whatsapp: document.getElementById('aep-whatsapp')?.value.trim() || '',
-            area: document.getElementById('aep-area')?.value || 'المنزلة',
+            area: (document.getElementById('aep-area')?.value === 'other'
+              ? (document.getElementById('aep-custom-area')?.value.trim() || 'المنزلة')
+              : (document.getElementById('aep-area')?.value || 'المنزلة')),
             deliveryType: document.getElementById('aep-deliveryType')?.value || null,
             address: document.getElementById('aep-address')?.value.trim() || '',
             mapsLink: document.getElementById('aep-mapsLink')?.value.trim() || '',
@@ -3136,6 +3235,12 @@ window.editPlaceAdmin = async (placeId) => {
         closeOnClick: true
       }
     ]
+  });
+
+  document.getElementById('aep-area')?.addEventListener('change', (e) => {
+    const isOther = e.target.value === 'other';
+    const customGroup = document.getElementById('aep-custom-area-group');
+    if (customGroup) customGroup.style.display = isOther ? 'block' : 'none';
   });
 };
 

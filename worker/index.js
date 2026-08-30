@@ -406,8 +406,8 @@ async function handleDynamicOpenGraph(slug, request, env) {
     }
   } catch (_) {}
 
-  const placeName = place?.name || 'تفاصيل المكان | المنزلة وناسها';
-  const placeDesc = place?.description || 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والعنوان والعروض والخدمات في دليل المنزلة';
+  const placeName = place?.name || 'تفاصيل المكان | دليل المنزلة والمطرية الرقمي';
+  const placeDesc = place?.description || 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والعنوان والعروض والخدمات في دليل المنزلة والمطرية الرقمي';
   const placeImg = place?.coverImageUrl || place?.logoUrl || 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
   const placeTargetSlug = place?.slug || cleanSlug;
   const destinationUrl = `${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`;
@@ -423,7 +423,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escapeHtml(placeName)} | المنزلة وناسها</title>
+  <title>${escapeHtml(placeName)} | دليل المنزلة والمطرية الرقمي</title>
   
   <!-- Primary Meta Tags -->
   <meta name="title" content="${escapeHtml(placeName)}" />
@@ -438,7 +438,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
   <meta property="og:image:secure_url" content="${escapeHtml(placeImg)}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:site_name" content="دليل المنزلة وناسها" />
+  <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي" />
   <meta property="og:locale" content="ar_EG" />
 
   <!-- Twitter -->
@@ -454,7 +454,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
 </head>
 <body style="font-family:sans-serif;text-align:center;padding:2rem;direction:rtl">
   <h2>${escapeHtml(placeName)}</h2>
-  <p>جاري تحويلك إلى صفحة المكان في دليل المنزلة وناسها...</p>
+  <p>جاري تحويلك إلى صفحة المكان في دليل المنزلة والمطرية الرقمي...</p>
   <a href="${destinationUrl}">اضغط هنا إذا لم يتم تحويلك تلقائياً</a>
 </body>
 </html>`;
