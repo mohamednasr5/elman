@@ -90,7 +90,7 @@ export async function renderPlacePage($container, { slug, user }) {
     });
 
     const isHammad = place.slug === HAMMAD_PLACE_SLUG || placeId === HAMMAD_PLACE_SLUG || String(placeId).includes('mhmd-hmad') || String(place.name || '').includes('محمد حماد') || String(place.slug || '').includes('5lQJ1o');
-    const avgRating = isHammad ? 5.0 : (totalReviews > 0 ? Math.round((ratingSum / totalReviews) * 10) / 10 : Number(place.rating) || 5.0);
+    const avgRating = isHammad ? 5.0 : (totalReviews > 0 ? Math.round((ratingSum / totalReviews) * 10) / 10 : 0.0);
     const userReview = currentUser ? safeReviews.find(review => review.userId === currentUser.uid) : null;
 
     // Track View Count & Profile Visitor safely

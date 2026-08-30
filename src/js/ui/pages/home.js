@@ -83,6 +83,9 @@ export async function renderHomePage($main, { user } = {}) {
     // Stats bar
     renderStatsBar((places?.length || 0), (categories?.length || 31));
 
+    // First visit welcome video popup (1.mp4)
+    checkAndShowFirstVisitVideo();
+
   } catch (err) {
     console.error('[Home] Render failed:', err);
   }
@@ -438,4 +441,146 @@ function escHtml(str) {
 function escAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/**
+ * First-Time Visitor Welcome Video Popup (1.mp4)
+ */
+function checkAndShowFirstVisitVideo() {
+  try {
+    if (typeof localStorage === 'undefined' || typeof document === 'undefined') return;
+    const hasSeen = localStorage.getItem('__has_seen_welcome_video_v1');
+    if (hasSeen) return;
+
+    if (document.getElementById('first-visit-video-modal')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'first-visit-video-modal';
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+    `;
+
+    overlay.innerHTML = `
+      <div class="first-visit-video-card" style="
+        position: relative;
+        background: #0f172a;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 16px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 35px rgba(27, 79, 114, 0.45);
+        width: 100%;
+        max-width: 660px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transform: scale(0.92);
+        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      ">
+        <!-- Header -->
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+          <div style="display: flex; align-items: center; gap: 8px; color: #fff; font-weight: 700; font-size: 14px;">
+            <span>👋</span>
+            <span>مرحباً بك في منصة ودليل المنزلة وناسها</span>
+          </div>
+          <button id="btn-close-welcome-video" style="
+            background: rgba(255, 255, 255, 0.12);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            transition: all 0.2s;
+          " title="إغلاق وتخطي الفيديو">✕</button>
+        </div>
+
+        <!-- Video Player (1.mp4) -->
+        <div style="position: relative; width: 100%; background: #000; display: flex; align-items: center; justify-content: center;">
+          <video id="welcome-intro-video" src="1.mp4" playsinline autoplay controls style="width: 100%; max-height: 65vh; display: block; object-fit: contain;"></video>
+        </div>
+
+        <!-- Footer Actions -->
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: rgba(255, 255, 255, 0.03); border-top: 1px solid rgba(255, 255, 255, 0.08); flex-wrap: wrap; gap: 8px;">
+          <span style="font-size: 12px; color: rgba(255, 255, 255, 0.65);">يختفي الفيديو تلقائياً فور انتهائه ⏳</span>
+          <button id="btn-skip-welcome-video" style="
+            background: #1B4F72;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 7px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+          ">تخطي الفيديو والدخول للموقع ←</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+      const card = overlay.querySelector('.first-visit-video-card');
+      if (card) card.style.transform = 'scale(1)';
+    });
+
+    const videoEl = document.getElementById('welcome-intro-video');
+
+    function closeWelcomeModal() {
+      try {
+        localStorage.setItem('__has_seen_welcome_video_v1', 'true');
+      } catch (_) {}
+
+      if (videoEl) {
+        videoEl.pause();
+      }
+
+      overlay.style.opacity = '0';
+      const card = overlay.querySelector('.first-visit-video-card');
+      if (card) card.style.transform = 'scale(0.92)';
+
+      setTimeout(() => {
+        if (overlay && overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay);
+        }
+      }, 350);
+    }
+
+    if (videoEl) {
+      videoEl.addEventListener('ended', closeWelcomeModal);
+
+      // Attempt autoplay
+      videoEl.play().catch(() => {
+        videoEl.muted = true;
+        videoEl.play().catch(() => {});
+      });
+    }
+
+    document.getElementById('btn-close-welcome-video')?.addEventListener('click', closeWelcomeModal);
+    document.getElementById('btn-skip-welcome-video')?.addEventListener('click', closeWelcomeModal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeWelcomeModal();
+      }
+    });
+
+  } catch (err) {
+    console.warn('[Welcome Video] error:', err);
+  }
 }
