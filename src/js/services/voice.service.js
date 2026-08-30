@@ -27,6 +27,13 @@ export class VoiceSearch {
   initRecognition() {
     if (!this.isSupported()) return;
 
+    if (this.recognition) {
+      try {
+        this.recognition.abort();
+      } catch (_) {}
+      this.recognition = null;
+    }
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     this.recognition = new SpeechRecognition();
     this.recognition.lang = 'ar-EG'; // Egyptian Arabic dialect
@@ -59,6 +66,7 @@ export class VoiceSearch {
       if (finalTranscript) {
         const cleanedText = VoiceSearch.cleanSpokenArabic(finalTranscript);
         this.onResult(cleanedText, finalTranscript);
+        this.stop();
       }
     };
 
@@ -87,25 +95,42 @@ export class VoiceSearch {
       toast.warning('البحث الصوتي غير مدعوم في هذا المتصفح. يرجى استخدام متصفح حديث مثل Chrome أو Safari أو Edge.');
       return false;
     }
+
     if (this.isListening) {
       this.stop();
       return false;
     }
 
+    // Always create a fresh SpeechRecognition instance on every click
+    this.initRecognition();
+
     try {
       this.recognition.start();
       return true;
     } catch (err) {
-      console.warn('[VoiceSearch] Start failed:', err);
-      return false;
+      console.warn('[VoiceSearch] Start failed, retrying fresh instance:', err);
+      try {
+        this.initRecognition();
+        this.recognition.start();
+        return true;
+      } catch (retryErr) {
+        console.error('[VoiceSearch] Retry failed:', retryErr);
+        this.isListening = false;
+        this.onEnd();
+        return false;
+      }
     }
   }
 
   stop() {
-    if (this.recognition && this.isListening) {
+    if (this.recognition) {
       try {
         this.recognition.stop();
-      } catch (_) {}
+      } catch (_) {
+        try {
+          this.recognition.abort();
+        } catch (_) {}
+      }
     }
     this.isListening = false;
     this.onEnd();
@@ -199,6 +224,12 @@ export function mountVoiceSearchButton({ inputEl, buttonContainerEl, onSearch })
 
   inputEl.setAttribute('data-original-placeholder', inputEl.getAttribute('placeholder') || '');
 
+  const parent = buttonContainerEl || inputEl.parentElement;
+  if (parent) {
+    const existing = parent.querySelector('.btn-voice-search');
+    if (existing) existing.remove();
+  }
+
   btnEl = document.createElement('button');
   btnEl.type = 'button';
   btnEl.className = 'btn-voice-search';
@@ -209,7 +240,11 @@ export function mountVoiceSearchButton({ inputEl, buttonContainerEl, onSearch })
   btnEl.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    voice.start();
+    if (voice.isListening) {
+      voice.stop();
+    } else {
+      voice.start();
+    }
   });
 
   if (buttonContainerEl) {

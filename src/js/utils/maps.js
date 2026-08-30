@@ -105,15 +105,17 @@ export function getPlaceCoords(place) {
 }
 
 /**
- * Get User Live GPS Coordinates
+ * Get User Live GPS Coordinates with Smart Multi-Tier Fallback
+ * (High Accuracy -> Standard WiFi/Network Accuracy -> Permission Check)
  */
 export function getUserLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('متصفحك لا يدعم تحديد الموقع الجغرافي (GPS)'));
+      reject(new Error('متصفحك لا يدعم تحديد الموقع الجغرافي'));
       return;
     }
 
+    // Attempt 1: High accuracy (mobile GPS)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         resolve({
@@ -123,12 +125,34 @@ export function getUserLocation() {
         });
       },
       (err) => {
-        reject(err);
+        // If timeout or unavailable (common on PCs / laptops without GPS chip), fallback to standard accuracy
+        if (err.code === 2 || err.code === 3) { // 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              resolve({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: pos.coords.accuracy
+              });
+            },
+            (fallbackErr) => {
+              reject(fallbackErr);
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 12000,
+              maximumAge: 300000
+            }
+          );
+        } else {
+          // Code 1: Permission Denied (User clicked "Block" or site permissions restricted)
+          reject(err);
+        }
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
+        timeout: 5000,
+        maximumAge: 120000
       }
     );
   });
