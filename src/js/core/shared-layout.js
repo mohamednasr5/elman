@@ -222,9 +222,24 @@ export function getSharedFooterHTML() {
             <span class="footer__logo-name">المنزلة وناسها</span>
           </a>
           <p class="footer__description">دليلك الرقمي الشامل في مدينة المنزلة — ابحث عن الأطباء والمحلات والخدمات كلها في مكان واحد.</p>
-          <div class="footer__apk-download" id="footer-apk-container" style="margin-top:16px">
-            <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="apk-download-btn-link" id="footer-apk-download-link" title="تحميل تطبيق دليل المنزلة للأندرويد APK" style="display:inline-block;max-width:250px;transition:transform 0.2s,filter 0.2s">
-              <img src="./assets/apk-download-banner.png" alt="حمل تطبيق دليل المنزلة على هاتفك الاندرويد APK" style="width:100%;height:auto;border-radius:10px;display:block;box-shadow:0 4px 14px rgba(0,0,0,0.25)" onerror="this.src='./icons/apk-download-banner.png'"/>
+          <div class="footer__apk-download" id="footer-apk-container" style="margin-top:18px">
+            <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="apk-pro-download-btn" id="footer-apk-download-btn" title="تحميل تطبيق دليل المنزلة للأندرويد APK">
+              <div class="apk-btn-icon-box">
+                <svg class="android-svg-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                  <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.996-3.4572c.1557-.2698.0632-.6141-.2066-.7698-.2693-.1552-.6135-.0632-.7692.2066l-2.0231 3.5042c-1.4286-.6507-3.0373-1.0135-4.8786-1.0135-1.8412 0-3.45.3628-4.8785 1.0135L5.0995 5.301c-.1557-.2698-.5-.3618-.7692-.2066-.2698.1557-.3623.5-.2066.7698l1.996 3.4572C2.6806 11.2334.3333 15.1165.3333 19.6667h23.3334c0-4.5502-2.3473-8.4333-5.7867-10.3453"/>
+                </svg>
+              </div>
+              <div class="apk-btn-text-box">
+                <span class="apk-btn-sub">تطبيق الأندرويد المباشر</span>
+                <span class="apk-btn-main">تحميل تطبيق المنزلة APK</span>
+              </div>
+              <div class="apk-btn-arrow-box">
+                <svg class="download-arrow-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </div>
             </a>
           </div>
         </div>

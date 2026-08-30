@@ -63,8 +63,8 @@ export function renderPlaceCard(place) {
           </div>
           ${(() => {
             const isHammad = (place.slug && (place.slug.includes('mhmd-hmad') || place.slug.includes('5lQJ1o'))) || (place.name && place.name.includes('محمد حماد'));
-            const rCount = isHammad ? 12 : (Number(place.reviewCount) || (place.reviews ? Object.keys(place.reviews).length : 0));
-            const rScore = isHammad ? '5.0' : (rCount > 0 ? Number(place.rating || 5.0).toFixed(1) : '0.0');
+            const rCount = Number(place.reviewCount != null ? place.reviewCount : (place.reviews ? Object.keys(place.reviews).length : (place.stats?.reviewsCount || 0)));
+            const rScore = rCount > 0 ? (isHammad ? '5.0' : Number(place.rating || 5.0).toFixed(1)) : '0.0';
             return `
               <div style="display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:#F59E0B;font-weight:700;background:rgba(245,158,11,0.08);padding:2px 7px;border-radius:var(--radius-sm)">
                 <span>★</span>

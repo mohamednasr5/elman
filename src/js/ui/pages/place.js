@@ -177,7 +177,7 @@ export async function renderPlacePage($container, { slug, user }) {
                   <div style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
                     <span>★</span>
                     <span>${avgRating.toFixed(1)}</span>
-                    <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews} تقييم)</span>
+                    <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : '0.0'})</span>
                   </div>
                 </div>
 

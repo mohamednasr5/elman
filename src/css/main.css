@@ -341,23 +341,125 @@ img.lazy.error {
 }
 
 /* ========================================================
-   APK Download Banner (Hidden in PWA / Standalone / APK)
+   Professional APK Download Button in Footer
    ======================================================== */
-.apk-download-btn-link {
-  display: inline-block;
-  max-width: 250px;
-  transition: transform var(--transition-fast), filter var(--transition-fast);
+.apk-pro-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #1B4F72 0%, #0D7A5F 100%);
+  color: #fff !important;
+  text-decoration: none !important;
+  padding: 8px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 16px rgba(13, 122, 95, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+  max-width: 270px;
+  width: 100%;
 }
-.apk-download-btn-link:hover {
+
+.apk-pro-download-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: skewX(-25deg);
+  transition: 0.65s;
+}
+
+.apk-pro-download-btn:hover {
   transform: translateY(-3px) scale(1.02);
-  filter: brightness(1.08);
+  box-shadow: 0 8px 24px rgba(13, 122, 95, 0.38), 0 4px 10px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #fff !important;
 }
-.apk-download-btn-link:active {
-  transform: translateY(0) scale(0.98);
+
+.apk-pro-download-btn:hover::before {
+  left: 150%;
+}
+
+.apk-pro-download-btn:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: 0 2px 6px rgba(13, 122, 95, 0.3);
+}
+
+.apk-btn-icon-box {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #10B981;
+  transition: transform 0.25s;
+}
+
+.apk-pro-download-btn:hover .apk-btn-icon-box {
+  transform: scale(1.1) rotate(6deg);
+  color: #fff;
+  background: rgba(16, 185, 129, 0.4);
+}
+
+.apk-btn-text-box {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+  flex: 1;
+}
+
+.apk-btn-sub {
+  font-size: 10px;
+  opacity: 0.85;
+  color: #E2E8F0;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.apk-btn-main {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.3;
+}
+
+.apk-btn-arrow-box {
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  transition: all 0.25s;
+}
+
+.apk-pro-download-btn:hover .apk-btn-arrow-box {
+  background: #F5A623;
+  color: #04121a;
+  transform: translateY(2px);
+}
+
+.apk-pro-download-btn:hover .download-arrow-icon {
+  animation: bounceArrow 0.6s infinite alternate;
+}
+
+@keyframes bounceArrow {
+  from { transform: translateY(0); }
+  to { transform: translateY(3px); }
 }
 
 @media all and (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
-  #footer-apk-container, .footer__apk-download, .apk-download-btn-link {
+  #footer-apk-container, .footer__apk-download, .apk-pro-download-btn, .apk-download-btn-link {
     display: none !important;
   }
 }
