@@ -1091,6 +1091,8 @@ function setupPlaceSharing(place) {
   const placeName = place.name || 'المكان';
   const placeAddress = place.address || place.area || 'مدينة المنزلة، محافظة الدقهلية';
   const placeUrl = window.location.href;
+  const placeSlug = place.slug || place.id || '';
+  const ogProxyUrl = `https://elmanzala.nonm1724.workers.dev/p/${encodeURIComponent(placeSlug)}`;
   const coverUrl = place.coverImageUrl || place.logoUrl || 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
 
   const shareText = `📍 *${placeName}*
@@ -1108,28 +1110,28 @@ function setupPlaceSharing(place) {
           await navigator.share({
             title: `${placeName} | دليل المنزلة`,
             text: shareText,
-            url: placeUrl
+            url: ogProxyUrl
           });
           return;
         } catch (err) {
           if (err.name !== 'AbortError') {
-            openCustomShareModal({ placeName, placeAddress, placeUrl, coverUrl, shareText });
+            openCustomShareModal({ placeName, placeAddress, placeUrl, ogProxyUrl, coverUrl, shareText });
           }
           return;
         }
       }
 
       // 2. Custom Share Modal Fallback
-      openCustomShareModal({ placeName, placeAddress, placeUrl, coverUrl, shareText });
+      openCustomShareModal({ placeName, placeAddress, placeUrl, ogProxyUrl, coverUrl, shareText });
     });
   });
 }
 
-function openCustomShareModal({ placeName, placeAddress, placeUrl, coverUrl, shareText }) {
+function openCustomShareModal({ placeName, placeAddress, placeUrl, ogProxyUrl, coverUrl, shareText }) {
   const waShare = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-  const tgShare = `https://t.me/share/url?url=${encodeURIComponent(placeUrl)}&text=${encodeURIComponent(shareText)}`;
-  const fbShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(placeUrl)}`;
-  const twShare = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+  const tgShare = `https://t.me/share/url?url=${encodeURIComponent(ogProxyUrl || placeUrl)}&text=${encodeURIComponent(shareText)}`;
+  const fbShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(ogProxyUrl || placeUrl)}`;
+  const twShare = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(ogProxyUrl || placeUrl)}`;
 
   const modal = showModal({
     title: '📤 مشاركة بطاقة المكان',

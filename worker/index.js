@@ -268,11 +268,18 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         }
       }
 
-      // Health Check
-      return jsonResponse({ status: 'ok', service: 'elmanzala-worker', version: '2.2.0' }, 200, corsHeaders);
+      // ── 12. Dynamic OpenGraph / Social Media Share Preview (GET /p/:slug or /p or /api/og) ──
+      if ((url.pathname.startsWith('/p/') || url.pathname === '/p' || url.pathname === '/api/og') && request.method === 'GET') {
+        const slug = url.pathname.startsWith('/p/') ? url.pathname.replace('/p/', '') : (url.searchParams.get('slug') || url.searchParams.get('id') || '');
+        return handleDynamicOpenGraph(slug, request, env);
+      }
+
+      // ── 404 Catch-all ──
+      return jsonResponse({ error: 'المسار غير موجود' }, 404, corsHeaders);
 
     } catch (err) {
-      return jsonResponse({ error: err.message || 'Internal Server Error' }, 500, corsHeaders);
+      console.error('[Worker Fatal Error]:', err);
+      return jsonResponse({ error: 'حدث خطأ في الخادم', details: err.message }, 500, corsHeaders);
     }
   }
 };
@@ -328,3 +335,108 @@ function jsonResponse(data, status = 200, headers = {}) {
     }
   });
 }
+
+/**
+ * Dynamic OpenGraph / Social Media Crawler Preview & Fast Redirect
+ */
+async function handleDynamicOpenGraph(slug, request, env) {
+  const cleanSlug = decodeURIComponent(slug || '').trim();
+  const userAgent = request.headers.get('User-Agent') || '';
+  const isCrawler = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Discordbot|SkypeUriPreview|Googlebot|bingbot|Baiduspider|YandexBot/i.test(userAgent);
+
+  let place = null;
+  const canonicalBase = 'https://mohamednasr5.github.io/elman';
+
+  // Seeded fallback for Mohamed Hammad
+  if (cleanSlug.includes('mhmd-hmad') || cleanSlug.includes('hammad') || cleanSlug.includes('5lQJ1o')) {
+    place = {
+      name: 'مهندس محمد حماد — ذكاء اصطناعي وبرمجة وإعلانات',
+      description: 'مهندس محمد حماد متخصص في الذكاء الاصطناعي، تطوير المواقع والمتاجر الإلكترونية، وحملات التسويق الرقمي الاحترافية في المنزلة والدقهلية.',
+      coverImageUrl: 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/hammad-cover.webp',
+      logoUrl: 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/hammad-logo.webp',
+      slug: 'mhnds-mhmd-hmad-5lQJ1o',
+      area: 'المنزلة، محافظة الدقهلية'
+    };
+  }
+
+  // Fetch from Firebase RTDB
+  try {
+    const rtdbRes = await fetch('https://elmanzala-default-rtdb.firebaseio.com/places.json');
+    if (rtdbRes.ok) {
+      const allPlaces = await rtdbRes.json();
+      for (const [key, p] of Object.entries(allPlaces || {})) {
+        if (p && (p.slug === cleanSlug || key === cleanSlug || p.id === cleanSlug || (cleanSlug && p.name && p.name.includes(cleanSlug)))) {
+          place = { id: key, ...p };
+          break;
+        }
+      }
+    }
+  } catch (_) {}
+
+  const placeName = place?.name || 'تفاصيل المكان | المنزلة وناسها';
+  const placeDesc = place?.description || 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والعنوان والعروض والخدمات في دليل المنزلة';
+  const placeImg = place?.coverImageUrl || place?.logoUrl || 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
+  const placeTargetSlug = place?.slug || cleanSlug;
+  const destinationUrl = `${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`;
+
+  // If real user (not crawler), redirect instantly
+  if (!isCrawler) {
+    return Response.redirect(destinationUrl, 302);
+  }
+
+  // If social crawler (Facebook, WhatsApp, Twitter, Telegram, etc.), return HTML with rich OpenGraph tags
+  const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(placeName)} | المنزلة وناسها</title>
+  
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="${escapeHtml(placeName)}" />
+  <meta name="description" content="${escapeHtml(placeDesc)}" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${destinationUrl}" />
+  <meta property="og:title" content="${escapeHtml(placeName)}" />
+  <meta property="og:description" content="${escapeHtml(placeDesc)}" />
+  <meta property="og:image" content="${escapeHtml(placeImg)}" />
+  <meta property="og:image:secure_url" content="${escapeHtml(placeImg)}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:site_name" content="دليل المنزلة وناسها" />
+  <meta property="og:locale" content="ar_EG" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="${destinationUrl}" />
+  <meta name="twitter:title" content="${escapeHtml(placeName)}" />
+  <meta name="twitter:description" content="${escapeHtml(placeDesc)}" />
+  <meta name="twitter:image" content="${escapeHtml(placeImg)}" />
+
+  <!-- Instant Browser Redirect -->
+  <meta http-equiv="refresh" content="0;url=${destinationUrl}" />
+  <script>window.location.replace("${destinationUrl}");</script>
+</head>
+<body style="font-family:sans-serif;text-align:center;padding:2rem;direction:rtl">
+  <h2>${escapeHtml(placeName)}</h2>
+  <p>جاري تحويلك إلى صفحة المكان في دليل المنزلة وناسها...</p>
+  <a href="${destinationUrl}">اضغط هنا إذا لم يتم تحويلك تلقائياً</a>
+</body>
+</html>`;
+
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600'
+    }
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+

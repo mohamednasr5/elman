@@ -95,20 +95,25 @@ export async function dbGet(path, useCache = true) {
 
 export async function dbSet(path, data) {
   clearDbCache();
-  await getDB().ref(path).set(data);
+  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
+  await ref.set(data);
 }
 
 export async function dbUpdate(path, updates) {
   clearDbCache();
-  await getDB().ref(path).update(updates);
+  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
+  await ref.update(updates);
 }
 
 export async function dbPush(path, data) {
-  const ref = await getDB().ref(path).push(data);
-  return ref.key;
+  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
+  const pushed = await ref.push(data);
+  return pushed.key;
 }
 
 export async function dbRemove(path) {
+  clearDbCache();
+  if (!path || String(path).trim() === '') return;
   await getDB().ref(path).remove();
 }
 
@@ -1008,7 +1013,7 @@ export async function adminBulkAddReviews(placeId, items = []) {
     existingNames.add(normName);
     const reviewId = `bulk_${now}_${index}_${Math.random().toString(36).substring(2, 6)}`;
     
-    updates[`places/${placeId}/reviews/${reviewId}`] = {
+    updates[reviewId] = {
       id: reviewId,
       placeId,
       placeName: place.name || 'المكان',
@@ -1018,8 +1023,8 @@ export async function adminBulkAddReviews(placeId, items = []) {
       userPhoto: '',
       rating: numRating,
       comment: cleanComment,
-      createdAt: now - (index * 60000 * 15), // Stagger timestamps naturally
-      updatedAt: now - (index * 60000 * 15),
+      createdAt: now - (index * 60000 * 5), // Stagger timestamps naturally
+      updatedAt: now - (index * 60000 * 5),
       editCount: 0,
       isAdminGenerated: true
     };
@@ -1028,7 +1033,13 @@ export async function adminBulkAddReviews(placeId, items = []) {
   });
 
   if (addedCount > 0) {
-    await dbUpdate('', updates);
+    // Write in chunks of 500 directly under places/${placeId}/reviews to avoid RTDB payload limits
+    const CHUNK_SIZE = 500;
+    const entries = Object.entries(updates);
+    for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+      const chunk = Object.fromEntries(entries.slice(i, i + CHUNK_SIZE));
+      await dbUpdate(`places/${placeId}/reviews`, chunk);
+    }
     await recalculatePlaceRating(placeId);
   }
 
@@ -1038,6 +1049,160 @@ export async function adminBulkAddReviews(placeId, items = []) {
     skippedCount,
     skippedNames
   };
+}
+
+/**
+ * Mega Synthetic Reviews Generator (Generates up to 5,000 unique reviews with customizable star ranges)
+ */
+export function generateSyntheticReviews({ count = 50, starRange = '4-5', placeName = '', categoryName = '' }) {
+  const targetCount = Math.min(5000, Math.max(1, parseInt(count, 10) || 50));
+
+  const FIRST_NAMES_AR_M = [
+    'أحمد', 'محمد', 'محمود', 'مصطفى', 'كريم', 'عمر', 'طارق', 'حسام', 'إبراهيم', 'عمرو',
+    'يوسف', 'شريف', 'رامي', 'وليد', 'ياسر', 'حمدي', 'أشرف', 'بيشوي', 'مروان', 'فادي',
+    'خالد', 'عادل', 'سامح', 'حسن', 'عبد الرحمن', 'ماجد', 'تامر', 'هيثم', 'وائل', 'علاء',
+    'هشام', 'مدحت', 'إيهاب', 'زياد', 'بلال', 'معتز', 'أكرم', 'حازم', 'عصام', 'ضياء',
+    'باسم', 'نبيل', 'وجدي', 'مايكل', 'مينا', 'جورج', 'أنطون', 'كيرلس', 'أبانوب', 'رفيق',
+    'هاني', 'عماد', 'سامي', 'ماهر', 'مجدي', 'صلاح', 'أيمن', 'عاطف', 'نبيل', 'نادر'
+  ];
+
+  const FIRST_NAMES_AR_F = [
+    'سارة', 'مريم', 'نورهان', 'ياسمين', 'آية', 'دينا', 'منى', 'رنا', 'ريم', 'مروة',
+    'داليا', 'شيماء', 'هدى', 'مي', 'سلمى', 'إنجي', 'فاطمة', 'خلود', 'هدير', 'رضوى',
+    'إسراء', 'ندى', 'أمنية', 'ريهام', 'نهى', 'أسماء', 'بسنت', 'ميرنا', 'هاجر', 'شروق',
+    'رحمة', 'حبيبة', 'تسنيم', 'هايدي', 'نورا', 'يارا', 'روان', 'فريدة', 'جنى', 'ملك'
+  ];
+
+  const FIRST_NAMES_EN = [
+    'Ahmed', 'Mohamed', 'Mahmoud', 'Mostafa', 'Karim', 'Omar', 'Tarek', 'Hossam', 'Ibrahim', 'Amr',
+    'Youssef', 'Sherif', 'Ramy', 'Waleed', 'Yasser', 'Hamdy', 'Ashraf', 'Bishoy', 'Marwan', 'Fady',
+    'Khaled', 'Adel', 'Sameh', 'Hassan', 'Abdelrahman', 'Maged', 'Tamer', 'Sarah', 'Mariam', 'Nourhan',
+    'Dina', 'Aya', 'Rania', 'Mona', 'Reem', 'Hadeer', 'Salma', 'Farida', 'Nada', 'Nour'
+  ];
+
+  const LAST_NAMES_AR = [
+    'محمود', 'السيد', 'علي', 'حسن', 'إبراهيم', 'أحمد', 'عبد الرحمن', 'الجمال', 'النجار', 'الشناوي',
+    'الدسوقي', 'الشربيني', 'سمير', 'عادل', 'كمال', 'مصطفى', 'بدر', 'توفيق', 'غانم', 'زهران',
+    'الباز', 'عطية', 'يونس', 'منصور', 'سليمان', 'مطاوع', 'فهمي', 'رضوان', 'زكي', 'عثمان',
+    'عوض', 'حجازي', 'غريب', 'الشرقاوي', 'السعيد', 'خليل', 'عبد العال', 'شلبي', 'حامد', 'زايد',
+    'صقر', 'قنديل', 'العوضي', 'بركات', 'الجزار', 'فودة', 'البسيوني', 'خطاب', 'صبري', 'يحيى'
+  ];
+
+  const LAST_NAMES_EN = [
+    'Mahmoud', 'Elsayed', 'Ali', 'Hassan', 'Ibrahim', 'Ahmed', 'Abdelrahman', 'Gamal', 'Naggar', 'Shennawy',
+    'Desouky', 'Sherbiny', 'Samir', 'Adel', 'Kamal', 'Mostafa', 'Badr', 'Tawfik', 'Ghanem', 'Zahran',
+    'Baz', 'Attia', 'Younis', 'Mansour', 'Soliman', 'Fahmy', 'Radwan', 'Zaki', 'Osman', 'Awad'
+  ];
+
+  // Comment Templates by Star Rating
+  const TEMPLATES_5 = [
+    'تعامل ممتاز جدًا، والنتيجة النهائية كانت احترافية ومبهرة.',
+    'من أفضل الناس اللي تعاملت معاهم، اهتمام بالتفاصيل وسرعة في التنفيذ.',
+    'شغل احترافي وسريع جدًا، والتعامل كان محترم من أول خطوة لحد التسليم.',
+    'خدمة ممتازة، قمة في الذوق والاحترافية والالتزام بالمواعيد.',
+    'تجربة ممتازة جدًا، فهم سريع للمطلوب وأفكار إبداعية غير تقليدية.',
+    'أنصح بشدة بالتعامل معهم، جودة عالية ونتائج فاقت كل التوقعات.',
+    'ما شاء الله تبارك الله، قمة في الإتقان والأمانة والاحتراف في الشغل.',
+    'سرعة في الرد ودعم فني مستمر وأسلوب راقي ومحترم جدًا.',
+    'خدمة تستحق 5 نجوم بكل جدارة، دقة متناهية وشغل عالي المستوى.',
+    'تجربة فريدة ومميزة، العمل تم على أكمل وجه وبأفضل مما تمنيت.',
+    'قمة الاحترافية، شكراً جزيلاً على المجهود الرائع والدقة.',
+    'Professional service, fast response, and outstanding execution.',
+    'Excellent experience from start to finish. Highly recommended!',
+    'Great attention to detail, modern work, and very smooth communication.',
+    'Very creative, professional, and reliable. Exceeded all expectations.',
+    'Top quality service and wonderful support. 10/10 recommendation.',
+    'The best experience ever! High quality and very polite team.'
+  ];
+
+  const TEMPLATES_4 = [
+    'خدمة جيدة جدًا وتعامل راقي ومحترم، تجربة موفقة ومرضية.',
+    'شغل نضيف ومنظم، فقط استغرق وقتاً قليلاً لكن النتيجة ممتازة.',
+    'تجربة طيبة وتعامل محترم، شكراً لكم على المجهود.',
+    'جودة العمل عالية ومطابقة لما تم الاتفاق عليه، أنصح بالتجربة.',
+    'مكان محترم وخدمة سريعة إلى حد كبير، بالتوفيق دائمًا.',
+    'Good service and friendly communication. Overall very satisfied.',
+    'High quality work with great support. Looking forward to dealing with them again.',
+    'Solid experience, very polite and good results.'
+  ];
+
+  const TEMPLATES_3 = [
+    'الخدمة مقبولة وجيدة في المجمل، لكن تحتاج بعض التطوير والسرعة.',
+    'تعامل عادي والنتيجة متوسطة كما هو متوقع.',
+    'تجربة مقبولة ولكن هناك مجال للتحسين في المواعيد.',
+    'الخدمة جيدة لكن الأسعار تحتاج إعادة نظر قليلاً.',
+    'Average service, acceptable results but communication could be improved.'
+  ];
+
+  const TEMPLATES_2 = [
+    'الخدمة تحتاج تحسين ملحوظ في سرعة الاستجابة والمواعيد.',
+    'التجربة لم تكن على المستوى المطلوب، نأمل التطوير مستقبلاً.',
+    'Need major improvements in customer service and response time.'
+  ];
+
+  const TEMPLATES_1 = [
+    'تجربة غير موفقة وتأخير ملحوظ في الرد والتنفيذ.',
+    'خدمة سيئة وتحتاج مراجعة شاملة في التعامل مع العملاء.'
+  ];
+
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  function pickRating() {
+    if (starRange === '5') return 5;
+    if (starRange === '4-5') return Math.random() < 0.75 ? 5 : 4;
+    if (starRange === '3-4') return Math.random() < 0.5 ? 4 : 3;
+    if (starRange === '2-4') return [2, 3, 4][Math.floor(Math.random() * 3)];
+    if (starRange === '1-2') return Math.random() < 0.5 ? 2 : 1;
+    if (starRange === '1') return 1;
+    if (starRange === '2') return 2;
+    if (starRange === '3') return 3;
+    if (starRange === '4') return 4;
+    
+    const r = Math.random();
+    if (r < 0.65) return 5;
+    if (r < 0.85) return 4;
+    if (r < 0.93) return 3;
+    if (r < 0.97) return 2;
+    return 1;
+  }
+
+  const usedNames = new Set();
+  const results = [];
+  let safetyLoop = 0;
+
+  while (results.length < targetCount && safetyLoop < targetCount * 10) {
+    safetyLoop++;
+    let name = '';
+    const typeRoll = Math.random();
+
+    if (typeRoll < 0.5) {
+      name = `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
+    } else if (typeRoll < 0.75) {
+      name = `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
+    } else {
+      name = `${pick(FIRST_NAMES_EN)} ${pick(LAST_NAMES_EN)}`;
+    }
+
+    const normName = name.trim().toLowerCase();
+    if (usedNames.has(normName)) continue;
+    usedNames.add(normName);
+
+    const rating = pickRating();
+    let comment = '';
+    if (rating === 5) comment = pick(TEMPLATES_5);
+    else if (rating === 4) comment = pick(TEMPLATES_4);
+    else if (rating === 3) comment = pick(TEMPLATES_3);
+    else if (rating === 2) comment = pick(TEMPLATES_2);
+    else comment = pick(TEMPLATES_1);
+
+    results.push({
+      name,
+      rating,
+      comment
+    });
+  }
+
+  return results;
 }
 
 /** Admin: Update review */
