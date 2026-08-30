@@ -6,17 +6,58 @@
 import { getDB } from '../core/firebase.js';
 import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp } from '../core/db.js';
 import { generatePlaceSlug } from '../utils/slug.js';
+import { normalizeArabic } from '../utils/arabic.js';
 import { WORKER_URL } from '../core/firebase.js';
 import { getIdToken } from '../core/auth.js';
 
 /**
- * Create a new place
+ * Validate that Place Name and Phone Number are completely unique
+ */
+export async function validatePlaceUniqueness({ name, phone, excludePlaceId = null }) {
+  const normName = normalizeArabic(name || '').trim();
+  const cleanPhoneNum = (phone || '').replace(/\D/g, '');
+
+  if (!normName) throw new Error('اسم المكان مطلوب');
+  if (!cleanPhoneNum || cleanPhoneNum.length < 7) {
+    throw new Error('يرجى إدخال رقم هاتف صحيح للمكان');
+  }
+
+  const allPlaces = (await dbGet('places')) || {};
+  for (const [id, p] of Object.entries(allPlaces)) {
+    if (!p) continue;
+    const currentId = p.id || p._key || id;
+    if (excludePlaceId && (currentId === excludePlaceId || p.slug === excludePlaceId)) {
+      continue; // Skip the place itself during updates
+    }
+
+    // 1. Strict Unique Name Check (Normalized Arabic)
+    const existingNormName = normalizeArabic(p.name || '').trim();
+    if (existingNormName && existingNormName === normName) {
+      throw new Error(`يوجد مكان مسجل مسبقاً بنفس الاسم ("${p.name}")، يرجى اختيار اسم فريد ومميز لنشاطك.`);
+    }
+
+    // 2. Strict Unique Phone Check
+    const existingPhone = (p.phone || '').replace(/\D/g, '');
+    if (existingPhone && existingPhone === cleanPhoneNum) {
+      throw new Error(`رقم الهاتف ("${phone}") مسجل بالفعل لنشاط آخر ("${p.name}")، لكل مكان رقم هاتف فريد.`);
+    }
+  }
+}
+
+/**
+ * Create a new place (with strict uniqueness enforcement)
  * @param {Object} placeData
  * @param {Object} currentUser
  * @returns {Promise<string>} placeId
  */
 export async function createPlace(placeData, currentUser) {
   if (!currentUser) throw new Error('يجب تسجيل الدخول لإضافة مكان');
+
+  // Enforce unique name and phone
+  await validatePlaceUniqueness({
+    name: placeData.name,
+    phone: placeData.phone
+  });
 
   const token = await getIdToken();
   const db = getDB();
@@ -102,24 +143,33 @@ export async function createPlace(placeData, currentUser) {
 }
 
 /**
- * Update an existing place
+ * Update an existing place (with strict uniqueness enforcement)
  */
 export async function updatePlace(placeId, placeData) {
   const db = getDB();
   const current = await dbGet(`places/${placeId}`);
   if (!current) throw new Error('المكان غير موجود');
 
+  // Enforce unique name and phone on edit
+  if (placeData.name || placeData.phone) {
+    await validatePlaceUniqueness({
+      name: placeData.name || current.name,
+      phone: placeData.phone || current.phone,
+      excludePlaceId: placeId
+    });
+  }
+
   const updates = {
-    name: placeData.name.trim(),
-    nameEn: placeData.nameEn || current.nameEn || '',
+    name: placeData.name ? placeData.name.trim() : current.name,
+    nameEn: placeData.nameEn !== undefined ? placeData.nameEn : (current.nameEn || ''),
     categoryId: placeData.categoryId || current.categoryId,
     subcategoryId: placeData.subcategoryId || '',
-    description: placeData.description || '',
-    phone: placeData.phone || '',
-    whatsapp: placeData.whatsapp || '',
-    address: placeData.address || '',
-    area: placeData.area || 'المنزلة',
-    mapsLink: placeData.mapsLink || '',
+    description: placeData.description !== undefined ? placeData.description : current.description,
+    phone: placeData.phone || current.phone || '',
+    whatsapp: placeData.whatsapp !== undefined ? placeData.whatsapp : (current.whatsapp || ''),
+    address: placeData.address !== undefined ? placeData.address : current.address,
+    area: placeData.area || current.area || 'المنزلة',
+    mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''),
     location: placeData.location || current.location,
     workingHours: placeData.workingHours || current.workingHours,
     coverImageUrl: placeData.coverImageUrl !== undefined ? placeData.coverImageUrl : current.coverImageUrl,
@@ -264,7 +314,7 @@ export async function addOffer(placeId, offerData, currentUser) {
 }
 
 /**
- * Add Product
+ * Add Product (With Admin Moderation & Approval Workflow)
  * Rule: Only verified places can add products (up to 350)
  */
 export async function addProduct(placeId, productData, currentUser) {
@@ -286,6 +336,7 @@ export async function addProduct(placeId, productData, currentUser) {
     throw new Error('تم الوصول للحد الأقصى من المنتجات (350 منتج) لهذا المكان');
   }
 
+  const isAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin';
   const db = getDB();
   const prodRef = db.ref(`products/${placeId}`).push();
   const productId = prodRef.key;
@@ -293,6 +344,8 @@ export async function addProduct(placeId, productData, currentUser) {
   const newProduct = {
     id: productId,
     placeId,
+    placeName: place.name || '',
+    placeSlug: place.slug || '',
     name: productData.name.trim(),
     description: productData.description || '',
     price: Number(productData.price) || 0,
@@ -302,6 +355,8 @@ export async function addProduct(placeId, productData, currentUser) {
     sku: productData.sku || '',
     inStock: productData.inStock !== false,
     isFeatured: !!productData.isFeatured,
+    status: isAdmin ? 'approved' : 'pending',
+    isApproved: isAdmin,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };

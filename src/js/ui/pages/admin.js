@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG } from '../../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG } from '../../core/db.js';
 import { isAdmin } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
@@ -16,6 +16,7 @@ import { extractCoordinates } from '../../utils/maps.js';
 const adminCache = {
   users: null,
   places: null,
+  products: null,
   offers: null,
   ads: null,
   verificationRequests: null,
@@ -86,6 +87,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         <nav class="dashboard-sidebar__nav" id="admin-sidebar-nav">
           ${navLink('overview',      'admin.html',                      ICONS.chart,     'الإحصائيات',     section === 'overview')}
           ${navLink('places',        'admin.html?section=places',       ICONS.pin,       'الأماكن',         section === 'places')}
+          ${navLink('products',      'admin.html?section=products',     ICONS.tag,       'المنتجات والمراجعة 🛍️', section === 'products')}
           ${navLink('reviews',       'admin.html?section=reviews',      ICONS.star,      'التقييمات ⭐',    section === 'reviews')}
           ${navLink('verification',  'admin.html?section=verification', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
           ${navLink('categories',    'admin.html?section=categories',   ICONS.folder,    'التصنيفات',       section === 'categories')}
@@ -185,6 +187,7 @@ async function switchAdminSection(sectionName, pushState = true) {
   try {
     if      (sectionName === 'overview')      await renderAdminOverview($main);
     else if (sectionName === 'places')        await renderAdminPlaces($main);
+    else if (sectionName === 'products')      await renderAdminProducts($main);
     else if (sectionName === 'reviews')       await renderAdminReviews($main);
     else if (sectionName === 'verification')  await renderAdminVerification($main);
     else if (sectionName === 'categories')    await renderAdminCategories($main);
@@ -458,8 +461,26 @@ function renderAdminPlacesTableRows(places) {
       buttonHtml = `<button class="btn btn-xs btn-outline" onclick="togglePlaceSponsored('${escAttr(p._id)}', true)" title="تعيين كإعلان مدفوع في قمة كل الصفحات">📢 تعيين كإعلان</button>`;
     }
 
+    const banned = isPlaceBanned(p);
+    let statusBadgeHtml = '';
+    if (banned) {
+      const banText = p.isPermanentlyBanned || !p.bannedUntil
+        ? '🚫 محظور نهائياً'
+        : `⏳ محظور حتى ${formatDate(p.bannedUntil)}`;
+      statusBadgeHtml = `<span class="badge" style="background:#FEE2E2;color:#DC2626;font-weight:700;padding:4px 8px" title="${escAttr(p.banReason || 'مخالفة الشروط')}">${banText}</span>`;
+    } else {
+      statusBadgeHtml = renderStatusBadge(p.status || 'published');
+    }
+
+    let banButtonHtml = '';
+    if (banned) {
+      banButtonHtml = `<button class="btn btn-xs btn-success" onclick="adminUnbanPlaceAction('${escAttr(p._id)}')" title="إلغاء الحظر وإعادة المكان للدليل فوراً">✅ فك الحظر</button>`;
+    } else {
+      banButtonHtml = `<button class="btn btn-xs btn-outline" style="color:#DC2626;border-color:#FCA5A5;background:#FEF2F2" onclick="adminBanPlaceAction('${escAttr(p._id)}', '${escAttr(p.name)}')" title="حظر هذا المكان مؤقتاً أو نهائياً">🚫 حظر</button>`;
+    }
+
     return `
-      <tr>
+      <tr style="${banned ? 'background:rgba(239,68,68,0.05)' : ''}">
         <td>
           <strong>${escHtml(p.name)}</strong>
           <div style="font-size:11px;color:var(--text-muted)">${p.phone || ''}</div>
@@ -475,9 +496,10 @@ function renderAdminPlacesTableRows(places) {
             ${p.isVerified ? ICONS.x + ' إلغاء التوثيق' : ICONS.shield + ' توثيق'}
           </button>
         </td>
-        <td>${renderStatusBadge(p.status || 'published')}</td>
+        <td>${statusBadgeHtml}</td>
         <td>
           <div style="display:flex;gap:5px;flex-wrap:wrap">
+            ${banButtonHtml}
             <button class="btn btn-xs btn-outline" style="background:#FAF5FF;color:#7E22CE;border-color:#E9D5FF" onclick="transferPlaceOwnershipAdmin('${escAttr(p._id)}')" title="نقل ملكية هذا المكان لمستخدم مسجل">${ICONS.users} نقل</button>
             <button class="btn btn-xs btn-outline" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE" onclick="editPlaceAdmin('${escAttr(p._id)}')" title="تعديل كافة بيانات المكان أو الشخص">${ICONS.edit}</button>
             <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs btn-outline" title="عرض صفحة المكان">${ICONS.eye}</a>
@@ -487,6 +509,349 @@ function renderAdminPlacesTableRows(places) {
       </tr>
     `;
   }).join('');
+}
+
+if (typeof window !== 'undefined') {
+  window.adminBanPlaceAction = (placeId, placeName) => {
+    const modal = showModal({
+      title: `🚫 حظر المكان: ${escHtml(placeName)}`,
+      size: 'md',
+      content: `
+        <form id="form-ban-place" style="display:flex;flex-direction:column;gap:14px" onsubmit="return false">
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;background:var(--surface-2);padding:10px 14px;border-radius:var(--radius-md)">
+            ⚠️ <strong>تنبيه:</strong> عند حظر هذا المكان، سيتم إخفاؤه تماماً من كافة صفحات الدليل والبحث والتصنيفات طوال فترة الحظر.
+          </div>
+
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">نوع ومدة الحظر <span class="required">*</span></label>
+            <select id="ban-place-type" class="form-select">
+              <option value="temp_7">حظر مؤقت لمدة 7 أيام</option>
+              <option value="temp_14">حظر مؤقت لمدة 14 يوماً</option>
+              <option value="temp_30" selected>حظر مؤقت لمدة شهر (30 يوماً)</option>
+              <option value="temp_90">حظر مؤقت لمدة 3 أشهر (90 يوماً)</option>
+              <option value="permanent">🚫 حظر نهائي دائم</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">سبب الحظر (ملاحظات الإدارة) <span class="required">*</span></label>
+            <textarea id="ban-place-reason" class="form-textarea" rows="3" placeholder="اكتب سبب الحظر هنا..." required>مخالفة شروط وسياسات الاستخدام ونشر محتوى غير مصرح به</textarea>
+          </div>
+        </form>
+      `,
+      buttons: [
+        {
+          label: '🚫 تطبيق الحظر فوراً',
+          type: 'danger',
+          closeOnClick: false,
+          onClick: async () => {
+            const typeVal = document.getElementById('ban-place-type')?.value;
+            const reason = document.getElementById('ban-place-reason')?.value.trim();
+            const isPermanent = typeVal === 'permanent';
+            let durationDays = 30;
+            if (typeVal === 'temp_7') durationDays = 7;
+            else if (typeVal === 'temp_14') durationDays = 14;
+            else if (typeVal === 'temp_30') durationDays = 30;
+            else if (typeVal === 'temp_90') durationDays = 90;
+
+            try {
+              toast.info('جاري تطبيق الحظر...');
+              await adminBanPlace(placeId, {
+                type: isPermanent ? 'permanent' : 'temporary',
+                durationDays,
+                reason
+              });
+              toast.success('تم حظر المكان بنجاح وإخفاؤه من الدليل 🚫');
+              modal.close();
+              adminCache.places = null;
+              await renderAdminPlaces(document.getElementById('admin-main-area'));
+            } catch (err) {
+              toast.error(err.message || 'فشل تطبيق الحظر');
+            }
+          }
+        },
+        { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+      ]
+    });
+  };
+
+  window.adminUnbanPlaceAction = async (placeId) => {
+    const ok = await showConfirm({
+      title: 'إلغاء حظر المكان',
+      message: 'هل أنت متأكد من إلغاء الحظر وإعادة هذا المكان للظهور في الدليل والبحث فوراً؟',
+      confirmText: 'نعم، فك الحظر',
+      cancelText: 'تراجع'
+    });
+    if (ok) {
+      try {
+        await adminUnbanPlace(placeId);
+        toast.success('تم إلغاء الحظر وإعادة المكان للدليل بنجاح ✅');
+        adminCache.places = null;
+        await renderAdminPlaces(document.getElementById('admin-main-area'));
+      } catch (err) {
+        toast.error(err.message || 'فشل إلغاء الحظر');
+      }
+    }
+  };
+}
+
+// ─────────────────────────────────────────────
+//  2.4. Products Moderation (المنتجات والمراجعة)
+// ─────────────────────────────────────────────
+async function renderAdminProducts($container) {
+  if (!adminCache.products) {
+    adminCache.products = await getAllProducts();
+  }
+  const products = adminCache.products || [];
+
+  const totalProds = products.length;
+  const pendingProds = products.filter(p => p.status === 'pending' || (!p.status && p.isApproved === false));
+  const approvedProds = products.filter(p => p.status === 'approved' || p.isApproved === true || (!p.status && p.isApproved === undefined));
+  const rejectedProds = products.filter(p => p.status === 'rejected');
+
+  $container.innerHTML = `
+    <div class="admin-fade-in">
+      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <h1 class="dashboard-header__title">إدارة ومراجعة المنتجات (${totalProds})</h1>
+          <div class="dashboard-header__subtitle">مراجعة منتجات الأنشطة الموثقة والموافقة عليها لمنع المنتجات المخالفة أو المحظورة</div>
+        </div>
+        <button class="btn btn-outline" id="btn-refresh-products" style="gap:6px">
+          <span>🔄</span> تحديث القائمة
+        </button>
+      </div>
+
+      <!-- Quick KPI Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:var(--space-5)">
+        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">إجمالي المنتجات</div>
+          <div style="font-size:1.8rem;font-weight:800;color:var(--primary)">${totalProds}</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">قيد المراجعة والاعتماد ⏳</div>
+          <div style="font-size:1.8rem;font-weight:800;color:#F59E0B">${pendingProds.length}</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">معتمدة ومفعلة ✓</div>
+          <div style="font-size:1.8rem;font-weight:800;color:#10B981">${approvedProds.length}</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">منتجات مرفوضة ✕</div>
+          <div style="font-size:1.8rem;font-weight:800;color:#EF4444">${rejectedProds.length}</div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;background:var(--surface);padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border)">
+        <div style="flex:1;min-width:220px">
+          <input type="search" id="admin-products-search" class="form-input" placeholder="🔍 بحث باسم المنتج أو المكان أو التصنيف..." style="margin:0" />
+        </div>
+        <div style="min-width:180px">
+          <select id="admin-products-status-filter" class="form-select" style="margin:0">
+            <option value="">كل المنتجات</option>
+            <option value="pending" ${pendingProds.length > 0 ? 'selected' : ''}>⏳ قيد المراجعة (${pendingProds.length})</option>
+            <option value="approved">✓ المعتمدة (${approvedProds.length})</option>
+            <option value="rejected">✕ المرفوضة (${rejectedProds.length})</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Products Table -->
+      <div class="dashboard-table-wrapper">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th style="width:70px">الصورة</th>
+              <th>المنتج</th>
+              <th>المكان التابع له</th>
+              <th>السعر</th>
+              <th>الحالة</th>
+              <th>تاريخ الإضافة</th>
+              <th>إجراءات الإدارة</th>
+            </tr>
+          </thead>
+          <tbody id="admin-products-tbody">
+            ${renderAdminProductsTableRows(pendingProds.length > 0 ? pendingProds : products)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  const searchInput = document.getElementById('admin-products-search');
+  const statusFilter = document.getElementById('admin-products-status-filter');
+  const tbody = document.getElementById('admin-products-tbody');
+  const refreshBtn = document.getElementById('btn-refresh-products');
+
+  const applyFilters = () => {
+    const q = (searchInput?.value || '').toLowerCase().trim();
+    const st = statusFilter?.value || '';
+
+    const filtered = products.filter(p => {
+      const matchQ = !q || (p.name || '').toLowerCase().includes(q) || (p.placeName || '').toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q);
+      let matchSt = true;
+      if (st === 'pending') matchSt = p.status === 'pending' || (!p.status && p.isApproved === false);
+      else if (st === 'approved') matchSt = p.status === 'approved' || p.isApproved === true || (!p.status && p.isApproved === undefined);
+      else if (st === 'rejected') matchSt = p.status === 'rejected';
+      return matchQ && matchSt;
+    });
+
+    if (tbody) tbody.innerHTML = renderAdminProductsTableRows(filtered);
+  };
+
+  searchInput?.addEventListener('input', applyFilters);
+  statusFilter?.addEventListener('change', applyFilters);
+
+  refreshBtn?.addEventListener('click', async () => {
+    adminCache.products = null;
+    toast.info('جاري تحديث قائمة المنتجات...');
+    await renderAdminProducts($container);
+  });
+}
+
+function renderAdminProductsTableRows(products) {
+  if (!products.length) {
+    return '<tr><td colspan="7" class="text-center" style="padding:40px;color:var(--text-muted)">لا توجد منتجات مطابقة لهذا الفلتر</td></tr>';
+  }
+
+  return products.map(p => {
+    const isPending = p.status === 'pending' || (!p.status && p.isApproved === false);
+    const isApproved = p.status === 'approved' || p.isApproved === true || (!p.status && p.isApproved === undefined);
+    const isRejected = p.status === 'rejected';
+
+    let badge = '';
+    if (isPending) {
+      badge = '<span class="badge" style="background:#FEF3C7;color:#D97706;font-weight:700">⏳ قيد المراجعة</span>';
+    } else if (isApproved) {
+      badge = '<span class="badge badge--success">✓ معتمد ومفعل</span>';
+    } else {
+      badge = `<span class="badge badge--danger" title="${escAttr(p.rejectReason || '')}">✕ مرفوض</span>`;
+    }
+
+    const img = p.imageUrl || './icons/icon-192x192.png';
+
+    return `
+      <tr>
+        <td>
+          <img src="${escAttr(img)}" alt="${escAttr(p.name)}" style="width:48px;height:48px;object-fit:cover;border-radius:var(--radius-md);border:1px solid var(--border)" onerror="this.src='./icons/icon-192x192.png'" />
+        </td>
+        <td>
+          <div style="font-weight:700">${escHtml(p.name)}</div>
+          ${p.description ? `<div style="font-size:12px;color:var(--text-muted);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(p.description)}</div>` : ''}
+          ${p.category ? `<span class="badge" style="font-size:10px;margin-top:4px">${escHtml(p.category)}</span>` : ''}
+        </td>
+        <td>
+          <a href="place.html?slug=${escAttr(p.placeSlug || p.placeId)}" target="_blank" style="font-weight:600;color:var(--primary);display:inline-flex;align-items:center;gap:4px">
+            ${escHtml(p.placeName || 'المكان')} ${ICONS.eye}
+          </a>
+        </td>
+        <td style="font-weight:700;color:var(--accent)">
+          ${p.price ? `${p.price} ج.م` : 'غير محدد'}
+          ${p.oldPrice ? `<span style="font-size:11px;color:var(--text-muted);text-decoration:line-through;margin-right:4px">${p.oldPrice} ج.م</span>` : ''}
+        </td>
+        <td>
+          ${badge}
+          ${isRejected && p.rejectReason ? `<div style="font-size:11px;color:var(--danger);margin-top:3px">${escHtml(p.rejectReason)}</div>` : ''}
+        </td>
+        <td style="font-size:12px;color:var(--text-muted)">
+          ${p.createdAt ? formatDate(p.createdAt) : '—'}
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${!isApproved ? `
+              <button class="btn btn-xs btn-success" onclick="adminApproveProductAction('${escAttr(p.placeId)}', '${escAttr(p.id)}')" title="الموافقة على المنتج وتفعيله في صفحة المكان">
+                ✓ اعتماد
+              </button>
+            ` : ''}
+            ${!isRejected ? `
+              <button class="btn btn-xs btn-outline" style="color:#DC2626;border-color:#FCA5A5" onclick="adminRejectProductAction('${escAttr(p.placeId)}', '${escAttr(p.id)}', '${escAttr(p.name)}')" title="رفض المنتج وتحديد السبب">
+                ✕ رفض
+              </button>
+            ` : ''}
+            <button class="btn btn-xs btn-danger" onclick="adminDeleteProductAction('${escAttr(p.placeId)}', '${escAttr(p.id)}')" title="حذف المنتج نهائياً">
+              ${ICONS.trash}
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+if (typeof window !== 'undefined') {
+  window.adminApproveProductAction = async (placeId, productId) => {
+    try {
+      await adminApproveProduct(placeId, productId);
+      toast.success('تمت الموافقة على المنتج وتفعيله بنجاح! ⭐');
+      adminCache.products = null;
+      await renderAdminProducts(document.getElementById('admin-main-area'));
+    } catch (err) {
+      toast.error(err.message || 'فشلت الموافقة على المنتج');
+    }
+  };
+
+  window.adminRejectProductAction = (placeId, productId, productName) => {
+    const modal = showModal({
+      title: `✕ رفض المنتج: ${escHtml(productName)}`,
+      size: 'md',
+      content: `
+        <form id="form-reject-product" style="display:flex;flex-direction:column;gap:12px" onsubmit="return false">
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">سبب الرفض <span class="required">*</span></label>
+            <select id="reject-prod-preset" class="form-select" onchange="document.getElementById('reject-prod-reason').value = this.value">
+              <option value="منتج غير مصرح به أو مخالف للسياسات">منتج غير مصرح به أو مخالف للسياسات</option>
+              <option value="صورة المنتج غير لائقة أو غير واضحة">صورة المنتج غير لائقة أو غير واضحة</option>
+              <option value="بيانات أو سعر المنتج غير دقيقة">بيانات أو سعر المنتج غير دقيقة</option>
+              <option value="منتج مكرر">منتج مكرر</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">توضيح إضافي للمالك</label>
+            <textarea id="reject-prod-reason" class="form-textarea" rows="3">منتج غير مصرح به أو مخالف للسياسات</textarea>
+          </div>
+        </form>
+      `,
+      buttons: [
+        {
+          label: '✕ تأكيد الرفض',
+          type: 'danger',
+          closeOnClick: false,
+          onClick: async () => {
+            const reason = document.getElementById('reject-prod-reason')?.value.trim();
+            try {
+              await adminRejectProduct(placeId, productId, reason);
+              toast.warning('تم رفض المنتج وتحديث حالته');
+              modal.close();
+              adminCache.products = null;
+              await renderAdminProducts(document.getElementById('admin-main-area'));
+            } catch (err) {
+              toast.error(err.message || 'فشل رفض المنتج');
+            }
+          }
+        },
+        { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+      ]
+    });
+  };
+
+  window.adminDeleteProductAction = async (placeId, productId) => {
+    const ok = await showConfirm({
+      title: 'حذف المنتج',
+      message: 'هل أنت متأكد من حذف هذا المنتج نهائياً؟',
+      confirmText: 'نعم، احذف',
+      cancelText: 'إلغاء'
+    });
+    if (ok) {
+      try {
+        await adminDeleteProduct(placeId, productId);
+        toast.success('تم حذف المنتج بنجاح');
+        adminCache.products = null;
+        await renderAdminProducts(document.getElementById('admin-main-area'));
+      } catch (err) {
+        toast.error(err.message || 'فشل حذف المنتج');
+      }
+    }
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -510,6 +875,7 @@ async function renderAdminReviews($container) {
 
   const totalReviews = allReviews.length;
   const fiveStarReviews = allReviews.filter(r => Number(r.rating) === 5).length;
+  const reportedReviews = allReviews.filter(r => r.isReported);
   const avgOverall = totalReviews > 0 ? (allReviews.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / totalReviews).toFixed(1) : '5.0';
 
   $container.innerHTML = `
@@ -517,7 +883,7 @@ async function renderAdminReviews($container) {
       <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
           <h1 class="dashboard-header__title">إدارة التقييمات والمراجعات (${totalReviews})</h1>
-          <div class="dashboard-header__subtitle">التحكم في تقييمات الأماكن، وإضافة مراجعات بأسماء عملاء، وتعديل أو حذف أي تقييم</div>
+          <div class="dashboard-header__subtitle">التحكم في تقييمات الأماكن، وإضافة مراجعات بأسماء عملاء، ومراجعة البلاغات المسيئة</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <button class="btn btn-secondary" id="btn-admin-bulk-reviews" style="border-radius:var(--radius-full);gap:6px">
@@ -543,6 +909,10 @@ async function renderAdminReviews($container) {
           <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">متوسط التقييم العام</div>
           <div style="font-size:1.8rem;font-weight:800;color:var(--accent)">${avgOverall} ★</div>
         </div>
+        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid ${reportedReviews.length > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)'}">
+          <div style="font-size:12px;color:${reportedReviews.length > 0 ? 'var(--danger)' : 'var(--text-muted)'};margin-bottom:6px">بلاغات مسيئة 🚩</div>
+          <div style="font-size:1.8rem;font-weight:800;color:${reportedReviews.length > 0 ? 'var(--danger)' : 'var(--text-muted)'}">${reportedReviews.length}</div>
+        </div>
       </div>
 
       <!-- Filter Bar -->
@@ -559,6 +929,7 @@ async function renderAdminReviews($container) {
         <div style="min-width:160px">
           <select id="admin-reviews-filter-stars" class="form-select" style="margin:0">
             <option value="">كل التقييمات</option>
+            <option value="reported" ${reportedReviews.length > 0 ? 'selected' : ''}>🚩 التعليقات المُبلّغ عنها (${reportedReviews.length})</option>
             <option value="positive">إيجابي (3 - 5 نجوم) 👍</option>
             <option value="negative">سلبي (1 - 2 نجوم) 👎</option>
             <option value="5">5 نجوم ★★★★★</option>
@@ -647,7 +1018,9 @@ async function renderAdminReviews($container) {
       if (placeFilter && r.placeId !== placeFilter) return false;
       
       const numStars = Number(r.rating) || 5;
-      if (starsFilter === 'positive') {
+      if (starsFilter === 'reported') {
+        if (!r.isReported) return false;
+      } else if (starsFilter === 'positive') {
         if (numStars < 3) return false;
       } else if (starsFilter === 'negative') {
         if (numStars > 2) return false;
@@ -684,9 +1057,10 @@ async function renderAdminReviews($container) {
       const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
       const placeObj = adminCache.places?.[r.placeId];
       const placeSlug = placeObj?.slug || r.placeSlug || r.placeId;
+      const isReported = Boolean(r.isReported);
 
       return `
-        <tr>
+        <tr style="${isReported ? 'background:rgba(239,68,68,0.06)' : ''}">
           <td style="text-align:center">
             <input type="checkbox" class="admin-review-checkbox" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="cursor:pointer;width:15px;height:15px" />
           </td>
@@ -719,12 +1093,28 @@ async function renderAdminReviews($container) {
             <div style="font-size:13px;line-height:1.5;color:var(--text-primary)" title="${escAttr(r.comment)}">
               ${escHtml(r.comment || '—')}
             </div>
+            ${isReported ? `
+              <div style="font-size:11px;color:var(--danger);font-weight:700;margin-top:4px;display:flex;align-items:center;gap:4px">
+                <span>🚩</span>
+                <span>بلاغ مسيء: ${escHtml(r.lastReportReason || 'محتوى غير لائق')} (من ${escHtml(r.lastReporterName || 'مستخدم')})</span>
+              </div>
+            ` : ''}
+            ${(r.isReviewedByAdmin && (r.adminReviewStatus === 'approved_compliant' || r.adminReviewNote)) ? `
+              <div style="font-size:11px;color:#047857;margin-top:3px;font-weight:600">
+                🛡️ تم مراجعة هذا التعليق وتأكيد التزامه بالسياسة
+              </div>
+            ` : ''}
           </td>
           <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">
             ${formatDate(r.createdAt || Date.now())}
           </td>
           <td style="text-align:center;white-space:nowrap">
-            <div style="display:inline-flex;gap:4px">
+            <div style="display:inline-flex;gap:4px;flex-wrap:wrap">
+              ${isReported ? `
+                <button class="btn btn-xs btn-success btn-approve-reported-review" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" title="الموافقة والتأكيد أن التعليق يلتزم بالسياسة وتبرئته">
+                  🛡️ سليم (تأكيد)
+                </button>
+              ` : ''}
               <button class="btn btn-xs btn-outline btn-edit-review-admin" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" title="تعديل التقييم">
                 ${ICONS.edit}
               </button>
@@ -745,6 +1135,21 @@ async function renderAdminReviews($container) {
     updateBulkSelectionUI();
 
     // Attach row button events
+    tbody.querySelectorAll('.btn-approve-reported-review').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pId = btn.getAttribute('data-pid');
+        const rId = btn.getAttribute('data-rid');
+        try {
+          await adminApproveReportedReview(pId, rId);
+          toast.success('تمت مراجعة التعليق وتأكيد التزامه بالسياسة بنجاح 🛡️');
+          adminCache.reviews = null;
+          await renderAdminReviews($container);
+        } catch (err) {
+          toast.error(err.message || 'فشلت العملية');
+        }
+      });
+    });
+
     tbody.querySelectorAll('.btn-edit-review-admin').forEach(btn => {
       btn.addEventListener('click', () => {
         const pId = btn.getAttribute('data-pid');
@@ -2150,6 +2555,7 @@ async function renderAdminSettings($container) {
 //  Reactive Global Action Handlers (Instant UI updates)
 // ─────────────────────────────────────────────
 
+if (typeof window !== 'undefined') {
 window.togglePlaceSponsored = async (placeId, newStatus) => {
   try {
     const updates = {
@@ -2906,6 +3312,7 @@ window.deleteAdAdmin = async (adId) => {
     toast.error('فشل الحذف');
   }
 };
+}
 
 // ── Utils ──
 function escHtml(str) {

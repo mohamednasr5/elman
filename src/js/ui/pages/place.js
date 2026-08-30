@@ -4,8 +4,8 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, HAMMAD_PLACE_SLUG } from '../../core/db.js';
-import { getCurrentUser, signInWithGoogle } from '../../core/auth.js';
+import { getPlaceBySlug, getCategories, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, HAMMAD_PLACE_SLUG } from '../../core/db.js';
+import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
@@ -41,6 +41,27 @@ export async function renderPlacePage($container, { slug, user }) {
       return;
     }
 
+    const currentUser = getCurrentUser() || user;
+    const isOwner = currentUser && currentUser.uid === place.ownerId;
+    const isUserAdmin = currentUser && isAdmin(currentUser);
+
+    // Check if place is currently banned
+    if (isPlaceBanned(place) && !isUserAdmin && !isOwner) {
+      $container.innerHTML = `
+        <div class="error-page" style="padding:80px 20px;text-align:center">
+          <div class="error-page__content animate-fade-in-up" style="max-width:500px;margin:0 auto">
+            <div style="font-size:64px;margin-bottom:16px">🚫</div>
+            <h1 class="error-page__title" style="color:var(--danger,#EF4444);font-size:24px;margin-bottom:12px">هذا النشاط محظور حالياً</h1>
+            <p class="error-page__text" style="color:var(--text-muted);line-height:1.6;margin-bottom:24px">
+              تم حظر أو تعليق عرض هذا المكان مؤقتاً لمخالفة شروط وسياسات الاستخدام الخاصة بدليل المنزلة وناسها.
+            </p>
+            <a href="places.html" class="btn btn-primary btn-lg">العودة لدليل الأماكن</a>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
     const placeId = place.id || place._key;
 
     // Parallel load with safe fallbacks
@@ -54,8 +75,6 @@ export async function renderPlacePage($container, { slug, user }) {
 
     const category = categories?.find(c => c._key === place.categoryId || c.slug === place.categoryId);
     const catInfo = resolvePlaceCategoryInfo(place, category);
-    const currentUser = getCurrentUser() || user;
-    const isOwner = currentUser && currentUser.uid === place.ownerId;
     const isFollowing = currentUser ? await isFollowingPlace(placeId, currentUser.uid).catch(() => false) : false;
 
     // ── Reviews / Ratings Summary ──
@@ -423,6 +442,23 @@ export async function renderPlacePage($container, { slug, user }) {
                       <div style="font-size:13.5px;line-height:1.6;color:var(--text-secondary);background:var(--surface-2);padding:10px 12px;border-radius:var(--radius-sm)">
                         ${escHtml(r.comment || '')}
                       </div>
+
+                      <!-- Admin Reviewed Compliance Note (هذا التعليق تم الإبلاغ عنه وبعد المراجعة تأكدنا أنه يلتزم بالسياسة) -->
+                      ${(r.isReviewedByAdmin && (r.adminReviewStatus === 'approved_compliant' || r.adminReviewNote)) ? `
+                        <div class="admin-review-compliant-note" style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.08);border-right:3px solid #10B981;border-radius:var(--radius-sm);font-size:12px;color:#047857;line-height:1.5;display:flex;align-items:center;gap:6px">
+                          <span>🛡️</span>
+                          <span><strong>ملاحظة الإدارة:</strong> هذا التعليق تم الإبلاغ عنه، وبعد المراجعة تأكدنا أنه يلتزم بالسياسة ولا داعي لحذفه.</span>
+                        </div>
+                      ` : ''}
+
+                      <!-- Report Action -->
+                      ${!isMine ? `
+                        <div style="display:flex;justify-content:flex-end;margin-top:6px">
+                          <button type="button" class="btn-report-review" onclick="window.reportReviewAction('${escAttr(placeId)}', '${escAttr(r.id)}', '${escAttr(place.name)}')" style="background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;transition:color 0.2s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'" title="الإبلاغ عن هذا التعليق كمسيء">
+                            <span>🚩</span> الإبلاغ عن هذا التعليق كمسيء
+                          </button>
+                        </div>
+                      ` : ''}
 
                     </div>
                   `;
@@ -1285,5 +1321,56 @@ function setupReviewsSentimentFilter() {
       });
     });
   });
+}
+
+if (typeof window !== 'undefined') {
+  window.reportReviewAction = (placeId, reviewId, placeName) => {
+    const modal = showModal({
+      title: '🚩 الإبلاغ عن تعليق مسيء',
+      size: 'sm',
+      content: `
+        <form id="form-report-review" style="display:flex;flex-direction:column;gap:12px" onsubmit="return false">
+          <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.5">
+            إذا كان هذا التعليق يحتوي على ألفاظ مسيئة، تشهير، معلومات مضللة، أو إعلانات غير مرغوبة، يرجى إبلاغنا لمراجعته فوراً.
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">سبب الإبلاغ <span class="required">*</span></label>
+            <select id="report-reason-select" class="form-select">
+              <option value="ألفاظ مسيئة أو سب وقذف">ألفاظ مسيئة أو سب وقذف</option>
+              <option value="تقييم وهمي أو مضلل">تقييم وهمي أو مضلل</option>
+              <option value="إعلان تجاري غير مرغوب به">إعلان تجاري غير مرغوب به</option>
+              <option value="مخالفة لسياسة الاستخدام">مخالفة لسياسة الاستخدام</option>
+            </select>
+          </div>
+        </form>
+      `,
+      buttons: [
+        {
+          label: '🚩 إرسال البلاغ',
+          type: 'danger',
+          closeOnClick: false,
+          onClick: async () => {
+            const reason = document.getElementById('report-reason-select')?.value || 'محتوى غير لائق';
+            const curUser = getCurrentUser();
+            const reporterName = curUser ? (curUser.name || curUser.displayName || 'مستخدم مسجل') : 'زائر الموقع';
+            try {
+              await reportPlaceReview({
+                placeId,
+                reviewId,
+                reason,
+                reporterName,
+                reporterId: curUser?.uid || null
+              });
+              toast.success('تم استلام إبلاغك بنجاح وسيقوم فريق الإدارة بمراجعته فوراً. شكرًا لحرصك! 🚩');
+              modal.close();
+            } catch (err) {
+              toast.error(err.message || 'فشل إرسال البلاغ');
+            }
+          }
+        },
+        { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+      ]
+    });
+  };
 }
 

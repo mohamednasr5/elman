@@ -826,6 +826,28 @@ export async function sendAdminPushNotification(type, payload, env) {
       `🏷️ *العرض:* ${payload.title}\n` +
       `🏢 *المكان:* ${payload.placeName}\n` +
       `💰 *الخصم/السعر:* ${payload.discount || payload.price || 'عرض خاص'}`;
+  } else if (type === 'new_review') {
+    const starStr = '⭐'.repeat(Math.min(5, Math.max(1, payload.rating || 5)));
+    text = `🔔 *تعليق جديد على مكان في المنزلة!*\n\n` +
+      `🏢 *المكان / * ${payload.placeName || 'المكان'}\n` +
+      `👤 *صاحب التعليق / * ${payload.userName || 'عميل'}\n` +
+      `⭐ *عدد النجوم / * ${payload.rating || 5} ${starStr}\n` +
+      `💬 *نص التعليق / *\n"${payload.comment || ''}"`;
+
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🌐 عرض في صفحة المكان', url: `https://elmanzla.web.app/place.html?slug=${payload.placeSlug || payload.placeId}` }
+        ]
+      ]
+    };
+  } else if (type === 'review_reported') {
+    text = `🚩 *تم الإبلاغ عن تعليق كمسيء!*\n\n` +
+      `🏢 *المكان / * ${payload.placeName || 'المكان'}\n` +
+      `👤 *كاتب التعليق / * ${payload.userName || 'عميل'}\n` +
+      `💬 *التعليق / * "${payload.comment || ''}"\n` +
+      `⚠️ *سبب الإبلاغ / * ${payload.reason || 'محتوى غير لائق'}\n` +
+      `👤 *مُقدّم البلاغ / * ${payload.reporterName || 'مستخدم'}`;
   } else if (type === 'contact_message') {
     text = `📩 *رسالة جديدة من صفحة تواصل معنا!*\n\n` +
       `👤 *الاسم:* ${payload.name}\n` +

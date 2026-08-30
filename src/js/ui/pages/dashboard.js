@@ -1215,13 +1215,13 @@ async function renderPlaceProductsSection($container, user, placeId) {
     return;
   }
 
-  const products = await getPlaceProducts(placeId, { limit: 350 });
+  const products = await getPlaceProducts(placeId, { limit: 350, includePending: true });
 
   $container.innerHTML = `
     <div class="dashboard-header">
       <div>
         <h1 class="dashboard-header__title">إدارة منتجات: ${escHtml(place.name)}</h1>
-        <div class="dashboard-header__subtitle">المنتجات المسجلة: ${products.length} من أصل 350 منتج</div>
+        <div class="dashboard-header__subtitle">المنتجات المسجلة: ${products.length} من أصل 350 منتج (تخضع المنتجات للمراجعة للتأكد من مطابقتها للشروط)</div>
       </div>
       <div style="display:flex;gap:var(--space-2)">
         <button class="btn btn-primary" id="btn-open-add-product" ${products.length >= 350 ? 'disabled' : ''}>
@@ -1239,22 +1239,35 @@ async function renderPlaceProductsSection($container, user, placeId) {
             <th>الصورة</th>
             <th>اسم المنتج</th>
             <th>السعر</th>
-            <th>الحالة</th>
+            <th>حالة المراجعة</th>
+            <th>التوفر</th>
           </tr>
         </thead>
         <tbody>
           ${products.length === 0 ? `
-            <tr><td colspan="4" class="text-center" style="padding:2rem">لا توجد منتجات مسجلة</td></tr>
-          ` : products.map(p => `
-            <tr>
-              <td>
-                <img src="${p.imageUrl || './icons/icon-72x72.png'}" style="width:40px;height:40px;object-fit:cover;border-radius:4px" />
-              </td>
-              <td><strong>${escHtml(p.name)}</strong></td>
-              <td>${formatPrice(p.price)}</td>
-              <td>${p.inStock ? '<span class="badge badge--published">متوفر</span>' : '<span class="badge badge--suspended">نفذ</span>'}</td>
-            </tr>
-          `).join('')}
+            <tr><td colspan="5" class="text-center" style="padding:2rem">لا توجد منتجات مسجلة</td></tr>
+          ` : products.map(p => {
+            const isPending = p.status === 'pending' || (!p.status && p.isApproved === false);
+            const isApproved = p.status === 'approved' || p.isApproved === true || (!p.status && p.isApproved === undefined);
+            const isRejected = p.status === 'rejected';
+
+            let modBadge = '';
+            if (isPending) modBadge = '<span class="badge" style="background:#FEF3C7;color:#D97706;font-weight:700">⏳ قيد مراجعة الإدارة</span>';
+            else if (isApproved) modBadge = '<span class="badge badge--success">✓ معتمد وظاهر في الدليل</span>';
+            else modBadge = `<span class="badge badge--danger" title="${escAttr(p.rejectReason || '')}">✕ مرفوض (${escHtml(p.rejectReason || 'مخالف للشروط')})</span>`;
+
+            return `
+              <tr>
+                <td>
+                  <img src="${p.imageUrl || './icons/icon-72x72.png'}" style="width:40px;height:40px;object-fit:cover;border-radius:4px" />
+                </td>
+                <td><strong>${escHtml(p.name)}</strong></td>
+                <td>${formatPrice(p.price)}</td>
+                <td>${modBadge}</td>
+                <td>${p.inStock ? '<span class="badge badge--published">متوفر</span>' : '<span class="badge badge--suspended">نفذ</span>'}</td>
+              </tr>
+            `;
+          }).join('')}
         </tbody>
       </table>
     </div>
@@ -1322,7 +1335,7 @@ function showAddProductModal(place, user, onDone) {
               oldPrice,
               imageUrl
             }, user);
-            toast.success('تمت إضافة المنتج');
+            toast.success('تمت إضافة المنتج بنجاح، وسيظهر في دليلك فور اعتماده من الإدارة ⏳');
             modal.close();
             onDone();
           } catch (err) {
@@ -1365,12 +1378,14 @@ function setupFileUpload(zoneId, inputId, onFileSelected) {
   });
 }
 
-window.toggleDayHours = (dayKey, isClosed) => {
-  const openInput = document.getElementById(`wh-${dayKey}-open`);
-  const closeInput = document.getElementById(`wh-${dayKey}-close`);
-  if (openInput) openInput.disabled = isClosed;
-  if (closeInput) closeInput.disabled = isClosed;
-};
+if (typeof window !== 'undefined') {
+  window.toggleDayHours = (dayKey, isClosed) => {
+    const openInput = document.getElementById(`wh-${dayKey}-open`);
+    const closeInput = document.getElementById(`wh-${dayKey}-close`);
+    if (openInput) openInput.disabled = isClosed;
+    if (closeInput) closeInput.disabled = isClosed;
+  };
+}
 
 /**
  * Render Dashboard Notifications Section (Profile visitors & alerts)

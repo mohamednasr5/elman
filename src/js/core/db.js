@@ -3,7 +3,7 @@
  * Typed, promise-based wrappers around Firebase Realtime Database
  */
 
-import { getDB } from './firebase.js';
+import { getDB, WORKER_URL } from './firebase.js';
 
 export { getDB };
 
@@ -253,7 +253,58 @@ export async function getPlaceBySlug(slug) {
   return null;
 }
 
-/** Get all published places (paginated) */
+/** Check if a place is currently banned (temporary or permanent) */
+export function isPlaceBanned(place) {
+  if (!place) return false;
+  if (place.isBanned) {
+    if (place.isPermanentlyBanned || !place.bannedUntil) return true;
+    return Number(place.bannedUntil) > Date.now();
+  }
+  if (place.status === 'banned') return true;
+  return false;
+}
+
+/** Admin: Ban a place (temporary or permanent) */
+export async function adminBanPlace(placeId, { type = 'temporary', durationDays = 30, bannedUntil = null, reason = '' } = {}) {
+  if (!placeId) throw new Error('المكان مطلوب');
+  const isPermanent = type === 'permanent';
+  const now = Date.now();
+  const until = isPermanent ? null : (bannedUntil || (now + (Number(durationDays) * 86400000)));
+
+  const updates = {
+    isBanned: true,
+    isPermanentlyBanned: isPermanent,
+    bannedAt: now,
+    bannedUntil: until,
+    banReason: (reason || '').trim() || 'مخالفة شروط الاستخدام',
+    status: 'banned',
+    updatedAt: now
+  };
+
+  await dbUpdate(`places/${placeId}`, updates);
+  clearDbCache();
+  return updates;
+}
+
+/** Admin: Unban a place */
+export async function adminUnbanPlace(placeId) {
+  if (!placeId) throw new Error('المكان مطلوب');
+  const updates = {
+    isBanned: false,
+    isPermanentlyBanned: false,
+    bannedAt: null,
+    bannedUntil: null,
+    banReason: null,
+    status: 'published',
+    updatedAt: Date.now()
+  };
+
+  await dbUpdate(`places/${placeId}`, updates);
+  clearDbCache();
+  return updates;
+}
+
+/** Get all published places (paginated, excluding banned) */
 export async function getPublishedPlaces({ limit = 20, lastKey = null } = {}) {
   const cacheKey = `published_${limit}_${lastKey || ''}`;
   const cached = getCached(cacheKey, 20000);
@@ -263,7 +314,7 @@ export async function getPublishedPlaces({ limit = 20, lastKey = null } = {}) {
     let query = getDB().ref('places')
       .orderByChild('status')
       .equalTo('published')
-      .limitToFirst(limit);
+      .limitToFirst(limit * 2);
 
     if (lastKey) {
       query = query.startAfter(null, lastKey);
@@ -274,17 +325,21 @@ export async function getPublishedPlaces({ limit = 20, lastKey = null } = {}) {
 
     const places = [];
     snap.forEach(child => {
-      places.push({ _key: child.key, ...child.val() });
+      const p = { _key: child.key, id: child.key, ...child.val() };
+      if (!isPlaceBanned(p)) {
+        places.push(p);
+      }
     });
 
-    return setCache(cacheKey, places);
+    const res = places.slice(0, limit);
+    return setCache(cacheKey, res);
   } catch (err) {
     console.warn('[getPublishedPlaces] Handled error:', err);
     return [];
   }
 }
 
-/** Get places by category */
+/** Get places by category (excluding banned) */
 export async function getPlacesByCategory(categoryId, limit = 20) {
   const cacheKey = `places_cat_${categoryId}_${limit}`;
   const cached = getCached(cacheKey, 20000);
@@ -294,17 +349,20 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
     const snap = await getDB().ref('places')
       .orderByChild('categoryId')
       .equalTo(categoryId)
-      .limitToFirst(limit)
+      .limitToFirst(limit * 2)
       .once('value');
 
     if (!snap.exists()) return [];
 
     const places = [];
     snap.forEach(child => {
-      places.push({ _key: child.key, ...child.val() });
+      const p = { _key: child.key, id: child.key, ...child.val() };
+      if (p.status === 'published' && !isPlaceBanned(p)) {
+        places.push(p);
+      }
     });
 
-    const res = places.filter(p => p.status === 'published');
+    const res = places.slice(0, limit);
     return setCache(cacheKey, res);
   } catch (err) {
     console.warn('[getPlacesByCategory] Handled error:', err);
@@ -352,19 +410,23 @@ export async function getCategories() {
 
     if (!snap.exists()) return [];
 
-    const cats = [];
+    const categories = [];
     snap.forEach(child => {
-      const cat = child.val();
-      if (cat.isActive !== false) {
-        cats.push({ _key: child.key, ...cat });
-      }
+      categories.push({ _key: child.key, slug: child.key, ...child.val() });
     });
 
-    return setCache(cacheKey, cats);
+    return setCache(cacheKey, categories);
   } catch (err) {
     console.warn('[getCategories] Handled error:', err);
     return [];
   }
+}
+
+/** Get category by slug */
+export async function getCategory(slug) {
+  if (!slug) return null;
+  const categories = await getCategories();
+  return categories.find(c => c.slug === slug || c._key === slug) || null;
 }
 
 /** Get active offers (not expired) */
@@ -426,8 +488,8 @@ export async function getPlaceOffers(placeId) {
   }
 }
 
-/** Get products for a place */
-export async function getPlaceProducts(placeId, { limit = 50, page = 1 } = {}) {
+/** Get products for a place (public approved or owner pending) */
+export async function getPlaceProducts(placeId, { limit = 50, includePending = false } = {}) {
   if (!placeId) return [];
   try {
     const snap = await getDB().ref(`products/${placeId}`)
@@ -438,7 +500,11 @@ export async function getPlaceProducts(placeId, { limit = 50, page = 1 } = {}) {
 
     const products = [];
     snap.forEach(child => {
-      products.push({ _key: child.key, ...child.val() });
+      const prod = { _key: child.key, id: child.key, ...child.val() };
+      // Include pending only if explicitly requested (e.g. for owner dashboard)
+      if (includePending || prod.status === 'approved' || prod.isApproved === true || (!prod.status && prod.isApproved === undefined)) {
+        products.push(prod);
+      }
     });
 
     return products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -446,6 +512,74 @@ export async function getPlaceProducts(placeId, { limit = 50, page = 1 } = {}) {
     console.warn('[getPlaceProducts] Handled error:', err);
     return [];
   }
+}
+
+/** Get all products across all places (for Admin Moderation) */
+export async function getAllProducts() {
+  try {
+    const snap = await getDB().ref('products').once('value');
+    if (!snap.exists()) return [];
+
+    const productsMap = snap.val() || {};
+    const placesMap = (await dbGet('places')) || {};
+    const all = [];
+
+    for (const [placeId, placeProducts] of Object.entries(productsMap)) {
+      if (!placeProducts || typeof placeProducts !== 'object') continue;
+      const place = placesMap[placeId] || {};
+      for (const [prodId, prod] of Object.entries(placeProducts)) {
+        if (!prod || typeof prod !== 'object') continue;
+        all.push({
+          id: prodId,
+          _key: prodId,
+          placeId,
+          placeName: prod.placeName || place.name || 'مكان غير معروف',
+          placeSlug: prod.placeSlug || place.slug || placeId,
+          ...prod
+        });
+      }
+    }
+
+    return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  } catch (err) {
+    console.warn('[getAllProducts] error:', err);
+    return [];
+  }
+}
+
+/** Admin: Approve a product */
+export async function adminApproveProduct(placeId, productId) {
+  if (!placeId || !productId) throw new Error('بيانات المنتج والمكان مطلوبة');
+  const updates = {
+    status: 'approved',
+    isApproved: true,
+    approvedAt: Date.now(),
+    rejectReason: null,
+    updatedAt: Date.now()
+  };
+  await dbUpdate(`products/${placeId}/${productId}`, updates);
+  return updates;
+}
+
+/** Admin: Reject a product */
+export async function adminRejectProduct(placeId, productId, reason = '') {
+  if (!placeId || !productId) throw new Error('بيانات المنتج والمكان مطلوبة');
+  const updates = {
+    status: 'rejected',
+    isApproved: false,
+    rejectReason: (reason || '').trim() || 'مخالف لسياسة المنتجات والشروط',
+    rejectedAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  await dbUpdate(`products/${placeId}/${productId}`, updates);
+  return updates;
+}
+
+/** Admin: Delete a product */
+export async function adminDeleteProduct(placeId, productId) {
+  if (!placeId || !productId) throw new Error('بيانات المنتج والمكان مطلوبة');
+  await dbRemove(`products/${placeId}/${productId}`);
+  await dbIncrement(`places/${placeId}/productCount`, -1).catch(() => {});
 }
 
 /** Get active ads by placement */
@@ -760,7 +894,82 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   // Write inside places/${placeId}/reviews/${reviewId}
   await dbSet(`places/${placeId}/reviews/${reviewId}`, reviewData);
   await recalculatePlaceRating(placeId);
+
+  // Send Instant Telegram Notification to Admin Bot (Async background)
+  fetch(`${WORKER_URL}/api/notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'new_review',
+      data: {
+        placeId,
+        placeName: placeName || 'المكان',
+        placeSlug: placeSlug || '',
+        userName: userName,
+        rating: numRating,
+        comment: cleanComment
+      }
+    })
+  }).catch(() => {});
+
   return reviewData;
+}
+
+/**
+ * Report a Review as Abusive / Inappropriate (الإبلاغ عن تعليق مسيء)
+ */
+export async function reportPlaceReview({ placeId, reviewId, reason = 'محتوى غير لائق', reporterName = 'مستخدم', reporterId = null }) {
+  if (!placeId || !reviewId) throw new Error('بيانات التعليق غير مكتملة');
+
+  const review = await dbGet(`places/${placeId}/reviews/${reviewId}`);
+  if (!review) throw new Error('التعليق غير موجود');
+
+  const currentCount = Number(review.reportCount) || 0;
+  const updates = {
+    isReported: true,
+    reportCount: currentCount + 1,
+    lastReportReason: reason,
+    reportedAt: Date.now(),
+    lastReporterName: reporterName || 'مستخدم'
+  };
+
+  await dbUpdate(`places/${placeId}/reviews/${reviewId}`, updates);
+
+  // Send Telegram Alert to Admin
+  fetch(`${WORKER_URL}/api/notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'review_reported',
+      data: {
+        placeId,
+        placeName: review.placeName || 'المكان',
+        userName: review.userName || 'عميل',
+        comment: review.comment || '',
+        reason,
+        reporterName
+      }
+    })
+  }).catch(() => {});
+
+  return { ...review, ...updates };
+}
+
+/**
+ * Admin: Mark Reported Review as Compliant & Clear Report (تم المراجعة والتأكيد)
+ */
+export async function adminApproveReportedReview(placeId, reviewId) {
+  if (!placeId || !reviewId) throw new Error('المكان والتعليق مطلوبان');
+  const updates = {
+    isReported: false,
+    isReviewedByAdmin: true,
+    adminReviewStatus: 'approved_compliant',
+    adminReviewNote: 'هذا التعليق تم الإبلاغ عنه، وبعد المراجعة تأكدنا أنه يلتزم بالسياسة ولا داعي لحذفه.',
+    reviewedAt: Date.now()
+  };
+
+  await dbUpdate(`places/${placeId}/reviews/${reviewId}`, updates);
+  return updates;
 }
 
 /** Update user's review (Allows 1 edit maximum) */

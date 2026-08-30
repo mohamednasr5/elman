@@ -1,8 +1,4 @@
-/**
- * المنزلة وناسها — Products Page
- */
-
-import { dbGet } from '../../core/db.js';
+import { dbGet, isPlaceBanned } from '../../core/db.js';
 import { formatPrice } from '../../utils/arabic.js';
 import { setMeta, setBreadcrumbSchema } from '../../utils/seo.js';
 
@@ -44,9 +40,14 @@ export async function renderProductsPage($container) {
 
     Object.entries(rawProductsMap).forEach(([placeId, products]) => {
       const place = placesMap[placeId];
+      if (place && isPlaceBanned(place)) return; // Skip products from banned places
+
       if (products && typeof products === 'object') {
         Object.entries(products).forEach(([pId, prod]) => {
-          if (prod) {
+          if (!prod) return;
+          // Only show approved products (or legacy products without status)
+          const isApproved = prod.status === 'approved' || prod.isApproved === true || (!prod.status && prod.isApproved === undefined);
+          if (isApproved) {
             allProducts.push({
               ...prod,
               id: pId,
