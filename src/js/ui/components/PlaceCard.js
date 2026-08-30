@@ -55,9 +55,18 @@ export function renderPlaceCard(place) {
           <span class="truncate">${escHtml(place.name)}</span>
           ${verifiedBadge}
         </h3>
-        <div class="place-card__category">
-          📍 ${escHtml(place.area || 'المنزلة')}
-          ${deliveryBadge}
+        <div class="place-card__category" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap">
+          <div>
+            📍 ${escHtml(place.area || 'المنزلة')}
+            ${deliveryBadge}
+          </div>
+          ${(place.rating || place.reviewCount > 0 || (place.slug && place.slug.includes('mhmd-hmad'))) ? `
+            <div style="display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:#F59E0B;font-weight:700;background:rgba(245,158,11,0.08);padding:2px 6px;border-radius:var(--radius-sm)">
+              <span>★</span>
+              <span>${Number(place.rating || 5.0).toFixed(1)}</span>
+              ${place.reviewCount ? `<span style="color:var(--text-muted);font-weight:normal;font-size:10px">(${place.reviewCount})</span>` : ''}
+            </div>
+          ` : ''}
         </div>
         ${place.description ? `<p class="place-card__description">${escHtml(place.description)}</p>` : ''}
       </div>

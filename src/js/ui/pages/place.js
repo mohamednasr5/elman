@@ -4,13 +4,13 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat } from '../../core/db.js';
-import { getCurrentUser } from '../../core/auth.js';
+import { getPlaceBySlug, getCategories, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, HAMMAD_PLACE_SLUG } from '../../core/db.js';
+import { getCurrentUser, signInWithGoogle } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '../components/VerifiedBadge.js';
-import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil } from '../../utils/date.js';
+import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
-import { showModal } from '../components/Modal.js';
+import { showModal, showConfirm } from '../components/Modal.js';
 import { submitVerificationRequest } from '../../services/places.service.js';
 import { toast } from '../components/Toast.js';
 
@@ -42,11 +42,12 @@ export async function renderPlacePage($container, { slug, user }) {
     }
 
     // Parallel load
-    const [categories, offers, products, settings] = await Promise.all([
+    const [categories, offers, products, settings, reviews] = await Promise.all([
       getCategories(),
       getPlaceOffers(place.id || place._key),
       getPlaceProducts(place.id || place._key),
-      getSettings()
+      getSettings(),
+      getPlaceReviews(place.id || place._key)
     ]);
 
     const category = categories?.find(c => c._key === place.categoryId || c.slug === place.categoryId);
@@ -118,6 +119,12 @@ export async function renderPlacePage($container, { slug, user }) {
                     ${catInfo.icon} ${escHtml(catInfo.name)}
                   </a>
                   ${place.nameEn ? `<span style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
+                  
+                  <div style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
+                    <span>★</span>
+                    <span>${avgRating.toFixed(1)}</span>
+                    <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews} تقييم)</span>
+                  </div>
                 </div>
 
                 <div class="place-address">
@@ -273,6 +280,138 @@ export async function renderPlacePage($container, { slug, user }) {
             </section>
           ` : ''}
 
+          <!-- Google-Style 5-Star Reviews & Ratings Section -->
+          <section class="info-card reviews-section" id="place-reviews-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-4)">
+              <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:8px">
+                <span style="color:#F59E0B">⭐</span> تقييمات وآراء الزوار (${totalReviews})
+              </h2>
+
+              <div>
+                ${currentUser ? `
+                  ${userReview ? `
+                    ${(!isHammad || currentUser.role === 'superadmin') ? `
+                      <button class="btn btn-sm btn-outline" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full)">
+                        ✏️ تعديل تقييمي
+                      </button>
+                    ` : `
+                      <span class="badge" style="background:rgba(245,158,11,0.12);color:#D97706;font-size:11.5px">✓ تم تسجيل تقييمك</span>
+                    `}
+                  ` : `
+                    <button class="btn btn-sm btn-primary" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full);box-shadow:0 2px 8px rgba(27,79,114,0.25)">
+                      ⭐ اكتب تقييمك الآن
+                    </button>
+                  `}
+                ` : `
+                  <button class="btn btn-sm btn-secondary" id="btn-login-to-review" style="font-size:12.5px;border-radius:var(--radius-full)">
+                    🔒 تسجيل الدخول للتقييم
+                  </button>
+                `}
+              </div>
+            </div>
+
+            <!-- Google-Style Rating Summary Box -->
+            <div class="reviews-summary-box" style="display:grid;grid-template-columns:1fr 1.5fr;gap:20px;background:var(--surface-2);padding:16px 20px;border-radius:var(--radius-lg);margin-bottom:var(--space-5);align-items:center">
+              
+              <!-- Big Score Column -->
+              <div style="text-align:center;border-left:1px solid var(--border);padding-left:16px">
+                <div style="font-size:3.2rem;font-weight:800;line-height:1;color:var(--text-primary);margin-bottom:4px">
+                  ${avgRating.toFixed(1)}
+                </div>
+                <div style="color:#F59E0B;font-size:1.4rem;letter-spacing:2px;margin-bottom:4px">
+                  ${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))}
+                </div>
+                <div style="font-size:12px;color:var(--text-muted)">
+                  استناداً إلى ${totalReviews} تقييم
+                </div>
+              </div>
+
+              <!-- Star Distribution Progress Bars -->
+              <div style="display:flex;flex-direction:column;gap:6px">
+                ${[5, 4, 3, 2, 1].map(stars => {
+                  const cnt = starCounts[stars] || 0;
+                  const pct = totalReviews > 0 ? Math.round((cnt / totalReviews) * 100) : (stars === 5 ? 100 : 0);
+                  return `
+                    <div style="display:flex;align-items:center;gap:8px;font-size:11.5px">
+                      <span style="min-width:28px;text-align:left;color:var(--text-secondary);font-weight:600">${stars} ★</span>
+                      <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+                        <div style="width:${pct}%;height:100%;background:#F59E0B;border-radius:4px;transition:width 0.4s ease"></div>
+                      </div>
+                      <span style="min-width:24px;color:var(--text-muted);font-size:11px">${cnt}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- Reviews List -->
+            ${totalReviews === 0 ? `
+              <div style="text-align:center;padding:2rem 1rem;color:var(--text-muted)">
+                <div style="font-size:2.5rem;margin-bottom:8px">💬</div>
+                <p style="font-size:13.5px;margin:0">كن أول من يكتب تقييماً وتجربة حقيقية عن هذا المكان!</p>
+              </div>
+            ` : `
+              <div class="reviews-list" style="display:flex;flex-direction:column;gap:12px">
+                ${reviews.map(r => {
+                  const isMine = currentUser && currentUser.uid === r.userId;
+                  const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
+                  const timeStr = formatDate(r.createdAt || Date.now());
+
+                  return `
+                    <div class="review-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;transition:all 0.2s">
+                      
+                      <!-- Header: User Info + Stars -->
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                        
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div style="width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--primary-alpha);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);flex-shrink:0;border:1px solid var(--border)">
+                            ${r.userPhoto ? `<img src="${escAttr(r.userPhoto)}" alt="${escAttr(r.userName)}" style="width:100%;height:100%;object-fit:cover" />` : (r.userName?.charAt(0) || '👤')}
+                          </div>
+                          <div>
+                            <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                              <span>${escHtml(r.userName || 'مستخدم مسجل')}</span>
+                              ${isMine ? `<span class="badge" style="font-size:10px;padding:1px 6px;background:var(--primary-alpha);color:var(--primary)">تقييمك</span>` : ''}
+                            </div>
+                            <div style="font-size:11px;color:var(--text-muted)">
+                              ${timeStr} ${r.isEdited ? '• (معدل)' : ''}
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Stars & Actions -->
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div style="color:#F59E0B;font-size:1.1rem;letter-spacing:1px">
+                            ${'★'.repeat(rStars)}${'☆'.repeat(5 - rStars)}
+                          </div>
+
+                          ${isMine && (!isHammad || currentUser.role === 'superadmin') ? `
+                            <div style="display:flex;gap:4px">
+                              ${(r.editCount || 0) < 1 ? `
+                                <button class="btn btn-ghost btn-sm btn-edit-review" data-rid="${escAttr(r.id)}" title="تعديل التقييم (مسموح مرة واحدة)" style="padding:2px 6px;font-size:12px">
+                                  ✏️
+                                </button>
+                              ` : ''}
+                              <button class="btn btn-ghost btn-sm btn-delete-review" data-rid="${escAttr(r.id)}" title="حذف التقييم" style="padding:2px 6px;font-size:12px;color:var(--danger)">
+                                🗑️
+                              </button>
+                            </div>
+                          ` : ''}
+                        </div>
+
+                      </div>
+
+                      <!-- Comment Text (Strict plain text) -->
+                      <div style="font-size:13.5px;line-height:1.6;color:var(--text-secondary);background:var(--surface-2);padding:10px 12px;border-radius:var(--radius-sm)">
+                        ${escHtml(r.comment || '')}
+                      </div>
+
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </section>
+
           <!-- Photo Gallery -->
           ${place.imageUrls && place.imageUrls.length > 0 ? `
             <section class="info-card">
@@ -420,6 +559,60 @@ export async function renderPlacePage($container, { slug, user }) {
 
     document.getElementById('btn-claim-place')?.addEventListener('click', () => {
       showClaimModal(place, waUrl);
+    });
+
+    // Login to review
+    document.getElementById('btn-login-to-review')?.addEventListener('click', async () => {
+      try {
+        const loggedUser = await signInWithGoogle();
+        if (loggedUser) {
+          renderPlacePage($container, { slug, user: loggedUser });
+        }
+      } catch (err) {
+        toast.error('تعذر تسجيل الدخول: ' + err.message);
+      }
+    });
+
+    // Open Add / Edit Review Modal
+    document.getElementById('btn-open-review-modal')?.addEventListener('click', () => {
+      openReviewModal(place, currentUser, userReview, () => {
+        renderPlacePage($container, { slug, user: currentUser });
+      });
+    });
+
+    // Edit specific review button
+    document.querySelectorAll('.btn-edit-review').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rId = btn.getAttribute('data-rid');
+        const targetReview = reviews.find(r => r.id === rId);
+        if (targetReview) {
+          openReviewModal(place, currentUser, targetReview, () => {
+            renderPlacePage($container, { slug, user: currentUser });
+          });
+        }
+      });
+    });
+
+    // Delete review button
+    document.querySelectorAll('.btn-delete-review').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const rId = btn.getAttribute('data-rid');
+        const ok = await showConfirm({
+          title: 'حذف التقييم',
+          message: 'هل أنت متأكد من رغبتك في حذف تقييمك لهذا المكان؟',
+          confirmText: 'نعم، حذف',
+          cancelText: 'إلغاء'
+        });
+        if (ok) {
+          try {
+            await deletePlaceReview(place.id || place._key, rId, currentUser);
+            toast.success('تم حذف التقييم');
+            renderPlacePage($container, { slug, user: currentUser });
+          } catch (err) {
+            toast.error(err.message || 'فشل حذف التقييم');
+          }
+        }
+      });
     });
 
   } catch (err) {
@@ -697,4 +890,153 @@ function resolveMapEmbedInfo(place) {
   }
 
   return { embedUrl, directLink };
+}
+
+/**
+ * Open interactive 5-star review modal
+ */
+function openReviewModal(place, user, existingReview, onDone) {
+  let selectedRating = existingReview ? (Number(existingReview.rating) || 5) : 5;
+
+  const modal = showModal({
+    title: existingReview ? '✏️ تعديل تقييمك للمكان' : '⭐ إضافة تقييم ورأي عن المكان',
+    size: 'md',
+    content: `
+      <form id="place-review-form" style="display:flex;flex-direction:column;gap:16px">
+        
+        <!-- Place Name Header -->
+        <div style="font-weight:700;font-size:14px;color:var(--primary);display:flex;align-items:center;gap:6px">
+          <span>📍</span> ${escHtml(place.name)}
+        </div>
+
+        <!-- Stars Picker -->
+        <div style="text-align:center;background:var(--surface-2);padding:16px;border-radius:var(--radius-md);border:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:8px">
+            اضغط لاختيار عدد النجوم:
+          </div>
+          <div id="star-picker" style="display:inline-flex;gap:6px;direction:ltr;cursor:pointer;font-size:2.2rem;line-height:1">
+            ${[1, 2, 3, 4, 5].map(num => `
+              <span class="star-item" data-star="${num}" style="color:${num <= selectedRating ? '#F59E0B' : '#D1D5DB'};transition:transform 0.15s">★</span>
+            `).join('')}
+          </div>
+          <div id="star-label" style="font-size:12px;font-weight:700;color:#F59E0B;margin-top:6px">
+            ${getStarLabel(selectedRating)}
+          </div>
+        </div>
+
+        <!-- Textarea (Strict plain text) -->
+        <div class="form-group" style="margin:0">
+          <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
+            <span>رأيك وتجربتك بالتفصيل (نص فقط) <span class="required">*</span></span>
+            <span id="char-counter" style="font-size:11px;color:var(--text-muted)">0 / 500</span>
+          </label>
+          <textarea 
+            id="review-comment-input" 
+            class="form-textarea" 
+            rows="4" 
+            maxlength="500"
+            placeholder="اكتب تجربتك الصادقة عن هذا المكان..." 
+            required>${escHtml(existingReview?.comment || '')}</textarea>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            🔒 لا يُسمح بوضع روابط أو ملفات، التقييم يشمل نصوصاً واضحة فقط.
+          </div>
+        </div>
+
+      </form>
+    `,
+    buttons: [
+      {
+        label: existingReview ? '💾 حفظ التعديل' : '🚀 نشر التقييم',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async () => {
+          const commentVal = document.getElementById('review-comment-input')?.value.trim();
+          if (!commentVal) {
+            toast.warning('يرجى كتابة نص التقييم');
+            return;
+          }
+
+          try {
+            if (existingReview) {
+              await updatePlaceReview(place.id || place._key, existingReview.id, {
+                rating: selectedRating,
+                comment: commentVal
+              }, user);
+              toast.success('تم تحديث تقييمك بنجاح ✨');
+            } else {
+              await addPlaceReview({
+                placeId: place.id || place._key,
+                placeName: place.name,
+                placeSlug: place.slug,
+                user,
+                rating: selectedRating,
+                comment: commentVal
+              });
+              toast.success('شكراً لمشاركتك! تم نشر تقييمك بنجاح ⭐');
+            }
+            modal.close();
+            if (onDone) onDone();
+          } catch (err) {
+            toast.error(err.message || 'فشل حفظ التقييم');
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+
+  // Setup Star Interactivity
+  const starContainer = document.getElementById('star-picker');
+  const starLabel = document.getElementById('star-label');
+  const commentInput = document.getElementById('review-comment-input');
+  const charCounter = document.getElementById('char-counter');
+
+  function updateStars(val) {
+    selectedRating = val;
+    starContainer?.querySelectorAll('.star-item').forEach(el => {
+      const s = parseInt(el.getAttribute('data-star'), 10);
+      el.style.color = s <= val ? '#F59E0B' : '#D1D5DB';
+    });
+    if (starLabel) starLabel.textContent = getStarLabel(val);
+  }
+
+  starContainer?.querySelectorAll('.star-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const s = parseInt(el.getAttribute('data-star'), 10);
+      updateStars(s);
+    });
+    el.addEventListener('mouseenter', () => {
+      const s = parseInt(el.getAttribute('data-star'), 10);
+      starContainer.querySelectorAll('.star-item').forEach(item => {
+        const itemVal = parseInt(item.getAttribute('data-star'), 10);
+        item.style.color = itemVal <= s ? '#F59E0B' : '#D1D5DB';
+      });
+      if (starLabel) starLabel.textContent = getStarLabel(s);
+    });
+  });
+
+  starContainer?.addEventListener('mouseleave', () => {
+    updateStars(selectedRating);
+  });
+
+  commentInput?.addEventListener('input', () => {
+    if (charCounter) {
+      charCounter.textContent = `${commentInput.value.length} / 500`;
+    }
+  });
+
+  if (commentInput && charCounter) {
+    charCounter.textContent = `${commentInput.value.length} / 500`;
+  }
+}
+
+function getStarLabel(rating) {
+  const labels = {
+    5: 'ممتاز جداً ★★★★★',
+    4: 'جيد جداً ★★★★☆',
+    3: 'متوسط / مقبول ★★★☆☆',
+    2: 'ضعيف ★★☆☆☆',
+    1: 'سيء جداً ★☆☆☆☆'
+  };
+  return labels[rating] || 'ممتاز ★★★★★';
 }

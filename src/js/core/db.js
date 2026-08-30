@@ -456,3 +456,286 @@ export async function trackPlaceStat(placeId, stat) {
   if (!allowed.includes(stat)) return;
   await dbIncrement(`places/${placeId}/stats/${stat}`);
 }
+
+// ─────────────────────────────────────────────
+//  REVIEWS & RATINGS SYSTEM (Google-Style)
+// ─────────────────────────────────────────────
+
+export const HAMMAD_PLACE_SLUG = 'mhnds-mhmd-hmad-5lQJ1o';
+
+export const HAMMAD_TESTIMONIALS = [
+  'افضل مهندس ذكاء اصطناعي فى المنزلة كلها بلا منازع',
+  'افضل شخص تعملوا عنده اعلانات وتسويق رقمي في الدقهلية',
+  'المهندس محمد عملت معاه اعلانات كتيرة وجابت عملاء والحمدلله',
+  'بصراحة شغل الراجل ده روعة وقمة في الإتقان',
+  'عن جد شكرا ياهندسة انت فنان وعبقري تسلم ايدك',
+  'الراجل ده ثقة 100% عن جد ياجماعة وتعامل راقي جدا',
+  'شغل عالي واحترافي جداً ونتائج الإعلانات ممتازة ربنا يباركلك',
+  'ما شاء الله قمة في الذوق والاحترافية والالتزام بالمواعيد',
+  'تسويق احترافي ونتائج حقيقية سريعة جداً أنصح بشدة بالتعامل معه',
+  'أفضل وأسرع دعم فني وتعامل راقي جداً وإنسان محترم'
+];
+
+/** Get all reviews for a place */
+export async function getPlaceReviews(placeId) {
+  if (!placeId) return [];
+  const map = await dbGet(`placeReviews/${placeId}`) || {};
+  return Object.entries(map).map(([id, r]) => ({
+    id,
+    ...r
+  })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+/** Get all reviews across all places (for Admin) */
+export async function getAllReviews() {
+  const map = await dbGet('placeReviews') || {};
+  const all = [];
+  for (const [placeId, reviewsMap] of Object.entries(map)) {
+    if (reviewsMap && typeof reviewsMap === 'object') {
+      for (const [reviewId, r] of Object.entries(reviewsMap)) {
+        all.push({
+          id: reviewId,
+          placeId,
+          ...r
+        });
+      }
+    }
+  }
+  return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+/** Sanitize review text (Strict text only, max 500 chars, no links or HTML) */
+export function sanitizeReviewText(text) {
+  if (!text || typeof text !== 'string') return '';
+  let clean = text
+    .replace(/<[^>]*>/g, '')
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/www\.\S+/gi, '')
+    .replace(/ftp:\/\/\S+/gi, '')
+    .replace(/javascript:\S+/gi, '')
+    .trim();
+  if (clean.length > 500) {
+    clean = clean.substring(0, 500);
+  }
+  return clean;
+}
+
+/** Recalculate place average rating and reviewCount */
+export async function recalculatePlaceRating(placeId) {
+  if (!placeId) return;
+  const reviews = await getPlaceReviews(placeId);
+  const count = reviews.length;
+  
+  // Check if Hammad's place to keep 5.0
+  const place = await dbGet(`places/${placeId}`);
+  let avg = 5.0;
+  if (place && (place.slug === HAMMAD_PLACE_SLUG || placeId.includes('mhmd-hmad') || (place.name && place.name.includes('محمد حماد')))) {
+    avg = 5.0;
+  } else if (count > 0) {
+    const sum = reviews.reduce((acc, cur) => acc + (Number(cur.rating) || 5), 0);
+    avg = Math.round((sum / count) * 10) / 10;
+  }
+
+  await dbUpdate(`places/${placeId}`, {
+    rating: avg,
+    reviewCount: count
+  });
+  return { rating: avg, reviewCount: count };
+}
+
+/** Add a review to a place (Logged-in user) */
+export async function addPlaceReview({ placeId, placeName, placeSlug, user, rating, comment }) {
+  if (!user || !placeId) throw new Error('يجب تسجيل الدخول لإضافة تقييم');
+  
+  const cleanComment = sanitizeReviewText(comment);
+  if (!cleanComment) throw new Error('يرجى كتابة نص التقييم');
+
+  const numRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+
+  // Check if user already reviewed this place
+  const existingReviews = await getPlaceReviews(placeId);
+  const userExisting = existingReviews.find(r => r.userId === user.uid);
+  if (userExisting) {
+    throw new Error('لقد قمت بتقييم هذا المكان مسبقاً، يمكنك تعديل تقييمك الحالي');
+  }
+
+  const reviewData = {
+    placeId,
+    placeName: placeName || 'المكان',
+    placeSlug: placeSlug || '',
+    userId: user.uid,
+    userName: user.name || user.displayName || 'مستخدم مسجل',
+    userPhoto: user.photoURL || '',
+    rating: numRating,
+    comment: cleanComment,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    editCount: 0
+  };
+
+  const newRef = await dbPush(`placeReviews/${placeId}`, reviewData);
+  reviewData.id = newRef.key;
+
+  await recalculatePlaceRating(placeId);
+  return reviewData;
+}
+
+/** Update user's review (Allows 1 edit maximum) */
+export async function updatePlaceReview(placeId, reviewId, { rating, comment }, user) {
+  if (!user || !placeId || !reviewId) throw new Error('بيانات غير صحيحة');
+
+  const review = await dbGet(`placeReviews/${placeId}/${reviewId}`);
+  if (!review) throw new Error('التقييم غير موجود');
+
+  // Check if place is Mohamed Hammad (Locked from regular users)
+  if (review.placeSlug === HAMMAD_PLACE_SLUG || placeId.includes('mhmd-hmad')) {
+    if (user.role !== 'superadmin' && user.email !== 'elfannanm@gmail.com' && user.email !== 'mohamednasrofficial@gmail.com') {
+      throw new Error('غير مصرح بتعديل التقييمات في هذا المكان إلا لمالك المكان');
+    }
+  }
+
+  if (review.userId !== user.uid && user.role !== 'admin' && user.role !== 'superadmin') {
+    throw new Error('غير مصرح لك بتعديل هذا التقييم');
+  }
+
+  // Regular user max 1 edit
+  if (user.role !== 'admin' && user.role !== 'superadmin') {
+    if ((review.editCount || 0) >= 1) {
+      throw new Error('تم تعديل هذا التقييم مسبقاً، مسموح بالتعديل مرة واحدة فقط');
+    }
+  }
+
+  const cleanComment = sanitizeReviewText(comment);
+  if (!cleanComment) throw new Error('يرجى كتابة نص التقييم');
+  const numRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+
+  const updates = {
+    rating: numRating,
+    comment: cleanComment,
+    updatedAt: Date.now(),
+    isEdited: true,
+    editCount: (review.editCount || 0) + 1
+  };
+
+  await dbUpdate(`placeReviews/${placeId}/${reviewId}`, updates);
+  await recalculatePlaceRating(placeId);
+  return { ...review, ...updates };
+}
+
+/** Delete user's review (Protected for Hammad place) */
+export async function deletePlaceReview(placeId, reviewId, user) {
+  if (!user || !placeId || !reviewId) throw new Error('بيانات غير صحيحة');
+
+  const review = await dbGet(`placeReviews/${placeId}/${reviewId}`);
+  if (!review) return;
+
+  // Protect Hammad's place
+  if (review.placeSlug === HAMMAD_PLACE_SLUG || placeId.includes('mhmd-hmad')) {
+    if (user.role !== 'superadmin' && user.email !== 'elfannanm@gmail.com' && user.email !== 'mohamednasrofficial@gmail.com') {
+      throw new Error('لا يمكن حذف التقييمات من هذا المكان إلا بواسطة مالك المكان');
+    }
+  }
+
+  if (review.userId !== user.uid && user.role !== 'admin' && user.role !== 'superadmin') {
+    throw new Error('غير مصرح لك بحذف هذا التقييم');
+  }
+
+  await dbRemove(`placeReviews/${placeId}/${reviewId}`);
+  await recalculatePlaceRating(placeId);
+}
+
+/** Admin: Add review in the name of any user */
+export async function adminAddReview({ placeId, placeName, placeSlug, userId, userName, userPhoto, rating, comment }) {
+  if (!placeId) throw new Error('المكان مطلوب');
+  const cleanComment = sanitizeReviewText(comment);
+  if (!cleanComment) throw new Error('يرجى كتابة نص التقييم');
+  const numRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+
+  const reviewData = {
+    placeId,
+    placeName: placeName || 'المكان',
+    placeSlug: placeSlug || '',
+    userId: userId || `custom_${Date.now()}`,
+    userName: userName || 'عميل موثوق',
+    userPhoto: userPhoto || '',
+    rating: numRating,
+    comment: cleanComment,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    editCount: 0,
+    isAdminGenerated: true
+  };
+
+  const newRef = await dbPush(`placeReviews/${placeId}`, reviewData);
+  reviewData.id = newRef.key;
+
+  await recalculatePlaceRating(placeId);
+  return reviewData;
+}
+
+/** Admin: Update review */
+export async function adminUpdateReview(placeId, reviewId, updates) {
+  if (!placeId || !reviewId) return;
+  if (updates.comment) {
+    updates.comment = sanitizeReviewText(updates.comment);
+  }
+  if (updates.rating) {
+    updates.rating = Math.min(5, Math.max(1, parseInt(updates.rating, 10) || 5));
+  }
+  updates.updatedAt = Date.now();
+  await dbUpdate(`placeReviews/${placeId}/${reviewId}`, updates);
+  await recalculatePlaceRating(placeId);
+}
+
+/** Admin: Delete review */
+export async function adminDeleteReview(placeId, reviewId) {
+  if (!placeId || !reviewId) return;
+  await dbRemove(`placeReviews/${placeId}/${reviewId}`);
+  await recalculatePlaceRating(placeId);
+}
+
+/** Auto-assign a 5-star review for Mohamed Hammad when a new user registers */
+export async function autoAssignHammadReview(user) {
+  if (!user || !user.uid) return;
+
+  try {
+    const placesMap = await dbGet('places') || {};
+    let hammadPlaceId = null;
+    let hammadPlace = null;
+
+    for (const [pId, pData] of Object.entries(placesMap)) {
+      if (pData.slug === HAMMAD_PLACE_SLUG || pId === HAMMAD_PLACE_SLUG || (pData.name && pData.name.includes('محمد حماد'))) {
+        hammadPlaceId = pId;
+        hammadPlace = pData;
+        break;
+      }
+    }
+
+    if (!hammadPlaceId) return;
+
+    const existing = await getPlaceReviews(hammadPlaceId);
+    if (existing.some(r => r.userId === user.uid)) return;
+
+    const randomComment = HAMMAD_TESTIMONIALS[Math.floor(Math.random() * HAMMAD_TESTIMONIALS.length)];
+    const starRating = 5;
+
+    const reviewData = {
+      placeId: hammadPlaceId,
+      placeName: hammadPlace.name || 'مهندس محمد حماد',
+      placeSlug: hammadPlace.slug || HAMMAD_PLACE_SLUG,
+      userId: user.uid,
+      userName: user.name || user.displayName || 'مستخدم مسجل',
+      userPhoto: user.photoURL || '',
+      rating: starRating,
+      comment: randomComment,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      editCount: 0
+    };
+
+    await dbPush(`placeReviews/${hammadPlaceId}`, reviewData);
+    await dbUpdate(`places/${hammadPlaceId}`, { rating: 5.0, reviewCount: (existing.length + 1) });
+  } catch (err) {
+    console.warn('[AutoReview] Hammad review error:', err);
+  }
+}

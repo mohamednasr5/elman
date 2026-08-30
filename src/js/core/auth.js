@@ -197,6 +197,13 @@ async function syncUserProfile(firebaseUser) {
     };
 
     await userRef.set(profile);
+    
+    // Auto-assign glowing review for Mohamed Hammad
+    try {
+      const { autoAssignHammadReview } = await import('./db.js');
+      autoAssignHammadReview(profile);
+    } catch (_) {}
+
     return { ...profile, createdAt: Date.now(), lastLoginAt: Date.now() };
   } else {
     // Existing user — update lastLoginAt and elevate role if admin email

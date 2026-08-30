@@ -467,3 +467,36 @@
   border-color: #0284C7;
   color: #0284C7;
 }
+
+/* ============================================
+   Reviews & Ratings Styling
+   ============================================ */
+.reviews-section {
+  position: relative;
+}
+
+.review-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.review-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.star-item:hover {
+  transform: scale(1.2);
+}
+
+@media (max-width: 640px) {
+  .reviews-summary-box {
+    grid-template-columns: 1fr !important;
+    text-align: center;
+  }
+  .reviews-summary-box > div:first-child {
+    border-left: none !important;
+    border-bottom: 1px solid var(--border);
+    padding-left: 0 !important;
+    padding-bottom: 12px;
+  }
+}

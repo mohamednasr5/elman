@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories } from '../../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview } from '../../core/db.js';
 import { isAdmin } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
@@ -22,6 +22,7 @@ const adminCache = {
   categoryRequests: null,
   categories: null,
   settings: null,
+  reviews: null,
   isPreloaded: false
 };
 
@@ -85,6 +86,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         <nav class="dashboard-sidebar__nav" id="admin-sidebar-nav">
           ${navLink('overview',      'admin.html',                      ICONS.chart,     'الإحصائيات',     section === 'overview')}
           ${navLink('places',        'admin.html?section=places',       ICONS.pin,       'الأماكن',         section === 'places')}
+          ${navLink('reviews',       'admin.html?section=reviews',      ICONS.star,      'التقييمات ⭐',    section === 'reviews')}
           ${navLink('verification',  'admin.html?section=verification', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
           ${navLink('categories',    'admin.html?section=categories',   ICONS.folder,    'التصنيفات',       section === 'categories')}
           ${navLink('users',         'admin.html?section=users',        ICONS.users,     'المستخدمون',      section === 'users')}
@@ -120,6 +122,10 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         <button type="button" class="admin-bottom-tab ${section === 'places' ? 'active' : ''}" data-admin-sec="places">
           <span class="admin-bottom-tab__icon">${ICONS.pin}</span>
           <span class="admin-bottom-tab__label">الأماكن</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${section === 'reviews' ? 'active' : ''}" data-admin-sec="reviews">
+          <span class="admin-bottom-tab__icon">${ICONS.star}</span>
+          <span class="admin-bottom-tab__label">التقييمات</span>
         </button>
         <button type="button" class="admin-bottom-tab ${section === 'verification' ? 'active' : ''}" data-admin-sec="verification">
           <span class="admin-bottom-tab__icon">${ICONS.shield}</span>
@@ -172,13 +178,14 @@ async function switchAdminSection(sectionName, pushState = true) {
   });
 
   // Update mobile bottom nav
-  document.querySelectorAll('#admin-mobile-bottom-nav .bottom-nav__item[data-admin-sec]').forEach(el => {
+  document.querySelectorAll('#admin-mobile-bottom-nav .admin-bottom-tab[data-admin-sec]').forEach(el => {
     el.classList.toggle('active', el.getAttribute('data-admin-sec') === sectionName);
   });
 
   try {
     if      (sectionName === 'overview')      await renderAdminOverview($main);
     else if (sectionName === 'places')        await renderAdminPlaces($main);
+    else if (sectionName === 'reviews')       await renderAdminReviews($main);
     else if (sectionName === 'verification')  await renderAdminVerification($main);
     else if (sectionName === 'categories')    await renderAdminCategories($main);
     else if (sectionName === 'users')         await renderAdminUsers($main);
@@ -480,6 +487,434 @@ function renderAdminPlacesTableRows(places) {
       </tr>
     `;
   }).join('');
+}
+
+// ─────────────────────────────────────────────
+//  2.5. Reviews Management (التقييمات والمراجعات)
+// ─────────────────────────────────────────────
+async function renderAdminReviews($container) {
+  if (!adminCache.reviews || !adminCache.places || !adminCache.users) {
+    const [revs, pls, usrs] = await Promise.all([
+      getAllReviews(),
+      adminCache.places || dbGet('places'),
+      adminCache.users || dbGet('users')
+    ]);
+    adminCache.reviews = revs || [];
+    adminCache.places = pls || {};
+    adminCache.users = usrs || {};
+  }
+
+  const allReviews = adminCache.reviews || [];
+  const placesList = Object.entries(adminCache.places || {}).map(([id, p]) => ({ id, ...p }));
+  const usersList = Object.entries(adminCache.users || {}).map(([uid, u]) => ({ uid, ...u }));
+
+  const totalReviews = allReviews.length;
+  const fiveStarReviews = allReviews.filter(r => Number(r.rating) === 5).length;
+  const avgOverall = totalReviews > 0 ? (allReviews.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / totalReviews).toFixed(1) : '5.0';
+
+  $container.innerHTML = `
+    <div class="admin-fade-in">
+      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <h1 class="dashboard-header__title">إدارة التقييمات والمراجعات (${totalReviews})</h1>
+          <div class="dashboard-header__subtitle">التحكم في تقييمات الأماكن، وإضافة مراجعات بأسماء عملاء، وتعديل أو حذف أي تقييم</div>
+        </div>
+        <div>
+          <button class="btn btn-primary" id="btn-admin-add-review" style="border-radius:var(--radius-full);gap:6px">
+            <span>➕</span> إضافة تقييم باسم عميل
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:var(--space-5)">
+        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">إجمالي التقييمات</div>
+          <div style="font-size:1.8rem;font-weight:800;color:var(--primary)">${totalReviews}</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">تقييمات 5 نجوم ★</div>
+          <div style="font-size:1.8rem;font-weight:800;color:#F59E0B">${fiveStarReviews}</div>
+        </div>
+        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">متوسط التقييم العام</div>
+          <div style="font-size:1.8rem;font-weight:800;color:var(--accent)">${avgOverall} ★</div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;background:var(--surface);padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border)">
+        <div style="flex:1;min-width:200px">
+          <input type="text" id="admin-reviews-search" class="form-input" placeholder="🔍 بحث باسم المكان أو العميل أو نص التقييم..." style="margin:0" />
+        </div>
+        <div style="min-width:160px">
+          <select id="admin-reviews-filter-place" class="form-select" style="margin:0">
+            <option value="">كل الأماكن</option>
+            ${placesList.map(p => `<option value="${escAttr(p.id)}">${escHtml(p.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div style="min-width:130px">
+          <select id="admin-reviews-filter-stars" class="form-select" style="margin:0">
+            <option value="">كل النجوم</option>
+            <option value="5">5 نجوم ★★★★★</option>
+            <option value="4">4 نجوم ★★★★☆</option>
+            <option value="3">3 نجوم ★★★☆☆</option>
+            <option value="2">نجمتان ★★☆☆☆</option>
+            <option value="1">نجمة واحدة ★☆☆☆☆</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Reviews Table -->
+      <div class="dashboard-table-wrapper" style="background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>المكان</th>
+              <th>العميل / المستخدم</th>
+              <th>التقييم</th>
+              <th>نص المراجعة</th>
+              <th>التاريخ</th>
+              <th style="text-align:center">الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="admin-reviews-table-body">
+            <!-- Rendered by renderReviewsRows() -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  function renderReviewsRows() {
+    const searchVal = (document.getElementById('admin-reviews-search')?.value || '').trim().toLowerCase();
+    const placeFilter = document.getElementById('admin-reviews-filter-place')?.value || '';
+    const starsFilter = document.getElementById('admin-reviews-filter-stars')?.value || '';
+
+    const filtered = allReviews.filter(r => {
+      if (placeFilter && r.placeId !== placeFilter) return false;
+      if (starsFilter && String(r.rating) !== starsFilter) return false;
+      if (searchVal) {
+        const placeName = (r.placeName || '').toLowerCase();
+        const userName = (r.userName || '').toLowerCase();
+        const comment = (r.comment || '').toLowerCase();
+        if (!placeName.includes(searchVal) && !userName.includes(searchVal) && !comment.includes(searchVal)) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const tbody = document.getElementById('admin-reviews-table-body');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="text-center" style="padding:2.5rem;color:var(--text-muted)">
+            لا توجد تقييمات مطابقة للبحث
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(r => {
+      const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
+      const placeObj = adminCache.places?.[r.placeId];
+      const placeSlug = placeObj?.slug || r.placeSlug || r.placeId;
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:700;color:var(--primary);display:flex;align-items:center;gap:6px">
+              <span>📍</span>
+              <a href="place.html?slug=${escAttr(placeSlug)}" target="_blank" style="color:inherit;text-decoration:none">
+                ${escHtml(r.placeName || placeObj?.name || 'مكان غير معروف')}
+              </a>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:30px;height:30px;border-radius:50%;overflow:hidden;background:var(--primary-alpha);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--primary);flex-shrink:0">
+                ${r.userPhoto ? `<img src="${escAttr(r.userPhoto)}" style="width:100%;height:100%;object-fit:cover" />` : (r.userName?.charAt(0) || '👤')}
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:13px">${escHtml(r.userName || 'مستخدم')}</div>
+                ${r.isAdminGenerated ? `<span class="badge" style="font-size:9.5px;padding:1px 4px;background:rgba(245,166,35,0.15);color:#D97706">إداري</span>` : ''}
+              </div>
+            </div>
+          </td>
+          <td>
+            <div style="color:#F59E0B;font-size:14px;letter-spacing:1px;white-space:nowrap">
+              ${'★'.repeat(rStars)}${'☆'.repeat(5 - rStars)}
+              <span style="color:var(--text-muted);font-size:11px;margin-right:3px">(${rStars}/5)</span>
+            </div>
+          </td>
+          <td style="max-width:320px">
+            <div style="font-size:13px;line-height:1.5;color:var(--text-primary)" title="${escAttr(r.comment)}">
+              ${escHtml(r.comment || '—')}
+            </div>
+          </td>
+          <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">
+            ${formatDate(r.createdAt || Date.now())}
+          </td>
+          <td style="text-align:center;white-space:nowrap">
+            <div style="display:inline-flex;gap:4px">
+              <button class="btn btn-xs btn-outline btn-edit-review-admin" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" title="تعديل التقييم">
+                ${ICONS.edit}
+              </button>
+              <button class="btn btn-xs btn-danger btn-delete-review-admin" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" title="حذف التقييم">
+                ${ICONS.trash}
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Attach row button events
+    tbody.querySelectorAll('.btn-edit-review-admin').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pId = btn.getAttribute('data-pid');
+        const rId = btn.getAttribute('data-rid');
+        const rev = allReviews.find(x => x.id === rId && x.placeId === pId);
+        if (rev) openAdminEditReviewModal(rev);
+      });
+    });
+
+    tbody.querySelectorAll('.btn-delete-review-admin').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const pId = btn.getAttribute('data-pid');
+        const rId = btn.getAttribute('data-rid');
+        const ok = await showConfirm({
+          title: 'حذف التقييم',
+          message: 'هل أنت متأكد من رغبتك في حذف هذا التقييم نهائياً؟',
+          confirmText: 'نعم، حذف',
+          cancelText: 'إلغاء'
+        });
+        if (ok) {
+          try {
+            await adminDeleteReview(pId, rId);
+            toast.success('تم حذف التقييم بنجاح');
+            adminCache.reviews = null;
+            await renderAdminReviews($container);
+          } catch (err) {
+            toast.error(err.message || 'فشل حذف التقييم');
+          }
+        }
+      });
+    });
+  }
+
+  // Initial render
+  renderReviewsRows();
+
+  // Search & Filter listeners
+  document.getElementById('admin-reviews-search')?.addEventListener('input', renderReviewsRows);
+  document.getElementById('admin-reviews-filter-place')?.addEventListener('change', renderReviewsRows);
+  document.getElementById('admin-reviews-filter-stars')?.addEventListener('change', renderReviewsRows);
+
+  // Add Review button listener
+  document.getElementById('btn-admin-add-review')?.addEventListener('click', () => {
+    openAdminAddReviewModal(placesList, usersList, async () => {
+      adminCache.reviews = null;
+      await renderAdminReviews($container);
+    });
+  });
+
+  function openAdminEditReviewModal(rev) {
+    let editStars = Number(rev.rating) || 5;
+
+    const modal = showModal({
+      title: '✏️ تعديل التقييم والمراجعة',
+      size: 'md',
+      content: `
+        <form id="form-admin-edit-rev" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <strong>المكان:</strong> ${escHtml(rev.placeName || 'المكان')}
+          </div>
+          <div>
+            <strong>العميل:</strong> ${escHtml(rev.userName || 'مستخدم')}
+          </div>
+
+          <div class="form-group" style="margin:0">
+            <label class="form-label">التقييم بالنجوم</label>
+            <select id="edit-rev-stars" class="form-select">
+              <option value="5" ${editStars === 5 ? 'selected' : ''}>5 نجوم ★★★★★ (ممتاز جداً)</option>
+              <option value="4" ${editStars === 4 ? 'selected' : ''}>4 نجوم ★★★★☆ (جيد جداً)</option>
+              <option value="3" ${editStars === 3 ? 'selected' : ''}>3 نجوم ★★★☆☆ (متوسط)</option>
+              <option value="2" ${editStars === 2 ? 'selected' : ''}>نجمتان ★★☆☆☆ (ضعيف)</option>
+              <option value="1" ${editStars === 1 ? 'selected' : ''}>نجمة واحدة ★☆☆☆☆ (سيء)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin:0">
+            <label class="form-label">نص المراجعة والتقييم <span class="required">*</span></label>
+            <textarea id="edit-rev-comment" class="form-textarea" rows="4" maxlength="500" required>${escHtml(rev.comment || '')}</textarea>
+          </div>
+        </form>
+      `,
+      buttons: [
+        {
+          label: '💾 حفظ التعديل',
+          type: 'primary',
+          closeOnClick: false,
+          onClick: async () => {
+            const comment = document.getElementById('edit-rev-comment')?.value.trim();
+            const rating = parseInt(document.getElementById('edit-rev-stars')?.value, 10) || 5;
+            if (!comment) {
+              toast.warning('يرجى كتابة نص المراجعة');
+              return;
+            }
+            try {
+              await adminUpdateReview(rev.placeId, rev.id, { rating, comment });
+              toast.success('تم تحديث التقييم بنجاح');
+              modal.close();
+              adminCache.reviews = null;
+              await renderAdminReviews($container);
+            } catch (err) {
+              toast.error(err.message || 'فشل التحديث');
+            }
+          }
+        },
+        { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+      ]
+    });
+  }
+
+  function openAdminAddReviewModal(places, users, onSuccess) {
+    const modal = showModal({
+      title: '⭐ إضافة تقييم باسم عميل إلى مكان',
+      size: 'md',
+      content: `
+        <form id="form-admin-add-rev" style="display:flex;flex-direction:column;gap:14px">
+          
+          <!-- Place Selector -->
+          <div class="form-group" style="margin:0">
+            <label class="form-label">اختر المكان المطلوب <span class="required">*</span></label>
+            <select id="add-rev-place" class="form-select" required>
+              <option value="">-- اختر المكان --</option>
+              ${places.map(p => `<option value="${escAttr(p.id)}" data-slug="${escAttr(p.slug || '')}">${escHtml(p.name)}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- User Mode -->
+          <div class="form-group" style="margin:0">
+            <label class="form-label">نوع العميل / صاحب التقييم <span class="required">*</span></label>
+            <select id="add-rev-user-type" class="form-select">
+              <option value="registered">اختيار من المستخدمين المسجلين بالمنصة</option>
+              <option value="custom">كتابة اسم عميل مخصص يدوياً</option>
+            </select>
+          </div>
+
+          <!-- Registered Users Dropdown -->
+          <div class="form-group" id="group-registered-user" style="margin:0">
+            <label class="form-label">المستخدم المسجل</label>
+            <select id="add-rev-registered-user" class="form-select">
+              ${users.map(u => `<option value="${escAttr(u.uid)}" data-name="${escAttr(u.name || u.displayName || '')}" data-photo="${escAttr(u.photoURL || '')}">${escHtml(u.name || u.email || 'مستخدم')}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Custom User Name Input (Hidden by default) -->
+          <div class="form-group" id="group-custom-user" style="margin:0;display:none">
+            <label class="form-label">اسم العميل المخصص</label>
+            <input type="text" id="add-rev-custom-name" class="form-input" placeholder="مثال: أحمد محمود" />
+          </div>
+
+          <!-- Rating -->
+          <div class="form-group" style="margin:0">
+            <label class="form-label">عدد النجوم <span class="required">*</span></label>
+            <select id="add-rev-stars" class="form-select">
+              <option value="5" selected>5 نجوم ★★★★★ (ممتاز جداً)</option>
+              <option value="4">4 نجوم ★★★★☆ (جيد جداً)</option>
+              <option value="3">3 نجوم ★★★☆☆ (متوسط)</option>
+              <option value="2">نجمتان ★★☆☆☆ (ضعيف)</option>
+              <option value="1">نجمة واحدة ★☆☆☆☆ (سيء)</option>
+            </select>
+          </div>
+
+          <!-- Comment -->
+          <div class="form-group" style="margin:0">
+            <label class="form-label">نص التقييم والمراجعة <span class="required">*</span></label>
+            <textarea id="add-rev-comment" class="form-textarea" rows="4" maxlength="500" placeholder="اكتب نص التقييم ورأي العميل بالتفصيل..." required></textarea>
+          </div>
+
+        </form>
+      `,
+      buttons: [
+        {
+          label: '🚀 إضافة التقييم',
+          type: 'primary',
+          closeOnClick: false,
+          onClick: async () => {
+            const placeSelect = document.getElementById('add-rev-place');
+            const placeId = placeSelect?.value;
+            const placeOption = placeSelect?.options[placeSelect.selectedIndex];
+            const placeName = placeOption?.textContent?.trim() || '';
+            const placeSlug = placeOption?.getAttribute('data-slug') || '';
+
+            if (!placeId) {
+              toast.warning('يرجى اختيار المكان');
+              return;
+            }
+
+            const userType = document.getElementById('add-rev-user-type')?.value;
+            let userId = `admin_gen_${Date.now()}`;
+            let userName = 'عميل موثوق';
+            let userPhoto = '';
+
+            if (userType === 'registered') {
+              const regSelect = document.getElementById('add-rev-registered-user');
+              const regOption = regSelect?.options[regSelect.selectedIndex];
+              userId = regSelect?.value || userId;
+              userName = regOption?.getAttribute('data-name') || regOption?.textContent || 'مستخدم مسجل';
+              userPhoto = regOption?.getAttribute('data-photo') || '';
+            } else {
+              const customName = document.getElementById('add-rev-custom-name')?.value.trim();
+              if (customName) userName = customName;
+            }
+
+            const rating = parseInt(document.getElementById('add-rev-stars')?.value, 10) || 5;
+            const comment = document.getElementById('add-rev-comment')?.value.trim();
+
+            if (!comment) {
+              toast.warning('يرجى كتابة نص التقييم');
+              return;
+            }
+
+            try {
+              await adminAddReview({
+                placeId,
+                placeName,
+                placeSlug,
+                userId,
+                userName,
+                userPhoto,
+                rating,
+                comment
+              });
+              toast.success('تمت إضافة التقييم بنجاح ⭐');
+              modal.close();
+              if (onSuccess) onSuccess();
+            } catch (err) {
+              toast.error(err.message || 'فشل إضافة التقييم');
+            }
+          }
+        },
+        { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+      ]
+    });
+
+    // Toggle custom/registered user fields
+    document.getElementById('add-rev-user-type')?.addEventListener('change', (e) => {
+      const isCustom = e.target.value === 'custom';
+      const regGroup = document.getElementById('group-registered-user');
+      const customGroup = document.getElementById('group-custom-user');
+      if (regGroup) regGroup.style.display = isCustom ? 'none' : 'block';
+      if (customGroup) customGroup.style.display = isCustom ? 'block' : 'none';
+    });
+  }
 }
 
 // ─────────────────────────────────────────────
