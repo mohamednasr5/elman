@@ -8,6 +8,7 @@ import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore } from '../../utils/arabic.js';
+import { mountVoiceSearchButton } from '../../services/voice.service.js';
 
 export async function renderPlacesPage($container, { query = {}, user }) {
   $container.innerHTML = `
@@ -24,13 +25,16 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
       <!-- Filter Bar -->
       <div class="filter-bar">
-        <input 
-          type="search" 
-          id="places-search-filter" 
-          class="form-input" 
-          placeholder="ابحث بالاسم أو الخدمة..." 
-          value="${escAttr(query.q || '')}"
-        />
+        <div style="position:relative;flex:1;min-width:220px">
+          <input 
+            type="search" 
+            id="places-search-filter" 
+            class="form-input" 
+            placeholder="ابحث بالاسم أو الخدمة..." 
+            value="${escAttr(query.q || '')}"
+            style="margin:0;padding-left:45px"
+          />
+        </div>
         
         <select id="places-category-filter" class="form-select" style="max-width:220px">
           <option value="">جميع التصنيفات</option>
@@ -166,6 +170,14 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     catSelect?.addEventListener('change', applyFilters);
     verifiedSelect?.addEventListener('change', applyFilters);
     sortSelect?.addEventListener('change', applyFilters);
+
+    // Initialize Smart Voice Search
+    mountVoiceSearchButton({
+      inputEl: searchInput,
+      onSearch: (spokenText) => {
+        applyFilters();
+      }
+    });
 
     // Initial render
     applyFilters();

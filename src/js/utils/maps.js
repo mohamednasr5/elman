@@ -43,3 +43,116 @@ export async function extractCoordinates(urlOrText) {
 
   return null;
 }
+
+// ─────────────────────────────────────────────
+//  GEOLOCATION & DISTANCE CALCULATIONS (أقرب مكان)
+// ─────────────────────────────────────────────
+
+/** Default Coordinates for El-Manzala Center (مدينة المنزلة) */
+export const MANZALA_CENTER = { lat: 31.1578, lng: 31.9356 };
+
+/**
+ * Calculate Distance in Kilometers between two coordinates using Haversine formula
+ */
+export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return Infinity;
+
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Format distance into friendly Arabic string (e.g. "450 متر" or "1.2 كم")
+ */
+export function formatDistance(distanceKm) {
+  if (distanceKm == null || distanceKm === Infinity || isNaN(distanceKm)) return '';
+  if (distanceKm < 1) {
+    const meters = Math.round(distanceKm * 1000);
+    return `${meters} متر`;
+  }
+  return `${distanceKm.toFixed(1)} كم`;
+}
+
+/**
+ * Get Place Coordinates from place object (location object, mapsLink, or default)
+ */
+export function getPlaceCoords(place) {
+  if (!place) return null;
+  if (place.location && typeof place.location.lat === 'number' && typeof place.location.lng === 'number') {
+    return { lat: place.location.lat, lng: place.location.lng };
+  }
+  if (place.lat && place.lng) {
+    return { lat: parseFloat(place.lat), lng: parseFloat(place.lng) };
+  }
+  // Try extracting from mapsLink synchronously if contains @lat,lng
+  if (place.mapsLink) {
+    const m = place.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+              place.mapsLink.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) {
+      return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+    }
+  }
+  return null;
+}
+
+/**
+ * Get User Live GPS Coordinates
+ */
+export function getUserLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('متصفحك لا يدعم تحديد الموقع الجغرافي (GPS)'));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        });
+      },
+      (err) => {
+        reject(err);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  });
+}
+
+/**
+ * Sort array of places by proximity to user location
+ */
+export function sortPlacesByDistance(places = [], userCoords) {
+  if (!userCoords || typeof userCoords.lat !== 'number' || typeof userCoords.lng !== 'number') {
+    return places;
+  }
+
+  return places
+    .map(place => {
+      const coords = getPlaceCoords(place);
+      const distanceKm = coords 
+        ? calculateDistanceKm(userCoords.lat, userCoords.lng, coords.lat, coords.lng)
+        : Infinity;
+      return {
+        ...place,
+        _distanceKm: distanceKm,
+        _distanceStr: formatDistance(distanceKm)
+      };
+    })
+    .sort((a, b) => a._distanceKm - b._distanceKm);
+}

@@ -9,6 +9,7 @@ import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent } from '../../utils/arabic.js';
 import { aiSearch, aiSmartSearch } from '../../services/ai.service.js';
+import { mountVoiceSearchButton } from '../../services/voice.service.js';
 
 export async function renderSearchPage($container, { q = '', user }) {
   $container.innerHTML = `
@@ -257,6 +258,14 @@ export async function renderSearchPage($container, { q = '', user }) {
   });
 
   aiSearchBtn?.addEventListener('click', () => performSearch(searchInput.value || 'أفضل الأماكن', true));
+
+  // Initialize Smart Voice Search
+  mountVoiceSearchButton({
+    inputEl: searchInput,
+    onSearch: (spokenText) => {
+      performSearch(spokenText, false);
+    }
+  });
 
   // Initial trigger if q is present
   if (q) {

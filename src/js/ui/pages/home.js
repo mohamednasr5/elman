@@ -11,6 +11,7 @@ import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { daysUntil } from '../../utils/date.js';
 import { normalizeArabic, arabicScore } from '../../utils/arabic.js';
 import { getCurrentUser } from '../../core/auth.js';
+import { mountVoiceSearchButton } from '../../services/voice.service.js';
 
 const CATEGORY_EMOJIS = {
   'pharmacy':      { emoji: '💊', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
@@ -288,6 +289,16 @@ function setupHeroSearch(categories) {
 
   btn?.addEventListener('click', doSearch);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+
+  // Initialize Smart Voice Search
+  mountVoiceSearchButton({
+    inputEl: input,
+    onSearch: (spokenText) => {
+      if (spokenText) {
+        window.location.href = `search.html?q=${encodeURIComponent(spokenText)}`;
+      }
+    }
+  });
 }
 
 function getHomeHTML() {
