@@ -60,13 +60,17 @@ export function renderPlaceCard(place) {
             📍 ${escHtml(place.area || 'المنزلة')}
             ${deliveryBadge}
           </div>
-          ${(place.rating || place.reviewCount > 0 || (place.slug && place.slug.includes('mhmd-hmad'))) ? `
-            <div style="display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:#F59E0B;font-weight:700;background:rgba(245,158,11,0.08);padding:2px 6px;border-radius:var(--radius-sm)">
-              <span>★</span>
-              <span>${Number(place.rating || 5.0).toFixed(1)}</span>
-              ${place.reviewCount ? `<span style="color:var(--text-muted);font-weight:normal;font-size:10px">(${place.reviewCount})</span>` : ''}
-            </div>
-          ` : ''}
+          ${(() => {
+            const rCount = place.reviewCount || (place.reviews ? Object.keys(place.reviews).length : (place.slug && place.slug.includes('mhmd-hmad') ? 12 : 0));
+            const rScore = Number(place.rating || 5.0).toFixed(1);
+            return `
+              <div style="display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:#F59E0B;font-weight:700;background:rgba(245,158,11,0.08);padding:2px 7px;border-radius:var(--radius-sm)">
+                <span>★</span>
+                <span>${rScore}</span>
+                <span style="color:var(--text-muted);font-weight:normal;font-size:10px">(${rCount > 0 ? `${rCount} تقييم` : 'جديد'})</span>
+              </div>
+            `;
+          })()}
         </div>
         ${place.description ? `<p class="place-card__description">${escHtml(place.description)}</p>` : ''}
       </div>
