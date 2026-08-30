@@ -535,3 +535,334 @@
     padding-bottom: 12px;
   }
 }
+
+/* ============================================
+   Profile Card Pill Button & Modal (Manhom Style)
+   ============================================ */
+
+.btn-download-profile-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  color: #FFFFFF !important;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 18px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+}
+
+.btn-download-profile-card:hover {
+  background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+}
+
+.btn-download-profile-card:active {
+  transform: translateY(0);
+}
+
+.btn-download-profile-card .card-icon {
+  font-size: 16px;
+}
+
+/* Modal Overlay */
+.profile-card-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.profile-card-modal-overlay.fade-out {
+  opacity: 0;
+}
+
+.profile-card-modal {
+  background: #FFFFFF;
+  border-radius: var(--radius-xl, 20px);
+  width: 100%;
+  max-width: 680px;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+[data-theme="dark"] .profile-card-modal {
+  background: #0F172A;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Toolbar */
+.profile-card-modal__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border, #E2E8F0);
+  flex-wrap: wrap;
+  background: var(--surface, #FFFFFF);
+}
+
+.profile-card-modal__close {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: var(--text-muted, #64748B);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  order: 1;
+}
+
+.profile-card-modal__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--danger, #EF4444);
+}
+
+.profile-card-modal__colors {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  order: 2;
+}
+
+.colors-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary, #475569);
+}
+
+.color-swatches-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-swatch-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+}
+
+.color-swatch-btn:hover {
+  transform: scale(1.18);
+}
+
+.color-swatch-btn.active {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #0284C7;
+}
+
+.profile-card-download-trigger {
+  order: 3;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.profile-card-modal__title-bar {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary, #0F172A);
+  order: 4;
+  margin-right: auto;
+}
+
+/* Modal Body / Stage */
+.profile-card-modal__body {
+  padding: 24px;
+  background: var(--surface-2, #F8FAFC);
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-card-preview-wrapper {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+/* Manhom Card Component */
+.manhom-profile-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  text-align: center;
+}
+
+.manhom-card-header {
+  padding: 24px 16px 12px;
+  background: #FFFFFF;
+}
+
+.manhom-card-eyebrow {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0F172A;
+  font-family: 'Cairo', sans-serif;
+  letter-spacing: -0.5px;
+}
+
+.manhom-card-avatar-box {
+  position: relative;
+  z-index: 10;
+  margin-top: 8px;
+  margin-bottom: -60px;
+  display: flex;
+  justify-content: center;
+}
+
+.manhom-card-avatar-inner {
+  width: 130px;
+  height: 130px;
+  border-radius: 22px;
+  background: #FFFFFF;
+  border: 4px solid #FFFFFF;
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.manhom-card-avatar-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-fallback-placeholder {
+  font-size: 48px;
+  font-weight: 800;
+  color: #0284C7;
+}
+
+.manhom-card-content {
+  padding: 80px 20px 28px;
+  color: #FFFFFF;
+  transition: background 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.manhom-card-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin: 0;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.manhom-card-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #38BDF8;
+  color: #FFFFFF;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.manhom-card-category {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 2px 0 0;
+}
+
+.manhom-card-location {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 4px;
+}
+
+.manhom-card-footer {
+  background: #FFFFFF;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.footer-platform {
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.footer-domain {
+  color: #0284C7;
+  direction: ltr;
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .profile-card-modal__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .profile-card-modal__title-bar {
+    order: 1;
+    text-align: center;
+  }
+  .profile-card-modal__colors {
+    order: 2;
+    justify-content: center;
+  }
+  .profile-card-download-trigger {
+    order: 3;
+    width: 100%;
+  }
+  .profile-card-modal__close {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+  }
+}
+

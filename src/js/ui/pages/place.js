@@ -13,6 +13,7 @@ import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { submitVerificationRequest } from '../../services/places.service.js';
 import { toast } from '../components/Toast.js';
+import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 
 export async function renderPlacePage($container, { slug, user }) {
   // Show skeleton
@@ -155,13 +156,18 @@ export async function renderPlacePage($container, { slug, user }) {
                   </div>
 
                   <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                    <button type="button" class="btn btn-sm btn-outline btn-follow-place-trigger ${isFollowing ? 'following' : ''}" id="btn-follow-place" data-pid="${escAttr(placeId)}" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:4px 12px;${isFollowing ? 'background:rgba(16,185,129,0.12);color:var(--success);border-color:var(--success);font-weight:700' : 'background:var(--surface);border-color:var(--border)'}" title="متابعة المكان ومشاهدة عروضه في حسابك">
+                    <button type="button" class="btn-download-profile-card btn-download-profile-trigger" id="btn-download-profile-card" data-pid="${escAttr(placeId)}" title="تحميل البطاقة التعريفية لمشاركتها كصورة">
+                      <span class="card-icon">🪪</span>
+                      <span>تحميل البطاقة التعريفية</span>
+                    </button>
+
+                    <button type="button" class="btn btn-sm btn-outline btn-follow-place-trigger ${isFollowing ? 'following' : ''}" id="btn-follow-place" data-pid="${escAttr(placeId)}" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;${isFollowing ? 'background:rgba(16,185,129,0.12);color:var(--success);border-color:var(--success);font-weight:700' : 'background:var(--surface);border-color:var(--border)'}" title="متابعة المكان ومشاهدة عروضه في حسابك">
                       <span class="follow-icon">${isFollowing ? '✓' : '🔔'}</span>
                       <span class="follow-label">${isFollowing ? 'متابع' : 'متابعة'}</span>
                       ${place.followersCount ? `<span class="follow-count-badge" style="opacity:0.8;font-size:11px">(${place.followersCount})</span>` : ''}
                     </button>
 
-                    <button type="button" class="btn btn-sm btn-outline btn-share-place-trigger" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:4px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);background:var(--surface);border-color:var(--border)" title="مشاركة بطاقة هذا المكان">
+                    <button type="button" class="btn btn-sm btn-outline btn-share-place-trigger" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);background:var(--surface);border-color:var(--border)" title="مشاركة بطاقة هذا المكان">
                       <span>📤</span>
                       <span>مشاركة</span>
                     </button>
@@ -672,6 +678,13 @@ export async function renderPlacePage($container, { slug, user }) {
 
     // Setup Place Sharing Handlers (Web Share + Modal)
     setupPlaceSharing(place);
+
+    // Setup Place Profile Card Download Modal (Manhom Style)
+    document.querySelectorAll('.btn-download-profile-trigger').forEach(btn => {
+      btn.addEventListener('click', () => {
+        openPlaceProfileCardModal(place, category);
+      });
+    });
 
     // Setup Place Following System
     setupPlaceFollowing(placeId, currentUser);
