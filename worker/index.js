@@ -86,6 +86,66 @@ export default {
         }
       }
 
+      // ── 2c. Google Maps Short Link & Coordinates Resolver (POST/GET /api/maps/resolve) ──
+      if (url.pathname === '/api/maps/resolve' && (request.method === 'POST' || request.method === 'GET')) {
+        let inputUrl = '';
+        if (request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          inputUrl = body.url || '';
+        } else {
+          inputUrl = url.searchParams.get('url') || '';
+        }
+
+        if (!inputUrl) {
+          return jsonResponse({ error: 'الرابط مطلوب' }, 400, corsHeaders);
+        }
+
+        try {
+          // Follow HTTP redirects to get the real Google Maps URL
+          const res = await fetch(inputUrl, {
+            method: 'GET',
+            redirect: 'follow',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept-Language': 'ar,en;q=0.9'
+            }
+          });
+
+          const finalUrl = res.url || inputUrl;
+          const bodyText = await res.text().catch(() => '');
+
+          // Extract coordinates with multiple high-precision regex patterns
+          const coordMatch =
+            finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
+            finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+            finalUrl.match(/[?&](?:q|ll|query|center)=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+            bodyText.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/) ||
+            bodyText.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+
+          if (coordMatch) {
+            const lat = parseFloat(coordMatch[1]);
+            const lng = parseFloat(coordMatch[2]);
+            return jsonResponse({
+              success: true,
+              lat,
+              lng,
+              resolvedUrl: finalUrl
+            }, 200, corsHeaders);
+          }
+
+          return jsonResponse({
+            success: false,
+            message: 'لم يتم العثور على إحداثيات داخل الرابط',
+            resolvedUrl: finalUrl
+          }, 200, corsHeaders);
+        } catch (err) {
+          return jsonResponse({
+            success: false,
+            error: err.message
+          }, 500, corsHeaders);
+        }
+      }
+
       // ── 3. AI Translation (POST /api/ai/translate) ──
       if (url.pathname === '/api/ai/translate' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));

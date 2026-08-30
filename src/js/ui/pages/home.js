@@ -271,33 +271,209 @@ function renderAds(ads) {
   `).join('');
 }
 
+/**
+ * High-Performance Web Audio Synthesizer for Counter Sounds
+ * Generates crisp mechanical ticks and melodic celebration chimes without external assets.
+ */
+class StatsSoundSynth {
+  constructor() {
+    this.ctx = null;
+    this.lastTickTime = 0;
+  }
+
+  init() {
+    if (!this.ctx && typeof window !== 'undefined') {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+  }
+
+  playTick(frequency = 550) {
+    try {
+      this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      const now = this.ctx.currentTime;
+      if (now - this.lastTickTime < 0.038) return; // Prevent audio congestion
+      this.lastTickTime = now;
+
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(frequency, now);
+      osc.frequency.exponentialRampToValueAtTime(frequency * 1.35, now + 0.018);
+
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.022);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.028);
+    } catch (_) {}
+  }
+
+  playDoneChime() {
+    try {
+      this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      const now = this.ctx.currentTime;
+      // Melodic celebration arpeggio: C6 -> E6 -> G6 -> C7
+      const notes = [1046.50, 1318.51, 1567.98, 2093.00];
+      notes.forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + i * 0.055);
+
+        gain.gain.setValueAtTime(0.06, now + i * 0.055);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.055 + 0.32);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now + i * 0.055);
+        osc.stop(now + i * 0.055 + 0.35);
+      });
+    } catch (_) {}
+  }
+}
+
+const statsAudio = new StatsSoundSynth();
+
 function renderStatsBar(placesCount, categoriesCount) {
   const bar = document.getElementById('stats-bar');
   if (!bar) return;
 
+  const targetPlaces = Math.max(24, Number(placesCount) || 0);
+  const targetCategories = Math.max(72, Number(categoriesCount) || 0);
+  const targetVillages = 54;
+
   bar.innerHTML = `
     <div class="stats-bar__inner container">
-      <div class="stats-bar__item">
-        <div class="stats-bar__value">${placesCount || 0}+</div>
+      <div class="stats-bar__item stats-interactive-item" title="انقر لإعادة تشغيل الحركة والصوت">
+        <div class="stats-bar__value" data-target="${targetPlaces}" data-prefix="+" data-suffix="">+0</div>
         <div class="stats-bar__label">مكان ومحل ومهنة مسجلة</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item">
-        <div class="stats-bar__value">${categoriesCount || 31}</div>
+      <div class="stats-bar__item stats-interactive-item" title="انقر لإعادة تشغيل الحركة والصوت">
+        <div class="stats-bar__value" data-target="${targetCategories}" data-prefix="" data-suffix="">0</div>
         <div class="stats-bar__label">تصنيف ومهنة وحرفة</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item">
-        <div class="stats-bar__value">54+</div>
+      <div class="stats-bar__item stats-interactive-item" title="انقر لإعادة تشغيل الحركة والصوت">
+        <div class="stats-bar__value" data-target="${targetVillages}" data-prefix="+" data-suffix="">+0</div>
         <div class="stats-bar__label">مدينة وقرية مغطاة بالكامل</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item">
-        <div class="stats-bar__value">المنزلة والمطرية</div>
+      <div class="stats-bar__item stats-interactive-item" title="دليل المنزلة والمطرية الرقمي">
+        <div class="stats-bar__value stats-text-badge">المنزلة والمطرية</div>
         <div class="stats-bar__label">محافظة الدقهلية</div>
       </div>
     </div>
   `;
+
+  setupStatsBarCounter(bar);
+}
+
+function setupStatsBarCounter(bar) {
+  let hasAnimated = false;
+  let isRunning = false;
+
+  function runAnimation() {
+    if (isRunning) return;
+    isRunning = true;
+
+    const valueEls = bar.querySelectorAll('.stats-bar__value[data-target]');
+    if (!valueEls.length) {
+      isRunning = false;
+      return;
+    }
+
+    const duration = 1800; // ms
+    const startTime = performance.now();
+
+    valueEls.forEach(el => {
+      el.classList.remove('stats-done');
+      el.classList.add('stats-counting');
+    });
+
+    let lastNum = -1;
+
+    function step(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      // Smooth deceleration: easeOutCubic
+      const ease = 1 - Math.pow(1 - progress, 3);
+
+      valueEls.forEach(el => {
+        const target = parseInt(el.getAttribute('data-target'), 10) || 0;
+        const prefix = el.getAttribute('data-prefix') || '';
+        const suffix = el.getAttribute('data-suffix') || '';
+        const currentNum = Math.floor(ease * target);
+
+        el.textContent = `${prefix}${currentNum}${suffix}`;
+
+        if (currentNum !== lastNum) {
+          lastNum = currentNum;
+          // Frequency scales upward with counter progress (400Hz -> 850Hz)
+          const pitch = 420 + (currentNum / Math.max(1, target)) * 430;
+          statsAudio.playTick(pitch);
+        }
+      });
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        // Final completion state
+        valueEls.forEach(el => {
+          const target = parseInt(el.getAttribute('data-target'), 10) || 0;
+          const prefix = el.getAttribute('data-prefix') || '';
+          const suffix = el.getAttribute('data-suffix') || '';
+          el.textContent = `${prefix}${target}${suffix}`;
+          el.classList.remove('stats-counting');
+          el.classList.add('stats-done');
+        });
+        statsAudio.playDoneChime();
+        isRunning = false;
+      }
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  // Trigger when scrolled into viewport
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !hasAnimated) {
+          hasAnimated = true;
+          runAnimation();
+          observer.disconnect();
+        }
+      });
+    }, { threshold: 0.15 });
+    observer.observe(bar);
+  } else {
+    runAnimation();
+  }
+
+  // Allow clicking any counter item to re-trigger animation & audio
+  bar.querySelectorAll('.stats-interactive-item').forEach(item => {
+    item.addEventListener('click', () => {
+      runAnimation();
+    });
+  });
 }
 
 function setupHeroSearch(categories) {

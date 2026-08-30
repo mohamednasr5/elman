@@ -4,7 +4,7 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, HAMMAD_PLACE_SLUG } from '../../core/db.js';
+import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, HAMMAD_PLACE_SLUG, dbUpdate } from '../../core/db.js';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '../components/VerifiedBadge.js';
@@ -14,6 +14,7 @@ import { showModal, showConfirm } from '../components/Modal.js';
 import { submitVerificationRequest } from '../../services/places.service.js';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
+import { resolveMapEmbedInfo, extractCoordinates } from '../../utils/maps.js';
 
 export async function renderPlacePage($container, { slug, user }) {
   // Show skeleton
@@ -612,6 +613,28 @@ export async function renderPlacePage($container, { slug, user }) {
 
     // ── Setup Interactivity ──
 
+    // Asynchronous real-time map link coordinate resolution for short links (e.g. maps.app.goo.gl)
+    if (place.mapsLink && (!place.location || !place.location.lat)) {
+      extractCoordinates(place.mapsLink).then(async (resolvedCoords) => {
+        if (resolvedCoords && resolvedCoords.lat && resolvedCoords.lng) {
+          const mapIframe = document.querySelector('.place-map iframe');
+          if (mapIframe) {
+            mapIframe.src = `https://maps.google.com/maps?q=${resolvedCoords.lat},${resolvedCoords.lng}&hl=ar&z=17&output=embed`;
+          }
+          const mapDirectLink = document.querySelector('.info-card a[href*="google.com/maps"], .info-card a[href*="maps.google.com"]');
+          if (mapDirectLink && !mapDirectLink.href.includes('q=')) {
+            mapDirectLink.href = `https://www.google.com/maps?q=${resolvedCoords.lat},${resolvedCoords.lng}`;
+          }
+          // Silently cache into database for instant 0ms loads in the future
+          try {
+            await dbUpdate(`places/${placeId}`, {
+              location: { lat: resolvedCoords.lat, lng: resolvedCoords.lng }
+            });
+          } catch (_) {}
+        }
+      }).catch(() => {});
+    }
+
     // Working hours toggle
     document.getElementById('toggle-working-hours')?.addEventListener('click', () => {
       document.getElementById('working-hours-list')?.classList.toggle('expanded');
@@ -1000,66 +1023,7 @@ function formatWhatsApp(phone) {
   return cleaned;
 }
 
-/**
- * Smart Resolver for Google Maps Embed and Directions URL
- * Supports:
- * - Direct Lat/Lng Coordinates (place.location)
- * - Google Maps short links (e.g. https://maps.app.goo.gl/ruGRycBTGHt8Ecr2A)
- * - Plus Codes (e.g. 5XVJ+GF مركز المنزلة)
- * - Detailed addresses (e.g. الضهير، مركز المنزلة، محافظة الدقهلية 35642)
- * - Fallback to Name + Area
- */
-function resolveMapEmbedInfo(place) {
-  let embedUrl = '';
-  let directLink = place.mapsLink || '';
 
-  // 1. Direct Lat/Lng Coordinates
-  if (place.location && place.location.lat && place.location.lng) {
-    const lat = Number(place.location.lat);
-    const lng = Number(place.location.lng);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=16&output=embed`;
-      if (!directLink) directLink = `https://www.google.com/maps?q=${lat},${lng}`;
-      return { embedUrl, directLink };
-    }
-  }
-
-  // 2. Coordinates inside mapsLink (@lat,lng or q=lat,lng or ll=lat,lng)
-  if (place.mapsLink) {
-    const coordMatch = place.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || 
-                       place.mapsLink.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                       place.mapsLink.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (coordMatch) {
-      const lat = coordMatch[1];
-      const lng = coordMatch[2];
-      embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=16&output=embed`;
-      return { embedUrl, directLink };
-    }
-  }
-
-  // 3. Address or Plus Code or Detailed location text
-  const rawAddress = (place.address || '').trim();
-  const rawArea = (place.area || '').trim();
-  const rawName = (place.name || '').trim();
-
-  let queryTarget = '';
-  if (rawAddress) {
-    queryTarget = rawAddress.includes('المنزلة') ? rawAddress : `${rawAddress}، المنزلة، الدقهلية`;
-  } else if (rawArea) {
-    queryTarget = `${rawName} ${rawArea} المنزلة الدقهلية`;
-  } else {
-    queryTarget = `${rawName} المنزلة الدقهلية`;
-  }
-
-  // Google Maps Embed Query
-  embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(queryTarget)}&hl=ar&z=16&output=embed`;
-
-  if (!directLink) {
-    directLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryTarget)}`;
-  }
-
-  return { embedUrl, directLink };
-}
 
 /**
  * Open interactive 5-star review modal

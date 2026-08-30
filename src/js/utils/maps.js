@@ -318,3 +318,70 @@ export function sortPlacesByDistance(places = [], userCoords) {
     })
     .sort((a, b) => a._distanceKm - b._distanceKm);
 }
+
+/**
+ * Smart Google Maps Embed and Directions URL Generator
+ * - Pinpoints exact building location with high zoom (z=17)
+ * - Returns { embedUrl, directLink, isPinpointed, lat, lng }
+ */
+export function resolveMapEmbedInfo(place) {
+  let embedUrl = '';
+  let directLink = place?.mapsLink || '';
+
+  // 1. Exact coordinates from place.location
+  if (place?.location && place.location.lat && place.location.lng) {
+    const lat = Number(place.location.lat);
+    const lng = Number(place.location.lng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=17&output=embed`;
+      if (!directLink) directLink = `https://www.google.com/maps?q=${lat},${lng}`;
+      return { embedUrl, directLink, isPinpointed: true, lat, lng };
+    }
+  }
+
+  // 2. Direct lat / lng attributes
+  if (place?.lat && place?.lng) {
+    const lat = parseFloat(place.lat);
+    const lng = parseFloat(place.lng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=17&output=embed`;
+      if (!directLink) directLink = `https://www.google.com/maps?q=${lat},${lng}`;
+      return { embedUrl, directLink, isPinpointed: true, lat, lng };
+    }
+  }
+
+  // 3. Direct Coordinates inside mapsLink (@lat,lng or !3dlat!4dlng or q=lat,lng)
+  if (place?.mapsLink) {
+    const m = place.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+              place.mapsLink.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
+              place.mapsLink.match(/[?&](?:q|ll|query|destination|center)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (m) {
+      const lat = parseFloat(m[1]);
+      const lng = parseFloat(m[2]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=17&output=embed`;
+        return { embedUrl, directLink, isPinpointed: true, lat, lng };
+      }
+    }
+  }
+
+  // 4. Fallback based on known Village / Neighborhood coordinates
+  const areaName = place?.area || '';
+  const addressText = place?.address || '';
+  const placeName = place?.name || '';
+
+  for (const [vName, coord] of Object.entries(MANZALA_AREAS_COORDINATES)) {
+    if (areaName.includes(vName) || addressText.includes(vName)) {
+      embedUrl = `https://maps.google.com/maps?q=${coord.lat},${coord.lng}&hl=ar&z=16&output=embed`;
+      if (!directLink) directLink = `https://www.google.com/maps?q=${coord.lat},${coord.lng}`;
+      return { embedUrl, directLink, isPinpointed: false, lat: coord.lat, lng: coord.lng };
+    }
+  }
+
+  // 5. Query Search Target
+  const queryTarget = `${placeName} ${areaName} المنزلة الدقهلية`.trim();
+  embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(queryTarget)}&hl=ar&z=16&output=embed`;
+  if (!directLink) directLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryTarget)}`;
+
+  return { embedUrl, directLink, isPinpointed: false };
+}
