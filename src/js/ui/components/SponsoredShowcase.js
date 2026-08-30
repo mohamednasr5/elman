@@ -56,15 +56,26 @@ export function mountSponsoredShowcase(target, places = [], options = {}) {
           <p class="sponsored-showcase-subtitle">${subtitle}</p>
         </div>
 
-        ${shuffled.length > 1 ? `
-          <div class="sponsored-showcase-controls">
-            <span class="sponsored-timer-tag" title="تتغير البطاقات تلقائياً كل دقيقة">
-              ⏱️ تحديث كل دقيقة
-            </span>
-            <button class="sponsored-nav-btn prev-btn" aria-label="السابق">❮</button>
-            <button class="sponsored-nav-btn next-btn" aria-label="التالي">❯</button>
-          </div>
-        ` : ''}
+        <div class="sponsored-showcase-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <a href="https://wa.me/wasendernew?text=${encodeURIComponent('مرحباً، أود حجز إعلان مميز يظهر في دليل المنزلة')}" 
+             target="_blank" 
+             rel="noopener" 
+             class="btn btn-sm btn-secondary sponsored-cta-btn" 
+             style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;border-radius:var(--radius-full);white-space:nowrap;box-shadow:0 2px 10px rgba(245,166,35,0.25);transition:transform 0.2s">
+            <span>📣</span>
+            <span>لو عاوز إعلانك يظهر هنا تواصل معنا</span>
+          </a>
+
+          ${shuffled.length > 1 ? `
+            <div class="sponsored-showcase-controls">
+              <span class="sponsored-timer-tag" title="تتغير البطاقات تلقائياً كل دقيقة">
+                ⏱️ تحديث كل دقيقة
+              </span>
+              <button class="sponsored-nav-btn prev-btn" aria-label="السابق">❮</button>
+              <button class="sponsored-nav-btn next-btn" aria-label="التالي">❯</button>
+            </div>
+          ` : ''}
+        </div>
       </div>
 
       <div class="sponsored-cards-grid" id="${instanceId}-grid">

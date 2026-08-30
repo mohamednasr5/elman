@@ -126,14 +126,21 @@ export async function renderPlacePage($container, { slug, user }) {
                 }
               </div>
               <div class="place-header-card__info">
-                <div class="place-title">
-                  <h1 class="place-title__name">${escHtml(place.name)}</h1>
-                  ${((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
-                  ${place.isVerified ? renderVerifiedBadge() : ''}
-                  ${place.deliveryType ? renderDeliveryBadge(place.deliveryType) : ''}
+                <div class="place-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <h1 class="place-title__name" style="margin:0">${escHtml(place.name)}</h1>
+                    ${((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
+                    ${place.isVerified ? renderVerifiedBadge() : ''}
+                    ${place.deliveryType ? renderDeliveryBadge(place.deliveryType) : ''}
+                  </div>
+
+                  <button type="button" class="btn btn-sm btn-outline btn-share-place-trigger" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:4px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);background:var(--surface);border-color:var(--border)" title="مشاركة بطاقة هذا المكان">
+                    <span>📤</span>
+                    <span>مشاركة المكان</span>
+                  </button>
                 </div>
                 
-                <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin-top:4px">
                   <a href="category.html?slug=${catInfo.slug}" class="place-category-tag">
                     ${catInfo.icon} ${escHtml(catInfo.name)}
                   </a>
@@ -156,8 +163,9 @@ export async function renderPlacePage($container, { slug, user }) {
             <!-- Quick Action Buttons -->
             <div class="place-contact-btns">
               ${place.phone ? `
-                <a href="tel:${cleanPhone(place.phone)}" class="btn btn-primary" onclick="trackStat('${escAttr(placeId)}', 'phoneClicks')">
-                  📞 اتصال (${escHtml(place.phone)})
+                <a href="tel:${cleanPhone(place.phone)}" class="btn btn-primary" onclick="trackStat('${escAttr(placeId)}', 'phoneClicks')" title="اتصال هاتفي">
+                  <span>📞</span>
+                  <span>اتصال (${escHtml(place.phone)})</span>
                 </a>
               ` : ''}
               
@@ -166,24 +174,34 @@ export async function renderPlacePage($container, { slug, user }) {
                    target="_blank" 
                    rel="noopener" 
                    class="btn btn-whatsapp" 
-                   onclick="trackStat('${escAttr(placeId)}', 'whatsappClicks')">
-                  💬 محادثة واتساب
+                   onclick="trackStat('${escAttr(placeId)}', 'whatsappClicks')" 
+                   title="محادثة واتساب">
+                  <span>💬</span>
+                  <span>محادثة واتساب</span>
                 </a>
               ` : ''}
               
               ${place.mapsLink || place.location ? `
-                <a href="${escAttr(place.mapsLink || `https://www.google.com/maps/search/?api=1&query=${place.location?.lat},${place.location?.lng}`)}" 
+                <a href="${escAttr(mapInfo.directLink || place.mapsLink || `https://www.google.com/maps/search/?api=1&query=${place.location?.lat},${place.location?.lng}`)}" 
                    target="_blank" 
                    rel="noopener" 
-                   class="btn btn-outline" 
-                   onclick="trackStat('${escAttr(placeId)}', 'directionsClicks')">
-                  🗺️ الاتجاهات على الخريطة
+                   class="btn btn-outline ${(!place.phone || !place.whatsapp) ? '' : 'btn--full-mobile'}" 
+                   onclick="trackStat('${escAttr(placeId)}', 'directionsClicks')" 
+                   title="الاتجاهات على الخريطة">
+                  <span>🗺️</span>
+                  <span>الاتجاهات على الخريطة</span>
                 </a>
               ` : ''}
 
+              <button type="button" class="btn btn-outline btn-share-place-trigger" title="مشاركة بطاقة المكان">
+                <span>📤</span>
+                <span>مشاركة المكان</span>
+              </button>
+
               ${isOwner ? `
-                <a href="dashboard.html?section=places&id=${escAttr(placeId)}" class="btn btn-secondary">
-                  ⚙️ إدارة وتعديل المكان
+                <a href="dashboard.html?section=places&id=${escAttr(placeId)}" class="btn btn-secondary btn--full-mobile">
+                  <span>⚙️</span>
+                  <span>إدارة وتعديل المكان</span>
                 </a>
               ` : ''}
             </div>
@@ -634,6 +652,9 @@ export async function renderPlacePage($container, { slug, user }) {
       });
     });
 
+    // Setup Place Sharing Handlers (Web Share + Modal)
+    setupPlaceSharing(place);
+
   } catch (err) {
     console.error('[PlacePage] Render error:', err);
     $container.innerHTML = `
@@ -1059,3 +1080,115 @@ function getStarLabel(rating) {
   };
   return labels[rating] || 'ممتاز ★★★★★';
 }
+
+/**
+ * Setup Place Sharing (Web Share API + Custom Modal Fallback)
+ */
+function setupPlaceSharing(place) {
+  const triggers = document.querySelectorAll('.btn-share-place-trigger');
+  if (!triggers.length) return;
+
+  const placeName = place.name || 'المكان';
+  const placeAddress = place.address || place.area || 'مدينة المنزلة، محافظة الدقهلية';
+  const placeUrl = window.location.href;
+  const coverUrl = place.coverImageUrl || place.logoUrl || 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
+
+  const shareText = `📍 *${placeName}*
+📌 العنوان: ${placeAddress}
+🔗 رابط المكان على الدليل: ${placeUrl}
+
+✨ تم مشاركة هذه البطاقة من دليل المنزلة الرقمي.. أنتم كمان ممكن تضيفوا محلكم أو شركتكم مجاناً معنا من هنا:
+🌐 https://dalilmanzala.com`;
+
+  triggers.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      // 1. Try Native Web Share API (Mobile native app chooser)
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `${placeName} | دليل المنزلة`,
+            text: shareText,
+            url: placeUrl
+          });
+          return;
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            openCustomShareModal({ placeName, placeAddress, placeUrl, coverUrl, shareText });
+          }
+          return;
+        }
+      }
+
+      // 2. Custom Share Modal Fallback
+      openCustomShareModal({ placeName, placeAddress, placeUrl, coverUrl, shareText });
+    });
+  });
+}
+
+function openCustomShareModal({ placeName, placeAddress, placeUrl, coverUrl, shareText }) {
+  const waShare = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  const tgShare = `https://t.me/share/url?url=${encodeURIComponent(placeUrl)}&text=${encodeURIComponent(shareText)}`;
+  const fbShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(placeUrl)}`;
+  const twShare = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+
+  const modal = showModal({
+    title: '📤 مشاركة بطاقة المكان',
+    size: 'sm',
+    content: `
+      <div style="display:flex;flex-direction:column;gap:14px;text-align:center">
+        ${coverUrl ? `
+          <div style="width:100%;height:130px;border-radius:var(--radius-md);overflow:hidden;background:#1B4F72">
+            <img src="${escAttr(coverUrl)}" alt="${escAttr(placeName)}" style="width:100%;height:100%;object-fit:cover" />
+          </div>
+        ` : ''}
+
+        <div>
+          <h3 style="font-size:16px;font-weight:700;margin:0 0 4px 0;color:var(--text-primary)">${escHtml(placeName)}</h3>
+          <p style="font-size:12.5px;color:var(--text-muted);margin:0">📍 ${escHtml(placeAddress)}</p>
+        </div>
+
+        <div style="font-size:12px;color:var(--text-secondary);background:var(--surface-2);padding:10px 12px;border-radius:var(--radius-md);line-height:1.6;border:1px solid var(--border)">
+          ✨ تم مشاركة هذه البطاقة من دليل المنزلة الرقمي..<br/>
+          أنتم كمان ممكن تضيفوا محلكم أو شركتكم مجاناً معنا من هنا:<br/>
+          <a href="https://dalilmanzala.com" target="_blank" rel="noopener" style="color:var(--primary);font-weight:700">dalilmanzala.com</a>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+          <a href="${escAttr(waShare)}" target="_blank" rel="noopener" class="btn btn-whatsapp" style="padding:10px;font-size:13px;border-radius:var(--radius-md);justify-content:center">
+            <span>💬</span> واتساب
+          </a>
+          <a href="${escAttr(tgShare)}" target="_blank" rel="noopener" class="btn btn-primary" style="padding:10px;font-size:13px;border-radius:var(--radius-md);justify-content:center;background:#0088cc;border-color:#0088cc">
+            <span>✈️</span> تليجرام
+          </a>
+          <a href="${escAttr(fbShare)}" target="_blank" rel="noopener" class="btn btn-outline" style="padding:10px;font-size:13px;border-radius:var(--radius-md);justify-content:center;color:#1877f2;border-color:#1877f2">
+            <span>👍</span> فيسبوك
+          </a>
+          <a href="${escAttr(twShare)}" target="_blank" rel="noopener" class="btn btn-outline" style="padding:10px;font-size:13px;border-radius:var(--radius-md);justify-content:center">
+            <span>✖️</span> منصة X
+          </a>
+        </div>
+
+        <button type="button" class="btn btn-secondary btn-copy-share-link" style="width:100%;margin-top:4px;border-radius:var(--radius-md);justify-content:center;font-size:13px;padding:10px">
+          <span>📋</span> نسخ تفاصيل ورابط البطاقة
+        </button>
+      </div>
+    `,
+    buttons: [
+      { label: 'إغلاق', type: 'ghost', closeOnClick: true }
+    ]
+  });
+
+  document.querySelector('.btn-copy-share-link')?.addEventListener('click', async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareText);
+        toast.success('تم نسخ رابط وتفاصيل المكان بنجاح! 📋');
+      } else {
+        toast.info('الرابط: ' + placeUrl);
+      }
+    } catch (_) {
+      toast.info('الرابط: ' + placeUrl);
+    }
+  });
+}
+

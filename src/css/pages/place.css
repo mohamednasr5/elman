@@ -128,18 +128,53 @@
   margin-top: var(--space-2);
 }
 
-/* Contact Buttons */
+/* Contact Buttons & Quick Actions Grid */
 .place-contact-btns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-2);
   padding-top: var(--space-4);
   border-top: 1px solid var(--border);
+  width: 100%;
 }
 
 .place-contact-btns .btn {
-  flex: 1;
-  min-width: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.place-contact-btns .btn:hover {
+  transform: translateY(-1px);
+}
+
+.place-contact-btns .btn--full-mobile {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 480px) {
+  .place-contact-btns {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .place-contact-btns .btn {
+    font-size: 12.5px;
+    padding: 9px 8px;
+  }
+  .place-contact-btns .btn--full-mobile {
+    grid-column: 1 / -1;
+    font-size: 13px;
+  }
 }
 
 /* Working Hours */
