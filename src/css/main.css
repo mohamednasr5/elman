@@ -463,3 +463,97 @@ img.lazy.error {
     display: none !important;
   }
 }
+
+/* ========================================================
+   Theme Toggle Switcher (Dark / Light Mode)
+   ======================================================== */
+.theme-toggle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.theme-toggle-btn:hover {
+  background: var(--surface-3);
+  transform: scale(1.08) rotate(15deg);
+  border-color: var(--secondary);
+}
+.theme-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* Icons visibility depending on theme */
+[data-theme="dark"] .theme-icon-dark,
+body.dark-theme .theme-icon-dark {
+  display: inline-block;
+}
+[data-theme="dark"] .theme-icon-light,
+body.dark-theme .theme-icon-light {
+  display: none;
+}
+
+[data-theme="light"] .theme-icon-dark,
+body.light-theme .theme-icon-dark,
+:root:not([data-theme="dark"]) .theme-icon-dark {
+  display: none;
+}
+[data-theme="light"] .theme-icon-light,
+body.light-theme .theme-icon-light,
+:root:not([data-theme="dark"]) .theme-icon-light {
+  display: inline-block;
+}
+
+/* Smooth background transition across entire app */
+body, .header, .footer, .place-card, .category-card, .filter-bar, .form-input, .form-select, .dashboard-card, .modal {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease !important;
+}
+
+/* Dark mode specific adjustments */
+[data-theme="dark"] body {
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .header {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-bottom-color: var(--border) !important;
+}
+
+[data-theme="dark"] .place-card,
+[data-theme="dark"] .category-card,
+[data-theme="dark"] .dashboard-card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .filter-bar,
+[data-theme="dark"] .modal,
+[data-theme="dark"] .modal-box {
+  background: var(--surface-2) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea {
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .footer {
+  background: #090D16 !important;
+  border-top-color: var(--border) !important;
+}
+
+[data-theme="dark"] .bottom-nav {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-top-color: var(--border) !important;
+}

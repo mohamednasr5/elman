@@ -139,14 +139,85 @@
   --skeleton-highlight:#F5F7FA;
 }
 
-/* Dark mode support (future-ready) */
+/* ═══════════════════════════════════════════════════════════
+   Dark & Light Theme Design System Tokens
+   ═══════════════════════════════════════════════════════════ */
+[data-theme="dark"], body.dark-theme {
+  --primary:        #2980B9;
+  --primary-light:  #3498DB;
+  --primary-dark:   #1B4F72;
+  --primary-alpha:  rgba(41, 128, 185, 0.2);
+
+  --secondary:      #F5A623;
+  --secondary-light:#F7B750;
+  --secondary-dark: #D68910;
+
+  --surface:        #0F172A;
+  --surface-2:      #1E293B;
+  --surface-3:      #334155;
+  --surface-4:      #475569;
+  --overlay:        rgba(0, 0, 0, 0.75);
+
+  --text-primary:   #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted:     #64748B;
+  --text-inverse:   #0F172A;
+  --text-link:      #38BDF8;
+
+  --border:         #334155;
+  --border-focus:   #38BDF8;
+  --border-strong:  #475569;
+
+  --skeleton-base:     #1E293B;
+  --skeleton-highlight:#334155;
+
+  --shadow-card:    0 4px 20px rgba(0, 0, 0, 0.35);
+  --shadow-hover:   0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"], body.light-theme {
+  --surface:        #FFFFFF;
+  --surface-2:      #F8F9FA;
+  --surface-3:      #EEF2F7;
+  --surface-4:      #E8EDF5;
+  --text-primary:   #1A1A2E;
+  --text-secondary: #5A6B7D;
+  --text-muted:     #95A5A6;
+  --border:         #E8EDF2;
+  --border-strong:  #C8D4DF;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --surface:      #0D1117;
-    --surface-2:    #161B22;
-    --surface-3:    #1C2128;
-    --text-primary: #E6EDF3;
-    --text-secondary:#8B949E;
-    --border:       #30363D;
+  :root:not([data-theme="light"]) {
+    --primary:        #2980B9;
+    --primary-light:  #3498DB;
+    --primary-dark:   #1B4F72;
+    --primary-alpha:  rgba(41, 128, 185, 0.2);
+
+    --secondary:      #F5A623;
+    --secondary-light:#F7B750;
+    --secondary-dark: #D68910;
+
+    --surface:        #0F172A;
+    --surface-2:      #1E293B;
+    --surface-3:      #334155;
+    --surface-4:      #475569;
+    --overlay:        rgba(0, 0, 0, 0.75);
+
+    --text-primary:   #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted:     #64748B;
+    --text-inverse:   #0F172A;
+    --text-link:      #38BDF8;
+
+    --border:         #334155;
+    --border-focus:   #38BDF8;
+    --border-strong:  #475569;
+
+    --skeleton-base:     #1E293B;
+    --skeleton-highlight:#334155;
+
+    --shadow-card:    0 4px 20px rgba(0, 0, 0, 0.35);
+    --shadow-hover:   0 8px 30px rgba(0, 0, 0, 0.5);
   }
 }

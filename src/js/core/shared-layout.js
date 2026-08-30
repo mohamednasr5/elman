@@ -14,11 +14,13 @@ import { toast } from '../ui/components/Toast.js';
 export async function initSharedLayout(activeHref = '') {
   initFirebase();
   initAuth();
+  _setupTheme();
   _setupHeaderScroll();
   _setupHeaderSearch();
   _setupPwaBanner();
   _setActiveLinks(activeHref);
   _checkApkPwaEnvironment();
+  _bindThemeToggle();
 
   onAuthStateChange((user) => {
     _renderUserSection(user);
@@ -32,6 +34,36 @@ export async function initSharedLayout(activeHref = '') {
       });
     }
   } catch (_) {}
+}
+
+function _setupTheme() {
+  const savedTheme = localStorage.getItem('elmanzala-theme') || 
+                     (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  _applyTheme(savedTheme);
+}
+
+function _bindThemeToggle() {
+  document.querySelectorAll('#theme-toggle-btn, .theme-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const nextTheme = current === 'dark' ? 'light' : 'dark';
+      _applyTheme(nextTheme);
+      localStorage.setItem('elmanzala-theme', nextTheme);
+      toast.info(nextTheme === 'dark' ? 'تم تفعيل الوضع الليلي 🌙' : 'تم تفعيل الوضع النهاري ☀️');
+    });
+  });
+}
+
+function _applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  if (document.body) {
+    document.body.classList.toggle('dark-theme', theme === 'dark');
+    document.body.classList.toggle('light-theme', theme === 'light');
+  }
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) {
+    metaTheme.setAttribute('content', theme === 'dark' ? '#0F172A' : '#1B4F72');
+  }
 }
 
 function _checkApkPwaEnvironment() {
@@ -179,10 +211,13 @@ export function getSharedHeaderHTML(activePage = '') {
           <input type="search" id="header-search-input" class="form-input" placeholder="ابحث في المنزلة..." autocomplete="off"/>
         </div>
       </div>
-      <nav class="header__nav" role="navigation" aria-label="التنقل الرئيسي">
-        ${nav.map(n => `<a href="${n.href}" class="header__nav-link${activePage===n.href?' active':''}">${n.label}</a>`).join('')}
-      </nav>
       <button class="header__search-btn" id="mobile-search-btn" aria-label="بحث">🔍</button>
+
+      <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="تبديل الوضع الليلي والنهاري" title="تبديل الوضع الليلي / الفاتح">
+        <span class="theme-icon-light">☀️</span>
+        <span class="theme-icon-dark">🌙</span>
+      </button>
+
       <div class="header__user" id="header-user-section">
         <a href="login.html" class="btn btn-primary btn-sm"><span>🔑</span> دخول</a>
       </div>

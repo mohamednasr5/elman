@@ -42,10 +42,16 @@ function _headerHTML(active) {
       ).join('')}
     </nav>
 
-    <button class="header__search-btn" id="mobile-search-btn" aria-label="بحث">🔍</button>
+      <button class="header__search-btn" id="mobile-search-btn" aria-label="بحث">🔍</button>
+      
+      <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="تبديل الوضع الليلي والنهاري" title="تبديل الوضع الليلي / الفاتح">
+        <span class="theme-icon-light">☀️</span>
+        <span class="theme-icon-dark">🌙</span>
+      </button>
 
-    <div id="header-user-section">
-      <a href="login.html" class="btn btn-primary btn-sm"><span>🔑</span> دخول</a>
+      <div id="header-user-section">
+        <a href="login.html" class="btn btn-primary btn-sm"><span>🔑</span> دخول</a>
+      </div>
     </div>
   </div>
 </header>`;
@@ -233,21 +239,27 @@ export async function initPage(activeFile = '') {
   initFirebase();
   initAuth();
 
-  /* 2. Inject shared layout blocks */
+  /* 2. Theme setup (Dark / Light) */
+  _setupTheme();
+
+  /* 3. Inject shared layout blocks */
   _inject('header-slot',  _headerHTML(activeFile));
   _inject('footer-slot',  _footerHTML());
   _inject('nav-slot',     _bottomNavHTML(activeFile));
   _inject('pwa-slot',     _pwaBannerHTML());
 
-  /* 3. Check standalone APK/PWA environment to hide APK download button */
+  /* 4. Check standalone APK/PWA environment to hide APK download button */
   _checkApkPwaEnvironment();
 
-  /* 4. Scroll shadow on header */
+  /* 5. Attach theme toggle listener to header button */
+  _bindThemeToggle();
+
+  /* 6. Scroll shadow on header */
   const hdr = document.getElementById('site-header');
   window.addEventListener('scroll', () =>
     hdr?.classList.toggle('scrolled', scrollY > 8), { passive: true });
 
-  /* 5. Header search */
+  /* 7. Header search */
   document.getElementById('header-search-input')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.value.trim())
       location.href = `search.html?q=${encodeURIComponent(e.target.value.trim())}`;
@@ -256,10 +268,10 @@ export async function initPage(activeFile = '') {
     location.href = 'search.html';
   });
 
-  /* 6. Auth UI (reactive) */
+  /* 8. Auth UI (reactive) */
   onAuthStateChange(user => _renderUser(user));
 
-  /* 7. Dynamic settings (WhatsApp link) */
+  /* 9. Dynamic settings (WhatsApp link) */
   try {
     const s = await getSettings();
     const waLink = s?.contact?.whatsappLink;
@@ -268,15 +280,66 @@ export async function initPage(activeFile = '') {
     }
   } catch (_) {}
 
-  /* 7. PWA Install banner */
+  /* 10. PWA Install banner */
   _setupPwa();
 
-  /* 8. Service Worker */
+  /* 11. Service Worker */
   if ('serviceWorker' in navigator)
     navigator.serviceWorker.register('./sw.js').catch(() => {});
 
-  /* 9. Instant Link Prefetching for 0ms page loads */
+  /* 12. Instant Link Prefetching for 0ms page loads */
   _setupInstantPrefetch();
+}
+
+function _checkApkPwaEnvironment() {
+  try {
+    const isStandalone = (
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) ||
+      (window.matchMedia && window.matchMedia('(display-mode: minimal-ui)').matches) ||
+      window.navigator.standalone === true ||
+      (document.referrer && document.referrer.includes('android-app://')) ||
+      (navigator.userAgent && (navigator.userAgent.includes('wv') || (navigator.userAgent.includes('Android') && navigator.userAgent.includes('Version/')))) ||
+      (new URLSearchParams(window.location.search).get('source') === 'apk') ||
+      (new URLSearchParams(window.location.search).get('source') === 'pwa')
+    );
+
+    if (isStandalone) {
+      document.querySelectorAll('#footer-apk-container, .footer__apk-download, .apk-pro-download-btn').forEach(el => {
+        el.style.display = 'none';
+      });
+    }
+  } catch (_) {}
+}
+
+function _setupTheme() {
+  const savedTheme = localStorage.getItem('elmanzala-theme') || 
+                     (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  _applyTheme(savedTheme);
+}
+
+function _bindThemeToggle() {
+  document.querySelectorAll('#theme-toggle-btn, .theme-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const nextTheme = current === 'dark' ? 'light' : 'dark';
+      _applyTheme(nextTheme);
+      localStorage.setItem('elmanzala-theme', nextTheme);
+      toast.info(nextTheme === 'dark' ? 'تم تفعيل الوضع الليلي 🌙' : 'تم تفعيل الوضع النهاري ☀️');
+    });
+  });
+}
+
+function _applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  if (document.body) {
+    document.body.classList.toggle('dark-theme', theme === 'dark');
+    document.body.classList.toggle('light-theme', theme === 'light');
+  }
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) {
+    metaTheme.setAttribute('content', theme === 'dark' ? '#0F172A' : '#1B4F72');
+  }
 }
 
 function _setupInstantPrefetch() {
