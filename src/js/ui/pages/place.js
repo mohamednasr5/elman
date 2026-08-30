@@ -57,6 +57,22 @@ export async function renderPlacePage($container, { slug, user }) {
     const currentUser = getCurrentUser() || user;
     const isOwner = currentUser && currentUser.uid === place.ownerId;
 
+    // ── Reviews / Ratings Summary ──
+    const safeReviews = Array.isArray(reviews) ? reviews : [];
+    const totalReviews = safeReviews.length;
+    const starCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let ratingSum = 0;
+
+    safeReviews.forEach(review => {
+      const rating = Math.min(5, Math.max(1, parseInt(review.rating, 10) || 5));
+      starCounts[rating]++;
+      ratingSum += rating;
+    });
+
+    const isHammad = place.slug === HAMMAD_PLACE_SLUG || placeId === HAMMAD_PLACE_SLUG || String(placeId).includes('mhmd-hmad') || String(place.name || '').includes('محمد حماد') || String(place.slug || '').includes('5lQJ1o');
+    const avgRating = isHammad ? 5.0 : (totalReviews > 0 ? Math.round((ratingSum / totalReviews) * 10) / 10 : Number(place.rating) || 5.0);
+    const userReview = currentUser ? safeReviews.find(review => review.userId === currentUser.uid) : null;
+
     // Track View Count & Profile Visitor safely
     try { trackPlaceView(place, currentUser); } catch (_) {}
 
@@ -355,7 +371,7 @@ export async function renderPlacePage($container, { slug, user }) {
               </div>
             ` : `
               <div class="reviews-list" style="display:flex;flex-direction:column;gap:12px">
-                ${reviews.map(r => {
+                ${safeReviews.map(r => {
                   const isMine = currentUser && currentUser.uid === r.userId;
                   const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
                   const timeStr = formatDate(r.createdAt || Date.now());
@@ -587,7 +603,7 @@ export async function renderPlacePage($container, { slug, user }) {
     document.querySelectorAll('.btn-edit-review').forEach(btn => {
       btn.addEventListener('click', () => {
         const rId = btn.getAttribute('data-rid');
-        const targetReview = reviews.find(r => r.id === rId);
+        const targetReview = safeReviews.find(r => r.id === rId);
         if (targetReview) {
           openReviewModal(place, currentUser, targetReview, () => {
             renderPlacePage($container, { slug, user: currentUser });

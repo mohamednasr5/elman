@@ -574,14 +574,8 @@ export const HAMMAD_TESTIMONIALS = [
 export async function getPlaceReviews(placeId) {
   if (!placeId) return [];
   try {
-    // 1. Primary: Read from places/${placeId}/reviews (Guaranteed permission via /places)
     const placeReviewsMap = await dbGet(`places/${placeId}/reviews`) || {};
-    
-    // 2. Secondary: Read from legacy placeReviews/${placeId} if any
-    const legacyReviewsMap = await dbGet(`placeReviews/${placeId}`) || {};
-
-    const merged = { ...legacyReviewsMap, ...placeReviewsMap };
-    let list = Object.entries(merged).map(([id, r]) => ({
+    let list = Object.entries(placeReviewsMap).map(([id, r]) => ({
       id,
       ...r
     })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
