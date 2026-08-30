@@ -38,6 +38,10 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
   const phone = place.phone || '';
   const whatsapp = place.whatsapp || place.phone || '';
 
+  // Prefetch Data URLs in the background for instant, flawless canvas export
+  if (coverUrl) fetchImageAsDataUrl(coverUrl).catch(() => {});
+  if (logoUrl) fetchImageAsDataUrl(logoUrl).catch(() => {});
+
   const overlay = document.createElement('div');
   overlay.id = 'profile-card-modal-overlay';
   overlay.className = 'profile-card-modal-overlay animate-fade-in';
@@ -472,55 +476,95 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
 async function loadSafeImageToCanvas(srcUrl) {
   if (!srcUrl) return null;
 
-  // 1. Convert to safe Data URL / Blob URL
-  let safeSrc = srcUrl;
   try {
     const dataUrl = await fetchImageAsDataUrl(srcUrl);
-    if (dataUrl) safeSrc = dataUrl;
-  } catch (_) {}
+    const finalSrc = dataUrl || srcUrl;
 
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => {
-      // Fallback try without crossOrigin if it was a data/blob url
-      if (safeSrc.startsWith('data:') || safeSrc.startsWith('blob:')) {
-        const retryImg = new Image();
-        retryImg.onload = () => resolve(retryImg);
-        retryImg.onerror = reject;
-        retryImg.src = safeSrc;
-      } else {
-        reject(new Error('Failed to load image'));
+    return await new Promise((resolve) => {
+      const img = new Image();
+      if (!finalSrc.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
       }
-    };
-    img.src = safeSrc;
-  });
+      img.onload = () => resolve(img);
+      img.onerror = () => {
+        console.warn('[loadSafeImageToCanvas] Failed for:', srcUrl);
+        resolve(null);
+      };
+      img.src = finalSrc;
+    });
+  } catch (err) {
+    console.warn('[loadSafeImageToCanvas] Exception:', err);
+    return null;
+  }
 }
 
 /**
- * Fetch image as Base64 Data URL to bypass CORS canvas tainting
+ * Fetch image as Base64 Data URL to completely bypass CORS canvas tainting
+ * Uses multi-proxy failover architecture
  */
-async function fetchImageAsDataUrl(url) {
-  if (!url) return null;
-  if (url.startsWith('data:')) return url;
+const _dataUrlCache = new Map();
 
-  // Try direct fetch with cors
+async function fetchImageAsDataUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  const cleanUrl = url.trim();
+  if (cleanUrl.startsWith('data:')) return cleanUrl;
+
+  if (_dataUrlCache.has(cleanUrl)) {
+    return _dataUrlCache.get(cleanUrl);
+  }
+
+  // Strategy 1: High-speed Global Image CDN (images.weserv.nl)
   try {
-    const res = await fetch(url, { mode: 'cors' });
+    const weservUrl = `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl.replace(/^https?:\/\//, ''))}&output=webp`;
+    const res = await fetch(weservUrl, { signal: AbortSignal.timeout(6000) });
     if (res.ok) {
       const blob = await res.blob();
-      return await blobToDataUrl(blob);
+      if (blob && blob.size > 100) {
+        const dataUrl = await blobToDataUrl(blob);
+        _dataUrlCache.set(cleanUrl, dataUrl);
+        return dataUrl;
+      }
     }
   } catch (_) {}
 
-  // Try via Cloudflare Worker proxy
+  // Strategy 2: CorsProxy.io
   try {
-    const proxyUrl = `https://elmanzala.nonm1724.workers.dev/api/proxy-image?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl);
+    const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(cleanUrl)}`;
+    const res = await fetch(corsProxyUrl, { signal: AbortSignal.timeout(6000) });
     if (res.ok) {
       const blob = await res.blob();
-      return await blobToDataUrl(blob);
+      if (blob && blob.size > 100) {
+        const dataUrl = await blobToDataUrl(blob);
+        _dataUrlCache.set(cleanUrl, dataUrl);
+        return dataUrl;
+      }
+    }
+  } catch (_) {}
+
+  // Strategy 3: Direct fetch with CORS
+  try {
+    const res = await fetch(cleanUrl, { mode: 'cors', signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const blob = await res.blob();
+      if (blob && blob.size > 100) {
+        const dataUrl = await blobToDataUrl(blob);
+        _dataUrlCache.set(cleanUrl, dataUrl);
+        return dataUrl;
+      }
+    }
+  } catch (_) {}
+
+  // Strategy 4: Cloudflare Worker proxy
+  try {
+    const workerProxy = `https://elmanzala.nonm1724.workers.dev/api/proxy-image?url=${encodeURIComponent(cleanUrl)}`;
+    const res = await fetch(workerProxy, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const blob = await res.blob();
+      if (blob && blob.size > 100) {
+        const dataUrl = await blobToDataUrl(blob);
+        _dataUrlCache.set(cleanUrl, dataUrl);
+        return dataUrl;
+      }
     }
   } catch (_) {}
 
