@@ -1,7 +1,8 @@
 /**
  * PlaceProfileCardModal.js
  * مكون نافذة "تحميل البطاقة التعريفية" التفاعلية
- * مع إمكانية تغيير ألوان الخلفية (بالتطابق مع نموذج من هم) وتنزيل بطاقة عالية الجودة PNG
+ * مع دمج صورة الغلاف كخلفية، وصورة الشعار، وبيانات الاتصال والواتساب،
+ * وإمكانية تغيير الألوان وتوليد صورة عالية الدقة PNG عبر HTML5 Canvas
  */
 
 import { toast } from './Toast.js';
@@ -30,7 +31,12 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
   const placeName = place.name || 'اسم النشاط';
   const categoryName = category.name || place.categoryName || place.customCategory || 'نشاط تجاري وخدمات';
   const placeArea = place.area || place.address || 'المنزلة والمطرية';
-  const logoUrl = place.logoUrl || place.coverImageUrl || '';
+  
+  // Resolve exact image URLs
+  const coverUrl = place.coverImageUrl || place.coverImage || place.image || place.photos?.[0] || '';
+  const logoUrl = place.logoUrl || place.logo || place.photoURL || coverUrl || '';
+  const phone = place.phone || '';
+  const whatsapp = place.whatsapp || place.phone || '';
 
   const overlay = document.createElement('div');
   overlay.id = 'profile-card-modal-overlay';
@@ -73,8 +79,8 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
         <div class="profile-card-preview-wrapper" id="profile-card-preview-wrapper">
           
           <div class="manhom-profile-card" id="live-manhom-profile-card">
-            <!-- Card Header: Title -->
-            <div class="manhom-card-header">
+            <!-- Card Header with Cover Image as Background -->
+            <div class="manhom-card-header ${coverUrl ? 'has-cover' : ''}" id="live-card-cover-header" style="${coverUrl ? `background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.75)), url('${coverUrl}')` : ''}">
               <span class="manhom-card-eyebrow">تعرفوا على</span>
             </div>
 
@@ -82,7 +88,7 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
             <div class="manhom-card-avatar-box">
               <div class="manhom-card-avatar-inner">
                 ${logoUrl 
-                  ? `<img src="${logoUrl}" alt="${placeName}" id="live-preview-avatar-img" crossorigin="anonymous" />` 
+                  ? `<img src="${logoUrl}" alt="${placeName}" id="live-preview-avatar-img" />` 
                   : `<div class="avatar-fallback-placeholder">${placeName.charAt(0) || '📍'}</div>`
                 }
               </div>
@@ -102,6 +108,25 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
               <div class="manhom-card-location">
                 <span>📍 ${placeArea}</span>
               </div>
+
+              <!-- Phone & WhatsApp Badges -->
+              ${(phone || whatsapp) ? `
+                <div class="manhom-card-contacts-pill">
+                  ${phone ? `
+                    <div class="contact-pill-item" title="رقم الهاتف">
+                      <span class="contact-icon phone-icon">📞</span>
+                      <span class="contact-num">${phone}</span>
+                    </div>
+                  ` : ''}
+                  ${(phone && whatsapp && whatsapp !== phone) ? `<span class="contact-divider">|</span>` : ''}
+                  ${whatsapp ? `
+                    <div class="contact-pill-item whatsapp-pill-item" title="واتساب">
+                      <span class="contact-icon wa-icon">💬</span>
+                      <span class="contact-num">${whatsapp}</span>
+                    </div>
+                  ` : ''}
+                </div>
+              ` : ''}
             </div>
 
             <!-- Card Footer Strip -->
@@ -172,7 +197,10 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
         categoryName,
         placeArea,
         theme: activeTheme,
-        logoUrl
+        coverUrl,
+        logoUrl,
+        phone,
+        whatsapp
       });
       toast.success('تم إنشاء وتحميل البطاقة التعريفية بنجاح! 🪪✨');
     } catch (err) {
@@ -186,9 +214,9 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
 }
 
 /**
- * محرك رسم وتوليد الصورة بدقة فائقة عبر HTML5 Canvas
+ * محرك رسم وتوليد الصورة بدقة فائقة عبر HTML5 Canvas مع إسناد الغلاف والشعار وجهات الاتصال
  */
-async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, theme, logoUrl }) {
+async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, theme, coverUrl, logoUrl, phone, whatsapp }) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
@@ -202,14 +230,56 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, W, H);
 
-  // 2. Top Header text "تعرفوا على"
+  // 2. Draw Top Cover Image Section (Height: 440px)
+  const topH = 440;
+  let coverLoaded = false;
+
+  if (coverUrl) {
+    try {
+      const coverImg = await loadSafeImageToCanvas(coverUrl);
+      if (coverImg) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, W, topH);
+        ctx.clip();
+        
+        // Draw cover with object-fit cover
+        drawImageProp(ctx, coverImg, 0, 0, W, topH, 0.5, 0.5);
+
+        // Dark gradient overlay for elegance & contrast
+        const coverGrad = ctx.createLinearGradient(0, 0, 0, topH);
+        coverGrad.addColorStop(0, 'rgba(15, 23, 42, 0.50)');
+        coverGrad.addColorStop(1, 'rgba(15, 23, 42, 0.80)');
+        ctx.fillStyle = coverGrad;
+        ctx.fillRect(0, 0, W, topH);
+        ctx.restore();
+        coverLoaded = true;
+      }
+    } catch (_) {
+      coverLoaded = false;
+    }
+  }
+
+  if (!coverLoaded) {
+    ctx.fillStyle = '#F8FAFC';
+    ctx.fillRect(0, 0, W, topH);
+  }
+
+  // 3. Top Header text "تعرفوا على"
+  ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#0F172A';
-  ctx.font = 'bold 50px "Cairo", "Segoe UI", sans-serif';
-  ctx.fillText('تعرفوا على', W / 2, 110);
+  ctx.fillStyle = coverLoaded ? '#FFFFFF' : '#0F172A';
+  ctx.font = 'bold 52px "Cairo", "Segoe UI", sans-serif';
+  if (coverLoaded) {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetY = 4;
+  }
+  ctx.fillText('تعرفوا على', W / 2, 95);
+  ctx.restore();
 
-  // 3. Lower 65% Gradient Background Block
+  // 4. Lower Gradient Background Block (Height from 440 to H-110)
   const gradY = 440;
   const gradH = H - gradY - 110;
   const grad = ctx.createLinearGradient(0, gradY, 0, gradY + gradH);
@@ -220,40 +290,44 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
   ctx.fillStyle = grad;
   ctx.fillRect(0, gradY, W, gradH);
 
-  // 4. Draw Avatar / Logo Box (Centered, with rounded corners and border)
-  const avatarSize = 360;
+  // 5. Draw Avatar / Logo Box (Centered, overlapping cover & gradient)
+  const avatarSize = 340;
   const avatarX = (W - avatarSize) / 2;
-  const avatarY = 220;
+  const avatarY = 210;
   const radius = 32;
 
   // Draw Avatar Shadow
   ctx.save();
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.22)';
-  ctx.shadowBlur = 35;
-  ctx.shadowOffsetY = 12;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 15;
   ctx.fillStyle = '#FFFFFF';
   drawRoundedRect(ctx, avatarX, avatarY, avatarSize, avatarSize, radius);
   ctx.fill();
   ctx.restore();
 
-  // Draw Avatar Inner Image or Fallback
-  let imageLoaded = false;
-  if (logoUrl) {
+  // Draw Avatar Inner Image
+  let logoLoaded = false;
+  const targetLogoUrl = logoUrl || coverUrl;
+
+  if (targetLogoUrl) {
     try {
-      const img = await loadImageAsync(logoUrl);
-      ctx.save();
-      drawRoundedRect(ctx, avatarX + 8, avatarY + 8, avatarSize - 16, avatarSize - 16, radius - 6);
-      ctx.clip();
-      ctx.drawImage(img, avatarX + 8, avatarY + 8, avatarSize - 16, avatarSize - 16);
-      ctx.restore();
-      imageLoaded = true;
+      const logoImg = await loadSafeImageToCanvas(targetLogoUrl);
+      if (logoImg) {
+        ctx.save();
+        drawRoundedRect(ctx, avatarX + 8, avatarY + 8, avatarSize - 16, avatarSize - 16, radius - 6);
+        ctx.clip();
+        drawImageProp(ctx, logoImg, avatarX + 8, avatarY + 8, avatarSize - 16, avatarSize - 16, 0.5, 0.5);
+        ctx.restore();
+        logoLoaded = true;
+      }
     } catch (_) {
-      imageLoaded = false;
+      logoLoaded = false;
     }
   }
 
-  if (!imageLoaded) {
-    // Draw placeholder avatar with initials
+  if (!logoLoaded) {
+    // Fallback Initial
     ctx.save();
     drawRoundedRect(ctx, avatarX + 8, avatarY + 8, avatarSize - 16, avatarSize - 16, radius - 6);
     ctx.fillStyle = theme.mid;
@@ -266,7 +340,7 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
     ctx.restore();
   }
 
-  // Draw white stroke around Avatar Box
+  // Draw crisp white border around Avatar Box
   ctx.save();
   ctx.strokeStyle = '#FFFFFF';
   ctx.lineWidth = 10;
@@ -274,17 +348,20 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
   ctx.stroke();
   ctx.restore();
 
-  // 5. Place Name on Colored Gradient
+  // 6. Place Name on Colored Gradient
   ctx.save();
   ctx.textAlign = 'center';
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 62px "Cairo", "Segoe UI", sans-serif';
+  ctx.font = 'bold 58px "Cairo", "Segoe UI", sans-serif';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 3;
   
-  const nameY = 700;
+  const nameY = 670;
   const nameText = place.name || 'اسم النشاط';
   ctx.fillText(nameText, W / 2, nameY);
 
-  // If verified, draw verified badge symbol next to name
+  // If verified, draw blue badge
   if (place.isVerified) {
     const textWidth = ctx.measureText(nameText).width;
     const badgeX = (W / 2) + (textWidth / 2) + 32;
@@ -294,23 +371,56 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
   }
   ctx.restore();
 
-  // 6. Category / Subtitle
+  // 7. Category / Subtitle
   ctx.save();
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-  ctx.font = '600 42px "Cairo", "Segoe UI", sans-serif';
-  ctx.fillText(categoryName, W / 2, 790);
+  ctx.font = '600 38px "Cairo", "Segoe UI", sans-serif';
+  ctx.fillText(categoryName, W / 2, 750);
   ctx.restore();
 
-  // 7. Area / Location Tag
+  // 8. Area / Location Tag
   ctx.save();
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.font = '500 32px "Cairo", "Segoe UI", sans-serif';
-  ctx.fillText(`📍 ${placeArea}`, W / 2, 860);
+  ctx.font = '500 30px "Cairo", "Segoe UI", sans-serif';
+  ctx.fillText(`📍 ${placeArea}`, W / 2, 810);
   ctx.restore();
 
-  // 8. White Footer Strip (110px height at bottom)
+  // 9. Phone & WhatsApp Contacts Capsule Pill
+  if (phone || whatsapp) {
+    ctx.save();
+    const pillW = 680;
+    const pillH = 75;
+    const pillX = (W - pillW) / 2;
+    const pillY = 875;
+    const pillRadius = 38;
+
+    // Pill Frosted Glass Background
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.20)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.lineWidth = 2.5;
+    drawRoundedRect(ctx, pillX, pillY, pillW, pillH, pillRadius);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 28px "Cairo", "Segoe UI", sans-serif';
+
+    if (phone && whatsapp && phone !== whatsapp) {
+      // Both numbers
+      ctx.fillText(`📞 ${phone}   |   💬 ${whatsapp}`, W / 2, pillY + pillH / 2);
+    } else {
+      // Single contact number with call & whatsapp icon
+      const contactNum = phone || whatsapp;
+      ctx.fillText(`📞 اتصال & 💬 واتساب :  ${contactNum}`, W / 2, pillY + pillH / 2);
+    }
+    ctx.restore();
+  }
+
+  // 10. White Footer Strip (110px height at bottom)
   const footerY = H - 110;
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, footerY, W, 110);
@@ -341,7 +451,7 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
   ctx.fillText('dalilmanzala.com', 60, footerY + 55);
   ctx.restore();
 
-  // 9. Export to Blob and Trigger Download
+  // 11. Export to Blob and Trigger Download
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.95));
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -354,6 +464,76 @@ async function generateAndDownloadPlaceCard({ place, categoryName, placeArea, th
     a.remove();
     URL.revokeObjectURL(url);
   }, 1000);
+}
+
+/**
+ * دالة آمنة 100% لتحميل أي صورة إلى Canvas متجاوزة قيود CORS
+ */
+async function loadSafeImageToCanvas(srcUrl) {
+  if (!srcUrl) return null;
+
+  // 1. Convert to safe Data URL / Blob URL
+  let safeSrc = srcUrl;
+  try {
+    const dataUrl = await fetchImageAsDataUrl(srcUrl);
+    if (dataUrl) safeSrc = dataUrl;
+  } catch (_) {}
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => {
+      // Fallback try without crossOrigin if it was a data/blob url
+      if (safeSrc.startsWith('data:') || safeSrc.startsWith('blob:')) {
+        const retryImg = new Image();
+        retryImg.onload = () => resolve(retryImg);
+        retryImg.onerror = reject;
+        retryImg.src = safeSrc;
+      } else {
+        reject(new Error('Failed to load image'));
+      }
+    };
+    img.src = safeSrc;
+  });
+}
+
+/**
+ * Fetch image as Base64 Data URL to bypass CORS canvas tainting
+ */
+async function fetchImageAsDataUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('data:')) return url;
+
+  // Try direct fetch with cors
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (res.ok) {
+      const blob = await res.blob();
+      return await blobToDataUrl(blob);
+    }
+  } catch (_) {}
+
+  // Try via Cloudflare Worker proxy
+  try {
+    const proxyUrl = `https://elmanzala.nonm1724.workers.dev/api/proxy-image?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
+    if (res.ok) {
+      const blob = await res.blob();
+      return await blobToDataUrl(blob);
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 function drawRoundedRect(ctx, x, y, width, height, radius) {
@@ -370,12 +550,36 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
-function loadImageAsync(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Image failed to load'));
-    img.src = src;
-  });
+/**
+ * Draw image with object-fit: cover on canvas
+ */
+function drawImageProp(ctx, img, x, y, w, h, offsetX = 0.5, offsetY = 0.5) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const r = Math.min(w / iw, h / ih);
+  let nw = iw * r;
+  let nh = ih * r;
+  let cx = 1;
+  let cy = 1;
+  let cw = 1;
+  let ch = 1;
+  let ar = 1;
+
+  if (nw < w) ar = w / nw;
+  if (Math.abs(ar - 1) < 1e-14 && nh < h) ar = h / nh;
+  nw *= ar;
+  nh *= ar;
+
+  cw = iw / (nw / w);
+  ch = ih / (nh / h);
+
+  cx = (iw - cw) * offsetX;
+  cy = (ih - ch) * offsetY;
+
+  if (cx < 0) cx = 0;
+  if (cy < 0) cy = 0;
+  if (cw > iw) cw = iw;
+  if (ch > ih) ch = ih;
+
+  ctx.drawImage(img, cx, cy, cw, ch, x, y, w, h);
 }

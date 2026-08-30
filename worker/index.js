@@ -64,6 +64,28 @@ export default {
         return jsonResponse({ success: true, message: 'Deleted' }, 200, corsHeaders);
       }
 
+      // ── 2b. CORS Image Proxy (GET /api/proxy-image?url=...) ──
+      if (url.pathname === '/api/proxy-image' && request.method === 'GET') {
+        const targetUrl = url.searchParams.get('url');
+        if (!targetUrl) {
+          return jsonResponse({ error: 'الرابط مطلوب' }, 400, corsHeaders);
+        }
+        try {
+          const imgRes = await fetch(targetUrl);
+          const contentType = imgRes.headers.get('content-type') || 'image/webp';
+          const buffer = await imgRes.arrayBuffer();
+          return new Response(buffer, {
+            headers: {
+              ...corsHeaders,
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=86400'
+            }
+          });
+        } catch (err) {
+          return jsonResponse({ error: 'فشل جلب الصورة: ' + err.message }, 500, corsHeaders);
+        }
+      }
+
       // ── 3. AI Translation (POST /api/ai/translate) ──
       if (url.pathname === '/api/ai/translate' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
