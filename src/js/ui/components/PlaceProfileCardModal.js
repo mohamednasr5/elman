@@ -20,6 +20,50 @@ export const CARD_COLOR_THEMES = [
 
 let _selectedThemeId = 'navy';
 
+export function checkIsPlaceVerified(place) {
+  if (!place) return false;
+  return Boolean(
+    place.isVerified === true ||
+    place.isVerified === 'true' ||
+    place.isVerified === 1 ||
+    place.isVerified === '1' ||
+    (place.verifiedUntil && Number(place.verifiedUntil) > Date.now()) ||
+    place.verificationStatus === 'approved' ||
+    place.status === 'verified'
+  );
+}
+
+export function drawCanvasVerifiedBadge(ctx, centerX, centerY, radius = 18) {
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 3;
+
+  // Sky Blue Gradient Circle
+  const grad = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+  grad.addColorStop(0, '#38BDF8');
+  grad.addColorStop(1, '#0284C7');
+  
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // White Border
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Crisp White Checkmark
+  ctx.shadowColor = 'transparent';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('✓', centerX, centerY + 1);
+  ctx.restore();
+}
+
 /**
  * يفتح نافذة إنشاء وتحميل البطاقة التعريفية لأي نشاط
  */
@@ -345,50 +389,6 @@ async function generateAndDownloadPlaceCard({ place, categoryName, fullAddress, 
     ctx.fillText((place.name || 'م').charAt(0), W / 2, avatarY + avatarSize / 2);
     ctx.restore();
   }
-
-function checkIsPlaceVerified(place) {
-  if (!place) return false;
-  return Boolean(
-    place.isVerified === true ||
-    place.isVerified === 'true' ||
-    place.isVerified === 1 ||
-    place.isVerified === '1' ||
-    (place.verifiedUntil && Number(place.verifiedUntil) > Date.now()) ||
-    place.verificationStatus === 'approved' ||
-    place.status === 'verified'
-  );
-}
-
-function drawCanvasVerifiedBadge(ctx, centerX, centerY, radius = 18) {
-  ctx.save();
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetY = 3;
-
-  // Sky Blue Gradient Circle
-  const grad = ctx.createLinearGradient(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
-  grad.addColorStop(0, '#38BDF8');
-  grad.addColorStop(1, '#0284C7');
-  
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  // White Border
-  ctx.strokeStyle = '#FFFFFF';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-
-  // Crisp White Checkmark
-  ctx.shadowColor = 'transparent';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('✓', centerX, centerY + 1);
-  ctx.restore();
-}
 
   // Draw crisp white border around Avatar Box
   ctx.save();

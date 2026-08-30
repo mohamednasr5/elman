@@ -4,7 +4,7 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, HAMMAD_PLACE_SLUG } from '../../core/db.js';
+import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, HAMMAD_PLACE_SLUG } from '../../core/db.js';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '../components/VerifiedBadge.js';
@@ -66,12 +66,13 @@ export async function renderPlacePage($container, { slug, user }) {
     const placeId = place.id || place._key;
 
     // Parallel load with safe fallbacks
-    const [categories, offers, products, settings, reviews] = await Promise.all([
+    const [categories, offers, products, settings, reviews, allPublishedPlaces] = await Promise.all([
       getCategories().catch(() => []),
       getPlaceOffers(placeId).catch(() => []),
       getPlaceProducts(placeId).catch(() => []),
       getSettings().catch(() => ({})),
-      getPlaceReviews(placeId).catch(() => [])
+      getPlaceReviews(placeId).catch(() => []),
+      getPublishedPlaces({ limit: 40 }).catch(() => [])
     ]);
 
     const category = categories?.find(c => c._key === place.categoryId || c.slug === place.categoryId);
@@ -494,6 +495,11 @@ export async function renderPlacePage($container, { slug, user }) {
         <!-- Sidebar Col -->
         <div class="place-sidebar-col">
           
+          <!-- Spotlight: شخصية / مكان اليوم الموثق -->
+          <div class="spotlight-card" id="spotlight-place-container">
+            <div class="skeleton" style="height:170px;border-radius:12px"></div>
+          </div>
+
           <!-- Working Hours Card -->
           <div class="working-hours">
             <div class="working-hours__header" id="toggle-working-hours">
@@ -686,6 +692,9 @@ export async function renderPlacePage($container, { slug, user }) {
       });
     });
 
+    // Mount Spotlight of Today Widget (شخصية / مكان اليوم الموثق)
+    mountSpotlightPlaceWidget(allPublishedPlaces, placeId, settings?.contact?.whatsappLink || 'https://wa.me/wasendernew');
+
     // Setup Place Following System
     setupPlaceFollowing(placeId, currentUser);
 
@@ -701,6 +710,89 @@ export async function renderPlacePage($container, { slug, user }) {
         <button class="btn btn-primary" onclick="location.reload()">تحديث الصفحة</button>
       </div>
     `;
+  }
+}
+
+function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUrl = 'https://wa.me/wasendernew') {
+  const container = document.getElementById('spotlight-place-container');
+  if (!container) return;
+
+  const verifiedPlaces = (allPlaces || []).filter(p => 
+    (p.isVerified || (p.verifiedUntil && Number(p.verifiedUntil) > Date.now())) && 
+    (p.id !== currentPlaceId && p._key !== currentPlaceId && p.slug !== currentPlaceId)
+  );
+
+  const fallbackPlaces = (allPlaces || []).filter(p => 
+    (p.isVerified || p.isSponsored || p.isFeatured) &&
+    (p.id !== currentPlaceId && p._key !== currentPlaceId && p.slug !== currentPlaceId)
+  );
+
+  const candidates = verifiedPlaces.length > 0 ? verifiedPlaces : (fallbackPlaces.length > 0 ? fallbackPlaces : allPlaces.filter(p => p.id !== currentPlaceId));
+
+  if (!candidates || candidates.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  let currentIndex = Math.floor(Date.now() / 60000) % candidates.length;
+
+  const renderCard = (targetPlace) => {
+    if (!targetPlace) return;
+    const pName = targetPlace.name || 'شخصية اليوم';
+    const pCategory = targetPlace.categoryName || targetPlace.customCategory || 'نشاط موثق';
+    const pArea = targetPlace.area || targetPlace.address || 'المنزلة';
+    const pImg = targetPlace.logoUrl || targetPlace.coverImageUrl || './icons/icon-72x72.png';
+    const pSlug = targetPlace.slug || targetPlace.id || targetPlace._key;
+
+    const waMsg = encodeURIComponent('مرحباً، أود توثيق مكاني / شخصيتي في دليل المنزلة والمطرية الرقمي للظهور في مكان/شخصية اليوم');
+    const waUrl = waBaseUrl.includes('?') ? `${waBaseUrl}&text=${waMsg}` : `${waBaseUrl}?text=${waMsg}`;
+
+    container.innerHTML = `
+      <div class="spotlight-header">
+        <div class="spotlight-title">
+          <span class="spotlight-badge-icon">🛡️</span>
+          <span>شخصية / مكان اليوم</span>
+        </div>
+        <span class="chip chip--success" style="font-size:10px;padding:2px 8px;font-weight:700">موثق ✓</span>
+      </div>
+
+      <div class="spotlight-body animate-fade-in" id="spotlight-body-content">
+        <a href="place.html?slug=${encodeURIComponent(pSlug)}" class="spotlight-profile-link" title="عرض ملف ${escAttr(pName)}">
+          <div class="spotlight-avatar-box">
+            <img src="${escAttr(pImg)}" alt="${escAttr(pName)}" class="spotlight-avatar-img" onerror="this.src='./icons/icon-72x72.png'" />
+          </div>
+          <div class="spotlight-info">
+            <div class="spotlight-name">
+              <span>${escHtml(pName)}</span>
+              <span class="spotlight-v-badge" title="موثق">✓</span>
+            </div>
+            <div class="spotlight-category">${escHtml(pCategory)}</div>
+            <div class="spotlight-area">📍 ${escHtml(pArea)}</div>
+          </div>
+        </a>
+
+        <a href="${escAttr(waUrl)}" 
+           target="_blank" 
+           rel="noopener" 
+           class="btn-spotlight-claim" 
+           title="طلب توثيق ملفك للظهور في شخصية ومكان اليوم">
+          <span class="claim-icon">🛡️</span>
+          <span>وثق مكانك أو شخصيتك لتظهر هنا</span>
+          <span class="claim-arrow">←</span>
+        </a>
+      </div>
+    `;
+  };
+
+  renderCard(candidates[currentIndex]);
+
+  // Rotate every 60 seconds (1 minute)
+  if (candidates.length > 1) {
+    if (window._spotlightInterval) clearInterval(window._spotlightInterval);
+    window._spotlightInterval = setInterval(() => {
+      currentIndex = (currentIndex + 1) % candidates.length;
+      renderCard(candidates[currentIndex]);
+    }, 60000);
   }
 }
 

@@ -43,16 +43,15 @@ function _headerHTML(active) {
       ).join('')}
     </nav>
 
-      <button class="header__search-btn" id="mobile-search-btn" aria-label="بحث">🔍</button>
-      
-      <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="تبديل الوضع الليلي والنهاري" title="تبديل الوضع الليلي / الفاتح">
-        <span class="theme-icon-light">☀️</span>
-        <span class="theme-icon-dark">🌙</span>
-      </button>
+    <button class="header__search-btn" id="mobile-search-btn" aria-label="بحث">🔍</button>
+    
+    <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="تبديل الوضع الليلي والنهاري" title="تبديل الوضع الليلي / الفاتح">
+      <span class="theme-icon-light">☀️</span>
+      <span class="theme-icon-dark">🌙</span>
+    </button>
 
-      <div id="header-user-section">
-        <a href="login.html" class="btn btn-primary btn-sm"><span>🔑</span> دخول</a>
-      </div>
+    <div class="header__user" id="header-user-section">
+      <a href="login.html" class="btn btn-primary btn-sm"><span>🔑</span> دخول</a>
     </div>
   </div>
 </header>`;
@@ -219,6 +218,14 @@ function _footerHTML() {
       </div>
     </div>
   </div>
+
+  <!-- Scroll to Top Floating Button -->
+  <button type="button" class="scroll-to-top-btn" id="scroll-to-top-btn" aria-label="الصعود لأعلى الصفحة" title="العودة لأعلى الصفحة">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="19" x2="12" y2="5"></line>
+      <polyline points="5 12 12 5 19 12"></polyline>
+    </svg>
+  </button>
 </footer>`;
 }
 
@@ -263,12 +270,21 @@ export async function initPage(activeFile = '') {
   /* 6. Attach M Voice Assistant FAB listener */
   bindGlobalVoiceAssistantFab();
 
-  /* 7. Scroll shadow on header */
+  /* 7. Scroll shadow on header & Scroll to top floating button */
   const hdr = document.getElementById('site-header');
-  window.addEventListener('scroll', () =>
-    hdr?.classList.toggle('scrolled', scrollY > 8), { passive: true });
+  const scrollBtn = document.getElementById('scroll-to-top-btn');
 
-  /* 7. Header search */
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY || window.pageYOffset || 0;
+    hdr?.classList.toggle('scrolled', y > 8);
+    scrollBtn?.classList.toggle('visible', y > 300);
+  }, { passive: true });
+
+  scrollBtn?.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  /* 8. Header search */
   document.getElementById('header-search-input')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.value.trim())
       location.href = `search.html?q=${encodeURIComponent(e.target.value.trim())}`;
@@ -277,7 +293,7 @@ export async function initPage(activeFile = '') {
     location.href = 'search.html';
   });
 
-  /* 8. Auth UI (reactive) */
+  /* 9. Auth UI (reactive) */
   onAuthStateChange(user => _renderUser(user));
 
   /* 9. Dynamic settings (WhatsApp link) */
