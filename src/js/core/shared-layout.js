@@ -1,4 +1,4 @@
-import { initGlobalRealtimeNotificationsListener } from '../services/notification.service.js';
+import { initGlobalRealtimeNotificationsListener, updateAllNotificationBadges } from '../services/notification.service.js';
 /**
  * shared-layout.js
  * بناء الـ Header + Footer + Bottom-Nav المشترك بين جميع الصفحات
@@ -26,6 +26,16 @@ export async function initSharedLayout(activeHref = '') {
   _bindThemeToggle();
   bindGlobalVoiceAssistantFab();
   initGlobalRealtimeNotificationsListener(getCurrentUser());
+
+  // Bell button navigation & badge setup
+  document.querySelectorAll('#header-notif-bell-btn, .header-notif-bell-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const isCurrentlyInAdmin = window.location.pathname.includes('admin');
+      window.location.href = isCurrentlyInAdmin ? 'admin.html?section=notifications' : 'dashboard.html?section=notifications';
+    });
+  });
+  updateAllNotificationBadges(getCurrentUser()?.uid);
+
 
   onAuthStateChange((user) => {
     initGlobalRealtimeNotificationsListener(user);

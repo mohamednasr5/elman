@@ -3,6 +3,8 @@ import {
   deleteSingleNotification, 
   clearAllUserNotifications, 
   markSingleNotificationAsRead, 
+  markAllUserNotificationsAsRead,
+  updateAllNotificationBadges,
   playNotificationSound, 
   toggleNotificationSound, 
   isNotificationSoundEnabled 
@@ -2669,12 +2671,12 @@ async function renderDashboardNotifications($container, user) {
         card.style.opacity = '0';
         card.style.transform = 'translateX(30px)';
       }
-      await deleteSingleNotification(notifId, user.uid);
-      toast.info('تم حذف الإشعار بنجاح');
+      await deleteSingleNotification(notifId, user?.uid);
+      toast.info('تم حذف وإخفاء الإشعار بنجاح');
       setTimeout(async () => {
         await renderDashboardNotifications($container, user);
-        updateNotificationBadges(user.uid);
-      }, 250);
+        await updateAllNotificationBadges(user?.uid);
+      }, 200);
     });
   });
 
@@ -2683,19 +2685,19 @@ async function renderDashboardNotifications($container, user) {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const notifId = btn.getAttribute('data-notif-id');
-      await markSingleNotificationAsRead(notifId, user.uid);
-      toast.success('تم التحديد كمقروء');
+      await markSingleNotificationAsRead(notifId, user?.uid);
+      toast.success('تم التحديد كمقروء ✓');
       await renderDashboardNotifications($container, user);
-      updateNotificationBadges(user.uid);
+      await updateAllNotificationBadges(user?.uid);
     });
   });
 
   // Batch Mark All Read
   document.getElementById('btn-mark-all-read')?.addEventListener('click', async () => {
-    await markAllNotificationsAsRead(user.uid);
+    await markAllUserNotificationsAsRead(user?.uid);
     toast.success('تم تحديد جميع الإشعارات كمقروءة ✓');
     await renderDashboardNotifications($container, user);
-    updateNotificationBadges(user.uid);
+    await updateAllNotificationBadges(user?.uid);
   });
 
   // Batch Clear All
@@ -2707,10 +2709,10 @@ async function renderDashboardNotifications($container, user) {
       cancelText: 'إلغاء'
     });
     if (ok) {
-      await clearAllUserNotifications(user.uid);
+      await clearAllUserNotifications(user?.uid);
       toast.success('تم مسح جميع الإشعارات بنجاح 🗑️');
       await renderDashboardNotifications($container, user);
-      updateNotificationBadges(user.uid);
+      await updateAllNotificationBadges(user?.uid);
     }
   });
 }

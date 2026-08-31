@@ -73,6 +73,10 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
   if (!user || !isAdmin(user)) return;
   _currentUser = user;
   _currentSection = section;
+  // Explicitly remove public bottom nav in admin
+  document.getElementById('nav-slot')?.remove();
+  document.querySelector('.bottom-nav')?.remove();
+  document.body.classList.add('admin-page');
 
   $container.innerHTML = `
     <div class="dashboard-layout">

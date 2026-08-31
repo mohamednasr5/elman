@@ -28,7 +28,6 @@ function getAudioContext() {
 export function playNotificationSound() {
   if (typeof window === 'undefined') return;
 
-  // Check if sound is enabled by user
   const isSoundEnabled = localStorage.getItem('manzala_notif_sound_enabled') !== 'false';
   if (!isSoundEnabled) return;
 
@@ -37,8 +36,6 @@ export function playNotificationSound() {
     if (!ctx) return;
 
     const now = ctx.currentTime;
-
-    // Harmonic bell chord: F6 (1396.91Hz) -> A6 (1760.00Hz) -> C7 (2093.00Hz)
     const frequencies = [1396.91, 1760.00, 2093.00];
     
     frequencies.forEach((freq, index) => {
@@ -48,7 +45,6 @@ export function playNotificationSound() {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, now + index * 0.08);
 
-      // Envelope: Fast attack, smooth exponential decay
       gain.gain.setValueAtTime(0.001, now + index * 0.08);
       gain.gain.exponentialRampToValueAtTime(0.28 / (index + 1), now + index * 0.08 + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.08 + 0.55);
@@ -60,7 +56,6 @@ export function playNotificationSound() {
       osc.stop(now + index * 0.08 + 0.6);
     });
 
-    // Mobile Haptic Vibration
     if (navigator.vibrate) {
       navigator.vibrate([70, 40, 110]);
     }
@@ -86,29 +81,54 @@ export function isNotificationSoundEnabled() {
   return localStorage.getItem('manzala_notif_sound_enabled') !== 'false';
 }
 
-// ── Notification Storage & Management ──
+// ── Notification Storage & Universal Management ──
 
 /**
- * Get deleted notification IDs for current user
+ * Get all deleted notification IDs across all storage keys
  */
-function getDeletedNotifIds(uid = 'anon') {
-  try {
-    const raw = localStorage.getItem(`deleted_notifs_${uid}`) || '[]';
-    return new Set(JSON.parse(raw));
-  } catch (_) {
-    return new Set();
+export function getDeletedNotifIds(uid) {
+  const merged = new Set();
+  if (typeof localStorage === 'undefined') return merged;
+
+  const keys = ['manzala_deleted_notifs_all', 'deleted_notifs_anon'];
+  if (uid) {
+    keys.push(`deleted_notifs_${uid}`);
   }
+
+  keys.forEach(k => {
+    try {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        JSON.parse(raw).forEach(id => merged.add(String(id)));
+      }
+    } catch (_) {}
+  });
+
+  return merged;
 }
 
 /**
- * Save deleted notification ID
+ * Get all read notification IDs across all storage keys
  */
-function markNotifAsDeleted(notifId, uid = 'anon') {
-  try {
-    const set = getDeletedNotifIds(uid);
-    set.add(notifId);
-    localStorage.setItem(`deleted_notifs_${uid}`, JSON.stringify(Array.from(set)));
-  } catch (_) {}
+export function getReadNotifIds(uid) {
+  const merged = new Set();
+  if (typeof localStorage === 'undefined') return merged;
+
+  const keys = ['manzala_read_notifs_all', 'read_global_notifs_anon'];
+  if (uid) {
+    keys.push(`read_global_notifs_${uid}`);
+  }
+
+  keys.forEach(k => {
+    try {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        JSON.parse(raw).forEach(id => merged.add(String(id)));
+      }
+    } catch (_) {}
+  });
+
+  return merged;
 }
 
 /**
@@ -116,12 +136,22 @@ function markNotifAsDeleted(notifId, uid = 'anon') {
  */
 export async function deleteSingleNotification(notifId, uid) {
   if (!notifId) return;
+  const idStr = String(notifId);
 
-  markNotifAsDeleted(notifId, uid);
+  // Save to universal deleted set
+  const set = getDeletedNotifIds(uid);
+  set.add(idStr);
+  const arr = Array.from(set);
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('manzala_deleted_notifs_all', JSON.stringify(arr));
+    if (uid) localStorage.setItem(`deleted_notifs_${uid}`, JSON.stringify(arr));
+    localStorage.setItem('deleted_notifs_anon', JSON.stringify(arr));
+  }
 
   if (uid) {
     try {
-      await dbRemove(`userNotifications/${uid}/${notifId}`);
+      await dbRemove(`userNotifications/${uid}/${idStr}`);
     } catch (_) {}
   }
 }
@@ -130,19 +160,33 @@ export async function deleteSingleNotification(notifId, uid) {
  * Clear / Delete all notifications
  */
 export async function clearAllUserNotifications(uid) {
+  // 1. Fetch all existing notifications
+  const allNotifs = await fetchManagedUserNotifications(uid);
+  const set = getDeletedNotifIds(uid);
+
+  allNotifs.forEach(n => {
+    if (n.id) set.add(String(n.id));
+  });
+
+  try {
+    const globalNotifsMap = (await dbGet('globalNotifications')) || {};
+    Object.keys(globalNotifsMap).forEach(id => set.add(String(id)));
+  } catch (_) {}
+
+  const arr = Array.from(set);
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('manzala_deleted_notifs_all', JSON.stringify(arr));
+    if (uid) localStorage.setItem(`deleted_notifs_${uid}`, JSON.stringify(arr));
+    localStorage.setItem('deleted_notifs_anon', JSON.stringify(arr));
+    localStorage.removeItem('manzala_global_broadcast_notifs_cache');
+  }
+
   if (uid) {
     try {
       await dbRemove(`userNotifications/${uid}`);
     } catch (_) {}
   }
-
-  try {
-    const globalNotifsMap = (await dbGet('globalNotifications')) || {};
-    const allIds = Object.keys(globalNotifsMap);
-    const set = getDeletedNotifIds(uid);
-    allIds.forEach(id => set.add(id));
-    localStorage.setItem(`deleted_notifs_${uid || 'anon'}`, JSON.stringify(Array.from(set)));
-  } catch (_) {}
 }
 
 /**
@@ -150,26 +194,69 @@ export async function clearAllUserNotifications(uid) {
  */
 export async function markSingleNotificationAsRead(notifId, uid) {
   if (!notifId) return;
+  const idStr = String(notifId);
+
+  const set = getReadNotifIds(uid);
+  set.add(idStr);
+  const arr = Array.from(set);
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('manzala_read_notifs_all', JSON.stringify(arr));
+    if (uid) localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(arr));
+    localStorage.setItem('read_global_notifs_anon', JSON.stringify(arr));
+  }
 
   if (uid) {
     try {
-      await dbUpdate(`userNotifications/${uid}/${notifId}`, { isRead: true });
+      await dbUpdate(`userNotifications/${uid}/${idStr}`, { isRead: true });
     } catch (_) {}
   }
+}
+
+/**
+ * Mark all notifications as read
+ */
+export async function markAllUserNotificationsAsRead(uid) {
+  const allNotifs = await fetchManagedUserNotifications(uid);
+  const set = getReadNotifIds(uid);
+
+  allNotifs.forEach(n => {
+    if (n.id) set.add(String(n.id));
+  });
 
   try {
-    const raw = localStorage.getItem(`read_global_notifs_${uid || 'anon'}`) || '[]';
-    const set = new Set(JSON.parse(raw));
-    set.add(notifId);
-    localStorage.setItem(`read_global_notifs_${uid || 'anon'}`, JSON.stringify(Array.from(set)));
+    const globalNotifsMap = (await dbGet('globalNotifications')) || {};
+    Object.keys(globalNotifsMap).forEach(id => set.add(String(id)));
   } catch (_) {}
+
+  const arr = Array.from(set);
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('manzala_read_notifs_all', JSON.stringify(arr));
+    if (uid) localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(arr));
+    localStorage.setItem('read_global_notifs_anon', JSON.stringify(arr));
+  }
+
+  if (uid) {
+    try {
+      const userNotifsMap = (await dbGet(`userNotifications/${uid}`)) || {};
+      const updates = {};
+      Object.keys(userNotifsMap).forEach(k => {
+        updates[`userNotifications/${uid}/${k}/isRead`] = true;
+      });
+      if (Object.keys(updates).length > 0) {
+        await dbUpdate('', updates);
+      }
+    } catch (_) {}
+  }
 }
 
 /**
  * Get filtered & managed user notifications
  */
 export async function fetchManagedUserNotifications(uid) {
-  const deletedIds = getDeletedNotifIds(uid || 'anon');
+  const deletedIds = getDeletedNotifIds(uid);
+  const readIds = getReadNotifIds(uid);
   const mergedMap = {};
 
   // 1. Local broadcast cache
@@ -177,47 +264,70 @@ export async function fetchManagedUserNotifications(uid) {
     const raw = localStorage.getItem('manzala_global_broadcast_notifs_cache') || '[]';
     const list = JSON.parse(raw);
     list.forEach(n => {
-      if (!deletedIds.has(n.id)) {
-        mergedMap[n.id] = { ...n, isRead: false };
+      const notifId = String(n.id);
+      if (!deletedIds.has(notifId)) {
+        mergedMap[notifId] = { ...n, id: notifId, isRead: readIds.has(notifId) };
       }
     });
   } catch (_) {}
 
-  // 2. Global Broadcast Notifications
+  // 2. Global Broadcast Notifications from Firebase
   try {
     const globalNotifsMap = (await dbGet('globalNotifications')) || {};
     Object.entries(globalNotifsMap).forEach(([id, n]) => {
-      if (!deletedIds.has(id)) {
-        mergedMap[id] = { id, ...n, isBroadcast: true };
+      const notifId = String(id);
+      if (!deletedIds.has(notifId)) {
+        mergedMap[notifId] = { id: notifId, ...n, isBroadcast: true, isRead: readIds.has(notifId) };
       }
     });
   } catch (_) {}
 
-  // 3. Personal User Notifications
+  // 3. Personal User Notifications Inbox
   if (uid) {
     try {
       const userNotifsMap = (await dbGet(`userNotifications/${uid}`)) || {};
       Object.entries(userNotifsMap).forEach(([id, n]) => {
-        if (!deletedIds.has(id)) {
-          mergedMap[id] = { id, ...n, isBroadcast: !!n.type && n.type !== 'profile_visit' };
+        const notifId = String(id);
+        if (!deletedIds.has(notifId)) {
+          mergedMap[notifId] = { 
+            id: notifId, 
+            ...n, 
+            isBroadcast: !!n.type && n.type !== 'profile_visit',
+            isRead: Boolean(n.isRead || readIds.has(notifId))
+          };
         }
       });
     } catch (_) {}
   }
 
-  // Check read status
-  let readIds = new Set();
-  try {
-    const raw = localStorage.getItem(`read_global_notifs_${uid || 'anon'}`) || '[]';
-    readIds = new Set(JSON.parse(raw));
-  } catch (_) {}
-
   const all = Object.values(mergedMap).map(n => ({
     ...n,
-    isRead: Boolean(n.isRead || readIds.has(n.id))
+    isRead: Boolean(n.isRead || readIds.has(String(n.id)))
   }));
 
   return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+/**
+ * Update Notification Badges across Header and Sidebar
+ */
+export async function updateAllNotificationBadges(uid) {
+  try {
+    const notifs = await fetchManagedUserNotifications(uid);
+    const unread = notifs.filter(n => !n.isRead).length;
+
+    // Header Bell Badge
+    document.querySelectorAll('#header-notif-badge, .header-notif-badge').forEach(badge => {
+      badge.textContent = unread;
+      badge.style.display = unread > 0 ? 'inline-flex' : 'none';
+    });
+
+    // Sidebar Badge
+    document.querySelectorAll('#sidebar-notifs-badge, .sidebar-notifs-badge').forEach(badge => {
+      badge.textContent = unread;
+      badge.style.display = unread > 0 ? 'inline-block' : 'none';
+    });
+  } catch (_) {}
 }
 
 // ── In-App Live Floating Notification Banner ──
@@ -225,10 +335,11 @@ export async function fetchManagedUserNotifications(uid) {
 export function showLiveNotificationPopup(notification) {
   if (typeof document === 'undefined') return;
 
-  // Play audio chime
+  const deletedIds = getDeletedNotifIds();
+  if (notification.id && deletedIds.has(String(notification.id))) return;
+
   playNotificationSound();
 
-  // Create popup container if not exists
   let popupBox = document.getElementById('manzala-live-notifs-container');
   if (!popupBox) {
     popupBox = document.createElement('div');
@@ -292,7 +403,6 @@ export function showLiveNotificationPopup(notification) {
     </button>
   `;
 
-  // Click to view place
   notifEl.addEventListener('click', (e) => {
     if (e.target.closest('.live-notif-close-btn')) {
       e.stopPropagation();
@@ -305,7 +415,6 @@ export function showLiveNotificationPopup(notification) {
 
   popupBox.appendChild(notifEl);
 
-  // Auto dismiss after 6.5s
   setTimeout(() => {
     if (notifEl.parentNode) {
       notifEl.style.opacity = '0';
@@ -322,13 +431,14 @@ export function initGlobalRealtimeNotificationsListener(currentUser) {
   if (_hasInitializedLiveListener || typeof window === 'undefined') return;
   _hasInitializedLiveListener = true;
 
+  updateAllNotificationBadges(currentUser?.uid);
+
   try {
     const db = getDB();
     if (!db) return;
 
     const startTime = Date.now();
 
-    // Listen to new global broadcasts in real-time
     db.ref('globalNotifications')
       .orderByChild('createdAt')
       .startAt(startTime)
@@ -336,10 +446,10 @@ export function initGlobalRealtimeNotificationsListener(currentUser) {
         const notif = snap.val();
         if (notif && notif.createdAt >= startTime - 2000) {
           showLiveNotificationPopup({ id: snap.key, ...notif });
+          updateAllNotificationBadges(currentUser?.uid);
         }
       });
 
-    // Listen to personal notifications if user is logged in
     if (currentUser?.uid) {
       db.ref(`userNotifications/${currentUser.uid}`)
         .orderByChild('createdAt')
@@ -348,6 +458,7 @@ export function initGlobalRealtimeNotificationsListener(currentUser) {
           const notif = snap.val();
           if (notif && notif.createdAt >= startTime - 2000) {
             showLiveNotificationPopup({ id: snap.key, ...notif });
+            updateAllNotificationBadges(currentUser.uid);
           }
         });
     }
