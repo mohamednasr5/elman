@@ -1550,6 +1550,9 @@ async function renderPlaceProductsSection($container, user, placeId) {
                     <button type="button" class="btn btn-xs btn-outline btn-view-user-prod" data-id="${escAttr(pId)}" title="مشاهدة تفاصيل المنتج">
                       👁️ مشاهدة
                     </button>
+                    <button type="button" class="btn btn-xs btn-outline btn-make-prod-offer" data-id="${escAttr(pId)}" style="color:#D97706;border-color:#F59E0B;background:rgba(245,158,11,0.08);font-weight:700" title="تعيين هذا المنتج كعرض يومي في الدليل">
+                      🎁 كعرض يومي
+                    </button>
                     <button type="button" class="btn btn-xs btn-outline btn-edit-user-prod" data-id="${escAttr(pId)}" style="color:var(--primary);border-color:var(--primary)" title="تعديل المنتج">
                       ✏️ تعديل
                     </button>
@@ -1578,6 +1581,17 @@ async function renderPlaceProductsSection($container, user, placeId) {
       const target = (products || []).find(p => (p.id || p._key) === pId);
       if (target) {
         openProductFullDetailsModal(target, place);
+      }
+    });
+  });
+
+  // Set Product as Daily Offer handlers
+  $container.querySelectorAll('.btn-make-prod-offer').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pId = btn.getAttribute('data-id');
+      const target = (products || []).find(p => (p.id || p._key) === pId);
+      if (target) {
+        showSetProductAsOfferModal(place, target, user, () => renderPlaceProductsSection($container, user, placeId));
       }
     });
   });
@@ -1614,6 +1628,187 @@ async function renderPlaceProductsSection($container, user, placeId) {
       }
     });
   });
+}
+
+async function showSetProductAsOfferModal(place, product, user, onDone) {
+  const pId = product.id || product._key;
+  const placeId = place.id || place._key;
+
+  // Check current offers count
+  const allOffers = await dbGet('offers') || {};
+  const now = Date.now();
+  const activeOffers = Object.values(allOffers).filter(
+    o => o && o.placeId === placeId && o.status === 'active' && o.endDate > now
+  );
+
+  const maxAllowed = place.isVerified ? 3 : 1;
+  if (activeOffers.length >= maxAllowed) {
+    showModal({
+      title: '⚠️ تم الوصول للحد الأقصى من العروض',
+      size: 'sm',
+      content: `
+        <div style="text-align:center;padding:10px">
+          <div style="font-size:3rem;margin-bottom:10px">🏷️</div>
+          <h3 style="font-size:1.1rem;margin-bottom:8px">لديك ${activeOffers.length} من أصل ${maxAllowed} عروض نشطة</h3>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.6">
+            ${place.isVerified 
+              ? 'الحد الأقصى للعروض اليومية المتزامنة للمكان الموثق هو 3 عروض نشطة.' 
+              : 'الحد الأقصى للعروض اليومية للمكان غير الموثق هو عرض واحد فقط. يمكنك توثيق مكانك لزيادة الحد إلى 3 عروض.'}
+          </p>
+          <p style="font-size:12.5px;color:var(--text-muted)">
+            لتعيين هذا المنتج كعرض، يرجى حذف أو إيقاف أحد عروضك النشطة من قسم "إدارة العروض".
+          </p>
+        </div>
+      `,
+      buttons: [
+        {
+          label: 'الانتقال لإدارة العروض',
+          type: 'primary',
+          onClick: () => {
+            renderPlaceOffersSection(document.getElementById('dashboard-main-content'), user, placeId);
+          }
+        },
+        { label: 'إغلاق', type: 'ghost', closeOnClick: true }
+      ]
+    });
+    return;
+  }
+
+  const defaultNewPrice = Number(product.price) || 0;
+  const defaultOldPrice = product.oldPrice ? Number(product.oldPrice) : (defaultNewPrice > 0 ? Math.round(defaultNewPrice * 1.25) : 0);
+
+  const modal = showModal({
+    title: `🎁 تعيين كعرض يومي: ${escHtml(product.name)}`,
+    size: 'md',
+    content: `
+      <div style="display:flex;flex-direction:column;gap:14px;padding:4px">
+        <!-- Info Banner -->
+        <div style="background:rgba(245,158,11,0.09);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-md);padding:10px 14px;font-size:12.5px;color:var(--text-primary)">
+          <span>⚡</span> سيتم نشر هذا المنتج فوراً في <strong>العروض اليومية</strong> وتظهر عليه شارة التوفير والخصم.
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">
+            المتاح لك: (${activeOffers.length} من ${maxAllowed}) عروض نشطة — <strong>${place.isVerified ? 'حساب موثق ✓' : 'حساب عادي'}</strong>
+          </div>
+        </div>
+
+        <form id="set-prod-offer-form" onsubmit="return false">
+          ${product.imageUrl ? `
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;background:var(--surface);padding:8px 12px;border-radius:var(--radius-md);border:1px solid var(--border)">
+              <img src="${escAttr(product.imageUrl)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px;background:#0f172a" />
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:13px" class="truncate">${escHtml(product.name)}</div>
+                <div style="font-size:11.5px;color:var(--text-muted)">سيتم استخدام صورة المنتج الحالية كبانر للعرض</div>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="form-group">
+            <label class="form-label">عنوان العرض <span class="required">*</span></label>
+            <input type="text" id="po-title" class="form-input" value="${escAttr(product.name)}" required />
+          </div>
+
+          <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">سعر العرض بعد الخصم (ج.م) <span class="required">*</span></label>
+              <input type="number" id="po-new-price" class="form-input" value="${defaultNewPrice}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">السعر الأصلي قبل الخصم (ج.م)</label>
+              <input type="number" id="po-old-price" class="form-input" value="${defaultOldPrice || ''}" placeholder="مثال: 100" />
+            </div>
+          </div>
+
+          <div id="po-discount-preview" style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:var(--radius-md);padding:8px 12px;font-size:12.5px;color:#065F46;font-weight:700;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+            <span>💰 التوفير للعميل:</span>
+            <span id="po-discount-calc-text">احسب الخصم</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">مدة استمرار العرض</label>
+            <select id="po-duration" class="form-select">
+              <option value="1">24 ساعة (عرض يومي خاص) ⏰</option>
+              <option value="3">3 أيام</option>
+              <option value="7" selected>أسبوع كامل (7 أيام)</option>
+              <option value="15">15 يوم (نصف شهر)</option>
+              <option value="30">30 يوم (شهر كامل)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">تفاصيل وشروط العرض</label>
+            <textarea id="po-desc" class="form-textarea" rows="2" placeholder="اكتب تفاصيل أو شروط العرض...">${escHtml(product.description || '')}</textarea>
+          </div>
+        </form>
+      </div>
+    `,
+    buttons: [
+      {
+        label: '🚀 تأكيد ونشر كعرض يومي الآن',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async () => {
+          const title = document.getElementById('po-title')?.value.trim();
+          const newPrice = parseFloat(document.getElementById('po-new-price')?.value);
+          const oldPrice = parseFloat(document.getElementById('po-old-price')?.value) || null;
+          const durationDays = parseInt(document.getElementById('po-duration')?.value, 10) || 7;
+          const desc = document.getElementById('po-desc')?.value.trim();
+
+          if (!title || isNaN(newPrice)) {
+            toast.warning('يرجى كتابة عنوان وسعر العرض');
+            return;
+          }
+
+          let discountPercent = 0;
+          if (oldPrice && oldPrice > newPrice) {
+            discountPercent = Math.round(((oldPrice - newPrice) / oldPrice) * 100);
+          }
+
+          const startDate = Date.now();
+          const endDate = startDate + (durationDays * 24 * 60 * 60 * 1000);
+
+          try {
+            await addOffer(placeId, {
+              title,
+              newPrice,
+              oldPrice,
+              discountPercent,
+              description: desc,
+              imageUrl: product.imageUrl || '',
+              startDate,
+              endDate,
+              productId: pId
+            }, user);
+
+            toast.success(`تم تعيين "${product.name}" كعرض يومي بنجاح! 🎉`);
+            modal.close();
+            onDone();
+          } catch (err) {
+            toast.error(err.message || 'فشل إضافة العرض');
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+
+  // Dynamic live calculation
+  function updateDiscountPreview() {
+    const np = parseFloat(document.getElementById('po-new-price')?.value) || 0;
+    const op = parseFloat(document.getElementById('po-old-price')?.value) || 0;
+    const calcEl = document.getElementById('po-discount-calc-text');
+    if (!calcEl) return;
+
+    if (op > np && np > 0) {
+      const diff = op - np;
+      const pct = Math.round((diff / op) * 100);
+      calcEl.innerHTML = `وفرت ${formatPrice(diff)} (خصم ${pct}%) ✨`;
+    } else {
+      calcEl.innerHTML = `سعر العرض: ${formatPrice(np)}`;
+    }
+  }
+
+  document.getElementById('po-new-price')?.addEventListener('input', updateDiscountPreview);
+  document.getElementById('po-old-price')?.addEventListener('input', updateDiscountPreview);
+  updateDiscountPreview();
 }
 
 function showAddProductModal(place, user, onDone) {
