@@ -1002,3 +1002,86 @@ body.admin-page #nav-slot,
   height: 24px;
   stroke: currentColor;
 }
+
+
+/* ═════════════════════════════════════════════════════════════════════
+   EXECUTIVE LUXURY DARK GLASS THEME FOR ADMIN PWA
+   ═════════════════════════════════════════════════════════════════════ */
+
+body.admin-page {
+  background: #0B1E30 !important;
+  color: #F8FAFC !important;
+  font-family: var(--font-arabic);
+}
+
+.admin-page .dashboard-layout {
+  min-height: 100vh;
+  background: #0B1E30 !important;
+}
+
+.admin-page .dashboard-content {
+  background: #0B1E30 !important;
+  color: #F8FAFC !important;
+}
+
+.admin-page .stat-card {
+  background: #0F273D !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-page .stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(245, 166, 35, 0.15) !important;
+  border-color: rgba(245, 166, 35, 0.3) !important;
+}
+
+.admin-page .dashboard-table-wrapper {
+  background: #0F273D !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.admin-page .dashboard-table th {
+  background: rgba(11, 30, 48, 0.8) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 700 !important;
+}
+
+.admin-page .dashboard-table tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Enhanced Admin Mobile Bottom Bar */
+.admin-mobile-bottom-bar {
+  background: rgba(15, 39, 61, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.4) !important;
+  padding: 6px 8px env(safe-area-inset-bottom) 8px !important;
+}
+
+.admin-bottom-tab {
+  color: rgba(255, 255, 255, 0.65) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.admin-bottom-tab.active {
+  color: #F5A623 !important;
+  transform: translateY(-2px);
+}
+
+.admin-bottom-tab.active .admin-bottom-tab__icon {
+  background: rgba(245, 166, 35, 0.18) !important;
+  color: #F5A623 !important;
+  border-radius: 12px;
+  padding: 4px 10px;
+  box-shadow: 0 0 14px rgba(245, 166, 35, 0.3);
+}
+
+.admin-bottom-tab__label {
+  font-weight: 800 !important;
+  font-size: 11px !important;
+}

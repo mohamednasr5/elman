@@ -116,6 +116,24 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
 
       <!-- Main Content Area -->
       <main class="dashboard-content" id="admin-main-area">
+
+        <!-- Smart Standalone PWA Install Banner for Admin -->
+        <div id="admin-pwa-top-banner" style="display:none;background:linear-gradient(135deg,#0284C7,#0369A1);border-radius:14px;padding:12px 16px;margin-bottom:16px;box-shadow:0 4px 15px rgba(2,132,199,0.25);color:#fff;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:24px">📲</span>
+            <div>
+              <div style="font-weight:800;font-size:13.5px">تثبيت تطبيق إدارة الدليل على هاتفك</div>
+              <div style="font-size:11.5px;opacity:0.9">تطبيق مستقل وسريع جداً مخصص للمشرفين والمسؤولين</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button type="button" id="btn-trigger-admin-install-banner" class="btn" style="background:#fff;color:#0369A1;font-weight:800;font-size:12.5px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1)">
+              تثبيت الآن ⬇️
+            </button>
+            <button type="button" id="btn-dismiss-admin-install-banner" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;opacity:0.8;padding:4px">✕</button>
+          </div>
+        </div>
+
         <div style="display:flex;align-items:center;justify-content:center;min-height:50vh">
           <div class="spinner spinner-lg"></div>
         </div>
@@ -203,6 +221,34 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
   `;
 
   setupAdminNavigation();
+
+  // Detect if already installed / standalone
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const banner = document.getElementById('admin-pwa-top-banner');
+  
+  if (!isStandalone && banner && !sessionStorage.getItem('admin_pwa_banner_dismissed')) {
+    banner.style.display = 'flex';
+  }
+
+  document.getElementById('btn-dismiss-admin-install-banner')?.addEventListener('click', () => {
+    if (banner) banner.style.display = 'none';
+    sessionStorage.setItem('admin_pwa_banner_dismissed', 'true');
+  });
+
+  document.getElementById('btn-trigger-admin-install-banner')?.addEventListener('click', async () => {
+    if (_adminDeferredPrompt) {
+      _adminDeferredPrompt.prompt();
+      const { outcome } = await _adminDeferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        toast.success('تم تثبيت تطبيق لوحة إدارة الدليل بنجاح! 📲');
+        if (banner) banner.style.display = 'none';
+      }
+      _adminDeferredPrompt = null;
+    } else {
+      toast.info('لتثبيت تطبيق الإدارة: افتح قائمة المتصفح (⋮) واختر "إضافة إلى الشاشة الرئيسية" أو "تثبيت التطبيق"');
+    }
+  });
+  
   await switchAdminSection(section, false);
   preloadAdminData();
 }
@@ -1398,7 +1444,6 @@ async function renderAdminReviews($container) {
   const allReviews = adminCache.reviews || [];
   const placesList = Object.entries(adminCache.places || {}).map(([id, p]) => ({ id, ...p }));
   const usersList = Object.entries(adminCache.users || {}).map(([uid, u]) => ({ uid, ...u }));
-
   const totalReviews = allReviews.length;
   const fiveStarReviews = allReviews.filter(r => Number(r.rating) === 5).length;
   const reportedReviews = allReviews.filter(r => r.isReported);
@@ -1406,54 +1451,58 @@ async function renderAdminReviews($container) {
 
   $container.innerHTML = `
     <div class="admin-fade-in">
-      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
         <div>
-          <h1 class="dashboard-header__title">إدارة التقييمات والمراجعات (${totalReviews})</h1>
-          <div class="dashboard-header__subtitle">التحكم في تقييمات الأماكن، وإضافة مراجعات بأسماء عملاء، ومراجعة البلاغات المسيئة</div>
+          <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:800;display:flex;align-items:center;gap:8px">
+            <span>⭐</span>
+            <span>إدارة التقييمات والمراجعات</span>
+            <span class="badge" style="background:#F5A623;color:#0B1E30;font-size:13px;font-weight:800;padding:2px 10px;border-radius:9999px">${totalReviews}</span>
+          </h1>
+          <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">التحكم في تقييمات الأماكن، إضافة مراجعات العملاء، ومراجعة البلاغات فورياً</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-secondary" id="btn-admin-bulk-reviews" style="border-radius:var(--radius-full);gap:6px">
-            <span>📦</span> إضافة تقييمات مجمعة (Bulk)
+          <button class="btn btn-secondary" id="btn-admin-bulk-reviews" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius-full);gap:6px">
+            <span>📦</span> إضافة مراجعات مجمعة
           </button>
-          <button class="btn btn-primary" id="btn-admin-add-review" style="border-radius:var(--radius-full);gap:6px">
+          <button class="btn btn-primary" id="btn-admin-add-review" style="background:#F5A623;color:#0B1E30;font-weight:800;border:none;border-radius:var(--radius-full);gap:6px">
             <span>➕</span> إضافة تقييم باسم عميل
           </button>
         </div>
       </div>
 
-      <!-- Quick Stats -->
-      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:var(--space-5)">
-        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">إجمالي التقييمات</div>
-          <div style="font-size:1.8rem;font-weight:800;color:var(--primary)">${totalReviews}</div>
+      <!-- Executive Stats Cards -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;margin-bottom:20px">
+        <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1)">
+          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:4px">إجمالي التقييمات</div>
+          <div style="font-size:1.8rem;font-weight:800;color:#0284C7">${totalReviews}</div>
         </div>
-        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">تقييمات 5 نجوم ★</div>
-          <div style="font-size:1.8rem;font-weight:800;color:#F59E0B">${fiveStarReviews}</div>
+        <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1)">
+          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:4px">تقييمات 5 نجوم ★</div>
+          <div style="font-size:1.8rem;font-weight:800;color:#F5A623">${fiveStarReviews}</div>
         </div>
-        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border)">
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">متوسط التقييم العام</div>
-          <div style="font-size:1.8rem;font-weight:800;color:var(--accent)">${avgOverall} ★</div>
+        <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1)">
+          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:4px">متوسط التقييم العام</div>
+          <div style="font-size:1.8rem;font-weight:800;color:#10B981">${avgOverall} ★</div>
         </div>
-        <div class="stat-card" style="background:var(--surface);padding:18px;border-radius:var(--radius-lg);border:1px solid ${reportedReviews.length > 0 ? 'rgba(239,68,68,0.4)' : 'var(--border)'}">
-          <div style="font-size:12px;color:${reportedReviews.length > 0 ? 'var(--danger)' : 'var(--text-muted)'};margin-bottom:6px">بلاغات مسيئة 🚩</div>
-          <div style="font-size:1.8rem;font-weight:800;color:${reportedReviews.length > 0 ? 'var(--danger)' : 'var(--text-muted)'}">${reportedReviews.length}</div>
+        <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1px solid ${reportedReviews.length > 0 ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.1)'}">
+          <div style="font-size:12px;color:${reportedReviews.length > 0 ? '#EF4444' : 'rgba(255,255,255,0.6)'};margin-bottom:4px">بلاغات مسيئة 🚩</div>
+          <div style="font-size:1.8rem;font-weight:800;color:${reportedReviews.length > 0 ? '#EF4444' : 'rgba(255,255,255,0.6)'}">${reportedReviews.length}</div>
         </div>
       </div>
 
       <!-- Filter Bar -->
-      <div class="filter-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;background:var(--surface);padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border)">
+      <div class="filter-bar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;background:#0F273D;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1)">
         <div style="flex:1;min-width:200px">
-          <input type="text" id="admin-reviews-search" class="form-input" placeholder="🔍 بحث باسم المكان أو العميل أو نص التقييم..." style="margin:0" />
+          <input type="text" id="admin-reviews-search" class="form-input" placeholder="🔍 بحث باسم المكان أو العميل أو نص المراجعة..." style="margin:0;background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.15);color:#fff" />
         </div>
         <div style="min-width:160px">
-          <select id="admin-reviews-filter-place" class="form-select" style="margin:0">
+          <select id="admin-reviews-filter-place" class="form-select" style="margin:0;background:#0B1E30;border-color:rgba(255,255,255,0.15);color:#fff">
             <option value="">كل الأماكن</option>
             ${placesList.map(p => `<option value="${escAttr(p.id)}">${escHtml(p.name)}</option>`).join('')}
           </select>
         </div>
         <div style="min-width:160px">
-          <select id="admin-reviews-filter-stars" class="form-select" style="margin:0">
+          <select id="admin-reviews-filter-stars" class="form-select" style="margin:0;background:#0B1E30;border-color:rgba(255,255,255,0.15);color:#fff">
             <option value="">كل التقييمات</option>
             <option value="reported" ${reportedReviews.length > 0 ? 'selected' : ''}>🚩 التعليقات المُبلّغ عنها (${reportedReviews.length})</option>
             <option value="positive">إيجابي (3 - 5 نجوم) 👍</option>
@@ -1468,53 +1517,62 @@ async function renderAdminReviews($container) {
       </div>
 
       <!-- Bulk Actions Toolbar -->
-      <div id="admin-reviews-bulk-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);padding:10px 16px;border-radius:var(--radius-md)">
+      <div id="admin-reviews-bulk-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);padding:10px 16px;border-radius:12px">
         <div style="display:flex;align-items:center;gap:10px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;cursor:pointer;margin:0">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;margin:0">
             <input type="checkbox" id="admin-reviews-select-all" style="width:16px;height:16px;cursor:pointer" />
             <span>تحديد الكل</span>
           </label>
-          <span id="admin-reviews-selected-count" style="font-size:12px;color:var(--text-muted);font-weight:600">0 محدد</span>
+          <span id="admin-reviews-selected-count" style="font-size:12px;color:#F5A623;font-weight:700">0 محدد</span>
         </div>
 
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <button type="button" class="btn btn-sm btn-danger" id="btn-delete-selected-reviews" style="font-size:12px;padding:5px 14px;border-radius:var(--radius-md);display:none;font-weight:700">
+          <button type="button" class="btn btn-sm btn-danger" id="btn-delete-selected-reviews" style="font-size:12px;padding:5px 14px;border-radius:8px;display:none;font-weight:700">
             <span>🗑️</span> حذف المحدد (<span id="btn-delete-count">0</span>)
           </button>
-          <button type="button" class="btn btn-sm btn-outline" id="btn-delete-filtered-negative" style="font-size:12px;padding:5px 14px;border-radius:var(--radius-md);color:var(--danger);border-color:rgba(239,68,68,0.3);background:var(--surface)">
+          <button type="button" class="btn btn-sm" id="btn-delete-filtered-negative" style="font-size:12px;padding:5px 14px;border-radius:8px;color:#EF4444;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08)">
             <span>⚠️</span> حذف كل السلبي (1-2 نجوم)
           </button>
-          <button type="button" class="btn btn-sm btn-outline" id="btn-delete-all-filtered" style="font-size:12px;padding:5px 14px;border-radius:var(--radius-md);color:var(--text-secondary);background:var(--surface)">
-            <span>🧹</span> حذف كل المعروض حالياً
+          <button type="button" class="btn btn-sm" id="btn-delete-all-filtered" style="font-size:12px;padding:5px 14px;border-radius:8px;color:#fff;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06)">
+            <span>🧹</span> حذف المعروض حالياً
           </button>
         </div>
       </div>
 
-      <!-- Reviews Table -->
-      <div class="dashboard-table-wrapper" style="background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden">
-        <table class="dashboard-table">
+      <!-- Reviews Table with Smooth Paginated Render -->
+      <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
+        <table class="dashboard-table" style="width:100%;border-collapse:collapse">
           <thead>
-            <tr>
-              <th style="width:40px;text-align:center">
-                <input type="checkbox" id="admin-reviews-th-select-all" style="cursor:pointer;width:15px;height:15px" title="تحديد / إلغاء تحديد الكل" />
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:12.5px">
+              <th style="width:40px;text-align:center;padding:12px">
+                <input type="checkbox" id="admin-reviews-th-select-all" style="cursor:pointer;width:15px;height:15px" />
               </th>
-              <th>المكان</th>
-              <th>العميل / المستخدم</th>
-              <th>التقييم</th>
-              <th>نص المراجعة</th>
-              <th>التاريخ</th>
-              <th style="text-align:center">الإجراءات</th>
+              <th style="padding:12px">المكان</th>
+              <th style="padding:12px">العميل / المستخدم</th>
+              <th style="padding:12px">التقييم</th>
+              <th style="padding:12px">نص المراجعة</th>
+              <th style="padding:12px">التاريخ</th>
+              <th style="text-align:center;padding:12px">الإجراءات</th>
             </tr>
           </thead>
           <tbody id="admin-reviews-table-body">
-            <!-- Rendered by renderReviewsRows() -->
+            <!-- Rendered smoothly by chunks -->
           </tbody>
         </table>
+
+        <!-- Load More Pagination Button -->
+        <div id="admin-reviews-load-more-wrap" style="padding:14px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);display:none">
+          <button type="button" id="btn-admin-reviews-load-more" class="btn btn-secondary btn-sm" style="border-radius:8px;font-weight:700;padding:8px 24px;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.15)">
+            تحميل المزيد من التقييمات ↓
+          </button>
+        </div>
       </div>
     </div>
   `;
 
   let currentFilteredReviews = [];
+  let displayedCount = 0;
+  const PAGE_CHUNK = 30;
 
   function updateBulkSelectionUI() {
     const checkedBoxes = document.querySelectorAll('.admin-review-checkbox:checked');
@@ -1535,133 +1593,86 @@ async function renderAdminReviews($container) {
     if (thSelect) thSelect.checked = isAllChecked;
   }
 
-  function renderReviewsRows() {
-    const searchVal = (document.getElementById('admin-reviews-search')?.value || '').trim().toLowerCase();
-    const placeFilter = document.getElementById('admin-reviews-filter-place')?.value || '';
-    const starsFilter = document.getElementById('admin-reviews-filter-stars')?.value || '';
+  function renderRowHTML(r) {
+    const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
+    const placeObj = adminCache.places?.[r.placeId];
+    const placeSlug = placeObj?.slug || r.placeSlug || r.placeId;
+    const isReported = Boolean(r.isReported);
 
-    currentFilteredReviews = allReviews.filter(r => {
-      if (placeFilter && r.placeId !== placeFilter) return false;
-      
-      const numStars = Number(r.rating) || 5;
-      if (starsFilter === 'reported') {
-        if (!r.isReported) return false;
-      } else if (starsFilter === 'positive') {
-        if (numStars < 3) return false;
-      } else if (starsFilter === 'negative') {
-        if (numStars > 2) return false;
-      } else if (starsFilter && String(r.rating) !== starsFilter) {
-        return false;
-      }
-      if (searchVal) {
-        const placeName = (r.placeName || '').toLowerCase();
-        const userName = (r.userName || '').toLowerCase();
-        const comment = (r.comment || '').toLowerCase();
-        if (!placeName.includes(searchVal) && !userName.includes(searchVal) && !comment.includes(searchVal)) {
-          return false;
-        }
-      }
-      return true;
-    });
-
-    const tbody = document.getElementById('admin-reviews-table-body');
-    if (!tbody) return;
-
-    if (currentFilteredReviews.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="7" class="text-center" style="padding:2.5rem;color:var(--text-muted)">
-            لا توجد تقييمات مطابقة للبحث
-          </td>
-        </tr>
-      `;
-      updateBulkSelectionUI();
-      return;
-    }
-
-    tbody.innerHTML = currentFilteredReviews.map(r => {
-      const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
-      const placeObj = adminCache.places?.[r.placeId];
-      const placeSlug = placeObj?.slug || r.placeSlug || r.placeId;
-      const isReported = Boolean(r.isReported);
-
-      return `
-        <tr style="${isReported ? 'background:rgba(239,68,68,0.06)' : ''}">
-          <td style="text-align:center">
-            <input type="checkbox" class="admin-review-checkbox" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="cursor:pointer;width:15px;height:15px" />
-          </td>
-          <td>
-            <div style="font-weight:700;color:var(--primary);display:flex;align-items:center;gap:6px">
-              <span>📍</span>
-              <a href="place.html?slug=${escAttr(placeSlug)}" target="_blank" style="color:inherit;text-decoration:none">
-                ${escHtml(r.placeName || placeObj?.name || 'مكان غير معروف')}
-              </a>
+    return `
+      <tr style="${isReported ? 'background:rgba(239,68,68,0.12)' : 'border-bottom:1px solid rgba(255,255,255,0.05)'}">
+        <td style="text-align:center;padding:10px">
+          <input type="checkbox" class="admin-review-checkbox" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="cursor:pointer;width:15px;height:15px" />
+        </td>
+        <td style="padding:10px">
+          <div style="font-weight:700;color:#38BDF8;display:flex;align-items:center;gap:6px">
+            <span>📍</span>
+            <a href="../place.html?slug=${escAttr(placeSlug)}" target="_blank" style="color:#38BDF8;text-decoration:none">
+              ${escHtml(r.placeName || placeObj?.name || 'مكان غير معروف')}
+            </a>
+          </div>
+        </td>
+        <td style="padding:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:30px;height:30px;border-radius:50%;overflow:hidden;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#F5A623;flex-shrink:0">
+              ${r.userPhoto ? `<img src="${escAttr(r.userPhoto)}" style="width:100%;height:100%;object-fit:cover" />` : (r.userName?.charAt(0) || '👤')}
             </div>
-          </td>
-          <td>
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="width:30px;height:30px;border-radius:50%;overflow:hidden;background:var(--primary-alpha);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--primary);flex-shrink:0">
-                ${r.userPhoto ? `<img src="${escAttr(r.userPhoto)}" style="width:100%;height:100%;object-fit:cover" />` : (r.userName?.charAt(0) || '👤')}
-              </div>
-              <div>
-                <div style="font-weight:600;font-size:13px">${escHtml(r.userName || 'مستخدم')}</div>
-                ${r.isAdminGenerated ? `<span class="badge" style="font-size:9.5px;padding:1px 4px;background:rgba(245,166,35,0.15);color:#D97706">إداري</span>` : ''}
-              </div>
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#fff">${escHtml(r.userName || 'مستخدم')}</div>
+              ${r.isAdminGenerated ? `<span class="badge" style="font-size:9.5px;padding:1px 6px;border-radius:4px;background:rgba(245,166,35,0.2);color:#F5A623;font-weight:700">إداري</span>` : ''}
             </div>
-          </td>
-          <td>
-            <div style="color:#F59E0B;font-size:14px;letter-spacing:1px;white-space:nowrap">
-              ${'★'.repeat(rStars)}${'☆'.repeat(5 - rStars)}
-              <span style="color:var(--text-muted);font-size:11px;margin-right:3px">(${rStars}/5)</span>
+          </div>
+        </td>
+        <td style="padding:10px">
+          <div style="color:#F5A623;font-size:14px;letter-spacing:1px;white-space:nowrap">
+            ${'★'.repeat(rStars)}${'☆'.repeat(5 - rStars)}
+            <span style="color:rgba(255,255,255,0.5);font-size:11px;margin-right:3px">(${rStars}/5)</span>
+          </div>
+        </td>
+        <td style="max-width:320px;padding:10px">
+          <div style="font-size:13px;line-height:1.5;color:#E2E8F0" title="${escAttr(r.comment)}">
+            ${escHtml(r.comment || '—')}
+          </div>
+          ${isReported ? `
+            <div style="font-size:11px;color:#EF4444;font-weight:700;margin-top:4px;display:flex;align-items:center;gap:4px">
+              <span>🚩</span>
+              <span>بلاغ: ${escHtml(r.lastReportReason || 'محتوى غير لائق')} (من ${escHtml(r.lastReporterName || 'مستخدم')})</span>
             </div>
-          </td>
-          <td style="max-width:320px">
-            <div style="font-size:13px;line-height:1.5;color:var(--text-primary)" title="${escAttr(r.comment)}">
-              ${escHtml(r.comment || '—')}
+          ` : ''}
+          ${(r.isReviewedByAdmin && (r.adminReviewStatus === 'approved_compliant' || r.adminReviewNote)) ? `
+            <div style="font-size:11px;color:#10B981;margin-top:3px;font-weight:700">
+              🛡️ تم التحقق وتأكيد التزامه بالسياسة
             </div>
+          ` : ''}
+        </td>
+        <td style="font-size:12px;color:rgba(255,255,255,0.6);white-space:nowrap;padding:10px">
+          ${formatDate(r.createdAt || Date.now())}
+        </td>
+        <td style="text-align:center;white-space:nowrap;padding:10px">
+          <div style="display:inline-flex;gap:4px;flex-wrap:wrap">
             ${isReported ? `
-              <div style="font-size:11px;color:var(--danger);font-weight:700;margin-top:4px;display:flex;align-items:center;gap:4px">
-                <span>🚩</span>
-                <span>بلاغ مسيء: ${escHtml(r.lastReportReason || 'محتوى غير لائق')} (من ${escHtml(r.lastReporterName || 'مستخدم')})</span>
-              </div>
-            ` : ''}
-            ${(r.isReviewedByAdmin && (r.adminReviewStatus === 'approved_compliant' || r.adminReviewNote)) ? `
-              <div style="font-size:11px;color:#047857;margin-top:3px;font-weight:600">
-                🛡️ تم مراجعة هذا التعليق وتأكيد التزامه بالسياسة
-              </div>
-            ` : ''}
-          </td>
-          <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">
-            ${formatDate(r.createdAt || Date.now())}
-          </td>
-          <td style="text-align:center;white-space:nowrap">
-            <div style="display:inline-flex;gap:4px;flex-wrap:wrap">
-              ${isReported ? `
-                <button class="btn btn-xs btn-success btn-approve-reported-review" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" title="الموافقة والتأكيد أن التعليق يلتزم بالسياسة وتبرئته">
-                  🛡️ سليم (تأكيد)
-                </button>
-              ` : ''}
-              <button class="btn btn-xs btn-outline btn-edit-review-admin" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" title="تعديل التقييم">
-                ${ICONS.edit}
+              <button class="btn btn-xs btn-approve-reported-review" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="background:#10B981;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700" title="تأكيد سلامة التعليق">
+                🛡️ سليم
               </button>
-              <button class="btn btn-xs btn-danger btn-delete-review-admin" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" title="حذف التقييم">
-                ${ICONS.trash}
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+            ` : ''}
+            <button class="btn btn-xs btn-edit-review-admin" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:6px;padding:4px 8px" title="تعديل التقييم">
+              ${ICONS.edit}
+            </button>
+            <button class="btn btn-xs btn-delete-review-admin" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="background:rgba(239,68,68,0.2);color:#EF4444;border:none;border-radius:6px;padding:4px 8px" title="حذف التقييم">
+              ${ICONS.trash}
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
 
-    // Checkbox change events
-    tbody.querySelectorAll('.admin-review-checkbox').forEach(cb => {
+  function bindRowEvents(container) {
+    container.querySelectorAll('.admin-review-checkbox').forEach(cb => {
       cb.addEventListener('change', updateBulkSelectionUI);
     });
 
-    updateBulkSelectionUI();
-
-    // Attach row button events
-    tbody.querySelectorAll('.btn-approve-reported-review').forEach(btn => {
+    container.querySelectorAll('.btn-approve-reported-review').forEach(btn => {
       btn.addEventListener('click', async () => {
         const pId = btn.getAttribute('data-pid');
         const rId = btn.getAttribute('data-rid');
@@ -1676,7 +1687,7 @@ async function renderAdminReviews($container) {
       });
     });
 
-    tbody.querySelectorAll('.btn-edit-review-admin').forEach(btn => {
+    container.querySelectorAll('.btn-edit-review-admin').forEach(btn => {
       btn.addEventListener('click', () => {
         const pId = btn.getAttribute('data-pid');
         const rId = btn.getAttribute('data-rid');
@@ -1685,7 +1696,7 @@ async function renderAdminReviews($container) {
       });
     });
 
-    tbody.querySelectorAll('.btn-delete-review-admin').forEach(btn => {
+    container.querySelectorAll('.btn-delete-review-admin').forEach(btn => {
       btn.addEventListener('click', async () => {
         const pId = btn.getAttribute('data-pid');
         const rId = btn.getAttribute('data-rid');
@@ -1709,136 +1720,138 @@ async function renderAdminReviews($container) {
     });
   }
 
-  // Toggle select all
-  function toggleSelectAll(checked) {
+  function renderReviewsRows(isAppend = false) {
+    const searchVal = (document.getElementById('admin-reviews-search')?.value || '').trim().toLowerCase();
+    const placeFilter = document.getElementById('admin-reviews-filter-place')?.value || '';
+    const starsFilter = document.getElementById('admin-reviews-filter-stars')?.value || '';
+
+    if (!isAppend) {
+      displayedCount = 0;
+      currentFilteredReviews = allReviews.filter(r => {
+        if (placeFilter && r.placeId !== placeFilter) return false;
+        
+        const numStars = Number(r.rating) || 5;
+        if (starsFilter === 'reported') {
+          if (!r.isReported) return false;
+        } else if (starsFilter === 'positive') {
+          if (numStars < 3) return false;
+        } else if (starsFilter === 'negative') {
+          if (numStars > 2) return false;
+        } else if (starsFilter && String(r.rating) !== starsFilter) {
+          return false;
+        }
+        if (searchVal) {
+          const placeName = (r.placeName || '').toLowerCase();
+          const userName = (r.userName || '').toLowerCase();
+          const comment = (r.comment || '').toLowerCase();
+          if (!placeName.includes(searchVal) && !userName.includes(searchVal) && !comment.includes(searchVal)) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+
+    const tbody = document.getElementById('admin-reviews-table-body');
+    const loadMoreWrap = document.getElementById('admin-reviews-load-more-wrap');
+    if (!tbody) return;
+
+    if (currentFilteredReviews.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="text-center" style="padding:2.5rem;color:rgba(255,255,255,0.5)">
+            لا توجد تقييمات مطابقة للبحث
+          </td>
+        </tr>
+      `;
+      if (loadMoreWrap) loadMoreWrap.style.display = 'none';
+      updateBulkSelectionUI();
+      return;
+    }
+
+    const nextBatch = currentFilteredReviews.slice(displayedCount, displayedCount + PAGE_CHUNK);
+    displayedCount += nextBatch.length;
+
+    const htmlChunk = nextBatch.map(renderRowHTML).join('');
+
+    if (isAppend) {
+      tbody.insertAdjacentHTML('beforeend', htmlChunk);
+    } else {
+      tbody.innerHTML = htmlChunk;
+    }
+
+    bindRowEvents(tbody);
+    updateBulkSelectionUI();
+
+    if (loadMoreWrap) {
+      loadMoreWrap.style.display = displayedCount < currentFilteredReviews.length ? 'block' : 'none';
+    }
+  }
+
+  // Initial Instant Render
+  renderReviewsRows(false);
+
+  // Load More Button Click
+  document.getElementById('btn-admin-reviews-load-more')?.addEventListener('click', () => {
+    renderReviewsRows(true);
+  });
+
+  // Debounced Search & Filters
+  let _revFilterTimer = null;
+  const triggerFilteredRender = () => {
+    if (_revFilterTimer) clearTimeout(_revFilterTimer);
+    _revFilterTimer = setTimeout(() => renderReviewsRows(false), 150);
+  };
+
+  document.getElementById('admin-reviews-search')?.addEventListener('input', triggerFilteredRender);
+  document.getElementById('admin-reviews-filter-place')?.addEventListener('change', triggerFilteredRender);
+  document.getElementById('admin-reviews-filter-stars')?.addEventListener('change', triggerFilteredRender);
+
+  // Bulk Master Selection
+  const handleSelectAll = (checked) => {
     document.querySelectorAll('.admin-review-checkbox').forEach(cb => {
       cb.checked = checked;
     });
     updateBulkSelectionUI();
-  }
+  };
 
-  document.getElementById('admin-reviews-select-all')?.addEventListener('change', (e) => {
-    toggleSelectAll(e.target.checked);
-  });
-  document.getElementById('admin-reviews-th-select-all')?.addEventListener('change', (e) => {
-    toggleSelectAll(e.target.checked);
-  });
+  document.getElementById('admin-reviews-select-all')?.addEventListener('change', (e) => handleSelectAll(e.target.checked));
+  document.getElementById('admin-reviews-th-select-all')?.addEventListener('change', (e) => handleSelectAll(e.target.checked));
 
-  // Delete Selected Reviews Button
+  // Bulk Delete Actions
   document.getElementById('btn-delete-selected-reviews')?.addEventListener('click', async () => {
-    const checkedBoxes = Array.from(document.querySelectorAll('.admin-review-checkbox:checked'));
-    if (!checkedBoxes.length) return;
-
+    const checked = Array.from(document.querySelectorAll('.admin-review-checkbox:checked'));
+    if (checked.length === 0) return;
     const ok = await showConfirm({
       title: 'حذف التقييمات المحددة',
-      message: `هل أنت متأكد من رغبتك في حذف ${checkedBoxes.length} تقييم محدد نهائياً؟ سيتم تحديث متوسط تقييمات الأماكن تلقائياً.`,
-      confirmText: 'نعم، حذف المحدد',
+      message: `هل أنت متأكد من رغبتك في حذف ${checked.length} تقييم محدد؟`,
+      confirmText: 'نعم، حذف الكل',
       cancelText: 'إلغاء'
     });
-
     if (ok) {
       try {
-        const toDelete = checkedBoxes.map(cb => ({
-          placeId: cb.getAttribute('data-pid'),
-          id: cb.getAttribute('data-rid')
-        }));
-        toast.info(`جاري حذف ${toDelete.length} تقييم وتحديث التقييمات...`);
-        const res = await adminBulkDeleteReviews(toDelete);
-        toast.success(`تم حذف ${res.deletedCount} تقييم بنجاح وتحديث الأماكن ⭐`);
+        for (const cb of checked) {
+          await adminDeleteReview(cb.getAttribute('data-pid'), cb.getAttribute('data-rid'));
+        }
+        toast.success(`تم حذف ${checked.length} تقييم بنجاح`);
         adminCache.reviews = null;
         await renderAdminReviews($container);
       } catch (err) {
-        toast.error(err.message || 'فشل حذف التقييمات');
+        toast.error('حدث خطأ أثناء الحذف');
       }
     }
   });
 
-  // Delete All Negative Reviews
-  document.getElementById('btn-delete-filtered-negative')?.addEventListener('click', async () => {
-    const negativeReviews = allReviews.filter(r => (Number(r.rating) || 5) <= 2);
-    if (!negativeReviews.length) {
-      toast.info('لا توجد أي تقييمات سلبية (1-2 نجوم) حالياً');
-      return;
-    }
+  document.getElementById('btn-admin-bulk-reviews')?.addEventListener('click', () => openAdminBulkReviewsModal(placesList, async () => {
+    adminCache.reviews = null;
+    await renderAdminReviews($container);
+  }));
+  document.getElementById('btn-admin-add-review')?.addEventListener('click', () => openAdminAddReviewModal(placesList, usersList, async () => {
+    adminCache.reviews = null;
+    await renderAdminReviews($container);
+  }));
+}
 
-    const placeFilter = document.getElementById('admin-reviews-filter-place')?.value;
-    const targetList = placeFilter ? negativeReviews.filter(r => r.placeId === placeFilter) : negativeReviews;
-
-    if (!targetList.length) {
-      toast.info('لا توجد تقييمات سلبية لهذا المكان المحدد');
-      return;
-    }
-
-    const ok = await showConfirm({
-      title: 'حذف كل التقييمات السلبية (1-2 نجوم)',
-      message: `هل أنت متأكد من حذف ${targetList.length} تقييم سلبي (1-2 نجوم)؟ سيتم تحديث تقييمات الأماكن المتأثرة فوراً.`,
-      confirmText: 'نعم، حذف الكل السلبي',
-      cancelText: 'إلغاء'
-    });
-
-    if (ok) {
-      try {
-        toast.info(`جاري حذف ${targetList.length} تقييم سلبي...`);
-        const res = await adminBulkDeleteReviews(targetList);
-        toast.success(`تم حذف ${res.deletedCount} تقييم سلبي بنجاح! ⭐`);
-        adminCache.reviews = null;
-        await renderAdminReviews($container);
-      } catch (err) {
-        toast.error(err.message || 'فشل حذف التقييمات السلبية');
-      }
-    }
-  });
-
-  // Delete All Filtered Reviews
-  document.getElementById('btn-delete-all-filtered')?.addEventListener('click', async () => {
-    if (!currentFilteredReviews.length) {
-      toast.warning('لا توجد أي تقييمات معروضة للحذف');
-      return;
-    }
-
-    const ok = await showConfirm({
-      title: 'حذف جميع التقييمات المعروضة في الفلتر',
-      message: `هل أنت متأكد من رغبتك في حذف جميع التقييمات الظاهرة حالياً (${currentFilteredReviews.length} تقييم) نهائياً؟`,
-      confirmText: 'نعم، حذف الكل المعروض',
-      cancelText: 'إلغاء'
-    });
-
-    if (ok) {
-      try {
-        toast.info(`جاري حذف ${currentFilteredReviews.length} تقييم...`);
-        const res = await adminBulkDeleteReviews(currentFilteredReviews);
-        toast.success(`تم حذف ${res.deletedCount} تقييم بنجاح وتحديث الأماكن ⭐`);
-        adminCache.reviews = null;
-        await renderAdminReviews($container);
-      } catch (err) {
-        toast.error(err.message || 'فشل حذف التقييمات');
-      }
-    }
-  });
-
-  // Initial render
-  renderReviewsRows();
-
-  // Search & Filter listeners
-  document.getElementById('admin-reviews-search')?.addEventListener('input', renderReviewsRows);
-  document.getElementById('admin-reviews-filter-place')?.addEventListener('change', renderReviewsRows);
-  document.getElementById('admin-reviews-filter-stars')?.addEventListener('change', renderReviewsRows);
-
-  // Bulk Reviews Import button listener
-  document.getElementById('btn-admin-bulk-reviews')?.addEventListener('click', () => {
-    openAdminBulkReviewsModal(placesList, async () => {
-      adminCache.reviews = null;
-      await renderAdminReviews($container);
-    });
-  });
-
-  // Add Single Review button listener
-  document.getElementById('btn-admin-add-review')?.addEventListener('click', () => {
-    openAdminAddReviewModal(placesList, usersList, async () => {
-      adminCache.reviews = null;
-      await renderAdminReviews($container);
-    });
-  });
 
   function openAdminEditReviewModal(rev) {
     let editStars = Number(rev.rating) || 5;
@@ -2384,7 +2397,6 @@ async function renderAdminReviews($container) {
       }
     });
   }
-}
 
 // ─────────────────────────────────────────────
 //  3. Verification Requests

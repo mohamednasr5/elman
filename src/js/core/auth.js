@@ -13,15 +13,55 @@ let _authUnsubscribe = null;
  * Initialize auth state listener.
  * Creates/updates user profile in RTDB on every sign-in.
  */
+const PERSISTENT_USER_KEY = 'manzala_persistent_user';
+
+/**
+ * Get initial cached user synchronously from localStorage (0ms instant session)
+ */
+function getInitialCachedUser() {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const raw = localStorage.getItem(PERSISTENT_USER_KEY);
+    if (raw) {
+      const user = JSON.parse(raw);
+      if (user && user.uid) return user;
+    }
+  } catch (_) {}
+  return null;
+}
+
+// Pre-populate appState with cached user immediately on module evaluation
+const _initialCachedUser = getInitialCachedUser();
+if (_initialCachedUser) {
+  appState.set('user', _initialCachedUser);
+  appState.set('authLoading', false);
+}
+
+/**
+ * Initialize auth state listener with strict LOCAL persistence and zero-flicker session.
+ */
 export function initAuth() {
   const auth = getAuth();
 
+  // 1. Set explicit local persistence so Firebase never drops session across tabs/PWA/restarts
+  try {
+    if (firebase?.auth?.Auth?.Persistence?.LOCAL) {
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
+        console.debug('[Auth] Persistence set warning:', err);
+      });
+    }
+  } catch (_) {}
+
+  // 2. Auth state change listener
   _authUnsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
     if (firebaseUser) {
       try {
         const profile = await syncUserProfile(firebaseUser);
         appState.set('user', profile);
         appState.set('authLoading', false);
+        try {
+          localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(profile));
+        } catch (_) {}
         setupUserPresence(firebaseUser.uid);
         emit('auth:signedIn', profile);
       } catch (err) {
@@ -29,14 +69,32 @@ export function initAuth() {
         const basic = buildBasicProfile(firebaseUser);
         appState.set('user', basic);
         appState.set('authLoading', false);
+        try {
+          localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(basic));
+        } catch (_) {}
         setupUserPresence(firebaseUser.uid);
         emit('auth:signedIn', basic);
       }
     } else {
-      appState.set('user', null);
-      appState.set('authLoading', false);
-      cleanupUserPresence();
-      emit('auth:signedOut');
+      // Only clear user if Firebase explicitly says no user AND we are not mid-login
+      const currentStored = getInitialCachedUser();
+      if (!currentStored) {
+        appState.set('user', null);
+        appState.set('authLoading', false);
+        cleanupUserPresence();
+        emit('auth:signedOut');
+      } else {
+        // Fallback grace check: wait a moment in case Firebase was still initializing
+        setTimeout(() => {
+          if (!auth.currentUser) {
+            localStorage.removeItem(PERSISTENT_USER_KEY);
+            appState.set('user', null);
+            appState.set('authLoading', false);
+            cleanupUserPresence();
+            emit('auth:signedOut');
+          }
+        }, 1500);
+      }
     }
   });
 }
@@ -63,7 +121,14 @@ export async function signInWithGoogle() {
  */
 export async function signOut() {
   const auth = getAuth();
+  try {
+    localStorage.removeItem(PERSISTENT_USER_KEY);
+    localStorage.removeItem('manzala_user');
+  } catch (_) {}
+  appState.set('user', null);
+  cleanupUserPresence();
   await auth.signOut();
+  emit('auth:signedOut');
 }
 
 /**
@@ -114,6 +179,10 @@ export function isSuperAdmin(user = null) {
  */
 export function waitForAuth() {
   return new Promise((resolve) => {
+    const cached = appState.get('user') || getInitialCachedUser();
+    if (cached) {
+      return resolve(cached);
+    }
     if (!appState.get('authLoading')) {
       return resolve(appState.get('user'));
     }
