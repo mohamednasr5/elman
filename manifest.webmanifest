@@ -1,17 +1,24 @@
 {
-  "name": "دليل المنزلة والمطرية الرقمي",
-  "short_name": "دليل المنزلة",
+  "name": "دليل المنزلة والمطرية",
+  "short_name": "دليل المنزلة والمطرية",
   "description": "دليل المنزلة والمطرية الرقمي الشامل — الأطباء، المحلات، الحرفيين والخدمات في المنزلة والمطرية والقرى المجاورة",
   "start_url": "./",
   "id": "elmanzala-pwa",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone"],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
   "orientation": "portrait-primary",
   "background_color": "#FFFFFF",
   "theme_color": "#1B4F72",
   "lang": "ar",
   "dir": "rtl",
-  "categories": ["lifestyle", "shopping", "local"],
+  "categories": [
+    "lifestyle",
+    "shopping",
+    "local"
+  ],
   "scope": "./",
   "icons": [
     {
@@ -69,14 +76,24 @@
       "short_name": "بحث",
       "description": "ابحث عن مكان أو خدمة",
       "url": "./#/search",
-      "icons": [{ "src": "./icons/shortcut-search.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "./icons/shortcut-search.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "لوحة التحكم",
       "short_name": "لوحتي",
       "description": "إدارة أماكنك",
       "url": "./#/dashboard",
-      "icons": [{ "src": "./icons/shortcut-dashboard.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "./icons/shortcut-dashboard.png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   "prefer_related_applications": false
