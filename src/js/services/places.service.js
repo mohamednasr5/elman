@@ -7,17 +7,27 @@ import { getDB } from '../core/firebase.js';
 import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification } from '../core/db.js';
 import { generatePlaceSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';
+import { isAtmPlace } from '../utils/atm.js';
 import { WORKER_URL } from '../core/firebase.js';
 import { getIdToken } from '../core/auth.js';
 
 /**
  * Validate that Place Name and Phone Number are completely unique
  */
-export async function validatePlaceUniqueness({ name, phone, excludePlaceId = null }) {
+export async function validatePlaceUniqueness({ name, phone, excludePlaceId = null, categoryId = '', placeData = null }) {
+  const isAtm = isAtmPlace(placeData || { categoryId, name });
   const normName = normalizeArabic(name || '').trim();
   const cleanPhoneNum = (phone || '').replace(/\D/g, '');
 
-  if (!normName) throw new Error('اسم المكان مطلوب');
+  if (!normName) {
+    throw new Error(isAtm ? 'يرجى إدخال اسم البنك' : 'اسم المكان مطلوب');
+  }
+
+  // ATMs are public banking utilities: no phone required, multiple ATMs per bank allowed
+  if (isAtm) {
+    return;
+  }
+
   if (!cleanPhoneNum || cleanPhoneNum.length < 7) {
     throw new Error('يرجى إدخال رقم هاتف صحيح للمكان');
   }
@@ -29,6 +39,9 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
     if (excludePlaceId && (currentId === excludePlaceId || p.slug === excludePlaceId)) {
       continue; // Skip the place itself during updates
     }
+
+    // Skip ATM places during commercial unique checks
+    if (isAtmPlace(p)) continue;
 
     // 1. Strict Unique Name Check (Normalized Arabic)
     const existingNormName = normalizeArabic(p.name || '').trim();
@@ -56,7 +69,9 @@ export async function createPlace(placeData, currentUser) {
   // Enforce unique name and phone
   await validatePlaceUniqueness({
     name: placeData.name,
-    phone: placeData.phone
+    phone: placeData.phone,
+    categoryId: placeData.categoryId,
+    placeData
   });
 
   const token = await getIdToken();
@@ -151,7 +166,9 @@ export async function updatePlace(placeId, placeData) {
     await validatePlaceUniqueness({
       name: placeData.name || current.name,
       phone: placeData.phone || current.phone,
-      excludePlaceId: placeId
+      excludePlaceId: placeId,
+      categoryId: placeData.categoryId || current.categoryId,
+      placeData: { ...current, ...placeData }
     });
   }
 
