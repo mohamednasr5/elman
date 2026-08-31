@@ -9,6 +9,16 @@ import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { formatDateRange, formatDate } from '../../utils/date.js';
 import { dbIncrement } from '../../core/db.js';
 
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function escAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 if (typeof window !== 'undefined') {
   window.trackOfferClick = (offerId) => {
     if (offerId) dbIncrement(`offers/${offerId}/clicks`, 1).catch(() => {});
