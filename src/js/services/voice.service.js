@@ -4,9 +4,9 @@
  * conversational filler removal, and live search triggering.
  */
 
-import { normalizeArabic, arabicScore, arabicMatch, expandArabicSearchIntent } from '../utils/arabic.js';
+import { normalizeArabic, arabicScore, arabicMatch, expandArabicSearchIntent, extractSearchKeywords, stripAl } from '../utils/arabic.js';
 import { toast } from '../ui/components/Toast.js';
-import { getPublishedPlaces, getCategories } from '../core/db.js';
+import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers } from '../core/db.js';
 import { isAtmPlace, isAtmReadyAndOperational, getAtmLiveStatus, formatAtmTimeAgo, ATM_UNIFIED_LOGO } from '../utils/atm.js';
 import { getUserLocation, calculateDistanceKm, formatDistance, getPlaceCoords, MANZALA_CENTER } from '../utils/maps.js';
 import { isPlaceOpen } from '../utils/date.js';
@@ -16,12 +16,13 @@ import { isPlaceOpen } from '../utils/date.js';
 let _voiceHotCache = {
   places: null,
   categories: null,
+  products: null,
+  offers: null,
   userCoords: null,
   lastUpdated: 0
 };
 
 export async function warmUpVoiceAssistantCache() {
-  // Load from localStorage cache immediately if available for 0ms initial load
   if (!_voiceHotCache.places && typeof localStorage !== 'undefined') {
     try {
       const localPlaces = localStorage.getItem('manzala_fast_places_cache');
@@ -35,9 +36,11 @@ export async function warmUpVoiceAssistantCache() {
 
   // Background refresh
   try {
-    const [places, categories] = await Promise.all([
+    const [places, categories, products, offers] = await Promise.all([
       getPublishedPlaces({ limit: 200 }).catch(() => []),
-      getCategories().catch(() => [])
+      getCategories().catch(() => []),
+      getAllProducts().catch(() => []),
+      getActiveOffers(50).catch(() => [])
     ]);
 
     if (places && places.length > 0) {
@@ -55,7 +58,14 @@ export async function warmUpVoiceAssistantCache() {
       } catch (_) {}
     }
 
-    // Warm up GPS in background without blocking
+    if (products && products.length > 0) {
+      _voiceHotCache.products = products;
+    }
+
+    if (offers && offers.length > 0) {
+      _voiceHotCache.offers = offers;
+    }
+
     getUserLocation().then(coords => {
       if (coords) {
         _voiceHotCache.userCoords = coords;
@@ -506,17 +516,19 @@ export async function openManzalaVoiceAssistantModal() {
     if (!query) return;
     if (resultsContainer) resultsContainer.style.display = 'block';
 
-    const normQ = normalizeArabic(query).toLowerCase();
-    const intents = (typeof expandArabicSearchIntent === 'function' ? expandArabicSearchIntent(query) : []).map(i => normalizeArabic(i).toLowerCase());
+    const dialectMeta = extractSmartDialectKeyword(query);
+    const rawClean = dialectMeta.keyword;
+    const normQ = normalizeArabic(rawClean || query).toLowerCase();
+    const queryFullNorm = normalizeArabic(query).toLowerCase();
+    const intents = (typeof expandArabicSearchIntent === 'function' ? expandArabicSearchIntent(rawClean || query) : []).map(i => normalizeArabic(i).toLowerCase());
 
     const isAtmSearch = (
       normQ.includes('atm') ||
-      normQ.includes('ماكين') || // Matches ماكينة / ماكينه / ماكينات
+      normQ.includes('ماكين') ||
       normQ.includes('اي تي ام') ||
       normQ.includes('ايه تي ام') ||
-      normQ.includes('اي تى ام') ||
       normQ.includes('صراف') ||
-      normQ.includes('صرف ال') || // صرف الي / صرف آلي
+      normQ.includes('صرف ال') ||
       normQ.includes('فلوس') ||
       normQ.includes('سحب') ||
       normQ.includes('ايداع') ||
@@ -532,7 +544,6 @@ export async function openManzalaVoiceAssistantModal() {
       } catch (_) {}
     }
 
-    // If still no cache, fetch asynchronously
     if (!places || places.length === 0) {
       if (resultsList) {
         resultsList.innerHTML = `
@@ -548,7 +559,7 @@ export async function openManzalaVoiceAssistantModal() {
 
     const userLocationCoords = _voiceHotCache.userCoords || MANZALA_CENTER;
 
-    // ── 1. Special ATM & Cash Machines Handling (0ms Instant Sorted by Nearest) ──
+    // ── 1. Special ATM & Cash Machines Handling ──
     if (isAtmSearch) {
       const atmPlaces = (places || []).filter(p => isAtmPlace(p) && isAtmReadyAndOperational(p, 15));
       const wantsCash = normQ.includes('سحب') || normQ.includes('كاش') || normQ.includes('فلوس');
@@ -567,7 +578,6 @@ export async function openManzalaVoiceAssistantModal() {
         };
       });
 
-      // Sort: Nearest First!
       atmScored.sort((a, b) => {
         if (wantsCash) {
           if (a.status?.hasCash && !b.status?.hasCash) return -1;
@@ -623,21 +633,21 @@ export async function openManzalaVoiceAssistantModal() {
       }
     }
 
-    
-    // ── 2. Doctor & Medical Specialty Search (Best Rated / شاطر / أحسن دكتور) ──
+    // ── 2. Special Medical & Doctor Query Handling ──
     const isDoctorQuery = (
       normQ.includes('دكتور') ||
       normQ.includes('طبيب') ||
       normQ.includes('عياد') ||
       normQ.includes('استشاري') ||
       normQ.includes('اخصائي') ||
-      normQ.includes('أخصائي') ||
       normQ.includes('جراح') ||
       normQ.includes('اسنان') ||
       normQ.includes('باطنة') ||
+      normQ.includes('باطنه') ||
       normQ.includes('اطفال') ||
       normQ.includes('عظام') ||
       normQ.includes('جلدية') ||
+      normQ.includes('جلديه') ||
       normQ.includes('عيون') ||
       normQ.includes('اورام') ||
       normQ.includes('مخ واعصاب') ||
@@ -646,25 +656,11 @@ export async function openManzalaVoiceAssistantModal() {
       normQ.includes('مسالك')
     );
 
-    const isSuperlativeBest = (
-      normQ.includes('شاطر') ||
-      normQ.includes('احسن') ||
-      normQ.includes('أحسن') ||
-      normQ.includes('افضل') ||
-      normQ.includes('أفضل') ||
-      normQ.includes('ممتاز') ||
-      normQ.includes('كويس') ||
-      normQ.includes('اعلى تقييم') ||
-      normQ.includes('أعلى تقييم') ||
-      normQ.includes('رقم واحد') ||
-      normQ.includes('نمرة واحد')
-    );
-
     if (isDoctorQuery) {
       const medicalSpecialties = [
-        'جراحة عامة', 'جراحة', 'أسنان', 'اسنان', 'باطنة وجهاز هضمي', 'باطنة', 
+        'جراحة عامة', 'جراحة', 'أسنان', 'اسنان', 'باطنة وجهاز هضمي', 'باطنة', 'باطنه', 
         'أطفال وحديثي الولادة', 'أطفال', 'اطفال', 'عظام ومفاصل', 'عظام', 
-        'نساء وتوليد', 'جلدية وتجميل', 'جلدية', 'عيون ورمد', 'عيون', 'رمد', 
+        'نساء وتوليد', 'جلدية وتجميل', 'جلدية', 'جلديه', 'عيون ورمد', 'عيون', 'رمد', 
         'أنف وأذن وحنجرة', 'أنف وأذن', 'انف واذن', 'أورام', 'اورام', 
         'مخ وأعصاب', 'مخ واعصاب', 'قلب وأوعية دموية', 'قلب', 
         'مسالك بولية وتناسلية', 'مسالك', 'علاج طبيعي وتغذية', 'علاج طبيعي', 
@@ -679,7 +675,6 @@ export async function openManzalaVoiceAssistantModal() {
         }
       }
 
-      // Filter doctors
       const doctorPlaces = (places || []).filter(p => {
         const pCat = normalizeArabic(`${p.categoryId || ''} ${p.customCategory || ''} ${p.categoryName || ''}`).toLowerCase();
         const pName = normalizeArabic(p.name || '').toLowerCase();
@@ -705,9 +700,11 @@ export async function openManzalaVoiceAssistantModal() {
           const distStr = formatDistance(distKm);
           const rating = p.avgRating || p.rating || 5.0;
           const reviewsCount = p.totalReviews || p.reviewsCount || 0;
+          const isOpen = p.alwaysOpen || (p.workingHours ? isPlaceOpen(p.workingHours) : true);
           
-          // Quality Score based on real reviews & ratings + verified
-          const qualityScore = rating * (1 + 0.15 * Math.log10(reviewsCount + 1)) + (p.isVerified ? 1.5 : 0);
+          let qualityScore = rating * (1 + 0.15 * Math.log10(reviewsCount + 1)) + (p.isVerified ? 1.5 : 0);
+          if (dialectMeta.wantsOpenNow && isOpen) qualityScore += 5;
+          if (dialectMeta.wantsNearest && distKm < 2) qualityScore += 3;
 
           return {
             place: p,
@@ -716,25 +713,27 @@ export async function openManzalaVoiceAssistantModal() {
             rating,
             reviewsCount,
             qualityScore,
+            isOpen,
             coords
           };
         });
 
-        // If user asked for "شاطر / أحسن دكتور", sort by Quality Score first, then distance
-        if (isSuperlativeBest) {
+        if (dialectMeta.wantsOpenNow) {
+          scoredDoctors.sort((a, b) => (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0) || b.qualityScore - a.qualityScore);
+        } else if (dialectMeta.wantsBest) {
           scoredDoctors.sort((a, b) => b.qualityScore - a.qualityScore || a.distKm - b.distKm);
         } else {
-          // Default: Open / Verified / Distance / Quality
           scoredDoctors.sort((a, b) => {
             if (a.place.isVerified && !b.place.isVerified) return -1;
             if (!a.place.isVerified && b.place.isVerified) return 1;
-            if (Math.abs(a.distKm - b.distKm) > 0.5) return a.distKm - b.distKm;
-            return b.qualityScore - a.qualityScore;
+            return a.distKm - b.distKm || b.qualityScore - a.qualityScore;
           });
         }
 
-        const titleText = isSuperlativeBest
-          ? `👨‍⚕️ أفضل الأطباء ${targetSpecialty ? `تخصص "${escapeHtml(targetSpecialty)}"` : ''} في المنزلة والمطرية حسب التقييمات الإيجابية ⭐:`
+        const titleText = dialectMeta.wantsOpenNow
+          ? `🟢 أطباء ${targetSpecialty ? `تخصص "${escapeHtml(targetSpecialty)}"` : ''} المتاحين والعيادات المفتوحة الآن:`
+          : dialectMeta.wantsBest
+          ? `⭐ أفضل الأطباء ${targetSpecialty ? `تخصص "${escapeHtml(targetSpecialty)}"` : ''} في المنزلة والمطرية حسب التقييمات:`
           : `👨‍⚕️ أطباء ${targetSpecialty ? `تخصص "${escapeHtml(targetSpecialty)}"` : ''} مرتبين بالأقرب لموقعك:`;
 
         if (resultsTitle) resultsTitle.innerHTML = titleText;
@@ -743,7 +742,7 @@ export async function openManzalaVoiceAssistantModal() {
           ${scoredDoctors.slice(0, 5).map((item, idx) => {
             const p = item.place;
             const placeUrl = `place.html?slug=${encodeURIComponent(p.slug || p.id)}`;
-            const isTopRated = idx === 0 && isSuperlativeBest;
+            const isTopRated = idx === 0 && dialectMeta.wantsBest;
 
             return `
               <div style="background:var(--surface,#fff);border:1.5px solid ${isTopRated ? '#F59E0B' : 'var(--border,#e2e8f0)'};border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -762,6 +761,7 @@ export async function openManzalaVoiceAssistantModal() {
                       <span class="badge" style="background:#E0F2FE;color:#0369A1;font-weight:700;font-size:11px;padding:2px 8px;border-radius:9999px">
                         🩺 ${escapeHtml(p.medicalSpecialty || targetSpecialty || 'طبيب استشاري')}
                       </span>
+                      ${item.isOpen ? '<span style="color:#059669;font-weight:700;font-size:11px;background:rgba(16,185,129,0.1);padding:2px 6px;border-radius:4px">🟢 مفتوح الآن</span>' : ''}
                       <span style="color:#D97706;font-weight:700;font-size:11.5px">
                         ★ ${item.rating.toFixed(1)} (${item.reviewsCount} تقييم)
                       </span>
@@ -788,7 +788,7 @@ export async function openManzalaVoiceAssistantModal() {
       }
     }
 
-    // ── 3. General Place Search (Pharmacies, Craftsmen, Cafes, Shops) ──
+    // ── 3. General Comprehensive Place Search ──
     const isPlaceSponsored = (p) => Boolean(
       (p.isSponsored || p.isFeatured || p.isPromoted) && 
       (!p.sponsoredUntil || p.sponsoredUntil > Date.now())
@@ -802,8 +802,11 @@ export async function openManzalaVoiceAssistantModal() {
       return openState !== false;
     };
 
-    // Find and score matching places across ALL fields (Name, Specialty, Services/Keywords, Address, Area, Category, Description)
+    const allCachedProducts = _voiceHotCache.products || [];
+    const allCachedOffers = _voiceHotCache.offers || [];
+
     const scored = (places || []).map(p => {
+      const pId = p.id || p.slug;
       const pName = normalizeArabic(p.name || '').toLowerCase();
       const pNameEn = (p.nameEn || '').toLowerCase();
       const pSpec = normalizeArabic(p.medicalSpecialty || '').toLowerCase();
@@ -813,20 +816,50 @@ export async function openManzalaVoiceAssistantModal() {
       const pCat = normalizeArabic(`${p.customCategory || ''} ${p.categoryName || ''} ${p.categoryId || ''}`).toLowerCase();
       const pServices = (p.services || []).map(s => normalizeArabic(s).toLowerCase());
 
+      // 1. Direct Field Scores
       const nameScore = Math.max(arabicScore(p.name || '', query), arabicScore(p.name || '', rawClean));
-      const nameEnScore = pNameEn && pNameEn.includes(query.toLowerCase()) ? 0.9 : 0;
+      const nameEnScore = pNameEn && pNameEn.includes(normQ) ? 0.9 : 0;
       const specScore = p.medicalSpecialty ? Math.max(arabicScore(p.medicalSpecialty, query), arabicScore(p.medicalSpecialty, rawClean)) : 0;
       const addressScore = p.address ? Math.max(arabicScore(p.address, query), arabicScore(p.address, rawClean)) * 0.9 : 0;
       const areaScore = p.area ? Math.max(arabicScore(p.area, query), arabicScore(p.area, rawClean)) * 0.85 : 0;
       const descScore = p.description ? Math.max(arabicScore(p.description, query), arabicScore(p.description, rawClean)) * 0.75 : 0;
-      const catScore = arabicScore(p.categoryId || p.categoryName || '', query);
+      const catScore = arabicScore(p.categoryId || p.categoryName || '', rawClean || query);
 
+      // 2. Services / Keywords Match
       let servScore = 0;
       if (pServices.some(s => s.includes(normQ) || normQ.includes(s))) {
         servScore = 0.95;
       }
 
-      // Deep cross-field intent matching
+      // 3. Deep Product Search for this place (e.g. بيتزا, شاورما, كريب, برجر, سمك, تورتة)
+      let matchedProduct = null;
+      let productScore = 0;
+      const placeProducts = allCachedProducts.filter(prod => prod.placeId === pId);
+      for (const prod of placeProducts) {
+        const prodNameNorm = normalizeArabic(prod.name || '').toLowerCase();
+        const prodDescNorm = normalizeArabic(prod.description || '').toLowerCase();
+        if (prodNameNorm.includes(normQ) || normQ.includes(prodNameNorm) || intents.some(i => prodNameNorm.includes(i) || i.includes(prodNameNorm))) {
+          matchedProduct = prod;
+          productScore = 0.98;
+          break;
+        }
+      }
+
+      // 4. Deep Offer Search for this place (e.g. خصم على البيتزا, عرض التوفير)
+      let matchedOffer = null;
+      let offerScore = 0;
+      const placeOffers = allCachedOffers.filter(off => off.placeId === pId);
+      for (const off of placeOffers) {
+        const offTitleNorm = normalizeArabic(off.title || '').toLowerCase();
+        const offDescNorm = normalizeArabic(off.description || '').toLowerCase();
+        if (offTitleNorm.includes(normQ) || normQ.includes(offTitleNorm) || intents.some(i => offTitleNorm.includes(i) || i.includes(offTitleNorm))) {
+          matchedOffer = off;
+          offerScore = 0.95;
+          break;
+        }
+      }
+
+      // 5. Deep cross-field intent matching
       let intentScore = 0;
       const fullPlaceIndex = `${pName} ${pNameEn} ${pSpec} ${pServices.join(' ')} ${pAddress} ${pArea} ${pCat} ${pDesc}`;
       intents.forEach(intent => {
@@ -854,6 +887,8 @@ export async function openManzalaVoiceAssistantModal() {
         nameEnScore,
         specScore,
         servScore,
+        productScore,
+        offerScore,
         addressScore,
         areaScore,
         catScore * 0.9,
@@ -868,9 +903,29 @@ export async function openManzalaVoiceAssistantModal() {
       const isOpen = checkPlaceIsOpen(p);
       const isExplicitlyClosed = isAtmPlace(p) ? false : (p.workingHours ? (isPlaceOpen(p.workingHours) === false) : false);
 
+      // Dialect boosted compound score
+      let compoundScore = relevanceScore * 100;
+      if (matchedProduct) compoundScore += 45;
+      if (matchedOffer) compoundScore += 35;
+      if (dialectMeta.wantsOpenNow) {
+        if (isOpen) compoundScore += 80;
+        if (isExplicitlyClosed) compoundScore -= 50;
+      }
+      if (dialectMeta.wantsNearest) {
+        if (distKm < 1.5) compoundScore += 40;
+        else if (distKm < 4.0) compoundScore += 20;
+      }
+      if (dialectMeta.wantsBest) {
+        const rVal = p.avgRating || p.rating || 5.0;
+        compoundScore += rVal * 10;
+      }
+
       return {
         place: p,
         score: relevanceScore,
+        compoundScore,
+        matchedProduct,
+        matchedOffer,
         isSpons: isPlaceSponsored(p),
         distKm,
         distStr,
@@ -880,23 +935,11 @@ export async function openManzalaVoiceAssistantModal() {
       };
     }).filter(item => item.score > 0.12 && (!isAtmPlace(item.place) || isAtmReadyAndOperational(item.place, 15)));
 
-    // Sort: Sponsored Matching -> Open Now -> Nearest Distance -> Relevance Score
+    // Sort: Compound Dialect Score -> Open Now -> Distance
     scored.sort((a, b) => {
       if (a.isSpons && !b.isSpons) return -1;
       if (!a.isSpons && b.isSpons) return 1;
-
-      if (a.isOpen && !b.isOpen) return -1;
-      if (!a.isOpen && b.isOpen) return 1;
-      if (!a.isExplicitlyClosed && b.isExplicitlyClosed) return -1;
-      if (a.isExplicitlyClosed && !b.isExplicitlyClosed) return 1;
-
-      if (Math.abs(a.distKm - b.distKm) > 0.15) {
-        return a.distKm - b.distKm;
-      }
-
-      if (a.place.isVerified && !b.place.isVerified) return -1;
-      if (!a.place.isVerified && b.place.isVerified) return 1;
-      return b.score - a.score;
+      return b.compoundScore - a.compoundScore || a.distKm - b.distKm;
     });
 
     const topPlaces = scored.slice(0, 5).map(s => ({
@@ -905,13 +948,23 @@ export async function openManzalaVoiceAssistantModal() {
       _distStr: s.distStr,
       _isOpen: s.isOpen,
       _isExplicitlyClosed: s.isExplicitlyClosed,
+      _matchedProduct: s.matchedProduct,
+      _matchedOffer: s.matchedOffer,
       _coords: s.coords
     }));
 
     if (topPlaces.length > 0) {
       const sponsoredCount = topPlaces.filter(p => p._isSponsoredResult).length;
       if (resultsTitle) {
-        resultsTitle.innerHTML = `🎯 أقرب الأماكن لـ "<strong>${escapeHtml(query)}</strong>" مرتبة بالأقرب لموقعك${sponsoredCount > 0 ? ' (يتصدرها إعلان مميز ⭐)' : ''}:`;
+        if (dialectMeta.wantsOpenNow) {
+          resultsTitle.innerHTML = `🟢 نتائج البحث عن "${escapeHtml(rawClean || query)}" (المفتوحة وشغالة الآن):`;
+        } else if (dialectMeta.wantsNearest) {
+          resultsTitle.innerHTML = `📍 أقرب الأماكن لـ "${escapeHtml(rawClean || query)}" لموقعك:`;
+        } else if (dialectMeta.wantsBest) {
+          resultsTitle.innerHTML = `⭐ أفضل نتائج البحث عن "${escapeHtml(rawClean || query)}" حسب التقييمات:`;
+        } else {
+          resultsTitle.innerHTML = `🎯 أقرب الأماكن لـ "${escapeHtml(rawClean || query)}" مرتبة بالأقرب لموقعك${sponsoredCount > 0 ? ' (يتصدرها إعلان مميز ⭐)' : ''}:`;
+        }
       }
 
       resultsList.innerHTML = `

@@ -1,6 +1,6 @@
 /**
- * المنزلة وناسها — Arabic Text Utilities
- * Normalization for better Arabic search and display
+ * المنزلة وناسها — Arabic Text Utilities & Advanced Egyptian Dialect NLP
+ * Normalization for better Arabic search, food cravings, product matching, and intents.
  */
 
 /**
@@ -11,21 +11,13 @@ export function normalizeArabic(text) {
   if (!text) return '';
 
   return String(text)
-    // Normalize all forms of Alef (أ, إ, آ, ا, ٱ) to plain Alef
     .replace(/[أإآاٱ]/g, 'ا')
-    // Normalize Waw with Hamza (ؤ) to Waw (و)
     .replace(/ؤ/g, 'و')
-    // Normalize Yeh variants (ي, ى, ئ) to plain Yeh (ي)
     .replace(/[يىئ]/g, 'ي')
-    // Normalize Teh Marbuta (ة) to Heh (ه)
     .replace(/[ةه]/g, 'ه')
-    // Remove Tashkeel (diacritics: Fatha, Damma, Kasra, Tanween, Shadda, Sukun) & Tatweel
     .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
-    // Remove standalone Hamza variants & quotes
-    .replace(/[ء`'"]/g, '')
-    // Remove punctuation
+    .replace(/[ء]/g, '')
     .replace(/[.,/#!$%^&*;:{}=\-_`~()؟،\\|]/g, ' ')
-    // Collapse whitespace
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
@@ -40,36 +32,78 @@ export function stripAl(text) {
 }
 
 /**
- * Extract root search term by stripping common conversational question phrases
- * e.g. "فين في المنزلة سباك" -> "سباك", "مين في المنزلة دكتور" -> "دكتور"
+ * Extract root search keyword & detect Egyptian conversational intents
+ * (Open Now, Nearest, Best/Top Rated, Food Cravings, Product/Offer requests)
  */
-export function extractSearchKeywords(text) {
-  if (!text) return '';
-  let normal = normalizeArabic(text);
+export function extractSmartDialectKeyword(text) {
+  if (!text) return { keyword: '', wantsOpenNow: false, wantsNearest: false, wantsBest: false, wantsOffer: false };
+  let norm = normalizeArabic(text);
 
-  // Common conversational prefixes used by people in El Manzala
+  const wantsOpenNow = Boolean(
+    norm.includes('فاتح') || norm.includes('مفتوح') || norm.includes('شغال') || 
+    norm.includes('دلوقت') || norm.includes('حاليا') || norm.includes('24 ساعه') || norm.includes('طول اليوم')
+  );
+
+  const wantsNearest = Boolean(
+    norm.includes('قريب') || norm.includes('جنب') || norm.includes('جمب') || norm.includes('اقرب')
+  );
+
+  const wantsBest = Boolean(
+    norm.includes('شاطر') || norm.includes('احسن') || norm.includes('افضل') || 
+    norm.includes('ممتاز') || norm.includes('كويس') || norm.includes('اعلى تقييم') || norm.includes('نمره واحد') || norm.includes('رقم واحد')
+  );
+
+  const wantsOffer = Boolean(
+    norm.includes('عرض') || norm.includes('عروض') || norm.includes('خصم') || norm.includes('تخفيض') || norm.includes('اوفر')
+  );
+
+  // 1. Multi-pass strip conversational Egyptian prefixes including cravings & requests
   const prefixes = [
-    /^عند مين في المنزله\s*/,
-    /^عند مين في\s*/,
-    /^فين في المنزله\s*/,
-    /^فين في\s*/,
-    /^مين في المنزله\s*/,
-    /^مين في\s*/,
-    /^دليل المنزله\s*/,
-    /^في المنزله\s*/,
-    /\s*في المنزله$/
+    /^(عاوز|عايز|عاوزه|عايزه|محتاج|محتاجه|محتاجين)\s*/i,
+    /^(نفسي في|نفسي اكل|نفسي اشرب|نفسي اجيب|بدور على|بدور لي على|بدورلي على|عايز اكل|عاوز اكل|عايز اجيب|عاوز اجيب)\s*/i,
+    /^(احسن حد بيعمل|افضل حد بيعمل|اشطر حد بيعمل|مين احسن حد بيعمل|مين بيعمل|مين بيقدم|مين عنده|فين احسن|فين افضل|حد بيعمل|حد بيقدم|بيعمل|بيقدم)\s*/i,
+    /^(ابحث عن|ابحث لي عن|ابحثلي عن|دورلي على|دور على|شوفلي|وريني|هاتلي|قولي على)\s*/i,
+    /^(فين في المنزله والمطريه|فين في المنزله|فين في المطريه|فين مكان|فين اقرب|فين|عند مين في المنزله|عند مين في المطريه|مين في المنزله|مين في المطريه|مين احسن|مين افضل|مين اشطر|مين)\s*/i,
+    /^(دليل المنزله والمطريه|دليل المنزله|دليل المطريه|محلات المنزله|محلات المطريه|خدمات المنزله|خدمات المطريه)\s*/i,
+    /^(عروض علي|عروض على|خصومات على|خصومات علي|تخفيضات على|تخفيضات علي|اسعار|سعر)\s*/i,
+    /^(لو سمحت|من فضلك|بالله عليك|يا ريت|اقرب|احسن|افضل|اشطر|مطعم بيعمل|مطعم بيقدم|محل بيعمل|محل بيقدم)\s*/i
   ];
 
-  for (const prefix of prefixes) {
-    normal = normal.replace(prefix, '').trim();
+  let prev = '';
+  while (prev !== norm) {
+    prev = norm;
+    for (const p of prefixes) {
+      norm = norm.replace(p, '').trim();
+    }
   }
 
-  return normal || normalizeArabic(text);
+  // 2. Strip state modifiers & dialect suffixes
+  const dialectWords = [
+    /\s*(في المنزله والمطريه|في المنزله|في المطريه|بالمنزله|بالمطريه|في مدينة المنزله)$/gi,
+    /\s*(فاتح دلوقتي|فاتحه دلوقتي|مفتوح دلوقتي|مفتوحه دلوقتي|شغال دلوقتي|شغاله دلوقتي|فاتح دلوقتى|فاتحه دلوقتى|مفتوح دلوقتى|مفتوحه دلوقتى|شغال دلوقتى|شغاله دلوقتى|فاتح بليل|فاتح الصبح|فاتح|فاتحه|مفتوح|مفتوحه|شغال|شغاله|دلوقتي|دلوقتى|دلوقت|حاليا|النهارده|بليل|بالليل|الصبح)$/gi,
+    /\s*(قريب مني|قريبه مني|قريب|قريبه|جنبي|جمبي|شاطر|شاطره|ممتاز|ممتازه)$/gi
+  ];
+
+  for (const d of dialectWords) {
+    norm = norm.replace(d, '').trim();
+  }
+
+  return {
+    keyword: norm || normalizeArabic(text),
+    wantsOpenNow,
+    wantsNearest,
+    wantsBest,
+    wantsOffer
+  };
+}
+
+export function extractSearchKeywords(text) {
+  return extractSmartDialectKeyword(text).keyword;
 }
 
 /**
  * Intelligent Semantic Intent & Synonym Expansion
- * Maps search terms to related Egyptian Arabic keywords, categories, and vehicle types.
+ * Maps search terms to related Egyptian Arabic keywords, food items, products, categories.
  */
 export function expandArabicSearchIntent(rawQuery) {
   if (!rawQuery) return [];
@@ -77,56 +111,53 @@ export function expandArabicSearchIntent(rawQuery) {
   const tokens = clean.split(/\s+/).filter(Boolean);
 
   const SYNONYM_CLUSTERS = [
-    // 1. Cars, Rides, Deliveries, Vehicles
-    ['سيارة', 'عربية', 'عربيات', 'سيارات', 'تاكسي', 'مشوار', 'مشاوير', 'سواق', 'رحلات', 'توصيل', 'شاحنة', 'دليفري', 'car', 'delivery', 'تكاتك', 'توكتوك', 'توك توك', 'موتوسيكل', 'موتسيكل', 'موتوسيكلات'],
-    
-    // 2. Doctors, Clinics, Medical
+    // 1. Pizza & Italian & Pies
+    ['بيتزا', 'بيزا', 'بيتزات', 'فطير', 'فطاير', 'فطيرة', 'بيتزا ايطالي', 'بيتزا شرقي', 'مارجريتا', 'مشكل جبن', 'بيبروني', 'سجق', 'بسطرمة', 'pizza', 'مطعم', 'اكل', 'وجبات'],
+
+    // 2. Shawarma & Syrian Foods
+    ['شاورما', 'شاورمه', 'شاورمات', 'سوري', 'شاورما فراخ', 'شاورما لحمة', 'فتة شاورما', 'ثومية', 'تومية', 'ساندوتش سوري', 'shawarma', 'مطعم', 'اكل'],
+
+    // 3. Crepes & Waffles
+    ['كريب', 'كريبات', 'وافل', 'بان كيك', 'كريب كرانشي', 'كريب بانيه', 'كريب شاورما', 'كريب نوتيلا', 'crepe', 'waffle', 'مطعم', 'كافيه'],
+
+    // 4. Burgers & Fried Chicken
+    ['برجر', 'برغر', 'سماش برجر', 'فرايد تشيكن', 'بروستد', 'دجاج مقلي', 'زنجر', 'استربس', 'burger', 'fried chicken', 'مطعم', 'وجبات'],
+
+    // 5. Grills & BBQ
+    ['مشويات', 'مشوي', 'حاتي', 'كباب', 'كفتة', 'كفته', 'طرب', 'فراخ مشوية', 'شيش طاووق', 'ريش', 'حواوشي', 'grill', 'kebab', 'مطعم'],
+
+    // 6. Fish & Seafood
+    ['سمك', 'اسماك', 'أسماك', 'سي فود', 'ماكولات بحرية', 'جمبري', 'سبيط', 'كابوريا', 'سمك مشوي', 'سمك مقلي', 'فسخاني', 'فسيخ', 'رنجة', 'fish', 'seafood', 'مطعم'],
+
+    // 7. Koshari & Casseroles
+    ['كشري', 'طاجن', 'طواجن', 'مكرونة بشاميل', 'دقة', 'صلصة', 'koshari', 'مطعم'],
+
+    // 8. Sweets, Cakes, Ice Cream, Bakery
+    ['تورتة', 'تورته', 'تورت', 'جاتوه', 'جاتوهات', 'حلويات', 'حلواني', 'بسبوسة', 'كنافة', 'كنافه', 'قطايف', 'ايس كريم', 'مخبز', 'عيش', 'فينو', 'كرواسون', 'باتيه', 'sweets', 'cake', 'bakery'],
+
+    // 9. Juices & Cafes
+    ['عصير', 'عصائر', 'قصب', 'مانجو', 'فراولة', 'كوكتيل', 'سموزي', 'قهوة', 'اسبريسو', 'ايس كوفي', 'شاي', 'juice', 'coffee', 'cafe', 'كافيه', 'كافيهات'],
+
+    // 10. Doctors, Clinics, Medical
     ['دكتور', 'دكاترة', 'طبيب', 'اطباء', 'عيادة', 'عيادات', 'كشف', 'استشاري', 'اخصائي', 'مستشفى', 'معمل', 'تحاليل', 'doctor', 'clinic', 'medical'],
 
-    // 3. Pharmacy, Medicine
+    // 11. Pharmacy, Medicine
     ['صيدلية', 'صيدليات', 'دواء', 'ادوية', 'علاج', 'روشتة', 'مستلزمات طبية', 'pharmacy'],
 
-    // 4. Plumbing
-    ['سباك', 'سباكة', 'مواسير', 'حنفية', 'حنفيات', 'خلاط', 'خلاطات', 'فلتر', 'فلاتر', 'سخان', 'سخانات', 'تسريب', 'تسريب مياه', 'صحي', 'ادوات صحية', 'plumber'],
+    // 12. Supermarket & Groceries
+    ['سوبر ماركت', 'ماركت', 'هايبر', 'بقالة', 'خضار', 'فاكهة', 'جبن', 'البان', 'سلع غذائية', 'شيبسي', 'زيت', 'سكر', 'ارز', 'مكرونة', 'supermarket'],
 
-    // 5. Carpentry & Furniture
-    ['نجار', 'نجارة', 'موبيليا', 'خشب', 'اثاث', 'غرف نوم', 'انتريه', 'سفرة', 'ابواب', 'شبابيك', 'مطابخ', 'carpenter'],
+    // 13. Craftsmen & Home Services
+    ['سباك', 'سباكة', 'مواسير', 'حنفية', 'خلاط', 'سخان', 'فلتر', 'نجار', 'نجارة', 'موبيليا', 'ابواب', 'كهربائي', 'كهرباء', 'اضاءة', 'مبلط', 'سيراميك', 'بلاط', 'نقاش', 'دهانات', 'بويات', 'plumber', 'electrician', 'carpenter'],
 
-    // 6. Electricity
-    ['كهربائي', 'كهرباء', 'اضاءة', 'ليد', 'فيشة', 'مفاتيح كهرباء', 'لوحة كهرباء', 'تاسيس كهرباء', 'اسلاك', 'نجف', 'electrician'],
+    // 14. Auto Mechanics & Transportation
+    ['ميكانيكي', 'عفشة', 'كاوتش', 'غيار زيت', 'صيانة سيارات', 'تصليح عربيات', 'بطاريات', 'قطع غيار', 'سيارة', 'عربية', 'تاكسي', 'مشوار', 'مشاوير', 'توكتوك', 'موتوسيكل', 'توصيل', 'mechanic', 'car', 'delivery'],
 
-    // 7. Tiles & Ceramics
-    ['مبلط', 'سيراميك', 'بورسلين', 'بلاط', 'ارضيات', 'تركيب سيراميك', 'رخام', 'جرانيت', 'tiler', 'marble'],
+    // 15. Phones & Tech
+    ['موبايل', 'موبايلات', 'هاتف', 'هواتف', 'تليفون', 'شاحن', 'جراب', 'شاشة', 'صيانة موبايل', 'كمبيوتر', 'لاب توب', 'mobile', 'phones'],
 
-    // 8. Painting & Decor
-    ['نقاش', 'نقاشة', 'دهان', 'دهانات', 'بويات', 'الوان', 'ديكور', 'ورق حائط', 'تشطيب', 'painter'],
-
-    // 9. Food & Restaurants
-    ['مطعم', 'مطاعم', 'اكل', 'وجبات', 'مشويات', 'شاورما', 'بيتزا', 'كريب', 'فول', 'طعمية', 'كشري', 'سمك', 'اسماك', 'مأكولات', 'ساندوتش', 'restaurant', 'food'],
-
-    // 10. Cafes & Drinks
-    ['كافيه', 'كافيهات', 'قهوة', 'مقهى', 'شاي', 'عصير', 'عصائر', 'مشروبات', 'cafe', 'coffee'],
-
-    // 11. Phones & Tech
-    ['موبايل', 'موبايلات', 'هاتف', 'هواتف', 'تليفون', 'تليفونات', 'جوال', 'شاحن', 'جراب', 'شاشة', 'صيانة موبايل', 'كمبيوتر', 'لاب توب', 'mobile', 'phones'],
-
-    // 12. Bakery & Sweets
-    ['مخبز', 'فرن', 'افران', 'عيش', 'خبز', 'حلواني', 'حلويات', 'تورتة', 'جاتوه', 'معجنات', 'bakery'],
-
-    // 13. Barber & Beauty
-    ['حلاق', 'حلاقة', 'كوافير', 'صالون', 'تجميل', 'شعر', 'مكياج', 'تجهيز عرسان', 'barber', 'beauty'],
-
-    // 14. Auto Mechanics
-    ['ميكانيكي', 'عفشة', 'كاوتش', 'غيار زيت', 'صيانة سيارات', 'تصليح عربيات', 'بطاريات', 'قطع غيار', 'mechanic'],
-
-    // 15. Clothing & Fashion
-    ['ملابس', 'لبس', 'ازياء', 'فستان', 'فساتين', 'بدل', 'عبايات', 'بنطلون', 'قميص', 'بوتيك', 'clothing', 'fashion'],
-
-    // 16. Supermarket & Groceries
-    ['سوبر ماركت', 'ماركت', 'هايبر', 'بقالة', 'خضار', 'فاكهة', 'جبن', 'البان', 'سلع غذائية', 'supermarket'],
-
-    // 17. ATM, Cash Machines, Withdrawal, Deposit, Banking
-    ['atm', 'اي تي ام', 'ايه تي ام', 'اي تى ام', 'صراف', 'صرافة', 'صراف الي', 'صراف آلي', 'صرف الي', 'صرف آلي', 'ماكينة صرف', 'ماكينة صراف', 'ماكينة فلوس', 'ماكينة سحب', 'ماكينة ايداع', 'ماكينة', 'ماكينه', 'ماكينات', 'سحب فلوس', 'اسحب فلوس', 'سحب كاش', 'اسحب كاش', 'ايداع فلوس', 'اودع فلوس', 'اعمل ايداع', 'سحب نقدي', 'ايداع نقدي', 'ماكينة كاش', 'ماكينة بنك', 'صراف بنك']
+    // 16. ATM & Cash Machines
+    ['atm', 'اي تي ام', 'صراف', 'صراف الي', 'ماكينة صرف', 'ماكينة فلوس', 'سحب فلوس', 'ايداع فلوس', 'سحب كاش']
   ];
 
   const expanded = new Set([clean, ...tokens]);

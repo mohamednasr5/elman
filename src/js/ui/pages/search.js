@@ -4,7 +4,7 @@
  * and AI Semantic Search integration.
  */
 
-import { getPublishedPlaces, getCategories } from '../../core/db.js';
+import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent, arabicMatch } from '../../utils/arabic.js';
@@ -162,6 +162,30 @@ export async function renderSearchPage($container, { q = '', user }) {
         });
       }
 
+      // 4. Deep Product Matching (Dishes, Menu items, Products)
+      let productScore = 0;
+      const placeProducts = (allProductsList || []).filter(prod => prod.placeId === (place.id || place.slug));
+      for (const prod of placeProducts) {
+        const prodNameNorm = normalizeArabic(prod.name || '').toLowerCase();
+        const prodDescNorm = normalizeArabic(prod.description || '').toLowerCase();
+        if (prodNameNorm.includes(normalQ) || normalQ.includes(prodNameNorm) || queryIntents.some(i => prodNameNorm.includes(i) || i.includes(prodNameNorm))) {
+          productScore = 95;
+          break;
+        }
+      }
+
+      // 5. Deep Active Offers Matching (Discounts, Deals)
+      let offerScore = 0;
+      const placeOffers = (allOffersList || []).filter(off => off.placeId === (place.id || place.slug));
+      for (const off of placeOffers) {
+        const offTitleNorm = normalizeArabic(off.title || '').toLowerCase();
+        const offDescNorm = normalizeArabic(off.description || '').toLowerCase();
+        if (offTitleNorm.includes(normalQ) || normalQ.includes(offTitleNorm) || queryIntents.some(i => offTitleNorm.includes(i) || i.includes(offTitleNorm))) {
+          offerScore = 90;
+          break;
+        }
+      }
+
       // 4. Detailed Address & Area Match (Weight: 85)
       const addressScore = place.address ? Math.max(arabicScore(place.address, query), arabicScore(place.address, rawClean)) * 0.9 : 0;
       const areaScore = Math.max(arabicScore(place.area || '', query), arabicScore(place.area || '', rawClean)) * 0.85;
@@ -210,6 +234,8 @@ export async function renderSearchPage($container, { q = '', user }) {
         nameEnScore, 
         specialtyScore, 
         serviceScore, 
+        productScore,
+        offerScore,
         addressScore, 
         areaScore, 
         catScore, 
