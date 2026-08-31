@@ -27,7 +27,7 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
-  <link rel="manifest" href="./manifest.webmanifest"/>
+  <link rel="manifest" href="${file === 'admin.html' ? './admin-manifest.webmanifest' : './manifest.webmanifest'}"/>
   <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png"/>
   <link rel="apple-touch-icon" href="./icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>

@@ -24,6 +24,7 @@ export async function initSharedLayout(activeHref = '') {
   _setActiveLinks(activeHref);
   _checkApkPwaEnvironment();
   _bindThemeToggle();
+  setupInstantLinkPrefetcher();
   bindGlobalVoiceAssistantFab();
   initGlobalRealtimeNotificationsListener(getCurrentUser());
 
@@ -378,4 +379,38 @@ export function getPwaBannerHTML() {
     </div>
     <button class="pwa-banner__close" id="pwa-banner-close" aria-label="إغلاق">✕</button>
   </div>`;
+}
+
+
+// ── Speculative Instant Link Prefetcher (Instant 0ms Page Navigation) ──
+const _prefetchedHrefs = new Set();
+
+export function setupInstantLinkPrefetcher() {
+  if (typeof document === 'undefined') return;
+
+  const prefetchUrl = (url) => {
+    if (!url || _prefetchedHrefs.has(url)) return;
+    if (url.startsWith('http') && !url.includes(window.location.hostname)) return;
+    if (url.startsWith('tel:') || url.startsWith('mailto:') || url.startsWith('javascript:')) return;
+
+    _prefetchedHrefs.add(url);
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = url;
+    document.head.appendChild(link);
+  };
+
+  document.addEventListener('touchstart', (e) => {
+    const anchor = e.target.closest('a[href]');
+    if (anchor && anchor.href) {
+      prefetchUrl(anchor.getAttribute('href'));
+    }
+  }, { passive: true });
+
+  document.addEventListener('mouseover', (e) => {
+    const anchor = e.target.closest('a[href]');
+    if (anchor && anchor.href) {
+      prefetchUrl(anchor.getAttribute('href'));
+    }
+  }, { passive: true });
 }

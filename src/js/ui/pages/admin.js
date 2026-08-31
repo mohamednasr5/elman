@@ -121,7 +121,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         </div>
       </main>
 
-      <!-- Admin Mobile Bottom Bar for PWA -->
+      <!-- Admin Mobile Bottom Bar (5 Primary Clean Tabs) -->
       <nav class="admin-mobile-bottom-bar" id="admin-mobile-bottom-nav" aria-label="شريط إدارة الهاتف">
         <button type="button" class="admin-bottom-tab ${section === 'overview' ? 'active' : ''}" data-admin-sec="overview">
           <span class="admin-bottom-tab__icon">${ICONS.chart}</span>
@@ -139,27 +139,66 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           <span class="admin-bottom-tab__icon">${ICONS.shield}</span>
           <span class="admin-bottom-tab__label">التوثيق</span>
         </button>
-        <button type="button" class="admin-bottom-tab ${section === 'categories' ? 'active' : ''}" data-admin-sec="categories">
-          <span class="admin-bottom-tab__icon">${ICONS.folder}</span>
-          <span class="admin-bottom-tab__label">التصنيفات</span>
-        </button>
-        <button type="button" class="admin-bottom-tab ${section === 'users' ? 'active' : ''}" data-admin-sec="users">
-          <span class="admin-bottom-tab__icon">${ICONS.users}</span>
-          <span class="admin-bottom-tab__label">المستخدمين</span>
-        </button>
-        <button type="button" class="admin-bottom-tab ${section === 'offers' ? 'active' : ''}" data-admin-sec="offers">
-          <span class="admin-bottom-tab__icon">${ICONS.tag}</span>
-          <span class="admin-bottom-tab__label">العروض</span>
-        </button>
-        <button type="button" class="admin-bottom-tab ${section === 'ads' ? 'active' : ''}" data-admin-sec="ads">
-          <span class="admin-bottom-tab__icon">${ICONS.megaphone}</span>
-          <span class="admin-bottom-tab__label">الإعلانات</span>
-        </button>
-        <button type="button" class="admin-bottom-tab ${section === 'settings' ? 'active' : ''}" data-admin-sec="settings">
-          <span class="admin-bottom-tab__icon">${ICONS.cog}</span>
-          <span class="admin-bottom-tab__label">الإعدادات</span>
+        <button type="button" class="admin-bottom-tab ${['products', 'categories', 'users', 'offers', 'ads', 'settings'].includes(section) ? 'active' : ''}" id="btn-admin-open-more-sheet" data-admin-action="open-more" aria-label="المزيد من الأقسام">
+          <span class="admin-bottom-tab__icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+          </span>
+          <span class="admin-bottom-tab__label">المزيد ⋯</span>
         </button>
       </nav>
+
+      <!-- Admin "المزيد" Drawer Bottom Sheet -->
+      <div class="admin-more-sheet-backdrop" id="admin-more-sheet-backdrop">
+        <div class="admin-more-sheet" role="dialog" aria-modal="true" aria-label="كافة أقسام الإدارة">
+          <div class="admin-sheet-handle"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:10px">
+            <div style="font-weight:800;font-size:15px;color:#F5A623;display:flex;align-items:center;gap:6px">
+              <span>⚙️</span>
+              <span>كافة أقسام لوحة الإدارة</span>
+            </div>
+            <button type="button" id="btn-close-admin-more-sheet" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px">✕</button>
+          </div>
+
+          <div class="admin-sheet-grid">
+            <button type="button" class="admin-sheet-item" data-admin-sec="products">
+              <span>🛍️</span>
+              <span>المنتجات</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="categories">
+              <span>📁</span>
+              <span>التصنيفات</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="users">
+              <span>👥</span>
+              <span>المستخدمين</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="offers">
+              <span>🏷️</span>
+              <span>العروض</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="ads">
+              <span>📢</span>
+              <span>الإعلانات</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="settings">
+              <span>⚙️</span>
+              <span>الإعدادات</span>
+            </button>
+            <a href="dashboard.html" class="admin-sheet-item" style="background:rgba(2,132,199,0.15);border-color:#0284C7">
+              <span>👤</span>
+              <span>لوحة حسابي</span>
+            </a>
+            <a href="index.html" class="admin-sheet-item" style="background:rgba(16,185,129,0.15);border-color:#10B981">
+              <span>🌐</span>
+              <span>الرئيسية</span>
+            </a>
+            <button type="button" class="admin-sheet-item" id="btn-admin-pwa-install-app" style="background:rgba(245,166,35,0.15);border-color:#F5A623">
+              <span>📲</span>
+              <span>تثبيت PWA</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 
@@ -233,8 +272,35 @@ function setupAdminNavigation() {
     });
   }
 
-  // Mobile Bottom Nav Listener
+  // Mobile Bottom Nav & More Sheet Listeners
   const mobileNav = document.getElementById('admin-mobile-bottom-nav');
+  const moreSheetBackdrop = document.getElementById('admin-more-sheet-backdrop');
+  const btnOpenMore = document.getElementById('btn-admin-open-more-sheet');
+  const btnCloseMore = document.getElementById('btn-close-admin-more-sheet');
+
+  function openMoreSheet() {
+    if (moreSheetBackdrop) moreSheetBackdrop.classList.add('visible');
+  }
+
+  function closeMoreSheet() {
+    if (moreSheetBackdrop) moreSheetBackdrop.classList.remove('visible');
+  }
+
+  btnOpenMore?.addEventListener('click', openMoreSheet);
+  btnCloseMore?.addEventListener('click', closeMoreSheet);
+  moreSheetBackdrop?.addEventListener('click', (e) => {
+    if (e.target === moreSheetBackdrop) closeMoreSheet();
+  });
+
+  document.querySelectorAll('.admin-sheet-item[data-admin-sec]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const sec = btn.getAttribute('data-admin-sec');
+      closeMoreSheet();
+      switchAdminSection(sec, true);
+    });
+  });
+
   if (mobileNav && !mobileNav.dataset.listening) {
     mobileNav.dataset.listening = 'true';
     mobileNav.addEventListener('click', (e) => {
@@ -242,10 +308,31 @@ function setupAdminNavigation() {
       if (btn) {
         e.preventDefault();
         const section = btn.getAttribute('data-admin-sec');
+        closeMoreSheet();
         switchAdminSection(section, true);
       }
     });
   }
+
+  // Admin PWA Standalone Install Trigger
+  let _adminDeferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _adminDeferredPrompt = e;
+  });
+
+  document.getElementById('btn-admin-pwa-install-app')?.addEventListener('click', async () => {
+    if (_adminDeferredPrompt) {
+      _adminDeferredPrompt.prompt();
+      const { outcome } = await _adminDeferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        toast.success('تم تثبيت تطبيق لوحة إدارة الدليل بنجاح! 📲');
+      }
+      _adminDeferredPrompt = null;
+    } else {
+      toast.info('لتثبيت تطبيق الإدارة: افتح قائمة المتصفح (⋮) واختر "إضافة إلى الشاشة الرئيسية" أو "تثبيت التطبيق"');
+    }
+  });
 
   window.addEventListener('popstate', () => {
     const params = new URLSearchParams(location.search);
