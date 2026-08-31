@@ -646,7 +646,7 @@ function getHomeHTML() {
 
         <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-top:14px" id="villages-grid-container">
           ${villageList.map(t => `
-            <a href="places.html?q=${encodeURIComponent(t.name)}" class="category-card village-grid-item" data-name="${escAttr(t.name)}" style="padding:12px 8px;text-align:center;text-decoration:none;border-radius:var(--radius-md);transition:all 0.2s ease;display:flex;flex-direction:column;align-items:center" title="دليل أماكن وخدمات ${t.name}">
+            <a href="places.html?area=${encodeURIComponent(t.name)}" class="category-card village-grid-item" data-name="${escAttr(t.name)}" style="padding:12px 8px;text-align:center;text-decoration:none;border-radius:var(--radius-md);transition:all 0.2s ease;display:flex;flex-direction:column;align-items:center" title="دليل أماكن وخدمات ${t.name}">
               <div style="font-size:22px;margin-bottom:4px">${t.icon}</div>
               <div style="font-weight:700;font-size:13px;color:var(--text-primary)">${t.name}</div>
               <div style="font-size:10.5px;color:var(--text-muted);margin-top:2px">${t.desc}</div>

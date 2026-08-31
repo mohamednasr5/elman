@@ -2,7 +2,7 @@ import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
-import { normalizeArabic, arabicScore } from '../../utils/arabic.js';
+import { normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { toast } from '../components/Toast.js';
@@ -11,6 +11,18 @@ let _userLocationCoords = null;
 
 export async function renderPlacesPage($container, { query = {}, user }) {
   const towns = MANZALA_VILLAGES_LIST;
+
+  // Resolve initial area selection (support both ?area= and ?q= if matching a town)
+  let initialArea = query.area || '';
+  let initialQuery = query.q || '';
+
+  if (!initialArea && initialQuery) {
+    const matchedTown = towns.find(t => arabicMatch(t, initialQuery));
+    if (matchedTown) {
+      initialArea = matchedTown;
+      initialQuery = '';
+    }
+  }
 
   $container.innerHTML = `
     <div class="search-page-header">
@@ -34,14 +46,14 @@ export async function renderPlacesPage($container, { query = {}, user }) {
             id="places-search-filter" 
             class="form-input" 
             placeholder="ابحث بالاسم أو الخدمة..." 
-            value="${escAttr(query.q || '')}"
+            value="${escAttr(initialQuery)}"
             style="margin:0;padding-left:45px"
           />
         </div>
 
         <select id="places-area-filter" class="form-select" style="max-width:180px">
           <option value="">🏙️ جميع المدن والقرى</option>
-          ${towns.map(t => `<option value="${escAttr(t)}">${t}</option>`).join('')}
+          ${towns.map(t => `<option value="${escAttr(t)}" ${initialArea === t ? 'selected' : ''}>${t}</option>`).join('')}
         </select>
         
         <select id="places-category-filter" class="form-select" style="max-width:190px">
@@ -116,9 +128,12 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
       let filtered = [...places];
 
-      // Filter by area / town
+      // Filter by area / town (STRICT village & city isolation)
       if (selectedArea) {
-        filtered = filtered.filter(p => (p.area || '').includes(selectedArea) || (p.address || '').includes(selectedArea));
+        filtered = filtered.filter(p => {
+          const pArea = (p.area || '').trim();
+          return pArea === selectedArea || arabicMatch(pArea, selectedArea);
+        });
       }
 
       // Filter by category
@@ -133,15 +148,14 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
       // Filter by search query
       if (q) {
-        const normalQ = normalizeArabic(q);
         filtered = filtered
           .map(p => {
             const score = Math.max(
               arabicScore(p.name, q),
-              arabicScore(p.description, q) * 0.7,
-              arabicScore(p.area || '', q) * 0.9,
-              arabicScore(p.address || '', q) * 0.8,
-              p.services?.some(s => normalizeArabic(s).includes(normalQ)) ? 60 : 0
+              arabicScore(p.categoryName || '', q) * 0.9,
+              p.services?.some(s => arabicMatch(s, q)) ? 75 : 0,
+              arabicScore(p.area || '', q) * 0.85,
+              arabicScore(p.address || '', q) * 0.7
             );
             return { place: p, score };
           })

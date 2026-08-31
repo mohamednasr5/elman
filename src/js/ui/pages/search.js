@@ -7,10 +7,10 @@
 import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
-import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent } from '../../utils/arabic.js';
+import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent, arabicMatch } from '../../utils/arabic.js';
 import { aiSearch, aiSmartSearch } from '../../services/ai.service.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
-import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../utils/maps.js';
+import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { toast } from '../components/Toast.js';
 
 let _searchUserLocation = null;
@@ -136,8 +136,13 @@ export async function renderSearchPage($container, { q = '', user }) {
     const scored = allPlaces.map(place => {
       // 1. Direct Name, Description & Area Match
       const nameScore = Math.max(arabicScore(place.name, query), arabicScore(place.name, rawClean));
-      const descScore = Math.max(arabicScore(place.description, query), arabicScore(place.description, rawClean)) * 0.7;
-      const areaScore = arabicScore(place.area, query) * 0.8;
+      const areaScore = Math.max(arabicScore(place.area || '', query), arabicScore(place.area || '', rawClean)) * 0.95;
+
+      const isSearchingVillage = MANZALA_VILLAGES_LIST.some(v => arabicMatch(v, query) || arabicMatch(v, rawClean));
+      let descScore = 0;
+      if (!isSearchingVillage || (place.area && arabicMatch(place.area, query))) {
+        descScore = Math.max(arabicScore(place.description || '', query), arabicScore(place.description || '', rawClean)) * 0.5;
+      }
 
       // 2. Services Matching (Direct + Semantic Intent)
       let serviceScore = 0;
