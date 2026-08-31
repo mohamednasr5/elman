@@ -457,11 +457,12 @@ export async function openManzalaVoiceAssistantModal() {
 
       const isAtmSearch = (
         normQ.includes('atm') ||
+        normQ.includes('ماكين') || // Matches ماكينة / ماكينه / ماكينات
         normQ.includes('اي تي ام') ||
         normQ.includes('ايه تي ام') ||
         normQ.includes('اي تى ام') ||
         normQ.includes('صراف') ||
-        normQ.includes('صرف') ||
+        normQ.includes('صرف ال') || // صرف الي / صرف آلي
         normQ.includes('فلوس') ||
         normQ.includes('سحب') ||
         normQ.includes('ايداع') ||
@@ -562,8 +563,8 @@ export async function openManzalaVoiceAssistantModal() {
       );
 
       const checkPlaceIsOpen = (p) => {
-        if (p.alwaysOpen) return true;
         if (isAtmPlace(p)) return isAtmReadyAndOperational(p, 15);
+        if (p.alwaysOpen) return true;
         if (!p.workingHours) return null;
         const openState = isPlaceOpen(p.workingHours);
         return openState !== false;
@@ -597,7 +598,7 @@ export async function openManzalaVoiceAssistantModal() {
         const distKm = userLocationCoords ? calculateDistanceKm(userLocationCoords.lat, userLocationCoords.lng, coords.lat, coords.lng) : Infinity;
         const distStr = formatDistance(distKm);
         const isOpen = checkPlaceIsOpen(p);
-        const isExplicitlyClosed = p.workingHours ? (isPlaceOpen(p.workingHours) === false) : false;
+        const isExplicitlyClosed = isAtmPlace(p) ? false : (p.workingHours ? (isPlaceOpen(p.workingHours) === false) : false);
 
         return {
           place: p,

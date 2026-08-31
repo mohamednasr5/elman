@@ -660,6 +660,26 @@ export async function trackPlaceView(place, visitor = null) {
 /**
  * Broadcast a new place notification to all users across the directory
  */
+/**
+ * Store broadcast notification in local storage cache
+ */
+function saveToLocalBroadcastCache(notification) {
+  if (typeof localStorage === 'undefined' || !notification) return;
+  try {
+    const raw = localStorage.getItem('manzala_global_broadcast_notifs_cache') || '[]';
+    const list = JSON.parse(raw);
+    if (!list.some(n => n.id === notification.id)) {
+      list.unshift(notification);
+      localStorage.setItem('manzala_global_broadcast_notifs_cache', JSON.stringify(list.slice(0, 50)));
+    }
+    // Dispatch instant event to current active tab/window
+    window.dispatchEvent(new CustomEvent('manzala:new_broadcast_notification', { detail: notification }));
+  } catch (_) {}
+}
+
+/**
+ * Broadcast a new place notification to all users across the directory
+ */
 export async function broadcastNewPlaceNotification(place) {
   if (!place) return;
   const placeId = place.id || place._key || place.slug;
@@ -682,25 +702,23 @@ export async function broadcastNewPlaceNotification(place) {
     isRead: false
   };
 
-  try {
-    // 1. Global node
-    await dbSet(`globalNotifications/${notifId}`, notification);
+  // 1. Save to local broadcast cache immediately
+  saveToLocalBroadcastCache(notification);
 
-    // 2. Direct push into all registered users' inboxes (including Admin)
-    const usersMap = await dbGet('users') || {};
-    const userUpdates = {};
-    Object.keys(usersMap).forEach(uId => {
-      userUpdates[`userNotifications/${uId}/${notifId}`] = {
-        ...notification,
-        isRead: false
-      };
-    });
-    if (Object.keys(userUpdates).length > 0) {
-      await dbUpdate('', userUpdates);
-    }
-  } catch (err) {
-    console.warn('[broadcastNewPlaceNotification] error:', err);
-  }
+  // 2. Try saving to Firebase global node
+  try {
+    await dbSet(`globalNotifications/${notifId}`, notification);
+  } catch (_) {}
+
+  // 3. Send to Cloudflare Worker to broadcast with admin credentials if available
+  try {
+    fetch(`${WORKER_URL}/api/notifications/broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'new_place', notification, place }),
+      signal: AbortSignal.timeout(4000)
+    }).catch(() => {});
+  } catch (_) {}
 }
 
 /**
@@ -721,54 +739,67 @@ export async function broadcastPlaceVerifiedNotification(place) {
     message: `وثّق (${place.name}) ملفه لكي يظهر أمام الكل في كامل دليل المنزلة والمطرية الرقمي أولاً!`,
     actionText: 'وثّق ملفك الآن لكي تظهر مثله 🚀',
     actionUrl: 'https://wa.me/wasendernew',
-    icon: '✅',
+    icon: '👑',
     createdAt: Date.now(),
     isRead: false
   };
 
-  try {
-    // 1. Global node
-    await dbSet(`globalNotifications/${notifId}`, notification);
+  // 1. Save to local broadcast cache immediately
+  saveToLocalBroadcastCache(notification);
 
-    // 2. Direct push into all registered users' inboxes (including Admin)
-    const usersMap = await dbGet('users') || {};
-    const userUpdates = {};
-    Object.keys(usersMap).forEach(uId => {
-      userUpdates[`userNotifications/${uId}/${notifId}`] = {
-        ...notification,
-        isRead: false
-      };
-    });
-    if (Object.keys(userUpdates).length > 0) {
-      await dbUpdate('', userUpdates);
-    }
-  } catch (err) {
-    console.warn('[broadcastPlaceVerifiedNotification] error:', err);
-  }
+  // 2. Try saving to Firebase global node
+  try {
+    await dbSet(`globalNotifications/${notifId}`, notification);
+  } catch (_) {}
+
+  // 3. Send to Cloudflare Worker
+  try {
+    fetch(`${WORKER_URL}/api/notifications/broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'place_verified', notification, place }),
+      signal: AbortSignal.timeout(4000)
+    }).catch(() => {});
+  } catch (_) {}
 }
 
 /** Get all notifications for a user (combining personal profile visits & global broadcasts) */
 export async function getUserNotifications(uid) {
-  if (!uid) return [];
-  
-  // 1. Personal User Notifications Inbox
-  const userNotifsMap = await dbGet(`userNotifications/${uid}`) || {};
-  const userNotifs = Object.entries(userNotifsMap).map(([id, n]) => ({ id, ...n, isBroadcast: !!n.type && n.type !== 'profile_visit' }));
-
-  // 2. Global Broadcast Notifications (Fallback & for new users)
-  let globalNotifsMap = await dbGet('globalNotifications') || {};
-  let globalNotifs = Object.entries(globalNotifsMap).map(([id, n]) => ({ id, ...n, isBroadcast: true }));
-
-  // Merge map by id
   const mergedMap = {};
-  globalNotifs.forEach(n => { mergedMap[n.id] = { ...n, isRead: false }; });
-  userNotifs.forEach(n => { mergedMap[n.id] = n; });
 
-  // Check read status for global notifications from localStorage if not explicitly saved in userNotifs
+  // 1. Local broadcast notifications cache
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('manzala_global_broadcast_notifs_cache') || '[]';
+      const list = JSON.parse(raw);
+      list.forEach(n => { mergedMap[n.id] = { ...n, isRead: false }; });
+    } catch (_) {}
+  }
+
+  // 2. Global Broadcast Notifications from Firebase
+  try {
+    const globalNotifsMap = (await dbGet('globalNotifications')) || {};
+    Object.entries(globalNotifsMap).forEach(([id, n]) => {
+      mergedMap[id] = { id, ...n, isBroadcast: true };
+    });
+  } catch (_) {}
+
+  // 3. Personal User Notifications Inbox
+  if (uid) {
+    try {
+      const userNotifsMap = (await dbGet(`userNotifications/${uid}`)) || {};
+      Object.entries(userNotifsMap).forEach(([id, n]) => {
+        mergedMap[id] = { id, ...n, isBroadcast: !!n.type && n.type !== 'profile_visit' };
+      });
+    } catch (_) {}
+  }
+
+  // Check read status from localStorage
   let readGlobalIds = new Set();
   try {
     if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(`read_global_notifs_${uid}`);
+      const key = uid ? `read_global_notifs_${uid}` : 'read_global_notifs_anon';
+      const raw = localStorage.getItem(key);
       if (raw) readGlobalIds = new Set(JSON.parse(raw));
     }
   } catch (_) {}
@@ -781,7 +812,6 @@ export async function getUserNotifications(uid) {
   return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
-/** Mark all notifications as read */
 export async function markAllNotificationsAsRead(uid) {
   if (!uid) return;
   

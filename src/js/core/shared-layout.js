@@ -227,6 +227,11 @@ export function getSharedHeaderHTML(activePage = '') {
       </div>
       <button class="header__search-btn" id="mobile-search-btn" aria-label="بحث">🔍</button>
 
+      <button type="button" class="header__notif-btn" id="header-notif-bell-btn" aria-label="الإشعارات" title="الإشعارات والتنبيهات" style="position:relative;background:none;border:none;font-size:1.25rem;cursor:pointer;padding:6px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--text-primary)">
+        <span>🔔</span>
+        <span id="header-notif-badge" class="badge badge--danger" style="position:absolute;top:0;right:0;font-size:10px;padding:2px 5px;border-radius:9999px;font-weight:800;display:none;background:#EF4444;color:#fff;box-shadow:0 0 0 2px var(--surface)">0</span>
+      </button>
+
       <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="تبديل الوضع الليلي والنهاري" title="تبديل الوضع الليلي / الفاتح">
         <span class="theme-icon-light">☀️</span>
         <span class="theme-icon-dark">🌙</span>
