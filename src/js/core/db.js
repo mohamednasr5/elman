@@ -654,19 +654,119 @@ export async function trackPlaceView(place, visitor = null) {
   }
 }
 
-/** Get notifications for a user */
+/**
+ * Broadcast a new place notification to all users across the directory
+ */
+export async function broadcastNewPlaceNotification(place) {
+  if (!place) return;
+  const placeId = place.id || place._key || place.slug;
+  const notifId = `notif_new_place_${placeId}_${Date.now()}`;
+  const address = [place.area, place.address].filter(Boolean).join(' — ') || 'مدينة المنزلة';
+  
+  const notification = {
+    id: notifId,
+    type: 'new_place',
+    title: '🎉 انضمام نشاط جديد لدليل المنزلة والمطرية',
+    placeId: placeId,
+    placeName: place.name || 'نشاط تجاري',
+    placeAddress: address,
+    placeSlug: place.slug || place._key || placeId,
+    message: `(${place.name}) من (${address}) أنضم حديثاً إلى دليل المنزلة والمطرية الرقمي.`,
+    actionText: 'مشاهدة المكان 👁️',
+    actionUrl: `place.html?slug=${encodeURIComponent(place.slug || place._key || placeId)}`,
+    icon: '🏪',
+    createdAt: Date.now()
+  };
+
+  try {
+    await dbSet(`globalNotifications/${notifId}`, notification);
+  } catch (err) {
+    console.warn('[broadcastNewPlaceNotification] error:', err);
+  }
+}
+
+/**
+ * Broadcast a place verification notification to all users across the directory
+ */
+export async function broadcastPlaceVerifiedNotification(place) {
+  if (!place) return;
+  const placeId = place.id || place._key || place.slug;
+  const notifId = `notif_verified_${placeId}_${Date.now()}`;
+
+  const notification = {
+    id: notifId,
+    type: 'place_verified',
+    title: '👑 توثيق رسمي جديد في المنزلة والمطرية',
+    placeId: placeId,
+    placeName: place.name || 'المكان',
+    placeSlug: place.slug || place._key || placeId,
+    message: `وثّق (${place.name}) ملفه لكي يظهر أمام الكل في كامل دليل المنزلة والمطرية الرقمي أولاً!`,
+    actionText: 'وثّق ملفك الآن لكي تظهر مثله 🚀',
+    actionUrl: 'https://wa.me/wasendernew',
+    icon: '✅',
+    createdAt: Date.now()
+  };
+
+  try {
+    await dbSet(`globalNotifications/${notifId}`, notification);
+  } catch (err) {
+    console.warn('[broadcastPlaceVerifiedNotification] error:', err);
+  }
+}
+
+/** Get all notifications for a user (combining personal profile visits & global broadcasts) */
 export async function getUserNotifications(uid) {
   if (!uid) return [];
-  const map = await dbGet(`userNotifications/${uid}`) || {};
-  return Object.entries(map).map(([id, n]) => ({
-    id,
-    ...n
-  })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  
+  // 1. Personal Visitor Notifications
+  const userNotifsMap = await dbGet(`userNotifications/${uid}`) || {};
+  const userNotifs = Object.entries(userNotifsMap).map(([id, n]) => ({ id, ...n, isBroadcast: false }));
+
+  // 2. Global Broadcast Notifications (New Places & Verifications)
+  let globalNotifsMap = await dbGet('globalNotifications') || {};
+  let globalNotifs = Object.entries(globalNotifsMap).map(([id, n]) => ({ id, ...n, isBroadcast: true }));
+
+  // Seed default broadcast notifications if none exist
+  if (globalNotifs.length === 0) {
+    try {
+      const placesMap = await dbGet('places') || {};
+      const placesList = Object.entries(placesMap).map(([id, p]) => ({ id, ...p }));
+      
+      const verifiedPlaces = placesList.filter(p => p.isVerified);
+      for (const vp of verifiedPlaces.slice(0, 2)) {
+        await broadcastPlaceVerifiedNotification(vp);
+      }
+      for (const lp of placesList.slice(-4)) {
+        await broadcastNewPlaceNotification(lp);
+      }
+      globalNotifsMap = await dbGet('globalNotifications') || {};
+      globalNotifs = Object.entries(globalNotifsMap).map(([id, n]) => ({ id, ...n, isBroadcast: true }));
+    } catch (_) {}
+  }
+
+  // Check read status for global notifications from localStorage
+  let readGlobalIds = new Set();
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(`read_global_notifs_${uid}`);
+      if (raw) readGlobalIds = new Set(JSON.parse(raw));
+    }
+  } catch (_) {}
+
+  const mappedGlobalNotifs = globalNotifs.map(n => ({
+    ...n,
+    isRead: readGlobalIds.has(n.id)
+  }));
+
+  const all = [...userNotifs, ...mappedGlobalNotifs];
+  return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
 /** Mark all notifications as read */
 export async function markAllNotificationsAsRead(uid) {
   if (!uid) return;
+  
+  // 1. Mark personal userNotifications
   const map = await dbGet(`userNotifications/${uid}`) || {};
   const updates = {};
   Object.keys(map).forEach(key => {
@@ -675,12 +775,28 @@ export async function markAllNotificationsAsRead(uid) {
   if (Object.keys(updates).length > 0) {
     await dbUpdate('', updates);
   }
+
+  // 2. Mark all global broadcast notifications as read
+  try {
+    const globalNotifsMap = await dbGet('globalNotifications') || {};
+    const allIds = Object.keys(globalNotifsMap);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(allIds));
+    }
+  } catch (_) {}
 }
 
 /** Clear / Delete all notifications */
 export async function clearAllNotifications(uid) {
   if (!uid) return;
   await dbRemove(`userNotifications/${uid}`);
+  try {
+    const globalNotifsMap = await dbGet('globalNotifications') || {};
+    const allIds = Object.keys(globalNotifsMap);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(allIds));
+    }
+  } catch (_) {}
 }
 
 /** Increment place stat */

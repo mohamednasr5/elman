@@ -4,7 +4,7 @@
  */
 
 import { getDB } from '../core/firebase.js';
-import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification } from '../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification } from '../core/db.js';
 import { generatePlaceSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';
 import { WORKER_URL } from '../core/firebase.js';
@@ -121,6 +121,9 @@ export async function createPlace(placeData, currentUser) {
   if (placeData.categoryId) {
     dbIncrement(`categories/${placeData.categoryId}/placeCount`, 1);
   }
+
+  // Broadcast notification across directory to all registered users
+  broadcastNewPlaceNotification(newPlace).catch(() => {});
 
   // Push instant notification to Telegram Admin
   sendTelegramAdminNotification('new_place', {

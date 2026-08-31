@@ -14,6 +14,7 @@ import { showModal, showConfirm } from '../components/Modal.js';
 import { submitVerificationRequest } from '../../services/places.service.js';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
+import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { resolveMapEmbedInfo, extractCoordinates } from '../../utils/maps.js';
 
 export async function renderPlacePage($container, { slug, user }) {
@@ -288,28 +289,39 @@ export async function renderPlacePage($container, { slug, user }) {
 
           <!-- Active Offers Section -->
           ${offers && offers.length > 0 ? `
-            <section class="info-card">
-              <h2 class="info-card__title">
-                <span>🏷️</span> العروض الحالية (${offers.length})
-              </h2>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-4)">
+            <section class="info-card" id="place-offers-card">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:var(--space-4)">
+                <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:6px">
+                  <span>🏷️</span> العروض والتخفيضات الحالية (${offers.length})
+                </h2>
+                <a href="offers.html?place=${escAttr(place.slug || place.id)}" class="btn btn-sm btn-outline" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);gap:4px">
+                  🔍 تصفح كافة عروض المكان ↗
+                </a>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-4)">
                 ${offers.map(offer => {
                   const discount = offer.discountPercent || calcDiscount(offer.oldPrice, offer.newPrice);
                   const days = daysUntil(offer.endDate);
                   return `
-                    <div class="offer-card">
+                    <div class="offer-card place-interactive-offer-card" data-offer-id="${escAttr(offer.id || offer._id)}" title="انقر لمشاهدة تفاصيل وطلب العرض">
                       <div class="offer-card__image">
-                        ${offer.imageUrl ? `<img src="${escAttr(offer.imageUrl)}" alt="${escAttr(offer.title)}" loading="lazy" />` : `<div style="padding:2rem;text-align:center;font-size:2rem">🏷️</div>`}
-                        ${discount > 0 ? `<span class="offer-card__discount-badge">-${discount}%</span>` : ''}
+                        ${offer.imageUrl 
+                          ? `<img src="${escAttr(offer.imageUrl)}" alt="${escAttr(offer.title)}" loading="lazy" />` 
+                          : `<div style="padding:2rem;text-align:center;font-size:2.5rem;color:var(--text-muted)">🏷️</div>`}
+                        ${discount > 0 ? `<span class="offer-card__discount-badge">خصم -${discount}%</span>` : ''}
                       </div>
                       <div class="offer-card__body">
                         <h3 class="offer-card__title">${escHtml(offer.title)}</h3>
-                        ${offer.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-2)">${escHtml(offer.description)}</p>` : ''}
+                        ${offer.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-2);line-height:1.5">${escHtml(offer.description)}</p>` : ''}
                         <div class="offer-card__price">
                           <span class="offer-card__price-new">${formatPrice(offer.newPrice)}</span>
                           ${offer.oldPrice ? `<span class="offer-card__price-old">${formatPrice(offer.oldPrice)}</span>` : ''}
                         </div>
                         <div class="offer-card__expiry">⏰ ينتهي: ${formatDateRange(offer.startDate, offer.endDate)}</div>
+                        <div class="offer-card__cta-btn">
+                          <span>👁️ اضغط لمشاهدة تفاصيل وطلب العرض</span>
+                          <span>↗</span>
+                        </div>
                       </div>
                     </div>
                   `;
@@ -320,26 +332,36 @@ export async function renderPlacePage($container, { slug, user }) {
 
           <!-- Products Section (Only for verified places) -->
           ${place.isVerified && products && products.length > 0 ? `
-            <section class="info-card">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)">
-                <h2 class="info-card__title" style="margin-bottom:0">
+            <section class="info-card" id="place-products-card">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:var(--space-4)">
+                <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:6px">
                   <span>🛍️</span> قائمة المنتجات والأسعار (${products.length})
                 </h2>
-                <span class="chip chip--success">موثق ✓</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="chip chip--success" style="font-size:11px">موثق ✓</span>
+                  <a href="products.html?place=${escAttr(place.slug || place.id)}" class="btn btn-sm btn-outline" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);gap:4px">
+                    🔍 تصفح كافة منتجات المكان ↗
+                  </a>
+                </div>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--space-4)">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--space-4)">
                 ${products.map(p => `
-                  <div class="product-card">
+                  <div class="product-card place-interactive-product-card" data-product-id="${escAttr(p.id)}" title="انقر لمشاهدة تفاصيل وطلب المنتج">
                     <div class="product-card__image">
                       ${p.imageUrl ? `<img src="${escAttr(p.imageUrl)}" alt="${escAttr(p.name)}" loading="lazy" />` : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:var(--text-muted)">📦</div>`}
                       ${p.isFeatured ? `<span class="product-card__featured">مميز ⭐</span>` : ''}
                     </div>
                     <div class="product-card__body">
                       <h3 class="product-card__name">${escHtml(p.name)}</h3>
-                      ${p.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-2)">${escHtml(p.description)}</p>` : ''}
+                      ${p.category ? `<div style="font-size:11px;color:var(--primary);margin-bottom:4px;font-weight:600">🏷️ ${escHtml(p.category)}</div>` : ''}
+                      ${p.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-2);line-height:1.5">${escHtml(p.description)}</p>` : ''}
                       <div class="product-card__price">
                         <span class="product-card__price-current">${formatPrice(p.price)}</span>
                         ${p.oldPrice ? `<span class="product-card__price-old">${formatPrice(p.oldPrice)}</span>` : ''}
+                      </div>
+                      <div class="product-card__cta-btn">
+                        <span>🛍️ اضغط لتفاصيل وطلب المنتج</span>
+                        <span>↗</span>
                       </div>
                     </div>
                   </div>
@@ -664,6 +686,27 @@ export async function renderPlacePage($container, { slug, user }) {
     // Working hours toggle
     document.getElementById('toggle-working-hours')?.addEventListener('click', () => {
       document.getElementById('working-hours-list')?.classList.toggle('expanded');
+    });
+
+    // ── Interactive Offers & Products Full Details Modal Triggers ──
+    document.querySelectorAll('.place-interactive-offer-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const oId = card.getAttribute('data-offer-id');
+        const targetOffer = (offers || []).find(o => (o.id || o._id) === oId);
+        if (targetOffer) {
+          openOfferFullDetailsModal(targetOffer, place);
+        }
+      });
+    });
+
+    document.querySelectorAll('.place-interactive-product-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const pId = card.getAttribute('data-product-id');
+        const targetProduct = (products || []).find(p => p.id === pId);
+        if (targetProduct) {
+          openProductFullDetailsModal(targetProduct, place);
+        }
+      });
     });
 
     // Verification Request Button

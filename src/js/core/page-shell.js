@@ -4,7 +4,7 @@
  */
 import { initFirebase } from './firebase.js';
 import { initAuth, signOut, waitForAuth, onAuthStateChange, isAdmin } from './auth.js';
-import { getSettings } from './db.js';
+import { getSettings, getUserNotifications } from './db.js';
 import { toast } from '../ui/components/Toast.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
 
@@ -426,27 +426,44 @@ function _renderUser(user) {
   if (!wrap) return;
   if (user) {
     wrap.innerHTML = `
-      <div style="position:relative">
-        <button class="header__user-btn" id="usr-btn" aria-haspopup="true" aria-expanded="false">
-          <img src="${_a(user.photoURL || './icons/icon-72x72.png')}"
-               class="header__avatar" width="32" height="32"
-               onerror="this.src='./icons/icon-72x72.png'"
-               alt="${_h(user.name)}"/>
-          <span class="header__user-name">${_h((user.name||'').split(' ')[0])}</span>
-          <span aria-hidden="true">▾</span>
-        </button>
-        <div class="header__dropdown" id="usr-dd" role="menu">
-          <a href="dashboard.html"             class="header__dropdown-item" role="menuitem">🏠 لوحتي</a>
-          <a href="dashboard.html?section=add" class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>
-          ${isAdmin(user)
-            ? '<a href="admin.html" class="header__dropdown-item" style="color:var(--secondary);font-weight:bold" role="menuitem">⚙️ لوحة الإدارة</a>'
-            : ''}
-          <div class="header__dropdown-divider"></div>
-          <button id="logout-btn" class="header__dropdown-item header__dropdown-item--danger" role="menuitem">
-            🚪 تسجيل الخروج
+      <div style="display:flex;align-items:center;gap:10px">
+        <a href="dashboard.html?section=notifications" class="header-notif-btn" title="الإشعارات والزيارات" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);color:var(--text-primary);text-decoration:none;font-size:16px;transition:all 0.2s">
+          <span>🔔</span>
+          <span id="header-notifs-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#EF4444;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:9999px;border:1.5px solid #fff;min-width:16px;text-align:center">0</span>
+        </a>
+
+        <div style="position:relative">
+          <button class="header__user-btn" id="usr-btn" aria-haspopup="true" aria-expanded="false">
+            <img src="${_a(user.photoURL || './icons/icon-72x72.png')}"
+                 class="header__avatar" width="32" height="32"
+                 onerror="this.src='./icons/icon-72x72.png'"
+                 alt="${_h(user.name)}"/>
+            <span class="header__user-name">${_h((user.name||'').split(' ')[0])}</span>
+            <span aria-hidden="true">▾</span>
           </button>
+          <div class="header__dropdown" id="usr-dd" role="menu">
+            <a href="dashboard.html"                          class="header__dropdown-item" role="menuitem">🏠 لوحتي</a>
+            <a href="dashboard.html?section=notifications"    class="header__dropdown-item" role="menuitem">🔔 الإشعارات والزيارات</a>
+            <a href="dashboard.html?section=add"              class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>
+            ${isAdmin(user)
+              ? '<a href="admin.html" class="header__dropdown-item" style="color:var(--secondary);font-weight:bold" role="menuitem">⚙️ لوحة الإدارة</a>'
+              : ''}
+            <div class="header__dropdown-divider"></div>
+            <button id="logout-btn" class="header__dropdown-item header__dropdown-item--danger" role="menuitem">
+              🚪 تسجيل الخروج
+            </button>
+          </div>
         </div>
       </div>`;
+
+    getUserNotifications(user.uid).then(notifs => {
+      const unread = notifs.filter(n => !n.isRead).length;
+      const b = document.getElementById('header-notifs-badge');
+      if (b) {
+        b.textContent = unread;
+        b.style.display = unread > 0 ? 'inline-block' : 'none';
+      }
+    }).catch(() => {});
 
     const btn = document.getElementById('usr-btn');
     const dd  = document.getElementById('usr-dd');

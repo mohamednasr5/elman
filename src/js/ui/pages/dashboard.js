@@ -1541,15 +1541,70 @@ async function renderDashboardNotifications($container, user) {
         </p>
       </div>
     ` : `
-      <div class="notifications-list" style="display:flex;flex-direction:column;gap:10px">
+      <div class="notifications-list" style="display:flex;flex-direction:column;gap:12px">
         ${notifications.map(n => {
           const isUnread = !n.isRead;
           const timeStr = formatTimeAgo(n.createdAt);
           const isGuest = n.isGuest || !n.visitorUid;
 
+          if (n.type === 'new_place') {
+            return `
+              <div class="notification-card" style="background:${isUnread ? 'rgba(16, 185, 129, 0.06)' : 'var(--surface)'};border:1px solid ${isUnread ? '#10B981' : 'var(--border)'};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:center;gap:14px;transition:all 0.2s;flex-wrap:wrap">
+                <div style="width:46px;height:46px;border-radius:50%;background:rgba(16, 185, 129, 0.15);color:#059669;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid rgba(16, 185, 129, 0.3)">
+                  🏪
+                </div>
+                <div style="flex:1;min-width:220px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span class="badge" style="background:#D1FAE5;color:#065F46;font-weight:700;font-size:11px;padding:2px 8px;border-radius:var(--radius-full)">🎉 انضمام جديد</span>
+                      <strong style="font-size:13.5px;color:var(--text-primary)">${escHtml(n.placeName)}</strong>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted)">⏱️ ${timeStr}</div>
+                  </div>
+                  <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;line-height:1.5">
+                    (${escHtml(n.placeName)}) من (${escHtml(n.placeAddress || 'المنزلة')}) أنضم حديثاً إلى دليل المنزلة والمطرية الرقمي.
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <a href="${escAttr(n.actionUrl || `place.html?slug=${n.placeSlug}`)}" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
+                    <span>👁️</span> مشاهدة المكان
+                  </a>
+                  ${isUnread ? `<div style="width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0" title="إشعار غير مقروء"></div>` : ''}
+                </div>
+              </div>
+            `;
+          }
+
+          if (n.type === 'place_verified') {
+            return `
+              <div class="notification-card" style="background:${isUnread ? 'rgba(245, 158, 11, 0.07)' : 'var(--surface)'};border:1px solid ${isUnread ? '#F59E0B' : 'var(--border)'};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:center;gap:14px;transition:all 0.2s;flex-wrap:wrap">
+                <div style="width:46px;height:46px;border-radius:50%;background:rgba(245, 158, 11, 0.15);color:#D97706;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid rgba(245, 158, 11, 0.3)">
+                  👑
+                </div>
+                <div style="flex:1;min-width:220px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span class="badge" style="background:#FEF3C7;color:#92400E;font-weight:700;font-size:11px;padding:2px 8px;border-radius:var(--radius-full)">👑 توثيق رسمي</span>
+                      <strong style="font-size:13.5px;color:var(--text-primary)">${escHtml(n.placeName)}</strong>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted)">⏱️ ${timeStr}</div>
+                  </div>
+                  <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;line-height:1.5">
+                    وثّق (${escHtml(n.placeName)}) ملفه لكي يظهر أمام الكل في كامل دليل المنزلة والمطرية الرقمي أولاً!
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <a href="${escAttr(n.actionUrl || 'https://wa.me/wasendernew')}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;background:linear-gradient(135deg, #10B981 0%, #059669 100%);color:#fff;border:none;box-shadow:0 2px 8px rgba(16,185,129,0.3);display:inline-flex;align-items:center">
+                    <span>🚀</span> وثّق ملفك الآن لكي تظهر مثله
+                  </a>
+                  ${isUnread ? `<div style="width:8px;height:8px;border-radius:50%;background:#F59E0B;flex-shrink:0" title="إشعار غير مقروء"></div>` : ''}
+                </div>
+              </div>
+            `;
+          }
+
           return `
             <div class="notification-card" style="background:${isUnread ? 'rgba(27, 79, 114, 0.05)' : 'var(--surface)'};border:1px solid ${isUnread ? 'var(--primary)' : 'var(--border)'};border-radius:var(--radius-md);padding:12px 16px;display:flex;align-items:center;gap:14px;transition:all 0.2s">
-              
               <!-- Avatar -->
               <div style="width:44px;height:44px;border-radius:50%;background:${isGuest ? 'var(--surface-3)' : 'var(--primary-alpha)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1.5px solid var(--border)">
                 ${n.visitorPhoto ? `

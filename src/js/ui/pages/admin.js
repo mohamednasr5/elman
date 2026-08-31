@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG } from '../../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification } from '../../core/db.js';
 import { isAdmin } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
@@ -1008,7 +1008,13 @@ function renderAdminProductsTableRows(products) {
           ${p.createdAt ? formatDate(p.createdAt) : '—'}
         </td>
         <td>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="btn btn-xs btn-outline" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE" onclick="adminViewProductAction('${escAttr(p.placeId)}', '${escAttr(p.id)}')" title="مشاهدة تفاصيل وصورة المنتج">
+              ${ICONS.eye} مشاهدة
+            </button>
+            <button class="btn btn-xs btn-outline" style="background:#F0FDF4;color:#15803D;border-color:#BBF7D0" onclick="adminEditProductAction('${escAttr(p.placeId)}', '${escAttr(p.id)}')" title="تعديل بيانات وسعر وصورة المنتج">
+              ${ICONS.edit} تعديل
+            </button>
             ${!isApproved ? `
               <button class="btn btn-xs btn-success" onclick="adminApproveProductAction('${escAttr(p.placeId)}', '${escAttr(p.id)}')" title="الموافقة على المنتج وتفعيله في صفحة المكان">
                 ✓ اعتماد
@@ -1030,6 +1036,180 @@ function renderAdminProductsTableRows(products) {
 }
 
 if (typeof window !== 'undefined') {
+  window.adminViewProductAction = async (placeId, productId) => {
+    const products = adminCache.products || (await getAllProducts());
+    const prod = products.find(p => p.id === productId && p.placeId === placeId) || (await dbGet(`places/${placeId}/products/${productId}`));
+    
+    if (!prod) {
+      toast.error('لم يتم العثور على بيانات المنتج');
+      return;
+    }
+
+    const modal = showModal({
+      title: `🛍️ تفاصيل المنتج: ${escHtml(prod.name || '')}`,
+      size: 'md',
+      content: `
+        <div style="display:flex;flex-direction:column;gap:14px;padding:4px">
+          ${prod.imageUrl ? `
+            <div style="width:100%;height:220px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);background:var(--surface-2);display:flex;align-items:center;justify-content:center">
+              <img src="${escAttr(prod.imageUrl)}" alt="${escAttr(prod.name)}" style="max-width:100%;max-height:100%;object-fit:contain" onerror="this.src='./icons/icon-192x192.png'" />
+            </div>
+          ` : ''}
+
+          <div style="background:var(--surface-2);padding:14px;border-radius:var(--radius-md);border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <h3 style="margin:0;font-size:1.15rem;color:var(--text-primary)">${escHtml(prod.name)}</h3>
+              <span class="badge ${prod.status === 'approved' || prod.isApproved === true ? 'badge--success' : (prod.status === 'rejected' ? 'badge--danger' : 'badge--warning')}">
+                ${prod.status === 'approved' || prod.isApproved === true ? '✓ معتمد ومفعل' : (prod.status === 'rejected' ? '✕ مرفوض' : '⏳ قيد المراجعة')}
+              </span>
+            </div>
+
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px">
+              ${escHtml(prod.description || 'لا يوجد وصف مضاف لهذا المنتج.')}
+            </div>
+
+            <div style="display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px dashed var(--border);flex-wrap:wrap">
+              <div>
+                <span style="font-size:12px;color:var(--text-muted)">السعر: </span>
+                <strong style="font-size:1.25rem;color:var(--primary)">${prod.price || 0} ج.م</strong>
+              </div>
+              ${prod.oldPrice ? `
+                <div>
+                  <span style="font-size:12px;color:var(--text-muted)">السعر السابق: </span>
+                  <span style="text-decoration:line-through;color:var(--text-muted);font-size:1.05rem">${prod.oldPrice} ج.م</span>
+                </div>
+              ` : ''}
+              ${prod.category ? `
+                <span class="badge" style="font-size:11px;background:var(--surface);border:1px solid var(--border)">🏷️ ${escHtml(prod.category)}</span>
+              ` : ''}
+            </div>
+          </div>
+
+          <div style="font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;padding:0 4px;flex-wrap:wrap;gap:6px">
+            <span>🏪 تابع لمكان: <strong>${escHtml(prod.placeName || 'غير محدد')}</strong></span>
+            <span>📅 تاريخ الإضافة: <strong>${prod.createdAt ? formatDate(prod.createdAt) : '—'}</strong></span>
+          </div>
+        </div>
+      `,
+      buttons: [
+        {
+          label: '✏️ تعديل هذا المنتج',
+          type: 'primary',
+          onClick: () => {
+            modal.close();
+            adminEditProductAction(placeId, productId);
+          }
+        },
+        { label: 'إغلاق', type: 'ghost', closeOnClick: true }
+      ]
+    });
+  };
+
+  window.adminEditProductAction = async (placeId, productId) => {
+    const products = adminCache.products || (await getAllProducts());
+    const prod = products.find(p => p.id === productId && p.placeId === placeId) || (await dbGet(`places/${placeId}/products/${productId}`));
+    
+    if (!prod) {
+      toast.error('لم يتم العثور على بيانات المنتج');
+      return;
+    }
+
+    const modal = showModal({
+      title: `✏️ تعديل المنتج: ${escHtml(prod.name || '')}`,
+      size: 'md',
+      content: `
+        <form id="admin-edit-prod-form" onsubmit="return false">
+          <div class="form-group">
+            <label class="form-label">اسم المنتج <span class="required">*</span></label>
+            <input type="text" id="aeprod-name" class="form-input" value="${escAttr(prod.name || '')}" required />
+          </div>
+
+          <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">السعر الحالي (ج.م) <span class="required">*</span></label>
+              <input type="number" id="aeprod-price" class="form-input" value="${prod.price || ''}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">السعر القديم قبل الخصم</label>
+              <input type="number" id="aeprod-oldPrice" class="form-input" value="${prod.oldPrice || ''}" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">تصنيف المنتج / القسم</label>
+            <input type="text" id="aeprod-category" class="form-input" value="${escAttr(prod.category || '')}" placeholder="مثال: مشروبات ساخنة، ملابس شتوية..." />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">رابط صورة المنتج (URL)</label>
+            <input type="url" id="aeprod-imageUrl" class="form-input" value="${escAttr(prod.imageUrl || '')}" placeholder="https://..." style="direction:ltr" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">حالة المنتج</label>
+            <select id="aeprod-status" class="form-select">
+              <option value="approved" ${prod.status === 'approved' || prod.isApproved === true ? 'selected' : ''}>✓ معتمد ومفعل</option>
+              <option value="pending" ${prod.status === 'pending' || (!prod.status && prod.isApproved === false) ? 'selected' : ''}>⏳ قيد المراجعة</option>
+              <option value="rejected" ${prod.status === 'rejected' ? 'selected' : ''}>✕ مرفوض</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">وصف تفصيلي للمنتج</label>
+            <textarea id="aeprod-description" class="form-textarea" rows="3">${escHtml(prod.description || '')}</textarea>
+          </div>
+        </form>
+      `,
+      buttons: [
+        {
+          label: '💾 حفظ تعديلات المنتج',
+          type: 'primary',
+          closeOnClick: false,
+          onClick: async () => {
+            const name = document.getElementById('aeprod-name')?.value.trim();
+            const price = parseFloat(document.getElementById('aeprod-price')?.value);
+            const oldPrice = parseFloat(document.getElementById('aeprod-oldPrice')?.value) || null;
+            const category = document.getElementById('aeprod-category')?.value.trim() || '';
+            const imageUrl = document.getElementById('aeprod-imageUrl')?.value.trim();
+            const status = document.getElementById('aeprod-status')?.value || 'approved';
+            const description = document.getElementById('aeprod-description')?.value.trim();
+
+            if (!name || isNaN(price)) {
+              toast.warning('يرجى كتابة اسم وسعر المنتج');
+              return;
+            }
+
+            const updates = {
+              name,
+              price,
+              oldPrice,
+              category,
+              imageUrl,
+              status,
+              isApproved: status === 'approved',
+              description,
+              updatedAt: serverTimestamp()
+            };
+
+            try {
+              await dbUpdate(`places/${placeId}/products/${productId}`, updates);
+              if (adminCache.products) {
+                const pItem = adminCache.products.find(p => p.id === productId && p.placeId === placeId);
+                if (pItem) Object.assign(pItem, updates);
+              }
+              toast.success('تم تحديث بيانات المنتج بنجاح ✨');
+              modal.close();
+              switchAdminSection('products', false);
+            } catch (err) {
+              toast.error('فشل تحديث المنتج: ' + err.message);
+            }
+          }
+        },
+        { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+      ]
+    });
+  };
+
   window.adminApproveProductAction = async (placeId, productId) => {
     try {
       await adminApproveProduct(placeId, productId);
@@ -2446,7 +2626,7 @@ async function renderAdminUsers($container) {
 }
 
 // ─────────────────────────────────────────────
-//  6. Offers
+//  6. Offers (إدارة العروض)
 // ─────────────────────────────────────────────
 async function renderAdminOffers($container) {
   if (!adminCache.offers) {
@@ -2456,41 +2636,95 @@ async function renderAdminOffers($container) {
 
   $container.innerHTML = `
     <div class="admin-fade-in">
-      <div class="dashboard-header">
+      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
-          <h1 class="dashboard-header__title">إدارة العروض (${offers.length})</h1>
-          <div class="dashboard-header__subtitle">مراجعة وحذف عروض الأنشطة التجارية</div>
+          <h1 class="dashboard-header__title">إدارة العروض والخصومات (${offers.length})</h1>
+          <div class="dashboard-header__subtitle">مشاهدة وتعديل واعتماد وحذف عروض وتخفيضات الأنشطة التجارية</div>
         </div>
+      </div>
+
+      <!-- Offers Search Filter -->
+      <div class="filter-bar" style="margin-bottom:16px">
+        <input type="search" id="admin-offers-search" class="form-input" placeholder="🔍 بحث بعنوان العرض أو اسم المكان..." style="max-width:380px;margin:0" />
       </div>
 
       <div class="dashboard-table-wrapper">
         <table class="dashboard-table">
           <thead>
             <tr>
+              <th style="width:60px">الصورة</th>
               <th>العرض</th>
               <th>المكان</th>
-              <th>السعر الجديد</th>
+              <th>السعر بعد الخصم</th>
+              <th>السعر القديم</th>
               <th>الحالة</th>
-              <th>حذف</th>
+              <th>إجراءات</th>
             </tr>
           </thead>
-          <tbody>
-            ${offers.length === 0 ? '<tr><td colspan="5" class="text-center">لا توجد عروض حالياً</td></tr>' : offers.map(o => `
-              <tr>
-                <td><strong>${escHtml(o.title || '')}</strong></td>
-                <td>${escHtml(o.placeName || '')}</td>
-                <td><strong>${o.newPrice || 0} ج.م</strong></td>
-                <td><span class="badge ${o.status === 'active' ? 'badge--published' : 'badge--pending'}">${o.status || 'active'}</span></td>
-                <td>
-                  <button class="btn btn-xs btn-danger" onclick="deleteOfferAdmin('${escAttr(o._id)}')">${ICONS.trash} حذف</button>
-                </td>
-              </tr>
-            `).join('')}
+          <tbody id="admin-offers-tbody">
+            ${renderAdminOffersTableRows(offers)}
           </tbody>
         </table>
       </div>
     </div>
   `;
+
+  document.getElementById('admin-offers-search')?.addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    const filtered = offers.filter(o => 
+      !q ||
+      (o.title || '').toLowerCase().includes(q) ||
+      (o.placeName || '').toLowerCase().includes(q) ||
+      (o.description || '').toLowerCase().includes(q)
+    );
+    const tbody = document.getElementById('admin-offers-tbody');
+    if (tbody) tbody.innerHTML = renderAdminOffersTableRows(filtered);
+  });
+}
+
+function renderAdminOffersTableRows(offers) {
+  if (!offers.length) return '<tr><td colspan="7" class="text-center" style="padding:30px;color:var(--text-muted)">لا توجد عروض حالياً</td></tr>';
+
+  return offers.map(o => {
+    const img = o.imageUrl || './icons/icon-192x192.png';
+    const isActive = o.status === 'active';
+
+    return `
+      <tr>
+        <td>
+          <img src="${escAttr(img)}" alt="${escAttr(o.title)}" style="width:44px;height:44px;object-fit:cover;border-radius:var(--radius-md);border:1px solid var(--border)" onerror="this.src='./icons/icon-192x192.png'" />
+        </td>
+        <td>
+          <strong style="font-size:13.5px">${escHtml(o.title || '')}</strong>
+          ${o.discount ? `<span class="badge badge--danger" style="margin-right:6px;font-size:10px;font-weight:700">خصم ${o.discount}%</span>` : ''}
+          ${o.description ? `<div style="font-size:11.5px;color:var(--text-muted);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${escHtml(o.description)}</div>` : ''}
+        </td>
+        <td>
+          <a href="place.html?slug=${escAttr(o.placeSlug || o.placeId)}" target="_blank" style="color:var(--primary);font-weight:600;display:inline-flex;align-items:center;gap:4px">
+            ${escHtml(o.placeName || 'المكان')}
+          </a>
+        </td>
+        <td><strong style="color:var(--accent);font-size:1.05rem">${o.newPrice || 0} ج.م</strong></td>
+        <td>${o.oldPrice ? `<span style="text-decoration:line-through;color:var(--text-muted);font-size:12px">${o.oldPrice} ج.م</span>` : '<span class="text-muted">—</span>'}</td>
+        <td>
+          <span class="badge ${isActive ? 'badge--published' : 'badge--pending'}">${isActive ? '✓ نشط' : 'متوقف'}</span>
+        </td>
+        <td>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="btn btn-xs btn-outline" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE" onclick="adminViewOfferAction('${escAttr(o._id)}')" title="مشاهدة تفاصيل العرض">
+              ${ICONS.eye} مشاهدة
+            </button>
+            <button class="btn btn-xs btn-outline" style="background:#F0FDF4;color:#15803D;border-color:#BBF7D0" onclick="adminEditOfferAction('${escAttr(o._id)}')" title="تعديل بيانات العرض">
+              ${ICONS.edit} تعديل
+            </button>
+            <button class="btn btn-xs btn-danger" onclick="deleteOfferAdmin('${escAttr(o._id)}')" title="حذف العرض">
+              ${ICONS.trash}
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 // ─────────────────────────────────────────────
@@ -3063,7 +3297,11 @@ window.togglePlaceVerification = async (placeId, status) => {
     if (adminCache.places && adminCache.places[placeId]) {
       Object.assign(adminCache.places[placeId], updates);
     }
-    toast.success(status ? 'تم توثيق المكان وتفعيل العلامة الزرقاء ✓' : 'تم إلغاء التوثيق');
+    if (status) {
+      const placeData = adminCache.places ? adminCache.places[placeId] : (await dbGet(`places/${placeId}`));
+      if (placeData) broadcastPlaceVerifiedNotification(placeData).catch(() => {});
+    }
+    toast.success(status ? 'تم توثيق المكان وتفعيل العلامة المعتمدة وإرسال إشعار لكافة المستخدمين ✓' : 'تم إلغاء التوثيق');
     switchAdminSection(_currentSection, false);
   } catch (err) {
     toast.error('فشلت العملية: ' + err.message);
@@ -3544,7 +3782,10 @@ window.approveVerification = async (reqId, placeId) => {
       Object.assign(adminCache.places[placeId], updates);
     }
 
-    toast.success('تم قبول طلب التوثيق وتفعيل العلامة الزرقاء للمكان ✓');
+    const placeData = adminCache.places ? adminCache.places[placeId] : (await dbGet(`places/${placeId}`));
+    if (placeData) broadcastPlaceVerifiedNotification(placeData).catch(() => {});
+
+    toast.success('تم قبول طلب التوثيق وتفعيل العلامة المعتمدة وإرسال إشعار لكافة المستخدمين ✓');
     switchAdminSection(_currentSection, false);
   } catch (err) {
     console.error(err);
@@ -3751,6 +3992,173 @@ window.toggleUserStatus = async (uid, newStatus) => {
   } catch (err) {
     toast.error('فشلت العملية');
   }
+};
+
+window.adminViewOfferAction = async (offerId) => {
+  const offer = adminCache.offers?.[offerId] || (await dbGet(`offers/${offerId}`));
+  if (!offer) {
+    toast.error('لم يتم العثور على بيانات العرض');
+    return;
+  }
+
+  const modal = showModal({
+    title: `🎁 تفاصيل العرض: ${escHtml(offer.title || '')}`,
+    size: 'md',
+    content: `
+      <div style="display:flex;flex-direction:column;gap:14px;padding:4px">
+        ${offer.imageUrl ? `
+          <div style="width:100%;height:220px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);background:var(--surface-2);display:flex;align-items:center;justify-content:center">
+            <img src="${escAttr(offer.imageUrl)}" alt="${escAttr(offer.title)}" style="max-width:100%;max-height:100%;object-fit:contain" onerror="this.src='./icons/icon-192x192.png'" />
+          </div>
+        ` : ''}
+
+        <div style="background:var(--surface-2);padding:14px;border-radius:var(--radius-md);border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+            <h3 style="margin:0;font-size:1.15rem;color:var(--text-primary)">${escHtml(offer.title)}</h3>
+            <span class="badge ${offer.status === 'active' ? 'badge--success' : 'badge--warning'}">
+              ${offer.status === 'active' ? '✓ نشط ومفعل' : 'متوقف'}
+            </span>
+          </div>
+
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px">
+            ${escHtml(offer.description || 'لا يوجد وصف تفصيلي لهذا العرض.')}
+          </div>
+
+          <div style="display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px dashed var(--border);flex-wrap:wrap">
+            <div>
+              <span style="font-size:12px;color:var(--text-muted)">السعر بعد الخصم: </span>
+              <strong style="font-size:1.25rem;color:var(--primary)">${offer.newPrice || 0} ج.م</strong>
+            </div>
+            ${offer.oldPrice ? `
+              <div>
+                <span style="font-size:12px;color:var(--text-muted)">السعر الأصلي: </span>
+                <span style="text-decoration:line-through;color:var(--text-muted);font-size:1.05rem">${offer.oldPrice} ج.م</span>
+              </div>
+            ` : ''}
+            ${offer.discount ? `
+              <span class="badge badge--danger" style="font-weight:700">خصم ${offer.discount}%</span>
+            ` : ''}
+          </div>
+        </div>
+
+        <div style="font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;padding:0 4px;flex-wrap:wrap;gap:6px">
+          <span>🏪 تابع لمكان: <strong>${escHtml(offer.placeName || 'غير محدد')}</strong></span>
+          <span>📅 ينتهي في: <strong>${offer.expiresAt ? formatDate(offer.expiresAt) : 'غير محدد'}</strong></span>
+        </div>
+      </div>
+    `,
+    buttons: [
+      {
+        label: '✏️ تعديل هذا العرض',
+        type: 'primary',
+        onClick: () => {
+          modal.close();
+          adminEditOfferAction(offerId);
+        }
+      },
+      { label: 'إغلاق', type: 'ghost', closeOnClick: true }
+    ]
+  });
+};
+
+window.adminEditOfferAction = async (offerId) => {
+  const offer = adminCache.offers?.[offerId] || (await dbGet(`offers/${offerId}`));
+  if (!offer) {
+    toast.error('لم يتم العثور على بيانات العرض');
+    return;
+  }
+
+  const modal = showModal({
+    title: `✏️ تعديل العرض: ${escHtml(offer.title || '')}`,
+    size: 'md',
+    content: `
+      <form id="admin-edit-offer-form" onsubmit="return false">
+        <div class="form-group">
+          <label class="form-label">عنوان العرض <span class="required">*</span></label>
+          <input type="text" id="aeo-title" class="form-input" value="${escAttr(offer.title || '')}" required />
+        </div>
+
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">السعر بعد الخصم (ج.م) <span class="required">*</span></label>
+            <input type="number" id="aeo-newPrice" class="form-input" value="${offer.newPrice || ''}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">السعر القديم قبل الخصم</label>
+            <input type="number" id="aeo-oldPrice" class="form-input" value="${offer.oldPrice || ''}" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">رابط صورة العرض (URL)</label>
+          <input type="url" id="aeo-imageUrl" class="form-input" value="${escAttr(offer.imageUrl || '')}" placeholder="https://..." style="direction:ltr" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">حالة العرض</label>
+          <select id="aeo-status" class="form-select">
+            <option value="active" ${offer.status === 'active' ? 'selected' : ''}>نشط ومفعل ✓</option>
+            <option value="expired" ${offer.status === 'expired' ? 'selected' : ''}>منتهي الصلاحية</option>
+            <option value="disabled" ${offer.status === 'disabled' ? 'selected' : ''}>متوقف مؤقتاً</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">تفاصيل وشروط العرض</label>
+          <textarea id="aeo-description" class="form-textarea" rows="3">${escHtml(offer.description || '')}</textarea>
+        </div>
+      </form>
+    `,
+    buttons: [
+      {
+        label: '💾 حفظ تعديلات العرض',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async () => {
+          const title = document.getElementById('aeo-title')?.value.trim();
+          const newPrice = parseFloat(document.getElementById('aeo-newPrice')?.value);
+          const oldPrice = parseFloat(document.getElementById('aeo-oldPrice')?.value) || null;
+          const imageUrl = document.getElementById('aeo-imageUrl')?.value.trim();
+          const status = document.getElementById('aeo-status')?.value || 'active';
+          const description = document.getElementById('aeo-description')?.value.trim();
+
+          if (!title || isNaN(newPrice)) {
+            toast.warning('يرجى كتابة عنوان وسعر العرض');
+            return;
+          }
+
+          let discount = 0;
+          if (oldPrice && oldPrice > newPrice) {
+            discount = Math.round(((oldPrice - newPrice) / oldPrice) * 100);
+          }
+
+          const updates = {
+            title,
+            newPrice,
+            oldPrice,
+            discount,
+            imageUrl,
+            status,
+            description,
+            updatedAt: serverTimestamp()
+          };
+
+          try {
+            await dbUpdate(`offers/${offerId}`, updates);
+            if (adminCache.offers && adminCache.offers[offerId]) {
+              Object.assign(adminCache.offers[offerId], updates);
+            }
+            toast.success('تم تحديث بيانات العرض بنجاح ✨');
+            modal.close();
+            switchAdminSection('offers', false);
+          } catch (err) {
+            toast.error('فشل تحديث العرض: ' + err.message);
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
 };
 
 window.deleteOfferAdmin = async (offerId) => {
