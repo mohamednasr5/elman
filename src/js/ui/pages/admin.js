@@ -402,13 +402,18 @@ async function renderAdminPlaces($container) {
       <div class="dashboard-header">
         <div>
           <h1 class="dashboard-header__title">إدارة الأماكن (${places.length})</h1>
-          <div class="dashboard-header__subtitle">التحكم في التوثيق، حالة النشر، والإعلانات المدفوعة المميزة</div>
+          <div class="dashboard-header__subtitle">التحكم في التوثيق، حالة النشر، وتصدير البيانات والإعلانات المدفوعة</div>
         </div>
       </div>
 
-      <!-- Search Filter -->
-      <div class="filter-bar" style="margin-bottom:16px">
-        <input type="search" id="admin-place-search" class="form-input" placeholder="🔍 بحث باسم المكان أو المنطقة أو التصنيف..." style="max-width:400px" />
+      <!-- Search Filter & Actions -->
+      <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <input type="search" id="admin-place-search" class="form-input" placeholder="🔍 بحث باسم المكان أو المنطقة أو التصنيف..." style="max-width:380px;margin:0" />
+        
+        <button type="button" class="btn btn-success" id="btn-export-places-excel" style="display:inline-flex;align-items:center;gap:8px;font-weight:700;padding:8px 16px;background:#10B981;border-color:#10B981;color:#fff;border-radius:var(--radius-md);box-shadow:0 2px 8px rgba(16,185,129,0.3);cursor:pointer;transition:all 0.2s" title="تصدير جميع بيانات الأنشطة والأماكن إلى ملف Excel منسق بالكامل بالحدود والألوان">
+          <span style="font-size:16px">📊</span>
+          <span>تصدير ملف Excel منسق (.xlsx / .xls)</span>
+        </button>
       </div>
 
       <!-- Places Table -->
@@ -433,6 +438,8 @@ async function renderAdminPlaces($container) {
     </div>
   `;
 
+  document.getElementById('btn-export-places-excel')?.addEventListener('click', exportPlacesToExcel);
+
   document.getElementById('admin-place-search')?.addEventListener('input', (e) => {
     const q = e.target.value.trim();
     const filtered = places.filter(p => 
@@ -445,6 +452,246 @@ async function renderAdminPlaces($container) {
     );
     document.getElementById('admin-places-tbody').innerHTML = renderAdminPlacesTableRows(filtered);
   });
+}
+
+/**
+ * Export Places & Businesses to Formatted Excel Spreadsheet (SpreadsheetML / .xls)
+ * Formatted with custom colors, header backgrounds, alternating rows, borders, and RTL.
+ */
+export async function exportPlacesToExcel() {
+  const exportBtn = document.getElementById('btn-export-places-excel');
+  if (exportBtn) {
+    exportBtn.classList.add('loading');
+    exportBtn.disabled = true;
+  }
+
+  try {
+    if (!adminCache.places || !adminCache.users) {
+      const [u, p] = await Promise.all([dbGet('users'), dbGet('places')]);
+      adminCache.users = u || {};
+      adminCache.places = p || {};
+    }
+
+    const places = Object.entries(adminCache.places || {}).map(([id, p]) => ({ ...p, _id: id }));
+    const users = adminCache.users || {};
+
+    if (!places.length) {
+      toast.warning('لا توجد أماكن لتصديرها');
+      return;
+    }
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+    // Build rows data
+    const rowsXml = places.map((p, idx) => {
+      const owner = users[p.userId || p.ownerId] || {};
+      const ownerEmail = owner.email || p.userEmail || p.email || 'غير متوفر';
+      const catName = p.customCategory || p.categoryName || p.categoryId || 'خدمات عامة';
+      const fullAddress = [p.area, p.address].filter(Boolean).join(' — ') || 'مدينة المنزلة';
+      const phone = p.phone || 'غير مسجل';
+      const whatsapp = p.whatsapp || p.phone || 'غير مسجل';
+      const rating = `${(Number(p.rating) || 5.0).toFixed(1)} ★ (${p.reviewCount || 0} تقييم)`;
+      const status = (p.isVerified ? 'موثق ✓' : 'غير موثق') + (p.isSponsored ? ' [إعلان مميز ⭐]' : '');
+      const rowBg = idx % 2 === 0 ? 'RowEven' : 'RowOdd';
+
+      return `
+        <Row ss:Height="22" ss:StyleID="${rowBg}">
+          <Cell ss:StyleID="${rowBg}Center"><Data ss:Type="Number">${idx + 1}</Data></Cell>
+          <Cell ss:StyleID="${rowBg}Bold"><Data ss:Type="String">${escapeXml(p.name || '')}</Data></Cell>
+          <Cell ss:StyleID="${rowBg}"><Data ss:Type="String">${escapeXml(catName)}</Data></Cell>
+          <Cell ss:StyleID="${rowBg}"><Data ss:Type="String">${escapeXml(fullAddress)}</Data></Cell>
+          <Cell ss:StyleID="${rowBg}Center"><Data ss:Type="String">${escapeXml(phone)}</Data></Cell>
+          <Cell ss:StyleID="${rowBg}Center"><Data ss:Type="String">${escapeXml(whatsapp)}</Data></Cell>
+          <Cell ss:StyleID="${rowBg}"><Data ss:Type="String">${escapeXml(ownerEmail)}</Data></Cell>
+          <Cell ss:StyleID="${rowBg}Center"><Data ss:Type="String">${escapeXml(rating)}</Data></Cell>
+          <Cell ss:StyleID="${rowBg}Center"><Data ss:Type="String">${escapeXml(status)}</Data></Cell>
+        </Row>
+      `;
+    }).join('');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:html="http://www.w3.org/TR/REC-html40">
+  
+  <Styles>
+    <Style ss:ID="Default" ss:Name="Normal">
+      <Alignment ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+      <Font ss:FontName="Segoe UI, Tahoma, Arial" ss:Size="11" ss:Color="#1F2937"/>
+    </Style>
+
+    <Style ss:ID="BrandTitle">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+      <Font ss:FontName="Segoe UI, Tahoma, Arial" ss:Size="15" ss:Bold="1" ss:Color="#FFFFFF"/>
+      <Interior ss:Color="#0F2B48" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#F5A623"/>
+      </Borders>
+    </Style>
+
+    <Style ss:ID="SubTitle">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+      <Font ss:FontName="Segoe UI, Tahoma, Arial" ss:Size="10" ss:Italic="1" ss:Color="#4B5563"/>
+      <Interior ss:Color="#F3F4F6" ss:Pattern="Solid"/>
+    </Style>
+
+    <Style ss:ID="Header">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1" ss:ReadingOrder="RightToLeft"/>
+      <Font ss:FontName="Segoe UI, Tahoma, Arial" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+      <Interior ss:Color="#1B4F72" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#0F2B48"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2C6E9E"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2C6E9E"/>
+      </Borders>
+    </Style>
+
+    <Style ss:ID="RowEven">
+      <Alignment ss:Horizontal="Right" ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+      <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="RowEvenBold">
+      <Alignment ss:Horizontal="Right" ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+      <Font ss:FontName="Segoe UI, Tahoma, Arial" ss:Size="11" ss:Bold="1" ss:Color="#111827"/>
+      <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="RowEvenCenter">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+      <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/>
+      </Borders>
+    </Style>
+
+    <Style ss:ID="RowOdd">
+      <Alignment ss:Horizontal="Right" ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+      <Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="RowOddBold">
+      <Alignment ss:Horizontal="Right" ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+      <Font ss:FontName="Segoe UI, Tahoma, Arial" ss:Size="11" ss:Bold="1" ss:Color="#111827"/>
+      <Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="RowOddCenter">
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:ReadingOrder="RightToLeft"/>
+      <Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+      </Borders>
+    </Style>
+  </Styles>
+
+  <Worksheet ss:Name="دليل الأنشطة والأماكن" ss:RightToLeft="1">
+    <Table ss:DefaultRowHeight="20">
+      <Column ss:Width="45"/>  <!-- م -->
+      <Column ss:Width="190"/> <!-- اسم النشاط -->
+      <Column ss:Width="140"/> <!-- تصنيف النشاط -->
+      <Column ss:Width="230"/> <!-- عنوان النشاط -->
+      <Column ss:Width="120"/> <!-- رقم الهاتف -->
+      <Column ss:Width="120"/> <!-- رقم الواتساب -->
+      <Column ss:Width="200"/> <!-- ايميل المستخدم -->
+      <Column ss:Width="120"/> <!-- تقييم النشاط -->
+      <Column ss:Width="130"/> <!-- حالة النشاط -->
+
+      <Row ss:Height="34">
+        <Cell ss:MergeAcross="8" ss:StyleID="BrandTitle">
+          <Data ss:Type="String">دليل المنزلة والمطرية الرقمي — تقرير الأنشطة والمحلات المسجلة</Data>
+        </Cell>
+      </Row>
+
+      <Row ss:Height="22">
+        <Cell ss:MergeAcross="8" ss:StyleID="SubTitle">
+          <Data ss:Type="String">تاريخ الاستخراج: ${dateStr} ${timeStr} | إجمالي الأماكن: ${places.length} مكان مسجل</Data>
+        </Cell>
+      </Row>
+
+      <Row ss:Height="6"/>
+
+      <Row ss:Height="26">
+        <Cell ss:StyleID="Header"><Data ss:Type="String">م</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">اسم النشاط</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">تصنيف النشاط</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">عنوان النشاط</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">رقم الهاتف</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">رقم الواتساب</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">ايميل المستخدم</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">تقييم النشاط</Data></Cell>
+        <Cell ss:StyleID="Header"><Data ss:Type="String">حالة النشاط</Data></Cell>
+      </Row>
+
+      ${rowsXml}
+
+    </Table>
+    <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+      <DisplayRightToLeft/>
+      <Selected/>
+      <FreezePanes/>
+      <FrozenNoSplit/>
+      <SplitHorizontal>4</SplitHorizontal>
+      <TopRowBottomPane>4</TopRowBottomPane>
+    </WorksheetOptions>
+  </Worksheet>
+</Workbook>`;
+
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dalil_elmanzala_places_${dateStr}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast.success('تم تصدير ملف الإكسيل المنسق بنجاح 📊✨');
+  } catch (err) {
+    console.error(err);
+    toast.error('فشل تصدير ملف الإكسيل: ' + err.message);
+  } finally {
+    if (exportBtn) {
+      exportBtn.classList.remove('loading');
+      exportBtn.disabled = false;
+    }
+  }
+}
+
+function escapeXml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
 function renderAdminPlacesTableRows(places) {
