@@ -1668,3 +1668,50 @@ export async function getUserFollowedOffers(userId) {
     return [];
   }
 }
+
+/**
+ * Subscribe to Real-Time Presence / Online status of a Place Owner
+ * @param {string} ownerId
+ * @param {Function} callback - receives { isOnline: boolean, lastSeen: number }
+ * @returns {Function} unsubscribe function
+ */
+export function subscribeToOwnerPresence(ownerId, callback) {
+  if (!ownerId || typeof callback !== 'function') return () => {};
+
+  try {
+    const db = getDB();
+    const presenceRef = db.ref(`users/${ownerId}/presence`);
+    const userRef = db.ref(`users/${ownerId}`);
+
+    const listener = (snap) => {
+      if (snap && snap.exists()) {
+        const val = snap.val() || {};
+        const isOnline = Boolean(val.isOnline);
+        const lastSeen = Number(val.lastSeen) || 0;
+        const activeRecently = isOnline || (Date.now() - lastSeen < 3 * 60 * 1000);
+        callback({ isOnline: activeRecently, lastSeen });
+      } else {
+        userRef.once('value').then(uSnap => {
+          if (uSnap.exists()) {
+            const uVal = uSnap.val() || {};
+            const lastLogin = Number(uVal.lastLoginAt) || 0;
+            const activeRecently = Date.now() - lastLogin < 3 * 60 * 1000;
+            callback({ isOnline: activeRecently, lastSeen: lastLogin });
+          } else {
+            callback({ isOnline: false, lastSeen: 0 });
+          }
+        }).catch(() => callback({ isOnline: false, lastSeen: 0 }));
+      }
+    };
+
+    presenceRef.on('value', listener);
+
+    return () => {
+      try { presenceRef.off('value', listener); } catch (_) {}
+    };
+  } catch (err) {
+    console.warn('[subscribeToOwnerPresence] error:', err);
+    return () => {};
+  }
+}
+

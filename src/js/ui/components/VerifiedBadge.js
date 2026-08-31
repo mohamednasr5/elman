@@ -64,3 +64,17 @@ export function renderDeliveryBadge(type) {
   if (!item) return '';
   return `<span class="badge-delivery">${item.icon} ${item.text}</span>`;
 }
+
+/**
+ * Render Live Online Owner Badge (متصل الآن بالأخضر)
+ */
+export function renderOnlineBadge(isOnline = true) {
+  if (!isOnline) return '';
+  return `
+    <span class="badge-online-pulse" title="صاحب المكان متصل الآن بالموقع ومتاح للرد والتواصل" aria-label="صاحب المكان متصل الآن">
+      <span class="online-indicator-dot"></span>
+      <span class="online-indicator-text">متصل الآن</span>
+    </span>
+  `;
+}
+

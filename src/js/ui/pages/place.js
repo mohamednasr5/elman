@@ -4,10 +4,10 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, HAMMAD_PLACE_SLUG, dbUpdate } from '../../core/db.js';
+import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, HAMMAD_PLACE_SLUG, dbUpdate, subscribeToOwnerPresence } from '../../core/db.js';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
-import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '../components/VerifiedBadge.js';
+import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
@@ -155,6 +155,7 @@ export async function renderPlacePage($container, { slug, user }) {
                     ${((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
                     ${place.isVerified ? renderVerifiedBadge() : ''}
                     ${place.deliveryType ? renderDeliveryBadge(place.deliveryType) : ''}
+                    <span id="place-owner-online-container" class="place-owner-online-slot"></span>
                   </div>
 
                   <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -633,6 +634,25 @@ export async function renderPlacePage($container, { slug, user }) {
           } catch (_) {}
         }
       }).catch(() => {});
+    }
+
+    // ── Live Owner Online Presence (متصل الآن بالأخضر) ──
+    const ownerId = place.ownerId || place.userId || place.createdBy;
+    const onlineContainer = document.getElementById('place-owner-online-container');
+
+    if (onlineContainer) {
+      const isCurrentOwner = currentUser && ownerId && currentUser.uid === ownerId;
+      if (isCurrentOwner) {
+        onlineContainer.innerHTML = renderOnlineBadge(true);
+      } else if (ownerId) {
+        subscribeToOwnerPresence(ownerId, ({ isOnline }) => {
+          if (isOnline) {
+            onlineContainer.innerHTML = renderOnlineBadge(true);
+          } else {
+            onlineContainer.innerHTML = '';
+          }
+        });
+      }
     }
 
     // Working hours toggle

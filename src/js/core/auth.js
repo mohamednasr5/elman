@@ -22,16 +22,20 @@ export function initAuth() {
         const profile = await syncUserProfile(firebaseUser);
         appState.set('user', profile);
         appState.set('authLoading', false);
+        setupUserPresence(firebaseUser.uid);
         emit('auth:signedIn', profile);
       } catch (err) {
         console.error('[Auth] Failed to sync user profile:', err);
-        appState.set('user', buildBasicProfile(firebaseUser));
+        const basic = buildBasicProfile(firebaseUser);
+        appState.set('user', basic);
         appState.set('authLoading', false);
-        emit('auth:signedIn', appState.get('user'));
+        setupUserPresence(firebaseUser.uid);
+        emit('auth:signedIn', basic);
       }
     } else {
       appState.set('user', null);
       appState.set('authLoading', false);
+      cleanupUserPresence();
       emit('auth:signedOut');
     }
   });
@@ -248,6 +252,84 @@ function buildBasicProfile(firebaseUser) {
   };
 }
 
+let _currentPresenceUid = null;
+let _presenceInterval = null;
+
+/**
+ * Setup Real-time Firebase Presence for logged in user
+ */
+function setupUserPresence(uid) {
+  if (!uid || _currentPresenceUid === uid) return;
+  _currentPresenceUid = uid;
+
+  try {
+    const db = getDB();
+    const userStatusRef = db.ref(`users/${uid}/presence`);
+    const connectedRef = db.ref('.info/connected');
+
+    connectedRef.on('value', (snap) => {
+      if (snap.val() === true) {
+        userStatusRef.onDisconnect().set({
+          isOnline: false,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+          userStatusRef.set({
+            isOnline: true,
+            lastSeen: firebase.database.ServerValue.TIMESTAMP
+          });
+        });
+      }
+    });
+
+    const updateHeartbeat = () => {
+      if (document.visibilityState === 'visible') {
+        userStatusRef.update({
+          isOnline: true,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        }).catch(() => {});
+      } else {
+        userStatusRef.update({
+          isOnline: false,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        }).catch(() => {});
+      }
+    };
+
+    document.removeEventListener('visibilitychange', window._presenceVisibilityHandler);
+    window._presenceVisibilityHandler = updateHeartbeat;
+    document.addEventListener('visibilitychange', updateHeartbeat);
+
+    if (_presenceInterval) clearInterval(_presenceInterval);
+    _presenceInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && appState.get('user')) {
+        userStatusRef.update({
+          isOnline: true,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        }).catch(() => {});
+      }
+    }, 45000);
+  } catch (err) {
+    console.warn('[Presence] Error setting up user presence:', err);
+  }
+}
+
+function cleanupUserPresence() {
+  if (_currentPresenceUid) {
+    try {
+      const db = getDB();
+      db.ref(`users/${_currentPresenceUid}/presence`).update({
+        isOnline: false,
+        lastSeen: firebase.database.ServerValue.TIMESTAMP
+      }).catch(() => {});
+    } catch (_) {}
+    _currentPresenceUid = null;
+  }
+  if (_presenceInterval) {
+    clearInterval(_presenceInterval);
+    _presenceInterval = null;
+  }
+}
+
 /**
  * Cleanup auth listener
  */
@@ -256,4 +338,6 @@ export function destroyAuth() {
     _authUnsubscribe();
     _authUnsubscribe = null;
   }
+  cleanupUserPresence();
 }
+
