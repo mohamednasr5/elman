@@ -128,9 +128,14 @@ export async function renderProductsPage($container) {
             <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:var(--space-2)">📍 ${escHtml(p.placeName)}</div>
             ${p.category ? `<div style="font-size:11px;color:var(--primary);margin-bottom:4px;font-weight:600">🏷️ ${escHtml(p.category)}</div>` : ''}
             ${p.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:var(--space-2);line-height:1.5">${escHtml(p.description)}</p>` : ''}
-            <div class="product-card__price">
+            <div class="product-card__price" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <span class="product-card__price-current">${formatPrice(p.price)}</span>
               ${p.oldPrice ? `<span class="product-card__price-old">${formatPrice(p.oldPrice)}</span>` : ''}
+              ${p.oldPrice && Number(p.oldPrice) > Number(p.price) ? `
+                <span class="badge" style="background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:4px;margin-right:auto">
+                  وفرت ${formatPrice(Number(p.oldPrice) - Number(p.price))}
+                </span>
+              ` : ''}
             </div>
             <div class="product-card__cta-btn">
               <span>🛍️ تفاصيل وطلب المنتج</span>

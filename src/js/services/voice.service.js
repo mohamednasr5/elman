@@ -448,52 +448,98 @@ export async function openManzalaVoiceAssistantModal() {
 
     try {
       const { getPublishedPlaces, getCategories } = await import('../core/db.js');
-      const { normalizeArabic, arabicScore } = await import('../utils/arabic.js');
+      const { normalizeArabic, arabicScore, arabicMatch, expandArabicSearchIntent } = await import('../utils/arabic.js');
 
       const [places, categories] = await Promise.all([
-        getPublishedPlaces({ limit: 60 }),
+        getPublishedPlaces({ limit: 120 }),
         getCategories()
       ]);
 
       const normQ = normalizeArabic(query).toLowerCase();
+      const intents = (expandArabicSearchIntent ? expandArabicSearchIntent(query) : []).map(i => normalizeArabic(i).toLowerCase());
 
-      // Find direct matching places
+      const isPlaceSponsored = (p) => Boolean(
+        (p.isSponsored || p.isFeatured || p.isPromoted) && 
+        (!p.sponsoredUntil || p.sponsoredUntil > Date.now())
+      );
+
+      // Find and score matching places
       const scored = (places || []).map(p => {
+        const pName = normalizeArabic(p.name || '').toLowerCase();
+        const pDesc = normalizeArabic(p.description || '').toLowerCase();
+        const pCat = normalizeArabic(`${p.customCategory || ''} ${p.categoryName || ''} ${p.categoryId || ''}`).toLowerCase();
+        const pArea = normalizeArabic(p.area || '').toLowerCase();
+        const pServices = (p.services || []).map(s => normalizeArabic(s).toLowerCase());
+
         const nameScore = arabicScore(p.name || '', query);
         const descScore = arabicScore(p.description || '', query);
         const catScore = arabicScore(p.categoryId || '', query);
-        const servScore = (p.services || []).some(s => normalizeArabic(s).includes(normQ)) ? 0.8 : 0;
-        const total = Math.max(nameScore, descScore * 0.7, catScore * 0.9, servScore);
-        return { place: p, score: total };
-      }).filter(item => item.score > 0.15 || normalizeArabic(item.place.name || '').includes(normQ) || (item.place.area && normalizeArabic(item.place.area).includes(normQ)))
-        .sort((a, b) => b.score - a.score);
 
-      const topPlaces = scored.slice(0, 3).map(s => s.place);
+        let intentScore = 0;
+        intents.forEach(intent => {
+          if (pName.includes(intent) || pCat.includes(intent)) intentScore = Math.max(intentScore, 0.85);
+          else if (pServices.some(s => s.includes(intent))) intentScore = Math.max(intentScore, 0.75);
+          else if (pDesc.includes(intent)) intentScore = Math.max(intentScore, 0.5);
+        });
+
+        const servScore = pServices.some(s => s.includes(normQ)) ? 0.8 : 0;
+        const directMatch = pName.includes(normQ) || pCat.includes(normQ) || pArea.includes(normQ);
+
+        const total = Math.max(nameScore, descScore * 0.7, catScore * 0.9, servScore, intentScore, directMatch ? 0.6 : 0);
+        return { place: p, score: total, isSpons: isPlaceSponsored(p) };
+      }).filter(item => item.score > 0.15);
+
+      // Sort: Sponsored Matching Places FIRST -> Verified Matching Places -> Others
+      scored.sort((a, b) => {
+        if (a.isSpons && !b.isSpons) return -1;
+        if (!a.isSpons && b.isSpons) return 1;
+        if (a.place.isVerified && !b.place.isVerified) return -1;
+        if (!a.place.isVerified && b.place.isVerified) return 1;
+        return b.score - a.score;
+      });
+
+      const topPlaces = scored.slice(0, 4).map(s => ({ ...s.place, _isSponsoredResult: s.isSpons }));
 
       if (topPlaces.length > 0) {
-        if (resultsTitle) resultsTitle.innerHTML = `🎯 وجدنا لك ${scored.length} مكان مطابق لـ "<strong>${escapeHtml(query)}</strong>":`;
+        const sponsoredCount = topPlaces.filter(p => p._isSponsoredResult).length;
+        if (resultsTitle) {
+          resultsTitle.innerHTML = `🎯 وجدنا لك ${scored.length} نتيجة لـ "<strong>${escapeHtml(query)}</strong>"${sponsoredCount > 0 ? ' (يتصدرها إعلان مميز ⭐)' : ''}:`;
+        }
+
         resultsList.innerHTML = `
-          ${topPlaces.map(p => `
-            <div class="mvm-place-row" onclick="window.location.href='place.html?slug=${encodeURIComponent(p.slug || p.id)}'">
-              <div class="mvm-place-avatar">
-                ${p.logoUrl 
-                  ? `<img src="${escapeHtml(p.logoUrl)}" alt="${escapeHtml(p.name)}" />`
-                  : `<div class="mvm-avatar-fallback">${escapeHtml((p.name || 'م')[0])}</div>`
-                }
-              </div>
-              <div class="mvm-place-info">
-                <div class="mvm-place-name">
-                  <span>${escapeHtml(p.name)}</span>
-                  ${p.isVerified ? '<span style="color:#10B981;font-size:11px">✓ موثق</span>' : ''}
+          ${topPlaces.map(p => {
+            const isSponsored = p._isSponsoredResult;
+            const placeUrl = `place.html?slug=${encodeURIComponent(p.slug || p.id)}`;
+            const rowStyle = isSponsored 
+              ? 'background:linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.03) 100%);border:1.5px solid #F59E0B;box-shadow:0 3px 12px rgba(245,158,11,0.18);position:relative;'
+              : 'border:1px solid var(--border);';
+
+            return `
+              <div class="mvm-place-row ${isSponsored ? 'mvm-place-row--sponsored' : ''}" style="${rowStyle}" onclick="window.location.href='${placeUrl}'">
+                <div class="mvm-place-avatar" style="${isSponsored ? 'border:2px solid #F59E0B;' : ''}">
+                  ${p.logoUrl 
+                    ? `<img src="${escapeHtml(p.logoUrl)}" alt="${escapeHtml(p.name)}" />`
+                    : `<div class="mvm-avatar-fallback" style="${isSponsored ? 'background:#F59E0B;color:#fff;' : ''}">${escapeHtml((p.name || 'م')[0])}</div>`
+                  }
                 </div>
-                <div class="mvm-place-meta">
-                  <span>📍 ${escapeHtml(p.area || 'المنزلة')}</span>
-                  ${p.phone ? `<span style="direction:ltr">📞 ${escapeHtml(p.phone)}</span>` : ''}
+                <div class="mvm-place-info">
+                  <div class="mvm-place-name">
+                    <span>${escapeHtml(p.name)}</span>
+                    ${isSponsored ? `<span class="badge" style="background:linear-gradient(135deg, #F59E0B 0%, #D97706 100%);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;box-shadow:0 1px 4px rgba(245,158,11,0.3);margin-right:4px">📢 إعلان</span>` : ''}
+                    ${p.isVerified ? '<span style="color:#10B981;font-size:11px">✓ موثق</span>' : ''}
+                  </div>
+                  <div class="mvm-place-meta">
+                    <span>📍 ${escapeHtml(p.area || 'المنزلة')}</span>
+                    ${p.customCategory || p.categoryName ? `<span style="color:var(--primary);font-weight:600">🏷️ ${escapeHtml(p.customCategory || p.categoryName)}</span>` : ''}
+                    ${p.phone ? `<span style="direction:ltr">📞 ${escapeHtml(p.phone)}</span>` : ''}
+                  </div>
                 </div>
+                <a href="${placeUrl}" class="btn btn-sm ${isSponsored ? 'btn-secondary' : 'btn-primary'}" style="border-radius:8px;padding:5px 12px;font-size:12px;white-space:nowrap;font-weight:700;${isSponsored ? 'background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;' : ''}">
+                  ${isSponsored ? '⭐ عرض الإعلان ←' : 'عرض المكان ←'}
+                </a>
               </div>
-              <a href="place.html?slug=${encodeURIComponent(p.slug || p.id)}" class="btn btn-sm btn-primary" style="border-radius:8px;padding:4px 12px;font-size:12px;white-space:nowrap">عرض المكان ←</a>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
 
           <div style="margin-top:10px;text-align:center">
             <a href="search.html?q=${encodeURIComponent(query)}" class="btn btn-secondary btn-sm" style="width:100%;border-radius:10px;font-weight:700">

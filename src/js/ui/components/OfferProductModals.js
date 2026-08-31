@@ -184,6 +184,15 @@ export function openProductFullDetailsModal(product, place = {}) {
                 <span style="text-decoration:line-through;color:var(--text-muted);font-size:1.2rem">${formatPrice(product.oldPrice)}</span>
               </div>
             ` : ''}
+            ${product.oldPrice && Number(product.oldPrice) > Number(product.price) ? `
+              <div style="margin-right:auto;background:#ECFDF5;color:#065F46;padding:6px 14px;border-radius:var(--radius-full);font-size:13px;font-weight:800;border:1px solid #A7F3D0;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(16,185,129,0.15)">
+                <span>💰</span>
+                <span>وفرت: <strong>${formatPrice(Number(product.oldPrice) - Number(product.price))}</strong></span>
+                <span style="background:#10B981;color:#fff;padding:2px 7px;border-radius:var(--radius-sm);font-size:11px;font-weight:800">
+                  خصم ${Math.round(((Number(product.oldPrice) - Number(product.price)) / Number(product.oldPrice)) * 100)}%
+                </span>
+              </div>
+            ` : ''}
           </div>
 
           <!-- Description -->
