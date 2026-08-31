@@ -128,6 +128,44 @@ export async function renderCategoryPage($container, { slug, query, user }) {
     </div>
 
     <div class="container section">
+      
+      ${isAtmCategory ? `
+        <!-- ATM 15-Minute Live Filter Bar -->
+        <div class="atm-filters-bar animate-fade-in" style="background:linear-gradient(135deg, #0F2B48 0%, #1B4F72 100%);color:#fff;padding:16px 20px;border-radius:var(--radius-lg);margin-bottom:var(--space-5);border:1px solid rgba(255,255,255,0.15);box-shadow:0 6px 20px rgba(27,79,114,0.25)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:1.6rem">🏧</span>
+              <div>
+                <h3 style="font-size:1.08rem;font-weight:800;color:#fff;margin:0 0 2px 0">فلترة ماكينات الصراف الآلي الحية</h3>
+                <div style="font-size:12px;color:rgba(255,255,255,0.8)">⏱️ التصنيف والفلترة يعتمد على التقارير المسجلة خلال آخر 15 دقيقة</div>
+              </div>
+            </div>
+            <span class="badge" style="background:rgba(16,185,129,0.2);color:#A7F3D0;border:1px solid rgba(16,185,129,0.4);font-weight:700;font-size:11.5px;padding:4px 10px;border-radius:9999px">
+              ● تقارير آخر 15 دقيقة
+            </span>
+          </div>
+
+          <!-- Filter Pills -->
+          <div class="atm-filter-pills" id="atm-filter-pills-bar" style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm btn-atm-filter active" data-atm-filter="all" style="border-radius:var(--radius-full);font-size:12px;font-weight:700;padding:6px 14px;background:#F5A623;color:#0F2B48;border:1px solid #F5A623">
+              🌐 الكل
+            </button>
+            <button type="button" class="btn btn-sm btn-atm-filter" data-atm-filter="has-cash" style="border-radius:var(--radius-full);font-size:12px;font-weight:700;padding:6px 14px;background:rgba(16,185,129,0.2);color:#A7F3D0;border:1px solid rgba(16,185,129,0.4)">
+              💵 ماكينات بها أموال حالياً
+            </button>
+            <button type="button" class="btn btn-sm btn-atm-filter" data-atm-filter="working" style="border-radius:var(--radius-full);font-size:12px;font-weight:700;padding:6px 14px;background:rgba(59,130,246,0.2);color:#BFDBFE;border:1px solid rgba(59,130,246,0.4)">
+              🟢 ماكينات تعمل حالياً
+            </button>
+            <button type="button" class="btn btn-sm btn-atm-filter" data-atm-filter="out-of-service" style="border-radius:var(--radius-full);font-size:12px;font-weight:700;padding:6px 14px;background:rgba(239,68,68,0.2);color:#FECACA;border:1px solid rgba(239,68,68,0.4)">
+              🔴 خارج نطاق الخدمة
+            </button>
+            <button type="button" class="btn btn-sm btn-atm-filter" data-atm-filter="no-cash" style="border-radius:var(--radius-full);font-size:12px;font-weight:700;padding:6px 14px;background:rgba(245,158,11,0.2);color:#FDE68A;border:1px solid rgba(245,158,11,0.4)">
+              🚫 ليس بها أموال حالياً
+            </button>
+          </div>
+        </div>
+      ` : ''}
+
       <!-- Filter & Sort Bar -->
       <div class="filter-bar" style="margin-bottom:var(--space-5);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div style="font-size:14px;font-weight:700;color:var(--text-primary)">
@@ -150,6 +188,7 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   `;
 
   const rawPlaces = await getPlacesByCategory(cat.slug || cat._key);
+  let currentAtmFilter = 'all';
   const grid = document.getElementById('category-places-grid');
   const sortSelect = document.getElementById('cat-sort-filter');
   if (!grid) return;
@@ -169,6 +208,9 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   async function renderSortedPlaces() {
     const sortBy = sortSelect?.value || 'default';
     let places = [...rawPlaces];
+    if (isAtmCategory && currentAtmFilter !== 'all') {
+      places = filterAtmPlaces(places, currentAtmFilter, 15);
+    }
 
     if (sortBy === 'nearest') {
       if (!_catUserLocation) {
@@ -208,6 +250,27 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   }
 
   sortSelect?.addEventListener('change', renderSortedPlaces);
+
+  // ATM Filter button click handlers
+  if (isAtmCategory) {
+    document.querySelectorAll('#atm-filter-pills-bar .btn-atm-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#atm-filter-pills-bar .btn-atm-filter').forEach(b => {
+          b.classList.remove('active');
+          b.style.background = 'rgba(255,255,255,0.12)';
+          b.style.color = '#fff';
+          b.style.borderColor = 'rgba(255,255,255,0.25)';
+        });
+        btn.classList.add('active');
+        btn.style.background = '#F5A623';
+        btn.style.color = '#0F2B48';
+        btn.style.borderColor = '#F5A623';
+
+        currentAtmFilter = btn.getAttribute('data-atm-filter') || 'all';
+        renderSortedPlaces();
+      });
+    });
+  }
   renderSortedPlaces();
 }
 

@@ -1,6 +1,7 @@
 import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
+import { isAtmPlace, filterAtmPlaces } from '../../utils/atm.js';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
@@ -74,6 +75,38 @@ export async function renderPlacesPage($container, { query = {}, user }) {
         </select>
       </div>
 
+      <!-- ATM 15-Minute Filter Bar Slot -->
+      <div id="places-atm-filters-slot" style="display:none;margin-bottom:var(--space-4)">
+        <div class="atm-filters-bar animate-fade-in" style="background:linear-gradient(135deg, #0F2B48 0%, #1B4F72 100%);color:#fff;padding:14px 18px;border-radius:var(--radius-lg);border:1px solid rgba(255,255,255,0.15);box-shadow:0 6px 20px rgba(27,79,114,0.25)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:1.4rem">🏧</span>
+              <span style="font-size:0.98rem;font-weight:800;color:#fff">فلترة ماكينات الصراف الآلي الحية (آخر 15 دقيقة):</span>
+            </div>
+            <span class="badge" style="background:rgba(16,185,129,0.2);color:#A7F3D0;border:1px solid rgba(16,185,129,0.4);font-weight:700;font-size:11px;padding:3px 8px;border-radius:9999px">
+              ● تقارير آخر 15 دقيقة
+            </span>
+          </div>
+          <div class="atm-filter-pills" id="places-atm-pills-bar" style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-xs btn-atm-places-filter active" data-atm-filter="all" style="border-radius:var(--radius-full);font-size:11.5px;font-weight:700;padding:5px 12px;background:#F5A623;color:#0F2B48;border:1px solid #F5A623">
+              🌐 الكل
+            </button>
+            <button type="button" class="btn btn-xs btn-atm-places-filter" data-atm-filter="has-cash" style="border-radius:var(--radius-full);font-size:11.5px;font-weight:700;padding:5px 12px;background:rgba(16,185,129,0.2);color:#A7F3D0;border:1px solid rgba(16,185,129,0.4)">
+              💵 ماكينات بها أموال حالياً
+            </button>
+            <button type="button" class="btn btn-xs btn-atm-places-filter" data-atm-filter="working" style="border-radius:var(--radius-full);font-size:11.5px;font-weight:700;padding:5px 12px;background:rgba(59,130,246,0.2);color:#BFDBFE;border:1px solid rgba(59,130,246,0.4)">
+              🟢 ماكينات تعمل حالياً
+            </button>
+            <button type="button" class="btn btn-xs btn-atm-places-filter" data-atm-filter="out-of-service" style="border-radius:var(--radius-full);font-size:11.5px;font-weight:700;padding:5px 12px;background:rgba(239,68,68,0.2);color:#FECACA;border:1px solid rgba(239,68,68,0.4)">
+              🔴 خارج نطاق الخدمة
+            </button>
+            <button type="button" class="btn btn-xs btn-atm-places-filter" data-atm-filter="no-cash" style="border-radius:var(--radius-full);font-size:11.5px;font-weight:700;padding:5px 12px;background:rgba(245,158,11,0.2);color:#FDE68A;border:1px solid rgba(245,158,11,0.4)">
+              🚫 ليس بها أموال حالياً
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Results Count Meta -->
       <div class="search-results-meta" id="places-count-meta">
         جاري تحميل الأماكن...
@@ -112,6 +145,8 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       });
     }
 
+    let _currentAtmPlacesFilter = 'all';
+    const atmSlot = document.getElementById('places-atm-filters-slot');
     const searchInput = document.getElementById('places-search-filter');
     const areaSelect = document.getElementById('places-area-filter');
     const verifiedSelect = document.getElementById('places-verified-filter');
@@ -137,8 +172,17 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       }
 
       // Filter by category
+      const isAtmFilterActive = selectedCat === 'atm' || selectedCat.includes('صراف') || (q && (q.includes('صراف') || q.includes('atm')));
+      if (atmSlot) {
+        atmSlot.style.display = isAtmFilterActive ? 'block' : 'none';
+      }
+
       if (selectedCat) {
-        filtered = filtered.filter(p => p.categoryId === selectedCat || p.subcategoryId === selectedCat);
+        filtered = filtered.filter(p => p.categoryId === selectedCat || p.subcategoryId === selectedCat || (selectedCat === 'atm' && isAtmPlace(p)));
+      }
+
+      if (isAtmFilterActive && _currentAtmPlacesFilter !== 'all') {
+        filtered = filterAtmPlaces(filtered, _currentAtmPlacesFilter, 15);
       }
 
       // Filter by verified
@@ -210,6 +254,25 @@ export async function renderPlacesPage($container, { query = {}, user }) {
         grid.innerHTML = sorted.map(p => renderPlaceCard(p)).join('');
       }
     }
+
+    // ATM Places Filter buttons handler
+    document.querySelectorAll('#places-atm-pills-bar .btn-atm-places-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#places-atm-pills-bar .btn-atm-places-filter').forEach(b => {
+          b.classList.remove('active');
+          b.style.background = 'rgba(255,255,255,0.15)';
+          b.style.color = '#fff';
+          b.style.borderColor = 'rgba(255,255,255,0.25)';
+        });
+        btn.classList.add('active');
+        btn.style.background = '#F5A623';
+        btn.style.color = '#0F2B48';
+        btn.style.borderColor = '#F5A623';
+
+        _currentAtmPlacesFilter = btn.getAttribute('data-atm-filter') || 'all';
+        applyFilters();
+      });
+    });
 
     // Event listeners
     searchInput?.addEventListener('input', debounce(applyFilters, 250));

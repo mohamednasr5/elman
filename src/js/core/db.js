@@ -88,6 +88,9 @@ export async function dbGet(path, useCache = true) {
     if (useCache) setCache('path:' + path, val);
     return val;
   } catch (err) {
+    if (err && err.message && (err.message.includes('permission_denied') || err.message.includes('Permission denied'))) {
+      return null;
+    }
     console.warn(`[dbGet] Handled error on path "${path}":`, err.message || err);
     return null;
   }

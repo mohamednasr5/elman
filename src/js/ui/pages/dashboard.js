@@ -356,16 +356,8 @@ function renderPlacesListHTML(places) {
 async function renderPlaceFormSection($container, user, placeId = null) {
   const isEdit = !!placeId;
   let place = null;
-  const isAtm = isAtmPlace(placeData);
-      if (isAtm) {
-        placeData.coverImageUrl = placeData.coverImageUrl || ATM_UNIFIED_COVER;
-        placeData.logoUrl = placeData.logoUrl || ATM_UNIFIED_LOGO;
-        placeData.alwaysOpen = true;
-        placeData.services = ['سحب نقدي', 'إيداع نقدي', 'خدمات فيزا', 'تحويل أموال'];
-        if (!placeData.phone) placeData.phone = '19666';
-      }
 
-      if (isEdit) {
+  if (isEdit) {
     place = await getPlace(placeId);
     if (!place) {
       $container.innerHTML = `<div class="empty-state"><h2>المكان غير موجود</h2></div>`;
@@ -1232,6 +1224,15 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           website: document.getElementById('p-social-website')?.value.trim() || ''
         }
       };
+
+      const isAtm = isAtmPlace(placeData);
+      if (isAtm) {
+        placeData.coverImageUrl = placeData.coverImageUrl || ATM_UNIFIED_COVER;
+        placeData.logoUrl = placeData.logoUrl || ATM_UNIFIED_LOGO;
+        placeData.alwaysOpen = true;
+        placeData.services = ['سحب نقدي', 'إيداع نقدي', 'خدمات فيزا', 'تحويل أموال'];
+        if (!placeData.phone) placeData.phone = '19666';
+      }
 
       if (isEdit) {
         await updatePlace(placeId, placeData);

@@ -3,14 +3,14 @@
  */
 
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from './VerifiedBadge.js';
-import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
+import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, getAtmLiveStatus, formatAtmTimeAgo } from '../../utils/atm.js';
 
 /**
  * Render a place card HTML string
  */
 export function renderPlaceCard(place) {
   const isAtm = isAtmPlace(place);
-  const isSponsored = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
+  const isSponsored = !isAtm && Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
   const catStyle = getCategoryCardCover(place);
   
   const finalCover = isAtm ? (place.coverImageUrl || ATM_UNIFIED_COVER) : place.coverImageUrl;
@@ -29,17 +29,29 @@ export function renderPlaceCard(place) {
 
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';
   const verifiedBadge = place.isVerified ? renderVerifiedBadge() : '';
-  const deliveryBadge = place.deliveryType ? renderDeliveryBadge(place.deliveryType) : '';
+  const deliveryBadge = (!isAtm && place.deliveryType) ? renderDeliveryBadge(place.deliveryType) : '';
   const placeUrl = `place.html?slug=${encodeURIComponent(place.slug || place.id || place._key)}`;
 
   let atmCashBadge = '';
-  if (isAtm && place.atmPoll && Number(place.atmPoll.totalVotes) > 0) {
-    const yes = Number(place.atmPoll.yesCount) || 0;
-    const no = Number(place.atmPoll.noCount) || 0;
-    if (yes >= no) {
-      atmCashBadge = `<div style="margin-top:6px"><span class="badge" style="background:#D1FAE5;color:#065F46;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">🟢 متوفر بها كاش الآن</span></div>`;
-    } else {
-      atmCashBadge = `<div style="margin-top:6px"><span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">🔴 فارغة حالياً</span></div>`;
+  if (isAtm) {
+    const status = getAtmLiveStatus(place, 15);
+    if (status) {
+      const badges = [];
+      if (status.hasCash || (!status.isCashRecent && status.allTimeHasCash)) {
+        badges.push(`<span class="badge" style="background:#D1FAE5;color:#065F46;font-size:11px;font-weight:800;padding:3px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">🟢 متوفر بها كاش ${status.isCashRecent ? '⚡ (آخر 15 د)' : ''}</span>`);
+      } else if (status.noCash || (!status.isCashRecent && status.allTimeNoCash)) {
+        badges.push(`<span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:11px;font-weight:800;padding:3px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">🔴 فارغة حالياً ${status.isCashRecent ? '⚡ (آخر 15 د)' : ''}</span>`);
+      }
+
+      if (status.isWorking || (!status.isWorkRecent && status.allTimeWorking)) {
+        badges.push(`<span class="badge" style="background:#DBEAFE;color:#1E40AF;font-size:11px;font-weight:700;padding:3px 8px;border-radius:var(--radius-full)">⚙️ تعمل</span>`);
+      } else if (status.isOutOfService || (!status.isWorkRecent && status.allTimeOutOfService)) {
+        badges.push(`<span class="badge" style="background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;padding:3px 8px;border-radius:var(--radius-full)">⚠️ خارج الخدمة</span>`);
+      }
+
+      if (badges.length > 0) {
+        atmCashBadge = `<div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">${badges.join('')}</div>`;
+      }
     }
   }
 

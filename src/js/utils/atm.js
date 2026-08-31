@@ -183,3 +183,90 @@ export async function submitAtmPollVote(placeId, questionKey, voteType) {
 
 // Backward compatibility alias
 export const submitAtmCashVote = (placeId, voteType) => submitAtmPollVote(placeId, 'cash', voteType);
+
+
+/**
+ * Resolves ATM live status based on reports in the last 15 minutes window
+ */
+export function getAtmLiveStatus(place, windowMinutes = 15) {
+  if (!place || !isAtmPlace(place)) return null;
+  const poll = place.atmPoll || {};
+  const windowMs = windowMinutes * 60 * 1000;
+  const now = Date.now();
+
+  // 1. Cash Status
+  let cashData = poll.cash || {};
+  if (poll.yesCount !== undefined && !poll.cash) {
+    cashData = {
+      yesCount: poll.yesCount,
+      noCount: poll.noCount,
+      totalVotes: poll.totalVotes,
+      lastAnswerTime: poll.lastAnswerTime || poll.updatedAt,
+      lastAnswerChoice: poll.lastAnswerChoice
+    };
+  }
+  const cashTime = cashData.lastAnswerTime ? Number(cashData.lastAnswerTime) : 0;
+  const isCashRecent = (now - cashTime) <= windowMs && cashTime > 0;
+  const cashYes = Number(cashData.yesCount) || 0;
+  const cashNo = Number(cashData.noCount) || 0;
+  const hasCash = isCashRecent && (cashYes >= cashNo || cashData.lastAnswerChoice === 'yes');
+  const noCash = isCashRecent && (cashNo > cashYes || cashData.lastAnswerChoice === 'no');
+
+  // 2. Operational / Working Status
+  const workData = poll.working || {};
+  const workTime = workData.lastAnswerTime ? Number(workData.lastAnswerTime) : 0;
+  const isWorkRecent = (now - workTime) <= windowMs && workTime > 0;
+  const workYes = Number(workData.yesCount) || 0;
+  const workNo = Number(workData.noCount) || 0;
+  const isWorking = isWorkRecent && (workYes >= workNo || workData.lastAnswerChoice === 'yes');
+  const isOutOfService = isWorkRecent && (workNo > workYes || workData.lastAnswerChoice === 'no');
+
+  // Fallbacks if votes exist (even beyond 15m)
+  const allTimeHasCash = cashTime > 0 && (cashYes >= cashNo);
+  const allTimeNoCash = cashTime > 0 && (cashNo > cashYes);
+  const allTimeWorking = workTime > 0 && (workYes >= workNo);
+  const allTimeOutOfService = workTime > 0 && (workNo > workYes);
+
+  return {
+    isCashRecent,
+    hasCash,
+    noCash,
+    isWorkRecent,
+    isWorking,
+    isOutOfService,
+    allTimeHasCash,
+    allTimeNoCash,
+    allTimeWorking,
+    allTimeOutOfService,
+    cashTime,
+    workTime,
+    lastReportTime: Math.max(cashTime, workTime)
+  };
+}
+
+/**
+ * Filter ATM places based on active filter key:
+ * 'has-cash' | 'working' | 'out-of-service' | 'no-cash' | 'all'
+ */
+export function filterAtmPlaces(places, filterKey, windowMinutes = 15) {
+  if (!filterKey || filterKey === 'all') return places;
+
+  return places.filter(p => {
+    const status = getAtmLiveStatus(p, windowMinutes);
+    if (!status) return false;
+
+    if (filterKey === 'has-cash') {
+      return status.hasCash || (!status.isCashRecent && status.allTimeHasCash);
+    }
+    if (filterKey === 'working') {
+      return status.isWorking || (!status.isWorkRecent && status.allTimeWorking);
+    }
+    if (filterKey === 'out-of-service') {
+      return status.isOutOfService || (!status.isWorkRecent && status.allTimeOutOfService);
+    }
+    if (filterKey === 'no-cash') {
+      return status.noCash || (!status.isCashRecent && status.allTimeNoCash);
+    }
+    return true;
+  });
+}
