@@ -274,7 +274,7 @@ export function updateHeaderUserUI(user) {
           </a>
           ${user.role === 'admin' || user.role === 'superadmin' ? `
             <div class="header__dropdown-divider"></div>
-            <a href="admin.html" class="header__dropdown-item" role="menuitem" style="color:var(--secondary)">
+            <a href="admin/index.html" class="header__dropdown-item" role="menuitem" style="color:var(--secondary)">
               <span aria-hidden="true">⚙️</span> لوحة الإدارة
             </a>
           ` : ''}

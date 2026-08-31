@@ -78,7 +78,7 @@ export async function renderDashboard($container, { user, section = 'overview', 
           
           ${isAdmin(user) ? `
             <div class="dashboard-nav-section">الإدارة</div>
-            <a href="admin.html" class="dashboard-nav-item" style="color:var(--secondary);font-weight:bold">
+            <a href="admin/index.html" class="dashboard-nav-item" style="color:var(--secondary);font-weight:bold">
               <span class="dashboard-nav-item__icon">⚙️</span> لوحة تحكم الإدارة
             </a>
           ` : ''}

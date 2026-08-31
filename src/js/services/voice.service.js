@@ -144,6 +144,13 @@ export class VoiceSearch {
         const cleanedText = VoiceSearch.cleanSpokenArabic(finalTranscript);
         this.onResult(cleanedText, finalTranscript);
         this.stop();
+      } else if (interimTranscript && interimTranscript.trim().length >= 3) {
+        // Fast live interim search
+        const cleanedText = VoiceSearch.cleanSpokenArabic(interimTranscript);
+        if (this._interimTimeout) clearTimeout(this._interimTimeout);
+        this._interimTimeout = setTimeout(() => {
+          this.onResult(cleanedText, interimTranscript);
+        }, 200);
       }
     };
 

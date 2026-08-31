@@ -58,7 +58,7 @@ function _headerHTML(active) {
 }
 
 function _bottomNavHTML(active) {
-  if (active === 'admin.html') {
+  if (active === 'admin/index.html') {
     return `
 <nav class="bottom-nav bottom-nav--admin" id="admin-mobile-bottom-nav" role="navigation" aria-label="لوحة الإدارة">
   <button type="button" data-admin-sec="overview" class="bottom-nav__item active">
@@ -446,7 +446,7 @@ function _renderUser(user) {
             <a href="dashboard.html?section=notifications"    class="header__dropdown-item" role="menuitem">🔔 الإشعارات والزيارات</a>
             <a href="dashboard.html?section=add"              class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>
             ${isAdmin(user)
-              ? '<a href="admin.html" class="header__dropdown-item" style="color:var(--secondary);font-weight:bold" role="menuitem">⚙️ لوحة الإدارة</a>'
+              ? '<a href="admin/index.html" class="header__dropdown-item" style="color:var(--secondary);font-weight:bold" role="menuitem">⚙️ لوحة الإدارة</a>'
               : ''}
             <div class="header__dropdown-divider"></div>
             <button id="logout-btn" class="header__dropdown-item header__dropdown-item--danger" role="menuitem">

@@ -1,23 +1,31 @@
 /**
  * المنزلة وناسها — Arabic Text Utilities & Advanced Egyptian Dialect NLP
- * Normalization for better Arabic search, food cravings, product matching, and intents.
+ * Ultra Normalization for Arabic letters (أ إ آ ا ٱ, ؤ و, ي ى ئ, ة ه, Tashkeel, Hamzas, Tatweel).
  */
 
 /**
  * Normalize Arabic text for search comparison.
- * Handles all common variations in Arabic letters (أ إ آ ا ٱ, ؤ و, ي ى ئ, ة ه, Tashkeel, Hamzas, Tatweel).
+ * Ignores all variations in Arabic letters (أ إ آ ا ٱ, ؤ و, ي ى ئ, ة ه, Tashkeel, Hamzas, Tatweel).
  */
 export function normalizeArabic(text) {
   if (!text) return '';
 
   return String(text)
+    // 1. Normalize all Alef forms (أ, إ, آ, ا, ٱ) to plain Alef (ا)
     .replace(/[أإآاٱ]/g, 'ا')
+    // 2. Normalize Waw with Hamza (ؤ) to plain Waw (و)
     .replace(/ؤ/g, 'و')
+    // 3. Normalize all Yeh variants (ي, ى, ئ) to plain Yeh (ي)
     .replace(/[يىئ]/g, 'ي')
+    // 4. Normalize Teh Marbuta (ة) and Heh (ه) to (ه)
     .replace(/[ةه]/g, 'ه')
+    // 5. Remove Tashkeel (diacritics) & Tatweel
     .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
-    .replace(/[ء]/g, '')
-    .replace(/[.,/#!$%^&*;:{}=\-_`~()؟،\\|]/g, ' ')
+    // 6. Remove standalone Hamzas & quotes
+    .replace(/[ء`'"]/g, '')
+    // 7. Remove punctuation & symbols
+    .replace(/[.,/#!$%^&*;:{}=\-_~()؟،\|]/g, ' ')
+    // 8. Collapse multiple spaces
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
@@ -33,7 +41,6 @@ export function stripAl(text) {
 
 /**
  * Extract root search keyword & detect Egyptian conversational intents
- * (Open Now, Nearest, Best/Top Rated, Food Cravings, Product/Offer requests)
  */
 export function extractSmartDialectKeyword(text) {
   if (!text) return { keyword: '', wantsOpenNow: false, wantsNearest: false, wantsBest: false, wantsOffer: false };
@@ -57,7 +64,7 @@ export function extractSmartDialectKeyword(text) {
     norm.includes('عرض') || norm.includes('عروض') || norm.includes('خصم') || norm.includes('تخفيض') || norm.includes('اوفر')
   );
 
-  // 1. Multi-pass strip conversational Egyptian prefixes including cravings & requests
+  // 1. Multi-pass strip conversational Egyptian prefixes
   const prefixes = [
     /^(عاوز|عايز|عاوزه|عايزه|محتاج|محتاجه|محتاجين)\s*/i,
     /^(نفسي في|نفسي اكل|نفسي اشرب|نفسي اجيب|بدور على|بدور لي على|بدورلي على|عايز اكل|عاوز اكل|عايز اجيب|عاوز اجيب)\s*/i,
@@ -84,8 +91,12 @@ export function extractSmartDialectKeyword(text) {
     /\s*(قريب مني|قريبه مني|قريب|قريبه|جنبي|جمبي|شاطر|شاطره|ممتاز|ممتازه)$/gi
   ];
 
-  for (const d of dialectWords) {
-    norm = norm.replace(d, '').trim();
+  let prevSuffix = '';
+  while (prevSuffix !== norm) {
+    prevSuffix = norm;
+    for (const d of dialectWords) {
+      norm = norm.replace(d, '').trim();
+    }
   }
 
   return {
@@ -102,8 +113,7 @@ export function extractSearchKeywords(text) {
 }
 
 /**
- * Intelligent Semantic Intent & Synonym Expansion
- * Maps search terms to related Egyptian Arabic keywords, food items, products, categories.
+ * Comprehensive Semantic Intent & Synonym Expansion for Egyptian Search
  */
 export function expandArabicSearchIntent(rawQuery) {
   if (!rawQuery) return [];
@@ -111,52 +121,55 @@ export function expandArabicSearchIntent(rawQuery) {
   const tokens = clean.split(/\s+/).filter(Boolean);
 
   const SYNONYM_CLUSTERS = [
-    // 1. Pizza & Italian & Pies
+    // 1. Roastery, Nuts, Coffee & Snacks (محامص وتسالي وبن ومكسرات)
+    ['محمصة', 'محمصه', 'محامص', 'تسالي', 'لب', 'سوداني', 'مكسرات', 'كاجو', 'فستق', 'بندق', 'عين جمل', 'شيكولاتة', 'شوكولاتة', 'بن', 'بن ومكسرات', 'حلويات', 'مقرمشات', 'البدوي', 'السيد البدوي', 'roastery', 'nuts', 'coffee'],
+
+    // 2. Pizza & Italian & Pies (بيتزا وفطير)
     ['بيتزا', 'بيزا', 'بيتزات', 'فطير', 'فطاير', 'فطيرة', 'بيتزا ايطالي', 'بيتزا شرقي', 'مارجريتا', 'مشكل جبن', 'بيبروني', 'سجق', 'بسطرمة', 'pizza', 'مطعم', 'اكل', 'وجبات'],
 
-    // 2. Shawarma & Syrian Foods
+    // 3. Shawarma & Syrian Foods (شاورما وسوري)
     ['شاورما', 'شاورمه', 'شاورمات', 'سوري', 'شاورما فراخ', 'شاورما لحمة', 'فتة شاورما', 'ثومية', 'تومية', 'ساندوتش سوري', 'shawarma', 'مطعم', 'اكل'],
 
-    // 3. Crepes & Waffles
+    // 4. Crepes & Waffles (كريب ووافل)
     ['كريب', 'كريبات', 'وافل', 'بان كيك', 'كريب كرانشي', 'كريب بانيه', 'كريب شاورما', 'كريب نوتيلا', 'crepe', 'waffle', 'مطعم', 'كافيه'],
 
-    // 4. Burgers & Fried Chicken
+    // 5. Burgers & Fried Chicken (برجر وفرايد تشيكن)
     ['برجر', 'برغر', 'سماش برجر', 'فرايد تشيكن', 'بروستد', 'دجاج مقلي', 'زنجر', 'استربس', 'burger', 'fried chicken', 'مطعم', 'وجبات'],
 
-    // 5. Grills & BBQ
+    // 6. Grills & BBQ (مشويات وحاتي)
     ['مشويات', 'مشوي', 'حاتي', 'كباب', 'كفتة', 'كفته', 'طرب', 'فراخ مشوية', 'شيش طاووق', 'ريش', 'حواوشي', 'grill', 'kebab', 'مطعم'],
 
-    // 6. Fish & Seafood
+    // 7. Fish & Seafood (أسماك ومأكولات بحرية وفسخانية)
     ['سمك', 'اسماك', 'أسماك', 'سي فود', 'ماكولات بحرية', 'جمبري', 'سبيط', 'كابوريا', 'سمك مشوي', 'سمك مقلي', 'فسخاني', 'فسيخ', 'رنجة', 'fish', 'seafood', 'مطعم'],
 
-    // 7. Koshari & Casseroles
+    // 8. Koshari & Casseroles (كشري وطواجن)
     ['كشري', 'طاجن', 'طواجن', 'مكرونة بشاميل', 'دقة', 'صلصة', 'koshari', 'مطعم'],
 
-    // 8. Sweets, Cakes, Ice Cream, Bakery
+    // 9. Sweets, Cakes, Ice Cream, Bakery (حلويات وتورت ومخبوزات)
     ['تورتة', 'تورته', 'تورت', 'جاتوه', 'جاتوهات', 'حلويات', 'حلواني', 'بسبوسة', 'كنافة', 'كنافه', 'قطايف', 'ايس كريم', 'مخبز', 'عيش', 'فينو', 'كرواسون', 'باتيه', 'sweets', 'cake', 'bakery'],
 
-    // 9. Juices & Cafes
+    // 10. Juices & Cafes (عصائر ومشروبات وكافيهات)
     ['عصير', 'عصائر', 'قصب', 'مانجو', 'فراولة', 'كوكتيل', 'سموزي', 'قهوة', 'اسبريسو', 'ايس كوفي', 'شاي', 'juice', 'coffee', 'cafe', 'كافيه', 'كافيهات'],
 
-    // 10. Doctors, Clinics, Medical
+    // 11. Doctors, Clinics, Medical (أطباء وعيادات ومستشفيات)
     ['دكتور', 'دكاترة', 'طبيب', 'اطباء', 'عيادة', 'عيادات', 'كشف', 'استشاري', 'اخصائي', 'مستشفى', 'معمل', 'تحاليل', 'doctor', 'clinic', 'medical'],
 
-    // 11. Pharmacy, Medicine
-    ['صيدلية', 'صيدليات', 'دواء', 'ادوية', 'علاج', 'روشتة', 'مستلزمات طبية', 'pharmacy'],
+    // 12. Pharmacy, Medicine (صيدليات وأدوية)
+    ['صيدلية', 'صيدليات', 'دواء', 'ادوية', 'دوا', 'علاج', 'روشتة', 'مستلزمات طبية', 'pharmacy', 'medicine'],
 
-    // 12. Supermarket & Groceries
+    // 13. Supermarket & Groceries (سوبر ماركت وبقالة)
     ['سوبر ماركت', 'ماركت', 'هايبر', 'بقالة', 'خضار', 'فاكهة', 'جبن', 'البان', 'سلع غذائية', 'شيبسي', 'زيت', 'سكر', 'ارز', 'مكرونة', 'supermarket'],
 
-    // 13. Craftsmen & Home Services
+    // 14. Craftsmen & Home Services (حرفيين وصيانة منزلية)
     ['سباك', 'سباكة', 'مواسير', 'حنفية', 'خلاط', 'سخان', 'فلتر', 'نجار', 'نجارة', 'موبيليا', 'ابواب', 'كهربائي', 'كهرباء', 'اضاءة', 'مبلط', 'سيراميك', 'بلاط', 'نقاش', 'دهانات', 'بويات', 'plumber', 'electrician', 'carpenter'],
 
-    // 14. Auto Mechanics & Transportation
+    // 15. Auto Mechanics & Transportation (سيارات ونقل وصيانة)
     ['ميكانيكي', 'عفشة', 'كاوتش', 'غيار زيت', 'صيانة سيارات', 'تصليح عربيات', 'بطاريات', 'قطع غيار', 'سيارة', 'عربية', 'تاكسي', 'مشوار', 'مشاوير', 'توكتوك', 'موتوسيكل', 'توصيل', 'mechanic', 'car', 'delivery'],
 
-    // 15. Phones & Tech
+    // 16. Phones & Tech (هواتف وإلكترونيات)
     ['موبايل', 'موبايلات', 'هاتف', 'هواتف', 'تليفون', 'شاحن', 'جراب', 'شاشة', 'صيانة موبايل', 'كمبيوتر', 'لاب توب', 'mobile', 'phones'],
 
-    // 16. ATM & Cash Machines
+    // 17. ATM & Cash Machines (صراف آلي وفلوس)
     ['atm', 'اي تي ام', 'صراف', 'صراف الي', 'ماكينة صرف', 'ماكينة فلوس', 'سحب فلوس', 'ايداع فلوس', 'سحب كاش']
   ];
 
@@ -178,7 +191,6 @@ export function expandArabicSearchIntent(rawQuery) {
 
 /**
  * Check if Arabic text A matches/contains B (smart & flexible)
- * Handles letter normalization, with/without 'ال', word-level matching
  */
 export function arabicMatch(haystack, needle) {
   if (!needle) return true;
@@ -190,18 +202,14 @@ export function arabicMatch(haystack, needle) {
   if (!n) return true;
   if (!h) return false;
 
-  // 1. Direct contains after full normalization
   if (h.includes(n)) return true;
 
-  // 2. Query without 'ال' matching haystack
   const nNoAl = stripAl(n);
   if (nNoAl && nNoAl !== n && h.includes(nNoAl)) return true;
 
-  // 3. Haystack without 'ال' matching query or query without 'ال'
   const hNoAl = stripAl(h);
   if (hNoAl && (hNoAl.includes(n) || (nNoAl && hNoAl.includes(nNoAl)))) return true;
 
-  // 4. Token-by-token matching (e.g. multi-word search)
   const nTokens = n.split(/\s+/).filter(Boolean);
   if (nTokens.length > 1) {
     const allTokensMatch = nTokens.every(tok => {
@@ -215,74 +223,71 @@ export function arabicMatch(haystack, needle) {
 }
 
 /**
- * Score text match relevance for search ranking (0-100)
+ * Calculate match relevance score (0 - 100) between text and search query
  */
-export function arabicScore(text, query) {
-  if (!text || !query) return 0;
+export function arabicScore(haystack, needle) {
+  if (!needle || !haystack) return 0;
 
-  const normalText = normalizeArabic(text);
-  const normalQuery = normalizeArabic(query);
+  const h = normalizeArabic(haystack);
+  const n = normalizeArabic(needle);
 
-  if (!normalText || !normalQuery) return 0;
+  if (!h || !n) return 0;
 
-  // Exact match
-  if (normalText === normalQuery) return 100;
+  if (h === n) return 100;
+  if (h.startsWith(n)) return 95;
+  if (h.includes(n)) return 85;
 
-  // Exact match without 'ال'
-  const nQueryNoAl = stripAl(normalQuery);
-  const nTextNoAl = stripAl(normalText);
-  if (nTextNoAl === nQueryNoAl) return 95;
+  const hNoAl = stripAl(h);
+  const nNoAl = stripAl(n);
 
-  // Starts with query
-  if (normalText.startsWith(normalQuery)) return 85;
-  if (nTextNoAl.startsWith(nQueryNoAl)) return 80;
+  if (hNoAl === nNoAl) return 92;
+  if (hNoAl.startsWith(nNoAl)) return 88;
+  if (hNoAl.includes(nNoAl)) return 80;
 
-  // Contains query as whole word
-  const wordBoundary = new RegExp(`(^|\\s)${escapeRegex(normalQuery)}(\\s|$)`);
-  if (wordBoundary.test(normalText)) return 70;
+  const nTokens = n.split(/\s+/).filter(Boolean);
+  if (nTokens.length > 0) {
+    let matchedTokens = 0;
+    nTokens.forEach(tok => {
+      const tokNoAl = stripAl(tok);
+      if (h.includes(tok) || (tokNoAl && h.includes(tokNoAl)) || (hNoAl && hNoAl.includes(tok))) {
+        matchedTokens++;
+      }
+    });
 
-  // Contains query anywhere
-  if (normalText.includes(normalQuery)) return 55;
-  if (nQueryNoAl && normalText.includes(nQueryNoAl)) return 50;
-  if (nTextNoAl && nTextNoAl.includes(normalQuery)) return 50;
-  if (nTextNoAl && nQueryNoAl && nTextNoAl.includes(nQueryNoAl)) return 45;
-
-  // Partial match of words
-  const queryWords = normalQuery.split(' ').filter(Boolean);
-  const matchedWords = queryWords.filter(word => {
-    const wordNoAl = stripAl(word);
-    return normalText.includes(word) || (wordNoAl && normalText.includes(wordNoAl));
-  });
-  if (matchedWords.length > 0) {
-    return 35 * (matchedWords.length / queryWords.length);
+    if (matchedTokens === nTokens.length) return 75;
+    if (matchedTokens > 0) return Math.round((matchedTokens / nTokens.length) * 60);
   }
 
   return 0;
 }
 
+
 /**
- * Highlight matched text in HTML-safe way
+ * Format price in Egyptian Pounds
  */
-export function highlightMatch(text, query) {
-  if (!text || !query) return escapeHtml(text || '');
+export function formatPrice(price, currency = 'ج.م') {
+  if (price === null || price === undefined || price === '') return '';
+  const num = Number(price);
+  if (isNaN(num)) return String(price);
+  return `${num.toLocaleString('ar-EG')} ${currency}`;
+}
 
-  const normalQuery = normalizeArabic(query);
-  if (!normalQuery) return escapeHtml(text);
-
-  const escaped = escapeHtml(text);
-  const escapedQuery = escapeHtml(query);
-
-  // Simple case-insensitive highlight
-  const regex = new RegExp(`(${escapeRegex(escapedQuery)})`, 'gi');
-  return escaped.replace(regex, '<mark>$1</mark>');
+/**
+ * Calculate discount percentage
+ */
+export function calcDiscount(originalPrice, discountPrice) {
+  const orig = Number(originalPrice);
+  const disc = Number(discountPrice);
+  if (!orig || !disc || disc >= orig) return 0;
+  return Math.round(((orig - disc) / orig) * 100);
 }
 
 /**
  * Get Arabic day name
  */
 export function getArabicDay(dayIndex) {
-  const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-  return days[dayIndex] ?? '';
+  const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  return days[dayIndex % 7] || '';
 }
 
 /**
@@ -293,44 +298,5 @@ export function getArabicMonth(monthIndex) {
     'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
     'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
   ];
-  return months[monthIndex] ?? '';
-}
-
-/**
- * Format number in Arabic/Egyptian locale
- */
-export function formatNumber(num) {
-  if (num === null || num === undefined) return '٠';
-  return new Intl.NumberFormat('ar-EG').format(num);
-}
-
-/**
- * Format price in EGP
- */
-export function formatPrice(price) {
-  if (!price && price !== 0) return '';
-  return `${formatNumber(price)} ج.م`;
-}
-
-/**
- * Calculate discount percentage
- */
-export function calcDiscount(oldPrice, newPrice) {
-  if (!oldPrice || !newPrice || oldPrice <= newPrice) return 0;
-  return Math.round(((oldPrice - newPrice) / oldPrice) * 100);
-}
-
-// ── Private helpers ──
-
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return months[monthIndex % 12] || '';
 }

@@ -91,23 +91,23 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         </div>
 
         <nav class="dashboard-sidebar__nav" id="admin-sidebar-nav">
-          ${navLink('overview',      'admin.html',                      ICONS.chart,     'الإحصائيات',     section === 'overview')}
-          ${navLink('places',        'admin.html?section=places',       ICONS.pin,       'الأماكن',         section === 'places')}
-          ${navLink('products',      'admin.html?section=products',     ICONS.tag,       'المنتجات والمراجعة 🛍️', section === 'products')}
-          ${navLink('reviews',       'admin.html?section=reviews',      ICONS.star,      'التقييمات ⭐',    section === 'reviews')}
-          ${navLink('verification',  'admin.html?section=verification', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
-          ${navLink('categories',    'admin.html?section=categories',   ICONS.folder,    'التصنيفات',       section === 'categories')}
-          ${navLink('users',         'admin.html?section=users',        ICONS.users,     'المستخدمون',      section === 'users')}
-          ${navLink('offers',        'admin.html?section=offers',       ICONS.tag,       'العروض',          section === 'offers')}
-          ${navLink('ads',           'admin.html?section=ads',          ICONS.megaphone, 'الإعلانات والترويج', section === 'ads')}
-          ${navLink('settings',      'admin.html?section=settings',     ICONS.cog,       'الإعدادات',       section === 'settings')}
+          ${navLink('overview',      '#', ICONS.chart,     'الإحصائيات',     section === 'overview')}
+          ${navLink('places',        '#', ICONS.pin,       'الأماكن',         section === 'places')}
+          ${navLink('products',      '#', ICONS.tag,       'المنتجات والمراجعة 🛍️', section === 'products')}
+          ${navLink('reviews',       '#', ICONS.star,      'التقييمات ⭐',    section === 'reviews')}
+          ${navLink('verification',  '#', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
+          ${navLink('categories',    '#', ICONS.folder,    'التصنيفات',       section === 'categories')}
+          ${navLink('users',         '#', ICONS.users,     'المستخدمون',      section === 'users')}
+          ${navLink('offers',        '#', ICONS.tag,       'العروض',          section === 'offers')}
+          ${navLink('ads',           '#', ICONS.megaphone, 'الإعلانات والترويج', section === 'ads')}
+          ${navLink('settings',      '#', ICONS.cog,       'الإعدادات',       section === 'settings')}
 
           <div class="dashboard-nav-section" style="color:rgba(255,255,255,0.4)">العودة</div>
-          <a href="dashboard.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.7)">
+          <a href="../dashboard.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.7)">
             <span style="display:inline-flex;align-items:center">${ICONS.home}</span>
             <span>لوحة المستخدم</span>
           </a>
-          <a href="index.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.7)">
+          <a href="../index.html" class="dashboard-nav-item" style="color:rgba(255,255,255,0.7)">
             <span style="display:inline-flex;align-items:center">${ICONS.globe}</span>
             <span>الصفحة الرئيسية</span>
           </a>
@@ -184,11 +184,11 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
               <span>⚙️</span>
               <span>الإعدادات</span>
             </button>
-            <a href="dashboard.html" class="admin-sheet-item" style="background:rgba(2,132,199,0.15);border-color:#0284C7">
+            <a href="../dashboard.html" class="admin-sheet-item" style="background:rgba(2,132,199,0.15);border-color:#0284C7">
               <span>👤</span>
               <span>لوحة حسابي</span>
             </a>
-            <a href="index.html" class="admin-sheet-item" style="background:rgba(16,185,129,0.15);border-color:#10B981">
+            <a href="../index.html" class="admin-sheet-item" style="background:rgba(16,185,129,0.15);border-color:#10B981">
               <span>🌐</span>
               <span>الرئيسية</span>
             </a>
@@ -216,7 +216,7 @@ async function switchAdminSection(sectionName, pushState = true) {
   if (!$main) return;
 
   if (pushState) {
-    const newUrl = sectionName === 'overview' ? 'admin.html' : `admin.html?section=${sectionName}`;
+    const newUrl = sectionName === 'overview' ? window.location.pathname : `${window.location.pathname}?section=${sectionName}`;
     history.pushState({ section: sectionName }, '', newUrl);
   }
 

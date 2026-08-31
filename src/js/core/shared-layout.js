@@ -168,7 +168,7 @@ function _renderUserSection(user) {
           <a href="dashboard.html?section=add" class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>
           ${(user.role === 'admin' || user.role === 'superadmin') ? `
             <div class="header__dropdown-divider"></div>
-            <a href="admin.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ الإدارة</a>
+            <a href="admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ الإدارة</a>
           ` : ''}
           <div class="header__dropdown-divider"></div>
           <button class="header__dropdown-item header__dropdown-item--danger" id="logout-btn" role="menuitem">🚪 خروج</button>

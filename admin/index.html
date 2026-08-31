@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>لوحة إدارة منصة دليل المنزلة والمطرية الرقمي</title>
+  <meta name="description" content="تطبيق لوحة إدارة منصة دليل المنزلة والمطرية الرقمي المستقل للمشرفين والمسؤولين"/>
+  <meta name="theme-color" content="#0B1E30"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="إدارة الدليل"/>
+  
+  <link rel="manifest" href="./manifest.webmanifest"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="../icons/icon-96x96.png"/>
+  <link rel="apple-touch-icon" href="../icons/icon-192x192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/>
+  <link rel="stylesheet" href="../src/css/main.css"/>
+  <link rel="stylesheet" href="../src/css/pages/dashboard.css"/>
+
+  <style>
+    body {
+      background: #0B1E30 !important;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+    #admin-app-root {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
+</head>
+<body class="dashboard-page admin-page">
+<div id="admin-app-root">
+
+  <!-- Header Slot -->
+  <div id="admin-header-slot"></div>
+
+  <!-- Main Content Slot -->
+  <main class="page-main" id="admin-page-container" role="main">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;flex-direction:column;gap:1rem">
+      <div class="spinner spinner-lg"></div>
+      <p style="color:rgba(255,255,255,0.7);font-size:.95rem">جاري فتح لوحة الإدارة المستقلة...</p>
+    </div>
+  </main>
+
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- Admin App Module -->
+<script type="module">
+  import { initFirebase } from '../src/js/core/firebase.js';
+  import { initAuth, waitForAuth, isAdmin, signOut } from '../src/js/core/auth.js';
+  import { renderAdmin } from '../src/js/ui/pages/admin.js';
+
+  // Register Dedicated Admin Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(err => {
+      console.debug('[AdminSW] Registration handled:', err);
+    });
+  }
+
+  initFirebase();
+  initAuth();
+
+  const user = await waitForAuth();
+  const $container = document.getElementById('admin-page-container');
+
+  if (!user) {
+    window.location.href = '../login.html?redirect=admin/';
+  } else if (!isAdmin(user)) {
+    $container.innerHTML = `
+      <div class="empty-state" style="margin-top:100px;background:#0F273D;border:1px solid rgba(255,255,255,0.1);padding:30px 20px;border-radius:18px;max-width:460px;margin-inline:auto">
+        <span class="empty-state__icon" style="font-size:3rem">🔒</span>
+        <h3 style="color:#fff">غير مصرح بالدخول للوحة الإدارة</h3>
+        <p style="color:rgba(255,255,255,0.7);font-size:13px;line-height:1.6">
+          الحساب الحالي (${user.email || 'بدون بريد'}) ليس لديه صلاحيات المشرفين لدخول لوحة التحكم المستقلة.
+        </p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btn-admin-switch-acc">تبديل الحساب</button>
+          <a href="../index.html" class="btn btn-ghost" style="color:#fff">العودة للرئيسية</a>
+        </div>
+      </div>
+    `;
+    document.getElementById('btn-admin-switch-acc')?.addEventListener('click', async () => {
+      await signOut();
+      window.location.href = '../login.html?redirect=admin/';
+    });
+  } else {
+    const section = new URLSearchParams(location.search).get('section') || 'overview';
+    await renderAdmin($container, { user, section });
+  }
+</script>
+</body>
+</html>
