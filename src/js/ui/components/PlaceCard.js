@@ -13,8 +13,8 @@ export function renderPlaceCard(place) {
   const isSponsored = !isAtm && Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
   const catStyle = getCategoryCardCover(place);
   
-  const finalCover = isAtm ? (place.coverImageUrl || ATM_UNIFIED_COVER) : place.coverImageUrl;
-  const finalLogo = isAtm ? (place.logoUrl || ATM_UNIFIED_LOGO) : place.logoUrl;
+  const finalCover = isAtm ? ATM_UNIFIED_COVER : place.coverImageUrl;
+  const finalLogo = isAtm ? ATM_UNIFIED_LOGO : place.logoUrl;
 
   const coverImg = finalCover
     ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" loading="lazy" />`
@@ -38,13 +38,13 @@ export function renderPlaceCard(place) {
     if (status) {
       const badges = [];
       if (status.hasCash || (!status.isCashRecent && status.allTimeHasCash)) {
-        badges.push(`<span class="badge" style="background:#D1FAE5;color:#065F46;font-size:11px;font-weight:800;padding:3px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">🟢 متوفر بها كاش ${status.isCashRecent ? '⚡ (آخر 15 د)' : ''}</span>`);
+        badges.push(`<span class="badge atm-badge-card-cash" style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full)">💵 متوفر بها كاش ${status.isCashRecent ? '⚡ (آخر 15 د)' : ''}</span>`);
       } else if (status.noCash || (!status.isCashRecent && status.allTimeNoCash)) {
         badges.push(`<span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:11px;font-weight:800;padding:3px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">🔴 فارغة حالياً ${status.isCashRecent ? '⚡ (آخر 15 د)' : ''}</span>`);
       }
 
       if (status.isWorking || (!status.isWorkRecent && status.allTimeWorking)) {
-        badges.push(`<span class="badge" style="background:#DBEAFE;color:#1E40AF;font-size:11px;font-weight:700;padding:3px 8px;border-radius:var(--radius-full)">⚙️ تعمل</span>`);
+        badges.push(`<span class="badge atm-badge-card-working" style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full)">⚙️ الماكينة تعمل</span>`);
       } else if (status.isOutOfService || (!status.isWorkRecent && status.allTimeOutOfService)) {
         badges.push(`<span class="badge" style="background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;padding:3px 8px;border-radius:var(--radius-full)">⚠️ خارج الخدمة</span>`);
       }

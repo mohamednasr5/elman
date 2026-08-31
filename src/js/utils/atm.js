@@ -1,3 +1,4 @@
+import { normalizeArabic } from './arabic.js';
 /**
  * المنزلة وناسها — ATM & Cash Availability System
  * Real-time crowdsourced ATM status polls (Cash availability, Deposit, Contactless/NFC, Operational status),
@@ -6,8 +7,8 @@
 
 import { dbGet, dbUpdate } from '../core/db.js';
 
-export const ATM_UNIFIED_COVER = 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=1200&auto=format&fit=crop&q=80';
-export const ATM_UNIFIED_LOGO = 'https://ui-avatars.com/api/?name=%D8%B5%D8%B1%D8%A7%D9%81+%D8%A2%D9%84%D9%8A&background=1B4F72&color=F5A623&size=200&bold=true&font-size=0.35&format=png';
+export const ATM_UNIFIED_COVER = 'assets/images/atm-cover.jpg';
+export const ATM_UNIFIED_LOGO = 'assets/images/atm-logo.png';
 
 export const ATM_POLL_QUESTIONS = [
   {
@@ -19,7 +20,7 @@ export const ATM_POLL_QUESTIONS = [
     yesShort: 'يوجد أموال',
     noLabel: 'لا .. فارغة من الأموال',
     noShort: 'فارغة',
-    badgeYes: '🟢 متوفر بها كاش وأموال',
+    badgeYes: '<span class="atm-badge-cash-available">💵 متوفر بها كاش وأموال ⚡</span>',
     badgeNo: '🔴 فارغة من الأموال حالياً',
     badgeNone: '⚪ لم تسجل إجابات حديثة'
   },
@@ -32,7 +33,7 @@ export const ATM_POLL_QUESTIONS = [
     yesShort: 'تعمل حالياً',
     noLabel: 'لا .. الماكينة خارج نطاق الخدمة',
     noShort: 'خارج الخدمة',
-    badgeYes: '🟢 الماكينة تعمل وتستجيب',
+    badgeYes: '<span class="atm-badge-machine-working">⚙️ الماكينة تعمل وتستجيب ⚡</span>',
     badgeNo: '🔴 الماكينة خارج نطاق الخدمة',
     badgeNone: '⚪ لم تسجل إجابات'
   },
@@ -67,34 +68,33 @@ export const ATM_POLL_QUESTIONS = [
 /**
  * Checks whether a place or category is an ATM / Cash machine
  */
+/**
+ * Checks whether a place or category is an ATM / Cash machine
+ */
 export function isAtmPlace(place, category = null) {
   if (!place) return false;
   const cId = (place.categoryId || '').toLowerCase();
-  const cName = (category?.name || '').toLowerCase();
-  const pName = (place.name || '').toLowerCase();
-  const customCat = (place.customCategory || '').toLowerCase();
+  const cName = normalizeArabic(category?.name || '').toLowerCase();
+  const pName = normalizeArabic(place.name || '').toLowerCase();
+  const customCat = normalizeArabic(place.customCategory || '').toLowerCase();
+  const catName = normalizeArabic(place.categoryName || '').toLowerCase();
 
   return (
     cId === 'atm' ||
     cId === 'atm-machines' ||
-    cId === 'صراف-الي' ||
-    cId === 'صراف_الي' ||
-    cId.includes('صراف') ||
     cId.includes('atm') ||
+    cId.includes('صراف') ||
     cName.includes('صراف') ||
     cName.includes('atm') ||
-    pName.includes('صراف آلي') ||
-    pName.includes('ماكينة صراف') ||
-    pName.includes('صراف الي') ||
+    pName.includes('صراف') ||
     pName.includes('atm') ||
     customCat.includes('صراف') ||
-    customCat.includes('atm')
+    customCat.includes('atm') ||
+    catName.includes('صراف') ||
+    catName.includes('atm')
   );
 }
 
-/**
- * Formats relative time in Egyptian Arabic for ATM polls
- */
 export function formatAtmTimeAgo(timestamp) {
   if (!timestamp) return 'منذ قليل';
   const diff = Date.now() - timestamp;

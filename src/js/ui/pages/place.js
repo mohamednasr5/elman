@@ -124,8 +124,8 @@ export async function renderPlacePage($container, { slug, user }) {
     const workingHoursList = formatWorkingHours(place.workingHours);
 
     const isAtm = isAtmPlace(place, category);
-    const placeCover = isAtm ? (place.coverImageUrl || ATM_UNIFIED_COVER) : place.coverImageUrl;
-    const placeLogo = isAtm ? (place.logoUrl || ATM_UNIFIED_LOGO) : place.logoUrl;
+    const placeCover = isAtm ? ATM_UNIFIED_COVER : place.coverImageUrl;
+    const placeLogo = isAtm ? ATM_UNIFIED_LOGO : place.logoUrl;
 
     // Resolve Smart Google Map info (supports coords, short links, Plus codes, and addresses)
     const mapInfo = resolveMapEmbedInfo(place);
@@ -189,11 +189,13 @@ export async function renderPlacePage($container, { slug, user }) {
                   </a>
                   ${place.nameEn ? `<span style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
                   
-                  <div style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
-                    <span>★</span>
-                    <span>${avgRating.toFixed(1)}</span>
-                    <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : '0.0'})</span>
-                  </div>
+                  ${!isAtm ? `
+                    <div style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
+                      <span>★</span>
+                      <span>${avgRating.toFixed(1)}</span>
+                      <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : '0.0'})</span>
+                    </div>
+                  ` : ''}
                 </div>
 
                 <div class="place-address">
@@ -205,7 +207,7 @@ export async function renderPlacePage($container, { slug, user }) {
 
             <!-- Quick Action Buttons -->
             <div class="place-contact-btns">
-              ${place.phone ? `
+              ${!isAtm && place.phone ? `
                 <a href="tel:${cleanPhone(place.phone)}" class="btn btn-primary" onclick="trackStat('${escAttr(placeId)}', 'phoneClicks')" title="اتصال هاتفي">
                   <span>📞</span>
                   <span>اتصال (${escHtml(place.phone)})</span>
@@ -276,7 +278,7 @@ export async function renderPlacePage($container, { slug, user }) {
           ` : ''}
 
           <!-- Description -->
-          ${place.description ? `
+          ${!isAtm && place.description ? `
             <section class="info-card">
               <h2 class="info-card__title">
                 <span>📝</span> عن الشخص / المكان / الخدمة
@@ -288,7 +290,7 @@ export async function renderPlacePage($container, { slug, user }) {
           ` : ''}
 
           <!-- Services / Tags -->
-          ${place.services && place.services.length > 0 ? `
+          ${!isAtm && place.services && place.services.length > 0 ? `
             <section class="info-card">
               <h2 class="info-card__title">
                 <span>✨</span> الخدمات والمميزات
@@ -387,133 +389,8 @@ export async function renderPlacePage($container, { slug, user }) {
             </section>
           ` : ''}
 
-          <!-- Google-Style 5-Star Reviews & Ratings Section -->
-          <section class="info-card reviews-section" id="place-reviews-card">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-4)">
-              <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:8px">
-                <span style="color:#F59E0B">⭐</span> تقييمات وآراء الزوار (${totalReviews})
-              </h2>
-
-              <div>
-                ${currentUser ? `
-                  ${userReview ? `
-                    ${(!isHammad || currentUser.role === 'superadmin') ? `
-                      <button class="btn btn-sm btn-outline" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full)">
-                        ✏️ تعديل تقييمي
-                      </button>
-                    ` : `
-                      <span class="badge" style="background:rgba(245,158,11,0.12);color:#D97706;font-size:11.5px">✓ تم تسجيل تقييمك</span>
-                    `}
-                  ` : `
-                    <button class="btn btn-sm btn-primary" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full);box-shadow:0 2px 8px rgba(27,79,114,0.25)">
-                      ⭐ اكتب تقييمك الآن
-                    </button>
-                  `}
-                ` : `
-                  <button class="btn btn-sm btn-secondary" id="btn-login-to-review" style="font-size:12.5px;border-radius:var(--radius-full)">
-                    🔒 تسجيل الدخول للتقييم
-                  </button>
-                `}
-              </div>
-            </div>
-
-            <!-- Reviews Sentiment Filter Tabs -->
-            <div class="reviews-sentiment-tabs" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-              <button type="button" class="btn btn-sm btn-outline review-filter-tab active" data-sentiment="all" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);background:var(--primary-alpha);font-weight:700">
-                الكل (${totalReviews})
-              </button>
-              <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="positive" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);color:var(--success);border-color:rgba(16,185,129,0.3)">
-                👍 إيجابي 3-5 نجوم (${safeReviews.filter(r => (Number(r.rating) || 5) >= 3).length})
-              </button>
-              <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="negative" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);color:var(--danger);border-color:rgba(239,68,68,0.3)">
-                👎 سلبي 1-2 نجوم (${safeReviews.filter(r => (Number(r.rating) || 5) <= 2).length})
-              </button>
-            </div>
-
-            <!-- Reviews List -->
-            ${totalReviews === 0 ? `
-              <div style="text-align:center;padding:2rem 1rem;color:var(--text-muted)">
-                <div style="font-size:2.5rem;margin-bottom:8px">💬</div>
-                <p style="font-size:13.5px;margin:0">كن أول من يكتب تقييماً وتجربة حقيقية عن هذا المكان!</p>
-              </div>
-            ` : `
-              <div class="reviews-list" id="place-reviews-list" style="display:flex;flex-direction:column;gap:12px">
-                ${safeReviews.map(r => {
-                  const isMine = currentUser && currentUser.uid === r.userId;
-                  const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
-                  const timeStr = formatDate(r.createdAt || Date.now());
-
-                  return `
-                    <div class="review-card" data-stars="${rStars}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;transition:all 0.2s">
-                      
-                      <!-- Header: User Info + Stars -->
-                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-                        
-                        <div style="display:flex;align-items:center;gap:10px">
-                          <div style="width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--primary-alpha);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);flex-shrink:0;border:1px solid var(--border)">
-                            ${r.userPhoto ? `<img src="${escAttr(r.userPhoto)}" alt="${escAttr(r.userName)}" style="width:100%;height:100%;object-fit:cover" />` : (r.userName?.charAt(0) || '👤')}
-                          </div>
-                          <div>
-                            <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
-                              <span>${escHtml(r.userName || 'مستخدم مسجل')}</span>
-                              ${isMine ? `<span class="badge" style="font-size:10px;padding:1px 6px;background:var(--primary-alpha);color:var(--primary)">تقييمك</span>` : ''}
-                            </div>
-                            <div style="font-size:11px;color:var(--text-muted)">
-                              ${timeStr} ${r.isEdited ? '• (معدل)' : ''}
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Stars & Actions -->
-                        <div style="display:flex;align-items:center;gap:10px">
-                          <div style="color:#F59E0B;font-size:1.1rem;letter-spacing:1px">
-                            ${'★'.repeat(rStars)}${'☆'.repeat(5 - rStars)}
-                          </div>
-
-                          ${isMine && (!isHammad || currentUser.role === 'superadmin') ? `
-                            <div style="display:flex;gap:4px">
-                              ${(r.editCount || 0) < 1 ? `
-                                <button class="btn btn-ghost btn-sm btn-edit-review" data-rid="${escAttr(r.id)}" title="تعديل التقييم (مسموح مرة واحدة)" style="padding:2px 6px;font-size:12px">
-                                  ✏️
-                                </button>
-                              ` : ''}
-                              <button class="btn btn-ghost btn-sm btn-delete-review" data-rid="${escAttr(r.id)}" title="حذف التقييم" style="padding:2px 6px;font-size:12px;color:var(--danger)">
-                                🗑️
-                              </button>
-                            </div>
-                          ` : ''}
-                        </div>
-
-                      </div>
-
-                      <!-- Comment Text (Strict plain text) -->
-                      <div style="font-size:13.5px;line-height:1.6;color:var(--text-secondary);background:var(--surface-2);padding:10px 12px;border-radius:var(--radius-sm)">
-                        ${escHtml(r.comment || '')}
-                      </div>
-
-                      <!-- Admin Reviewed Compliance Note (هذا التعليق تم الإبلاغ عنه وبعد المراجعة تأكدنا أنه يلتزم بالسياسة) -->
-                      ${(r.isReviewedByAdmin && (r.adminReviewStatus === 'approved_compliant' || r.adminReviewNote)) ? `
-                        <div class="admin-review-compliant-note" style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.08);border-right:3px solid #10B981;border-radius:var(--radius-sm);font-size:12px;color:#047857;line-height:1.5;display:flex;align-items:center;gap:6px">
-                          <span>🛡️</span>
-                          <span><strong>ملاحظة الإدارة:</strong> هذا التعليق تم الإبلاغ عنه، وبعد المراجعة تأكدنا أنه يلتزم بالسياسة ولا داعي لحذفه.</span>
-                        </div>
-                      ` : ''}
-
-                      <!-- Report Action -->
-                      ${!isMine ? `
-                        <div style="display:flex;justify-content:flex-end;margin-top:6px">
-                          <button type="button" class="btn-report-review" onclick="window.reportReviewAction('${escAttr(placeId)}', '${escAttr(r.id)}', '${escAttr(place.name)}')" style="background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;transition:color 0.2s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'" title="الإبلاغ عن هذا التعليق كمسيء">
-                            <span>🚩</span> الإبلاغ عن هذا التعليق كمسيء
-                          </button>
-                        </div>
-                      ` : ''}
-
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            `}
-          </section>
+          <!-- Google-Style 5-Star Reviews & Ratings Section (Hidden for ATMs) -->
+          ${!isAtm ? renderReviewsSectionHTML({ placeId, placeName: place.name, safeReviews, totalReviews, currentUser, userReview, isHammad }) : ''}
 
           <!-- Photo Gallery -->
           ${place.imageUrls && place.imageUrls.length > 0 ? `
@@ -541,27 +418,8 @@ export async function renderPlacePage($container, { slug, user }) {
             <div class="skeleton" style="height:170px;border-radius:12px"></div>
           </div>
 
-          <!-- Working Hours Card -->
-          <div class="working-hours">
-            <div class="working-hours__header" id="toggle-working-hours">
-              <div class="working-hours__title">
-                <span>🕒</span> مواعيد العمل
-              </div>
-              <div class="working-hours__status ${isOpen ? 'working-hours__status--open' : 'working-hours__status--closed'}">
-                ${isOpen === null ? 'غير محدد' : (isOpen ? '🟢 مفتوح الآن' : '🔴 مغلق الآن')}
-              </div>
-            </div>
-            <div class="working-hours__body expanded" id="working-hours-list">
-              ${workingHoursList.map(h => `
-                <div class="working-hours__row ${h.isToday ? 'working-hours__row--today' : ''}">
-                  <span class="working-hours__day">${h.name} ${h.isToday ? '(اليوم)' : ''}</span>
-                  <span class="working-hours__time ${h.closed ? 'working-hours__time--closed' : ''}">
-                    ${h.closed ? 'مغلق' : `${h.open} — ${h.close}`}
-                  </span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
+          <!-- Working Hours Card (Hidden for ATMs) -->
+          ${!isAtm ? renderWorkingHoursSectionHTML({ isOpen, workingHoursList }) : ''}
 
           <!-- Social Media Links (وسائل التواصل الاجتماعي) -->
           ${hasSocial(place.social) ? `
@@ -1695,3 +1553,163 @@ if (typeof window !== 'undefined') {
   };
 }
 
+
+
+
+function renderWorkingHoursSectionHTML({ isOpen, workingHoursList }) {
+  return `
+    <!-- Working Hours Card -->
+    <div class="working-hours">
+      <div class="working-hours__header" id="toggle-working-hours">
+        <div class="working-hours__title">
+          <span>🕒</span> مواعيد العمل
+        </div>
+        <div class="working-hours__status ${isOpen ? 'working-hours__status--open' : 'working-hours__status--closed'}">
+          ${isOpen === null ? 'غير محدد' : (isOpen ? '🟢 مفتوح الآن' : '🔴 مغلق الآن')}
+        </div>
+      </div>
+      <div class="working-hours__body expanded" id="working-hours-list">
+        ${workingHoursList.map(h => `
+          <div class="working-hours__row ${h.isToday ? 'working-hours__row--today' : ''}">
+            <span class="working-hours__day">${h.name} ${h.isToday ? '(اليوم)' : ''}</span>
+            <span class="working-hours__time ${h.closed ? 'working-hours__time--closed' : ''}">
+              ${h.closed ? 'مغلق' : `${h.open} — ${h.close}`}
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderReviewsSectionHTML({ placeId, placeName, safeReviews, totalReviews, currentUser, userReview, isHammad }) {
+  return `
+    <!-- Google-Style 5-Star Reviews & Ratings Section -->
+    <section class="info-card reviews-section" id="place-reviews-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-4)">
+        <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:8px">
+          <span style="color:#F59E0B">⭐</span> تقييمات وآراء الزوار (${totalReviews})
+        </h2>
+
+        <div>
+          ${currentUser ? `
+            ${userReview ? `
+              ${(!isHammad || currentUser.role === 'superadmin') ? `
+                <button class="btn btn-sm btn-outline" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full)">
+                  ✏️ تعديل تقييمي
+                </button>
+              ` : `
+                <span class="badge" style="background:rgba(245,158,11,0.12);color:#D97706;font-size:11.5px">✓ تم تسجيل تقييمك</span>
+              `}
+            ` : `
+              <button class="btn btn-sm btn-primary" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full);box-shadow:0 2px 8px rgba(27,79,114,0.25)">
+                ⭐ اكتب تقييمك الآن
+              </button>
+            `}
+          ` : `
+            <button class="btn btn-sm btn-secondary" id="btn-login-to-review" style="font-size:12.5px;border-radius:var(--radius-full)">
+              🔒 تسجيل الدخول للتقييم
+            </button>
+          `}
+        </div>
+      </div>
+
+      <!-- Reviews Sentiment Filter Tabs -->
+      <div class="reviews-sentiment-tabs" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button type="button" class="btn btn-sm btn-outline review-filter-tab active" data-sentiment="all" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);background:var(--primary-alpha);font-weight:700">
+          الكل (${totalReviews})
+        </button>
+        <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="positive" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);color:var(--success);border-color:rgba(16,185,129,0.3)">
+          👍 إيجابي 3-5 نجوم (${safeReviews.filter(r => (Number(r.rating) || 5) >= 3).length})
+        </button>
+        <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="negative" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);color:var(--danger);border-color:rgba(239,68,68,0.3)">
+          👎 سلبي 1-2 نجوم (${safeReviews.filter(r => (Number(r.rating) || 5) <= 2).length})
+        </button>
+      </div>
+
+      <!-- Reviews List -->
+      ${totalReviews === 0 ? `
+        <div style="text-align:center;padding:2rem 1rem;color:var(--text-muted)">
+          <div style="font-size:2.5rem;margin-bottom:8px">💬</div>
+          <p style="font-size:13.5px;margin:0">كن أول من يكتب تقييماً وتجربة حقيقية عن هذا المكان!</p>
+        </div>
+      ` : `
+        <div class="reviews-list" id="place-reviews-list" style="display:flex;flex-direction:column;gap:12px">
+          ${safeReviews.map(r => {
+            const isMine = currentUser && currentUser.uid === r.userId;
+            const rStars = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
+            const timeStr = formatDate(r.createdAt || Date.now());
+
+            return `
+              <div class="review-card" data-stars="${rStars}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;transition:all 0.2s">
+                
+                <!-- Header: User Info + Stars -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+                  
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="width:38px;height:38px;border-radius:50%;overflow:hidden;background:var(--primary-alpha);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);flex-shrink:0;border:1px solid var(--border)">
+                      ${r.userPhoto ? `<img src="${escAttr(r.userPhoto)}" alt="${escAttr(r.userName)}" style="width:100%;height:100%;object-fit:cover" />` : (r.userName?.charAt(0) || '👤')}
+                    </div>
+                    <div>
+                      <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                        <span>${escHtml(r.userName || 'مستخدم مسجل')}</span>
+                        ${isMine ? `<span class="badge" style="font-size:10px;padding:1px 6px;background:var(--primary-alpha);color:var(--primary)">تقييمك</span>` : ''}
+                      </div>
+                      <div style="font-size:11px;color:var(--text-muted)">
+                        ${timeStr} ${r.isEdited ? '• (معدل)' : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Stars & Actions -->
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="color:#F59E0B;font-size:1.1rem;letter-spacing:1px">
+                      ${'★'.repeat(rStars)}${'☆'.repeat(5 - rStars)}
+                    </div>
+
+                    ${isMine && (!isHammad || currentUser.role === 'superadmin') ? `
+                      <div style="display:flex;gap:4px">
+                        ${(r.editCount || 0) < 1 ? `
+                          <button class="btn btn-ghost btn-sm btn-edit-review" data-rid="${escAttr(r.id)}" title="تعديل التقييم (مسموح مرة واحدة)" style="padding:2px 6px;font-size:12px">
+                            ✏️
+                          </button>
+                        ` : ''}
+                        <button class="btn btn-ghost btn-sm btn-delete-review" data-rid="${escAttr(r.id)}" title="حذف التقييم" style="padding:2px 6px;font-size:12px;color:var(--danger)">
+                          🗑️
+                        </button>
+                      </div>
+                    ` : ''}
+                  </div>
+
+                </div>
+
+                <!-- Comment Text (Strict plain text) -->
+                <div style="font-size:13.5px;line-height:1.6;color:var(--text-secondary);background:var(--surface-2);padding:10px 12px;border-radius:var(--radius-sm)">
+                  ${escHtml(r.comment || '')}
+                </div>
+
+                <!-- Admin Reviewed Compliance Note -->
+                ${(r.isReviewedByAdmin && (r.adminReviewStatus === 'approved_compliant' || r.adminReviewNote)) ? `
+                  <div class="admin-review-compliant-note" style="margin-top:8px;padding:8px 12px;background:rgba(16,185,129,0.08);border-right:3px solid #10B981;border-radius:var(--radius-sm);font-size:12px;color:#047857;line-height:1.5;display:flex;align-items:center;gap:6px">
+                    <span>🛡️</span>
+                    <span><strong>ملاحظة الإدارة:</strong> هذا التعليق تم الإبلاغ عنه، وبعد المراجعة تأكدنا أنه يلتزم بالسياسة ولا داعي لحذفه.</span>
+                  </div>
+                ` : ''}
+
+                <!-- Report Action -->
+                ${!isMine ? `
+                  <div style="display:flex;justify-content:flex-end;margin-top:6px">
+                    <button type="button" class="btn-report-review" onclick="window.reportReviewAction('${escAttr(placeId)}', '${escAttr(r.id)}', '${escAttr(placeName)}')" style="background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;transition:color 0.2s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'" title="الإبلاغ عن هذا التعليق كمسيء">
+                      <span>🚩</span> الإبلاغ عن هذا التعليق كمسيء
+                    </button>
+                  </div>
+                ` : ''}
+
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `}
+    </section>
+  `;
+}

@@ -471,15 +471,18 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         </div>
 
         <!-- ATM Specific Notice Banner -->
-        <div class="form-group animate-fade-in" id="p-atm-notice" style="display:none;background:linear-gradient(135deg,rgba(15,43,72,0.08) 0%,rgba(27,79,114,0.12) 100%);border:1px solid rgba(27,79,114,0.3);border-radius:var(--radius-md);padding:14px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:1.8rem">🏧</span>
+        <div class="form-group animate-fade-in" id="p-atm-notice" style="display:none;background:linear-gradient(135deg,#0F2B48 0%,#1B4F72 100%);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:var(--radius-lg);padding:18px;box-shadow:0 8px 24px rgba(27,79,114,0.3)">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap">
+            <img src="assets/images/atm-logo.png" style="width:64px;height:64px;border-radius:50%;object-fit:cover;box-shadow:0 4px 14px rgba(0,0,0,0.4);border:2.5px solid #F5A623;flex-shrink:0" alt="شعار ماكينة الصراف الآلي" />
             <div>
-              <div style="font-weight:800;color:var(--primary);font-size:13.5px;margin-bottom:2px">تصنيف ماكينة صراف آلي (ATM)</div>
-              <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">
-                في هذا التصنيف، سيكفيك فقط إدخال <strong>اسم البنك</strong> و<strong>مكان الماكينة بالتفصيل</strong> و<strong>رابط الموقع على الخريطة</strong>. وسيتم تطبيق الغلاف والشعار الموحد وتشغيل استبيان توفر الأموال الحي تلقائياً!
+              <div style="font-weight:800;color:#FDE68A;font-size:15px;margin-bottom:4px">🏧 تصنيف ماكينة صراف آلي (ATM)</div>
+              <div style="font-size:12.5px;color:rgba(255,255,255,0.9);line-height:1.5">
+                تم إلغاء رفع الغلاف والشعار يدوياً وتطبيق الهوية الرسمية المعتمدة تلقائياً. كل ما عليك إدخاله هو <strong>اسم البنك</strong> و<strong>مكان الماكينة بالتفصيل</strong> و<strong>موقعها على الخريطة</strong>.
               </div>
             </div>
+          </div>
+          <div style="border-radius:var(--radius-md);overflow:hidden;border:1px solid rgba(255,255,255,0.18);max-height:130px">
+            <img src="assets/images/atm-cover.jpg" style="width:100%;height:130px;object-fit:cover" alt="غلاف ماكينة صراف آلي" />
           </div>
         </div>
 
@@ -598,7 +601,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       </div>
 
       <!-- Images & Branding -->
-      <div class="form-section">
+      <div class="form-section" id="p-images-section">
         <h2 class="form-section__title"><span>🖼️</span> الصور والهوية</h2>
 
         <!-- Cover Image -->
@@ -832,6 +835,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     const workingSection = document.getElementById('p-working-hours-section');
     const socialSection = document.getElementById('p-social-section');
     const servicesSection = document.getElementById('p-services-section');
+    const imagesSection = document.getElementById('p-images-section');
     const coverUploadZone = document.getElementById('cover-upload-zone');
     const logoUploadZone = document.getElementById('logo-upload-zone');
 
@@ -847,6 +851,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       if (workingSection) workingSection.style.display = 'none';
       if (socialSection) socialSection.style.display = 'none';
       if (servicesSection) servicesSection.style.display = 'none';
+      if (imagesSection) imagesSection.style.display = 'none';
     } else {
       if (nameLabel) nameLabel.innerHTML = 'اسم المكان أو النشاط أو المهنة / الحرفي <span class="required">*</span>';
       if (nameInput) nameInput.placeholder = 'مثال: ورشة نجار فلان، السباك أحمد، صيدلية الأمل، دكتور علي';
@@ -859,6 +864,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       if (workingSection) workingSection.style.display = 'block';
       if (socialSection) socialSection.style.display = 'block';
       if (servicesSection) servicesSection.style.display = 'block';
+      if (imagesSection) imagesSection.style.display = 'block';
     }
   }
 
