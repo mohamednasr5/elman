@@ -1,3 +1,12 @@
+import { 
+  fetchManagedUserNotifications, 
+  deleteSingleNotification, 
+  clearAllUserNotifications, 
+  markSingleNotificationAsRead, 
+  playNotificationSound, 
+  toggleNotificationSound, 
+  isNotificationSoundEnabled 
+} from '../../services/notification.service.js';
 import { getCategoryTaxonomy, SPECIALIZED_CATEGORIES_TAXONOMY } from '../../utils/specialized-taxonomy.js';
 /**
  * المنزلة وناسها — User Place Owner Dashboard
@@ -489,25 +498,31 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
         
         <!-- Medical Specialty for Doctors & Clinics -->
-        <div class="form-group animate-fade-in" id="doctor-specialty-group" style="${(place?.categoryId?.includes('doctor') || place?.categoryId?.includes('clinic') || place?.customCategory?.includes('دكتور') || place?.customCategory?.includes('عياد')) ? '' : 'display:none'}">
-          <label class="form-label" style="font-weight:700;color:#0284C7">🩺 التخصص الطبي الدقيق <span class="required">*</span></label>
+        <div class="form-group animate-fade-in" id="doctor-specialty-group" style="display:${(place?.categoryId?.includes('doctor') || place?.categoryId?.includes('clinic') || place?.customCategory?.includes('دكتور') || place?.customCategory?.includes('عياد') || place?.medicalSpecialty) ? 'block' : 'none'};background:rgba(2,132,199,0.06);border:1.5px solid #0284C7;border-radius:var(--radius-lg);padding:14px;margin-top:10px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:20px">🩺</span>
+            <label class="form-label" style="font-weight:800;color:#0369A1;font-size:14px;margin:0">التخصص الطبي الدقيق للدكتور أو العيادة <span class="required">*</span></label>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px 0">
+            اكتب تخصصك الطبي أو اختر من الأزرار السريعة أدناه (مثل: دكتور جراحة عامة، دكتور أسنان، دكتور باطنة، دكتور أطفال، دكتور أورام...).
+          </p>
           <input 
             type="text" 
             id="p-medical-specialty" 
             class="form-input" 
-            placeholder="مثال: أسنان، جراحة عامة، باطنة وجهاز هضمي، أطفال، عظام، أورام..." 
+            placeholder="مثال: دكتور جراحة عامة، دكتور أسنان، استشاري باطنة، أطفال، عظام..." 
             value="${escAttr(place?.medicalSpecialty || '')}" 
-            style="border-color:#0284C7"
+            style="border-color:#0284C7;background:#fff;font-weight:700;font-size:14px"
           />
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">
-            <span style="font-size:12px;color:var(--text-muted);font-weight:600">اختيار تخصص سريع:</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px">
+            <span style="font-size:12px;color:#0369A1;font-weight:700">⚡ اختيار تخصص سريع بنقرة واحدة:</span>
             ${[
-              'أسنان', 'جراحة عامة', 'باطنة وجهاز هضمي', 'أطفال وحديثي الولادة', 
-              'عظام ومفاصل', 'نساء وتوليد', 'جلدية وتجميل', 'عيون ورمد', 
-              'أنف وأذن وحنجرة', 'أورام', 'مخ وأعصاب', 'قلب وأوعية دموية', 
-              'مسالك بولية وتناسلية', 'علاج طبيعي وتغذية', 'صدر وحساسية', 'ذكورة وعقم'
+              'دكتور جراحة عامة', 'دكتور أسنان', 'دكتور باطنة وجهاز هضمي', 'دكتور أطفال وحديثي الولادة', 
+              'دكتور عظام ومفاصل', 'دكتور نساء وتوليد', 'دكتور جلدية وتجميل', 'دكتور عيون ورمد', 
+              'دكتور أنف وأذن وحنجرة', 'دكتور أورام', 'دكتور مخ وأعصاب', 'دكتور قلب وأوعية دموية', 
+              'دكتور مسالك بولية', 'دكتور علاج طبيعي وتغذية', 'دكتور صدر وحساسية', 'دكتور ذكورة وعقم'
             ].map(spec => `
-              <button type="button" class="btn btn-sm btn-outline btn-quick-specialty" data-spec="${escAttr(spec)}" style="font-size:11.5px;padding:3px 8px;border-radius:9999px;border-color:#BAE6FD;color:#0369A1">
+              <button type="button" class="btn btn-sm btn-outline btn-quick-specialty" data-spec="${escAttr(spec)}" style="font-size:11.5px;padding:4px 10px;border-radius:9999px;border-color:#BAE6FD;color:#0369A1;background:#fff">
                 ${escHtml(spec)}
               </button>
             `).join('')}
@@ -856,22 +871,26 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   const selectedBadge = document.getElementById('p-selected-cat-badge');
   const selectedBadgeName = document.getElementById('p-selected-cat-name');
 
-  catSearchInput?.addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    let visibleCount = 0;
-    
-  function updateDoctorSpecialtyVisibility(catVal, customCatVal = '') {
+  // Doctor Specialty Visibility Controller
+  function updateDoctorSpecialtyVisibility(catVal = '', customCatVal = '', catNameVal = '') {
+    const combined = `${catVal || ''} ${customCatVal || ''} ${catNameVal || ''}`.toLowerCase();
     const isDoc = (
-      catVal === 'doctor' || 
-      catVal === 'clinic' || 
-      catVal === 'doctors' || 
-      String(catVal).includes('دكتور') || 
-      String(catVal).includes('عياد') ||
-      String(customCatVal).includes('دكتور') ||
-      String(customCatVal).includes('عياد')
+      combined.includes('doctor') || 
+      combined.includes('clinic') || 
+      combined.includes('دكتور') || 
+      combined.includes('عياد') ||
+      combined.includes('طبيب') ||
+      combined.includes('طبي') ||
+      combined.includes('اسنان') ||
+      combined.includes('علاج')
     );
     const docGroup = document.getElementById('doctor-specialty-group');
-    if (docGroup) docGroup.style.display = isDoc ? 'block' : 'none';
+    if (docGroup) {
+      docGroup.style.display = isDoc ? 'block' : 'none';
+      if (isDoc) {
+        docGroup.classList.add('animate-fade-in');
+      }
+    }
   }
 
   // Doctor Quick Specialty Pills Click Handlers
@@ -886,7 +905,11 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     });
   });
 
-  catPills.forEach(pill => {
+  // Category Search Input Filtering
+  catSearchInput?.addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    let visibleCount = 0;
+    catPills.forEach(pill => {
       const name = (pill.getAttribute('data-cat-name') || '').toLowerCase();
       const id = (pill.getAttribute('data-cat-id') || '').toLowerCase();
       const match = !q || name.includes(q) || id.includes(q);
@@ -896,6 +919,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     if (catNoMatch) catNoMatch.style.display = visibleCount === 0 ? 'block' : 'none';
   });
 
+  // Category Pill Selection Click Handlers
   catPills.forEach(pill => {
     pill.addEventListener('click', () => {
       const catId = pill.getAttribute('data-cat-id');
@@ -907,7 +931,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       if (hiddenSelect) {
         hiddenSelect.value = catId;
         hiddenSelect.dispatchEvent(new Event('change'));
-      updateAtmMode(catId);
+        updateAtmMode(catId);
       }
 
       if (selectedBadge && selectedBadgeName) {
@@ -915,16 +939,17 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         selectedBadge.style.display = 'flex';
       }
 
-      updateDoctorSpecialtyVisibility(catId, customCatGroup?.querySelector('input')?.value);
+      const customCatGroup = document.getElementById('custom-category-group');
+      updateDoctorSpecialtyVisibility(catId, customCatGroup?.querySelector('input')?.value, catName);
+      
       const deliveryGroup = document.getElementById('delivery-type-group');
       if (deliveryGroup) deliveryGroup.style.display = (catId || '').includes('delivery') ? 'block' : 'none';
 
-      const customCatGroup = document.getElementById('custom-category-group');
       if (customCatGroup) customCatGroup.style.display = catId === 'other' ? 'block' : 'none';
     });
   });
 
-    function updateAtmMode(catVal) {
+  function updateAtmMode(catVal) {
     const isAtm = (catVal === 'atm' || catVal === 'atm-machines' || String(catVal).includes('صراف') || String(catVal).includes('atm'));
     const nameLabel = document.getElementById('p-name-label');
     const nameInput = document.getElementById('p-name');
@@ -971,9 +996,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   }
 
   // Initial checks on load
-  if (place?.categoryId) {
-    updateAtmMode(place.categoryId);
-    updateDoctorSpecialtyVisibility(place.categoryId, place.customCategory);
+  if (place?.categoryId || place?.customCategory || place?.medicalSpecialty) {
+    updateAtmMode(place?.categoryId || '');
+    updateDoctorSpecialtyVisibility(place?.categoryId || '', place?.customCategory || '', '');
   }
 
   // Category toggle for delivery vehicle and custom category
@@ -2410,53 +2435,100 @@ if (typeof window !== 'undefined') {
 /**
  * Render Dashboard Notifications Section (Profile visitors & alerts)
  */
+/**
+ * Professional Dashboard Notifications Management (Tabs, Audio Chimes, Individual Delete, Batch Controls)
+ */
+let _activeNotifFilter = 'all';
+
 async function renderDashboardNotifications($container, user) {
   $container.innerHTML = `<div class="spinner spinner-lg" style="margin:4rem auto"></div>`;
-  const notifications = await getUserNotifications(user.uid);
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const allNotifs = await fetchManagedUserNotifications(user.uid);
+  const unreadCount = allNotifs.filter(n => !n.isRead).length;
+  const newPlacesCount = allNotifs.filter(n => n.type === 'new_place').length;
+  const verifiedCount = allNotifs.filter(n => n.type === 'place_verified').length;
+  const visitsCount = allNotifs.filter(n => n.type === 'profile_visit' || !n.type).length;
+
+  let filteredNotifs = allNotifs;
+  if (_activeNotifFilter === 'unread') filteredNotifs = allNotifs.filter(n => !n.isRead);
+  else if (_activeNotifFilter === 'new_place') filteredNotifs = allNotifs.filter(n => n.type === 'new_place');
+  else if (_activeNotifFilter === 'verified') filteredNotifs = allNotifs.filter(n => n.type === 'place_verified');
+  else if (_activeNotifFilter === 'visits') filteredNotifs = allNotifs.filter(n => n.type === 'profile_visit' || !n.type);
+
+  const soundOn = isNotificationSoundEnabled();
 
   $container.innerHTML = `
-    <div class="dashboard-header animate-fade-in-up" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-6)">
+    <div class="dashboard-header animate-fade-in-up" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-4)">
       <div>
         <h1 class="dashboard-title" style="margin-bottom:4px;display:flex;align-items:center;gap:8px">
           <span>🔔</span> سجل الإشعارات وزوار البروفايل
           ${unreadCount > 0 ? `<span class="badge badge--danger" style="font-size:12px;padding:2px 8px">${unreadCount} جديد</span>` : ''}
         </h1>
         <p class="dashboard-subtitle" style="margin:0;color:var(--text-muted);font-size:13px">
-          تعرف على الأشخاص والزوار الذين شاهدوا أنشطتك وأماكنك اليوم مع التوقيت الدقيق
+          إدارة شاملة لجميع التنبيهات وزوار الأماكن والأنشطة المنضمة والموثقة حديثاً
         </p>
       </div>
 
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        ${notifications.length > 0 ? `
-          <button class="btn btn-sm btn-outline" id="btn-mark-all-read" style="font-size:12px">
-            ✓ تحديد الكل كمقروء
+        <!-- Sound Toggle Button -->
+        <button type="button" class="btn btn-sm ${soundOn ? 'btn-outline' : 'btn-ghost'}" id="btn-toggle-notif-sound" style="font-size:12px;gap:6px" title="تفعيل أو كتم صوت الإشعارات">
+          <span>${soundOn ? '🔊' : '🔇'}</span>
+          <span>${soundOn ? 'صوت الإشعارات: مفعّل' : 'صوت الإشعارات: مكتوم'}</span>
+        </button>
+
+        <button type="button" class="btn btn-sm btn-ghost" id="btn-test-notif-sound" style="font-size:12px;gap:4px" title="تجربة رنة التنبيه">
+          <span>🔔</span> تجربة الصوت
+        </button>
+
+        ${allNotifs.length > 0 ? `
+          <button class="btn btn-sm btn-outline" id="btn-mark-all-read" style="font-size:12px;gap:4px">
+            <span>✓</span> تحديد الكل كمقروء
           </button>
-          <button class="btn btn-sm btn-ghost" id="btn-clear-all-notifs" style="color:var(--danger);font-size:12px">
-            🗑️ مسح الكل
+          <button class="btn btn-sm btn-ghost" id="btn-clear-all-notifs" style="color:var(--danger);font-size:12px;gap:4px">
+            <span>🗑️</span> مسح الكل
           </button>
         ` : ''}
       </div>
     </div>
 
-    ${notifications.length === 0 ? `
+    <!-- Category Filter Tabs -->
+    <div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:12px;margin-bottom:var(--space-4)">
+      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'all' ? 'btn-primary' : 'btn-outline'}" data-filter="all" style="border-radius:9999px;font-size:12px">
+        🔔 الكل (${allNotifs.length})
+      </button>
+      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'unread' ? 'btn-primary' : 'btn-outline'}" data-filter="unread" style="border-radius:9999px;font-size:12px">
+        🔴 غير المقروءة (${unreadCount})
+      </button>
+      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'new_place' ? 'btn-primary' : 'btn-outline'}" data-filter="new_place" style="border-radius:9999px;font-size:12px">
+        🎉 انضمام جديد (${newPlacesCount})
+      </button>
+      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'verified' ? 'btn-primary' : 'btn-outline'}" data-filter="verified" style="border-radius:9999px;font-size:12px">
+        👑 التوثيق الرسمي (${verifiedCount})
+      </button>
+      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'visits' ? 'btn-primary' : 'btn-outline'}" data-filter="visits" style="border-radius:9999px;font-size:12px">
+        👁️ زوار البروفايل (${visitsCount})
+      </button>
+    </div>
+
+    ${filteredNotifs.length === 0 ? `
       <div class="empty-state" style="background:var(--surface);border-radius:var(--radius-lg);padding:3rem 1.5rem;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:3.5rem;margin-bottom:12px">🔕</div>
-        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">لا توجد إشعارات جديدة حالياً</h3>
+        <div style="font-size:3.5rem;margin-bottom:12px">${_activeNotifFilter === 'unread' ? '✨' : '🔕'}</div>
+        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">
+          ${_activeNotifFilter === 'unread' ? 'رائع! لا توجد أي إشعارات غير مقروءة' : 'لا توجد إشعارات في هذا القسم'}
+        </h3>
         <p style="color:var(--text-muted);font-size:13px;max-width:400px;margin:0 auto">
-          عندما يقوم الزوار بتصفح أماكنك أو بروفايلك ستصلك تنبيهات فورية هنا بأسماء الزوار وتوقيت الزيارة.
+          ستظهر أي تنبيهات جديدة أو أماكن منضمة أو زيارات لملفك الشخصي فورياً هنا مع صوت تنبيهي.
         </p>
       </div>
     ` : `
       <div class="notifications-list" style="display:flex;flex-direction:column;gap:12px">
-        ${notifications.map(n => {
+        ${filteredNotifs.map(n => {
           const isUnread = !n.isRead;
           const timeStr = formatTimeAgo(n.createdAt);
           const isGuest = n.isGuest || !n.visitorUid;
 
           if (n.type === 'new_place') {
             return `
-              <div class="notification-card" style="background:${isUnread ? 'rgba(16, 185, 129, 0.06)' : 'var(--surface)'};border:1px solid ${isUnread ? '#10B981' : 'var(--border)'};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:center;gap:14px;transition:all 0.2s;flex-wrap:wrap">
+              <div class="notification-card" id="notif-card-${n.id}" style="background:${isUnread ? 'rgba(16, 185, 129, 0.06)' : 'var(--surface)'};border:1px solid ${isUnread ? '#10B981' : 'var(--border)'};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:center;gap:14px;transition:all 0.25s ease;flex-wrap:wrap">
                 <div style="width:46px;height:46px;border-radius:50%;background:rgba(16, 185, 129, 0.15);color:#059669;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid rgba(16, 185, 129, 0.3)">
                   🏪
                 </div>
@@ -2472,11 +2544,18 @@ async function renderDashboardNotifications($container, user) {
                     (${escHtml(n.placeName)}) من (${escHtml(n.placeAddress || 'المنزلة')}) أنضم حديثاً إلى دليل المنزلة والمطرية الرقمي.
                   </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <a href="${escAttr(n.actionUrl || `place.html?slug=${n.placeSlug}`)}" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
                     <span>👁️</span> مشاهدة المكان
                   </a>
-                  ${isUnread ? `<div style="width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0" title="إشعار غير مقروء"></div>` : ''}
+                  ${isUnread ? `
+                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:5px 8px;border-radius:var(--radius-full)">
+                      ✓
+                    </button>
+                  ` : ''}
+                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="حذف وإخفاء هذا الإشعار" style="color:var(--danger);font-size:13px;padding:4px 8px;border-radius:var(--radius-full)">
+                    🗑️
+                  </button>
                 </div>
               </div>
             `;
@@ -2484,7 +2563,7 @@ async function renderDashboardNotifications($container, user) {
 
           if (n.type === 'place_verified') {
             return `
-              <div class="notification-card" style="background:${isUnread ? 'rgba(245, 158, 11, 0.07)' : 'var(--surface)'};border:1px solid ${isUnread ? '#F59E0B' : 'var(--border)'};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:center;gap:14px;transition:all 0.2s;flex-wrap:wrap">
+              <div class="notification-card" id="notif-card-${n.id}" style="background:${isUnread ? 'rgba(245, 158, 11, 0.07)' : 'var(--surface)'};border:1px solid ${isUnread ? '#F59E0B' : 'var(--border)'};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:center;gap:14px;transition:all 0.25s ease;flex-wrap:wrap">
                 <div style="width:46px;height:46px;border-radius:50%;background:rgba(245, 158, 11, 0.15);color:#D97706;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid rgba(245, 158, 11, 0.3)">
                   👑
                 </div>
@@ -2500,19 +2579,25 @@ async function renderDashboardNotifications($container, user) {
                     وثّق (${escHtml(n.placeName)}) ملفه لكي يظهر أمام الكل في كامل دليل المنزلة والمطرية الرقمي أولاً!
                   </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <a href="${escAttr(n.actionUrl || 'https://wa.me/wasendernew')}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;background:linear-gradient(135deg, #10B981 0%, #059669 100%);color:#fff;border:none;box-shadow:0 2px 8px rgba(16,185,129,0.3);display:inline-flex;align-items:center">
-                    <span>🚀</span> وثّق ملفك الآن لكي تظهر مثله
+                    <span>🚀</span> وثّق ملفك الآن
                   </a>
-                  ${isUnread ? `<div style="width:8px;height:8px;border-radius:50%;background:#F59E0B;flex-shrink:0" title="إشعار غير مقروء"></div>` : ''}
+                  ${isUnread ? `
+                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:5px 8px;border-radius:var(--radius-full)">
+                      ✓
+                    </button>
+                  ` : ''}
+                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="حذف وإخفاء هذا الإشعار" style="color:var(--danger);font-size:13px;padding:4px 8px;border-radius:var(--radius-full)">
+                    🗑️
+                  </button>
                 </div>
               </div>
             `;
           }
 
           return `
-            <div class="notification-card" style="background:${isUnread ? 'rgba(27, 79, 114, 0.05)' : 'var(--surface)'};border:1px solid ${isUnread ? 'var(--primary)' : 'var(--border)'};border-radius:var(--radius-md);padding:12px 16px;display:flex;align-items:center;gap:14px;transition:all 0.2s">
-              <!-- Avatar -->
+            <div class="notification-card" id="notif-card-${n.id}" style="background:${isUnread ? 'rgba(27, 79, 114, 0.05)' : 'var(--surface)'};border:1px solid ${isUnread ? 'var(--primary)' : 'var(--border)'};border-radius:var(--radius-md);padding:12px 16px;display:flex;align-items:center;gap:14px;transition:all 0.25s ease;flex-wrap:wrap">
               <div style="width:44px;height:44px;border-radius:50%;background:${isGuest ? 'var(--surface-3)' : 'var(--primary-alpha)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1.5px solid var(--border)">
                 ${n.visitorPhoto ? `
                   <img src="${escAttr(n.visitorPhoto)}" alt="${escAttr(n.visitorName)}" style="width:100%;height:100%;object-fit:cover" />
@@ -2521,15 +2606,12 @@ async function renderDashboardNotifications($container, user) {
                 `}
               </div>
 
-              <!-- Content -->
-              <div style="flex:1;min-width:0">
+              <div style="flex:1;min-width:200px">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
                   <div style="font-weight:700;font-size:13.5px;color:var(--text-primary)">
                     ${isGuest ? `<span style="color:var(--text-muted)">زائر (غير مسجل)</span>` : escHtml(n.visitorName)}
                   </div>
-                  <div style="font-size:11px;color:var(--text-muted)">
-                    ⏱️ ${timeStr}
-                  </div>
+                  <div style="font-size:11px;color:var(--text-muted)">⏱️ ${timeStr}</div>
                 </div>
 
                 <div style="font-size:12.5px;color:var(--text-secondary);margin-top:2px">
@@ -2537,9 +2619,16 @@ async function renderDashboardNotifications($container, user) {
                 </div>
               </div>
 
-              ${isUnread ? `
-                <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0" title="إشعار غير مقروء"></div>
-              ` : ''}
+              <div style="display:flex;align-items:center;gap:6px">
+                ${isUnread ? `
+                  <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:5px 8px;border-radius:var(--radius-full)">
+                    ✓
+                  </button>
+                ` : ''}
+                <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="حذف هذا الإشعار" style="color:var(--danger);font-size:13px;padding:4px 8px;border-radius:var(--radius-full)">
+                  🗑️
+                </button>
+              </div>
             </div>
           `;
         }).join('')}
@@ -2547,24 +2636,79 @@ async function renderDashboardNotifications($container, user) {
     `}
   `;
 
-  // Setup Button Handlers
+  // ── Setup Action Listeners ──
+
+  // Filter Tabs click
+  $container.querySelectorAll('.notif-filter-tab').forEach(tab => {
+    tab.addEventListener('click', async () => {
+      _activeNotifFilter = tab.getAttribute('data-filter') || 'all';
+      await renderDashboardNotifications($container, user);
+    });
+  });
+
+  // Sound Toggle click
+  document.getElementById('btn-toggle-notif-sound')?.addEventListener('click', () => {
+    const isNowOn = toggleNotificationSound();
+    toast.info(isNowOn ? 'تم تفعيل صوت التنبيهات 🔊' : 'تم كتم صوت التنبيهات 🔇');
+    renderDashboardNotifications($container, user);
+  });
+
+  // Sound Test click
+  document.getElementById('btn-test-notif-sound')?.addEventListener('click', () => {
+    playNotificationSound();
+    toast.success('🔔 تم تشغيل نغمة التنبيه البلورية بنجاح');
+  });
+
+  // Individual Delete Button Click
+  $container.querySelectorAll('.btn-delete-one-notif').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const notifId = btn.getAttribute('data-notif-id');
+      const card = document.getElementById(`notif-card-${notifId}`);
+      if (card) {
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(30px)';
+      }
+      await deleteSingleNotification(notifId, user.uid);
+      toast.info('تم حذف الإشعار بنجاح');
+      setTimeout(async () => {
+        await renderDashboardNotifications($container, user);
+        updateNotificationBadges(user.uid);
+      }, 250);
+    });
+  });
+
+  // Individual Mark as Read Button Click
+  $container.querySelectorAll('.btn-mark-one-read').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const notifId = btn.getAttribute('data-notif-id');
+      await markSingleNotificationAsRead(notifId, user.uid);
+      toast.success('تم التحديد كمقروء');
+      await renderDashboardNotifications($container, user);
+      updateNotificationBadges(user.uid);
+    });
+  });
+
+  // Batch Mark All Read
   document.getElementById('btn-mark-all-read')?.addEventListener('click', async () => {
     await markAllNotificationsAsRead(user.uid);
-    toast.success('تم تحديد جميع الإشعارات كمقروءة');
+    toast.success('تم تحديد جميع الإشعارات كمقروءة ✓');
     await renderDashboardNotifications($container, user);
     updateNotificationBadges(user.uid);
   });
 
+  // Batch Clear All
   document.getElementById('btn-clear-all-notifs')?.addEventListener('click', async () => {
     const ok = await showConfirm({
       title: 'مسح جميع الإشعارات',
-      message: 'هل أنت متأكد من رغبتك في حذف كافة سجلات الزيارات والإشعارات؟',
+      message: 'هل أنت متأكد من رغبتك في حذف وإخفاء كافة سجلات الزيارات والإشعارات نهائياً؟',
       confirmText: 'نعم، حذف الكل',
       cancelText: 'إلغاء'
     });
     if (ok) {
-      await clearAllNotifications(user.uid);
-      toast.success('تم مسح جميع الإشعارات بنجاح');
+      await clearAllUserNotifications(user.uid);
+      toast.success('تم مسح جميع الإشعارات بنجاح 🗑️');
       await renderDashboardNotifications($container, user);
       updateNotificationBadges(user.uid);
     }

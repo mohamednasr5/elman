@@ -155,16 +155,16 @@ export async function renderPlacePage($container, { slug, user }) {
                 }
               </div>
               <div class="place-header-card__info">
-                <div class="place-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                    <h1 class="place-title__name" style="margin:0">${escHtml(place.name)}</h1>
+                <div class="place-title">
+                  <div class="place-title__main">
+                    <h1 class="place-title__name">${escHtml(place.name)}</h1>
                     ${(!isAtm && (place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
                     ${place.isVerified ? renderVerifiedBadge() : ''}
                     ${(!isAtm && place.deliveryType) ? renderDeliveryBadge(place.deliveryType) : ''}
                     <span id="place-owner-online-container" class="place-owner-online-slot"></span>
                   </div>
 
-                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                  <div class="place-title-actions-row">
                     <button type="button" class="btn-download-profile-card btn-download-profile-trigger" id="btn-download-profile-card" data-pid="${escAttr(placeId)}" title="تحميل البطاقة التعريفية لمشاركتها كصورة">
                       <span class="card-icon">🪪</span>
                       <span>تحميل البطاقة التعريفية</span>

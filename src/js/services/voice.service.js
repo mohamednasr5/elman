@@ -802,29 +802,65 @@ export async function openManzalaVoiceAssistantModal() {
       return openState !== false;
     };
 
-    // Find and score matching places
+    // Find and score matching places across ALL fields (Name, Specialty, Services/Keywords, Address, Area, Category, Description)
     const scored = (places || []).map(p => {
       const pName = normalizeArabic(p.name || '').toLowerCase();
+      const pNameEn = (p.nameEn || '').toLowerCase();
+      const pSpec = normalizeArabic(p.medicalSpecialty || '').toLowerCase();
       const pDesc = normalizeArabic(p.description || '').toLowerCase();
-      const pCat = normalizeArabic(`${p.customCategory || ''} ${p.categoryName || ''} ${p.categoryId || ''}`).toLowerCase();
+      const pAddress = normalizeArabic(p.address || '').toLowerCase();
       const pArea = normalizeArabic(p.area || '').toLowerCase();
+      const pCat = normalizeArabic(`${p.customCategory || ''} ${p.categoryName || ''} ${p.categoryId || ''}`).toLowerCase();
       const pServices = (p.services || []).map(s => normalizeArabic(s).toLowerCase());
 
-      const nameScore = arabicScore(p.name || '', query);
-      const descScore = arabicScore(p.description || '', query);
-      const catScore = arabicScore(p.categoryId || '', query);
+      const nameScore = Math.max(arabicScore(p.name || '', query), arabicScore(p.name || '', rawClean));
+      const nameEnScore = pNameEn && pNameEn.includes(query.toLowerCase()) ? 0.9 : 0;
+      const specScore = p.medicalSpecialty ? Math.max(arabicScore(p.medicalSpecialty, query), arabicScore(p.medicalSpecialty, rawClean)) : 0;
+      const addressScore = p.address ? Math.max(arabicScore(p.address, query), arabicScore(p.address, rawClean)) * 0.9 : 0;
+      const areaScore = p.area ? Math.max(arabicScore(p.area, query), arabicScore(p.area, rawClean)) * 0.85 : 0;
+      const descScore = p.description ? Math.max(arabicScore(p.description, query), arabicScore(p.description, rawClean)) * 0.75 : 0;
+      const catScore = arabicScore(p.categoryId || p.categoryName || '', query);
 
+      let servScore = 0;
+      if (pServices.some(s => s.includes(normQ) || normQ.includes(s))) {
+        servScore = 0.95;
+      }
+
+      // Deep cross-field intent matching
       let intentScore = 0;
+      const fullPlaceIndex = `${pName} ${pNameEn} ${pSpec} ${pServices.join(' ')} ${pAddress} ${pArea} ${pCat} ${pDesc}`;
       intents.forEach(intent => {
-        if (pName.includes(intent) || pCat.includes(intent)) intentScore = Math.max(intentScore, 0.85);
-        else if (pServices.some(s => s.includes(intent))) intentScore = Math.max(intentScore, 0.75);
-        else if (pDesc.includes(intent)) intentScore = Math.max(intentScore, 0.5);
+        if (!intent || intent.length < 2) return;
+        if (pName.includes(intent) || pSpec.includes(intent)) intentScore = Math.max(intentScore, 0.95);
+        else if (pServices.some(s => s.includes(intent) || intent.includes(s))) intentScore = Math.max(intentScore, 0.9);
+        else if (pAddress.includes(intent) || pArea.includes(intent)) intentScore = Math.max(intentScore, 0.85);
+        else if (pCat.includes(intent)) intentScore = Math.max(intentScore, 0.85);
+        else if (pDesc.includes(intent)) intentScore = Math.max(intentScore, 0.7);
+        else if (fullPlaceIndex.includes(intent)) intentScore = Math.max(intentScore, 0.65);
       });
 
-      const servScore = pServices.some(s => s.includes(normQ)) ? 0.8 : 0;
-      const directMatch = pName.includes(normQ) || pCat.includes(normQ) || pArea.includes(normQ);
+      const directSubstringMatch = (
+        pName.includes(normQ) ||
+        pSpec.includes(normQ) ||
+        pServices.some(s => s.includes(normQ)) ||
+        pAddress.includes(normQ) ||
+        pArea.includes(normQ) ||
+        pCat.includes(normQ) ||
+        pDesc.includes(normQ)
+      );
 
-      const relevanceScore = Math.max(nameScore, descScore * 0.7, catScore * 0.9, servScore, intentScore, directMatch ? 0.6 : 0);
+      const relevanceScore = Math.max(
+        nameScore,
+        nameEnScore,
+        specScore,
+        servScore,
+        addressScore,
+        areaScore,
+        catScore * 0.9,
+        descScore,
+        intentScore,
+        directSubstringMatch ? 0.75 : 0
+      );
 
       const coords = getPlaceCoords(p) || MANZALA_CENTER;
       const distKm = userLocationCoords ? calculateDistanceKm(userLocationCoords.lat, userLocationCoords.lng, coords.lat, coords.lng) : Infinity;
@@ -842,7 +878,7 @@ export async function openManzalaVoiceAssistantModal() {
         isExplicitlyClosed,
         coords
       };
-    }).filter(item => item.score > 0.12);
+    }).filter(item => item.score > 0.12 && (!isAtmPlace(item.place) || isAtmReadyAndOperational(item.place, 15)));
 
     // Sort: Sponsored Matching -> Open Now -> Nearest Distance -> Relevance Score
     scored.sort((a, b) => {

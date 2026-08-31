@@ -129,45 +129,17 @@ export async function renderSearchPage($container, { q = '', user }) {
     }
   }
 
-  async function localSearch(query) {
+    async function localSearch(query) {
     const rawClean = extractSearchKeywords(query);
     const normalQ = normalizeArabic(rawClean);
     const queryIntents = expandArabicSearchIntent(query);
 
     const scored = allPlaces.map(place => {
-      // 1. Direct Name, Description & Area Match
-      const nameScore = Math.max(arabicScore(place.name, query), arabicScore(place.name, rawClean));
-      const areaScore = Math.max(arabicScore(place.area || '', query), arabicScore(place.area || '', rawClean)) * 0.95;
+      // 1. Name & NameEn Match (Highest weight: 100)
+      const nameScore = Math.max(arabicScore(place.name || '', query), arabicScore(place.name || '', rawClean));
+      const nameEnScore = place.nameEn ? (place.nameEn.toLowerCase().includes(query.toLowerCase()) ? 90 : 0) : 0;
 
-      const isSearchingVillage = MANZALA_VILLAGES_LIST.some(v => arabicMatch(v, query) || arabicMatch(v, rawClean));
-      let descScore = 0;
-      if (!isSearchingVillage || (place.area && arabicMatch(place.area, query))) {
-        descScore = Math.max(arabicScore(place.description || '', query), arabicScore(place.description || '', rawClean)) * 0.5;
-      }
-
-      // 2. Services Matching (Direct + Semantic Intent)
-      let serviceScore = 0;
-      if (place.services && Array.isArray(place.services)) {
-        place.services.forEach(s => {
-          const ns = normalizeArabic(s);
-          if (ns.includes(normalQ) || normalQ.includes(ns)) serviceScore = Math.max(serviceScore, 85);
-          if (queryIntents.some(intent => ns.includes(intent) || intent.includes(ns))) {
-            serviceScore = Math.max(serviceScore, 75);
-          }
-        });
-      }
-
-      // 3. Category & Custom Category Matching
-      let catScore = 0;
-      const catVal = normalizeArabic(`${place.customCategory || ''} ${place.categoryName || ''} ${place.categoryId || ''}`);
-      if (catVal.includes(normalQ) || normalQ.includes(catVal)) {
-        catScore = 90;
-      } else if (queryIntents.some(intent => catVal.includes(intent) || intent.includes(catVal))) {
-        catScore = 80;
-      }
-
-      
-      // 5. Medical Specialty Matching (for Doctors & Clinics)
+      // 2. Medical & Professional Specialty Match (Weight: 95)
       let specialtyScore = 0;
       if (place.medicalSpecialty) {
         const specNorm = normalizeArabic(place.medicalSpecialty);
@@ -178,7 +150,35 @@ export async function renderSearchPage($container, { q = '', user }) {
         }
       }
 
-      // 4. Delivery Vehicle Type Matching (car -> سيارة/عربية, tuktuk -> توكتوك, motorcycle -> موتوسيكل)
+      // 3. Services & Keywords Match (Weight: 90)
+      let serviceScore = 0;
+      if (place.services && Array.isArray(place.services)) {
+        place.services.forEach(s => {
+          const ns = normalizeArabic(s);
+          if (ns.includes(normalQ) || normalQ.includes(ns)) serviceScore = Math.max(serviceScore, 90);
+          if (queryIntents.some(intent => ns.includes(intent) || intent.includes(ns))) {
+            serviceScore = Math.max(serviceScore, 80);
+          }
+        });
+      }
+
+      // 4. Detailed Address & Area Match (Weight: 85)
+      const addressScore = place.address ? Math.max(arabicScore(place.address, query), arabicScore(place.address, rawClean)) * 0.9 : 0;
+      const areaScore = Math.max(arabicScore(place.area || '', query), arabicScore(place.area || '', rawClean)) * 0.85;
+
+      // 5. Category & Custom Category Match (Weight: 85)
+      let catScore = 0;
+      const catVal = normalizeArabic(`${place.customCategory || ''} ${place.categoryName || ''} ${place.categoryId || ''}`);
+      if (catVal.includes(normalQ) || normalQ.includes(catVal)) {
+        catScore = 85;
+      } else if (queryIntents.some(intent => catVal.includes(intent) || intent.includes(catVal))) {
+        catScore = 75;
+      }
+
+      // 6. Description Match (Weight: 75)
+      const descScore = place.description ? Math.max(arabicScore(place.description, query), arabicScore(place.description, rawClean)) * 0.75 : 0;
+
+      // 7. Delivery Vehicle Type Matching
       let deliveryScore = 0;
       if (place.deliveryType) {
         const dt = normalizeArabic(place.deliveryType);
@@ -193,19 +193,31 @@ export async function renderSearchPage($container, { q = '', user }) {
         }
       }
 
-      // 5. Semantic Intent Cross-Field Match
+      // 8. Full Cross-Field Semantic Intent Match
       let semanticScore = 0;
-      const fullPlaceText = normalizeArabic(
-        `${place.name || ''} ${place.description || ''} ${place.area || ''} ${place.categoryName || ''} ${place.customCategory || ''} ${place.categoryId || ''} ${(place.services || []).join(' ')}`
+      const fullPlaceIndex = normalizeArabic(
+        `${place.name || ''} ${place.nameEn || ''} ${place.medicalSpecialty || ''} ${(place.services || []).join(' ')} ${place.address || ''} ${place.area || ''} ${place.categoryName || ''} ${place.customCategory || ''} ${place.categoryId || ''} ${place.description || ''}`
       );
 
       queryIntents.forEach(intent => {
-        if (intent && intent.length >= 2 && fullPlaceText.includes(intent)) {
+        if (intent && intent.length >= 2 && fullPlaceIndex.includes(intent)) {
           semanticScore = Math.max(semanticScore, 70);
         }
       });
 
-      const total = Math.max(nameScore, descScore, areaScore, serviceScore, catScore, deliveryScore, semanticScore);
+      const total = Math.max(
+        nameScore, 
+        nameEnScore, 
+        specialtyScore, 
+        serviceScore, 
+        addressScore, 
+        areaScore, 
+        catScore, 
+        descScore, 
+        deliveryScore, 
+        semanticScore
+      );
+
       return { place, total };
     })
     .filter(item => item.total > 0 && (!isAtmPlace(item.place) || isAtmReadyAndOperational(item.place, 15)))

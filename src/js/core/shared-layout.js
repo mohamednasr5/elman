@@ -1,3 +1,4 @@
+import { initGlobalRealtimeNotificationsListener } from '../services/notification.service.js';
 /**
  * shared-layout.js
  * بناء الـ Header + Footer + Bottom-Nav المشترك بين جميع الصفحات
@@ -24,8 +25,10 @@ export async function initSharedLayout(activeHref = '') {
   _checkApkPwaEnvironment();
   _bindThemeToggle();
   bindGlobalVoiceAssistantFab();
+  initGlobalRealtimeNotificationsListener(getCurrentUser());
 
   onAuthStateChange((user) => {
+    initGlobalRealtimeNotificationsListener(user);
     _renderUserSection(user);
   });
 
