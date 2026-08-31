@@ -638,9 +638,29 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         </div>
 
         <div class="form-group">
-          <label class="form-label">الخدمات والكلمات المفتاحية (مفصولة بفاصلة)</label>
-          <input type="text" id="p-services" class="form-input" placeholder="مثال: أدوية، مستلزمات طبية، فيتامينات، توصيل منازل..." value="${escAttr((place?.services || []).join('، '))}" />
-          <p style="font-size:11.5px;color:var(--text-muted);margin-top:4px">💡 هذه الكلمات تساعد في ظهور نشاطك في أعلى نتائج البحث ومحرك البحث الذكي والمساعد الصوتي.</p>
+          <label class="form-label" style="font-weight:700">الخدمات والكلمات المفتاحية لنشاطك (اضغط Enter بعد كل كلمة)</label>
+          
+          <div class="tags-input-container" id="p-services-tags-box" onclick="document.getElementById('p-service-tag-input')?.focus()">
+            <div id="p-tags-list" style="display:inline-flex;flex-wrap:wrap;gap:6px"></div>
+            <input 
+              type="text" 
+              id="p-service-tag-input" 
+              class="tag-text-entry" 
+              placeholder="اكتب الكلمة واضغط Enter أو سهم الكيبورد ↵..." 
+              enterkeyhint="done"
+              autocomplete="off"
+            />
+          </div>
+
+          <!-- Hidden Synchronized Input for Form Submit -->
+          <input type="hidden" id="p-services" value="${escAttr((place?.services || []).join('، '))}" />
+          
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;flex-wrap:wrap">
+            <p style="font-size:11.5px;color:var(--text-muted);margin:0">💡 اكتب الكلمة ثم اضغط <strong>Enter</strong> في الكمبيوتر أو <strong>سهم الإدخال ↵</strong> في كيبورد الهاتف للإضافة الفورية.</p>
+            <button type="button" class="btn btn-sm btn-outline" id="btn-add-typed-tag" style="font-size:11.5px;padding:3px 10px;border-radius:6px">
+              ➕ إضافة الكلمة
+            </button>
+          </div>
         </div>
 
         <div class="form-group">
@@ -839,7 +859,34 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   catSearchInput?.addEventListener('input', (e) => {
     const q = e.target.value.trim().toLowerCase();
     let visibleCount = 0;
-    catPills.forEach(pill => {
+    
+  function updateDoctorSpecialtyVisibility(catVal, customCatVal = '') {
+    const isDoc = (
+      catVal === 'doctor' || 
+      catVal === 'clinic' || 
+      catVal === 'doctors' || 
+      String(catVal).includes('دكتور') || 
+      String(catVal).includes('عياد') ||
+      String(customCatVal).includes('دكتور') ||
+      String(customCatVal).includes('عياد')
+    );
+    const docGroup = document.getElementById('doctor-specialty-group');
+    if (docGroup) docGroup.style.display = isDoc ? 'block' : 'none';
+  }
+
+  // Doctor Quick Specialty Pills Click Handlers
+  document.querySelectorAll('.btn-quick-specialty').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const spec = btn.getAttribute('data-spec');
+      const input = document.getElementById('p-medical-specialty');
+      if (input && spec) {
+        input.value = spec;
+        toast.info(`تم اختيار التخصص: ${spec}`);
+      }
+    });
+  });
+
+  catPills.forEach(pill => {
       const name = (pill.getAttribute('data-cat-name') || '').toLowerCase();
       const id = (pill.getAttribute('data-cat-id') || '').toLowerCase();
       const match = !q || name.includes(q) || id.includes(q);
@@ -923,14 +970,16 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     }
   }
 
-  // Initial ATM check on load
+  // Initial checks on load
   if (place?.categoryId) {
     updateAtmMode(place.categoryId);
+    updateDoctorSpecialtyVisibility(place.categoryId, place.customCategory);
   }
 
   // Category toggle for delivery vehicle and custom category
   document.getElementById('p-category')?.addEventListener('change', (e) => {
     updateAtmMode(e.target.value);
+    updateDoctorSpecialtyVisibility(e.target.value, document.getElementById('p-custom-category')?.value);
     const val = e.target.value;
     const isDelivery = val.includes('delivery');
     const isOther = val === 'other';
@@ -1080,14 +1129,18 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     }
   });
 
-  // AI SEO Description Generation
+    // AI SEO Description Generation
   document.getElementById('btn-ai-gen-desc')?.addEventListener('click', async () => {
     const name = document.getElementById('p-name')?.value.trim();
     const catSelect = document.getElementById('p-category');
-    const catText = catSelect?.options[catSelect.selectedIndex]?.text?.replace(/^[^\s]+\s+/, '') || '';
+    const catText = catSelect?.options[catSelect.selectedIndex]?.text?.replace(/^[^s]+s+/, '') || '';
     const customCat = document.getElementById('p-custom-category')?.value.trim();
     const catName = customCat || catText || '';
     const area = document.getElementById('p-area')?.value.trim() || 'المنزلة';
+    const address = document.getElementById('p-address')?.value.trim() || '';
+    const customServices = (typeof _currentTagsList !== 'undefined' && _currentTagsList.length) 
+      ? _currentTagsList 
+      : (document.getElementById('p-services')?.value || '').split(/[،,]+/).map(s => s.trim()).filter(Boolean);
 
     if (!name) {
       toast.warning('اكتب اسم المكان بالعربية أولاً لتوليد وصف SEO متطابق معه');
@@ -1099,10 +1152,16 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     btn.disabled = true;
 
     try {
-      const seoDesc = await generateSeoDescription(name, catName, area);
+      const seoDesc = await generateSeoDescription({
+        placeName: name,
+        categoryName: catName,
+        area: area,
+        address: address,
+        customKeywords: customServices
+      });
       if (seoDesc) {
         document.getElementById('p-desc').value = seoDesc;
-        toast.success('تم توليد وصف سيو (SEO) احترافي بنجاح ✨');
+        toast.success('تم توليد وصف سيو (SEO) ذكي واحترافي ✨');
       }
     } catch {
       toast.error('تعذر توليد الوصف، يرجى المحاولة ثانية');

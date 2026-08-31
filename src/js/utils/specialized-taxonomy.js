@@ -625,35 +625,94 @@ export function getCategoryTaxonomy(categoryInput) {
 /**
  * Generate Localized SEO Rich Description and Keywords
  */
-export function generateLocalSeoContent({ placeName, categoryName, area = 'المنزلة', address = '', customKeywords = [] }) {
+
+/**
+ * Generate Localized SEO Rich Description and Keywords following user's exact formula:
+ * (اسم المكان) في (عنوان المكان بالتفصيل) هو (تصنيف المكان) ومتخصص في توفير (الكلمات المفتاحية) + عبارة تسويقية فريدة
+ */
+export function generateLocalSeoContent(arg1, arg2, arg3, arg4, arg5) {
+  // Support both object and positional argument signatures
+  let placeName = '';
+  let categoryName = '';
+  let area = 'المنزلة';
+  let address = '';
+  let customKeywords = [];
+
+  if (typeof arg1 === 'object' && arg1 !== null) {
+    placeName = arg1.placeName || '';
+    categoryName = arg1.categoryName || '';
+    area = arg1.area || 'المنزلة';
+    address = arg1.address || '';
+    customKeywords = Array.isArray(arg1.customKeywords) ? arg1.customKeywords : (arg1.customServices || []);
+  } else {
+    placeName = arg1 || '';
+    categoryName = arg2 || '';
+    area = arg3 || 'المنزلة';
+    address = arg4 || '';
+    customKeywords = Array.isArray(arg5) ? arg5 : [];
+  }
+
   const taxonomy = getCategoryTaxonomy(categoryName) || {
     category: categoryName || 'نشاط تجاري',
     categoryEn: 'Business',
-    keywords: customKeywords.length ? customKeywords : ['خدمات', 'منتجات', 'عروض'],
-    summaryTemplate: 'يقدم المكان كافة الخدمات والمنتجات المتميزة لجميع العملاء في المنطقة بأعلى معايير الجودة والاهتمام.'
+    keywords: customKeywords.length ? customKeywords : ['منتجات متميزة', 'خدمات متنوعة', 'عروض خاصة'],
+    summaryTemplate: 'يتميز بالاهتمام الفائق بالجودة والحرص الدائم على تلبية رغبات الزبائن بأفضل الأسعار وأرقى معايير الخدمة.'
   };
 
-  const cleanPlace = (placeName || '').trim();
+  const cleanPlace = (placeName || 'المكان').trim();
   const cleanArea = (area || 'المنزلة').trim();
+  const cleanAddress = (address || '').trim();
   const cleanCategory = taxonomy.category;
-  const allKeywords = Array.from(new Set([...taxonomy.keywords, ...customKeywords]));
+  const allKeywords = Array.from(new Set([...customKeywords, ...taxonomy.keywords])).filter(Boolean);
 
-  // Localized keywords list (e.g. "زيت في الأحمدية", "سوبر ماركت في المنزلة")
+  const keywordsString = allKeywords.slice(0, 7).join('، ');
+
+  // Construct full detailed address string
+  let fullLocation = cleanAddress ? `${cleanAddress} - ${cleanArea}` : cleanArea;
+  if (!fullLocation.includes('المنزلة') && !fullLocation.includes('المطرية')) {
+    fullLocation += ' بمحافظة الدقهلية';
+  }
+
+  // Unique Marketing Hook based on category domain
+  const getUniqueMarketingHook = (cat) => {
+    const c = (cat || '').toLowerCase();
+    if (c.includes('صيدل') || c.includes('دواء')) {
+      return 'تتميز الصيدلية بتوفير الأدوية ومستحضرات العناية المعتمدة، مع تقديم استشارات صيدلانية دقيقة وخدمة قياس الضغط والسكر وتوصيل سريع وموثوق للطلبات.';
+    }
+    if (c.includes('دكتور') || c.includes('عياد') || c.includes('طبيب') || c.includes('علاج')) {
+      return 'تتميز العيادة بالدقة الطبية واستخدام أحدث أساليب التشخيص والفحص، مع توفير رعاية صحية فائقة ومتابعة دورية لحالات المرضى في بيئة معقمة ومريحة.';
+    }
+    if (c.includes('سوبر') || c.includes('بقالة') || c.includes('هايبر') || c.includes('ماركت')) {
+      return 'يوفر المحل عروضاً وتخفيضات مستمرة على جميع السلع الغذائية والمستلزمات المنزلية، مع تشكيلة واسعة تلبي احتياجات كل بيت وخدمة توصيل فورية.';
+    }
+    if (c.includes('محمص') || c.includes('لب') || c.includes('مكسرات') || c.includes('بن')) {
+      return 'تتميز المحمصة بالتحميص الطازج يومياً، واختيار أجود أنواع الحبوب والمكسرات المحمصة بعناية مع أشهى خلطات القن والبن الطازج بأفضل الأسعار.';
+    }
+    if (c.includes('مطعم') || c.includes('مشويات') || c.includes('كافيه') || c.includes('حلواني') || c.includes('مخبز') || c.includes('عصير')) {
+      return 'يتميز بتقديم أشهى المأكولات والمشروبات المحضرة من مكونات طازجة يومياً بأعلى معايير النظافة والطهي الاحترافي، مع جلسات مريحة وتوصيل سريع.';
+    }
+    if (c.includes('ورش') || c.includes('نجار') || c.includes('سباك') || c.includes('حداد') || c.includes('الوميتال') || c.includes('بويات') || c.includes('رخام') || c.includes('كهربا')) {
+      return 'تتميز الورشة بالدقة والمهارة العالية والالتزام التام بمواعيد التسليم، مع استخدام أجود الخامات وضمان حقيقي على كافة أعمال التصنيع والتركيب والصيانة.';
+    }
+    if (c.includes('موبايل') || c.includes('كمبيوتر') || c.includes('شاش') || c.includes('اجهز')) {
+      return 'يقدم المعرض أحدث الأجهزة والإكسسوارات الأصلية بضمان معتمد، مع فحص وصيانة سريعة ودقيقة بأحدث المعدات وأفضل الأسعار التنافسية.';
+    }
+    if (c.includes('ملابس') || c.includes('احذية') || c.includes('فساتين') || c.includes('هدايا') || c.includes('سجاد') || c.includes('اثاث')) {
+      return 'يتميز بتقديم أحدث التشكيلات والموديلات العصرية التي تناسب مختلف الأذواق، بخامات فاخرة وعالية الجودة وأسعار تنافسية تضمن لك أفضل تجربة تسوق.';
+    }
+    return taxonomy.summaryTemplate || 'يتميز المكان بالخبرة وحسن التعامل، والحرص الدائم على تقديم أرقى مستوى من الخدمة لجميع أهالي المنطقة.';
+  };
+
+  const marketingHook = getUniqueMarketingHook(cleanCategory);
+
+  // Exact Formula: (اسم المكان) في (عنوان المكان بالتفصيل) هو (تصنيف المكان) ومتخصص في توفير (الكلمات المفتاحية) + عبارة تسويقية
+  const mainSentence = `${cleanPlace} في ${fullLocation} هو ${cleanCategory} ومتخصص في توفير ${keywordsString}.`;
+  const fullDescription = `${mainSentence}\n${marketingHook}`;
+
   const localizedKeywords = allKeywords.map(k => `${k} في ${cleanArea}`);
 
-  // Dynamic Natural Description (No duplicate stuffing, clean Egyptian grammar)
-  let description = `${cleanCategory} في ${cleanArea}، ${cleanPlace} المتخصص في توفير أفضل ${allKeywords.slice(0, 5).join('، ')} بالإضافة إلى مختلف متطلبات واحتياجات الأهالي اليومية.`;
-  
-  if (taxonomy.summaryTemplate) {
-    description += `\n${taxonomy.summaryTemplate}`;
-  }
-
-  if (address) {
-    description += `\n📍 العنوان: ${address} - ${cleanArea}، المنزلة، محافظة الدقهلية.`;
-  }
-
   return {
-    description,
+    description: fullDescription,
     keywords: allKeywords,
     localizedKeywords,
     categoryTaxonomy: taxonomy

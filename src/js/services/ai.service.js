@@ -558,8 +558,29 @@ export function detectArabicGrammaticalGender(name = '', category = '') {
  * Generates an SEO & AI-Search Optimized place description.
  * STRICT DIRECTIVE: Never uses "يقدم" or "تقدم". Uses rich vocabulary and respects grammatical gender.
  */
-export async function generateSeoDescription({ placeName, categoryName = '', area = 'المنزلة', address = '', customServices = [] }) {
-  // Use our specialized 74-category local taxonomy engine
+export async function generateSeoDescription(arg1, arg2, arg3, arg4, arg5) {
+  // Support both object and positional argument signatures
+  let placeName = '';
+  let categoryName = '';
+  let area = 'المنزلة';
+  let address = '';
+  let customServices = [];
+
+  if (typeof arg1 === 'object' && arg1 !== null) {
+    placeName = arg1.placeName || '';
+    categoryName = arg1.categoryName || '';
+    area = arg1.area || 'المنزلة';
+    address = arg1.address || '';
+    customServices = Array.isArray(arg1.customKeywords) ? arg1.customKeywords : (arg1.customServices || []);
+  } else {
+    placeName = arg1 || '';
+    categoryName = arg2 || '';
+    area = arg3 || 'المنزلة';
+    address = arg4 || '';
+    customServices = Array.isArray(arg5) ? arg5 : [];
+  }
+
+  // Use our specialized 74-category local taxonomy engine with exact formula
   const localTaxonomyData = generateLocalSeoContent({
     placeName,
     categoryName,
@@ -568,27 +589,24 @@ export async function generateSeoDescription({ placeName, categoryName = '', are
     customKeywords: customServices
   });
 
-  // Try OpenRouter AI for additional dynamic polish
+  // Try OpenRouter AI for additional unique phrasing following user's exact formula
   try {
-    const prompt = `أنت خبير سيو محلي في مصر (دليل المنزلة والمطرية بمحافظة الدقهلية).
-اكتب وصفاً تسويقياً واحترافياً جذاباً لنشاط تجاري متوافق 100% مع معايير SEO ومحركات البحث (Google و AI Search).
+    const prompt = `أنت خبير سيو محلي وتسويق تجاري في مصر (دليل المنزلة والمطرية بمحافظة الدقهلية).
+اكتب وصفاً تسويقياً فريداً واحترافياً لنشاط تجاري باتباع هذه الصيغة المحددة بدقة:
 
-بيانات النشاط:
-- اسم النشاط: ${placeName}
-- التصنيف: ${categoryName}
-- المنطقة/القرية: ${area}
-- العنوان: ${address || area}
-- الخدمات والكلمات التخصصية: ${localTaxonomyData.keywords.join('، ')}
+الصيغة المطلوبة:
+الجملة الأولى: (${placeName}) في (${address ? `${address} - ${area}` : area}) هو (${categoryName}) ومتخصص في توفير (${localTaxonomyData.keywords.slice(0, 6).join('، ')})
+الجملة الثانية: عبارة تسويقية فريدة وجذابة توضح مميزات هذا النشاط للزبائن في المنزلة والمطرية بأسلوب مقنع وراقي دون استخدام كلمات مكررة أو كلمة "يقدم/تقدم".
 
-شروط كتابة الوصف:
-1. تجنب تماماً التكرار الممل أو الحشو.
-2. اجعل الكلمات المفتاحية مدمجة بسلاسة مع اسم المنطقة (مثل: ${localTaxonomyData.localizedKeywords.slice(0, 3).join('، ')}).
-3. اكتب 3-4 أسطر واضحة ومقنعة تشرح للزبائن ما يميز المكان وتخصصاته وكيفية التواصل وزيارته.
-4. لا تضع أي مقدمات، أعد نص الوصف النهائي فقط باللغة العربية الفصحى المبسطة.`;
+أعد النص النهائي المكون من سطرين إلى ثلاثة فقط بدون أي مقدمات أو علامات تنصيص.`;
 
     const aiRes = await callOpenRouterWithFallback(prompt);
-    if (aiRes && aiRes.length > 50) {
-      return aiRes.trim();
+    if (aiRes && aiRes.length > 40) {
+      let cleaned = aiRes.replace(/["'`«»]/g, '').trim();
+      cleaned = cleaned.replace(/^(الوصف|Description|النص):\s*/i, '').trim();
+      if (!/[a-zA-Z]{5,}/.test(cleaned)) {
+        return cleaned;
+      }
     }
   } catch (_) {}
 
