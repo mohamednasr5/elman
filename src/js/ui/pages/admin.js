@@ -4234,6 +4234,11 @@ window.adminViewProductAction = async (placeId, productId) => {
                 <span style="text-decoration:line-through;color:var(--text-muted);font-size:1.05rem">${prod.oldPrice} ج.م</span>
               </div>
             ` : ''}
+            ${prod.oldPrice && Number(prod.oldPrice) > Number(prod.price) ? `
+              <div style="margin-right:auto;background:#ECFDF5;color:#065F46;padding:4px 10px;border-radius:var(--radius-full);font-size:12px;font-weight:800;border:1px solid #A7F3D0">
+                💰 وفرت ${Number(prod.oldPrice) - Number(prod.price)} ج.م (خصم ${Math.round(((Number(prod.oldPrice) - Number(prod.price)) / Number(prod.oldPrice)) * 100)}%)
+              </div>
+            ` : ''}
             <span class="badge ${prod.inStock !== false ? 'badge--published' : 'badge--suspended'}">
               ${prod.inStock !== false ? 'متوفر' : 'غير متوفر'}
             </span>
