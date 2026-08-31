@@ -4,8 +4,12 @@
  * conversational filler removal, and live search triggering.
  */
 
-import { normalizeArabic } from '../utils/arabic.js';
+import { normalizeArabic, arabicScore, arabicMatch, expandArabicSearchIntent } from '../utils/arabic.js';
 import { toast } from '../ui/components/Toast.js';
+import { getPublishedPlaces, getCategories } from '../core/db.js';
+import { isAtmPlace, isAtmReadyAndOperational, getAtmLiveStatus, formatAtmTimeAgo, ATM_UNIFIED_LOGO } from '../utils/atm.js';
+import { getUserLocation, calculateDistanceKm, formatDistance, getPlaceCoords, MANZALA_CENTER } from '../utils/maps.js';
+import { isPlaceOpen } from '../utils/date.js';
 
 export class VoiceSearch {
   constructor(options = {}) {
@@ -435,25 +439,22 @@ export async function openManzalaVoiceAssistantModal() {
     }
   });
 
-  async function executeVoiceAssistantSearch(query) {
+    async function executeVoiceAssistantSearch(query) {
     if (!query) return;
     if (resultsContainer) resultsContainer.style.display = 'block';
     if (resultsList) {
       resultsList.innerHTML = `
         <div style="padding:15px;text-align:center;color:var(--text-muted)">
           <div class="spinner spinner-sm" style="margin:0 auto 8px"></div>
-          جاري البحث عن أفضل النتائج في المنزلة...
+          جاري البحث عن أفضل النتائج في المنزلة والمطرية...
         </div>
       `;
     }
 
     try {
-            const { getPublishedPlaces, getCategories } = await import('../core/db.js');
-      const { normalizeArabic, arabicScore, arabicMatch, expandArabicSearchIntent } = await import('../utils/arabic.js');
-      const { isAtmPlace, isAtmReadyAndOperational, getAtmLiveStatus, formatAtmTimeAgo, ATM_UNIFIED_LOGO } = await import('../utils/atm.js');
-      const { getUserLocation, calculateDistanceKm, formatDistance, getPlaceCoords, MANZALA_CENTER } = await import('../utils/maps.js');
-
       const normQ = normalizeArabic(query).toLowerCase();
+      const intents = (typeof expandArabicSearchIntent === 'function' ? expandArabicSearchIntent(query) : []).map(i => normalizeArabic(i).toLowerCase());
+
       const isAtmSearch = (
         normQ.includes('atm') ||
         normQ.includes('اي تي ام') ||
@@ -468,26 +469,26 @@ export async function openManzalaVoiceAssistantModal() {
       );
 
       const [places, categories] = await Promise.all([
-        getPublishedPlaces({ limit: 120 }),
-        getCategories()
+        getPublishedPlaces({ limit: 150 }).catch(() => []),
+        getCategories().catch(() => [])
       ]);
 
-      // ── Special ATM & Cash Machines Handling (Sorted by Nearest GPS Location) ──
-      if (isAtmSearch) {
-        let userCoords = null;
-        try {
-          userCoords = await getUserLocation();
-        } catch (_) {
-          userCoords = MANZALA_CENTER;
-        }
+      // ── Retrieve User Location for Distance Calculations ──
+      let userLocationCoords = null;
+      try {
+        userLocationCoords = await getUserLocation();
+      } catch (_) {
+        userLocationCoords = MANZALA_CENTER;
+      }
 
+      // ── 1. Special ATM & Cash Machines Handling (Sorted by Nearest Distance) ──
+      if (isAtmSearch) {
         const atmPlaces = (places || []).filter(p => isAtmPlace(p) && isAtmReadyAndOperational(p, 15));
-        const wantsDeposit = normQ.includes('ايداع') || normQ.includes('اودع');
         const wantsCash = normQ.includes('سحب') || normQ.includes('كاش') || normQ.includes('فلوس');
 
         const atmScored = atmPlaces.map(p => {
           const coords = getPlaceCoords(p) || MANZALA_CENTER;
-          const distKm = userCoords ? calculateDistanceKm(userCoords.lat, userCoords.lng, coords.lat, coords.lng) : Infinity;
+          const distKm = userLocationCoords ? calculateDistanceKm(userLocationCoords.lat, userLocationCoords.lng, coords.lat, coords.lng) : Infinity;
           const status = getAtmLiveStatus(p, 15);
 
           return {
@@ -499,59 +500,53 @@ export async function openManzalaVoiceAssistantModal() {
           };
         });
 
-        // Sort: Nearest First! If wants cash, prioritize reported cash.
+        // Sort: Nearest First!
         atmScored.sort((a, b) => {
           if (wantsCash) {
-            if (a.status.hasCash && !b.status.hasCash) return -1;
-            if (!a.status.hasCash && b.status.hasCash) return 1;
+            if (a.status?.hasCash && !b.status?.hasCash) return -1;
+            if (!a.status?.hasCash && b.status?.hasCash) return 1;
           }
           return a.distKm - b.distKm;
         });
 
         if (atmScored.length > 0) {
           if (resultsTitle) {
-            resultsTitle.innerHTML = `🏧 أقرب ماكينات الصراف الآلي (ATM) لموقعك الحالي مرتبة بالأقرب:`;
+            resultsTitle.innerHTML = `🏧 أقرب ماكينات الصراف الآلي (ATM) لموقعك مرتبة بالأقرب:`;
           }
 
           resultsList.innerHTML = `
             ${atmScored.slice(0, 5).map((item, idx) => {
               const p = item.place;
               const placeUrl = `place.html?slug=${encodeURIComponent(p.slug || p.id)}`;
-              const status = item.status;
-              const directMap = p.mapsLink || (item.coords ? `https://www.google.com/maps/dir/?api=1&destination=${item.coords.lat},${item.coords.lng}` : '#');
+              const distLabel = item.distStr ? `على بعد ${item.distStr}` : escapeHtml(p.area || 'المنزلة');
 
               return `
-                <div class="mvm-place-row" style="background:linear-gradient(135deg, rgba(15,43,72,0.06) 0%, rgba(27,79,114,0.02) 100%);border:1.5px solid #1B4F72;border-radius:12px;padding:12px 14px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:10px" onclick="window.location.href='${placeUrl}'">
-                  <div class="mvm-place-avatar" style="border:2px solid #F5A623">
-                    <img src="assets/images/atm-logo.png" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover" />
-                  </div>
-                  <div class="mvm-place-info" style="flex:1">
-                    <div class="mvm-place-name" style="font-weight:800;font-size:14.5px;color:var(--primary);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                      <span>${escapeHtml(p.name)}</span>
-                      ${idx === 0 ? '<span class="badge" style="background:#10B981;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px">⚡ الأقرب إليك</span>' : ''}
+                <div style="background:var(--surface,#fff);border:1.5px solid var(--border,#e2e8f0);border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:180px">
+                    <img src="assets/images/atm-logo.png" alt="ATM" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid #F5A623;flex-shrink:0" />
+                    <div style="min-width:0;flex:1">
+                      <div style="font-weight:800;font-size:14px;color:var(--text-primary,#0F2B48);line-height:1.3;margin-bottom:3px">
+                        ${escapeHtml(p.name)}
+                      </div>
+                      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                        <span style="font-size:11.5px;color:#D97706;font-weight:700;background:rgba(245,166,35,0.12);padding:2px 8px;border-radius:9999px">
+                          📍 ${distLabel}
+                        </span>
+                        ${idx === 0 ? '<span style="font-size:10.5px;color:#047857;font-weight:800;background:rgba(16,185,129,0.15);padding:2px 6px;border-radius:4px">⚡ الأقرب</span>' : ''}
+                      </div>
                     </div>
-                    <div class="mvm-place-meta" style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px">
-                      <span style="color:#D97706;font-weight:700">📍 ${item.distStr ? `على بعد ${item.distStr}` : escapeHtml(p.area || 'المنزلة')}</span>
-                      ${status.hasCash ? '<span class="badge atm-badge-card-cash" style="font-size:10.5px;padding:2px 7px;border-radius:9999px">💵 متوفر كاش</span>' : (status.isNoCash ? '<span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:10px">🚫 فارغة حالياً</span>' : '')}
-                      ${status.isWorking ? '<span class="badge atm-badge-card-working" style="font-size:10.5px;padding:2px 7px;border-radius:9999px">⚙️ تعمل الآن</span>' : ''}
-                    </div>
                   </div>
-                  <div style="display:flex;flex-direction:column;gap:6px">
-                    <a href="${placeUrl}" class="btn btn-sm btn-primary" style="border-radius:8px;padding:6px 12px;font-size:12px;white-space:nowrap;font-weight:700">
-                      👁️ تفاصيل الماكينة ←
-                    </a>
-                    ${directMap !== '#' ? `
-                      <a href="${directMap}" target="_blank" rel="noopener" class="btn btn-sm btn-outline" style="border-radius:8px;padding:4px 8px;font-size:11px;white-space:nowrap;text-align:center" onclick="event.stopPropagation()">
-                        🗺️ توجه للموقع GPS
-                      </a>
-                    ` : ''}
-                  </div>
+
+                  <a href="${placeUrl}" class="btn btn-primary btn-sm" style="border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:700;white-space:nowrap;flex-shrink:0;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+                    <span>عرض تفاصيل الماكينة</span>
+                    <span>←</span>
+                  </a>
                 </div>
               `;
             }).join('')}
 
             <div style="margin-top:10px;text-align:center">
-              <a href="places.html?category=atm" class="btn btn-secondary btn-sm" style="width:100%;border-radius:10px;font-weight:700">
+              <a href="places.html?category=atm" class="btn btn-secondary btn-sm" style="width:100%;border-radius:10px;font-weight:700;display:block;text-align:center;padding:10px">
                 🏧 استعراض كافة ماكينات الصراف الآلي بالدليل (${atmScored.length} ماكينة) ←
               </a>
             </div>
@@ -560,30 +555,21 @@ export async function openManzalaVoiceAssistantModal() {
         }
       }
 
-            const { isPlaceOpen } = await import('../utils/date.js');
-
-      // ── Retrieve User Location for All Voice Searches ──
-      let userLocationCoords = null;
-      try {
-        userLocationCoords = await getUserLocation();
-      } catch (_) {
-        userLocationCoords = MANZALA_CENTER;
-      }
-
+      // ── 2. General Place Search (Doctors, Pharmacies, Craftsmen, Cafes, Shops) ──
       const isPlaceSponsored = (p) => Boolean(
         (p.isSponsored || p.isFeatured || p.isPromoted) && 
         (!p.sponsoredUntil || p.sponsoredUntil > Date.now())
       );
 
-      // Helper to check if a place is open right now
       const checkPlaceIsOpen = (p) => {
         if (p.alwaysOpen) return true;
         if (isAtmPlace(p)) return isAtmReadyAndOperational(p, 15);
+        if (!p.workingHours) return null;
         const openState = isPlaceOpen(p.workingHours);
-        return openState !== false; // null (not specified) or true => considered open
+        return openState !== false;
       };
 
-      // Find and score matching places with distance & open status
+      // Find and score matching places
       const scored = (places || []).map(p => {
         const pName = normalizeArabic(p.name || '').toLowerCase();
         const pDesc = normalizeArabic(p.description || '').toLowerCase();
@@ -607,12 +593,11 @@ export async function openManzalaVoiceAssistantModal() {
 
         const relevanceScore = Math.max(nameScore, descScore * 0.7, catScore * 0.9, servScore, intentScore, directMatch ? 0.6 : 0);
 
-        // Distance & Open Status
         const coords = getPlaceCoords(p) || MANZALA_CENTER;
         const distKm = userLocationCoords ? calculateDistanceKm(userLocationCoords.lat, userLocationCoords.lng, coords.lat, coords.lng) : Infinity;
         const distStr = formatDistance(distKm);
         const isOpen = checkPlaceIsOpen(p);
-        const isExplicitlyClosed = isPlaceOpen(p.workingHours) === false;
+        const isExplicitlyClosed = p.workingHours ? (isPlaceOpen(p.workingHours) === false) : false;
 
         return {
           place: p,
@@ -624,26 +609,22 @@ export async function openManzalaVoiceAssistantModal() {
           isExplicitlyClosed,
           coords
         };
-      }).filter(item => item.score > 0.15);
+      }).filter(item => item.score > 0.12);
 
-      // ── GENERAL SORTING: Sponsored First -> Open Now First -> Nearest Distance First -> Score ──
+      // Sort: Sponsored Matching -> Open Now -> Nearest Distance -> Relevance Score
       scored.sort((a, b) => {
-        // 1. Sponsored Places always on top
         if (a.isSpons && !b.isSpons) return -1;
         if (!a.isSpons && b.isSpons) return 1;
 
-        // 2. Open Places above Closed Places
         if (a.isOpen && !b.isOpen) return -1;
         if (!a.isOpen && b.isOpen) return 1;
         if (!a.isExplicitlyClosed && b.isExplicitlyClosed) return -1;
         if (a.isExplicitlyClosed && !b.isExplicitlyClosed) return 1;
 
-        // 3. Nearest Distance in kilometers (closest GPS first)
         if (Math.abs(a.distKm - b.distKm) > 0.15) {
           return a.distKm - b.distKm;
         }
 
-        // 4. Relevance score & verification
         if (a.place.isVerified && !b.place.isVerified) return -1;
         if (!a.place.isVerified && b.place.isVerified) return 1;
         return b.score - a.score;
@@ -661,7 +642,7 @@ export async function openManzalaVoiceAssistantModal() {
       if (topPlaces.length > 0) {
         const sponsoredCount = topPlaces.filter(p => p._isSponsoredResult).length;
         if (resultsTitle) {
-          resultsTitle.innerHTML = `🎯 أقرب الأماكن المفتوحة لـ "<strong>${escapeHtml(query)}</strong>" مرتبة بالأقرب لموقعك${sponsoredCount > 0 ? ' (يتصدرها إعلان مميز ⭐)' : ''}:`;
+          resultsTitle.innerHTML = `🎯 أقرب الأماكن لـ "<strong>${escapeHtml(query)}</strong>" مرتبة بالأقرب لموقعك${sponsoredCount > 0 ? ' (يتصدرها إعلان مميز ⭐)' : ''}:`;
         }
 
         resultsList.innerHTML = `
@@ -670,40 +651,41 @@ export async function openManzalaVoiceAssistantModal() {
             const placeUrl = `place.html?slug=${encodeURIComponent(p.slug || p.id)}`;
             const rowStyle = isSponsored 
               ? 'background:linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.03) 100%);border:1.5px solid #F59E0B;box-shadow:0 3px 12px rgba(245,158,11,0.18);position:relative;margin-bottom:10px;border-radius:12px;padding:12px 14px;'
-              : 'border:1px solid var(--border);margin-bottom:10px;border-radius:12px;padding:12px 14px;background:var(--surface);box-shadow:0 2px 8px rgba(0,0,0,0.04);';
+              : 'border:1.5px solid var(--border,#e2e8f0);margin-bottom:10px;border-radius:12px;padding:12px 14px;background:var(--surface,#fff);box-shadow:0 2px 8px rgba(0,0,0,0.04);';
 
             return `
-              <div class="mvm-place-row ${isSponsored ? 'mvm-place-row--sponsored' : ''}" style="${rowStyle}" onclick="window.location.href='${placeUrl}'">
-                <div class="mvm-place-avatar" style="${isSponsored ? 'border:2px solid #F59E0B;' : ''}">
-                  ${p.logoUrl 
-                    ? `<img src="${escapeHtml(p.logoUrl)}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover" />`
-                    : `<div class="mvm-avatar-fallback" style="${isSponsored ? 'background:#F59E0B;color:#fff;' : ''}">${escapeHtml((p.name || 'م')[0])}</div>`
-                  }
-                </div>
-                <div class="mvm-place-info" style="flex:1">
-                  <div class="mvm-place-name" style="font-weight:800;font-size:14px;color:var(--text-primary);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                    <span>${escapeHtml(p.name)}</span>
-                    ${isSponsored ? `<span class="badge" style="background:linear-gradient(135deg, #F59E0B 0%, #D97706 100%);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;box-shadow:0 1px 4px rgba(245,158,11,0.3);margin-right:4px">📢 إعلان</span>` : ''}
-                    ${idx === 0 && !isSponsored ? '<span class="badge" style="background:#10B981;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px">⚡ الأقرب إليك</span>' : ''}
-                    ${p.isVerified ? '<span style="color:#10B981;font-size:11px;font-weight:700">✓ موثق</span>' : ''}
+              <div class="mvm-place-row ${isSponsored ? 'mvm-place-row--sponsored' : ''}" style="${rowStyle};display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap" onclick="window.location.href='${placeUrl}'">
+                <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:180px">
+                  <div class="mvm-place-avatar" style="${isSponsored ? 'border:2px solid #F59E0B;' : ''};flex-shrink:0">
+                    ${p.logoUrl 
+                      ? `<img src="${escapeHtml(p.logoUrl)}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover" />`
+                      : `<div class="mvm-avatar-fallback" style="${isSponsored ? 'background:#F59E0B;color:#fff;' : ''}">${escapeHtml((p.name || 'م')[0])}</div>`
+                    }
                   </div>
-                  <div class="mvm-place-meta" style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px">
-                    ${p._distStr ? `<span style="color:#D97706;font-weight:700">📍 على بعد ${p._distStr}</span>` : `<span>📍 ${escapeHtml(p.area || 'المنزلة')}</span>`}
-                    ${p.alwaysOpen ? '<span class="badge" style="background:rgba(16,185,129,0.15);color:#047857;font-weight:700;font-size:10.5px">🟢 متاح 24 ساعة</span>' : (p._isExplicitlyClosed ? '<span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:10px">🔴 مغلق الآن</span>' : '<span class="badge" style="background:rgba(16,185,129,0.15);color:#047857;font-weight:700;font-size:10.5px">🟢 مفتوح الآن</span>')}
-                    ${p.customCategory || p.categoryName ? `<span style="color:var(--primary);font-weight:600">🏷️ ${escapeHtml(p.customCategory || p.categoryName)}</span>` : ''}
+                  <div class="mvm-place-info" style="flex:1;min-width:0">
+                    <div class="mvm-place-name" style="font-weight:800;font-size:14px;color:var(--text-primary,#0F2B48);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                      <span>${escapeHtml(p.name)}</span>
+                      ${isSponsored ? `<span class="badge" style="background:linear-gradient(135deg, #F59E0B 0%, #D97706 100%);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;box-shadow:0 1px 4px rgba(245,158,11,0.3);margin-right:4px">📢 إعلان</span>` : ''}
+                      ${idx === 0 && !isSponsored ? '<span class="badge" style="background:#10B981;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px">⚡ الأقرب إليك</span>' : ''}
+                      ${p.isVerified ? '<span style="color:#10B981;font-size:11px;font-weight:700">✓ موثق</span>' : ''}
+                    </div>
+                    <div class="mvm-place-meta" style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px">
+                      ${p._distStr ? `<span style="color:#D97706;font-weight:700">📍 على بعد ${p._distStr}</span>` : `<span>📍 ${escapeHtml(p.area || 'المنزلة')}</span>`}
+                      ${p.alwaysOpen ? '<span class="badge" style="background:rgba(16,185,129,0.15);color:#047857;font-weight:700;font-size:10.5px">🟢 متاح 24 ساعة</span>' : (p._isExplicitlyClosed ? '<span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:10px">🔴 مغلق الآن</span>' : '<span class="badge" style="background:rgba(16,185,129,0.15);color:#047857;font-weight:700;font-size:10.5px">🟢 مفتوح الآن</span>')}
+                      ${p.customCategory || p.categoryName ? `<span style="color:var(--primary);font-weight:600">🏷️ ${escapeHtml(p.customCategory || p.categoryName)}</span>` : ''}
+                    </div>
                   </div>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:5px">
-                  <a href="${placeUrl}" class="btn btn-sm ${isSponsored ? 'btn-secondary' : 'btn-primary'}" style="border-radius:8px;padding:6px 12px;font-size:12px;white-space:nowrap;font-weight:700;${isSponsored ? 'background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;' : ''}">
-                    ${isSponsored ? '⭐ عرض الإعلان ←' : 'عرض المكان ←'}
-                  </a>
-                </div>
+
+                <a href="${placeUrl}" class="btn btn-sm ${isSponsored ? 'btn-secondary' : 'btn-primary'}" style="border-radius:8px;padding:7px 14px;font-size:12.5px;white-space:nowrap;font-weight:700;flex-shrink:0;text-decoration:none;${isSponsored ? 'background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;' : ''}">
+                  ${isSponsored ? '⭐ عرض الإعلان ←' : 'عرض المكان ←'}
+                </a>
               </div>
             `;
           }).join('')}
 
           <div style="margin-top:10px;text-align:center">
-            <a href="search.html?q=${encodeURIComponent(query)}" class="btn btn-secondary btn-sm" style="width:100%;border-radius:10px;font-weight:700">
+            <a href="search.html?q=${encodeURIComponent(query)}" class="btn btn-secondary btn-sm" style="width:100%;border-radius:10px;font-weight:700;display:block;text-align:center;padding:10px">
               🔍 عرض كافة نتائج البحث (${scored.length} مكان) ←
             </a>
           </div>
