@@ -15,6 +15,7 @@ import { toast } from '../components/Toast.js';
 import { isAdmin } from '../../core/auth.js';
 import { formatPrice, arabicMatch } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
+import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 
 let _dashUser = null;
 let _dashPlacesCache = null;
@@ -304,13 +305,26 @@ function renderPlacesListHTML(places) {
                 </div>
               </div>
 
-              <div class="my-place-item__actions">
-                <a href="dashboard.html?section=edit&id=${escAttr(placeId)}" class="btn btn-sm btn-outline">✏️ تعديل</a>
-                <a href="dashboard.html?section=offers&id=${escAttr(placeId)}" class="btn btn-sm btn-secondary">🏷️ العروض</a>
-                ${place.isVerified ? `
-                  <a href="dashboard.html?section=products&id=${escAttr(placeId)}" class="btn btn-sm btn-primary">🛍️ المنتجات</a>
-                ` : ''}
-              </div>
+              ${(() => {
+                const isAtm = isAtmPlace(place);
+                if (isAtm) {
+                  return `
+                    <div class="my-place-item__actions">
+                      <a href="dashboard.html?section=edit&id=${escAttr(placeId)}" class="btn btn-sm btn-outline">✏️ تعديل العنوان والموقع</a>
+                      <span class="badge" style="background:rgba(27,79,114,0.1);color:var(--primary);font-size:11px;font-weight:700;padding:4px 8px;border-radius:4px">🏧 صراف آلي</span>
+                    </div>
+                  `;
+                }
+                return `
+                  <div class="my-place-item__actions">
+                    <a href="dashboard.html?section=edit&id=${escAttr(placeId)}" class="btn btn-sm btn-outline">✏️ تعديل</a>
+                    <a href="dashboard.html?section=offers&id=${escAttr(placeId)}" class="btn btn-sm btn-secondary">🏷️ العروض</a>
+                    ${place.isVerified ? `
+                      <a href="dashboard.html?section=products&id=${escAttr(placeId)}" class="btn btn-sm btn-primary">🛍️ المنتجات</a>
+                    ` : ''}
+                  </div>
+                `;
+              })()}
             </div>
 
             <div class="my-place-item__body">
@@ -342,7 +356,16 @@ function renderPlacesListHTML(places) {
 async function renderPlaceFormSection($container, user, placeId = null) {
   const isEdit = !!placeId;
   let place = null;
-  if (isEdit) {
+  const isAtm = isAtmPlace(placeData);
+      if (isAtm) {
+        placeData.coverImageUrl = placeData.coverImageUrl || ATM_UNIFIED_COVER;
+        placeData.logoUrl = placeData.logoUrl || ATM_UNIFIED_LOGO;
+        placeData.alwaysOpen = true;
+        placeData.services = ['سحب نقدي', 'إيداع نقدي', 'خدمات فيزا', 'تحويل أموال'];
+        if (!placeData.phone) placeData.phone = '19666';
+      }
+
+      if (isEdit) {
     place = await getPlace(placeId);
     if (!place) {
       $container.innerHTML = `<div class="empty-state"><h2>المكان غير موجود</h2></div>`;
@@ -350,7 +373,10 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     }
   }
 
-  const categories = await getCategories();
+  const categories = (await getCategories()) || [];
+  if (!categories.some(c => c.slug === 'atm' || c._key === 'atm' || (c.name && c.name.includes('صراف')))) {
+    categories.unshift({ _key: 'atm', slug: 'atm', name: 'ماكينة صراف آلي (ATM)', icon: '🏧' });
+  }
 
   const currentArea = place?.area ? place.area.trim() : 'المنزلة';
   const isCustomArea = Boolean(currentArea && !MANZALA_VILLAGES_LIST.includes(currentArea));
@@ -373,7 +399,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <h2 class="form-section__title"><span>📍</span> المعلومات الأساسية</h2>
         
         <div class="form-group">
-          <label class="form-label">اسم المكان أو النشاط أو المهنة / الحرفي <span class="required">*</span></label>
+          <label class="form-label" id="p-name-label">اسم المكان أو النشاط أو المهنة / الحرفي <span class="required">*</span></label>
           <div style="display:flex;gap:var(--space-2)">
             <input type="text" id="p-name" class="form-input" required placeholder="مثال: ورشة نجار فلان، السباك أحمد، صيدلية الأمل، دكتور علي" value="${escAttr(place?.name || '')}" />
             <button type="button" class="btn btn-secondary" id="btn-ai-translate-name" title="ترجمة الاسم بالذكاء الاصطناعي">
@@ -452,6 +478,19 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           </p>
         </div>
 
+        <!-- ATM Specific Notice Banner -->
+        <div class="form-group animate-fade-in" id="p-atm-notice" style="display:none;background:linear-gradient(135deg,rgba(15,43,72,0.08) 0%,rgba(27,79,114,0.12) 100%);border:1px solid rgba(27,79,114,0.3);border-radius:var(--radius-md);padding:14px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:1.8rem">🏧</span>
+            <div>
+              <div style="font-weight:800;color:var(--primary);font-size:13.5px;margin-bottom:2px">تصنيف ماكينة صراف آلي (ATM)</div>
+              <div style="font-size:12px;color:var(--text-secondary);line-height:1.5">
+                في هذا التصنيف، سيكفيك فقط إدخال <strong>اسم البنك</strong> و<strong>مكان الماكينة بالتفصيل</strong> و<strong>رابط الموقع على الخريطة</strong>. وسيتم تطبيق الغلاف والشعار الموحد وتشغيل استبيان توفر الأموال الحي تلقائياً!
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Vehicle Type for Delivery -->
         <div class="form-group" id="delivery-type-group" style="${place?.categoryId?.includes('delivery') ? '' : 'display:none'}">
           <label class="form-label">نوع وسيلة التوصيل</label>
@@ -478,7 +517,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       <div class="form-section">
         <h2 class="form-section__title"><span>📞</span> التواصل والموقع</h2>
 
-        <div class="form-row">
+        <div class="form-row" id="p-phone-row">
           <div class="form-group">
             <label class="form-label">رقم الهاتف <span class="required">*</span></label>
             <input type="tel" id="p-phone" class="form-input" required placeholder="01012345678" value="${escAttr(place?.phone || '')}" style="direction:ltr;text-align:right" />
@@ -541,12 +580,12 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         </div>
 
         <div class="form-group">
-          <label class="form-label">العنوان بالتفصيل أو الشارع</label>
+          <label class="form-label" id="p-address-label">العنوان بالتفصيل أو الشارع</label>
           <input type="text" id="p-address" class="form-input" placeholder="مثال: شارع البحر، بجوار المسجد الكبير" value="${escAttr(place?.address || '')}" />
         </div>
 
         <div class="form-group">
-          <label class="form-label">رابط خرائط جوجل (Google Maps Link)</label>
+          <label class="form-label" id="p-maps-label">رابط خرائط جوجل (Google Maps Link)</label>
           <input type="text" id="p-maps" class="form-input" placeholder="مثال: https://maps.app.goo.gl/ruGRycBTGHt8Ecr2A" value="${escAttr(place?.mapsLink || '')}" style="direction:ltr;text-align:left" />
           <p style="font-size:11.5px;color:var(--text-muted);margin-top:4px">💡 يمكنك وضع رابط خرائط جوجل أو كود بلس أو العنوان وسيتم استخراج وتثبيت موقعك الفعلي بدقة على الخريطة.</p>
           <div id="map-live-preview-box" style="margin-top:8px;${place?.location?.lat ? '' : 'display:none'}">
@@ -610,7 +649,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       </div>
 
       <!-- Working Hours Section -->
-      <div class="form-section">
+      <div class="form-section" id="p-working-hours-section">
         <h2 class="form-section__title"><span>🕒</span> مواعيد وساعات العمل</h2>
         
         <!-- Quick 24/7 Toggle -->
@@ -663,7 +702,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       </div>
 
       <!-- Social Media & Website Links -->
-      <div class="form-section">
+      <div class="form-section" id="p-social-section">
         <h2 class="form-section__title"><span>🌐</span> وسائل التواصل الاجتماعي والموقع</h2>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-3)">
           أضف روابط حساباتك الرسمية، وسيتم عرض الأيقونات الأصلية للأشياء المكتوبة فقط في صفحة المكان:
@@ -712,7 +751,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       </div>
 
       <!-- Services & Tags -->
-      <div class="form-section">
+      <div class="form-section" id="p-services-section">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);flex-wrap:wrap;gap:6px">
           <h2 class="form-section__title" style="margin-bottom:0"><span>✨</span> الخدمات والكلمات المفتاحية</h2>
           <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-services" title="اقتراح أهم الكلمات المفتاحية والخدمات للظهور في نتائج البحث الأولى">
@@ -772,6 +811,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       if (hiddenSelect) {
         hiddenSelect.value = catId;
         hiddenSelect.dispatchEvent(new Event('change'));
+      updateAtmMode(catId);
       }
 
       if (selectedBadge && selectedBadgeName) {
@@ -787,8 +827,57 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     });
   });
 
+    function updateAtmMode(catVal) {
+    const isAtm = (catVal === 'atm' || catVal === 'atm-machines' || String(catVal).includes('صراف') || String(catVal).includes('atm'));
+    const nameLabel = document.getElementById('p-name-label');
+    const nameInput = document.getElementById('p-name');
+    const addressLabel = document.getElementById('p-address-label');
+    const addressInput = document.getElementById('p-address');
+    const mapsLabel = document.getElementById('p-maps-label');
+    const atmNotice = document.getElementById('p-atm-notice');
+    const phoneRow = document.getElementById('p-phone-row');
+    const phoneInput = document.getElementById('p-phone');
+    const workingSection = document.getElementById('p-working-hours-section');
+    const socialSection = document.getElementById('p-social-section');
+    const servicesSection = document.getElementById('p-services-section');
+    const coverUploadZone = document.getElementById('cover-upload-zone');
+    const logoUploadZone = document.getElementById('logo-upload-zone');
+
+    if (isAtm) {
+      if (nameLabel) nameLabel.innerHTML = 'اسم البنك <span class="required">*</span>';
+      if (nameInput) nameInput.placeholder = 'مثال: البنك الأهلي المصري، بنك مصر، بنك القاهرة، CIB، بنك الإسكندرية...';
+      if (addressLabel) addressLabel.innerHTML = 'مكان الماكينة بالتفصيل <span class="required">*</span>';
+      if (addressInput) addressInput.placeholder = 'مثال: شارع البحر، أمام المستشفى المركزي، بجوار محطة القطار...';
+      if (mapsLabel) mapsLabel.innerHTML = 'رابط عنوان وموقع الماكينة على خرائط جوجل <span class="required">*</span>';
+      if (atmNotice) atmNotice.style.display = 'block';
+      if (phoneRow) phoneRow.style.display = 'none';
+      if (phoneInput) { phoneInput.required = false; if (!phoneInput.value) phoneInput.value = '19666'; }
+      if (workingSection) workingSection.style.display = 'none';
+      if (socialSection) socialSection.style.display = 'none';
+      if (servicesSection) servicesSection.style.display = 'none';
+    } else {
+      if (nameLabel) nameLabel.innerHTML = 'اسم المكان أو النشاط أو المهنة / الحرفي <span class="required">*</span>';
+      if (nameInput) nameInput.placeholder = 'مثال: ورشة نجار فلان، السباك أحمد، صيدلية الأمل، دكتور علي';
+      if (addressLabel) addressLabel.innerHTML = 'العنوان بالتفصيل أو الشارع';
+      if (addressInput) addressInput.placeholder = 'مثال: شارع البحر، بجوار المسجد الكبير';
+      if (mapsLabel) mapsLabel.innerHTML = 'رابط خرائط جوجل (Google Maps Link)';
+      if (atmNotice) atmNotice.style.display = 'none';
+      if (phoneRow) phoneRow.style.display = 'flex';
+      if (phoneInput) phoneInput.required = true;
+      if (workingSection) workingSection.style.display = 'block';
+      if (socialSection) socialSection.style.display = 'block';
+      if (servicesSection) servicesSection.style.display = 'block';
+    }
+  }
+
+  // Initial ATM check on load
+  if (place?.categoryId) {
+    updateAtmMode(place.categoryId);
+  }
+
   // Category toggle for delivery vehicle and custom category
   document.getElementById('p-category')?.addEventListener('change', (e) => {
+    updateAtmMode(e.target.value);
     const val = e.target.value;
     const isDelivery = val.includes('delivery');
     const isOther = val === 'other';
@@ -1207,6 +1296,48 @@ async function renderPlaceOffersSection($container, user, placeId) {
     // Auto select first place
     place = userPlaces[0];
     placeId = place.id || place._key;
+  }
+
+    if (isAtmPlace(place)) {
+    $container.innerHTML = `
+      <div class="dashboard-header">
+        <div>
+          <h1 class="dashboard-header__title">إدارة: ${escHtml(place.name)}</h1>
+          <div class="dashboard-header__subtitle">ماكينات الصراف الآلي مخصصة للخدمات المصرفية والنقدية فقط</div>
+        </div>
+        <a href="dashboard.html?section=places" class="btn btn-outline">← عودة للأماكن</a>
+      </div>
+
+      ${userPlaces && userPlaces.length > 1 ? `
+        <!-- Multiple Places Switcher -->
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:12.5px;font-weight:700;color:var(--text-muted)">🏪 اختر المكان:</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${userPlaces.map(p => {
+              const pKey = p.id || p._key;
+              const isCur = pKey === placeId;
+              return `
+                <button type="button" class="btn btn-xs ${isCur ? 'btn-primary' : 'btn-outline'}" onclick="window.switchDashboardSection('offers', '${escAttr(pKey)}', true)" style="border-radius:var(--radius-full)">
+                  ${isCur ? '✓ ' : ''}${escHtml(p.name)}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="empty-state" style="padding:4rem 1rem;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border)">
+        <div class="empty-state__icon">🏧</div>
+        <h2 class="empty-state__title">ماكينات الصراف الآلي لا تخضع للعروض أو الإعلانات</h2>
+        <p class="empty-state__text" style="max-width:520px;margin:0 auto;line-height:1.6">
+          هذا النشاط (ماكينة صراف آلي) مخصص للاستعلام عن توفر النقدية ومعرفة الموقع على الخريطة فقط. التحكم للمضيف مخصص لتعديل العنوان والرابط على الخريطة.
+        </p>
+        <a href="dashboard.html?section=edit&id=${escAttr(placeId)}" class="btn btn-primary" style="margin-top:1.2rem">
+          <span>✏️</span> تعديل عنوان ورابط الماكينة على الخريطة
+        </a>
+      </div>
+    `;
+    return;
   }
 
   const offers = await getPlaceOffers(placeId);

@@ -16,6 +16,7 @@ import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { resolveMapEmbedInfo, extractCoordinates } from '../../utils/maps.js';
+import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, ATM_POLL_QUESTIONS, formatAtmTimeAgo, submitAtmPollVote } from '../../utils/atm.js';
 
 export async function renderPlacePage($container, { slug, user }) {
   // Show skeleton
@@ -122,6 +123,10 @@ export async function renderPlacePage($container, { slug, user }) {
     const isOpen = isPlaceOpen(place.workingHours);
     const workingHoursList = formatWorkingHours(place.workingHours);
 
+    const isAtm = isAtmPlace(place, category);
+    const placeCover = isAtm ? (place.coverImageUrl || ATM_UNIFIED_COVER) : place.coverImageUrl;
+    const placeLogo = isAtm ? (place.logoUrl || ATM_UNIFIED_LOGO) : place.logoUrl;
+
     // Resolve Smart Google Map info (supports coords, short links, Plus codes, and addresses)
     const mapInfo = resolveMapEmbedInfo(place);
 
@@ -129,8 +134,8 @@ export async function renderPlacePage($container, { slug, user }) {
     $container.innerHTML = `
       <!-- Place Hero Cover -->
       <section class="place-hero">
-        ${place.coverImageUrl
-          ? `<img src="${escAttr(place.coverImageUrl)}" alt="${escAttr(place.name)}" class="place-hero__cover" />`
+        ${placeCover
+          ? `<img src="${escAttr(placeCover)}" alt="${escAttr(place.name)}" class="place-hero__cover" />`
           : `<div class="place-hero__cover-placeholder">${catInfo.icon || '🏪'}</div>`
         }
         <div class="place-hero__overlay"></div>
@@ -144,8 +149,8 @@ export async function renderPlacePage($container, { slug, user }) {
           <div class="place-header-card animate-fade-in-up">
             <div class="place-header-card__top">
               <div class="place-logo">
-                ${place.logoUrl
-                  ? `<img src="${escAttr(place.logoUrl)}" alt="${escAttr(place.name)} logo" />`
+                ${placeLogo
+                  ? `<img src="${escAttr(placeLogo)}" alt="${escAttr(place.name)} logo" />`
                   : `<div class="place-logo__placeholder">${catInfo.icon || '🏪'}</div>`
                 }
               </div>
@@ -153,9 +158,9 @@ export async function renderPlacePage($container, { slug, user }) {
                 <div class="place-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                     <h1 class="place-title__name" style="margin:0">${escHtml(place.name)}</h1>
-                    ${((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
+                    ${(!isAtm && (place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
                     ${place.isVerified ? renderVerifiedBadge() : ''}
-                    ${place.deliveryType ? renderDeliveryBadge(place.deliveryType) : ''}
+                    ${(!isAtm && place.deliveryType) ? renderDeliveryBadge(place.deliveryType) : ''}
                     <span id="place-owner-online-container" class="place-owner-online-slot"></span>
                   </div>
 
@@ -240,6 +245,13 @@ export async function renderPlacePage($container, { slug, user }) {
             </div>
           </div>
 
+          <!-- ATM Cash Availability Live Poll Card -->
+          ${isAtm ? `
+            <div class="atm-poll-card animate-fade-in-up" id="atm-poll-section" style="background:linear-gradient(135deg, #0F2B48 0%, #1B4F72 100%);color:#fff;padding:20px;border-radius:var(--radius-lg);margin-bottom:var(--space-4);box-shadow:0 8px 24px rgba(27,79,114,0.25);border:1px solid rgba(255,255,255,0.15)">
+              ${renderAtmPollMarkup(place.atmPoll, placeId)}
+            </div>
+          ` : ''}
+
           <!-- Unverified Place Notice & Verification CTA -->
           ${!place.isVerified ? `
             <div class="unverified-notice animate-fade-in">
@@ -288,7 +300,7 @@ export async function renderPlacePage($container, { slug, user }) {
           ` : ''}
 
           <!-- Active Offers Section -->
-          ${offers && offers.length > 0 ? `
+          ${!isAtm && offers && offers.length > 0 ? `
             <section class="info-card" id="place-offers-card">
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:var(--space-4)">
                 <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:6px">
@@ -331,7 +343,7 @@ export async function renderPlacePage($container, { slug, user }) {
           ` : ''}
 
           <!-- Products Section (Only for verified places) -->
-          ${place.isVerified && products && products.length > 0 ? `
+          ${!isAtm && place.isVerified && products && products.length > 0 ? `
             <section class="info-card" id="place-products-card">
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:var(--space-4)">
                 <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:6px">
@@ -798,6 +810,11 @@ export async function renderPlacePage($container, { slug, user }) {
     // Setup Reviews Sentiment Filter Tabs
     setupReviewsSentimentFilter();
 
+    // Setup ATM Cash Availability Live Poll Interactivity
+    if (isAtm) {
+      setupAtmPollInteractivity(placeId, place.atmPoll);
+    }
+
   } catch (err) {
     console.error('[PlacePage] Render error:', err);
     $container.innerHTML = `
@@ -808,6 +825,143 @@ export async function renderPlacePage($container, { slug, user }) {
       </div>
     `;
   }
+}
+
+function renderAtmPollMarkup(poll = {}, placeId = '') {
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:14px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:2.2rem;background:rgba(255,255,255,0.12);width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.25);flex-shrink:0">🏧</span>
+        <div>
+          <h2 style="font-size:1.25rem;font-weight:800;color:#fff;margin:0 0 4px 0">استبيان حالة ماكينة الصراف الآلي المباشر (تحديثات حية)</h2>
+          <div style="font-size:12.5px;color:rgba(255,255,255,0.8);line-height:1.5">مشاركة حية من أهالي وزوار المنزلة والمطرية لمعرفة حالة النقدية، الإيداع، التلامس، والتشغيل</div>
+        </div>
+      </div>
+      <span class="badge" style="background:rgba(245,166,35,0.2);color:#FEF08A;border:1px solid rgba(245,166,35,0.4);font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:var(--radius-full)">
+        ⚡ تحديث لحظي مباشر
+      </span>
+    </div>
+
+    <!-- 4-Question Live Grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:16px">
+      ${ATM_POLL_QUESTIONS.map(q => {
+        let qData = poll[q.key] || {};
+        if (q.key === 'cash' && poll.yesCount !== undefined && !poll.cash) {
+          qData = {
+            yesCount: poll.yesCount,
+            noCount: poll.noCount,
+            totalVotes: poll.totalVotes,
+            lastAnswerTime: poll.lastAnswerTime || poll.updatedAt,
+            lastAnswerChoice: poll.lastAnswerChoice
+          };
+        }
+
+        const yesCount = Number(qData.yesCount) || 0;
+        const noCount = Number(qData.noCount) || 0;
+        const totalVotes = Number(qData.totalVotes) || (yesCount + noCount);
+        const yesPct = totalVotes > 0 ? Math.round((yesCount / totalVotes) * 100) : 0;
+        const noPct = totalVotes > 0 ? (100 - yesPct) : 0;
+        const lastAnswerTime = qData.lastAnswerTime;
+
+        let userChoice = null;
+        try {
+          if (typeof localStorage !== 'undefined') {
+            const raw = localStorage.getItem(`atm_vote_${placeId}_${q.key}`) || (q.key === 'cash' ? localStorage.getItem(`atm_vote_${placeId}`) : null);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              userChoice = parsed.choice;
+            }
+          }
+        } catch (_) {}
+
+        let statusBadge = '';
+        if (totalVotes === 0) {
+          statusBadge = `<span style="background:rgba(255,255,255,0.12);color:#fff;padding:4px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:700;border:1px solid rgba(255,255,255,0.2)">${q.badgeNone}</span>`;
+        } else if (yesCount >= noCount) {
+          statusBadge = `<span style="background:linear-gradient(135deg, #10B981, #059669);color:#fff;padding:4px 12px;border-radius:var(--radius-full);font-size:11.5px;font-weight:800;box-shadow:0 2px 8px rgba(16,185,129,0.3)">${q.badgeYes}</span>`;
+        } else {
+          statusBadge = `<span style="background:linear-gradient(135deg, #EF4444, #DC2626);color:#fff;padding:4px 12px;border-radius:var(--radius-full);font-size:11.5px;font-weight:800;box-shadow:0 2px 8px rgba(239,68,68,0.3)">${q.badgeNo}</span>`;
+        }
+
+        const timeAgoText = lastAnswerTime ? formatAtmTimeAgo(lastAnswerTime) : 'لم تسجل إجابات بعد';
+
+        return `
+          <div class="atm-q-card" style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.14);border-radius:var(--radius-md);padding:14px 16px;display:flex;flex-direction:column;justify-content:space-between;gap:12px">
+            <div>
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:1.3rem">${q.icon}</span>
+                  <h3 style="font-size:1.02rem;font-weight:800;color:#fff;margin:0">${q.title}</h3>
+                </div>
+                <div>${statusBadge}</div>
+              </div>
+              <div style="font-size:11.5px;color:rgba(255,255,255,0.7);margin-bottom:10px">${q.desc}</div>
+
+              <!-- Progress bar & counts -->
+              <div style="background:rgba(255,255,255,0.06);padding:10px 12px;border-radius:var(--radius-sm);margin-bottom:12px;border:1px solid rgba(255,255,255,0.08)">
+                <div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;margin-bottom:6px">
+                  <span style="color:#A7F3D0">نعم: ${yesPct}% (${yesCount})</span>
+                  <span style="color:#FECACA">لا: ${noPct}% (${noCount})</span>
+                </div>
+                <div style="height:8px;background:rgba(255,255,255,0.12);border-radius:9999px;overflow:hidden;display:flex;margin-bottom:8px">
+                  <div style="width:${yesPct}%;background:#10B981;transition:width 0.4s ease"></div>
+                  <div style="width:${noPct}%;background:#EF4444;transition:width 0.4s ease"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.75)">
+                  <span>⏱️ <strong>آخر إجابة:</strong> <span style="color:#FEF08A">${timeAgoText}</span></span>
+                  <span>👥 ${totalVotes} صوت</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div>
+              <div style="font-size:11.5px;font-weight:700;color:#FEF3C7;margin-bottom:6px">
+                ${userChoice ? '✅ تم تسجيل إجابتك على هذا السؤال' : 'اختر إجابتك لتحديث الحالة:'}
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                <button type="button" class="btn btn-sm btn-atm-vote" data-q="${q.key}" data-choice="yes" ${userChoice ? 'disabled style="opacity:0.6;cursor:not-allowed"' : ''} style="background:linear-gradient(135deg, #10B981 0%, #059669 100%);color:#fff;border:none;font-weight:700;padding:6px 8px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;white-space:normal;line-height:1.3;text-align:center" title="${q.yesLabel}">
+                  ${q.yesLabel} ${userChoice === 'yes' ? '✓' : ''}
+                </button>
+                <button type="button" class="btn btn-sm btn-atm-vote" data-q="${q.key}" data-choice="no" ${userChoice ? 'disabled style="opacity:0.6;cursor:not-allowed"' : ''} style="background:linear-gradient(135deg, #EF4444 0%, #DC2626 100%);color:#fff;border:none;font-weight:700;padding:6px 8px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;white-space:normal;line-height:1.3;text-align:center" title="${q.noLabel}">
+                  ${q.noLabel} ${userChoice === 'no' ? '✓' : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function setupAtmPollInteractivity(placeId, initialPoll = {}) {
+  const pollSection = document.getElementById('atm-poll-section');
+  if (!pollSection) return;
+
+  const attachButtons = () => {
+    pollSection.querySelectorAll('.btn-atm-vote').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const qKey = btn.getAttribute('data-q');
+        const choice = btn.getAttribute('data-choice');
+        if (!qKey || !choice) return;
+
+        btn.disabled = true;
+        try {
+          const updatedPoll = await submitAtmPollVote(placeId, qKey, choice);
+          toast.success('تم تسجيل إجابتك بنجاح! شكراً لمساعدتك لأهالي المنزلة والمطرية ✨');
+          pollSection.innerHTML = renderAtmPollMarkup(updatedPoll, placeId);
+          attachButtons();
+        } catch (err) {
+          console.error(err);
+          toast.error('تعذر تسجيل التصويت، يرجى المحاولة لاحقاً');
+          btn.disabled = false;
+        }
+      });
+    });
+  };
+
+  attachButtons();
 }
 
 function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUrl = 'https://wa.me/wasendernew') {

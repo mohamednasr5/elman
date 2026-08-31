@@ -12,6 +12,7 @@ import { toast } from '../components/Toast.js';
 import { formatDate } from '../../utils/date.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { arabicMatch } from '../../utils/arabic.js';
+import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 
 // ── In-Memory Cache Store for 0ms Tab Switching ──
 const adminCache = {
@@ -698,12 +699,15 @@ function renderAdminPlacesTableRows(places) {
   if (!places.length) return '<tr><td colspan="7" class="text-center">لا توجد أماكن مطابقة</td></tr>';
 
   return places.map(p => {
+    const isAtm = isAtmPlace(p);
     const isSpons = Boolean(p.isSponsored || p.isFeatured || p.isPromoted);
     const isExpired = isSpons && p.sponsoredUntil && p.sponsoredUntil <= Date.now();
     const isCurrentlyActive = isSpons && !isExpired;
 
     let buttonHtml = '';
-    if (isCurrentlyActive) {
+    if (isAtm) {
+      buttonHtml = `<span class="badge" style="background:rgba(27,79,114,0.08);color:var(--primary);font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px">🏧 صراف آلي</span>`;
+    } else if (isCurrentlyActive) {
       const expText = p.sponsoredUntil ? `ينتهي: ${formatDate(p.sponsoredUntil)}` : 'دائم';
       buttonHtml = `<button class="btn btn-xs btn-success" onclick="togglePlaceSponsored('${escAttr(p._id)}', false)" title="${expText} - انقر للإلغاء">⭐ نشط (${expText}) ✕</button>`;
     } else if (isExpired) {
@@ -3696,6 +3700,12 @@ window.editPlaceAdmin = async (placeId) => {
           }
           if (coords && coords.lat && coords.lng) {
             updates.location = { lat: coords.lat, lng: coords.lng };
+          }
+
+          if (isAtmPlace({ id: placeId, ...place, ...updates })) {
+            updates.coverImageUrl = updates.coverImageUrl || ATM_UNIFIED_COVER;
+            updates.logoUrl = updates.logoUrl || ATM_UNIFIED_LOGO;
+            updates.alwaysOpen = true;
           }
 
           try {

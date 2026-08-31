@@ -3,28 +3,45 @@
  */
 
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from './VerifiedBadge.js';
+import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 
 /**
  * Render a place card HTML string
  */
 export function renderPlaceCard(place) {
+  const isAtm = isAtmPlace(place);
   const isSponsored = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
   const catStyle = getCategoryCardCover(place);
-  const coverImg = place.coverImageUrl
-    ? `<img src="${escAttr(place.coverImageUrl)}" alt="${escAttr(place.name)}" loading="lazy" />`
+  
+  const finalCover = isAtm ? (place.coverImageUrl || ATM_UNIFIED_COVER) : place.coverImageUrl;
+  const finalLogo = isAtm ? (place.logoUrl || ATM_UNIFIED_LOGO) : place.logoUrl;
+
+  const coverImg = finalCover
+    ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" loading="lazy" />`
     : `<div class="place-card__cover-placeholder" style="background:${catStyle.gradient}">
         <span class="place-card__cover-icon">${catStyle.icon}</span>
         <span class="place-card__cover-tag">${escHtml(catStyle.label)}</span>
        </div>`;
 
-  const logoImg = place.logoUrl
-    ? `<img src="${escAttr(place.logoUrl)}" alt="${escAttr(place.name)} logo" loading="lazy" />`
+  const logoImg = finalLogo
+    ? `<img src="${escAttr(finalLogo)}" alt="${escAttr(place.name)} logo" loading="lazy" />`
     : `<div class="place-card__logo-placeholder">${catStyle.icon}</div>`;
 
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';
   const verifiedBadge = place.isVerified ? renderVerifiedBadge() : '';
   const deliveryBadge = place.deliveryType ? renderDeliveryBadge(place.deliveryType) : '';
   const placeUrl = `place.html?slug=${encodeURIComponent(place.slug || place.id || place._key)}`;
+
+  let atmCashBadge = '';
+  if (isAtm && place.atmPoll && Number(place.atmPoll.totalVotes) > 0) {
+    const yes = Number(place.atmPoll.yesCount) || 0;
+    const no = Number(place.atmPoll.noCount) || 0;
+    if (yes >= no) {
+      atmCashBadge = `<div style="margin-top:6px"><span class="badge" style="background:#D1FAE5;color:#065F46;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">🟢 متوفر بها كاش الآن</span></div>`;
+    } else {
+      atmCashBadge = `<div style="margin-top:6px"><span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">🔴 فارغة حالياً</span></div>`;
+    }
+  }
 
   const phoneBtn = place.phone
     ? `<a href="tel:${cleanPhone(place.phone)}" class="place-card__action-btn" title="اتصال" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','phoneClicks')">📞</a>`
@@ -74,6 +91,7 @@ export function renderPlaceCard(place) {
             `;
           })()}
         </div>
+        ${atmCashBadge}
         ${place.description ? `<p class="place-card__description">${escHtml(place.description)}</p>` : ''}
       </div>
       <div class="place-card__footer">
