@@ -1085,4 +1085,53 @@ body, .header, .footer, .place-card, .category-card, .filter-bar, .form-input, .
   to { opacity: 1; transform: scale(1); }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Premium GPS Directions Button (الوصول للمكان عبر الخرائط)
+   ═══════════════════════════════════════════════════════════ */
+.btn-directions-gps {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #1B4F72 0%, #2980B9 100%);
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--radius-full, 9999px);
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(41, 128, 185, 0.25);
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  white-space: nowrap;
+}
+
+.btn-directions-gps:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 4px 14px rgba(41, 128, 185, 0.4);
+  background: linear-gradient(135deg, #154360 0%, #1F618D 100%);
+  color: #ffffff !important;
+}
+
+.btn-directions-gps:active {
+  transform: scale(0.97);
+}
+
+.btn-directions-gps .gps-icon {
+  font-size: 14px;
+  display: inline-block;
+  animation: gpsPulse 2.5s ease-in-out infinite;
+}
+
+.btn-directions-gps .gps-arrow {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+@keyframes gpsPulse {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-14deg); }
+  60% { transform: rotate(14deg); }
+}
+
+
 

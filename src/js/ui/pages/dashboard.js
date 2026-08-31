@@ -1032,20 +1032,33 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       coords = await extractCoordinates(rawAddress);
     }
 
+    let embedSrc = '';
+    if (rawMap.includes('<iframe') || rawMap.includes('google.com/maps/embed') || rawMap.includes('google.com/maps?pb=')) {
+      const srcMatch = rawMap.match(/src=["']([^"']+)["']/i);
+      embedSrc = srcMatch ? srcMatch[1].trim() : (rawMap.startsWith('http') ? rawMap : '');
+    }
+
     const previewBox = document.getElementById('map-live-preview-box');
-    if (coords && coords.lat && coords.lng) {
-      _currentCoords = { lat: coords.lat, lng: coords.lng };
+    if ((coords && coords.lat && coords.lng) || embedSrc) {
+      if (coords && coords.lat && coords.lng) {
+        _currentCoords = { lat: coords.lat, lng: coords.lng };
+      }
+      const finalSrc = embedSrc || `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&hl=ar&z=17&output=embed`;
+      const coordsText = coords ? `(${Number(coords.lat).toFixed(4)}, ${Number(coords.lng).toFixed(4)})` : 'المحدد بالرابط';
+
       if (previewBox) {
         previewBox.style.display = 'block';
         previewBox.innerHTML = `
           <div style="padding:8px 12px;background:rgba(16, 185, 129, 0.08);border:1px solid rgba(16, 185, 129, 0.3);border-radius:var(--radius-md)">
             <div style="font-size:12px;font-weight:700;color:#059669;margin-bottom:6px;display:flex;align-items:center;gap:6px">
-              <span>✅</span> تم استخراج وتثبيت الموقع الجغرافي بدقة (${Number(coords.lat).toFixed(4)}, ${Number(coords.lng).toFixed(4)})
+              <span>✅</span> تم استخراج وتثبيت الموقع الجغرافي بدقة ${coordsText}
             </div>
             <iframe 
-              src="https://maps.google.com/maps?q=${coords.lat},${coords.lng}&hl=ar&z=17&output=embed" 
-              style="border:0;width:100%;height:150px;border-radius:var(--radius-sm);display:block" 
-              loading="lazy">
+              src="${finalSrc}" 
+              style="border:0;width:100%;height:180px;border-radius:var(--radius-sm);display:block" 
+              allowfullscreen=""
+              loading="lazy"
+              referrerpolicy="strict-origin-when-cross-origin">
             </iframe>
           </div>
         `;

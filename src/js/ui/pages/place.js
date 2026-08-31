@@ -578,31 +578,34 @@ export async function renderPlacePage($container, { slug, user }) {
           ` : ''}
 
           <!-- Google Maps Card -->
-          <div class="info-card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">
+          <div class="info-card place-map-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);flex-wrap:wrap;gap:8px">
               <h3 class="info-card__title" style="margin:0;font-size:var(--font-size-base)">
                 <span>🗺️</span> الموقع على الخريطة
               </h3>
               ${mapInfo.directLink ? `
-                <a href="${escAttr(mapInfo.directLink)}" target="_blank" rel="noopener" class="btn btn--outline btn--sm" style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full);gap:4px">
-                  <span>📍</span> فتح في الخرائط
+                <a href="${escAttr(mapInfo.directLink)}" target="_blank" rel="noopener" class="btn btn-directions-gps" title="فتح مسار القيادة والملاحة المباشرة للوصول إلى هذا المكان عبر خرائط جوجل">
+                  <span class="gps-icon">🧭</span>
+                  <span>الوصول للمكان عبر الخرائط</span>
+                  <span class="gps-arrow">↗</span>
                 </a>
               ` : ''}
             </div>
 
             ${place.address ? `
-              <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);margin-bottom:10px;background:var(--surface-2);padding:6px 10px;border-radius:var(--radius-sm)">
-                <span style="color:var(--primary);flex-shrink:0">📌</span>
-                <span class="truncate">${escHtml(place.address)}</span>
+              <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-secondary);margin-bottom:10px;background:var(--surface-2);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border)">
+                <span style="color:var(--primary);flex-shrink:0;font-size:14px">📌</span>
+                <span class="truncate" style="font-weight:600">${escHtml(place.address)}</span>
               </div>
             ` : ''}
 
-            <div class="place-map" style="position:relative;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);height:230px">
+            <div class="place-map" style="position:relative;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);height:280px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">
               <iframe 
                 src="${escAttr(mapInfo.embedUrl)}" 
                 style="border:0;width:100%;height:100%;display:block" 
+                allowfullscreen="" 
                 loading="lazy" 
-                referrerpolicy="no-referrer-when-downgrade"
+                referrerpolicy="strict-origin-when-cross-origin"
                 title="موقع ${escAttr(place.name)}">
               </iframe>
             </div>
@@ -622,7 +625,10 @@ export async function renderPlacePage($container, { slug, user }) {
           if (mapIframe) {
             mapIframe.src = `https://maps.google.com/maps?q=${resolvedCoords.lat},${resolvedCoords.lng}&hl=ar&z=17&output=embed`;
           }
-          const mapDirectLink = document.querySelector('.info-card a[href*="google.com/maps"], .info-card a[href*="maps.google.com"]');
+          const mapDirectLink = document.querySelector('.info-card a.btn-directions-gps, .info-card a[href*="google.com/maps"], .info-card a[href*="maps.google.com"]');
+          if (mapDirectLink) {
+            mapDirectLink.href = `https://www.google.com/maps/dir/?api=1&destination=${resolvedCoords.lat},${resolvedCoords.lng}`;
+          }
           if (mapDirectLink && !mapDirectLink.href.includes('q=')) {
             mapDirectLink.href = `https://www.google.com/maps?q=${resolvedCoords.lat},${resolvedCoords.lng}`;
           }

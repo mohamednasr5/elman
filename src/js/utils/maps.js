@@ -7,9 +7,25 @@ import { WORKER_URL } from '../core/firebase.js';
 
 export async function extractCoordinates(urlOrText) {
   if (!urlOrText || typeof urlOrText !== 'string') return null;
-  const input = urlOrText.trim();
+  let input = urlOrText.trim();
 
-  // 1. Direct Regex for Lat/Lng (e.g. 31.1940, 31.9814 or @31.1940,31.9814)
+  // If user pasted full <iframe ... src="..."> code, extract src URL
+  if (input.includes('<iframe') || input.includes('src=')) {
+    const srcMatch = input.match(/src=["']([^"']+)["']/i);
+    if (srcMatch) input = srcMatch[1].trim();
+  }
+
+  // 1. Direct Regex for Lat/Lng (e.g. 31.1940, 31.9814 or @31.1940,31.9814 or embed !3d31.1939!2d31.9819)
+  const pbLatMatch = input.match(/!3d(-?\d+\.\d+)/);
+  const pbLngMatch = input.match(/!2d(-?\d+\.\d+)/) || input.match(/!4d(-?\d+\.\d+)/);
+  if (pbLatMatch && pbLngMatch) {
+    const lat = parseFloat(pbLatMatch[1]);
+    const lng = parseFloat(pbLngMatch[1]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng, source: 'embed_pb' };
+    }
+  }
+
   const regexMatch = input.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
                      input.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
                      input.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
@@ -23,7 +39,7 @@ export async function extractCoordinates(urlOrText) {
     }
   }
 
-  // 2. If it's a URL (e.g. maps.app.goo.gl or goo.gl/maps or google.com/maps)
+  // 2. If it's a short URL (e.g. maps.app.goo.gl or goo.gl/maps or google.com/maps)
   if (input.startsWith('http://') || input.startsWith('https://')) {
     try {
       const res = await fetch(`${WORKER_URL}/api/maps/resolve`, {
@@ -321,12 +337,36 @@ export function sortPlacesByDistance(places = [], userCoords) {
 
 /**
  * Smart Google Maps Embed and Directions URL Generator
- * - Pinpoints exact building location with high zoom (z=17)
+ * - Pinpoints exact building location with high zoom (z=17) or uses direct embed?pb= iframe
+ * - Generates GPS Navigation Direct Link (الوصول للمكان عبر الخرائط)
  * - Returns { embedUrl, directLink, isPinpointed, lat, lng }
  */
 export function resolveMapEmbedInfo(place) {
   let embedUrl = '';
   let directLink = place?.mapsLink || '';
+
+  // 0. Direct Google Maps Embed URL or iframe code
+  let rawLink = (place?.mapsEmbed || place?.mapsLink || '').trim();
+  if (rawLink.includes('<iframe') || rawLink.includes('src=')) {
+    const srcMatch = rawLink.match(/src=["']([^"']+)["']/i);
+    if (srcMatch) rawLink = srcMatch[1].trim();
+  }
+
+  if (rawLink.includes('google.com/maps/embed') || rawLink.includes('google.com/maps?pb=')) {
+    embedUrl = rawLink;
+    const pbLat = rawLink.match(/!3d(-?\d+\.\d+)/);
+    const pbLng = rawLink.match(/!2d(-?\d+\.\d+)/) || rawLink.match(/!4d(-?\d+\.\d+)/);
+    if (pbLat && pbLng) {
+      const lat = parseFloat(pbLat[1]);
+      const lng = parseFloat(pbLng[1]);
+      directLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      return { embedUrl, directLink, isPinpointed: true, lat, lng };
+    }
+    if (!directLink || directLink.includes('<iframe')) {
+      directLink = rawLink.replace('/embed', '');
+    }
+    return { embedUrl, directLink, isPinpointed: true };
+  }
 
   // 1. Exact coordinates from place.location
   if (place?.location && place.location.lat && place.location.lng) {
@@ -334,7 +374,7 @@ export function resolveMapEmbedInfo(place) {
     const lng = Number(place.location.lng);
     if (!isNaN(lat) && !isNaN(lng)) {
       embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=17&output=embed`;
-      if (!directLink) directLink = `https://www.google.com/maps?q=${lat},${lng}`;
+      directLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
       return { embedUrl, directLink, isPinpointed: true, lat, lng };
     }
   }
@@ -345,7 +385,7 @@ export function resolveMapEmbedInfo(place) {
     const lng = parseFloat(place.lng);
     if (!isNaN(lat) && !isNaN(lng)) {
       embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=17&output=embed`;
-      if (!directLink) directLink = `https://www.google.com/maps?q=${lat},${lng}`;
+      directLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
       return { embedUrl, directLink, isPinpointed: true, lat, lng };
     }
   }
@@ -360,6 +400,7 @@ export function resolveMapEmbedInfo(place) {
       const lng = parseFloat(m[2]);
       if (!isNaN(lat) && !isNaN(lng)) {
         embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=17&output=embed`;
+        directLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
         return { embedUrl, directLink, isPinpointed: true, lat, lng };
       }
     }
@@ -373,7 +414,7 @@ export function resolveMapEmbedInfo(place) {
   for (const [vName, coord] of Object.entries(MANZALA_AREAS_COORDINATES)) {
     if (areaName.includes(vName) || addressText.includes(vName)) {
       embedUrl = `https://maps.google.com/maps?q=${coord.lat},${coord.lng}&hl=ar&z=16&output=embed`;
-      if (!directLink) directLink = `https://www.google.com/maps?q=${coord.lat},${coord.lng}`;
+      directLink = `https://www.google.com/maps/dir/?api=1&destination=${coord.lat},${coord.lng}`;
       return { embedUrl, directLink, isPinpointed: false, lat: coord.lat, lng: coord.lng };
     }
   }
