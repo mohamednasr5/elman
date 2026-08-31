@@ -6,6 +6,7 @@
 import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings } from '../../core/db.js';
 import { appState } from '../../core/state.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
+import { isAtmPlace } from '../../utils/atm.js';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { daysUntil } from '../../utils/date.js';
@@ -73,7 +74,7 @@ export async function renderHomePage($main, { user } = {}) {
     
     // Verified Places: Verified places only, sponsored first, then newest
     const verifiedPlaces = allPlaces
-      .filter(p => p.isVerified)
+      .filter(p => p.isVerified && !isAtmPlace(p))
       .sort((a, b) => {
         const aSpons = isPlaceSponsored(a);
         const bSpons = isPlaceSponsored(b);

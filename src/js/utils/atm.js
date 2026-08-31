@@ -71,6 +71,9 @@ export const ATM_POLL_QUESTIONS = [
 /**
  * Checks whether a place or category is an ATM / Cash machine
  */
+/**
+ * Checks whether a place or category is an ATM / Cash machine
+ */
 export function isAtmPlace(place, category = null) {
   if (!place) return false;
   const cId = (place.categoryId || '').toLowerCase();
@@ -84,13 +87,18 @@ export function isAtmPlace(place, category = null) {
     cId === 'atm-machines' ||
     cId.includes('atm') ||
     cId.includes('صراف') ||
+    cId.includes('صرف') ||
     cName.includes('صراف') ||
+    cName.includes('صرف') ||
     cName.includes('atm') ||
     pName.includes('صراف') ||
+    pName.includes('صرف') ||
     pName.includes('atm') ||
     customCat.includes('صراف') ||
+    customCat.includes('صرف') ||
     customCat.includes('atm') ||
     catName.includes('صراف') ||
+    catName.includes('صرف') ||
     catName.includes('atm')
   );
 }
@@ -269,4 +277,26 @@ export function filterAtmPlaces(places, filterKey, windowMinutes = 15) {
     }
     return true;
   });
+}
+
+/**
+ * Checks if an ATM is active, working, and has cash available.
+ * Returns FALSE if the ATM was reported out-of-service or reported without cash (empty).
+ */
+export function isAtmReadyAndOperational(place, windowMinutes = 15) {
+  if (!place || !isAtmPlace(place)) return true;
+  const status = getAtmLiveStatus(place, windowMinutes);
+  if (!status) return true;
+
+  // 1. Exclude if reported out of service (لا تعمل / خارج نطاق الخدمة)
+  if (status.isOutOfService || (!status.isWorkRecent && status.allTimeOutOfService)) {
+    return false;
+  }
+
+  // 2. Exclude if reported empty / without cash (فارغة / ليس بها أموال)
+  if (status.noCash || (!status.isCashRecent && status.allTimeNoCash)) {
+    return false;
+  }
+
+  return true;
 }

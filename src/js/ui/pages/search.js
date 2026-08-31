@@ -8,6 +8,7 @@ import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent, arabicMatch } from '../../utils/arabic.js';
+import { isAtmPlace, isAtmReadyAndOperational } from '../../utils/atm.js';
 import { aiSearch, aiSmartSearch } from '../../services/ai.service.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
@@ -195,7 +196,7 @@ export async function renderSearchPage($container, { q = '', user }) {
       const total = Math.max(nameScore, descScore, areaScore, serviceScore, catScore, deliveryScore, semanticScore);
       return { place, total };
     })
-    .filter(item => item.total > 0)
+    .filter(item => item.total > 0 && (!isAtmPlace(item.place) || isAtmReadyAndOperational(item.place, 15)))
     .sort((a, b) => b.total - a.total)
     .map(item => item.place);
 

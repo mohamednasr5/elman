@@ -827,16 +827,18 @@ function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUr
   if (!container) return;
 
   const verifiedPlaces = (allPlaces || []).filter(p => 
+    !isAtmPlace(p) &&
     (p.isVerified || (p.verifiedUntil && Number(p.verifiedUntil) > Date.now())) && 
     (p.id !== currentPlaceId && p._key !== currentPlaceId && p.slug !== currentPlaceId)
   );
 
   const fallbackPlaces = (allPlaces || []).filter(p => 
+    !isAtmPlace(p) &&
     (p.isVerified || p.isSponsored || p.isFeatured) &&
     (p.id !== currentPlaceId && p._key !== currentPlaceId && p.slug !== currentPlaceId)
   );
 
-  const candidates = verifiedPlaces.length > 0 ? verifiedPlaces : (fallbackPlaces.length > 0 ? fallbackPlaces : allPlaces.filter(p => p.id !== currentPlaceId));
+  const candidates = verifiedPlaces.length > 0 ? verifiedPlaces : (fallbackPlaces.length > 0 ? fallbackPlaces : allPlaces.filter(p => !isAtmPlace(p) && p.id !== currentPlaceId));
 
   if (!candidates || candidates.length === 0) {
     container.style.display = 'none';

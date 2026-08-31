@@ -1,7 +1,7 @@
 import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
-import { isAtmPlace, filterAtmPlaces } from '../../utils/atm.js';
+import { isAtmPlace, filterAtmPlaces, isAtmReadyAndOperational } from '../../utils/atm.js';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
@@ -181,13 +181,18 @@ export async function renderPlacesPage($container, { query = {}, user }) {
         filtered = filtered.filter(p => p.categoryId === selectedCat || p.subcategoryId === selectedCat || (selectedCat === 'atm' && isAtmPlace(p)));
       }
 
+      // Exclude broken or empty ATMs from standard search queries unless explicit ATM filter is chosen
+      if (isAtmFilterActive && _currentAtmPlacesFilter === 'all') {
+        filtered = filtered.filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
+      }
+
       if (isAtmFilterActive && _currentAtmPlacesFilter !== 'all') {
         filtered = filterAtmPlaces(filtered, _currentAtmPlacesFilter, 15);
       }
 
-      // Filter by verified
+      // Filter by verified (Exclude ATMs from general commercial verified list)
       if (onlyVerified) {
-        filtered = filtered.filter(p => p.isVerified);
+        filtered = filtered.filter(p => p.isVerified && !isAtmPlace(p));
       }
 
       // Filter by search query
