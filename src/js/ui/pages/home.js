@@ -99,6 +99,9 @@ export async function renderHomePage($main, { user } = {}) {
     // Setup villages and towns quick search filter
     setupVillagesSearch();
 
+    // Setup Hero Typewriter Animation
+    initHeroTypewriterAnimation();
+
     // Stats bar
     renderStatsBar((allPlaces.length || 0), (categories?.length || 31));
 
@@ -529,6 +532,90 @@ function setupVillagesSearch() {
   });
 }
 
+/**
+ * Professional Typewriter Animation Engine
+ * Types the hero headline naturally with progressive letter-by-letter cadence and blinking cursor
+ */
+let _heroTypewriterTimeout = null;
+
+function initHeroTypewriterAnimation() {
+  if (typeof window === 'undefined') return;
+  if (_heroTypewriterTimeout) clearTimeout(_heroTypewriterTimeout);
+
+  const part1El = document.getElementById('typewriter-part-1');
+  const part2El = document.getElementById('typewriter-part-2');
+  const part3El = document.getElementById('typewriter-part-3');
+
+  if (!part1El || !part2El || !part3El) return;
+
+  const phrase1 = 'فين في المنزلة والمطرية؟';
+  const phrase2 = ' مين في المنزلة والمطرية؟';
+  const subPhrases = [
+    'دليلك الشامل للمدن والقرى المجاورة',
+    'دليلك لأمهر الأطباء، العيادات، والصيدليات',
+    'دليلك لأفضل المحلات، المطاعم، والكافيهات',
+    'دليلك للحرفيين: سباك، نجار، كهربائي، ونقاش',
+    'أقوى العروض الحصرية والخصومات اليومية'
+  ];
+
+  // Start with empty strings to begin typing animation
+  part1El.textContent = '';
+  part2El.textContent = '';
+  part3El.textContent = '';
+
+  let isCancelled = false;
+  const sleep = (ms) => new Promise(res => {
+    _heroTypewriterTimeout = setTimeout(res, ms);
+  });
+
+  async function typeText(el, text, baseDelay = 50) {
+    for (let i = 0; i < text.length; i++) {
+      if (isCancelled) return;
+      el.textContent += text[i];
+      const jitter = Math.floor(Math.random() * 25);
+      await sleep(baseDelay + jitter);
+    }
+  }
+
+  async function deleteText(el, deleteCount = null, baseDelay = 25) {
+    const original = el.textContent;
+    const count = deleteCount !== null ? deleteCount : original.length;
+    for (let i = 0; i < count; i++) {
+      if (isCancelled) return;
+      el.textContent = original.slice(0, original.length - 1 - i);
+      await sleep(baseDelay);
+    }
+  }
+
+  async function startTypingLoop() {
+    await sleep(250);
+    // 1. Type "فين في المنزلة والمطرية؟" in gold
+    await typeText(part1El, phrase1, 48);
+    await sleep(200);
+
+    // 2. Type " مين في المنزلة والمطرية؟" in white
+    await typeText(part2El, phrase2, 42);
+    await sleep(350);
+
+    // 3. Loop through sub-phrases on the second line
+    let idx = 0;
+    while (!isCancelled) {
+      const currentSub = subPhrases[idx % subPhrases.length];
+      await typeText(part3El, currentSub, 38);
+      
+      // Pause at full sentence
+      await sleep(4000);
+
+      // Backspace and switch to next phrase
+      await deleteText(part3El, null, 18);
+      await sleep(300);
+      idx++;
+    }
+  }
+
+  startTypingLoop().catch(() => {});
+}
+
 function getHomeHTML() {
   const villageList = [
     { name: 'المنزلة', icon: '🏙️', desc: 'المدينة والمركز' },
@@ -595,9 +682,15 @@ function getHomeHTML() {
           <span aria-hidden="true">📍</span>
           دليل المنزلة والمطرية الرقمي — المنزلة وناسها
         </div>
-        <h1 class="hero__title animate-fade-in-up" id="hero-title">
-          <span>فين في المنزلة والمطرية؟</span> مين في المنزلة والمطرية؟
-          <br />دليلك الشامل للمدن والقرى المجاورة
+        <h1 class="hero__title animate-fade-in-up" id="hero-title" aria-label="فين في المنزلة والمطرية؟ مين في المنزلة والمطرية؟ دليلك الشامل للمدن والقرى المجاورة">
+          <span class="hero__title-line1">
+            <span id="typewriter-part-1" class="hero__title-highlight">فين في المنزلة والمطرية؟</span>
+            <span id="typewriter-part-2" class="hero__title-white"> مين في المنزلة والمطرية؟</span>
+          </span>
+          <span class="hero__title-line2">
+            <span id="typewriter-part-3" class="hero__title-subtext">دليلك الشامل للمدن والقرى المجاورة</span>
+            <span class="typewriter-cursor" aria-hidden="true">|</span>
+          </span>
         </h1>
         <p class="hero__subtitle animate-fade-in">
           دليلك الرقمي الشامل لجميع الأماكن، المحلات، الأطباء والعيادات، والمهن والحرفيين (سباك، نجار، مبلط، كهربائي، نقاش) في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، وميت شريف.
