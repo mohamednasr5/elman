@@ -1228,3 +1228,21 @@ body, .header, .footer, .place-card, .category-card, .filter-bar, .form-input, .
   align-items: center !important;
   gap: 4px !important;
 }
+
+
+/* Global Mobile Overflow Fix */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  position: relative;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Hide public bottom-nav when inside Admin page to prevent stacked bottom bars */
+body:has(#admin-mobile-bottom-nav) .bottom-nav,
+body:has(.admin-layout) .bottom-nav {
+  display: none !important;
+}

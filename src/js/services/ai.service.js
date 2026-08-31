@@ -1,3 +1,4 @@
+import { getCategoryTaxonomy, generateLocalSeoContent } from '../utils/specialized-taxonomy.js';
 /**
  * المنزلة وناسها — AI Service (خدمة الذكاء الاصطناعي وسيو المنزلة)
  * Multi-model AI orchestration via OpenRouter & Cloudflare Worker.
@@ -56,6 +57,76 @@ async function callOpenRouterWithFallback(prompt, systemPrompt = 'أنت مسا�
  */
 
 const EGYPTIAN_NAME_TRANSLITERATION = {
+  'السيد': 'El-Sayed',
+  'سيد': 'Sayed',
+  'محمود السيد': 'Mahmoud El-Sayed',
+  'طه': 'Taha',
+  'يوسف': 'Youssef',
+  'شمس': 'Shams',
+  'نور': 'Nour',
+  'حامد': 'Hamed',
+  'فتحي': 'Fathy',
+  'عطية': 'Attia',
+  'رمضان': 'Ramadan',
+  'شعبان': 'Shaaban',
+  'شوقي': 'Shawky',
+  'فاروق': 'Farouk',
+  'السعدي': 'El-Saadi',
+  'البدري': 'El-Badry',
+  'الشناوي': 'El-Shenawy',
+  'الدسوقي': 'El-Desouky',
+  'الباز': 'El-Baz',
+  'الحديدي': 'El-Hadidy',
+  'غانم': 'Ghanem',
+  'حجازي': 'Hegazy',
+  'العرب': 'El-Arab',
+
+  'الرحمة': 'El-Rahma',
+  'رحمة': 'Rahma',
+  'السلام': 'Al-Salam',
+  'الصفا': 'Al-Safa',
+  'المروة': 'Al-Marwa',
+  'الفرقان': 'Al-Forqan',
+  'التقوى': 'Al-Taqwa',
+  'الفجر': 'Al-Fajr',
+  'التوحيد': 'Al-Tawheed',
+  'الإيمان': 'Al-Iman',
+  'الايمان': 'Al-Iman',
+  'البركة': 'Al-Baraka',
+  'بركة': 'Baraka',
+  'الوفاء': 'Al-Wafaa',
+  'الإخلاص': 'Al-Ikhlas',
+  'الاخلاص': 'Al-Ikhlas',
+  'الريان': 'Al-Rayan',
+  'الزهراء': 'Al-Zahraa',
+  'الزهور': 'Al-Zohoor',
+  'الياسمين': 'Al-Yasmeen',
+  'طيبة': 'Tayba',
+  'زمزم': 'Zamzam',
+  'الأصيل': 'Al-Aseel',
+  'الاصيل': 'Al-Aseel',
+  'النجمة': 'Al-Negma',
+  'الهلال': 'Al-Helal',
+  'الماسة': 'Al-Massa',
+  'جوهرة': 'Gawhara',
+  'الجوهرة': 'Al-Gawhara',
+  'العروبة': 'Al-Orouba',
+  'النصر': 'Al-Nasr',
+  'المنصورة': 'Mansoura',
+  'المطرية': 'Matariya',
+  'العصافرة': 'Asafra',
+  'الجمالية': 'Gamaliya',
+  'ميت سلسيل': 'Mit Salsil',
+  'البصراط': 'Besrat',
+  'العزيزة': 'Aziza',
+  'الأحمدية': 'Ahmadiya',
+  'الاحمدية': 'Ahmadiya',
+  'الروضة': 'Rawda',
+  'الحوتة': 'Houta',
+  'النسايمة': 'Nasayma',
+  'ميت خضير': 'Mit Khodeir',
+  'ميت شريف': 'Mit Sherif',
+
   'محمد': 'Mohamed',
   'احمد': 'Ahmed',
   'أحمد': 'Ahmed',
@@ -117,6 +188,122 @@ const EGYPTIAN_NAME_TRANSLITERATION = {
 };
 
 const BIZ_TERMS_MAP = {
+  'المنزلية': 'Home',
+  'منزلية': 'Home',
+  'الحوائط': 'Wall',
+  'حوائط': 'Wall',
+  'محل': 'Store',
+  'ورشة': 'Workshop',
+  'صيدلية دكتور': 'Dr.',
+
+  'علاج طبيعي': 'Physical Therapy',
+  'العلاج الطبيعي': 'Physical Therapy',
+  'تغذية علاجية': 'Clinical Nutrition',
+  'التغذية العلاجية': 'Clinical Nutrition',
+  'علاج طبيعي وتغذية علاجية': 'Physical Therapy & Clinical Nutrition',
+  'تخسيس': 'Weight Loss & Fitness',
+  'تأهيل': 'Rehabilitation',
+  'تأهيل حركي': 'Physical Rehabilitation',
+  'اطفال': 'Pediatrics',
+  'أطفال': 'Pediatrics',
+  'نساء وتوليد': 'Obstetrics & Gynecology',
+  'باطنة': 'Internal Medicine',
+  'عظام': 'Orthopedics',
+  'جلدية': 'Dermatology',
+  'اسنان': 'Dental Clinic',
+  'أسنان': 'Dental Clinic',
+  'عيون': 'Ophthalmology',
+  'انف واذن': 'ENT Clinic',
+  'أنف وأذن': 'ENT Clinic',
+  'مخ واعصاب': 'Neurology',
+  'مخ وأعصاب': 'Neurology',
+  'قلب': 'Cardiology',
+  'اورام': 'Oncology',
+  'أورام': 'Oncology',
+  'مسالك بولية': 'Urology',
+  'جراحة': 'Surgery Clinic',
+  'ذكاء اصطناعي': 'Artificial Intelligence',
+  'برمجة': 'Software & Coding',
+  'الوميتال': 'Alumital & Aluminum Works',
+  'ألوميتال': 'Alumital & Aluminum Works',
+  'بويات': 'Paints & Wall Finishes',
+  'دهانات': 'Paints & Wall Decor',
+  'سباكة': 'Plumbing Services & Supplies',
+  'عطارة': 'Spices, Herbs & Natural Oils',
+  'علف': 'Animal & Poultry Feeds',
+  'دواجن': 'Fresh Poultry & Chicken',
+  'مخبز': 'Bakery & Pastries',
+  'حلواني': 'Pastry & Oriental Sweets',
+  'خضار وفاكهة': 'Fresh Fruits & Vegetables',
+  'انتيكات': 'Antiques & Collectibles',
+  'أنتيكات': 'Antiques & Collectibles',
+  'اجهزة كهربائية': 'Home Appliances',
+  'أجهزة كهربائية': 'Home Appliances',
+  'سجاد': 'Carpets & Rugs',
+  'مراتب ومخدات': 'Mattresses & Bedding',
+  'صيني': 'Kitchenware & Dinnerware',
+  'ادوات منزلية': 'Housewares & Kitchenware',
+  'أدوات منزلية': 'Housewares & Kitchenware',
+  'كهرباء وإنارة': 'Electrical & Lighting Supplies',
+  'مكسرات': 'Premium Nuts & Roastery',
+  'صيانة هواتف': 'Mobile Repair & Accessories',
+  'توصيل ودليفري': 'Delivery & Logistics',
+  'احذية': 'Footwear & Shoes',
+  'أحذية': 'Footwear & Shoes',
+  'حفر ليزر': 'Laser Engraving & Cutting',
+  'زجاج': 'Glass & Mirrors',
+  'صيانة موتوسيكلات': 'Motorcycle Repair & Parts',
+  'صيانة سيارات': 'Auto Repair & Mechanics',
+  'حلاقة': 'Barbershop & Grooming',
+  'كوافير': 'Ladies Beauty Salon',
+  'فساتين زفاف': 'Bridal & Evening Dresses Atelier',
+  'لعب اطفال': 'Toys & Games Store',
+  'لعب أطفال': 'Toys & Games Store',
+  'اوراق حكومية': 'Government Documents Services',
+  'أوراق حكومية': 'Government Documents Services',
+  'تفريخ دواجن': 'Poultry Hatchery',
+  'صيانة تكييف': 'AC & HVAC Maintenance',
+  'خدمات كاش': 'Cash & Electronic Payments',
+  'رخام وجرانيت': 'Marble & Granite Works',
+  'جبس بورد': 'Gypsum Board & Interior Decor',
+  'حدادة': 'Blacksmith & Metal Works',
+  'نظارات': 'Optics & Eyewear',
+  'مفاتيح': 'Keys Duplication & Programming',
+  'استوديو': 'Photography & Wedding Studio',
+  'قاعة افراح': 'Weddings & Events Hall',
+  'قاعة أفراح': 'Weddings & Events Hall',
+  'صيانة احذية': 'Shoes & Bags Repair',
+  'صيانة أحذية': 'Shoes & Bags Repair',
+  'كمبيوتر ولاب توب': 'Computers & Laptops',
+  'فندق': 'Hotel & Lodging',
+  'كورسات': 'Training & Educational Courses',
+  'محاماة': 'Law Firm & Legal Services',
+  'محاسبة': 'Accounting & Tax Advisory',
+  'ملابس': 'Fashion & Clothing Store',
+  'عصائر': 'Fresh Juices Bar',
+  'تورتة': 'Cakes & Pastries',
+  'مستلزمات سبوع': 'Party & Baby Shower Supplies',
+  'منظفات': 'Detergents & Cleaning Supplies',
+  'بلاستيك': 'Plastic & Paper Disposables',
+  'نجارة': 'Carpentry & Furniture Workshop',
+  'اثاث': 'Furniture & Modern Living',
+  'أثاث': 'Furniture & Modern Living',
+  'ادوات صحية': 'Sanitary Ware & Plumbing Fixtures',
+  'أدوات صحية': 'Sanitary Ware & Plumbing Fixtures',
+  'اسماك': 'Fresh Seafood & Fish Market',
+  'أسماك': 'Fresh Seafood & Fish Market',
+  'فسيخ ورنجة': 'Salted & Smoked Fish (Feseekh)',
+  'معاهد وكليات': 'Higher Education & Institutes',
+  'طباخة افراح': 'Wedding & Event Catering Chef',
+  'طباخة أفراح': 'Wedding & Event Catering Chef',
+  'اكاديمية كورة': 'Football Academy & Training',
+  'أكاديمية كورة': 'Football Academy & Training',
+  'تايكوندو وكاراتيه': 'Martial Arts & Karate Academy',
+  'مدرس': 'Private Teacher & Tutor',
+  'تدريس مواد': 'Academic Tutoring Center',
+  'صراف الي': 'ATM Banking Machine',
+  'صراف آلي': 'ATM Banking Machine',
+
   'صيدلية': 'Pharmacy',
   'دكتور': 'Dr.',
   'طبيب': 'Clinic',
@@ -227,20 +414,33 @@ const BIZ_TERMS_MAP = {
 /**
  * Translates Arabic business name to natural, idiomatic, high-end English (Non-literal)
  */
+/**
+ * Translates Arabic business name to natural, idiomatic, high-end American English (US English)
+ */
 export async function translatePlaceName(arabicName, category = '') {
   if (!arabicName || typeof arabicName !== 'string') return '';
   const cleanArabic = arabicName.trim();
 
-  // Try OpenRouter AI First for natural branding
+  // 1. Try OpenRouter AI First for natural branding
   try {
-    const prompt = `Translate this Egyptian business/place name into a natural, polished, high-end English brand name suitable for a business directory.
-CRITICAL RULES:
-- Do NOT translate literally word-by-word. Use standard professional business naming (e.g. "محمصة البحر للمكسرات" -> "El-Bahr Roastery & Premium Nuts", "مهندس محمد حماد للمقاولات" -> "Eng. Mohamed Hammad Contracting", "دكتور أحمد علي لطب الأطفال" -> "Dr. Ahmed Ali Pediatrics Clinic").
-- Correctly transliterate personal and family names into natural English.
-- Return ONLY the final English name. No quotation marks, no explanations, no Arabic text.
+    const prompt = `You are an expert professional translator specializing in natural American English (US English) business nomenclature and Egyptian brand names.
 
-Arabic Name: ${cleanArabic}
-Category: ${category || 'Local Business'}`;
+TASK: Translate the following Arabic business / commercial place name into a polished, natural, grammatically correct American English (US English) name.
+
+RULES:
+1. Use natural US English business naming conventions:
+   - "مركز الرحمة للعلاج الطبيعي والتغذية العلاجية" -> "El-Rahma Physical Therapy & Clinical Nutrition Center"
+   - "صيدلية دكتور محمود السيد" -> "Dr. Mahmoud El-Sayed Pharmacy"
+   - "معرض الأجهزة الكهربائية الحديثة" -> "Modern Home Appliances Showroom"
+   - "ورشة الألوميتال والزجاج السيكوريت" -> "Alumital & Securit Glass Workshop"
+   - "محل بويات ودهانات الحوائط" -> "Paints & Wall Finishes Store"
+   - "محمصة البحر للبن والمكسرات" -> "El-Bahr Roastery, Coffee & Premium Nuts"
+2. KEEP Egyptian proper and family names transliterated exactly as commonly spelled in Egypt (e.g. Mahmoud, Mohamed, Ahmed, El-Rahma, El-Basha, El-Sayed, Al-Amal, Al-Salam).
+3. Accurately translate medical, technical, commercial, craftsmanship, and trade specialties into standard US English terms.
+4. Return ONLY the final English name. No extra punctuation, no quotes, no Arabic text.
+
+Arabic Business Name: ${cleanArabic}
+Category: ${category || 'Business'}`;
 
     const aiResult = await callOpenRouterWithFallback(prompt);
     if (aiResult) {
@@ -254,59 +454,65 @@ Category: ${category || 'Local Business'}`;
     }
   } catch (_) {}
 
-  // Deterministic Intelligent Synthesis Fallback
-  let englishParts = [];
+  // 2. Deterministic Intelligent Synthesis Fallback
+  function stripPrefix(w) {
+    if (!w) return '';
+    let res = w;
+    if (res.startsWith('وال')) res = res.slice(3);
+    else if (res.startsWith('لل')) res = res.slice(2);
+    else if (res.startsWith('ال')) res = res.slice(2);
+    else if (res.startsWith('ل') && res.length > 2) res = res.slice(1);
+    else if (res.startsWith('و') && res.length > 2) res = res.slice(1);
+    return res;
+  }
+
   const words = cleanArabic.split(/\s+/).filter(Boolean);
+  let englishParts = [];
+  let businessHead = '';
+
+  // Check if first word is a common business head (مركز, صيدلية, معمل, عيادة, معرض, ورشة, محل)
+  const firstWordClean = stripPrefix(words[0]);
+  if (['مركز', 'معرض', 'ورشة', 'محل', 'شركة', 'مؤسسة'].includes(words[0]) || ['مركز', 'معرض', 'ورشة', 'محل', 'شركة', 'مؤسسة'].includes(firstWordClean)) {
+    businessHead = BIZ_TERMS_MAP[words[0]] || BIZ_TERMS_MAP[firstWordClean] || 'Center';
+    words.shift();
+  }
 
   for (let i = 0; i < words.length; i++) {
-    const word = words[i];
+    const rawWord = words[i];
+    const isAnd = rawWord.startsWith('و') || rawWord.startsWith('وال');
+    const cleanW1 = stripPrefix(rawWord);
+    const cleanW2 = stripPrefix(words[i+1] || '');
+    const cleanW3 = stripPrefix(words[i+2] || '');
 
-    // Strip connectors: للـ, لـ, والـ, و
-    let cleanWord = word;
-    let isAndConnector = false;
+    const threeWordsClean = `${cleanW1} ${cleanW2} ${cleanW3}`.trim();
+    const twoWordsClean = `${cleanW1} ${cleanW2}`.trim();
 
-    if (word.startsWith('وال')) {
-      cleanWord = word.slice(3);
-      isAndConnector = true;
-    } else if (word.startsWith('لل')) {
-      cleanWord = word.slice(2);
-    } else if (word.startsWith('ال')) {
-      cleanWord = word.slice(2);
-    } else if (word.startsWith('ل') && word.length > 2) {
-      cleanWord = word.slice(1);
-    } else if (word.startsWith('و') && word.length > 2) {
-      cleanWord = word.slice(1);
-      isAndConnector = true;
-    }
-
-    const twoWords = (words[i] + ' ' + (words[i+1] || '')).trim();
-
-    if (BIZ_TERMS_MAP[twoWords]) {
-      englishParts.push(BIZ_TERMS_MAP[twoWords]);
-      i++;
-    } else if (BIZ_TERMS_MAP[word]) {
-      englishParts.push(BIZ_TERMS_MAP[word]);
-    } else if (BIZ_TERMS_MAP[cleanWord]) {
-      if (isAndConnector && englishParts.length > 0 && englishParts[englishParts.length - 1] !== '&') {
-        englishParts.push('&');
-      }
-      englishParts.push(BIZ_TERMS_MAP[cleanWord]);
-    } else if (EGYPTIAN_NAME_TRANSLITERATION[word]) {
-      englishParts.push(EGYPTIAN_NAME_TRANSLITERATION[word]);
-    } else if (EGYPTIAN_NAME_TRANSLITERATION[cleanWord]) {
-      if (isAndConnector && englishParts.length > 0 && englishParts[englishParts.length - 1] !== '&') {
-        englishParts.push('&');
-      }
-      englishParts.push(EGYPTIAN_NAME_TRANSLITERATION[cleanWord]);
+    if (BIZ_TERMS_MAP[threeWordsClean]) {
+      if (isAnd && englishParts.length > 0 && englishParts[englishParts.length - 1] !== '&') englishParts.push('&');
+      englishParts.push(BIZ_TERMS_MAP[threeWordsClean]);
+      i += 2;
+    } else if (BIZ_TERMS_MAP[twoWordsClean]) {
+      if (isAnd && englishParts.length > 0 && englishParts[englishParts.length - 1] !== '&') englishParts.push('&');
+      englishParts.push(BIZ_TERMS_MAP[twoWordsClean]);
+      i += 1;
+    } else if (BIZ_TERMS_MAP[cleanW1]) {
+      if (isAnd && englishParts.length > 0 && englishParts[englishParts.length - 1] !== '&') englishParts.push('&');
+      englishParts.push(BIZ_TERMS_MAP[cleanW1]);
+    } else if (EGYPTIAN_NAME_TRANSLITERATION[rawWord]) {
+      englishParts.push(EGYPTIAN_NAME_TRANSLITERATION[rawWord]);
+    } else if (EGYPTIAN_NAME_TRANSLITERATION[cleanW1]) {
+      englishParts.push(EGYPTIAN_NAME_TRANSLITERATION[cleanW1]);
     } else {
-      const trans = transliterateToEnglishName(cleanWord || word);
+      const trans = transliterateToEnglishName(cleanW1 || rawWord);
       if (trans) {
-        if (isAndConnector && englishParts.length > 0 && englishParts[englishParts.length - 1] !== '&') {
-          englishParts.push('&');
-        }
+        if (isAnd && englishParts.length > 0 && englishParts[englishParts.length - 1] !== '&') englishParts.push('&');
         englishParts.push(trans);
       }
     }
+  }
+
+  if (businessHead) {
+    englishParts.push(businessHead);
   }
 
   if (englishParts.length > 0) {
@@ -315,12 +521,6 @@ Category: ${category || 'Local Business'}`;
 
   return transliterateToEnglishName(cleanArabic) || generateSlug(cleanArabic) || 'Premier Business';
 }
-
-/**
- * ─────────────────────────────────────────────────────────────
- * 2. SMART GRAMMATICAL GENDER DETECTOR (مذكر / مؤنث)
- * ─────────────────────────────────────────────────────────────
- */
 
 export function detectArabicGrammaticalGender(name = '', category = '') {
   const combined = (name + ' ' + category).toLowerCase();
@@ -358,164 +558,41 @@ export function detectArabicGrammaticalGender(name = '', category = '') {
  * Generates an SEO & AI-Search Optimized place description.
  * STRICT DIRECTIVE: Never uses "يقدم" or "تقدم". Uses rich vocabulary and respects grammatical gender.
  */
-export async function generateSeoDescription(placeName = '', categoryName = '', area = 'المنزلة') {
-  if (!placeName || !placeName.trim()) return '';
+export async function generateSeoDescription({ placeName, categoryName = '', area = 'المنزلة', address = '', customServices = [] }) {
+  // Use our specialized 74-category local taxonomy engine
+  const localTaxonomyData = generateLocalSeoContent({
+    placeName,
+    categoryName,
+    area,
+    address,
+    customKeywords: customServices
+  });
 
-  const cleanName = placeName.trim();
-  const cleanCategory = (categoryName || 'خدمات وأنشطة عامة').trim();
-  const cleanArea = (area || 'المنزلة').trim();
-  const gender = detectArabicGrammaticalGender(cleanName, cleanCategory);
-
-  const prompt = `اكتب وصفاً تسويقياً فريداً واحترافياً ومتوافقاً مع معايير السيو (SEO) ومحركات البحث الذكية (AI Search / Google SGE) لنشاط في مدينة المنزلة بمحافظة الدقهلية.
-
-البيانات:
-- اسم النشاط: ${cleanName}
-- نوع التخصص: ${cleanCategory}
-- المنطقة: ${cleanArea}
-- الصيغة اللغوية: ${gender === 'feminine' ? 'مؤنث (صيدلية، عيادة، شركة...)' : 'مذكر (محل، مركز، مطعم، صالون...)'}
-
-قواعد وإرشادات صارمة جداً:
-1. ممنوع منعاً باتاً استخدام كلمة "يقدم" أو "تقدم" أو "يقوم بتقديم" أو "تقوم بتقديم".
-2. استخدم أفعالاً وعبارات راقية ومتباينة حسب الصيغة (${gender === 'feminine' ? 'تتميز بـ، تُعد وجهتكِ الموثوقة لـ، تختص في، تجمع بين، توفر تشكيلة واسعة من' : 'يتميز بـ، يُعد وجهتك الموثوقة لـ، يختص في، يجمع بين، يوفر تشكيلة واسعة من'}).
-3. اجعل النص غنياً بالكلمات المفتاحية الطبيعية والكيانات الجغرافية (مدينة المنزلة، محافظة الدقهلية، ${cleanArea}) بحيث يظهر المكان في النتيجة الأولى عند البحث.
-4. اذكر مميزات الجودة والسرعة وحسن التعامل وثقة العملاء.
-5. اكتب فقرة واحدة انسيابية وجذابة (من 3 إلى 5 أسطر) بدون أي مقدمات، بدون تعداد نقطي، وبدون علامات تنصيص.`;
-
-  const aiResult = await callOpenRouterWithFallback(prompt, 'أنت خبير سيو وكتابة محتوى إعلاني رقمي فائق الاحترافية للأنشطة والشركات المصرية.');
-  if (aiResult && aiResult.length > 25) {
-    // Sanitize any accidental "يقدم/تقدم" from AI output
-    let sanitized = aiResult
-      .replace(/^["'«»]+|["'«»]+$/g, '')
-      .replace(/\bيقدم\b/g, 'يوفر')
-      .replace(/\bتقدم\b/g, 'توفر')
-      .replace(/\bيقوم بتقديم\b/g, 'يختص بتوفير')
-      .replace(/\bتقوم بتقديم\b/g, 'تختص بتوفير')
-      .trim();
-    return sanitized;
-  }
-
-  // High-End SEO Deterministic Dynamic Fallback (Zero "يقدم/تقدم", 100% Unique & Gender-Aware)
-  if (gender === 'feminine') {
-    return `تُعد ${cleanName} من أبرز الوجهات الموثوقة في مدينة ${cleanArea} بمحافظة الدقهلية المتخصصة في مجالات ${cleanCategory}. تنفرد بتوفير أعلى معايير الجودة والإتقان مع الحرص الدائم على تلبية متطلبات أهالي المنزلة الكرام بدقة فائقة، وتجمع بين عراقة الخبرة وحسن الاستقبال والأسعار التنافسية التي تجعلها الاختيار الأول دائماً.`;
-  } else {
-    return `يُعد ${cleanName} من أبرز الوجهات الموثوقة في مدينة ${cleanArea} بمحافظة الدقهلية المتخصصة في مجالات ${cleanCategory}. ينفرد بتوفير أعلى معايير الجودة والإتقان مع الحرص الدائم على تلبية متطلبات أهالي المنزلة الكرام بدقة فائقة، ويجمع بين عراقة الخبرة وحسن الاستقبال والأسعار التنافسية التي تجعله الاختيار الأول دائماً.`;
-  }
-}
-
-/**
- * ─────────────────────────────────────────────────────────────
- * 4. EGYPTIAN COMMERCE SERVICES & KEYWORDS GENERATOR (السوق المصري)
- * ─────────────────────────────────────────────────────────────
- */
-
-const EGYPTIAN_DETAILED_SERVICES_MAP = {
-  'سوبر ماركت': 'سلع تموينية وغذائية، ألبان وأجبان طازجة، مجمدات ولحوم، منظفات ومستلزمات منزلية، مشروبات وعصائر، خدمة توصيل طلبات للمنازل دليفري، دفع فواتير وفودافون كاش، عروض وتخفيضات يومية',
-  'ماركت': 'سلع تموينية وغذائية، ألبان وأجبان طازجة، مجمدات ولحوم، منظفات ومستلزمات منزلية، مشروبات وعصائر، خدمة توصيل طلبات للمنازل دليفري، دفع فواتير وفودافون كاش، عروض وتخفيضات يومية',
-  'هايبر': 'تسوق شامل ومواد غذائية، قسم الأدوات المنزلية والأجهزة، مجمدات وأغذية طازجة، عروض جملة وقطاعي، خدمة دليفري وتوصيل سريع',
-  'صيدلية': 'صرف الروشتات الطبية وتوفير كافة الأدوية، أدوية الأمراض المزمنة، قياس الضغط ونسبة السكر بالدم، مستحضرات العناية بالبشرة والشعر، مكملات غذائية وفيتامينات، مستلزمات رعاية الأطفال وحديثي الولادة، خدمة توصيل علاج للمنازل 24 ساعة',
-  'محمصة': 'بن يمني وبرازيلي مطحون طازج، مكسرات فاخرة (كاجو وفستق ولوز وبندق وعين جمل)، لب سوبر ولب خشب وتسالي مشكلة، ياميش وفواكه مجففة، شوكولاتة وهدايا فاخرة، مقرمشات وحبوب، تمور وعطارة',
-  'مقلة': 'بن يمني وبرازيلي مطحون طازج، مكسرات فاخرة (كاجو وفستق ولوز وبندق وعين جمل)، لب سوبر ولب خشب وتسالي مشكلة، ياميش وفواكه مجففة، شوكولاتة وهدايا فاخرة، مقرمشات وحبوب، تمور وعطارة',
-  'بن': 'توليفات بن ممتازة فاتح ومحوج وغامق، بن يمني وبرازيلي وكولومبي، حبوب قهوة مختصة، بهارات ومستلزمات القهوة، طحن فوري طازج',
-  'مطعم': 'وجبات سريعة وسفاري، كريب وسندوتشات، بيتزا وفطائر، مشويات ولحوم بلدي طازجة، وجبات عائلية وطواجن، صوصات ومقبلات، خدمة صالة وتيك أواي، توصيل دليفري سريع بالمنزلة',
-  'مشويات': 'كباب وكفتة وطرب بلدي، فراخ مشوية على الفحم، طواجن لحمة وموزات، أرز بسمتي وسلطات ومقبلات، تجهيز عزومات وحفلات، توصيل سخن للمنازل',
-  'اسماك': 'سمك بلطي وبوري وطوبار بحيرة المنزلة طازج، جمبري وكابوريا واستاكوزا، طواجن سي فود وشوربة بحرية، شوي بالردة والزيت والليمون، قلي وتتبيل جاهز، خدمة تجهيز ولائم وعزومات أسماك',
-  'أسماك': 'سمك بلطي وبوري وطوبار بحيرة المنزلة طازج، جمبري وكابوريا واستاكوزا، طواجن سي فود وشوربة بحرية، شوي بالردة والزيت والليمون، قلي وتتبيل جاهز، خدمة تجهيز ولائم وعزومات أسماك',
-  'كافيه': 'مشروبات ساخنة وإسبريسو، عصائر وكوكتيلات فريش، سموزي وميلك شيك، وافل وكريب وشوكولاتة، شاشات عرض مباريات، جلسات عائلية وشبابية مكيفة، واي فاي مجاني',
-  'دكتور': 'كشف وتشخيص طبي دقيق، استشارات متخصصة، أحدث الأجهزة التشخيصية، بروتوكولات علاجية حديثة، متابعة دورية للحالات، حجز مسبق لتجنب الانتظار، رعاية صحية متكاملة',
-  'طبيب': 'كشف وتشخيص طبي دقيق، استشارات متخصصة، أحدث الأجهزة التشخيصية، بروتوكولات علاجية حديثة، متابعة دورية للحالات، حجز مسبق لتجنب الانتظار، رعاية صحية متكاملة',
-  'عيادة': 'كشف وتشخيص طبي دقيق، استشارات متخصصة، أحدث الأجهزة التشخيصية، بروتوكولات علاجية حديثة، متابعة دورية للحالات، حجز مسبق لتجنب الانتظار، رعاية صحية متكاملة',
-  'سباك': 'تأسيس شبكات سباكة وصرف صحي للشقق والعمائر، صيانة وتركيب خلاطات وأطقم حمامات، تصليح مواتير المياه، كشف تسربات المياه بأجهزة حديثة، تركيب فلاتر مياه وسخانات، طوارئ سباكة 24 ساعة',
-  'كهربائي': 'تأسيس شبكات كهرباء حديثة للشقق والمحلات، صيانة لوحات الكهرباء والقواطع، تركيب نجف وسبوت لايت وليد بروفايل، صيانة الأجهزة الكهربائية المنزلية، توزيع أحمال وكشف أعطال الشورت',
-  'نجار': 'تصنيع غرف نوم وسفرة وصالونات، صيانة وتصليح أبواب وشبابيك، مطابخ خشب ومودرن و MDF، فك ونقل وتركيب أثاث، نجارة باب وشباك وتشطيبات عمولة بالطلب',
-  'نقاش': 'أحدث ديكورات الدهانات وورق الحائط، دهانات قطيفة وثري دي وجرافيتو، تشطيبات داخلية وخارجية، عزل ومعالجة الرطوبة والنشع، دقة والتزام بالمواعيد',
-  'ميكانيكي': 'صيانة وتوضيب محركات وعفشة، فحص كمبيوتر وكشف أعطال دقيق، تغيير زيوت وفلاتر وسيور، صيانة فرامل ودبرياج، توفير قطع غيار أصلية بضمان، إنقاذ وطوارئ سيارات',
-  'حلاق': 'قصات شعر عصرية واستشوار، تنعيم وفرد بروتين وكرياتين، تنظيف بشرة وحمام بخار وماسكات، تشذيب وتحديد لحية احترافي، باقات تجهيز عرسان متكاملة، أدوات معقمة ذات استخدام فردي',
-  'كوافير': 'ميك أب سواريه وعرائس احترافي، قص وتصفيف وتسريحات شعر، فرد وعلاج الشعر بالبروتين والكولاجين، تنظيف بشرة عميق وهيدرافيشل، باديكير ومانيكير وتركيب رموش، حجاب ولفات طرح عصرية',
-  'مخبز': 'عيش بلدي وفينو وباتيه طازج، تورت وجاتوهات أعياد ميلاد ومناسبات، حلويات شرقية فاخرة (بسبوسة، كنافة، بقلاوة)، مخبوزات دايت وشوفان، فطير مشلتت بالسمن البلدي، تجهيز طلبيات الحفلات',
-  'موبايل': 'بيع أحدث الهواتف الذكية والأجهزة اللوحية، صيانة شاشات وبوردات وسوفت وير فوري، إكسسوارات وجرابات وشواحن أصلية، بطاريات وسماعات إيربودز، استبدال هواتف وشراء مستعمل، تحويلات ودفع فواتير',
-  'ملابس': 'أحدث صيحات الموضة والملابس الجاهزة، ملابس كاجوال وكلاسيك وخروج، أزياء رجالي وحريمي وأطفال، خامات قطنية عالية الجودة، تشكيلة أحذية وشنط وإكسسوارات، عروض وتخفيضات موسمية',
-  'مغسلة': 'غسيل وكي ملابس بالبخار، تنظيف جاف وبقع مستعصية، غسيل بطاطين وسجاد ومفروشات، تعقيم وتغليف معطر، خدمة استلام وتوصيل للمنازل',
-  'عقارات': 'بيع وشراء شقق وعقارات وأراضي، إيجارات سكنية وتجارية ومحلات، استشارات وتسويق عقاري بالمنزلة، إنهاء الإجراءات القانونية ونقل الملكية، تقييم وتثمين عقاري',
-  'مقاولات': 'تصميمات هندسية ومعمارية وديكور، إشراف وتنفيذ أعمال البناء والتشطيبات المتكاملة، تشطيب شقق وفلل ومحلات على المفتاح، أعمال السباكة والكهرباء والنجارة والدهانات'
-};
-
-/**
- * Generates Egyptian-market comprehensive services & SEO keywords
- */
-export async function generateSeoServices(placeName = '', categoryName = '') {
-  if (!placeName && !categoryName) return '';
-
-  const cleanName = (placeName || '').trim();
-  const cleanCat = (categoryName || '').trim();
-
-  // Try OpenRouter AI for tailored Egyptian services
+  // Try OpenRouter AI for additional dynamic polish
   try {
-    const prompt = `اقترح قائمة بأهم 6 إلى 8 خدمات وكلمات مفتاحية بحثية متخصصة ومطلوبة بشدة في السوق المصري يبحث عنها المواطنون على جوجل ودليل المنزلة والمطرية الرقمي لهذا النشاط:
-اسم المكان: ${cleanName}
-النشاط / التخصص: ${cleanCat}
-المدينة والمركز: المنزلة والمطرية - محافظة الدقهلية
+    const prompt = `أنت خبير سيو محلي في مصر (دليل المنزلة والمطرية بمحافظة الدقهلية).
+اكتب وصفاً تسويقياً واحترافياً جذاباً لنشاط تجاري متوافق 100% مع معايير SEO ومحركات البحث (Google و AI Search).
 
-القواعد:
-- اعطني فقط أسماء الخدمات مفصولة بفواصل عربية (،) بدون ترقيم وبدون أي نصوص إضافية.
-- ركز على الخدمات الحقيقية التي يحتاجها الزبائن في مصر مثل (توصيل للمنازل، عروض وخصومات، صيانة متخصصة، منتجات طازجة، حجز مسبق...).`;
+بيانات النشاط:
+- اسم النشاط: ${placeName}
+- التصنيف: ${categoryName}
+- المنطقة/القرية: ${area}
+- العنوان: ${address || area}
+- الخدمات والكلمات التخصصية: ${localTaxonomyData.keywords.join('، ')}
 
-    const aiResult = await callOpenRouterWithFallback(prompt, 'أنت خبير كلمات مفتاحية وسيو وتجارة محلية في مصر.');
-    if (aiResult && aiResult.length > 10) {
-      return aiResult.replace(/\n/g, ' ').replace(/^["'«»]+|["'«»]+$/g, '').trim();
+شروط كتابة الوصف:
+1. تجنب تماماً التكرار الممل أو الحشو.
+2. اجعل الكلمات المفتاحية مدمجة بسلاسة مع اسم المنطقة (مثل: ${localTaxonomyData.localizedKeywords.slice(0, 3).join('، ')}).
+3. اكتب 3-4 أسطر واضحة ومقنعة تشرح للزبائن ما يميز المكان وتخصصاته وكيفية التواصل وزيارته.
+4. لا تضع أي مقدمات، أعد نص الوصف النهائي فقط باللغة العربية الفصحى المبسطة.`;
+
+    const aiRes = await callOpenRouterWithFallback(prompt);
+    if (aiRes && aiRes.length > 50) {
+      return aiRes.trim();
     }
   } catch (_) {}
 
-  // Dictionary Lookup Fallback
-  const combined = (cleanCat + ' ' + cleanName).toLowerCase();
-  for (const [key, serv] of Object.entries(EGYPTIAN_DETAILED_SERVICES_MAP)) {
-    if (combined.includes(key)) {
-      return serv;
-    }
-  }
-
-  return 'خدمة عملاء فائقة التميز، سرعة ودقة في التنفيذ، أسعار تنافسية مناسبة، خبرة وضمان معتمد، تلبية جميع احتياجات أهالي المنزلة على مدار الساعة';
-}
-
-/**
- * ─────────────────────────────────────────────────────────────
- * 5. HIGH-RESOLUTION COVER & VECTOR LOGO GENERATORS
- * ─────────────────────────────────────────────────────────────
- */
-
-export async function generateCoverImage(placeName = '', categoryName = '', area = 'المنزلة') {
-  const queryMap = {
-    'طبيب': 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1200&q=80',
-    'دكتور': 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1200&q=80',
-    'عيادة': 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=1200&q=80',
-    'صيدلية': 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?w=1200&q=80',
-    'سوبر ماركت': 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1200&q=80',
-    'ماركت': 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1200&q=80',
-    'محمصة': 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=1200&q=80',
-    'مقلة': 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=1200&q=80',
-    'مطعم': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80',
-    'مشويات': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=1200&q=80',
-    'اسماك': 'https://images.unsplash.com/photo-1534482421-64566f976cfa?w=1200&q=80',
-    'كافيه': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1200&q=80',
-    'مخبز': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=1200&q=80',
-    'ملابس': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=80',
-    'جيم': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80',
-    'حلاق': 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=1200&q=80',
-    'كوافير': 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&q=80',
-    'سباك': 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?w=1200&q=80',
-    'نجار': 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=1200&q=80',
-    'ميكانيكي': 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=1200&q=80',
-    'عقارات': 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200&q=80',
-    'موبايل': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&q=80'
-  };
-
-  const combined = (placeName + ' ' + categoryName).toLowerCase();
-  for (const [key, url] of Object.entries(queryMap)) {
-    if (combined.includes(key)) {
-      return url;
-    }
-  }
-
-  return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&q=80';
+  return localTaxonomyData.description;
 }
 
 export function generateLogoImage(placeName = '', categoryName = '') {
@@ -587,5 +664,41 @@ export const getAiSuggestions = async (query) => {
   return res?.suggestions || [];
 };
 
+export async function generateCoverImage(placeName = '', categoryName = '', area = 'المنزلة') {
+  const queryMap = {
+    'طبيب': 'modern medical clinic doctor',
+    'صيدلية': 'pharmacy store interior medicine',
+    'مطعم': 'restaurant food gourmet delicious',
+    'كافيه': 'cafe coffee shop modern',
+    'سوبر ماركت': 'supermarket grocery store products',
+    'مخبز': 'bakery fresh bread pastry',
+    'ميكانيكي': 'auto repair garage mechanic',
+    'سباك': 'plumbing modern tools bathroom',
+    'كهربائي': 'electrical professional tools lighting',
+    'نجار': 'carpenter workshop wood furniture',
+    'مدرسة': 'school classroom education',
+    'جيم': 'gym fitness workout center',
+    'فندق': 'hotel luxury room lobby',
+    'حلاق': 'barbershop modern hair salon',
+    'خياط': 'tailor atelier fashion design',
+    'كوافير': 'beauty salon makeup hair',
+    'علاج طبيعي': 'physical therapy rehabilitation clinic',
+    'اسماك': 'fresh fish seafood market'
+  };
 
+  let query = 'egypt modern business';
+  for (const [key, val] of Object.entries(queryMap)) {
+    if (categoryName.includes(key) || placeName.includes(key)) {
+      query = val;
+      break;
+    }
+  }
 
+  const seed = encodeURIComponent((placeName + categoryName).slice(0, 20));
+  return `https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&h=500&q=80&sig=${seed}`;
+}
+
+export function generateSeoServices(categoryName = '') {
+  const taxonomy = getCategoryTaxonomy(categoryName);
+  return taxonomy?.keywords || [];
+}

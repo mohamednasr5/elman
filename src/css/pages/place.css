@@ -43,11 +43,13 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border);
-  padding: var(--space-6);
-  margin-top: -60px;
+  padding: var(--space-5);
+  margin-top: -50px;
   position: relative;
   z-index: 10;
-  margin-inline: var(--space-4);
+  margin-inline: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
@@ -425,16 +427,93 @@
 /* Unverified Notice */
 .unverified-notice {
   background: var(--surface);
-  border: 2px dashed var(--border-strong);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
+  border: 2px dashed #94A3B8;
+  border-radius: var(--radius-lg, 12px);
+  padding: 16px 20px;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: var(--space-4);
 }
 
-.unverified-notice__icon { font-size: 1.5rem; color: var(--text-muted); }
-.unverified-notice__text { font-size: var(--font-size-sm); color: var(--text-muted); }
+.unverified-notice__icon { 
+  font-size: 2.2rem; 
+  flex-shrink: 0; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unverified-notice__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.unverified-notice__title {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.unverified-notice__text { 
+  font-size: 13px; 
+  color: var(--text-secondary); 
+  line-height: 1.6;
+  margin: 0;
+}
+
+.unverified-notice__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .place-header-card {
+    padding: 16px 14px;
+    margin-top: -36px;
+    border-radius: var(--radius-lg);
+  }
+  .place-contact-btns {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .place-contact-btns .btn {
+    width: 100%;
+    font-size: 13px;
+    padding: 10px 12px;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .unverified-notice {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    padding: 16px 12px;
+    gap: 12px;
+  }
+  .unverified-notice__icon {
+    margin: 0 auto;
+  }
+  .unverified-notice__actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .unverified-notice__actions .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+}
 
 /* Branded Social Media Buttons */
 .social-brand-btn {

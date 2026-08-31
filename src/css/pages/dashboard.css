@@ -590,16 +590,16 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 64px;
+  height: 68px;
   background: #0F273D;
-  border-top: 1px solid rgba(255,255,255,0.12);
-  z-index: 9999;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.15);
+  z-index: 10001;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 4px 8px;
-  gap: 4px;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.25);
+  padding: 6px 10px;
+  gap: 8px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
   scrollbar-width: none;
 }
 
@@ -612,15 +612,19 @@
     display: flex;
     align-items: center;
   }
-  body:has(.admin-mobile-bottom-bar) .dashboard-content,
-  body .dashboard-content {
-    padding-bottom: 80px;
+  body.admin-page #nav-slot,
+  body.admin-page .bottom-nav,
+  body.admin-page #footer-slot {
+    display: none !important;
+  }
+  .dashboard-content {
+    padding-bottom: 90px !important;
   }
 }
 
 .admin-bottom-tab {
   flex: 0 0 auto;
-  min-width: 58px;
+  min-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -628,10 +632,10 @@
   gap: 3px;
   background: transparent;
   border: none;
-  color: rgba(255,255,255,0.65);
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  border-radius: var(--radius-md, 8px);
   transition: all 0.2s ease;
   outline: none;
   font-family: inherit;
@@ -640,21 +644,87 @@
 .admin-bottom-tab:hover,
 .admin-bottom-tab.active {
   color: #fff;
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .admin-bottom-tab.active {
-  color: var(--secondary, #F5A623);
-  font-weight: 700;
+  color: var(--secondary, #F5A623) !important;
+  font-weight: 800;
+  border-bottom: 2px solid var(--secondary, #F5A623);
 }
 
 .admin-bottom-tab__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .admin-bottom-tab__label {
-  font-size: 10.5px;
+  font-size: 11px;
+  font-weight: 700;
   white-space: nowrap;
 }
 
+
+
+/* Dashboard Place Card Mobile Fix */
+@media (max-width: 768px) {
+  .my-place-item__header {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px;
+  }
+  .my-place-item__info {
+    flex: 1 1 calc(100% - 70px);
+  }
+  .my-place-item__actions {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .my-place-item__actions .btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 90px;
+    text-align: center;
+    justify-content: center;
+    font-size: 12px;
+    padding: 8px 10px;
+    font-weight: 700;
+  }
+}
+
+/* Admin Mobile Bottom Navigation Bar */
+.admin-mobile-bottom-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: #0F273D;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  z-index: 10000;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 8px;
+  gap: 4px;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.35);
+  scrollbar-width: none;
+}
+
+@media (max-width: 1023px) {
+  .admin-mobile-bottom-bar {
+    display: flex;
+    align-items: center;
+  }
+  /* Hide standard user bottom nav on admin page */
+  body:has(#admin-mobile-bottom-nav) .bottom-nav {
+    display: none !important;
+  }
+  .dashboard-content {
+    padding-bottom: 90px !important;
+  }
+}

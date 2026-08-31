@@ -188,6 +188,12 @@ export async function renderPlacePage($container, { slug, user }) {
                     ${catInfo.icon} ${escHtml(catInfo.name)}
                   </a>
                   ${place.nameEn ? `<span style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
+                  ${place.medicalSpecialty ? `
+                    <span class="badge" style="background:#E0F2FE;color:#0369A1;font-weight:700;font-size:12.5px;padding:3px 10px;border-radius:9999px;border:1px solid #BAE6FD">
+                      🩺 تخصص: ${escHtml(place.medicalSpecialty)}
+                    </span>
+                  ` : ''}
+
                   
                   ${!isAtm ? `
                     <div style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
@@ -254,17 +260,17 @@ export async function renderPlacePage($container, { slug, user }) {
             </div>
           ` : ''}
 
-          <!-- Unverified Place Notice & Verification CTA -->
+                    <!-- Unverified Place Notice & Verification CTA -->
           ${!place.isVerified ? `
             <div class="unverified-notice animate-fade-in">
               <div class="unverified-notice__icon">ℹ️</div>
-              <div style="flex:1">
-                <div style="font-weight:700;font-size:var(--font-size-sm);color:var(--text-primary);margin-bottom:2px">
+              <div class="unverified-notice__body">
+                <div class="unverified-notice__title">
                   هذا الشخص أو المكان غير موثق حالياً
                 </div>
-                <div class="unverified-notice__text">
+                <p class="unverified-notice__text">
                   العلامة الموثقة تضمن صحة البيانات وتمنحك مميزات إضافية وتظهر قبل الجميع فى دليل المنزلة والمطرية الرقمي
-                </div>
+                </p>
               </div>
               <div class="unverified-notice__actions">
                 <button class="btn btn-sm btn-primary" id="btn-request-verification">

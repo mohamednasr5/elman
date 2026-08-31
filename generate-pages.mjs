@@ -202,7 +202,7 @@ const pages = [
     title: 'لوحة الإدارة',
     desc: 'إدارة شاملة لمنصة دليل المنزلة والمطرية الرقمي — الأماكن والمستخدمين والإعدادات',
     activeNav: '',
-    bodyClass: 'dashboard-page',
+    bodyClass: 'dashboard-page admin-page',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
   import { renderAdmin } from './src/js/ui/pages/admin.js';

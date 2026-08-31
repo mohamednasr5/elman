@@ -1,3 +1,4 @@
+import { getCategoryTaxonomy, SPECIALIZED_CATEGORIES_TAXONOMY } from '../../utils/specialized-taxonomy.js';
 /**
  * المنزلة وناسها — User Place Owner Dashboard
  * Mobile-first dashboard for managing places, daily offers, products, photos,
@@ -486,6 +487,33 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           </div>
         </div>
 
+        
+        <!-- Medical Specialty for Doctors & Clinics -->
+        <div class="form-group animate-fade-in" id="doctor-specialty-group" style="${(place?.categoryId?.includes('doctor') || place?.categoryId?.includes('clinic') || place?.customCategory?.includes('دكتور') || place?.customCategory?.includes('عياد')) ? '' : 'display:none'}">
+          <label class="form-label" style="font-weight:700;color:#0284C7">🩺 التخصص الطبي الدقيق <span class="required">*</span></label>
+          <input 
+            type="text" 
+            id="p-medical-specialty" 
+            class="form-input" 
+            placeholder="مثال: أسنان، جراحة عامة، باطنة وجهاز هضمي، أطفال، عظام، أورام..." 
+            value="${escAttr(place?.medicalSpecialty || '')}" 
+            style="border-color:#0284C7"
+          />
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <span style="font-size:12px;color:var(--text-muted);font-weight:600">اختيار تخصص سريع:</span>
+            ${[
+              'أسنان', 'جراحة عامة', 'باطنة وجهاز هضمي', 'أطفال وحديثي الولادة', 
+              'عظام ومفاصل', 'نساء وتوليد', 'جلدية وتجميل', 'عيون ورمد', 
+              'أنف وأذن وحنجرة', 'أورام', 'مخ وأعصاب', 'قلب وأوعية دموية', 
+              'مسالك بولية وتناسلية', 'علاج طبيعي وتغذية', 'صدر وحساسية', 'ذكورة وعقم'
+            ].map(spec => `
+              <button type="button" class="btn btn-sm btn-outline btn-quick-specialty" data-spec="${escAttr(spec)}" style="font-size:11.5px;padding:3px 8px;border-radius:9999px;border-color:#BAE6FD;color:#0369A1">
+                ${escHtml(spec)}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
         <!-- Vehicle Type for Delivery -->
         <div class="form-group" id="delivery-type-group" style="${place?.categoryId?.includes('delivery') ? '' : 'display:none'}">
           <label class="form-label">نوع وسيلة التوصيل</label>
@@ -496,38 +524,16 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             <option value="car" ${place?.deliveryType === 'car' ? 'selected' : ''}>🚗 سيارة</option>
           </select>
         </div>
-
-        <div class="form-group">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
-            <label class="form-label" style="margin-bottom:0">وصف المكان والنشاط</label>
-            <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-desc" title="توليد وصف متوافق 100% مع محركات البحث وسيو المنزلة">
-              ✨ توليد وصف سيو (SEO) بالذكاء الاصطناعي
-            </button>
-          </div>
-          <textarea id="p-desc" class="form-textarea" placeholder="اكتب نبذة عن المكان، المنتجات، التخصصات، وسنوات الخبرة...">${escHtml(place?.description || '')}</textarea>
-        </div>
       </div>
 
-      <!-- Contact & Location -->
-      <div class="form-section">
-        <h2 class="form-section__title"><span>📞</span> التواصل والموقع</h2>
-
-        <div class="form-row" id="p-phone-row">
-          <div class="form-group">
-            <label class="form-label">رقم الهاتف <span class="required">*</span></label>
-            <input type="tel" id="p-phone" class="form-input" required placeholder="01012345678" value="${escAttr(place?.phone || '')}" style="direction:ltr;text-align:right" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">رقم WhatsApp للتواصل المباشر</label>
-            <input type="tel" id="p-whatsapp" class="form-input" placeholder="01012345678" value="${escAttr(place?.whatsapp || '')}" style="direction:ltr;text-align:right" />
-          </div>
-        </div>
+      <!-- 3. Location & Area Section (قسم اختيار المكان والمنطقة) -->
+      <div class="form-section" id="p-location-section">
+        <h2 class="form-section__title"><span>📍</span> اختيار المكان والمنطقة والعنوان</h2>
 
         <!-- Searchable Area / Village Selector -->
-        <div class="form-group" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-2)">
+        <div class="form-group" style="background:var(--surface-2);border:1.5px solid var(--primary);border-radius:var(--radius-lg);padding:var(--space-4)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
-            <label class="form-label" style="margin-bottom:0;font-weight:var(--font-weight-bold)">المنطقة داخل المنزلة / المطرية <span class="required">*</span></label>
+            <label class="form-label" style="margin-bottom:0;font-weight:var(--font-weight-bold);color:var(--primary)">المنطقة داخل المنزلة / المطرية <span class="required">*</span></label>
             <div id="p-selected-area-badge" style="font-size:12px;color:var(--primary);display:flex;align-items:center;gap:6px">
               <span>المختار:</span>
               <span id="p-selected-area-name" class="chip chip--primary" style="font-weight:700">${escHtml(currentAreaName)}</span>
@@ -597,6 +603,54 @@ async function renderPlaceFormSection($container, user, placeId = null) {
               </div>
             ` : ''}
           </div>
+        </div>
+
+        <div class="form-row" id="p-phone-row">
+          <div class="form-group">
+            <label class="form-label">رقم الهاتف <span class="required">*</span></label>
+            <input type="tel" id="p-phone" class="form-input" required placeholder="01012345678" value="${escAttr(place?.phone || '')}" style="direction:ltr;text-align:right" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">رقم WhatsApp للتواصل المباشر</label>
+            <input type="tel" id="p-whatsapp" class="form-input" placeholder="01012345678" value="${escAttr(place?.whatsapp || '')}" style="direction:ltr;text-align:right" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Description, Services & Specialized Keywords Section -->
+      <div class="form-section" id="p-desc-section">
+        <h2 class="form-section__title"><span>📝</span> وصف المكان والنشاط والكلمات المفتاحية</h2>
+
+        <!-- Specialized Keywords Suggestions Chips -->
+        <div class="form-group" id="p-taxonomy-suggestions-group" style="background:var(--surface-2);border:1px dashed var(--secondary,#F5A623);border-radius:var(--radius-md);padding:12px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <div style="font-weight:700;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+              <span>🎯</span> الكلمات المفتاحية والخدمات المقترحة لتصنيف نشاطك:
+            </div>
+            <button type="button" class="btn btn-sm btn-ghost" id="btn-add-all-taxonomy-keywords" style="font-size:11.5px;color:var(--primary);font-weight:700;padding:2px 8px">
+              ➕ إضافة جميع الكلمات للخدمات
+            </button>
+          </div>
+          <div id="p-taxonomy-chips-container" style="display:flex;flex-wrap:wrap;gap:6px">
+            <!-- Dynamically populated via JS based on selected category -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">الخدمات والكلمات المفتاحية (مفصولة بفاصلة)</label>
+          <input type="text" id="p-services" class="form-input" placeholder="مثال: أدوية، مستلزمات طبية، فيتامينات، توصيل منازل..." value="${escAttr((place?.services || []).join('، '))}" />
+          <p style="font-size:11.5px;color:var(--text-muted);margin-top:4px">💡 هذه الكلمات تساعد في ظهور نشاطك في أعلى نتائج البحث ومحرك البحث الذكي والمساعد الصوتي.</p>
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
+            <label class="form-label" style="margin-bottom:0">وصف المكان والنشاط التسويقي</label>
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-desc" title="توليد وصف متوافق 100% مع محركات البحث وسيو المنزلة">
+              ✨ توليد وصف سيو (SEO) بالذكاء الاصطناعي
+            </button>
+          </div>
+          <textarea id="p-desc" class="form-textarea" rows="4" placeholder="اكتب نبذة عن المكان، المنتجات، التخصصات، وسنوات الخبرة... (أو اضغط زر التوليد الذكي أعلاه)">${escHtml(place?.description || '')}</textarea>
         </div>
       </div>
 
@@ -814,6 +868,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         selectedBadge.style.display = 'flex';
       }
 
+      updateDoctorSpecialtyVisibility(catId, customCatGroup?.querySelector('input')?.value);
       const deliveryGroup = document.getElementById('delivery-type-group');
       if (deliveryGroup) deliveryGroup.style.display = (catId || '').includes('delivery') ? 'block' : 'none';
 
@@ -1204,6 +1259,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         nameEn: document.getElementById('p-name-en').value,
         categoryId: categoryVal === 'other' ? 'other' : categoryVal,
         customCategory: customCategory,
+        medicalSpecialty: document.getElementById('p-medical-specialty')?.value.trim() || null,
         deliveryType: document.getElementById('p-delivery-type')?.value || null,
         description: document.getElementById('p-desc').value,
         phone: document.getElementById('p-phone').value,

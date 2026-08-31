@@ -166,6 +166,18 @@ export async function renderSearchPage($container, { q = '', user }) {
         catScore = 80;
       }
 
+      
+      // 5. Medical Specialty Matching (for Doctors & Clinics)
+      let specialtyScore = 0;
+      if (place.medicalSpecialty) {
+        const specNorm = normalizeArabic(place.medicalSpecialty);
+        if (specNorm.includes(normalQ) || normalQ.includes(specNorm)) {
+          specialtyScore = 95;
+        } else if (queryIntents.some(intent => specNorm.includes(intent) || intent.includes(specNorm))) {
+          specialtyScore = 90;
+        }
+      }
+
       // 4. Delivery Vehicle Type Matching (car -> سيارة/عربية, tuktuk -> توكتوك, motorcycle -> موتوسيكل)
       let deliveryScore = 0;
       if (place.deliveryType) {
