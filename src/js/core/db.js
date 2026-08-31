@@ -675,11 +675,26 @@ export async function broadcastNewPlaceNotification(place) {
     actionText: 'مشاهدة المكان 👁️',
     actionUrl: `place.html?slug=${encodeURIComponent(place.slug || place._key || placeId)}`,
     icon: '🏪',
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    isRead: false
   };
 
   try {
+    // 1. Global node
     await dbSet(`globalNotifications/${notifId}`, notification);
+
+    // 2. Direct push into all registered users' inboxes (including Admin)
+    const usersMap = await dbGet('users') || {};
+    const userUpdates = {};
+    Object.keys(usersMap).forEach(uId => {
+      userUpdates[`userNotifications/${uId}/${notifId}`] = {
+        ...notification,
+        isRead: false
+      };
+    });
+    if (Object.keys(userUpdates).length > 0) {
+      await dbUpdate('', userUpdates);
+    }
   } catch (err) {
     console.warn('[broadcastNewPlaceNotification] error:', err);
   }
@@ -704,11 +719,26 @@ export async function broadcastPlaceVerifiedNotification(place) {
     actionText: 'وثّق ملفك الآن لكي تظهر مثله 🚀',
     actionUrl: 'https://wa.me/wasendernew',
     icon: '✅',
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    isRead: false
   };
 
   try {
+    // 1. Global node
     await dbSet(`globalNotifications/${notifId}`, notification);
+
+    // 2. Direct push into all registered users' inboxes (including Admin)
+    const usersMap = await dbGet('users') || {};
+    const userUpdates = {};
+    Object.keys(usersMap).forEach(uId => {
+      userUpdates[`userNotifications/${uId}/${notifId}`] = {
+        ...notification,
+        isRead: false
+      };
+    });
+    if (Object.keys(userUpdates).length > 0) {
+      await dbUpdate('', userUpdates);
+    }
   } catch (err) {
     console.warn('[broadcastPlaceVerifiedNotification] error:', err);
   }
@@ -718,33 +748,20 @@ export async function broadcastPlaceVerifiedNotification(place) {
 export async function getUserNotifications(uid) {
   if (!uid) return [];
   
-  // 1. Personal Visitor Notifications
+  // 1. Personal User Notifications Inbox
   const userNotifsMap = await dbGet(`userNotifications/${uid}`) || {};
-  const userNotifs = Object.entries(userNotifsMap).map(([id, n]) => ({ id, ...n, isBroadcast: false }));
+  const userNotifs = Object.entries(userNotifsMap).map(([id, n]) => ({ id, ...n, isBroadcast: !!n.type && n.type !== 'profile_visit' }));
 
-  // 2. Global Broadcast Notifications (New Places & Verifications)
+  // 2. Global Broadcast Notifications (Fallback & for new users)
   let globalNotifsMap = await dbGet('globalNotifications') || {};
   let globalNotifs = Object.entries(globalNotifsMap).map(([id, n]) => ({ id, ...n, isBroadcast: true }));
 
-  // Seed default broadcast notifications if none exist
-  if (globalNotifs.length === 0) {
-    try {
-      const placesMap = await dbGet('places') || {};
-      const placesList = Object.entries(placesMap).map(([id, p]) => ({ id, ...p }));
-      
-      const verifiedPlaces = placesList.filter(p => p.isVerified);
-      for (const vp of verifiedPlaces.slice(0, 2)) {
-        await broadcastPlaceVerifiedNotification(vp);
-      }
-      for (const lp of placesList.slice(-4)) {
-        await broadcastNewPlaceNotification(lp);
-      }
-      globalNotifsMap = await dbGet('globalNotifications') || {};
-      globalNotifs = Object.entries(globalNotifsMap).map(([id, n]) => ({ id, ...n, isBroadcast: true }));
-    } catch (_) {}
-  }
+  // Merge map by id
+  const mergedMap = {};
+  globalNotifs.forEach(n => { mergedMap[n.id] = { ...n, isRead: false }; });
+  userNotifs.forEach(n => { mergedMap[n.id] = n; });
 
-  // Check read status for global notifications from localStorage
+  // Check read status for global notifications from localStorage if not explicitly saved in userNotifs
   let readGlobalIds = new Set();
   try {
     if (typeof localStorage !== 'undefined') {
@@ -753,12 +770,11 @@ export async function getUserNotifications(uid) {
     }
   } catch (_) {}
 
-  const mappedGlobalNotifs = globalNotifs.map(n => ({
+  const all = Object.values(mergedMap).map(n => ({
     ...n,
-    isRead: readGlobalIds.has(n.id)
+    isRead: n.isRead || readGlobalIds.has(n.id)
   }));
 
-  const all = [...userNotifs, ...mappedGlobalNotifs];
   return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 

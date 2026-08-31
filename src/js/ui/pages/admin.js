@@ -3705,6 +3705,10 @@ window.editPlaceAdmin = async (placeId) => {
               Object.assign(adminCache.places[placeId], updates);
             }
 
+            if (updates.isVerified && !place.isVerified) {
+              broadcastPlaceVerifiedNotification({ id: placeId, ...place, ...updates }).catch(() => {});
+            }
+
             toast.success('تم حفظ وتحديث بيانات المكان بنجاح ✨');
             modal.close();
             switchAdminSection('places', false);

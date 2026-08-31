@@ -1181,8 +1181,33 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
 // ── 4. Manage Place Offers Section ──
 async function renderPlaceOffersSection($container, user, placeId) {
-  const place = await getPlace(placeId);
-  if (!place) { $container.innerHTML = 'المكان غير موجود'; return; }
+  let place = placeId ? await getPlace(placeId) : null;
+  const userPlaces = await getPlacesByOwner(user.uid);
+
+  if (!place) {
+    if (!userPlaces || userPlaces.length === 0) {
+      $container.innerHTML = `
+        <div class="dashboard-header">
+          <div>
+            <h1 class="dashboard-header__title">🏷️ إدارة العروض اليومية</h1>
+            <div class="dashboard-header__subtitle">انشر عروضك وخصوماتك لتظهر في مقدمة الدليل</div>
+          </div>
+        </div>
+        <div class="empty-state" style="padding:4rem 1rem;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div class="empty-state__icon">🏷️</div>
+          <h2 class="empty-state__title">ليس لديك أي نشاط تجاري مسجل بعد</h2>
+          <p class="empty-state__text">لإضافة ونشر العروض والخصومات، يرجى تسجيل نشاطك التجاري في دليل المنزلة والمطرية أولاً.</p>
+          <a href="dashboard.html?section=add" class="btn btn-primary" style="margin-top:1rem">
+            <span>➕</span> إضافة مكان ونشاط جديد الآن
+          </a>
+        </div>
+      `;
+      return;
+    }
+    // Auto select first place
+    place = userPlaces[0];
+    placeId = place.id || place._key;
+  }
 
   const offers = await getPlaceOffers(placeId);
   const maxAllowed = place.isVerified ? 3 : 1;
@@ -1196,13 +1221,31 @@ async function renderPlaceOffersSection($container, user, placeId) {
           (${place.isVerified ? 'حساب موثق ✓' : 'حساب غير موثق — وثّق مكانك للحصول على 3 عروض'})
         </div>
       </div>
-      <div style="display:flex;gap:var(--space-2)">
+      <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
         <button class="btn btn-primary" id="btn-open-add-offer" ${offers.length >= maxAllowed ? 'disabled title="تم الوصول للحد الأقصى"' : ''}>
           <span>➕</span> إضافة عرض جديد
         </button>
         <a href="dashboard.html?section=places" class="btn btn-outline">← عودة للأماكن</a>
       </div>
     </div>
+
+    ${userPlaces && userPlaces.length > 1 ? `
+      <!-- Multiple Places Switcher -->
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12.5px;font-weight:700;color:var(--text-muted)">🏪 اختر المكان لإدارة عروضه:</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${userPlaces.map(p => {
+            const pKey = p.id || p._key;
+            const isCur = pKey === placeId;
+            return `
+              <button type="button" class="btn btn-xs ${isCur ? 'btn-primary' : 'btn-outline'}" onclick="window.switchDashboardSection('offers', '${escAttr(pKey)}', true)" style="border-radius:var(--radius-full)">
+                ${isCur ? '✓ ' : ''}${escHtml(p.name)}
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    ` : ''}
 
     <!-- Offers List -->
     <div class="my-places-list">
@@ -1221,11 +1264,14 @@ async function renderPlaceOffersSection($container, user, placeId) {
               
               <div class="my-place-item__info">
                 <div class="my-place-item__name" style="font-size:1.05rem">${escHtml(o.title)}</div>
-                <div class="my-place-item__meta" style="margin-top:6px;display:flex;align-items:center;gap:10px">
+                <div class="my-place-item__meta" style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <span style="font-weight:800;color:#10B981;font-size:1.1rem">${formatPrice(o.newPrice)}</span>
                   ${o.oldPrice ? `<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.9rem">${formatPrice(o.oldPrice)}</span>` : ''}
                   <span class="badge ${o.status === 'active' ? 'badge--success' : 'badge--secondary'}">
                     ${o.status === 'active' ? '● نشط حالياً' : 'منتهي'}
+                  </span>
+                  <span class="badge" style="background:rgba(27,79,114,0.08);color:var(--primary);font-weight:700;font-size:11.5px">
+                    👁️ ${o.views || 0} مشاهدة &nbsp;|&nbsp; 👆 ${o.clicks || 0} نقرة وطلب
                   </span>
                 </div>
               </div>
@@ -1472,16 +1518,67 @@ function showEditOfferModal(place, offer, user, onDone) {
 
 // ── 5. Manage Place Products Section (Verified places only) ──
 async function renderPlaceProductsSection($container, user, placeId) {
-  const place = await getPlace(placeId);
-  if (!place) { $container.innerHTML = 'المكان غير موجود'; return; }
+  let place = placeId ? await getPlace(placeId) : null;
+  const userPlaces = await getPlacesByOwner(user.uid);
+
+  if (!place) {
+    if (!userPlaces || userPlaces.length === 0) {
+      $container.innerHTML = `
+        <div class="dashboard-header">
+          <div>
+            <h1 class="dashboard-header__title">🛍️ إدارة المنتجات</h1>
+            <div class="dashboard-header__subtitle">اعرض كتالوج منتجاتك وأسعارها وتخفيضاتها</div>
+          </div>
+        </div>
+        <div class="empty-state" style="padding:4rem 1rem;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div class="empty-state__icon">🛍️</div>
+          <h2 class="empty-state__title">ليس لديك أي نشاط تجاري مسجل بعد</h2>
+          <p class="empty-state__text">لإضافة وإدارة المنتجات، يرجى تسجيل نشاطك وتوثيقه في دليل المنزلة والمطرية أولاً.</p>
+          <a href="dashboard.html?section=add" class="btn btn-primary" style="margin-top:1rem">
+            <span>➕</span> إضافة مكان ونشاط جديد الآن
+          </a>
+        </div>
+      `;
+      return;
+    }
+    // Auto select first place
+    place = userPlaces[0];
+    placeId = place.id || place._key;
+  }
 
   if (!place.isVerified && user.role !== 'admin') {
     $container.innerHTML = `
-      <div class="empty-state">
+      <div class="dashboard-header">
+        <div>
+          <h1 class="dashboard-header__title">إدارة منتجات: ${escHtml(place.name)}</h1>
+          <div class="dashboard-header__subtitle">المنتجات متاحة حصرياً للحسابات الموثقة</div>
+        </div>
+        <a href="dashboard.html?section=places" class="btn btn-outline">← عودة للأماكن</a>
+      </div>
+
+      ${userPlaces && userPlaces.length > 1 ? `
+        <!-- Multiple Places Switcher -->
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:12.5px;font-weight:700;color:var(--text-muted)">🏪 اختر المكان:</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${userPlaces.map(p => {
+              const pKey = p.id || p._key;
+              const isCur = pKey === placeId;
+              return `
+                <button type="button" class="btn btn-xs ${isCur ? 'btn-primary' : 'btn-outline'}" onclick="window.switchDashboardSection('products', '${escAttr(pKey)}', true)" style="border-radius:var(--radius-full)">
+                  ${isCur ? '✓ ' : ''}${escHtml(p.name)}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="empty-state" style="padding:3.5rem 1rem;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border)">
         <div class="empty-state__icon">🔒</div>
         <h2>المنتجات متاحة حصرياً للأماكن الموثقة</h2>
-        <p class="empty-state__text">وثّق مكانك الآن لتتمكن من إضافة حتى 350 منتجاً في دليلك الرقمي</p>
-        <a href="place.html?slug=${place.slug}" class="btn btn-primary">طلب التوثيق</a>
+        <p class="empty-state__text">وثّق مكانك الآن لتتمكن من إضافة حتى 350 منتجاً في دليلك الرقمي مع الأسعار والصور والوصف</p>
+        <a href="place.html?slug=${place.slug || place.id}" class="btn btn-primary" style="margin-top:1rem">طلب التوثيق الآن</a>
       </div>
     `;
     return;
@@ -1495,13 +1592,31 @@ async function renderPlaceProductsSection($container, user, placeId) {
         <h1 class="dashboard-header__title">إدارة منتجات: ${escHtml(place.name)}</h1>
         <div class="dashboard-header__subtitle">المنتجات المسجلة: ${products.length} من أصل 350 منتج (تخضع المنتجات للمراجعة للتأكد من مطابقتها للشروط)</div>
       </div>
-      <div style="display:flex;gap:var(--space-2)">
+      <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
         <button class="btn btn-primary" id="btn-open-add-product" ${products.length >= 350 ? 'disabled' : ''}>
           <span>➕</span> إضافة منتج جديد
         </button>
         <a href="dashboard.html?section=places" class="btn btn-outline">← عودة للأماكن</a>
       </div>
     </div>
+
+    ${userPlaces && userPlaces.length > 1 ? `
+      <!-- Multiple Places Switcher -->
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12.5px;font-weight:700;color:var(--text-muted)">🏪 اختر المكان لإدارة منتجاته:</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${userPlaces.map(p => {
+            const pKey = p.id || p._key;
+            const isCur = pKey === placeId;
+            return `
+              <button type="button" class="btn btn-xs ${isCur ? 'btn-primary' : 'btn-outline'}" onclick="window.switchDashboardSection('products', '${escAttr(pKey)}', true)" style="border-radius:var(--radius-full)">
+                ${isCur ? '✓ ' : ''}${escHtml(p.name)}
+              </button>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    ` : ''}
 
     <!-- Products Table -->
     <div class="dashboard-table-wrapper">
@@ -1536,8 +1651,13 @@ async function renderPlaceProductsSection($container, user, placeId) {
                   <img src="${p.imageUrl || './icons/icon-72x72.png'}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;background:#0f172a" />
                 </td>
                 <td>
-                  <strong>${escHtml(p.name)}</strong>
+                  <strong style="font-size:13.5px">${escHtml(p.name)}</strong>
                   ${p.category ? `<div style="font-size:11px;color:var(--text-muted)">🏷️ ${escHtml(p.category)}</div>` : ''}
+                  <div style="font-size:11px;color:var(--primary);font-weight:700;margin-top:3px;display:flex;gap:6px">
+                    <span>👁️ ${p.views || 0} مشاهدة</span>
+                    <span>•</span>
+                    <span style="color:#059669">👆 ${p.clicks || 0} طلب</span>
+                  </div>
                 </td>
                 <td>
                   <span style="font-weight:800;color:var(--primary)">${formatPrice(p.price)}</span>
