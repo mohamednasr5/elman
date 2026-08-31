@@ -4190,6 +4190,194 @@ window.deleteAdAdmin = async (adId) => {
     toast.error('فشل الحذف');
   }
 };
+
+window.adminViewProductAction = async (placeId, productId) => {
+  const prod = await dbGet(`products/${placeId}/${productId}`);
+  if (!prod) {
+    toast.error('لم يتم العثور على بيانات المنتج');
+    return;
+  }
+
+  const modal = showModal({
+    title: `🛍️ تفاصيل المنتج: ${escHtml(prod.name || '')}`,
+    size: 'md',
+    content: `
+      <div style="display:flex;flex-direction:column;gap:14px;padding:4px">
+        ${prod.imageUrl ? `
+          <div style="width:100%;height:220px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border);background:var(--surface-2);display:flex;align-items:center;justify-content:center">
+            <img src="${escAttr(prod.imageUrl)}" alt="${escAttr(prod.name)}" style="max-width:100%;max-height:100%;object-fit:contain" onerror="this.src='./icons/icon-192x192.png'" />
+          </div>
+        ` : ''}
+
+        <div style="background:var(--surface-2);padding:14px;border-radius:var(--radius-md);border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+            <h3 style="margin:0;font-size:1.15rem;color:var(--text-primary)">${escHtml(prod.name)}</h3>
+            <span class="badge ${prod.status === 'approved' ? 'badge--success' : 'badge--warning'}">
+              ${prod.status === 'approved' ? '✓ معتمد' : '⏳ قيد المراجعة'}
+            </span>
+          </div>
+
+          ${prod.category ? `<div style="font-size:12px;color:var(--primary);margin-bottom:8px;font-weight:700">🏷️ ${escHtml(prod.category)}</div>` : ''}
+
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px">
+            ${escHtml(prod.description || 'لا يوجد وصف تفصيلي لهذا المنتج.')}
+          </div>
+
+          <div style="display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px dashed var(--border);flex-wrap:wrap">
+            <div>
+              <span style="font-size:12px;color:var(--text-muted)">السعر: </span>
+              <strong style="font-size:1.25rem;color:var(--primary)">${prod.price || 0} ج.م</strong>
+            </div>
+            ${prod.oldPrice ? `
+              <div>
+                <span style="font-size:12px;color:var(--text-muted)">السعر القديم: </span>
+                <span style="text-decoration:line-through;color:var(--text-muted);font-size:1.05rem">${prod.oldPrice} ج.م</span>
+              </div>
+            ` : ''}
+            <span class="badge ${prod.inStock !== false ? 'badge--published' : 'badge--suspended'}">
+              ${prod.inStock !== false ? 'متوفر' : 'غير متوفر'}
+            </span>
+          </div>
+        </div>
+      </div>
+    `,
+    buttons: [
+      {
+        label: '✏️ تعديل هذا المنتج',
+        type: 'primary',
+        onClick: () => {
+          modal.close();
+          adminEditProductAction(placeId, productId);
+        }
+      },
+      { label: 'إغلاق', type: 'ghost', closeOnClick: true }
+    ]
+  });
+};
+
+window.adminEditProductAction = async (placeId, productId) => {
+  const prod = await dbGet(`products/${placeId}/${productId}`);
+  if (!prod) {
+    toast.error('لم يتم العثور على بيانات المنتج');
+    return;
+  }
+
+  const modal = showModal({
+    title: `✏️ تعديل المنتج: ${escHtml(prod.name || '')}`,
+    size: 'md',
+    content: `
+      <form id="admin-edit-prod-form" onsubmit="return false">
+        <div class="form-group">
+          <label class="form-label">اسم المنتج <span class="required">*</span></label>
+          <input type="text" id="aeprod-name" class="form-input" value="${escAttr(prod.name || '')}" required />
+        </div>
+
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">السعر (ج.م) <span class="required">*</span></label>
+            <input type="number" id="aeprod-price" class="form-input" value="${prod.price || ''}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">السعر القديم</label>
+            <input type="number" id="aeprod-oldPrice" class="form-input" value="${prod.oldPrice || ''}" />
+          </div>
+        </div>
+
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">تصنيف / قسم المنتج</label>
+            <input type="text" id="aeprod-category" class="form-input" value="${escAttr(prod.category || '')}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">حالة التوفر</label>
+            <select id="aeprod-inStock" class="form-select">
+              <option value="true" ${prod.inStock !== false ? 'selected' : ''}>متوفر بالمخزون</option>
+              <option value="false" ${prod.inStock === false ? 'selected' : ''}>نفذ من المخزون</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">رابط صورة المنتج (URL)</label>
+          <input type="url" id="aeprod-imageUrl" class="form-input" value="${escAttr(prod.imageUrl || '')}" placeholder="https://..." style="direction:ltr" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">حالة الاعتماد والمراجعة</label>
+          <select id="aeprod-status" class="form-select">
+            <option value="approved" ${prod.status === 'approved' ? 'selected' : ''}>معتمد وظاهر في الدليل ✓</option>
+            <option value="pending" ${prod.status === 'pending' ? 'selected' : ''}>قيد المراجعة ⏳</option>
+            <option value="rejected" ${prod.status === 'rejected' ? 'selected' : ''}>مرفوض ✕</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">وصف تفاصيل ومواصفات المنتج</label>
+          <textarea id="aeprod-description" class="form-textarea" rows="3">${escHtml(prod.description || '')}</textarea>
+        </div>
+      </form>
+    `,
+    buttons: [
+      {
+        label: '💾 حفظ تعديلات المنتج',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async () => {
+          const name = document.getElementById('aeprod-name')?.value.trim();
+          const price = parseFloat(document.getElementById('aeprod-price')?.value);
+          const oldPrice = parseFloat(document.getElementById('aeprod-oldPrice')?.value) || null;
+          const category = document.getElementById('aeprod-category')?.value.trim();
+          const inStock = document.getElementById('aeprod-inStock')?.value === 'true';
+          const imageUrl = document.getElementById('aeprod-imageUrl')?.value.trim();
+          const status = document.getElementById('aeprod-status')?.value || 'approved';
+          const description = document.getElementById('aeprod-description')?.value.trim();
+
+          if (!name || isNaN(price)) {
+            toast.warning('يرجى كتابة اسم وسعر المنتج');
+            return;
+          }
+
+          const updates = {
+            name,
+            price,
+            oldPrice,
+            category,
+            inStock,
+            imageUrl,
+            status,
+            isApproved: status === 'approved',
+            description,
+            updatedAt: serverTimestamp()
+          };
+
+          try {
+            await dbUpdate(`products/${placeId}/${productId}`, updates);
+            toast.success('تم تحديث بيانات المنتج بنجاح ✨');
+            modal.close();
+            switchAdminSection('products', false);
+          } catch (err) {
+            toast.error('فشل تحديث المنتج: ' + err.message);
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+};
+
+window.deleteProductAdmin = async (placeId, productId) => {
+  const ok = await showConfirm({ title: 'حذف المنتج', message: 'هل أنت متأكد من حذف هذا المنتج نهائياً؟' });
+  if (ok) {
+    try {
+      await dbRemove(`products/${placeId}/${productId}`);
+      await dbIncrement(`places/${placeId}/productCount`, -1).catch(() => {});
+      toast.success('تم حذف المنتج');
+      switchAdminSection('products', false);
+    } catch {
+      toast.error('فشل الحذف');
+    }
+  }
+};
 }
 
 // ── Utils ──

@@ -5,7 +5,8 @@
  */
 
 import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace } from '../../core/db.js';
-import { createPlace, updatePlace, deletePlace, addOffer, addProduct, submitVerificationRequest } from '../../services/places.service.js';
+import { createPlace, updatePlace, deletePlace, addOffer, updateOffer, deleteOffer, addProduct, updateProduct, deleteProduct, submitVerificationRequest } from '../../services/places.service.js';
+import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { uploadImage } from '../../services/upload.service.js';
 import { translatePlaceName, generateCoverImage, generatePlaceLogo, generateSeoDescription, generateSeoServices } from '../../services/ai.service.js';
 import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '../components/VerifiedBadge.js';
@@ -1199,7 +1200,7 @@ async function renderPlaceOffersSection($container, user, placeId) {
         <button class="btn btn-primary" id="btn-open-add-offer" ${offers.length >= maxAllowed ? 'disabled title="تم الوصول للحد الأقصى"' : ''}>
           <span>➕</span> إضافة عرض جديد
         </button>
-        <a href="dashboard.html?section=places" class="btn btn-outline">← عودة</a>
+        <a href="dashboard.html?section=places" class="btn btn-outline">← عودة للأماكن</a>
       </div>
     </div>
 
@@ -1209,27 +1210,92 @@ async function renderPlaceOffersSection($container, user, placeId) {
         <div class="empty-state">
           <div class="empty-state__icon">🏷️</div>
           <h3>لا توجد عروض نشطة لهذا المكان</h3>
-          <p class="empty-state__text">العروض تظهر في الصفحة الرئيسية وصفحة العروض وتجذب الزبائن</p>
+          <p class="empty-state__text">العروض تظهر في الصفحة الرئيسية وصفحة العروض وتجذب آلاف الزبائن</p>
         </div>
-      ` : offers.map(o => `
-        <div class="my-place-item">
-          <div class="my-place-item__header">
-            ${o.imageUrl ? `<img src="${escAttr(o.imageUrl)}" class="my-place-item__img" />` : '<div class="my-place-item__img-placeholder">🏷️</div>'}
-            <div class="my-place-item__info">
-              <div class="my-place-item__name">${escHtml(o.title)}</div>
-              <div class="my-place-item__meta">
-                <span style="font-weight:700;color:var(--accent)">${formatPrice(o.newPrice)}</span>
-                ${o.oldPrice ? `<span style="text-decoration:line-through;color:var(--text-muted)">${formatPrice(o.oldPrice)}</span>` : ''}
+      ` : offers.map(o => {
+        const oId = o.id || o._id || o._key;
+        return `
+          <div class="my-place-item">
+            <div class="my-place-item__header" style="flex-wrap:wrap;gap:12px">
+              ${o.imageUrl ? `<img src="${escAttr(o.imageUrl)}" class="my-place-item__img" style="width:68px;height:68px;object-fit:cover;border-radius:8px" />` : '<div class="my-place-item__img-placeholder" style="width:68px;height:68px;font-size:1.8rem">🏷️</div>'}
+              
+              <div class="my-place-item__info">
+                <div class="my-place-item__name" style="font-size:1.05rem">${escHtml(o.title)}</div>
+                <div class="my-place-item__meta" style="margin-top:6px;display:flex;align-items:center;gap:10px">
+                  <span style="font-weight:800;color:#10B981;font-size:1.1rem">${formatPrice(o.newPrice)}</span>
+                  ${o.oldPrice ? `<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.9rem">${formatPrice(o.oldPrice)}</span>` : ''}
+                  <span class="badge ${o.status === 'active' ? 'badge--success' : 'badge--secondary'}">
+                    ${o.status === 'active' ? '● نشط حالياً' : 'منتهي'}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Action Buttons: View, Edit, Delete -->
+              <div class="my-place-item__actions" style="display:flex;align-items:center;gap:6px;margin-right:auto">
+                <button type="button" class="btn btn-sm btn-outline btn-view-user-offer" data-id="${escAttr(oId)}" title="مشاهدة تفاصيل العرض">
+                  <span>👁️</span> مشاهدة
+                </button>
+                <button type="button" class="btn btn-sm btn-outline btn-edit-user-offer" data-id="${escAttr(oId)}" style="color:var(--primary);border-color:var(--primary)" title="تعديل العرض">
+                  <span>✏️</span> تعديل
+                </button>
+                <button type="button" class="btn btn-sm btn-outline btn-delete-user-offer" data-id="${escAttr(oId)}" style="color:var(--danger);border-color:rgba(239,68,68,0.4)" title="حذف العرض">
+                  <span>🗑️</span> حذف
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      `).join('')}
+        `;
+      }).join('')}
     </div>
   `;
 
+  // Add offer button
   document.getElementById('btn-open-add-offer')?.addEventListener('click', () => {
     showAddOfferModal(place, user, () => renderPlaceOffersSection($container, user, placeId));
+  });
+
+  // View offer click handlers
+  $container.querySelectorAll('.btn-view-user-offer').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const oId = btn.getAttribute('data-id');
+      const target = (offers || []).find(o => (o.id || o._id || o._key) === oId);
+      if (target) {
+        openOfferFullDetailsModal(target, place);
+      }
+    });
+  });
+
+  // Edit offer click handlers
+  $container.querySelectorAll('.btn-edit-user-offer').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const oId = btn.getAttribute('data-id');
+      const target = (offers || []).find(o => (o.id || o._id || o._key) === oId);
+      if (target) {
+        showEditOfferModal(place, target, user, () => renderPlaceOffersSection($container, user, placeId));
+      }
+    });
+  });
+
+  // Delete offer click handlers
+  $container.querySelectorAll('.btn-delete-user-offer').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const oId = btn.getAttribute('data-id');
+      const ok = await showConfirm({
+        title: 'حذف العرض',
+        message: 'هل أنت متأكد من رغبتك في حذف هذا العرض نهائياً من المكان؟',
+        confirmText: 'نعم، حذف العرض',
+        cancelText: 'إلغاء'
+      });
+      if (ok) {
+        try {
+          await deleteOffer(oId, placeId, user);
+          toast.success('تم حذف العرض بنجاح');
+          renderPlaceOffersSection($container, user, placeId);
+        } catch (err) {
+          toast.error(err.message || 'فشل حذف العرض');
+        }
+      }
+    });
   });
 }
 
@@ -1240,26 +1306,25 @@ function showAddOfferModal(place, user, onDone) {
       <form id="add-offer-form">
         <div class="form-group">
           <label class="form-label">عنوان العرض <span class="required">*</span></label>
-          <input type="text" id="off-title" class="form-input" required placeholder="مثال: خصم 20% على جميع الأدوية / ساندوتش هدية" />
+          <input type="text" id="off-title" class="form-input" required placeholder="مثال: خصم 20% على جميع الأصناف / عرض خاص" />
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">السعر الجديد (ج.م) <span class="required">*</span></label>
-            <input type="number" id="off-new-price" class="form-input" required />
+            <label class="form-label">السعر الجديد بعد الخصم (ج.م) <span class="required">*</span></label>
+            <input type="number" id="off-new-price" class="form-input" required placeholder="مثال: 80" />
           </div>
           <div class="form-group">
-            <label class="form-label">السعر قبل الخصم (ج.م)</label>
-            <input type="number" id="off-old-price" class="form-input" />
+            <label class="form-label">السعر الأصلي قبل الخصم (ج.م)</label>
+            <input type="number" id="off-old-price" class="form-input" placeholder="مثال: 100" />
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">وصف تفاصيل العرض</label>
-          <textarea id="off-desc" class="form-textarea" placeholder="الشروط، الأصناف المشمولة..."></textarea>
+          <label class="form-label">وصف تفاصيل وشروط العرض</label>
+          <textarea id="off-desc" class="form-textarea" placeholder="اكتب تفاصيل العرض، الشروط، الأصناف المشمولة..." rows="3"></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">صورة العرض</label>
+          <label class="form-label">صورة أو بانر العرض</label>
           <input type="file" id="off-file" accept="image/*" class="form-input" />
-          <input type="hidden" id="off-img-url" />
         </div>
       </form>
     `,
@@ -1282,6 +1347,7 @@ function showAddOfferModal(place, user, onDone) {
           let imageUrl = '';
           if (fileInput && fileInput.files[0]) {
             try {
+              toast.info('جاري رفع صورة العرض...');
               const res = await uploadImage(fileInput.files[0], 'offers');
               imageUrl = res.url;
             } catch (e) {
@@ -1297,11 +1363,104 @@ function showAddOfferModal(place, user, onDone) {
               description: desc,
               imageUrl
             }, user);
-            toast.success('تمت إضافة العرض بنجاح');
+            toast.success('تمت إضافة العرض بنجاح 🎉');
             modal.close();
             onDone();
           } catch (err) {
             toast.error(err.message || 'فشل إضافة العرض');
+          }
+        },
+        closeOnClick: false
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+}
+
+function showEditOfferModal(place, offer, user, onDone) {
+  const oId = offer.id || offer._id || offer._key;
+  const modal = showModal({
+    title: `✏️ تعديل العرض: ${escHtml(offer.title)}`,
+    content: `
+      <form id="edit-offer-form">
+        <div class="form-group">
+          <label class="form-label">عنوان العرض <span class="required">*</span></label>
+          <input type="text" id="edit-off-title" class="form-input" value="${escAttr(offer.title || '')}" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">السعر الجديد (ج.م) <span class="required">*</span></label>
+            <input type="number" id="edit-off-new-price" class="form-input" value="${escAttr(offer.newPrice || '')}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">السعر قبل الخصم (ج.م)</label>
+            <input type="number" id="edit-off-old-price" class="form-input" value="${escAttr(offer.oldPrice || '')}" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">حالة العرض</label>
+          <select id="edit-off-status" class="form-input">
+            <option value="active" ${offer.status === 'active' ? 'selected' : ''}>نشط حالياً</option>
+            <option value="expired" ${offer.status === 'expired' ? 'selected' : ''}>منتهي</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">وصف تفاصيل وشروط العرض</label>
+          <textarea id="edit-off-desc" class="form-textarea" rows="3">${escHtml(offer.description || '')}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">صورة العرض (اختر ملفاً لتغيير الصورة الحالية)</label>
+          ${offer.imageUrl ? `
+            <div style="margin-bottom:8px">
+              <img src="${escAttr(offer.imageUrl)}" style="max-height:100px;border-radius:6px;object-fit:contain;background:#0f172a;display:block" />
+            </div>
+          ` : ''}
+          <input type="file" id="edit-off-file" accept="image/*" class="form-input" />
+        </div>
+      </form>
+    `,
+    buttons: [
+      {
+        label: 'حفظ التعديلات',
+        type: 'primary',
+        onClick: async () => {
+          const title = document.getElementById('edit-off-title')?.value.trim();
+          const newPrice = document.getElementById('edit-off-new-price')?.value;
+          const oldPrice = document.getElementById('edit-off-old-price')?.value;
+          const status = document.getElementById('edit-off-status')?.value;
+          const desc = document.getElementById('edit-off-desc')?.value;
+          const fileInput = document.getElementById('edit-off-file');
+
+          if (!title || !newPrice) {
+            toast.warning('يرجى ملء عنوان وسعر العرض');
+            return;
+          }
+
+          let imageUrl = offer.imageUrl || '';
+          if (fileInput && fileInput.files[0]) {
+            try {
+              toast.info('جاري رفع الصورة الجديدة...');
+              const res = await uploadImage(fileInput.files[0], 'offers');
+              imageUrl = res.url;
+            } catch (e) {
+              console.warn(e);
+            }
+          }
+
+          try {
+            await updateOffer(oId, {
+              title,
+              newPrice,
+              oldPrice,
+              status,
+              description: desc,
+              imageUrl
+            }, user);
+            toast.success('تم تحديث العرض بنجاح');
+            modal.close();
+            onDone();
+          } catch (err) {
+            toast.error(err.message || 'فشل تحديث العرض');
           }
         },
         closeOnClick: false
@@ -1338,9 +1497,9 @@ async function renderPlaceProductsSection($container, user, placeId) {
       </div>
       <div style="display:flex;gap:var(--space-2)">
         <button class="btn btn-primary" id="btn-open-add-product" ${products.length >= 350 ? 'disabled' : ''}>
-          <span>➕</span> إضافة منتج
+          <span>➕</span> إضافة منتج جديد
         </button>
-        <a href="dashboard.html?section=places" class="btn btn-outline">← عودة</a>
+        <a href="dashboard.html?section=places" class="btn btn-outline">← عودة للأماكن</a>
       </div>
     </div>
 
@@ -1354,30 +1513,51 @@ async function renderPlaceProductsSection($container, user, placeId) {
             <th>السعر</th>
             <th>حالة المراجعة</th>
             <th>التوفر</th>
+            <th style="min-width:180px">الإجراءات</th>
           </tr>
         </thead>
         <tbody>
           ${products.length === 0 ? `
-            <tr><td colspan="5" class="text-center" style="padding:2rem">لا توجد منتجات مسجلة</td></tr>
+            <tr><td colspan="6" class="text-center" style="padding:2rem">لا توجد منتجات مسجلة بعد</td></tr>
           ` : products.map(p => {
+            const pId = p.id || p._key;
             const isPending = p.status === 'pending' || (!p.status && p.isApproved === false);
             const isApproved = p.status === 'approved' || p.isApproved === true || (!p.status && p.isApproved === undefined);
             const isRejected = p.status === 'rejected';
 
             let modBadge = '';
-            if (isPending) modBadge = '<span class="badge" style="background:#FEF3C7;color:#D97706;font-weight:700">⏳ قيد مراجعة الإدارة</span>';
-            else if (isApproved) modBadge = '<span class="badge badge--success">✓ معتمد وظاهر في الدليل</span>';
-            else modBadge = `<span class="badge badge--danger" title="${escAttr(p.rejectReason || '')}">✕ مرفوض (${escHtml(p.rejectReason || 'مخالف للشروط')})</span>`;
+            if (isPending) modBadge = '<span class="badge" style="background:#FEF3C7;color:#D97706;font-weight:700">⏳ قيد المراجعة</span>';
+            else if (isApproved) modBadge = '<span class="badge badge--success">✓ معتمد وظاهر</span>';
+            else modBadge = `<span class="badge badge--danger" title="${escAttr(p.rejectReason || '')}">✕ مرفوض</span>`;
 
             return `
               <tr>
                 <td>
-                  <img src="${p.imageUrl || './icons/icon-72x72.png'}" style="width:40px;height:40px;object-fit:cover;border-radius:4px" />
+                  <img src="${p.imageUrl || './icons/icon-72x72.png'}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;background:#0f172a" />
                 </td>
-                <td><strong>${escHtml(p.name)}</strong></td>
-                <td>${formatPrice(p.price)}</td>
+                <td>
+                  <strong>${escHtml(p.name)}</strong>
+                  ${p.category ? `<div style="font-size:11px;color:var(--text-muted)">🏷️ ${escHtml(p.category)}</div>` : ''}
+                </td>
+                <td>
+                  <span style="font-weight:800;color:var(--primary)">${formatPrice(p.price)}</span>
+                  ${p.oldPrice ? `<div style="text-decoration:line-through;color:var(--text-muted);font-size:11px">${formatPrice(p.oldPrice)}</div>` : ''}
+                </td>
                 <td>${modBadge}</td>
-                <td>${p.inStock ? '<span class="badge badge--published">متوفر</span>' : '<span class="badge badge--suspended">نفذ</span>'}</td>
+                <td>${p.inStock !== false ? '<span class="badge badge--published">متوفر</span>' : '<span class="badge badge--suspended">غير متوفر</span>'}</td>
+                <td>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                    <button type="button" class="btn btn-xs btn-outline btn-view-user-prod" data-id="${escAttr(pId)}" title="مشاهدة تفاصيل المنتج">
+                      👁️ مشاهدة
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline btn-edit-user-prod" data-id="${escAttr(pId)}" style="color:var(--primary);border-color:var(--primary)" title="تعديل المنتج">
+                      ✏️ تعديل
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline btn-delete-user-prod" data-id="${escAttr(pId)}" style="color:var(--danger);border-color:rgba(239,68,68,0.4)" title="حذف المنتج">
+                      🗑️ حذف
+                    </button>
+                  </div>
+                </td>
               </tr>
             `;
           }).join('')}
@@ -1386,8 +1566,53 @@ async function renderPlaceProductsSection($container, user, placeId) {
     </div>
   `;
 
+  // Open add product button
   document.getElementById('btn-open-add-product')?.addEventListener('click', () => {
     showAddProductModal(place, user, () => renderPlaceProductsSection($container, user, placeId));
+  });
+
+  // View product handlers
+  $container.querySelectorAll('.btn-view-user-prod').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pId = btn.getAttribute('data-id');
+      const target = (products || []).find(p => (p.id || p._key) === pId);
+      if (target) {
+        openProductFullDetailsModal(target, place);
+      }
+    });
+  });
+
+  // Edit product handlers
+  $container.querySelectorAll('.btn-edit-user-prod').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pId = btn.getAttribute('data-id');
+      const target = (products || []).find(p => (p.id || p._key) === pId);
+      if (target) {
+        showEditProductModal(place, target, user, () => renderPlaceProductsSection($container, user, placeId));
+      }
+    });
+  });
+
+  // Delete product handlers
+  $container.querySelectorAll('.btn-delete-user-prod').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const pId = btn.getAttribute('data-id');
+      const ok = await showConfirm({
+        title: 'حذف المنتج',
+        message: 'هل أنت متأكد من حذف هذا المنتج نهائياً من قائمتك؟',
+        confirmText: 'نعم، حذف المنتج',
+        cancelText: 'إلغاء'
+      });
+      if (ok) {
+        try {
+          await deleteProduct(placeId, pId, user);
+          toast.success('تم حذف المنتج بنجاح');
+          renderPlaceProductsSection($container, user, placeId);
+        } catch (err) {
+          toast.error(err.message || 'فشل حذف المنتج');
+        }
+      }
+    });
   });
 }
 
@@ -1398,17 +1623,25 @@ function showAddProductModal(place, user, onDone) {
       <form id="add-prod-form">
         <div class="form-group">
           <label class="form-label">اسم المنتج <span class="required">*</span></label>
-          <input type="text" id="prod-name" class="form-input" required />
+          <input type="text" id="prod-name" class="form-input" required placeholder="مثال: بيتزا مارجريتا حجم عائلي" />
         </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">السعر (ج.م) <span class="required">*</span></label>
-            <input type="number" id="prod-price" class="form-input" required />
+            <input type="number" id="prod-price" class="form-input" required placeholder="مثال: 120" />
           </div>
           <div class="form-group">
-            <label class="form-label">السعر القديم</label>
-            <input type="number" id="prod-old-price" class="form-input" />
+            <label class="form-label">السعر القديم (اختياري)</label>
+            <input type="number" id="prod-old-price" class="form-input" placeholder="مثال: 140" />
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">تصنيف / قسم المنتج (اختياري)</label>
+          <input type="text" id="prod-category" class="form-input" placeholder="مثال: مأكولات، إلكترونيات، ملابس رجالي..." />
+        </div>
+        <div class="form-group">
+          <label class="form-label">وصف المنتج ومواصفاته</label>
+          <textarea id="prod-desc" class="form-textarea" placeholder="اكتب وصفاً مختصراً للمنتج، الحجم، المكونات..." rows="3"></textarea>
         </div>
         <div class="form-group">
           <label class="form-label">صورة المنتج</label>
@@ -1424,6 +1657,8 @@ function showAddProductModal(place, user, onDone) {
           const name = document.getElementById('prod-name')?.value.trim();
           const price = document.getElementById('prod-price')?.value;
           const oldPrice = document.getElementById('prod-old-price')?.value;
+          const category = document.getElementById('prod-category')?.value.trim();
+          const desc = document.getElementById('prod-desc')?.value;
           const fileInput = document.getElementById('prod-file');
 
           if (!name || !price) {
@@ -1434,6 +1669,7 @@ function showAddProductModal(place, user, onDone) {
           let imageUrl = '';
           if (fileInput && fileInput.files[0]) {
             try {
+              toast.info('جاري رفع صورة المنتج...');
               const res = await uploadImage(fileInput.files[0], 'products');
               imageUrl = res.url;
             } catch (e) {
@@ -1446,6 +1682,8 @@ function showAddProductModal(place, user, onDone) {
               name,
               price,
               oldPrice,
+              category,
+              description: desc,
               imageUrl
             }, user);
             toast.success('تمت إضافة المنتج بنجاح، وسيظهر في دليلك فور اعتماده من الإدارة ⏳');
@@ -1453,6 +1691,107 @@ function showAddProductModal(place, user, onDone) {
             onDone();
           } catch (err) {
             toast.error(err.message || 'فشل إضافة المنتج');
+          }
+        },
+        closeOnClick: false
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+}
+
+function showEditProductModal(place, product, user, onDone) {
+  const pId = product.id || product._key;
+  const modal = showModal({
+    title: `✏️ تعديل المنتج: ${escHtml(product.name)}`,
+    content: `
+      <form id="edit-prod-form">
+        <div class="form-group">
+          <label class="form-label">اسم المنتج <span class="required">*</span></label>
+          <input type="text" id="edit-prod-name" class="form-input" value="${escAttr(product.name || '')}" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">السعر (ج.م) <span class="required">*</span></label>
+            <input type="number" id="edit-prod-price" class="form-input" value="${escAttr(product.price || '')}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">السعر القديم</label>
+            <input type="number" id="edit-prod-old-price" class="form-input" value="${escAttr(product.oldPrice || '')}" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">تصنيف / قسم المنتج</label>
+            <input type="text" id="edit-prod-category" class="form-input" value="${escAttr(product.category || '')}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">حالة التوفر</label>
+            <select id="edit-prod-stock" class="form-input">
+              <option value="true" ${product.inStock !== false ? 'selected' : ''}>متوفر حالياً</option>
+              <option value="false" ${product.inStock === false ? 'selected' : ''}>نفذ من المخزون</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">وصف المنتج ومواصفاته</label>
+          <textarea id="edit-prod-desc" class="form-textarea" rows="3">${escHtml(product.description || '')}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">صورة المنتج (اختر ملفاً لتغيير الصورة الحالية)</label>
+          ${product.imageUrl ? `
+            <div style="margin-bottom:8px">
+              <img src="${escAttr(product.imageUrl)}" style="max-height:100px;border-radius:6px;object-fit:contain;background:#0f172a;display:block" />
+            </div>
+          ` : ''}
+          <input type="file" id="edit-prod-file" accept="image/*" class="form-input" />
+        </div>
+      </form>
+    `,
+    buttons: [
+      {
+        label: 'حفظ التعديلات',
+        type: 'primary',
+        onClick: async () => {
+          const name = document.getElementById('edit-prod-name')?.value.trim();
+          const price = document.getElementById('edit-prod-price')?.value;
+          const oldPrice = document.getElementById('edit-prod-old-price')?.value;
+          const category = document.getElementById('edit-prod-category')?.value.trim();
+          const inStock = document.getElementById('edit-prod-stock')?.value === 'true';
+          const desc = document.getElementById('edit-prod-desc')?.value;
+          const fileInput = document.getElementById('edit-prod-file');
+
+          if (!name || !price) {
+            toast.warning('يرجى ملء الاسم والسعر');
+            return;
+          }
+
+          let imageUrl = product.imageUrl || '';
+          if (fileInput && fileInput.files[0]) {
+            try {
+              toast.info('جاري رفع الصورة الجديدة...');
+              const res = await uploadImage(fileInput.files[0], 'products');
+              imageUrl = res.url;
+            } catch (e) {
+              console.warn(e);
+            }
+          }
+
+          try {
+            await updateProduct(place.id || place._key, pId, {
+              name,
+              price,
+              oldPrice,
+              category,
+              inStock,
+              description: desc,
+              imageUrl
+            }, user);
+            toast.success('تم تحديث المنتج بنجاح');
+            modal.close();
+            onDone();
+          } catch (err) {
+            toast.error(err.message || 'فشل تحديث المنتج');
           }
         },
         closeOnClick: false

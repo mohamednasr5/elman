@@ -363,6 +363,104 @@ export async function addProduct(placeId, productData, currentUser) {
   return productId;
 }
 
+/**
+ * Update Offer
+ */
+export async function updateOffer(offerId, updates, currentUser) {
+  const offer = await dbGet(`offers/${offerId}`);
+  if (!offer) throw new Error('العرض غير موجود');
+
+  const place = await dbGet(`places/${offer.placeId}`);
+  if (offer.ownerId !== currentUser.uid && place?.ownerId !== currentUser.uid && currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
+    throw new Error('لا تملك صلاحية تعديل هذا العرض');
+  }
+
+  const patch = {
+    title: updates.title ? updates.title.trim() : offer.title,
+    description: updates.description !== undefined ? updates.description : offer.description,
+    newPrice: updates.newPrice !== undefined ? Number(updates.newPrice) : offer.newPrice,
+    oldPrice: updates.oldPrice !== undefined ? Number(updates.oldPrice) : offer.oldPrice,
+    discountPercent: updates.discountPercent !== undefined ? Number(updates.discountPercent) : (offer.discountPercent || 0),
+    imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : offer.imageUrl,
+    status: updates.status || offer.status || 'active',
+    updatedAt: serverTimestamp()
+  };
+
+  await dbUpdate(`offers/${offerId}`, patch);
+  return patch;
+}
+
+/**
+ * Delete Offer
+ */
+export async function deleteOffer(offerId, placeId, currentUser) {
+  const offer = await dbGet(`offers/${offerId}`);
+  if (!offer) return;
+
+  const targetPlaceId = placeId || offer.placeId;
+  const place = targetPlaceId ? await dbGet(`places/${targetPlaceId}`) : null;
+  if (offer.ownerId !== currentUser.uid && place?.ownerId !== currentUser.uid && currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
+    throw new Error('لا تملك صلاحية حذف هذا العرض');
+  }
+
+  await dbRemove(`offers/${offerId}`);
+  if (targetPlaceId) {
+    await dbIncrement(`places/${targetPlaceId}/offerCount`, -1).catch(() => {});
+  }
+}
+
+/**
+ * Update Product
+ */
+export async function updateProduct(placeId, productId, updates, currentUser) {
+  const place = await dbGet(`places/${placeId}`);
+  if (!place) throw new Error('المكان غير موجود');
+
+  if (place.ownerId !== currentUser.uid && currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
+    throw new Error('لا تملك صلاحية تعديل هذا المنتج');
+  }
+
+  const existing = await dbGet(`products/${placeId}/${productId}`);
+  if (!existing) throw new Error('المنتج غير موجود');
+
+  const isAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin';
+  const patch = {
+    name: updates.name ? updates.name.trim() : existing.name,
+    description: updates.description !== undefined ? updates.description : existing.description,
+    price: updates.price !== undefined ? Number(updates.price) : existing.price,
+    oldPrice: updates.oldPrice !== undefined ? Number(updates.oldPrice) : existing.oldPrice,
+    imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : existing.imageUrl,
+    category: updates.category !== undefined ? updates.category : existing.category,
+    inStock: updates.inStock !== undefined ? !!updates.inStock : existing.inStock,
+    isFeatured: updates.isFeatured !== undefined ? !!updates.isFeatured : existing.isFeatured,
+    updatedAt: serverTimestamp()
+  };
+
+  // If user edited product details and is not admin, re-submit for moderation
+  if (!isAdmin && (updates.name || updates.price || updates.imageUrl || updates.description)) {
+    patch.status = 'pending';
+    patch.isApproved = false;
+  }
+
+  await dbUpdate(`products/${placeId}/${productId}`, patch);
+  return patch;
+}
+
+/**
+ * Delete Product
+ */
+export async function deleteProduct(placeId, productId, currentUser) {
+  const place = await dbGet(`places/${placeId}`);
+  if (!place) throw new Error('المكان غير موجود');
+
+  if (place.ownerId !== currentUser.uid && currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
+    throw new Error('لا تملك صلاحية حذف هذا المنتج');
+  }
+
+  await dbRemove(`products/${placeId}/${productId}`);
+  await dbIncrement(`places/${placeId}/productCount`, -1).catch(() => {});
+}
+
 function getDefaultWorkingHours() {
   return {
     saturday:  { open: '09:00', close: '22:00', closed: false },

@@ -344,7 +344,7 @@ export async function renderPlacePage($container, { slug, user }) {
                   </a>
                 </div>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--space-4)">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-4)">
                 ${products.map(p => `
                   <div class="product-card place-interactive-product-card" data-product-id="${escAttr(p.id)}" title="انقر لمشاهدة تفاصيل وطلب المنتج">
                     <div class="product-card__image">
@@ -352,9 +352,9 @@ export async function renderPlacePage($container, { slug, user }) {
                       ${p.isFeatured ? `<span class="product-card__featured">مميز ⭐</span>` : ''}
                     </div>
                     <div class="product-card__body">
-                      <h3 class="product-card__name">${escHtml(p.name)}</h3>
+                      <h3 class="product-card__name" style="font-size:1.05rem;font-weight:700">${escHtml(p.name)}</h3>
                       ${p.category ? `<div style="font-size:11px;color:var(--primary);margin-bottom:4px;font-weight:600">🏷️ ${escHtml(p.category)}</div>` : ''}
-                      ${p.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-2);line-height:1.5">${escHtml(p.description)}</p>` : ''}
+                      ${p.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:var(--space-2);line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escHtml(p.description)}</p>` : ''}
                       <div class="product-card__price">
                         <span class="product-card__price-current">${formatPrice(p.price)}</span>
                         ${p.oldPrice ? `<span class="product-card__price-old">${formatPrice(p.oldPrice)}</span>` : ''}
