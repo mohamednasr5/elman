@@ -7,6 +7,7 @@ import { initAuth, signOut, waitForAuth, onAuthStateChange, isAdmin } from './au
 import { getSettings, getUserNotifications } from './db.js';
 import { toast } from '../ui/components/Toast.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
+import { initRealtimePwaSyncBus } from '../services/realtime-sync.service.js';
 
 /* ─────────────────────────────────────────────────────────
    HTML BUILDERS
@@ -312,7 +313,10 @@ export async function initPage(activeFile = '') {
   if ('serviceWorker' in navigator)
     navigator.serviceWorker.register('./sw.js').catch(() => {});
 
-  /* 12. Instant Link Prefetching for 0ms page loads */
+  /* 12. Universal Realtime PWA Sync Bus (0ms Sync) */
+  initRealtimePwaSyncBus();
+
+  /* 13. Instant Link Prefetching for 0ms page loads */
   _setupInstantPrefetch();
 }
 
