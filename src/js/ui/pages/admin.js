@@ -482,6 +482,251 @@ if (typeof window !== 'undefined') {
 }
 
 // ─────────────────────────────────────────────
+//  PRELOAD & PLACES MANAGEMENT
+// ─────────────────────────────────────────────
+async function preloadAdminData() {
+  if (adminCache.isPreloaded) return;
+  adminCache.isPreloaded = true;
+  try {
+    const [places, categories, settings, reviews] = await Promise.all([
+      dbGet('places'),
+      getCategories(),
+      getSettings(),
+      getAllReviews().catch(() => [])
+    ]);
+    adminCache.places = places || {};
+    adminCache.categories = categories || [];
+    adminCache.settings = settings || {};
+    adminCache.reviews = reviews || [];
+  } catch (err) {
+    console.debug('[Admin] Preload cached gracefully:', err.message);
+  }
+}
+
+async function renderAdminPlaces($container) {
+  if (!adminCache.places) {
+    adminCache.places = (await dbGet('places')) || {};
+  }
+  
+  // Sort places by Latest Added First (الأحدث إضافة أولاً في الأعلى)
+  const places = Object.entries(adminCache.places || {})
+    .map(([id, p]) => ({ ...p, _id: id }))
+    .sort((a, b) => {
+      const timeA = Number(a.createdAt || a.updatedAt || a.publishedAt || 0);
+      const timeB = Number(b.createdAt || b.updatedAt || b.publishedAt || 0);
+      return timeB - timeA;
+    });
+
+  $container.innerHTML = `
+    <div class="admin-fade-in">
+      <div class="dashboard-header" style="margin-bottom:20px">
+        <div>
+          <h1 class="dashboard-header__title" style="color:#FFFFFF;font-weight:900;display:flex;align-items:center;gap:8px">
+            <span>📍</span>
+            <span>إدارة الأماكن والأنشطة</span>
+            <span class="badge" style="background:#F5A623;color:#0B1E30;font-size:13px;font-weight:900;padding:2px 10px;border-radius:9999px">
+              ${places.length} مكان
+            </span>
+          </h1>
+          <div class="dashboard-header__subtitle" style="color:#CBD5E1;font-size:13px">
+            الأماكن مرتبة بالأحدث إضافة أولاً — التحكم في التوثيق، الإعلانات المدفوعة، التعديل والحذف
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Filter & Actions -->
+      <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:#0F2B48;padding:12px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1)">
+        <input type="search" id="admin-place-search" class="form-input" placeholder="🔍 بحث باسم المكان، المالك، المنطقة أو التصنيف..." style="max-width:420px;margin:0;background:#1B4F72;color:#fff;border-color:rgba(255,255,255,0.2)" />
+        
+        <button type="button" class="btn btn-success" id="btn-export-places-excel" style="display:inline-flex;align-items:center;gap:8px;font-weight:800;padding:10px 18px;background:#10B981;border-color:#10B981;color:#fff;border-radius:10px;box-shadow:0 3px 12px rgba(16,185,129,0.3);cursor:pointer;transition:all 0.2s" title="تصدير جميع بيانات الأنشطة والأماكن إلى ملف Excel منسق بالكامل بالحدود والألوان">
+          <span style="font-size:16px">📊</span>
+          <span>تصدير ملف Excel منسق (.xlsx / .xls)</span>
+        </button>
+      </div>
+
+      <!-- Places Table -->
+      <div class="dashboard-table-wrapper" style="background:#0F2B48;border-radius:14px;border:1px solid rgba(255,255,255,0.12);overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+        <table class="dashboard-table" style="color:#FFFFFF">
+          <thead style="background:#0B1E30;color:#F8FAFC">
+            <tr>
+              <th style="color:#F8FAFC;font-weight:800">المكان / المالك</th>
+              <th style="color:#F8FAFC;font-weight:800">التصنيف</th>
+              <th style="color:#F8FAFC;font-weight:800">المنطقة</th>
+              <th style="color:#F8FAFC;font-weight:800">إعلان مدفوع ⭐</th>
+              <th style="color:#F8FAFC;font-weight:800">التوثيق</th>
+              <th style="color:#F8FAFC;font-weight:800">الحالة</th>
+              <th style="color:#F8FAFC;font-weight:800">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="admin-places-tbody">
+            ${renderAdminPlacesTableRows(places)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-export-places-excel')?.addEventListener('click', exportPlacesToExcel);
+
+  document.getElementById('admin-place-search')?.addEventListener('input', (e) => {
+    const q = e.target.value.trim();
+    const filtered = places.filter(p => 
+      !q ||
+      arabicMatch(p.name, q) || 
+      arabicMatch(p.area, q) ||
+      arabicMatch(p.address, q) ||
+      arabicMatch(p.categoryName || p.categoryId, q) ||
+      arabicMatch(p.ownerEmail || p.ownerName, q) ||
+      arabicMatch(p.description, q)
+    );
+    document.getElementById('admin-places-tbody').innerHTML = renderAdminPlacesTableRows(filtered);
+  });
+}
+
+function renderAdminPlacesTableRows(places) {
+  if (!places.length) {
+    return '<tr><td colspan="7" class="text-center" style="color:#94A3B8;padding:2rem">لا توجد أماكن مطابقة</td></tr>';
+  }
+
+  return places.map(p => {
+    const isAtm = isAtmPlace(p);
+    const isSpons = Boolean(p.isSponsored || p.isFeatured || p.isPromoted);
+    const isExpired = isSpons && p.sponsoredUntil && p.sponsoredUntil <= Date.now();
+    const isCurrentlyActive = isSpons && !isExpired;
+
+    let buttonHtml = '';
+    if (isAtm) {
+      buttonHtml = `<span class="badge" style="background:#1B4F72;color:#38BDF8;font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px">🏧 صراف آلي</span>`;
+    } else if (isCurrentlyActive) {
+      const expText = p.sponsoredUntil ? `ينتهي: ${formatDate(p.sponsoredUntil)}` : 'دائم';
+      buttonHtml = `<button class="btn btn-xs" style="background:#10B981;color:#fff;font-weight:800;border:none;border-radius:6px;padding:4px 8px" onclick="togglePlaceSponsored('${escAttr(p._id)}', false)" title="${expText} - انقر للإلغاء">⭐ نشط (${expText}) ✕</button>`;
+    } else if (isExpired) {
+      buttonHtml = `<button class="btn btn-xs" style="background:#D97706;color:#fff;font-weight:800;border:none;border-radius:6px;padding:4px 8px" onclick="togglePlaceSponsored('${escAttr(p._id)}', true)" title="انتهت مدة الإعلان - انقر للتجديد">⚠️ انتهى الإعلان (تجديد)</button>`;
+    } else {
+      buttonHtml = `<button class="btn btn-xs" style="background:#1E3A5F;color:#94A3B8;border:1px solid rgba(255,255,255,0.15);font-weight:800;border-radius:6px;padding:4px 8px" onclick="togglePlaceSponsored('${escAttr(p._id)}', true)" title="تعيين كإعلان مدفوع في قمة كل الصفحات">📢 تعيين كإعلان</button>`;
+    }
+
+    const banned = isPlaceBanned(p);
+    let statusBadgeHtml = '';
+    if (banned) {
+      const banText = p.isPermanentlyBanned || !p.bannedUntil
+        ? '🚫 محظور نهائياً'
+        : `⏳ محظور حتى ${formatDate(p.bannedUntil)}`;
+      statusBadgeHtml = `<span class="badge" style="background:#DC2626;color:#fff;font-weight:800;padding:4px 8px;border-radius:6px" title="${escAttr(p.banReason || 'مخالفة الشروط')}">${banText}</span>`;
+    } else {
+      statusBadgeHtml = renderStatusBadge(p.status || 'published');
+    }
+
+    let banButtonHtml = '';
+    if (banned) {
+      banButtonHtml = `<button class="btn btn-xs" style="background:#10B981;color:#fff;border:none;font-weight:800;border-radius:6px" onclick="adminUnbanPlaceAction('${escAttr(p._id)}')" title="إلغاء الحظر وإعادة المكان للدليل فوراً">✅ فك الحظر</button>`;
+    } else {
+      banButtonHtml = `<button class="btn btn-xs" style="background:rgba(239,68,68,0.2);color:#F87171;border:1px solid #EF4444;font-weight:800;border-radius:6px" onclick="adminBanPlaceAction('${escAttr(p._id)}', '${escAttr(p.name)}')" title="حظر هذا المكان مؤقتاً أو نهائياً">🚫 حظر</button>`;
+    }
+
+    return `
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.08);background:${banned ? 'rgba(239,68,68,0.1)' : 'transparent'}">
+        <td style="padding:12px 14px">
+          <strong style="color:#FFFFFF;font-size:14px;display:block;margin-bottom:2px">${escHtml(p.name)}</strong>
+          ${p.phone ? `<div style="font-size:12px;color:#38BDF8;font-weight:700">📞 ${escHtml(p.phone)}</div>` : ''}
+          <div style="font-size:11.5px;margin-top:4px">
+            ${p.ownerId 
+              ? `<span style="color:#FBBF24;font-weight:800">👤 المالك: ${escHtml(p.ownerName || p.ownerEmail || p.ownerId.slice(0, 8))}</span>` 
+              : `<span style="color:#94A3B8">👤 المالك: بدون مستخدم (المنصة)</span>`
+            }
+          </div>
+        </td>
+        <td style="color:#E2E8F0;font-weight:700;padding:12px 14px">${escHtml(p.categoryName || p.categoryId || 'عام')}</td>
+        <td style="color:#FCD34D;font-weight:800;padding:12px 14px">📍 ${escHtml(p.area || 'المنزلة')}</td>
+        <td style="padding:12px 14px">${buttonHtml}</td>
+        <td style="padding:12px 14px">
+          <button class="btn btn-xs" style="background:${p.isVerified ? '#DC2626' : '#F5A623'};color:${p.isVerified ? '#fff' : '#0B1E30'};font-weight:800;border:none;border-radius:6px;padding:5px 10px" onclick="togglePlaceVerification('${escAttr(p._id)}', ${!p.isVerified})">
+            ${p.isVerified ? ICONS.x + ' إلغاء التوثيق' : ICONS.shield + ' توثيق'}
+          </button>
+        </td>
+        <td style="padding:12px 14px">${statusBadgeHtml}</td>
+        <td style="padding:12px 14px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${banButtonHtml}
+            <button class="btn btn-xs" style="background:#8B5CF6;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px" onclick="transferPlaceOwnershipAdmin('${escAttr(p._id)}')" title="نقل ملكية هذا المكان لمستخدم مسجل">${ICONS.users} نقل</button>
+            <button class="btn btn-xs" style="background:#0284C7;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px" onclick="editPlaceAdmin('${escAttr(p._id)}')" title="تعديل كافة بيانات المكان أو الشخص">${ICONS.edit}</button>
+            <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px" title="عرض صفحة المكان">${ICONS.eye}</a>
+            <button class="btn btn-xs" style="background:#EF4444;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px" onclick="deletePlaceAdmin('${escAttr(p._id)}')" title="حذف المكان">${ICONS.trash}</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+export async function exportPlacesToExcel() {
+  const exportBtn = document.getElementById('btn-export-places-excel');
+  if (exportBtn) {
+    exportBtn.classList.add('loading');
+    exportBtn.disabled = true;
+  }
+
+  try {
+    if (!adminCache.places || !adminCache.users) {
+      const [u, p] = await Promise.all([dbGet('users'), dbGet('places')]);
+      adminCache.users = u || {};
+      adminCache.places = p || {};
+    }
+
+    const places = Object.entries(adminCache.places || {}).map(([id, p]) => ({ ...p, _id: id }));
+    const usersMap = adminCache.users || {};
+
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<?mso-application progid="Excel.Sheet"?>\n' +
+      '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\n' +
+      ' xmlns:o="urn:schemas-microsoft-com:office:office"\n' +
+      ' xmlns:x="urn:schemas-microsoft-com:office:excel"\n' +
+      ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"\n' +
+      ' xmlns:html="http://www.w3.org/TR/REC-html40">\n' +
+      '<Worksheet ss:Name="دليل الأماكن"><Table>\n';
+
+    // Header Row
+    xml += '<Row><Cell><Data ss:Type="String">اسم المكان</Data></Cell><Cell><Data ss:Type="String">التصنيف</Data></Cell><Cell><Data ss:Type="String">المنطقة</Data></Cell><Cell><Data ss:Type="String">الهاتف</Data></Cell><Cell><Data ss:Type="String">الحالة</Data></Cell><Cell><Data ss:Type="String">موثق</Data></Cell></Row>\n';
+
+    places.forEach(p => {
+      xml += '<Row>' +
+        '<Cell><Data ss:Type="String">' + escXml(p.name || '') + '</Data></Cell>' +
+        '<Cell><Data ss:Type="String">' + escXml(p.categoryName || p.categoryId || '') + '</Data></Cell>' +
+        '<Cell><Data ss:Type="String">' + escXml(p.area || '') + '</Data></Cell>' +
+        '<Cell><Data ss:Type="String">' + escXml(p.phone || '') + '</Data></Cell>' +
+        '<Cell><Data ss:Type="String">' + escXml(p.status || 'published') + '</Data></Cell>' +
+        '<Cell><Data ss:Type="String">' + (p.isVerified ? 'نعم' : 'لا') + '</Data></Cell>' +
+        '</Row>\n';
+    });
+
+    xml += '</Table></Worksheet></Workbook>';
+
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dalil_manzala_places_' + new Date().toISOString().split('T')[0] + '.xls';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('تم تصدير ملف الإكسيل بنجاح! 📊');
+  } catch (err) {
+    toast.error('فشل تصدير الإكسيل: ' + err.message);
+  } finally {
+    if (exportBtn) {
+      exportBtn.classList.remove('loading');
+      exportBtn.disabled = false;
+    }
+  }
+}
+
+function escXml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ─────────────────────────────────────────────
 //  2.4. Products Moderation (المنتجات والمراجعة)
 // ─────────────────────────────────────────────
 async function renderAdminProducts($container) {
