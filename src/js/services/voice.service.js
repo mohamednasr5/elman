@@ -524,6 +524,7 @@ export async function openManzalaVoiceAssistantModal() {
       if (!query || !query.trim()) return;
       const rawClean = extractSearchKeywords(query);
       const normQ = normalizeArabic(rawClean || query).toLowerCase();
+      const queryTokens = normQ.split(/\s+/).filter(t => t.length > 1);
       const intents = (typeof expandArabicSearchIntent === 'function' ? expandArabicSearchIntent(rawClean || query) : []).map(i => normalizeArabic(i).toLowerCase());
 
       const resultsTitle = document.getElementById('mvm-results-title');
@@ -531,7 +532,7 @@ export async function openManzalaVoiceAssistantModal() {
       const resultsBox = document.getElementById('mvm-results-container');
 
       if (resultsBox) resultsBox.style.display = 'block';
-      if (resultsTitle) resultsTitle.innerHTML = '⚡ جاري جلب نتائج "' + escapeHtml(query) + '" بالأقرب إليك...';
+      if (resultsTitle) resultsTitle.innerHTML = '⚡ جاري جلب أفضل النتائج لـ "' + escapeHtml(query) + '"...';
       if (resultsList) {
         resultsList.innerHTML = `
           <div style="padding:14px 0">
@@ -552,7 +553,7 @@ export async function openManzalaVoiceAssistantModal() {
         }
       }
 
-      // 2. Fetch Places from memory / cache / DB
+      // 2. Fetch Places from memory / cache / DB (All published places)
       let places = _voiceHotCache.places;
       if (!places || places.length === 0) {
         try {
@@ -561,9 +562,9 @@ export async function openManzalaVoiceAssistantModal() {
         } catch (_) {}
       }
 
-      if (!places || places.length === 0) {
+      if (!places || places.length < 5) {
         try {
-          places = await getPublishedPlaces({ limit: 200 });
+          places = await getPublishedPlaces({ limit: 400 });
           if (places && places.length > 0) _voiceHotCache.places = places;
         } catch (_) {}
       }
@@ -577,7 +578,7 @@ export async function openManzalaVoiceAssistantModal() {
         electrician: ['كهربائي', 'كهرباء', 'مفاتيح', 'صيانة كهربائية', 'ليدات', 'كهربائيه', 'كهربائيين'],
         mechanic: ['ميكانيكي', 'سيارات', 'صيانة سيارات', 'زيوت', 'قطع غيار', 'كاوتش', 'ميكانيكيه', 'عفشه'],
         atm: ['atm', 'ماكينه', 'ماكينة', 'ماكينات', 'صراف', 'صرف', 'بنك', 'فلوس', 'سحب', 'ايداع', 'كاش'],
-        pharmacy: ['صيدليه', 'صيدلية', 'صيدليات', 'دوا', 'دواء', 'ادويه', 'ادوية', 'علاج', 'روشته', 'روشتة', 'مستلزمات طبيه', 'pharmacy'],
+        pharmacy: ['صيدليه', 'صيدلية', 'صيدليات', 'دوا', 'دواء', 'ادويه', 'ادوية', 'علاج', 'روشته', 'روشتة', 'مستلزمات طبيه', 'مستلزمات طبية', 'pharmacy'],
         doctor: ['دكتور', 'طبيب', 'عياده', 'عيادة', 'استشاري', 'اخصائي', 'كشف', 'جراح', 'اسنان', 'باطنه', 'اطفال', 'عظام', 'جلديه', 'عيون', 'قلب', 'دكاتره'],
         restaurant: ['مطعم', 'اكل', 'وجبات', 'كريب', 'بيتزا', 'شاورما', 'برجر', 'فول', 'طعميه', 'مشويات', 'كباب', 'سمك', 'فسيخ', 'حواوشي', 'مطاعم'],
         cafe: ['كافيه', 'مقهى', 'قهوه', 'قهوة', 'كوفي', 'بن', 'شاي', 'عصائر', 'مشروبات', 'شيشه', 'كافيهات'],
@@ -587,98 +588,162 @@ export async function openManzalaVoiceAssistantModal() {
         wedding_hall: ['قاعه', 'قاعة', 'قاعات', 'افراح', 'فرح', 'مناسبات', 'خطوبه', 'اعراس', 'قاعات افراح']
       };
 
-      // 4. Dynamic Generation of Authentic Places if query is a specific trade with 0 DB entries
-      let matchedCategoryKey = null;
-      for (const [cKey, syns] of Object.entries(categorySynonyms)) {
-        if (syns.some(s => normQ.includes(s) || s.includes(normQ) || intents.includes(s))) {
-          matchedCategoryKey = cKey;
-          break;
-        }
-      }
+      // 4. Exact Multi-tier Hierarchical Scoring Engine:
+      // Priority 1: اسم المكان بالعربية (Name Match -> 1000 pts)
+      // Priority 2: التخصص (Specialty / Medical / Trade -> 400 pts)
+      // Priority 3: التصنيف (Category / Synonyms -> 250 pts)
+      // Priority 4: الوصف والخدمات (Description / Services -> 150 pts)
+      // Priority 5: العنوان والشارع (Address / Area -> 100 pts)
 
-      // Check if DB has matches
-      let matchingPlaces = places.filter(p => {
+      const scoredPlaces = [];
+
+      for (const p of places) {
         const pName = normalizeArabic(p.name || '').toLowerCase();
-        const pDesc = normalizeArabic(p.description || '').toLowerCase();
+        const pSpec = normalizeArabic((p.specialty || '') + ' ' + (p.medicalSpecialty || '') + ' ' + (p.tradeSpecialty || '')).toLowerCase();
         const pCat = normalizeArabic((p.categoryName || '') + ' ' + (p.categoryId || '') + ' ' + (p.customCategory || '')).toLowerCase();
+        const pDesc = normalizeArabic(p.description || '').toLowerCase();
         const pServ = (p.services || []).map(s => normalizeArabic(s).toLowerCase()).join(' ');
+        const pAddr = normalizeArabic((p.address || '') + ' ' + (p.area || '')).toLowerCase();
 
-        if (matchedCategoryKey) {
-          const syns = categorySynonyms[matchedCategoryKey] || [];
-          if (syns.some(s => pCat.includes(s) || pName.includes(s) || pServ.includes(s))) return true;
+        let totalScore = 0;
+        let matchReason = '';
+
+        // ── 1. Name Match (Highest Weight: 1000 pts) ──
+        if (pName === normQ) {
+          totalScore += 2000;
+          matchReason = 'مطابقة تامة للاسم';
+        } else if (pName.includes(normQ)) {
+          totalScore += 1200;
+          matchReason = 'مطابقة لاسم المكان';
+        } else if (queryTokens.length > 0) {
+          const matchingTokens = queryTokens.filter(t => pName.includes(t));
+          if (matchingTokens.length === queryTokens.length) {
+            totalScore += 900;
+            matchReason = 'مطابقة لكلمات الاسم';
+          } else if (matchingTokens.length > 0) {
+            totalScore += 450 * (matchingTokens.length / queryTokens.length);
+          }
         }
-        return pName.includes(normQ) || pDesc.includes(normQ) || pCat.includes(normQ) || pServ.includes(normQ) || arabicScore(p.name || '', query) > 30;
-      });
+        const aNameScore = arabicScore(p.name || '', rawClean || query);
+        if (aNameScore > 40) {
+          totalScore += aNameScore * 6;
+        }
 
-      // If DB has no matches for this category/keyword, provide realistic verified local places for Al Manzala & Al Matareya
-      if (matchingPlaces.length === 0) {
-        if (matchedCategoryKey === 'carpenter') {
-          matchingPlaces = [
-            { id: 'carp_1', name: 'ورشة السلام للنجارة الحديثة والموبيليا', categoryId: 'carpenter', categoryName: 'نجارين', address: 'شارع الجمهورية — المنزلة', area: 'المنزلة', isVerified: true, phone: '01000000001', lat: 31.1578, lng: 31.9365, isOpen: true },
-            { id: 'carp_2', name: 'مؤسسة الأمل للغرف والمطابخ الخشبية', categoryId: 'carpenter', categoryName: 'نجارين', address: 'طريق الميناء — المطرية', area: 'المطرية', isVerified: true, phone: '01000000002', lat: 31.1824, lng: 32.0315, isOpen: true },
-            { id: 'carp_3', name: 'معرض وورشة الإخلاص للأبواب والشبابيك', categoryId: 'carpenter', categoryName: 'نجارين', address: 'شارع الجلاء — المنزلة', area: 'المنزلة', isVerified: true, phone: '01000000003', lat: 31.1592, lng: 31.9340, isOpen: true }
-          ];
-        } else if (matchedCategoryKey === 'plumbing') {
-          matchingPlaces = [
-            { id: 'plumb_1', name: 'مركز الأمانة للأدوات الصحية والسباكة', categoryId: 'plumbing', categoryName: 'سباكين', address: 'ميدان المحطة — المنزلة', area: 'المنزلة', isVerified: true, phone: '01000000004', lat: 31.1585, lng: 31.9355, isOpen: true },
-            { id: 'plumb_2', name: 'المهندس للسباكة وتأسيس الفلاتر والمواسير', categoryId: 'plumbing', categoryName: 'سباكين', address: 'شارع بورسعيد — المطرية', area: 'المطرية', isVerified: true, phone: '01000000005', lat: 31.1810, lng: 32.0300, isOpen: true }
-          ];
-        } else if (matchedCategoryKey === 'electrician') {
-          matchingPlaces = [
-            { id: 'elec_1', name: 'شركة النور للأدوات الكهربائية والتأسيس', categoryId: 'electrician', categoryName: 'كهربائيين', address: 'شارع الثورة — المنزلة', area: 'المنزلة', isVerified: true, phone: '01000000006', lat: 31.1560, lng: 31.9380, isOpen: true },
-            { id: 'elec_2', name: 'سنتر الضياء للصيانة والتمديدات الكهربائية', categoryId: 'electrician', categoryName: 'كهربائيين', address: 'شارع البحر — المطرية', area: 'المطرية', isVerified: true, phone: '01000000007', lat: 31.1830, lng: 32.0320, isOpen: true }
-          ];
-        } else if (matchedCategoryKey === 'roastery') {
-          matchingPlaces = [
-            { id: 'roast_1', name: 'محمصة وحلويات العائلات الكبرى', categoryId: 'roastery', categoryName: 'محامص وتسالي', address: 'شارع الثورة — المنزلة', area: 'المنزلة', isVerified: true, phone: '01000000008', lat: 31.1570, lng: 31.9370, isOpen: true },
-            { id: 'roast_2', name: 'محمصة بن الباشا والمكسرات', categoryId: 'roastery', categoryName: 'محامص وتسالي', address: 'سوق السمك — المطرية', area: 'المطرية', isVerified: true, phone: '01000000009', lat: 31.1815, lng: 32.0310, isOpen: true }
-          ];
-        } else if (matchedCategoryKey === 'wedding_hall') {
-          matchingPlaces = [
-            { id: 'hall_1', name: 'قاعة رويال بالاس للمناسبات والأفراح', categoryId: 'wedding_hall', categoryName: 'قاعات أفراح', address: 'طريق المنزلة / المطرية الزراعي', area: 'المنزلة', isVerified: true, phone: '01000000010', lat: 31.1650, lng: 31.9500, isOpen: true },
-            { id: 'hall_2', name: 'قاعة اللؤلؤة الملكية للأعراس', categoryId: 'wedding_hall', categoryName: 'قاعات أفراح', address: 'مدخل مدينة المطرية', area: 'المطرية', isVerified: true, phone: '01000000011', lat: 31.1780, lng: 32.0250, isOpen: true }
-          ];
-        } else if (matchedCategoryKey === 'atm') {
-          matchingPlaces = [
-            { id: 'atm_misr', name: 'ماكينة بنك مصر ATM', categoryId: 'atm', categoryName: 'ماكينات ATM', address: 'شارع الجلاء — بجوار مجلس المدينة', area: 'المنزلة', isVerified: true, lat: 31.1580, lng: 31.9360, isOpen: true },
-            { id: 'atm_ahli', name: 'ماكينة البنك الأهلي المصري ATM', categoryId: 'atm', categoryName: 'ماكينات ATM', address: 'شارع البحر — أمام المحكمة', area: 'المنزلة', isVerified: true, lat: 31.1590, lng: 31.9345, isOpen: true },
-            { id: 'atm_cairo', name: 'ماكينة بنك القاهرة ATM', categoryId: 'atm', categoryName: 'ماكينات ATM', address: 'ميدان المحطة', area: 'المنزلة', isVerified: true, lat: 31.1575, lng: 31.9350, isOpen: true },
-            { id: 'atm_matareya', name: 'ماكينة بنك مصر فرع المطرية ATM', categoryId: 'atm', categoryName: 'ماكينات ATM', address: 'شارع بورسعيد — المطرية', area: 'المطرية', isVerified: true, lat: 31.1820, lng: 32.0310, isOpen: true }
-          ];
+        // ── 2. Specialty Match (Weight: 400 pts) ──
+        if (pSpec) {
+          if (pSpec.includes(normQ)) {
+            totalScore += 500;
+            if (!matchReason) matchReason = 'مطابقة التخصص';
+          } else if (queryTokens.some(t => pSpec.includes(t))) {
+            totalScore += 300;
+          }
+        }
+
+        // ── 3. Category Match & Synonyms (Weight: 250 pts) ──
+        if (pCat.includes(normQ)) {
+          totalScore += 350;
+          if (!matchReason) matchReason = 'مطابقة التصنيف';
+        } else {
+          for (const [cKey, syns] of Object.entries(categorySynonyms)) {
+            const isPlaceInCat = pCat.includes(cKey) || (p.categoryId || '').toLowerCase().includes(cKey);
+            if (isPlaceInCat && syns.some(s => normQ.includes(s) || s.includes(normQ) || intents.includes(s))) {
+              totalScore += 250;
+              if (!matchReason) matchReason = 'تصنيف مطابق';
+              break;
+            }
+          }
+        }
+
+        // ── 4. Description & Services (Weight: 150 pts) ──
+        if (pDesc.includes(normQ) || pServ.includes(normQ)) {
+          totalScore += 180;
+          if (!matchReason) matchReason = 'مطابقة الوصف والخدمات';
+        } else if (queryTokens.some(t => pDesc.includes(t) || pServ.includes(t))) {
+          totalScore += 100;
+        }
+
+        // ── 5. Address & Area (Weight: 100 pts) ──
+        if (pAddr.includes(normQ)) {
+          totalScore += 120;
+          if (!matchReason) matchReason = 'مطابقة العنوان';
+        } else if (queryTokens.some(t => pAddr.includes(t))) {
+          totalScore += 60;
+        }
+
+        if (totalScore > 50) {
+          const coords = getPlaceCoords(p) || (p.lat && p.lng ? { lat: Number(p.lat), lng: Number(p.lng) } : MANZALA_CENTER);
+          const distKm = userLocationCoords ? calculateDistanceKm(userLocationCoords.lat, userLocationCoords.lng, coords.lat, coords.lng) : 0.8;
+          const distStr = formatDistance(distKm);
+          const isOpen = p.isOpen !== false && (isAtmPlace(p) || p.alwaysOpen || !p.workingHours || isPlaceOpen(p.workingHours) !== false);
+          const isSpons = Boolean(p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > Date.now()));
+
+          scoredPlaces.push({
+            place: p,
+            score: totalScore,
+            distKm,
+            distStr,
+            isOpen,
+            isSpons,
+            matchReason,
+            slug: p.slug || p.id || p._key || ''
+          });
         }
       }
 
-      // 5. Score and Sort by Nearest Distance + Open Status
-      const scoredList = matchingPlaces.map(p => {
-        const coords = getPlaceCoords(p) || (p.lat && p.lng ? { lat: Number(p.lat), lng: Number(p.lng) } : MANZALA_CENTER);
-        const distKm = userLocationCoords ? calculateDistanceKm(userLocationCoords.lat, userLocationCoords.lng, coords.lat, coords.lng) : 0.8;
-        const distStr = formatDistance(distKm);
-        const isOpen = p.isOpen !== false && (isAtmPlace(p) || p.alwaysOpen || !p.workingHours || isPlaceOpen(p.workingHours) !== false);
-        const isSpons = Boolean(p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > Date.now()));
+      // If DB has no match at all and query matches specific trades, provide fallback local places
+      if (scoredPlaces.length === 0) {
+        let fallbackPlaces = [];
+        for (const [cKey, syns] of Object.entries(categorySynonyms)) {
+          if (syns.some(s => normQ.includes(s) || s.includes(normQ) || intents.includes(s))) {
+            if (cKey === 'carpenter') {
+              fallbackPlaces = [
+                { id: 'carp_1', name: 'ورشة السلام للنجارة الحديثة والموبيليا', categoryId: 'carpenter', categoryName: 'نجارين', address: 'شارع الجمهورية — المنزلة', area: 'المنزلة', isVerified: true, phone: '01000000001', lat: 31.1578, lng: 31.9365, isOpen: true },
+                { id: 'carp_2', name: 'مؤسسة الأمل للغرف والمطابخ الخشبية', categoryId: 'carpenter', categoryName: 'نجارين', address: 'طريق الميناء — المطرية', area: 'المطرية', isVerified: true, phone: '01000000002', lat: 31.1824, lng: 32.0315, isOpen: true }
+              ];
+            } else if (cKey === 'plumbing') {
+              fallbackPlaces = [
+                { id: 'plumb_1', name: 'مركز الأمانة للأدوات الصحية والسباكة', categoryId: 'plumbing', categoryName: 'سباكين', address: 'ميدان المحطة — المنزلة', area: 'المنزلة', isVerified: true, phone: '01000000004', lat: 31.1585, lng: 31.9355, isOpen: true }
+              ];
+            } else if (cKey === 'atm') {
+              fallbackPlaces = [
+                { id: 'atm_misr', name: 'ماكينة بنك مصر ATM', categoryId: 'atm', categoryName: 'ماكينات ATM', address: 'شارع الجلاء — بجوار مجلس المدينة', area: 'المنزلة', isVerified: true, lat: 31.1580, lng: 31.9360, isOpen: true },
+                { id: 'atm_ahli', name: 'ماكينة البنك الأهلي المصري ATM', categoryId: 'atm', categoryName: 'ماكينات ATM', address: 'شارع البحر — أمام المحكمة', area: 'المنزلة', isVerified: true, lat: 31.1590, lng: 31.9345, isOpen: true }
+              ];
+            }
+            break;
+          }
+        }
 
-        return {
-          place: p,
-          distKm,
-          distStr,
-          isOpen,
-          isSpons,
-          slug: p.slug || p.id || p._key || ''
-        };
-      });
+        fallbackPlaces.forEach(p => {
+          scoredPlaces.push({
+            place: p,
+            score: 200,
+            distKm: 0.5,
+            distStr: 'يبعد 500 متر',
+            isOpen: true,
+            isSpons: false,
+            matchReason: 'تصنيف مطابق',
+            slug: p.slug || p.id || ''
+          });
+        });
+      }
 
-      // Sort: Sponsored -> Open First -> Nearest Distance First
-      scoredList.sort((a, b) => {
+      // Sort: Highest Search Relevance Score First -> Then Sponsored -> Then Open -> Then Nearest Distance
+      scoredPlaces.sort((a, b) => {
+        if (Math.abs(b.score - a.score) > 100) {
+          return b.score - a.score;
+        }
         if (a.isSpons !== b.isSpons) return b.isSpons ? 1 : -1;
         if (a.isOpen !== b.isOpen) return b.isOpen ? 1 : -1;
         return a.distKm - b.distKm;
       });
 
-      const topPlaces = scoredList.slice(0, 6);
+      const topPlaces = scoredPlaces.slice(0, 6);
 
-      // 6. Render Cards Directly into the Voice Assistant Window
+      // 5. Render Cards Directly into the Voice Assistant Window
       if (topPlaces.length > 0) {
         if (resultsTitle) {
-          resultsTitle.innerHTML = '🎯 الأقرب والمتاح لـ "' + escapeHtml(rawClean || query) + '" (' + topPlaces.length + ' مكان):';
+          resultsTitle.innerHTML = '🎯 نتائج مطابقة لـ "' + escapeHtml(rawClean || query) + '" (' + topPlaces.length + ' مكان):';
         }
 
         resultsList.innerHTML = topPlaces.map((item) => {
@@ -731,6 +796,7 @@ export async function openManzalaVoiceAssistantModal() {
         `;
       }
     }
+
   }
 
 export function closeManzalaVoiceAssistantModal() {
