@@ -29,6 +29,7 @@ import { formatPrice, arabicMatch } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
+import { getUserLoyaltyProfile, getLoyaltyLevelInfo, redeemPointsForVerification, LOYALTY_LEVELS, POINTS_RULES, VERIFICATION_POINTS_COST } from '../../services/loyalty.service.js';
 
 let _dashUser = null;
 let _dashPlacesCache = null;

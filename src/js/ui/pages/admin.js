@@ -10,7 +10,7 @@ import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { formatDate } from '../../utils/date.js';
-import { getPendingLiveNews, getPublishedLiveNews, adminApproveLiveNews, adminDeleteLiveNews, submitLiveReport, NEWS_CATEGORIES, STATUS_TAGS } from '../../services/live-news.service.js';
+import { getPendingLiveNews, getPublishedLiveNews, adminApproveLiveNews, adminUpdateLiveNews, adminDeleteLiveNews, submitLiveReport, NEWS_CATEGORIES, STATUS_TAGS } from '../../services/live-news.service.js';
 import { getLoyaltyLevelInfo, LOYALTY_LEVELS } from '../../services/loyalty.service.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { arabicMatch } from '../../utils/arabic.js';
@@ -2718,7 +2718,7 @@ async function renderAdminUsers($container) {
           </thead>
           <tbody>
             ${users.map(u => {
-              const pts = Number(u.loyalty?.points || u.points || 0);
+              const pts = Number(u.loyalty?.points ?? u.points ?? 0);
               const lvlInfo = getLoyaltyLevelInfo(pts);
               const lvl = lvlInfo.currentLevel;
 
@@ -2789,8 +2789,12 @@ async function renderAdminUsers($container) {
 /**
  * Modal to Edit / Award Points & Change Loyalty Rank
  */
+/**
+ * Modal to Edit / Award Points & Change Loyalty Rank
+ */
 function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
   let selectedPresetLevel = null;
+  const currentPts = parseInt(currentPoints, 10) || 0;
 
   const modal = showModal({
     title: `🎁 تعديل نقاط ورتبة: ${escHtml(userName)}`,
@@ -2798,24 +2802,24 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
     content: `
       <form id="form-admin-user-points" style="display:flex;flex-direction:column;gap:16px" onsubmit="return false">
         
-        <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:space-between">
+        <div style="background:rgba(245,166,35,0.08);border:1.5px solid rgba(245,166,35,0.3);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
           <div>
-            <div style="font-size:12px;color:var(--text-muted)">الرصيد الحالي للمستخدم:</div>
-            <div style="font-size:1.6rem;font-weight:800;color:#F5A623">${currentPoints.toLocaleString('ar-EG')} نقطة</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.7)">الرصيد الحالي للمستخدم:</div>
+            <div style="font-size:1.7rem;font-weight:900;color:#F5A623" id="admin-user-live-pts-display">${currentPts.toLocaleString('ar-EG')} نقطة</div>
           </div>
           <div style="text-align:left">
-            <span class="badge" style="font-size:13px;font-weight:800;padding:4px 10px;background:#F5A623;color:#0B1E30;border-radius:9999px">
-              ${getLoyaltyLevelInfo(currentPoints).currentLevel.icon} ${getLoyaltyLevelInfo(currentPoints).currentLevel.name}
+            <span class="badge" style="font-size:13px;font-weight:800;padding:5px 12px;background:#F5A623;color:#0B1E30;border-radius:9999px" id="admin-user-live-lvl-badge">
+              ${getLoyaltyLevelInfo(currentPts).currentLevel.icon} ${getLoyaltyLevelInfo(currentPts).currentLevel.name}
             </span>
           </div>
         </div>
 
         <!-- Quick Rank Picker -->
         <div class="form-group" style="margin:0">
-          <label class="form-label" style="font-weight:700">ترقية مباشرة إلى رتبة:</label>
-          <select id="select-admin-target-rank" class="form-select">
-            <option value="">-- اختر رتبة لضبط النقاط تلقائياً --</option>
-            <option value="5000">👑 نخبة المنزلة والمطرية VIP (5,000 نقطة - يفتح التوثيق المجاني)</option>
+          <label class="form-label" style="font-weight:800">ترقية مباشرة إلى رتبة:</label>
+          <select id="select-admin-target-rank" class="form-select" style="font-weight:700">
+            <option value="">-- اختر رتبة لتحديد النقاط تلقائياً --</option>
+            <option value="5000">👑 نخبة المنزلة والمطرية VIP (5,000+ نقطة - يفتح التوثيق الفوري)</option>
             <option value="3500">💎 مساهم موثوق ذهبي (3,500 نقطة)</option>
             <option value="1500">🥇 خبير المنزلة والمطرية (1,500 نقطة)</option>
             <option value="500">🥈 مساهم نشط (500 نقطة)</option>
@@ -2825,32 +2829,32 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
 
         <!-- Direct Points Input -->
         <div class="form-group" style="margin:0">
-          <label class="form-label" style="font-weight:700">أو حدد إجمالي رصيد النقاط الجديد:</label>
-          <input type="number" id="input-admin-new-points" class="form-input" value="${currentPoints}" min="0" max="100000" step="10" required />
+          <label class="form-label" style="font-weight:800">أو حدد إجمالي رصيد النقاط الجديد:</label>
+          <input type="number" id="input-admin-new-points" class="form-input" value="${currentPts}" min="0" max="100000" step="10" required style="font-weight:800;font-size:15px" />
         </div>
 
         <!-- Quick Increment Buttons -->
         <div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">إضافة سريعة للرصيد الحالي:</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:6px;font-weight:700">إضافة سريعة للرصيد الحالي:</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="100">+100</button>
-            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="500">+500</button>
-            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="1000">+1,000</button>
-            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="5000" style="color:#10B981;font-weight:800">+5,000 (توثيق 🌟)</button>
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="100" style="border-radius:8px;font-weight:700">+100</button>
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="500" style="border-radius:8px;font-weight:700">+500</button>
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="1000" style="border-radius:8px;font-weight:700">+1,000</button>
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="5000" style="color:#10B981;border-color:#10B981;font-weight:800;border-radius:8px">+5,000 (توثيق فوري 👑)</button>
           </div>
         </div>
 
         <!-- Reason / Note -->
         <div class="form-group" style="margin:0">
-          <label class="form-label" style="font-weight:700">ملاحظة / سبب المنح:</label>
-          <input type="text" id="input-admin-points-note" class="form-input" value="مكافأة وتشجيع من إدارة دليل المنزلة والمطرية" />
+          <label class="form-label" style="font-weight:800">ملاحظة / سبب المنح:</label>
+          <input type="text" id="input-admin-points-note" class="form-input" value="مكافأة وترقية من إدارة دليل المنزلة والمطرية" />
         </div>
 
       </form>
     `,
     buttons: [
       {
-        label: '💾 حفظ وتحديث الرصيد فوراً',
+        label: '💾 حفظ وتحديث الرتبة فوراً',
         type: 'primary',
         closeOnClick: false,
         onClick: async () => {
@@ -2864,19 +2868,23 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
 
           try {
             const db = getDB();
-            const logId = db.ref().push().key;
-            const delta = newPts - currentPoints;
+            const logId = db.ref('users/' + uid + '/loyalty/history').push().key;
+            const delta = newPts - currentPts;
 
+            // 1. Dual-write to users/{uid} and users/{uid}/loyalty
             await Promise.all([
-              db.ref(`users/${uid}/loyalty`).update({
+              db.ref('users/' + uid).update({
+                points: newPts
+              }),
+              db.ref('users/' + uid + '/loyalty').update({
                 points: newPts,
-                totalEarned: Math.max(newPts, currentPoints),
+                totalEarned: Math.max(newPts, currentPts),
                 lastAdminUpdate: firebase.database.ServerValue.TIMESTAMP
               }),
-              db.ref(`users/${uid}/loyalty/history/${logId}`).set({
+              db.ref('users/' + uid + '/loyalty/history/' + logId).set({
                 id: logId,
                 type: delta >= 0 ? 'earn' : 'deduct',
-                amount: delta >= 0 ? `+${delta}` : `${delta}`,
+                amount: delta >= 0 ? '+' + delta : String(delta),
                 pointsDelta: delta,
                 label: note,
                 createdAt: firebase.database.ServerValue.TIMESTAMP,
@@ -2884,7 +2892,17 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
               })
             ]);
 
-            toast.success(`تم تحديث رصيد ${userName} إلى ${newPts.toLocaleString('ar-EG')} نقطة بنجاح! ✨`);
+            // 2. Refresh local in-memory cache directly
+            if (adminCache.users && adminCache.users[uid]) {
+              adminCache.users[uid].points = newPts;
+              adminCache.users[uid].loyalty = {
+                ...(adminCache.users[uid].loyalty || {}),
+                points: newPts,
+                totalEarned: Math.max(newPts, currentPts)
+              };
+            }
+
+            toast.success(`تم تحديث رتبة ورصيد ${userName} إلى ${newPts.toLocaleString('ar-EG')} نقطة بنجاح! ✨`);
             modal.close();
             if (onDone) onDone();
           } catch (err) {
@@ -2900,7 +2918,13 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
   document.getElementById('select-admin-target-rank')?.addEventListener('change', (e) => {
     if (e.target.value !== '') {
       const input = document.getElementById('input-admin-new-points');
-      if (input) input.value = e.target.value;
+      if (input) {
+        input.value = e.target.value;
+        const pts = parseInt(e.target.value, 10) || 0;
+        const lvl = getLoyaltyLevelInfo(pts).currentLevel;
+        const badge = document.getElementById('admin-user-live-lvl-badge');
+        if (badge) badge.innerHTML = `${lvl.icon} ${lvl.name}`;
+      }
     }
   });
 
@@ -2910,12 +2934,15 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
       const add = parseInt(btn.getAttribute('data-add'), 10) || 0;
       const input = document.getElementById('input-admin-new-points');
       if (input) {
-        input.value = (parseInt(input.value, 10) || 0) + add;
+        const val = (parseInt(input.value, 10) || 0) + add;
+        input.value = val;
+        const lvl = getLoyaltyLevelInfo(val).currentLevel;
+        const badge = document.getElementById('admin-user-live-lvl-badge');
+        if (badge) badge.innerHTML = `${lvl.icon} ${lvl.name}`;
       }
     });
   });
 }
-
 
 // ─────────────────────────────────────────────
 //  6. Offers (إدارة العروض)
@@ -5051,16 +5078,14 @@ function openEditLiveNewsModal(item, onSaveCallback) {
           }
 
           try {
-            const db = getDB();
-            await db.ref('liveNews/' + item.id).update({
+            await adminUpdateLiveNews(item.id, {
               title,
               location,
               city,
               category,
               statusTagKey,
               details,
-              status: 'published',
-              updatedAt: firebase.database.ServerValue.TIMESTAMP
+              status: 'published'
             });
 
             toast.success('تم حفظ تعديلات الخبر بنجاح! 💾');

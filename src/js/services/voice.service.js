@@ -694,8 +694,8 @@ export async function openManzalaVoiceAssistantModal() {
           const isAtm = isAtmPlace(p) || (p.categoryId || '') === 'atm';
 
           return `
-            <div class="mvm-place-row" style="background:var(--surface,#fff);border:1.5px solid ${isSponsored ? '#F59E0B' : 'var(--border,#e2e8f0)'};border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:0 3px 10px rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-              <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:180px">
+            <div class="mvm-place-row" data-url="${placeUrl}" onclick="window.location.href='${placeUrl}'" style="background:var(--surface,#fff);border:1.5px solid ${isSponsored ? '#F59E0B' : 'var(--border,#e2e8f0)'};border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:0 3px 10px rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;cursor:pointer">
+              <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:180px;pointer-events:none">
                 <div style="width:48px;height:48px;border-radius:12px;overflow:hidden;background:${isAtm ? '#1B4F72' : 'rgba(2,132,199,0.1)'};color:${isAtm ? '#fff' : '#0284C7'};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0;border:1px solid var(--border)">
                   ${isAtm ? '🏧' : (p.logoUrl ? '<img src="' + escapeHtml(p.logoUrl) + '" style="width:100%;height:100%;object-fit:cover" />' : (p.name ? p.name.charAt(0) : '📍'))}
                 </div>
@@ -713,14 +713,14 @@ export async function openManzalaVoiceAssistantModal() {
                 </div>
               </div>
               <a href="${placeUrl}" class="btn btn-sm" style="border-radius:10px;padding:8px 16px;font-size:12.5px;font-weight:800;text-decoration:none;white-space:nowrap;background:${isSponsored ? '#F59E0B' : '#0284C7'};color:${isSponsored ? '#0B1E30' : '#fff'};border:none;box-shadow:0 2px 8px rgba(2,132,199,0.25)">
-                عرض المكان ↗
+                عرض المكان والتفاصيل ↗
               </a>
             </div>
           `;
         }).join('') + `
           <div style="margin-top:12px;text-align:center">
             <a href="search.html?q=${encodeURIComponent(query)}" class="btn btn-secondary btn-sm" style="width:100%;border-radius:10px;font-weight:700;display:block;text-align:center;padding:10px">
-              🔍 عرض كافة النتائج في صفحة البحث ←
+              🔍 عرض باقي نتائج البحث في صفحة البحث الشاملة (${scored.length} نتيجة) ←
             </a>
           </div>
         `;
