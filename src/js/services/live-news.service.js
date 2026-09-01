@@ -356,14 +356,16 @@ export async function adminUpdateLiveNews(newsId, updates) {
     saveLocalStore(store);
   }
 
-  try {
-    const db = getDB();
-    await db.ref('liveNews/' + newsId).update({
-      ...updates,
-      updatedAt: Date.now()
-    });
-  } catch (err) {
-    console.debug('[LiveNews] Cloud update synced locally:', err.message);
+  if (!String(newsId).startsWith('init_')) {
+    try {
+      const db = getDB();
+      await db.ref('liveNews/' + newsId).update({
+        ...updates,
+        updatedAt: Date.now()
+      });
+    } catch (err) {
+      console.debug('[LiveNews] Cloud update synced locally:', err.message);
+    }
   }
 
   return { success: true };
@@ -375,19 +377,20 @@ export async function adminUpdateLiveNews(newsId, updates) {
 export async function adminDeleteLiveNews(newsId) {
   if (!newsId) return { success: true };
 
-  // 1. Add to Permanent Deleted IDs Registry
+  // 1. Add to Permanent Deleted IDs Registry locally
   markLiveNewsAsDeletedPermanently(newsId);
 
-  // 2. Sync to Firebase Cloud with soft-delete flag & hard remove
-  try {
-    const db = getDB();
-    await Promise.all([
-      db.ref('liveNews/' + newsId).update({ status: 'deleted', deletedAt: Date.now() }).catch(() => {}),
-      db.ref('liveNews/' + newsId).remove().catch(() => {}),
-      db.ref('deletedLiveNews/' + newsId).set(true).catch(() => {})
-    ]);
-  } catch (err) {
-    console.debug('[LiveNews] Cloud delete handled:', err.message);
+  // 2. Sync to Firebase Cloud if it's a real cloud item
+  if (!String(newsId).startsWith('init_')) {
+    try {
+      const db = getDB();
+      await Promise.all([
+        db.ref('liveNews/' + newsId).update({ status: 'deleted', deletedAt: Date.now() }).catch(() => {}),
+        db.ref('liveNews/' + newsId).remove().catch(() => {})
+      ]);
+    } catch (err) {
+      console.debug('[LiveNews] Cloud delete handled:', err.message);
+    }
   }
 
   return { success: true };

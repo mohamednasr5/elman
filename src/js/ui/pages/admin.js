@@ -5,7 +5,7 @@
  */
 
 import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification } from '../../core/db.js';
-import { isAdmin } from '../../core/auth.js';
+import { isAdmin, getCurrentUser } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
