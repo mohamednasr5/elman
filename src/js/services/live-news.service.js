@@ -9,6 +9,8 @@ import { awardPoints } from './loyalty.service.js';
 import { playNotificationSound, broadcastLiveNewsPushNotification } from './notification.service.js';
 
 export const NEWS_CATEGORIES = {
+  jobs_vacant: { icon: '💼', label: 'وظيفة شاغرة (مطلوب موظف/عامل)', color: '#059669', isJob: true },
+  jobs_seeker: { icon: '🧑‍💼', label: 'باحث عن عمل (متاح للتوظيف)', color: '#7C3AED', isJob: true },
   atm:        { icon: '🏧', label: 'ماكينة صراف ATM', color: '#0284C7' },
   traffic:    { icon: '🚧', label: 'حالة الطرق والازدحام', color: '#E11D48' },
   offers:     { icon: '🛒', label: 'عروض وتخفيضات', color: '#10B981' },
@@ -22,6 +24,8 @@ export const NEWS_CATEGORIES = {
 };
 
 export const STATUS_TAGS = {
+  job_hiring:   { label: '💼 مطلوب فوراً (وظيفة شاغرة)', color: '#10B981', type: 'vacant' },
+  job_seeking:  { label: '🧑‍💼 باحث عن عمل (متاح للعمل)', color: '#8B5CF6', type: 'seeker' },
   active_green: { label: '🟢 يعمل / متاح الآن', color: '#10B981' },
   crowded_red:  { label: '🔴 ازدحام شديد / معطل', color: '#EF4444' },
   warning_amber:{ label: '⚠️ انتباه / تحويل طريق', color: '#F59E0B' },
@@ -142,7 +146,8 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
 
   // Apply Category filter
   if (category && category !== 'all') {
-    published = published.filter(i => i.category === category);
+    const cats = category.split(',');
+    published = published.filter(i => cats.includes(i.category));
   }
 
   published.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
@@ -198,6 +203,8 @@ export async function submitLiveReport({
   details = '',
   city = 'المنزلة',
   imageUrl = '',
+  phone = '',
+  salary = '',
   user = null,
   isAdminUser = false
 }) {
@@ -218,6 +225,8 @@ export async function submitLiveReport({
     details: details.trim(),
     city: city || 'المنزلة',
     imageUrl: imageUrl || '',
+    phone: phone ? phone.trim() : '',
+    salary: salary ? salary.trim() : '',
     userId: user?.uid || null,
     userName: user?.name || user?.displayName || (isAdminUser ? 'إدارة المنصة' : 'مواطن من المنزلة والمطرية'),
     userPhoto: user?.photoURL || null,

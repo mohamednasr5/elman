@@ -1561,3 +1561,52 @@ img, video, iframe, canvas, svg {
 .btn-reaction-pop:active {
   transform: scale(1.22) !important;
 }
+
+
+/* ═════════════════════════════════════════════════════════════════════
+   PULSING JOB BADGES & DISTINCTIVE HIGHLIGHTS (وظائف شاغرة وباحث عن عمل)
+   ═════════════════════════════════════════════════════════════════════ */
+.badge-job-pulse {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, #059669, #10B981) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  padding: 4px 12px !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5) !important;
+  animation: jobBadgePulse 1.8s ease-in-out infinite !important;
+}
+@keyframes jobBadgePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+}
+
+.badge-job-seeker-pulse {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, #7C3AED, #8B5CF6) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  padding: 4px 12px !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5) !important;
+  animation: jobSeekerBadgePulse 1.8s ease-in-out infinite !important;
+}
+@keyframes jobSeekerBadgePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.6); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 7px rgba(139, 92, 246, 0); }
+}
+
+.card-job-vacant {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.03) 0%, var(--surface, #fff) 100%) !important;
+}
+.card-job-seeker {
+  border-color: rgba(139, 92, 246, 0.4) !important;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.03) 0%, var(--surface, #fff) 100%) !important;
+}

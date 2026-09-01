@@ -1,6 +1,7 @@
 /**
  * LivePulseSection.js
  * Distinguished & Ultra-Animated Live City Pulse Component (يحدث الآن في المنزلة والمطرية)
+ * Supports Job Vacancies & Job Seekers with pulsing badges and direct WhatsApp contact.
  */
 
 import { getPublishedLiveNews, submitLiveReport, reactToLiveNews, NEWS_CATEGORIES, STATUS_TAGS } from '../../services/live-news.service.js';
@@ -37,7 +38,6 @@ export function mountLivePulseSection(containerId) {
         <!-- Luxury Gradient Header Banner -->
         <div style="background:linear-gradient(135deg,#0B1E30 0%,#1B4F72 60%,#0369A1 100%);border-radius:22px;padding:22px 24px;color:#fff;margin-bottom:18px;box-shadow:0 10px 30px rgba(11,30,48,0.2);border:1.5px solid rgba(245,166,35,0.35);position:relative;overflow:hidden">
           
-          <!-- Subtle animated background circle -->
           <div style="position:absolute;top:-40px;left:-40px;width:160px;height:160px;background:rgba(245,166,35,0.12);border-radius:50%;filter:blur(30px);pointer-events:none"></div>
           
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;position:relative;z-index:2">
@@ -54,13 +54,13 @@ export function mountLivePulseSection(containerId) {
                 </h2>
               </div>
               <p style="font-size:13px;color:rgba(255,255,255,0.85);margin:0;line-height:1.5">
-                نبض المدينة المباشر: ماكينات ATM الجاهزة، حالة الطرق والازدحام، الافتتاحات، وأقوى العروض الحية
+                نبض المدينة المباشر: فرص العمل والتوظيف، ماكينات ATM، حالة الطرق، والافتتاحات والعروض
               </p>
             </div>
 
             <button type="button" id="btn-open-live-report-modal" class="btn btn-shimmer-live" style="border-radius:14px;font-weight:800;padding:10px 22px;color:#fff;font-size:13.5px;display:inline-flex;align-items:center;gap:8px;cursor:pointer">
               <span style="font-size:16px">➕</span>
-              <span>شارك خبراً أو حالة الآن</span>
+              <span>شارك خبراً أو فرصة عمل الآن</span>
             </button>
           </div>
 
@@ -68,6 +68,9 @@ export function mountLivePulseSection(containerId) {
           <div class="live-pulse-filters" style="display:flex;align-items:center;gap:8px;overflow-x:auto;padding-top:16px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
             <button type="button" class="btn btn-sm live-filter-btn active" data-city="all" data-cat="all" style="border-radius:9999px;font-weight:800;font-size:12px;padding:6px 16px;background:#F5A623;color:#0B1E30;border:none;flex-shrink:0;box-shadow:0 2px 10px rgba(245,166,35,0.4)">
               الكل 🌐
+            </button>
+            <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="all" data-cat="jobs_vacant,jobs_seeker" style="border-radius:9999px;font-weight:800;font-size:12px;padding:6px 16px;color:#34D399;border-color:#34D399;flex-shrink:0;background:rgba(16,185,129,0.15)">
+              💼 وظائف وفرص عمل
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="المنزلة" data-cat="all" style="border-radius:9999px;font-weight:700;font-size:12px;padding:6px 16px;color:#fff;border-color:rgba(255,255,255,0.3);flex-shrink:0">
               📍 المنزلة
@@ -106,17 +109,17 @@ export function mountLivePulseSection(containerId) {
     const grid = document.getElementById('live-pulse-cards-grid');
     if (!grid) return;
 
-    const newsList = await getPublishedLiveNews({ city: activeCity, category: activeCat, limit: 12 });
+    const newsList = await getPublishedLiveNews({ city: activeCity, category: activeCat, limit: 16 });
     const user = getCurrentUser();
 
     if (!newsList.length) {
       grid.innerHTML = `
         <div style="grid-column:1/-1;text-align:center;padding:3rem 1.5rem;background:var(--surface,#fff);border-radius:20px;border:1.5px dashed var(--border,#e2e8f0);box-shadow:0 4px 20px rgba(0,0,0,0.02)">
           <div style="font-size:2.8rem;margin-bottom:10px;animation:pulseLive 1.5s infinite">🔥</div>
-          <h3 style="font-size:16px;font-weight:800;color:var(--text-primary,#0F2B48);margin:0 0 6px 0">لا توجد تحديثات مسجلة في هذا القسم حالياً</h3>
-          <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px 0">كن أول من يشارك خبراً أو حالة طريق أو ماكينة صراف في المنزلة والمطرية!</p>
+          <h3 style="font-size:16px;font-weight:800;color:var(--text-primary,#0F2B48);margin:0 0 6px 0">لا توجد تحديثات أو إعلانات مسجلة في هذا القسم حالياً</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px 0">كن أول من يشارك خبراً أو يعلن عن وظيفة شاغرة أو يطلب عملاً في المنزلة والمطرية!</p>
           <button type="button" class="btn btn-shimmer-live btn-open-report-trigger" style="border-radius:12px;font-weight:800;padding:8px 20px;color:#fff">
-            ➕ شارك خبراً الآن
+            ➕ أضف إعلاناً أو خبراً الآن
           </button>
         </div>
       `;
@@ -134,18 +137,31 @@ export function mountLivePulseSection(containerId) {
       const authorPts = Number(item.userPoints) || 350;
       const authorLvl = getLoyaltyLevelInfo(authorPts).currentLevel;
 
+      const isJobVacant = item.category === 'jobs_vacant' || item.statusTagKey === 'job_hiring';
+      const isJobSeeker = item.category === 'jobs_seeker' || item.statusTagKey === 'job_seeking';
+
       return `
-        <div class="live-news-card-luxury live-card-stagger" data-news-id="${item.id}" style="animation-delay:${index * 0.07}s">
+        <div class="live-news-card-luxury live-card-stagger ${isJobVacant ? 'card-job-vacant' : ''} ${isJobSeeker ? 'card-job-seeker' : ''}" data-news-id="${item.id}" style="animation-delay:${index * 0.07}s">
           <div>
-            <!-- Card Top: Category + Status Tag + Live Time -->
+            <!-- Card Top: Category + Pulsing Tag + Live Time -->
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-              <div style="display:flex;align-items:center;gap:6px">
-                <span class="badge" style="background:rgba(2,132,199,0.12);color:${cat.color};font-weight:800;font-size:11.5px;padding:4px 10px;border-radius:8px">
-                  ${cat.icon} ${cat.label}
-                </span>
-                <span class="badge" style="background:rgba(16,185,129,0.12);color:${tag.color};font-weight:800;font-size:11.5px;padding:4px 10px;border-radius:8px">
-                  ${tag.label}
-                </span>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                ${isJobVacant ? `
+                  <span class="badge-job-pulse">
+                    <span>💼</span> <span>وظيفة شاغرة تنبض</span>
+                  </span>
+                ` : isJobSeeker ? `
+                  <span class="badge-job-seeker-pulse">
+                    <span>🧑‍💼</span> <span>باحث عن عمل</span>
+                  </span>
+                ` : `
+                  <span class="badge" style="background:rgba(2,132,199,0.12);color:${cat.color};font-weight:800;font-size:11.5px;padding:4px 10px;border-radius:8px">
+                    ${cat.icon} ${cat.label}
+                  </span>
+                  <span class="badge" style="background:rgba(16,185,129,0.12);color:${tag.color};font-weight:800;font-size:11.5px;padding:4px 10px;border-radius:8px">
+                    ${tag.label}
+                  </span>
+                `}
               </div>
               <span style="font-size:11.5px;color:var(--text-muted);font-weight:700;display:flex;align-items:center;gap:4px">
                 <span style="color:#10B981">●</span> ${timeAgo(item.createdAt)}
@@ -157,17 +173,29 @@ export function mountLivePulseSection(containerId) {
               ${esc(item.title)}
             </h3>
 
-            <!-- Location -->
+            <!-- Location & City -->
             <div style="font-size:12.5px;color:var(--primary,#1B4F72);font-weight:800;display:flex;align-items:center;gap:4px;margin-bottom:8px">
               <span>📍</span>
-              <span>${esc(item.location)} (${esc(item.city || 'المنزلة')})</span>
+              <span>${esc(item.location)} (${esc(item.city || 'المنزلة والمطرية')})</span>
             </div>
 
             <!-- Details -->
             ${item.details ? `
-              <p style="font-size:12.5px;color:var(--text-secondary,#475569);line-height:1.55;margin:0 0 12px 0;background:var(--surface-2,#F8FAFC);padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.03)">
+              <p style="font-size:12.5px;color:var(--text-secondary,#475569);line-height:1.55;margin:0 0 10px 0;background:var(--surface-2,#F8FAFC);padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.03)">
                 ${esc(item.details)}
               </p>
+            ` : ''}
+
+            <!-- Direct Contact Button for Jobs -->
+            ${(isJobVacant || isJobSeeker) && item.phone ? `
+              <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+                <a href="https://wa.me/2${item.phone.replace(/\D/g,'')}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:#25D366;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(37,211,102,0.3)">
+                  <span>💬</span> <span>واتساب للتقديم: ${esc(item.phone)}</span>
+                </a>
+                <a href="tel:${esc(item.phone)}" class="btn btn-sm" style="background:#0F2B48;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+                  <span>📞 اتصال</span>
+                </a>
+              </div>
             ` : ''}
           </div>
 
@@ -254,12 +282,12 @@ export function mountLivePulseSection(containerId) {
 }
 
 /**
- * Modal to Submit a Live Report
+ * Modal to Submit a Live Report / Job Opportunity
  */
 export function openLiveReportModal(onSuccessCallback) {
   const user = getCurrentUser();
   if (!user) {
-    toast.info('يرجى تسجيل الدخول أولاً للمشاركة في نشر الأخبار والتحديثات الحية');
+    toast.info('يرجى تسجيل الدخول أولاً للمشاركة في نشر الأخبار والوظائف والتحديثات الحية');
     setTimeout(() => {
       window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href);
     }, 1200);
@@ -269,19 +297,19 @@ export function openLiveReportModal(onSuccessCallback) {
   const isUserAdmin = isAdmin(user);
 
   const modal = showModal({
-    title: '🔥 شارك خبراً أو حالة تحدث الآن',
+    title: '🔥 شارك خبراً أو أعلن عن وظيفة شاغرة / باحث عن عمل',
     size: 'md',
     content: `
       <form id="form-submit-live-report" style="display:flex;flex-direction:column;gap:14px" onsubmit="return false">
         
-        <div style="background:linear-gradient(135deg,rgba(2,132,199,0.08),rgba(245,166,35,0.08));border:1.5px solid rgba(2,132,199,0.25);border-radius:14px;padding:14px;font-size:13px;color:var(--text-primary);line-height:1.5">
-          📢 <strong>مرحباً بك!</strong> ساهم في إفادة أهالي المنزلة والمطرية بآخر التحديثات الحية.
-          ${isUserAdmin ? '<div style="color:#059669;font-weight:800;margin-top:6px">👑 بصفتك مشرفاً، سيتم نشر خبرك فوراً على الدليل!</div>' : '<div style="color:#D97706;font-weight:700;margin-top:6px">⏳ يتم مراجعة الأخبار سريعاً من فريق الإدارة واعتمادها فوراً لضمان دقة المعلومات وسيكسبك كل خبر معتمد +20 نقطة ولاء! ⭐</div>'}
+        <div style="background:linear-gradient(135deg,rgba(2,132,199,0.08),rgba(16,185,129,0.08));border:1.5px solid rgba(2,132,199,0.25);border-radius:14px;padding:14px;font-size:13px;color:var(--text-primary);line-height:1.5">
+          📢 <strong>أهلاً بك!</strong> يمكنك الآن مشاركة حالة طريق، ماكينة صراف، أو نشر <strong>وظيفة شاغرة</strong> أو طلب <strong>باحث عن عمل</strong> في المنزلة والمطرية.
+          ${isUserAdmin ? '<div style="color:#059669;font-weight:800;margin-top:6px">👑 بصفتك مشرفاً، سيتم نشر إعلانك فوراً على الدليل!</div>' : '<div style="color:#D97706;font-weight:700;margin-top:6px">⏳ يتم مراجعة الإعلانات والأخبار سريعاً واعتمادها وسيربح حسابك +20 نقطة ولاء! ⭐</div>'}
         </div>
 
         <div class="form-group" style="margin:0">
-          <label class="form-label" style="font-weight:800">عنوان الخبر / التحديث <span class="required">*</span></label>
-          <input type="text" id="live-input-title" class="form-input" placeholder="مثال: ماكينة بنك مصر تعمل الآن / ازدحام عند مدخل الكوبري" required />
+          <label class="form-label" style="font-weight:800">عنوان الخبر أو الإعلان الوظيفي <span class="required">*</span></label>
+          <input type="text" id="live-input-title" class="form-input" placeholder="مثال: مطلوب كاشير لمطعم بالمنزلة / صنايعي نجار متاح للعمل / ماكينة بنك مصر تعمل" required />
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -291,6 +319,7 @@ export function openLiveReportModal(onSuccessCallback) {
               <option value="المنزلة">📍 المنزلة</option>
               <option value="المطرية">🌊 المطرية</option>
               <option value="العصافرة">🌾 العصافرة والقرى المجاورة</option>
+              <option value="المنزلة والمطرية">🏙️ المنزلة والمطرية معاً</option>
             </select>
           </div>
 
@@ -320,16 +349,22 @@ export function openLiveReportModal(onSuccessCallback) {
           </div>
         </div>
 
+        <!-- Phone / WhatsApp for direct contact (Recommended for Jobs) -->
         <div class="form-group" style="margin:0">
-          <label class="form-label" style="font-weight:800">تفاصيل إضافية توضيحية</label>
-          <textarea id="live-input-details" class="form-textarea" rows="3" placeholder="اكتب تفاصيل أكثر لمساعدة الناس (مثلاً: حالة الطابور، متوفر سحب وإيداع، موعد الانتهاء...)"></textarea>
+          <label class="form-label" style="font-weight:800">رقم الهاتف / واتساب للتواصل (مهم للوظائف)</label>
+          <input type="tel" id="live-input-phone" class="form-input" placeholder="مثال: 01012345678" />
+        </div>
+
+        <div class="form-group" style="margin:0">
+          <label class="form-label" style="font-weight:800">تفاصيل الخبر أو متطلبات الوظيفة</label>
+          <textarea id="live-input-details" class="form-textarea" rows="3" placeholder="اكتب تفاصيل إضافية (مثل: مواعيد العمل، الراتب، الشروط، أو حالة الطريق...)"></textarea>
         </div>
 
       </form>
     `,
     buttons: [
       {
-        label: isUserAdmin ? '🚀 نشر الخبر فوراً' : '📤 إرسال الخبر للمراجعة',
+        label: isUserAdmin ? '🚀 نشر الإعلان فوراً' : '📤 إرسال الإعلان للمراجعة',
         type: 'primary',
         closeOnClick: false,
         onClick: async () => {
@@ -338,10 +373,11 @@ export function openLiveReportModal(onSuccessCallback) {
           const city = document.getElementById('live-select-city')?.value;
           const category = document.getElementById('live-select-category')?.value;
           const statusTagKey = document.getElementById('live-select-status-tag')?.value;
+          const phone = document.getElementById('live-input-phone')?.value.trim();
           const details = document.getElementById('live-input-details')?.value.trim();
 
           if (!title || !location) {
-            toast.warning('يرجى ملء عنوان الخبر وتحديد المكان');
+            toast.warning('يرجى ملء عنوان الإعلان وتحديد المكان');
             return;
           }
 
@@ -352,25 +388,36 @@ export function openLiveReportModal(onSuccessCallback) {
               city,
               category,
               statusTagKey,
+              phone,
               details,
               user,
               isAdminUser: isUserAdmin
             });
 
             if (res.isPublished) {
-              toast.success('تم نشر الخبر بنجاح على الدليل! 🔥');
+              toast.success('تم نشر الإعلان بنجاح على الدليل! 🔥');
             } else {
-              toast.success('تم إرسال خبرك بنجاح! سيتم اعتماده ونشره خلال لحظات وسيربح حسابك نقاط ولاء ⭐');
+              toast.success('تم إرسال إعلانك بنجاح! سيتم اعتماده ونشره خلال لحظات وسيربح حسابك نقاط ولاء ⭐');
             }
 
             modal.close();
             if (onSuccessCallback) onSuccessCallback();
           } catch (err) {
-            toast.error(err.message || 'فشل إرسال الخبر');
+            toast.error(err.message || 'فشل إرسال الإعلان');
           }
         }
       },
       { label: 'إلغاء', type: 'ghost', closeOnClick: true }
     ]
   });
+
+  // Auto-switch status tag when choosing job category
+  const catSelect = document.getElementById('live-select-category');
+  const tagSelect = document.getElementById('live-select-status-tag');
+  if (catSelect && tagSelect) {
+    catSelect.addEventListener('change', () => {
+      if (catSelect.value === 'jobs_vacant') tagSelect.value = 'job_hiring';
+      else if (catSelect.value === 'jobs_seeker') tagSelect.value = 'job_seeking';
+    });
+  }
 }
