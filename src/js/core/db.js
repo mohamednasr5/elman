@@ -684,24 +684,29 @@ function saveToLocalBroadcastCache(notification) {
 /**
  * Broadcast a new place notification to all users across the directory
  */
+/**
+ * Broadcast a new place notification to all users across the directory
+ */
 export async function broadcastNewPlaceNotification(place) {
   if (!place) return;
   const placeId = place.id || place._key || place.slug;
-  const notifId = `notif_new_place_${placeId}_${Date.now()}`;
-  const address = [place.area, place.address].filter(Boolean).join(' — ') || 'مدينة المنزلة';
+  const notifId = 'notif_new_place_' + placeId + '_' + Date.now();
+  const address = [place.area, place.address].filter(Boolean).join(' — ') || 'مدينة المنزلة والمطرية';
+  const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || place._key || placeId);
   
   const notification = {
     id: notifId,
     type: 'new_place',
-    title: '🎉 انضمام نشاط جديد لدليل المنزلة والمطرية',
+    title: '🎉 انضمام نشاط جديد: ' + (place.name || 'نشاط جديد'),
     placeId: placeId,
     placeName: place.name || 'نشاط تجاري',
     placeAddress: address,
     placeSlug: place.slug || place._key || placeId,
-    message: `(${place.name}) من (${address}) أنضم حديثاً إلى دليل المنزلة والمطرية الرقمي.`,
+    message: '(' + (place.name || 'مكان جديد') + ') من (' + address + ') انضم حديثاً إلى دليل المنزلة والمطرية.',
     actionText: 'مشاهدة المكان 👁️',
-    actionUrl: `place.html?slug=${encodeURIComponent(place.slug || place._key || placeId)}`,
-    icon: '🏪',
+    actionUrl: targetUrl,
+    url: targetUrl,
+    icon: './icons/icon-192x192.png',
     createdAt: Date.now(),
     isRead: false
   };
@@ -709,14 +714,20 @@ export async function broadcastNewPlaceNotification(place) {
   // 1. Save to local broadcast cache immediately
   saveToLocalBroadcastCache(notification);
 
-  // 2. Try saving to Firebase global node
+  // 2. Trigger Native Mobile & PWA Notification
+  triggerNativePwaNotification(notification);
+
+  // 3. Save to Firebase global nodes
   try {
-    await dbSet(`globalNotifications/${notifId}`, notification);
+    await Promise.all([
+      dbSet('globalNotifications/' + notifId, notification).catch(() => {}),
+      dbSet('notifications/' + notifId, notification).catch(() => {})
+    ]);
   } catch (_) {}
 
-  // 3. Send to Cloudflare Worker to broadcast with admin credentials if available
+  // 4. Send to Cloudflare Worker
   try {
-    fetch(`${WORKER_URL}/api/notifications/broadcast`, {
+    fetch(WORKER_URL + '/api/notifications/broadcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'new_place', notification, place }),
@@ -731,19 +742,21 @@ export async function broadcastNewPlaceNotification(place) {
 export async function broadcastPlaceVerifiedNotification(place) {
   if (!place) return;
   const placeId = place.id || place._key || place.slug;
-  const notifId = `notif_verified_${placeId}_${Date.now()}`;
+  const notifId = 'notif_verified_' + placeId + '_' + Date.now();
+  const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || place._key || placeId);
 
   const notification = {
     id: notifId,
     type: 'place_verified',
-    title: '👑 توثيق رسمي جديد في المنزلة والمطرية',
+    title: '👑 توثيق رسمي جديد: ' + (place.name || 'مكان موثق'),
     placeId: placeId,
     placeName: place.name || 'المكان',
     placeSlug: place.slug || place._key || placeId,
-    message: `وثّق (${place.name}) ملفه لكي يظهر أمام الكل في كامل دليل المنزلة والمطرية الرقمي أولاً!`,
-    actionText: 'وثّق ملفك الآن لكي تظهر مثله 🚀',
-    actionUrl: 'https://wa.me/wasendernew',
-    icon: '👑',
+    message: 'تم توثيق (' + (place.name || 'المكان') + ') رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!',
+    actionText: 'مشاهدة المكان الموثق 🚀',
+    actionUrl: targetUrl,
+    url: targetUrl,
+    icon: './icons/icon-192x192.png',
     createdAt: Date.now(),
     isRead: false
   };
@@ -751,20 +764,52 @@ export async function broadcastPlaceVerifiedNotification(place) {
   // 1. Save to local broadcast cache immediately
   saveToLocalBroadcastCache(notification);
 
-  // 2. Try saving to Firebase global node
+  // 2. Trigger Native Mobile & PWA Notification
+  triggerNativePwaNotification(notification);
+
+  // 3. Save to Firebase global nodes
   try {
-    await dbSet(`globalNotifications/${notifId}`, notification);
+    await Promise.all([
+      dbSet('globalNotifications/' + notifId, notification).catch(() => {}),
+      dbSet('notifications/' + notifId, notification).catch(() => {})
+    ]);
   } catch (_) {}
 
-  // 3. Send to Cloudflare Worker
+  // 4. Send to Cloudflare Worker
   try {
-    fetch(`${WORKER_URL}/api/notifications/broadcast`, {
+    fetch(WORKER_URL + '/api/notifications/broadcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'place_verified', notification, place }),
       signal: AbortSignal.timeout(4000)
     }).catch(() => {});
   } catch (_) {}
+}
+
+function triggerNativePwaNotification(notification) {
+  if (typeof window === 'undefined') return;
+
+  // 1. Dispatch custom event for in-app UI bell update
+  window.dispatchEvent(new CustomEvent('manzala:new_broadcast_notification', { detail: notification }));
+
+  // 2. Post to Service Worker to display native Mobile/PWA system notification
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      if (reg && reg.showNotification && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        reg.showNotification(notification.title, {
+          body: notification.message,
+          icon: './icons/icon-192x192.png',
+          badge: './icons/icon-96x96.png',
+          dir: 'rtl',
+          lang: 'ar',
+          vibrate: [150, 50, 150, 50, 200],
+          tag: notification.id,
+          renotify: true,
+          data: { url: notification.url || notification.actionUrl || './' }
+        });
+      }
+    }).catch(() => {});
+  }
 }
 
 /** Get all notifications for a user (combining personal profile visits & global broadcasts) */

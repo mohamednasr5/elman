@@ -61,23 +61,35 @@ export function getLoyaltyLevelInfo(points = 0) {
 /**
  * Fetch fresh user loyalty data from Firebase
  */
+/**
+ * Fetch fresh user loyalty data from Firebase (with multi-path fallback)
+ */
 export async function getUserLoyaltyProfile(uid) {
-  if (!uid) return null;
-  const db = getDB();
-  const snap = await db.ref(`users/${uid}/loyalty`).once('value');
-  const data = snap.val() || {};
+  if (!uid) return { points: 0, totalEarned: 0, history: [], lastDailyBonusDate: null };
+  try {
+    const db = getDB();
+    const [snap, userSnap] = await Promise.all([
+      db.ref('users/' + uid + '/loyalty').once('value').catch(() => null),
+      db.ref('users/' + uid).once('value').catch(() => null)
+    ]);
+    const data = (snap && snap.exists()) ? (snap.val() || {}) : {};
+    const uData = (userSnap && userSnap.exists()) ? (userSnap.val() || {}) : {};
 
-  return {
-    points: data.points || 0,
-    totalEarned: data.totalEarned || data.points || 0,
-    history: data.history ? Object.values(data.history).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)) : [],
-    lastDailyBonusDate: data.lastDailyBonusDate || null
-  };
+    const pts = Number(data.points ?? uData.points ?? 0);
+    const earned = Number(data.totalEarned ?? data.points ?? uData.points ?? pts);
+
+    return {
+      points: pts,
+      totalEarned: earned,
+      history: data.history ? Object.values(data.history).sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0)) : [],
+      lastDailyBonusDate: data.lastDailyBonusDate || null
+    };
+  } catch (err) {
+    console.debug('[LoyaltyService] Error reading loyalty profile:', err);
+    return { points: 0, totalEarned: 0, history: [], lastDailyBonusDate: null };
+  }
 }
 
-/**
- * Award points to a user for an activity
- */
 export async function awardPoints(uid, ruleKey, customMeta = {}) {
   if (!uid) return null;
   const rule = POINTS_RULES[ruleKey] || { points: 10, label: 'مكافأة تفاعل' };
