@@ -1,15 +1,17 @@
 /**
- * page-shell.js — Shared page initialization for all standalone HTML pages
- * Injects header/footer/bottom-nav/PWA banner and sets up common functionality
+ * page-shell.js
+ * Injects shared Header, BottomNav, Footer, and PWA Banner.
+ * Initializes Firebase, Auth, Theme, Floating Voice Assistant, Realtime Live Sync, and FCM.
  */
+
 import { initFirebase } from './firebase.js';
-import { initAuth, signOut, waitForAuth, onAuthStateChange, isAdmin } from './auth.js';
+import { initAuth, onAuthStateChange, signOut, waitForAuth, isAdmin, getCurrentUser } from './auth.js';
 import { getSettings, getUserNotifications } from './db.js';
 import { toast } from '../ui/components/Toast.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
 import { initRealtimePwaSyncBus } from '../services/realtime-sync.service.js';
-import { initFcmMessaging } from '../services/fcm.service.js';
 import { initLiveNotificationSubscriber, updateAllNotificationBadges } from '../services/notification.service.js';
+import { initFcmMessaging } from '../services/fcm.service.js';
 
 /* ─────────────────────────────────────────────────────────
    HTML BUILDERS
@@ -20,29 +22,30 @@ function _headerHTML(active) {
     ['places.html',     'الأماكن'],
     ['categories.html', 'التصنيفات'],
     ['offers.html',     'العروض'],
+    ['now.html',        'يحدث الآن 🔥'],
+    ['around-me.html',  'بالقرب مني 🧭'],
   ];
+
   return `
 <header class="header" id="site-header" role="banner">
-  <div class="header__inner container">
+  <div class="container header__inner">
     <a href="index.html" class="header__logo" aria-label="دليل المنزلة والمطرية الرقمي">
-      <img src="./icons/icon-72x72.png" alt="" class="header__logo-icon" width="36" height="36"/>
+      <img src="./icons/icon-72x72.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="36" height="36"/>
       <div class="header__logo-text">
         <span class="header__logo-name">دليل المنزلة والمطرية</span>
-        <span class="header__logo-tagline">الدليل الرقمي الشامل للمدن والقرى المجاورة</span>
       </div>
     </a>
 
     <div class="header__search" role="search">
-      <div class="form-input-wrapper">
-        <span class="form-input-icon">🔍</span>
-        <input type="search" id="header-search-input" class="form-input"
-               placeholder="ابحث في المنزلة والمطرية والقرى..." autocomplete="off"/>
-      </div>
+      <input type="search" id="header-search-input" class="header__search-input"
+             placeholder="ابحث في المنزلة والمطرية والقرى المجاورة..."
+             autocomplete="off" aria-label="بحث في الدليل"/>
+      <span class="header__search-icon" aria-hidden="true">🔍</span>
     </div>
 
-    <nav class="header__nav" role="navigation" aria-label="التنقل الرئيسي">
-      ${links.map(([href, label]) =>
-        `<a href="${href}" class="header__nav-link${href === active ? ' active' : ''}">${label}</a>`
+    <nav class="header__nav" aria-label="التنقل الرئيسي">
+      ${links.map(([file, label]) =>
+        `<a href="${file}" class="header__nav-link${file === active ? ' active' : ''}">${label}</a>`
       ).join('')}
     </nav>
 
@@ -296,10 +299,14 @@ export async function initPage(activeFile = '') {
     location.href = 'search.html';
   });
 
-  /* 9. Auth UI (reactive) */
-  onAuthStateChange(user => _renderUser(user));
+  /* 9. Auth UI & Live Notification / FCM Subscriber (reactive) */
+  onAuthStateChange(user => {
+    _renderUser(user);
+    initLiveNotificationSubscriber(user?.uid);
+    initFcmMessaging(user);
+  });
 
-  /* 9. Dynamic settings (WhatsApp link) */
+  /* 10. Dynamic settings (WhatsApp link) */
   try {
     const s = await getSettings();
     const waLink = s?.contact?.whatsappLink;
@@ -308,12 +315,13 @@ export async function initPage(activeFile = '') {
     }
   } catch (_) {}
 
-  /* 10. PWA Install banner */
+  /* 11. PWA Install banner */
   _setupPwa();
 
-  /* 11. Service Worker */
-  if ('serviceWorker' in navigator)
+  /* 12. Service Worker */
+  if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
 
   // Automatically purge legacy stale data caches (Keep only Auth & Theme)
   try {
@@ -327,12 +335,10 @@ export async function initPage(activeFile = '') {
     staleKeys.forEach(k => localStorage.removeItem(k));
   } catch (_) {}
 
-  /* 12. Universal Realtime PWA Sync Bus (0ms Sync) */
+  /* 13. Universal Realtime PWA Sync Bus (0ms Sync) */
   initRealtimePwaSyncBus();
-  initLiveNotificationSubscriber(user?.uid);
-  initFcmMessaging(user);
 
-  /* 13. Instant Link Prefetching for 0ms page loads */
+  /* 14. Instant Link Prefetching for 0ms page loads */
   _setupInstantPrefetch();
 }
 
@@ -413,7 +419,6 @@ function _setupInstantPrefetch() {
     if (a) prefetch(a.href);
   }, { passive: true });
 
-  // Eager prefetch core pages when browser is idle (0ms navigation everywhere)
   const corePages = ['index.html', 'places.html', 'categories.html', 'offers.html', 'search.html'];
   const idlePrefetch = () => {
     corePages.forEach(p => prefetch(p));
@@ -425,14 +430,8 @@ function _setupInstantPrefetch() {
   }
 }
 
-/* ─────────────────────────────────────────────────────────
-   Re-export helpers needed by page modules
-───────────────────────────────────────────────────────── */
 export { waitForAuth, isAdmin };
 
-/* ─────────────────────────────────────────────────────────
-   PRIVATE HELPERS
-───────────────────────────────────────────────────────── */
 function _inject(slotId, html) {
   const slot = document.getElementById(slotId);
   if (!slot) return;
@@ -449,7 +448,7 @@ function _renderUser(user) {
       <div style="display:flex;align-items:center;gap:10px">
         <a href="dashboard.html?section=notifications" class="header-notif-btn" title="الإشعارات والزيارات" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);color:var(--text-primary);text-decoration:none;font-size:16px;transition:all 0.2s">
           <span>🔔</span>
-          <span id="header-notifs-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#EF4444;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:9999px;border:1.5px solid #fff;min-width:16px;text-align:center">0</span>
+          <span id="header-notifs-badge" class="header-notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#EF4444;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:9999px;border:1.5px solid #fff;min-width:16px;text-align:center">0</span>
         </a>
 
         <div style="position:relative">
@@ -466,24 +465,14 @@ function _renderUser(user) {
             <a href="dashboard.html?section=notifications"    class="header__dropdown-item" role="menuitem">🔔 الإشعارات والزيارات</a>
             <a href="dashboard.html?section=add"              class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>
             ${isAdmin(user)
-              ? '<a href="admin/index.html" class="header__dropdown-item" style="color:var(--secondary);font-weight:bold" role="menuitem">⚙️ لوحة الإدارة</a>'
+              ? '<a href="admin.html" class="header__dropdown-item" style="color:var(--secondary,#F5A623);font-weight:bold" role="menuitem">⚙️ لوحة الإدارة</a>'
               : ''}
-            <div class="header__dropdown-divider"></div>
-            <button id="logout-btn" class="header__dropdown-item header__dropdown-item--danger" role="menuitem">
-              🚪 تسجيل الخروج
-            </button>
+            <a href="dashboard.html?section=loyalty"          class="header__dropdown-item" role="menuitem">🎁 نادي الولاء والنقاط</a>
+            <hr style="margin:4px 0;border:none;border-top:1px solid var(--border)"/>
+            <button class="header__dropdown-item" id="logout-btn" role="menuitem" style="color:var(--danger)">🚪 خروج</button>
           </div>
         </div>
       </div>`;
-
-    getUserNotifications(user.uid).then(notifs => {
-      const unread = notifs.filter(n => !n.isRead).length;
-      const b = document.getElementById('header-notifs-badge');
-      if (b) {
-        b.textContent = unread;
-        b.style.display = unread > 0 ? 'inline-block' : 'none';
-      }
-    }).catch(() => {});
 
     const btn = document.getElementById('usr-btn');
     const dd  = document.getElementById('usr-dd');
@@ -516,14 +505,12 @@ function _renderUser(user) {
 
 let _dp = null;
 function _setupPwa() {
-  // Capture native install prompt
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _dp = e;
     _showPwaBanner();
   });
 
-  // Also check and show banner after delay on desktop/mobile if not installed/dismissed
   setTimeout(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     if (!isStandalone && !localStorage.getItem('pwa-dismissed')) {
@@ -531,128 +518,56 @@ function _setupPwa() {
     }
   }, 3500);
 
-  // Setup click listeners immediately on document to ensure they always work
   document.addEventListener('click', e => {
-    // Close button
     if (e.target.closest('#pwa-banner-close')) {
       e.preventDefault();
       _dismissPwaBanner();
       return;
     }
-
-    // Install button
     if (e.target.closest('#pwa-install-btn')) {
       e.preventDefault();
-      if (_dp) {
-        _dp.prompt();
-        _dp.userChoice.then(() => { _dp = null; });
-      } else {
-        _showManualInstallInstructions();
-      }
-      _dismissPwaBanner();
+      _triggerInstall();
+      return;
     }
   });
 }
 
-function _showManualInstallInstructions() {
-  const ua = navigator.userAgent.toLowerCase();
-  const isIos = /iphone|ipad|ipod/.test(ua);
-  const isAndroid = /android/.test(ua);
-  
-  let title = 'تثبيت التطبيق';
-  let html = '';
-
-  if (isIos) {
-    title = 'تثبيت التطبيق على الآيفون';
-    html = `
-      <div style="text-align:center;line-height:1.7;padding:10px 0;">
-        <p style="margin-bottom:15px;font-size:15px;">لتثبيت التطبيق على جهازك، اتبع الخطوات التالية:</p>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:#f8f9fa;padding:12px;border-radius:8px;">
-          <span style="font-size:24px;color:var(--primary);">1️⃣</span>
-          <span>اضغط على زر <strong>المشاركة (Share)</strong> في شريط المتصفح أسفل الشاشة <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin:0 4px;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg></span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:#f8f9fa;padding:12px;border-radius:8px;">
-          <span style="font-size:24px;color:var(--primary);">2️⃣</span>
-          <span>اختر <strong>إضافة للشاشة الرئيسية (Add to Home Screen)</strong> <span>➕</span></span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;background:#f8f9fa;padding:12px;border-radius:8px;">
-          <span style="font-size:24px;color:var(--primary);">3️⃣</span>
-          <span>اضغط على <strong>إضافة (Add)</strong> بالأعلى لتأكيد التثبيت</span>
-        </div>
-      </div>
-    `;
-  } else if (isAndroid) {
-    title = 'تثبيت التطبيق على الأندرويد';
-    html = `
-      <div style="text-align:center;line-height:1.7;padding:10px 0;">
-        <p style="margin-bottom:15px;font-size:15px;">لتثبيت التطبيق على جهازك، اتبع الخطوات التالية:</p>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:#f8f9fa;padding:12px;border-radius:8px;">
-          <span style="font-size:24px;color:var(--primary);">1️⃣</span>
-          <span>اضغط على زر <strong>القائمة (⋮)</strong> في أعلى يسار متصفح جوجل كروم</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:#f8f9fa;padding:12px;border-radius:8px;">
-          <span style="font-size:24px;color:var(--primary);">2️⃣</span>
-          <span>اختر <strong>تثبيت التطبيق (Install app)</strong> أو إضافة للشاشة الرئيسية</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;background:#f8f9fa;padding:12px;border-radius:8px;">
-          <span style="font-size:24px;color:var(--primary);">3️⃣</span>
-          <span>اضغط <strong>تثبيت (Install)</strong> لتأكيد العملية</span>
-        </div>
-      </div>
-    `;
-  } else {
-    title = 'تثبيت التطبيق على الكمبيوتر';
-    html = `
-      <div style="text-align:center;line-height:1.7;padding:10px 0;">
-        <p style="margin-bottom:15px;font-size:15px;">لتثبيت التطبيق على الكمبيوتر:</p>
-        <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;">
-          اضغط على أيقونة التثبيت <strong>(⊕ أو شاشة بجوارها سهم)</strong> الموجودة في نهاية <strong>شريط عنوان المتصفح</strong> بالأعلى، ثم اختر تثبيت.
-        </div>
-      </div>
-    `;
-  }
-
-  // Import Modal dynamically to avoid circular dependencies if any, though top-level is better, we can just use the DOM
-  const m = document.createElement('div');
-  m.className = 'modal-backdrop visible';
-  m.style.zIndex = '99999';
-  m.innerHTML = `
-    <div class="modal visible">
-      <div class="modal__header">
-        <h3 class="modal__title">📱 ${title}</h3>
-        <button class="modal__close" onclick="this.closest('.modal-backdrop').remove()">×</button>
-      </div>
-      <div class="modal__body">
-        ${html}
-        <div style="margin-top:20px;text-align:center;">
-          <button class="btn btn-primary" onclick="this.closest('.modal-backdrop').remove()" style="width:100%">حسناً، فهمت</button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(m);
-}
-
 function _showPwaBanner() {
   const b = document.getElementById('pwa-banner');
-  if (b && !localStorage.getItem('pwa-dismissed')) {
-    b.removeAttribute('hidden');
-    requestAnimationFrame(() => {
-      b.classList.add('visible');
-    });
+  if (b) {
+    b.hidden = false;
+    b.style.display = 'flex';
   }
 }
 
 function _dismissPwaBanner() {
   const b = document.getElementById('pwa-banner');
   if (b) {
-    b.classList.remove('visible');
-    setTimeout(() => {
-      b.setAttribute('hidden', '');
-    }, 400);
+    b.hidden = true;
+    b.style.display = 'none';
   }
-  localStorage.setItem('pwa-dismissed', '1');
+  localStorage.setItem('pwa-dismissed', 'true');
 }
 
-function _h(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function _a(s){ return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+async function _triggerInstall() {
+  if (_dp) {
+    _dp.prompt();
+    const { outcome } = await _dp.userChoice;
+    if (outcome === 'accepted') {
+      _dismissPwaBanner();
+      toast.success('شكراً لتثبيت تطبيق دليل المنزلة والمطرية! 🎉');
+    }
+    _dp = null;
+  } else {
+    toast.info('لتثبيت التطبيق: افتح قائمة المتصفح (⋮) واختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية"');
+  }
+}
+
+function _h(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function _a(str) {
+  if (!str) return '';
+  return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
