@@ -482,6 +482,230 @@ if (typeof window !== 'undefined') {
 }
 
 // ─────────────────────────────────────────────
+//  1. OVERVIEW & STATISTICS SECTION (نظرة عامة والإحصائيات)
+// ─────────────────────────────────────────────
+async function renderAdminOverview($container) {
+  $container.innerHTML = '<div class="spinner spinner-lg" style="margin:4rem auto"></div>';
+
+  try {
+    if (!adminCache.places || !adminCache.users || !adminCache.products || !adminCache.offers) {
+      const [places, users, products, offers, reviews, cats, news] = await Promise.all([
+        dbGet('places').catch(() => ({})),
+        dbGet('users').catch(() => ({})),
+        dbGet('products').catch(() => ({})),
+        dbGet('offers').catch(() => ({})),
+        getAllReviews().catch(() => []),
+        getCategories().catch(() => []),
+        getPublishedLiveNews({ limit: 100 }).catch(() => [])
+      ]);
+      adminCache.places = places || {};
+      adminCache.users = users || {};
+      adminCache.products = products || {};
+      adminCache.offers = offers || {};
+      adminCache.reviews = reviews || [];
+      adminCache.categories = cats || [];
+      adminCache.liveNews = news || [];
+    }
+
+    const placesList = Object.values(adminCache.places || {});
+    const usersList = Object.values(adminCache.users || {});
+    const productsList = Object.values(adminCache.products || {});
+    const offersList = Object.values(adminCache.offers || {});
+    const reviewsList = adminCache.reviews || [];
+    const newsList = adminCache.liveNews || [];
+
+    const totalPlaces = placesList.length;
+    const verifiedPlaces = placesList.filter(p => p.isVerified).length;
+    const sponsoredPlaces = placesList.filter(p => p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > Date.now())).length;
+    const totalUsers = usersList.length;
+    const totalProducts = productsList.length;
+    const totalOffers = offersList.length;
+    const totalReviews = reviewsList.length;
+    const totalNews = newsList.length;
+
+    // Recent Places (last 5)
+    const recentPlaces = [...placesList]
+      .sort((a, b) => (Number(b.createdAt || b.updatedAt || 0)) - (Number(a.createdAt || a.updatedAt || 0)))
+      .slice(0, 5);
+
+    $container.innerHTML = `
+      <div class="admin-fade-in">
+        
+        <!-- Welcome Header -->
+        <div class="dashboard-header" style="margin-bottom:24px">
+          <div>
+            <h1 class="dashboard-header__title" style="color:#FFFFFF;font-weight:900;display:flex;align-items:center;gap:10px">
+              <span>📊</span>
+              <span>لوحة الإحصائيات ونظرة عامة</span>
+            </h1>
+            <div class="dashboard-header__subtitle" style="color:#CBD5E1;font-size:13.5px">
+              متابعة حية وشاملة لكافة أنشطة دليل المنزلة والمطرية الرقمي
+            </div>
+          </div>
+        </div>
+
+        <!-- 8 Stat Cards Grid -->
+        <div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-bottom:28px">
+          
+          <div class="stat-card" style="background:#0F2B48;border:1.5px solid #1E3A5F;border-radius:16px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:13px;color:#94A3B8;font-weight:700">إجمالي الأماكن</span>
+              <span style="font-size:22px">📍</span>
+            </div>
+            <div style="font-size:2rem;font-weight:900;color:#FFFFFF">${totalPlaces.toLocaleString('ar-EG')}</div>
+            <div style="font-size:12px;color:#38BDF8;margin-top:4px">${verifiedPlaces} مكان موثق رسمي</div>
+          </div>
+
+          <div class="stat-card" style="background:#0F2B48;border:1.5px solid #1E3A5F;border-radius:16px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:13px;color:#94A3B8;font-weight:700">الأماكن الموثقة</span>
+              <span style="font-size:22px">👑</span>
+            </div>
+            <div style="font-size:2rem;font-weight:900;color:#10B981">${verifiedPlaces.toLocaleString('ar-EG')}</div>
+            <div style="font-size:12px;color:#34D399;margin-top:4px">موثقة بالعلامة الزرقاء</div>
+          </div>
+
+          <div class="stat-card" style="background:#0F2B48;border:1.5px solid #1E3A5F;border-radius:16px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:13px;color:#94A3B8;font-weight:700">إعلانات نشطة مدفوعة</span>
+              <span style="font-size:22px">📢</span>
+            </div>
+            <div style="font-size:2rem;font-weight:900;color:#F5A623">${sponsoredPlaces.toLocaleString('ar-EG')}</div>
+            <div style="font-size:12px;color:#FBBF24;margin-top:4px">تتصدر نتائج البحث أولاً</div>
+          </div>
+
+          <div class="stat-card" style="background:#0F2B48;border:1.5px solid #1E3A5F;border-radius:16px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:13px;color:#94A3B8;font-weight:700">المستخدمين المسجلين</span>
+              <span style="font-size:22px">👥</span>
+            </div>
+            <div style="font-size:2rem;font-weight:900;color:#8B5CF6">${totalUsers.toLocaleString('ar-EG')}</div>
+            <div style="font-size:12px;color:#A78BFA;margin-top:4px">حسابات نشطة بالمنصة</div>
+          </div>
+
+          <div class="stat-card" style="background:#0F2B48;border:1.5px solid #1E3A5F;border-radius:16px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:13px;color:#94A3B8;font-weight:700">يحدث الآن (الأخبار)</span>
+              <span style="font-size:22px">🔥</span>
+            </div>
+            <div style="font-size:2rem;font-weight:900;color:#EF4444">${totalNews.toLocaleString('ar-EG')}</div>
+            <div style="font-size:12px;color:#F87171;margin-top:4px">تحديثات الطرق وماكينات ATM</div>
+          </div>
+
+          <div class="stat-card" style="background:#0F2B48;border:1.5px solid #1E3A5F;border-radius:16px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:13px;color:#94A3B8;font-weight:700">العروض والخصومات</span>
+              <span style="font-size:22px">🛒</span>
+            </div>
+            <div style="font-size:2rem;font-weight:900;color:#EC4899">${totalOffers.toLocaleString('ar-EG')}</div>
+            <div style="font-size:12px;color:#F472B6;margin-top:4px">عروض حصرية نشطة</div>
+          </div>
+
+          <div class="stat-card" style="background:#0F2B48;border:1.5px solid #1E3A5F;border-radius:16px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:13px;color:#94A3B8;font-weight:700">كتالوج المنتجات</span>
+              <span style="font-size:22px">📦</span>
+            </div>
+            <div style="font-size:2rem;font-weight:900;color:#06B6D4">${totalProducts.toLocaleString('ar-EG')}</div>
+            <div style="font-size:12px;color:#22D3EE;margin-top:4px">منتجات معروضة للجمهور</div>
+          </div>
+
+          <div class="stat-card" style="background:#0F2B48;border:1.5px solid #1E3A5F;border-radius:16px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:13px;color:#94A3B8;font-weight:700">التقييمات والآراء</span>
+              <span style="font-size:22px">⭐</span>
+            </div>
+            <div style="font-size:2rem;font-weight:900;color:#F59E0B">${totalReviews.toLocaleString('ar-EG')}</div>
+            <div style="font-size:12px;color:#FCD34D;margin-top:4px">تقييم ومراجعة موثوقة</div>
+          </div>
+
+        </div>
+
+        <!-- Quick Shortcuts Grid -->
+        <div style="background:#0F2B48;border-radius:18px;padding:22px;border:1px solid rgba(255,255,255,0.1);margin-bottom:28px">
+          <h2 style="font-size:16px;font-weight:800;color:#FFFFFF;margin:0 0 16px 0;display:flex;align-items:center;gap:8px">
+            <span>⚡</span>
+            <span>روابط وإجراءات سريعة</span>
+          </h2>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a href="admin.html?section=places" class="btn btn-sm" style="background:#1B4F72;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+              📍 إدارة الأماكن
+            </a>
+            <a href="admin.html?section=live-news" class="btn btn-sm" style="background:#EF4444;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+              🔥 نشر خبر في يحدث الآن
+            </a>
+            <a href="admin.html?section=verification" class="btn btn-sm" style="background:#10B981;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+              👑 طلبات التوثيق
+            </a>
+            <a href="admin.html?section=users" class="btn btn-sm" style="background:#8B5CF6;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+              👥 رتب ونقاط المستخدمين
+            </a>
+            <a href="admin.html?section=reviews" class="btn btn-sm" style="background:#F5A623;color:#0B1E30;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+              ⭐ إدارة التقييمات
+            </a>
+            <a href="admin.html?section=settings" class="btn btn-sm" style="background:#334155;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+              ⚙️ إعدادات المنصة وبوت تليجرام
+            </a>
+          </div>
+        </div>
+
+        <!-- Recent Places Table -->
+        <div style="background:#0F2B48;border-radius:18px;padding:22px;border:1px solid rgba(255,255,255,0.1)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+            <h2 style="font-size:16px;font-weight:800;color:#FFFFFF;margin:0;display:flex;align-items:center;gap:8px">
+              <span>🆕</span>
+              <span>أحدث الأماكن المسجلة حديثاً</span>
+            </h2>
+            <a href="admin.html?section=places" style="color:#38BDF8;font-size:13px;font-weight:800;text-decoration:none">
+              عرض كل الأماكن (${totalPlaces}) ←
+            </a>
+          </div>
+
+          <div class="dashboard-table-wrapper" style="border-radius:12px;border:1px solid rgba(255,255,255,0.08);overflow:hidden">
+            <table class="dashboard-table">
+              <thead style="background:#0B1E30;color:#F8FAFC">
+                <tr>
+                  <th style="color:#F8FAFC;font-weight:800">اسم المكان</th>
+                  <th style="color:#F8FAFC;font-weight:800">التصنيف</th>
+                  <th style="color:#F8FAFC;font-weight:800">المنطقة</th>
+                  <th style="color:#F8FAFC;font-weight:800">الهاتف</th>
+                  <th style="color:#F8FAFC;font-weight:800">الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${recentPlaces.map(p => `
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+                    <td style="padding:10px 14px">
+                      <strong style="color:#FFFFFF">${escHtml(p.name)}</strong>
+                      ${p.isVerified ? '<span style="color:#10B981;font-size:11px;font-weight:800;margin-right:6px">✓ موثق</span>' : ''}
+                    </td>
+                    <td style="color:#E2E8F0;font-weight:700">${escHtml(p.categoryName || p.categoryId || 'عام')}</td>
+                    <td style="color:#FCD34D;font-weight:800">📍 ${escHtml(p.area || 'المنزلة')}</td>
+                    <td style="color:#38BDF8;font-weight:700">${escHtml(p.phone || '—')}</td>
+                    <td>${renderStatusBadge(p.status || 'published')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    `;
+  } catch (err) {
+    console.error('[Admin] Error rendering overview:', err);
+    $container.innerHTML = `
+      <div class="empty-state" style="padding:3rem 1rem">
+        <span class="empty-state__icon">⚠️</span>
+        <h3>تعذر تحميل الإحصائيات</h3>
+        <p style="color:var(--danger)">${escHtml(err.message || 'خطأ غير متوقع')}</p>
+        <button class="btn btn-primary" onclick="window.refreshCurrentAdminSection()">إعادة المحاولة</button>
+      </div>
+    `;
+  }
+}
+
+// ─────────────────────────────────────────────
 //  PRELOAD & PLACES MANAGEMENT
 // ─────────────────────────────────────────────
 async function preloadAdminData() {
