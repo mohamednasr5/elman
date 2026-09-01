@@ -8,6 +8,8 @@ import { getSettings, getUserNotifications } from './db.js';
 import { toast } from '../ui/components/Toast.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
 import { initRealtimePwaSyncBus } from '../services/realtime-sync.service.js';
+import { initFcmMessaging } from '../services/fcm.service.js';
+import { initLiveNotificationSubscriber, updateAllNotificationBadges } from '../services/notification.service.js';
 
 /* ─────────────────────────────────────────────────────────
    HTML BUILDERS
@@ -327,6 +329,8 @@ export async function initPage(activeFile = '') {
 
   /* 12. Universal Realtime PWA Sync Bus (0ms Sync) */
   initRealtimePwaSyncBus();
+  initLiveNotificationSubscriber(user?.uid);
+  initFcmMessaging(user);
 
   /* 13. Instant Link Prefetching for 0ms page loads */
   _setupInstantPrefetch();

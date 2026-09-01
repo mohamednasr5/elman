@@ -297,6 +297,15 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     // Initial render
     applyFilters();
 
+    // Realtime Zero-Delay Live Updates (No refresh needed)
+    window.addEventListener('manzala:realtime_sync', async (e) => {
+      const type = e.detail?.type;
+      if (type === 'NEW_PLACE' || type === 'PLACE_UPDATED') {
+        places = await getPublishedPlaces();
+        applyFilters();
+      }
+    });
+
   } catch (err) {
     console.error('[PlacesPage] Load error:', err);
   }
