@@ -17,6 +17,7 @@ import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.j
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { resolveMapEmbedInfo, extractCoordinates } from '../../utils/maps.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, ATM_POLL_QUESTIONS, formatAtmTimeAgo, submitAtmPollVote } from '../../utils/atm.js';
+import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service.js';
 
 export async function renderPlacePage($container, { slug, user }) {
   // Show skeleton
@@ -1659,8 +1660,16 @@ function renderReviewsSectionHTML({ placeId, placeName, safeReviews, totalReview
                       ${r.userPhoto ? `<img src="${escAttr(r.userPhoto)}" alt="${escAttr(r.userName)}" style="width:100%;height:100%;object-fit:cover" />` : (r.userName?.charAt(0) || '👤')}
                     </div>
                     <div>
-                      <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                      <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                         <span>${escHtml(r.userName || 'مستخدم مسجل')}</span>
+                        ${(() => {
+                          const userPts = Number(r.userPoints || r.points) || (r.isAdminGenerated ? 5200 : 250);
+                          const lvl = getLoyaltyLevelInfo(userPts).currentLevel;
+                          return `<span class="badge" style="font-size:10.5px;padding:2px 8px;border-radius:9999px;background:rgba(245,166,35,0.12);color:${lvl.color};border:1px solid ${lvl.color}40;font-weight:800;display:inline-flex;align-items:center;gap:3px">
+                            <span>${lvl.icon}</span>
+                            <span>${lvl.name}</span>
+                          </span>`;
+                        })()}
                         ${isMine ? `<span class="badge" style="font-size:10px;padding:1px 6px;background:var(--primary-alpha);color:var(--primary)">تقييمك</span>` : ''}
                       </div>
                       <div style="font-size:11px;color:var(--text-muted)">

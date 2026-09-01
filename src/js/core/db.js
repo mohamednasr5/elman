@@ -11,7 +11,7 @@ export { getDB };
 const _dbMemoryCache = new Map();
 const _dbPendingPromises = new Map();
 
-function getCached(key, maxAgeMs = 180000) {
+function getCached(key, maxAgeMs = 600000) {
   // 1. In-Memory Cache (0.01ms)
   const mem = _dbMemoryCache.get(key);
   if (mem && (Date.now() - mem.ts < maxAgeMs)) {
@@ -24,7 +24,7 @@ function getCached(key, maxAgeMs = 180000) {
       const stored = localStorage.getItem('__db_' + key);
       if (stored) {
         const item = JSON.parse(stored);
-        if (item && (Date.now() - item.ts < maxAgeMs * 2)) {
+        if (item && (Date.now() - item.ts < maxAgeMs * 3)) {
           _dbMemoryCache.set(key, item);
           return item.data;
         }
@@ -36,6 +36,7 @@ function getCached(key, maxAgeMs = 180000) {
 }
 
 function setCache(key, data) {
+  if (!data) return data;
   const item = { data, ts: Date.now() };
   _dbMemoryCache.set(key, item);
   try {
@@ -310,7 +311,7 @@ export async function adminUnbanPlace(placeId) {
 /** Get all published places (paginated, excluding banned) */
 export async function getPublishedPlaces({ limit = 20, lastKey = null } = {}) {
   const cacheKey = `published_${limit}_${lastKey || ''}`;
-  const cached = getCached(cacheKey, 20000);
+  const cached = getCached(cacheKey, 600000);
   if (cached) return cached;
 
   try {
@@ -345,7 +346,7 @@ export async function getPublishedPlaces({ limit = 20, lastKey = null } = {}) {
 /** Get places by category (excluding banned) */
 export async function getPlacesByCategory(categoryId, limit = 20) {
   const cacheKey = `places_cat_${categoryId}_${limit}`;
-  const cached = getCached(cacheKey, 20000);
+  const cached = getCached(cacheKey, 600000);
   if (cached) return cached;
 
   try {
@@ -377,7 +378,7 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
 export async function getPlacesByOwner(uid) {
   if (!uid) return [];
   const cacheKey = `places_owner_${uid}`;
-  const cached = getCached(cacheKey, 15000);
+  const cached = getCached(cacheKey, 600000);
   if (cached) return cached;
 
   try {
@@ -403,7 +404,7 @@ export async function getPlacesByOwner(uid) {
 /** Get all categories (ordered) */
 export async function getCategories() {
   const cacheKey = 'categories_all';
-  const cached = getCached(cacheKey, 60000);
+  const cached = getCached(cacheKey, 1800000);
   if (cached) return cached;
 
   try {
@@ -435,7 +436,7 @@ export async function getCategory(slug) {
 /** Get active offers (not expired) */
 export async function getActiveOffers(limit = 20) {
   const cacheKey = `offers_active_${limit}`;
-  const cached = getCached(cacheKey, 20000);
+  const cached = getCached(cacheKey, 600000);
   if (cached) return cached;
 
   try {
@@ -588,7 +589,7 @@ export async function adminDeleteProduct(placeId, productId) {
 /** Get active ads by placement */
 export async function getAds(placement = 'homepage') {
   const cacheKey = `ads_${placement}`;
-  const cached = getCached(cacheKey, 30000);
+  const cached = getCached(cacheKey, 600000);
   if (cached) return cached;
 
   const now = Date.now();

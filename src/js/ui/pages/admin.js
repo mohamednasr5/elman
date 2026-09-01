@@ -10,6 +10,7 @@ import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { formatDate } from '../../utils/date.js';
+import { getLoyaltyLevelInfo, LOYALTY_LEVELS } from '../../services/loyalty.service.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { arabicMatch } from '../../utils/arabic.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
@@ -2680,57 +2681,234 @@ async function renderAdminUsers($container) {
   if (!adminCache.users) {
     adminCache.users = (await dbGet('users')) || {};
   }
-  const users = Object.values(adminCache.users || {});
+  const users = Object.entries(adminCache.users || {}).map(([uid, u]) => ({ uid, ...u }));
 
   $container.innerHTML = `
     <div class="admin-fade-in">
-      <div class="dashboard-header">
+      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
         <div>
-          <h1 class="dashboard-header__title">إدارة المستخدمين (${users.length})</h1>
-          <div class="dashboard-header__subtitle">التحكم في صلاحيات وحالة حسابات الأعضاء</div>
+          <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:800;display:flex;align-items:center;gap:8px">
+            <span>👥</span>
+            <span>إدارة المستخدمين ونقاط الولاء (${users.length})</span>
+          </h1>
+          <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
+            التحكم في صلاحيات المستخدمين، ترقية المستويات، وإضافة أو خصم نقاط الولاء
+          </div>
         </div>
       </div>
 
-      <div class="dashboard-table-wrapper">
-        <table class="dashboard-table">
+      <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
+        <table class="dashboard-table" style="width:100%;border-collapse:collapse">
           <thead>
-            <tr>
-              <th>المستخدم</th>
-              <th>البريد الإلكتروني</th>
-              <th>الصلاحية</th>
-              <th>الحالة</th>
-              <th>إجراءات</th>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:12.5px">
+              <th style="padding:12px">المستخدم</th>
+              <th style="padding:12px">البريد الإلكتروني</th>
+              <th style="padding:12px">رتبة ونقاط الولاء 🏆</th>
+              <th style="padding:12px">الصلاحية</th>
+              <th style="padding:12px">الحالة</th>
+              <th style="text-align:center;padding:12px">إجراءات</th>
             </tr>
           </thead>
           <tbody>
-            ${users.map(u => `
-              <tr>
-                <td>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <img src="${u.photoURL || './icons/icon-72x72.png'}" style="width:34px;height:34px;border-radius:50%;object-fit:cover" />
-                    <strong>${escHtml(u.name || 'مستخدم')}</strong>
-                  </div>
-                </td>
-                <td style="font-size:var(--font-size-sm)">${escHtml(u.email || '')}</td>
-                <td>
-                  <span class="chip ${u.role === 'admin' || u.role === 'superadmin' ? 'chip--warning' : 'chip--primary'}">
-                    ${u.role || 'user'}
-                  </span>
-                </td>
-                <td>${u.status === 'suspended' ? '<span class="badge badge--rejected">موقوف</span>' : '<span class="badge badge--published">نشط</span>'}</td>
-                <td>
-                  <button class="btn btn-xs ${u.status === 'suspended' ? 'btn-success' : 'btn-danger'}" onclick="toggleUserStatus('${escAttr(u.uid)}', '${u.status === 'suspended' ? 'active' : 'suspended'}')">
-                    ${u.status === 'suspended' ? ICONS.check + ' تفعيل' : ICONS.x + ' إيقاف'}
-                  </button>
-                </td>
-              </tr>
-            `).join('')}
+            ${users.map(u => {
+              const pts = Number(u.loyalty?.points || u.points || 0);
+              const lvlInfo = getLoyaltyLevelInfo(pts);
+              const lvl = lvlInfo.currentLevel;
+
+              return `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                  <td style="padding:10px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <img src="${u.photoURL || './icons/icon-72x72.png'}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.2)" />
+                      <div>
+                        <strong style="color:#fff;font-size:13.5px">${escHtml(u.name || 'مستخدم')}</strong>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.5)">ID: ${escHtml(u.uid?.slice(0, 8))}...</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="font-size:12.5px;color:rgba(255,255,255,0.8);padding:10px">${escHtml(u.email || '—')}</td>
+                  <td style="padding:10px">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                      <span class="badge" style="background:rgba(245,166,35,0.15);color:${lvl.color};border:1px solid ${lvl.color}40;font-weight:800;padding:2px 8px;border-radius:6px;font-size:11.5px">
+                        ${lvl.icon} ${lvl.name}
+                      </span>
+                      <span style="font-size:12px;font-weight:700;color:#F5A623">${pts.toLocaleString('ar-EG')} نقطة</span>
+                    </div>
+                  </td>
+                  <td style="padding:10px">
+                    <span class="chip ${u.role === 'admin' || u.role === 'superadmin' ? 'chip--warning' : 'chip--primary'}" style="font-size:11px">
+                      ${u.role === 'admin' || u.role === 'superadmin' ? '⭐ مشرف' : 'عضو'}
+                    </span>
+                  </td>
+                  <td style="padding:10px">
+                    ${u.status === 'suspended' 
+                      ? '<span class="badge badge--rejected" style="font-size:11px">موقوف</span>' 
+                      : '<span class="badge badge--published" style="font-size:11px">نشط</span>'
+                    }
+                  </td>
+                  <td style="text-align:center;padding:10px;white-space:nowrap">
+                    <div style="display:inline-flex;gap:6px">
+                      <button class="btn btn-xs btn-edit-user-points" data-uid="${escAttr(u.uid)}" data-name="${escAttr(u.name)}" data-pts="${pts}" style="background:#F5A623;color:#0B1E30;font-weight:800;border:none;border-radius:6px;padding:4px 10px;font-size:11.5px">
+                        🎁 تعديل النقاط والرتبة
+                      </button>
+                      <button class="btn btn-xs ${u.status === 'suspended' ? 'btn-success' : 'btn-danger'}" onclick="toggleUserStatus('${escAttr(u.uid)}', '${u.status === 'suspended' ? 'active' : 'suspended'}')" style="border-radius:6px;padding:4px 8px;font-size:11.5px">
+                        ${u.status === 'suspended' ? '✓ تفعيل' : '✕ إيقاف'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
         </table>
       </div>
     </div>
   `;
+
+  // Attach Points Modal Click Listeners
+  $container.querySelectorAll('.btn-edit-user-points').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const uid = btn.getAttribute('data-uid');
+      const name = btn.getAttribute('data-name') || 'المستخدم';
+      const curPts = parseInt(btn.getAttribute('data-pts'), 10) || 0;
+      openAdminUserPointsModal(uid, name, curPts, async () => {
+        adminCache.users = null;
+        await renderAdminUsers($container);
+      });
+    });
+  });
 }
+
+/**
+ * Modal to Edit / Award Points & Change Loyalty Rank
+ */
+function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
+  let selectedPresetLevel = null;
+
+  const modal = showModal({
+    title: `🎁 تعديل نقاط ورتبة: ${escHtml(userName)}`,
+    size: 'md',
+    content: `
+      <form id="form-admin-user-points" style="display:flex;flex-direction:column;gap:16px" onsubmit="return false">
+        
+        <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;color:var(--text-muted)">الرصيد الحالي للمستخدم:</div>
+            <div style="font-size:1.6rem;font-weight:800;color:#F5A623">${currentPoints.toLocaleString('ar-EG')} نقطة</div>
+          </div>
+          <div style="text-align:left">
+            <span class="badge" style="font-size:13px;font-weight:800;padding:4px 10px;background:#F5A623;color:#0B1E30;border-radius:9999px">
+              ${getLoyaltyLevelInfo(currentPoints).currentLevel.icon} ${getLoyaltyLevelInfo(currentPoints).currentLevel.name}
+            </span>
+          </div>
+        </div>
+
+        <!-- Quick Rank Picker -->
+        <div class="form-group" style="margin:0">
+          <label class="form-label" style="font-weight:700">ترقية مباشرة إلى رتبة:</label>
+          <select id="select-admin-target-rank" class="form-select">
+            <option value="">-- اختر رتبة لضبط النقاط تلقائياً --</option>
+            <option value="5000">👑 نخبة المنزلة والمطرية VIP (5,000 نقطة - يفتح التوثيق المجاني)</option>
+            <option value="3500">💎 مساهم موثوق ذهبي (3,500 نقطة)</option>
+            <option value="1500">🥇 خبير المنزلة والمطرية (1,500 نقطة)</option>
+            <option value="500">🥈 مساهم نشط (500 نقطة)</option>
+            <option value="0">🥉 مستكشف مبتدئ (0 نقطة)</option>
+          </select>
+        </div>
+
+        <!-- Direct Points Input -->
+        <div class="form-group" style="margin:0">
+          <label class="form-label" style="font-weight:700">أو حدد إجمالي رصيد النقاط الجديد:</label>
+          <input type="number" id="input-admin-new-points" class="form-input" value="${currentPoints}" min="0" max="100000" step="10" required />
+        </div>
+
+        <!-- Quick Increment Buttons -->
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">إضافة سريعة للرصيد الحالي:</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="100">+100</button>
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="500">+500</button>
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="1000">+1,000</button>
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="5000" style="color:#10B981;font-weight:800">+5,000 (توثيق 🌟)</button>
+          </div>
+        </div>
+
+        <!-- Reason / Note -->
+        <div class="form-group" style="margin:0">
+          <label class="form-label" style="font-weight:700">ملاحظة / سبب المنح:</label>
+          <input type="text" id="input-admin-points-note" class="form-input" value="مكافأة وتشجيع من إدارة دليل المنزلة والمطرية" />
+        </div>
+
+      </form>
+    `,
+    buttons: [
+      {
+        label: '💾 حفظ وتحديث الرصيد فوراً',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async () => {
+          const newPts = parseInt(document.getElementById('input-admin-new-points')?.value, 10);
+          const note = document.getElementById('input-admin-points-note')?.value.trim() || 'تحديث رصيد من الإدارة';
+
+          if (isNaN(newPts) || newPts < 0) {
+            toast.warning('يرجى إدخال عدد نقاط صالح');
+            return;
+          }
+
+          try {
+            const db = getDB();
+            const logId = db.ref().push().key;
+            const delta = newPts - currentPoints;
+
+            await Promise.all([
+              db.ref(`users/${uid}/loyalty`).update({
+                points: newPts,
+                totalEarned: Math.max(newPts, currentPoints),
+                lastAdminUpdate: firebase.database.ServerValue.TIMESTAMP
+              }),
+              db.ref(`users/${uid}/loyalty/history/${logId}`).set({
+                id: logId,
+                type: delta >= 0 ? 'earn' : 'deduct',
+                amount: delta >= 0 ? `+${delta}` : `${delta}`,
+                pointsDelta: delta,
+                label: note,
+                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                byAdmin: true
+              })
+            ]);
+
+            toast.success(`تم تحديث رصيد ${userName} إلى ${newPts.toLocaleString('ar-EG')} نقطة بنجاح! ✨`);
+            modal.close();
+            if (onDone) onDone();
+          } catch (err) {
+            toast.error(err.message || 'فشل حفظ النقاط');
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+
+  // Handle Rank Picker change
+  document.getElementById('select-admin-target-rank')?.addEventListener('change', (e) => {
+    if (e.target.value !== '') {
+      const input = document.getElementById('input-admin-new-points');
+      if (input) input.value = e.target.value;
+    }
+  });
+
+  // Handle Quick Add buttons
+  document.querySelectorAll('.btn-quick-add-pts').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const add = parseInt(btn.getAttribute('data-add'), 10) || 0;
+      const input = document.getElementById('input-admin-new-points');
+      if (input) {
+        input.value = (parseInt(input.value, 10) || 0) + add;
+      }
+    });
+  });
+}
+
 
 // ─────────────────────────────────────────────
 //  6. Offers (إدارة العروض)

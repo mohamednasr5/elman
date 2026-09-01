@@ -68,6 +68,9 @@ export async function renderDashboard($container, { user, section = 'overview', 
           <a href="dashboard.html?section=following" data-section="following" class="dashboard-nav-item ${section === 'following' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">⭐</span> متابعاتي وعروضها
           </a>
+          <a href="dashboard.html?section=loyalty" data-section="loyalty" class="dashboard-nav-item ${section === 'loyalty' ? 'active' : ''}">
+            <span class="dashboard-nav-item__icon">🎁</span> نادي الولاء والنقاط
+          </a>
           <a href="dashboard.html?section=add" data-section="add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">➕</span> إضافة مكان جديد
           </a>
@@ -142,6 +145,8 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
       await renderFollowingSection($mainArea, _dashUser);
     } else if (section === 'notifications') {
       await renderDashboardNotifications($mainArea, _dashUser);
+    } else if (section === 'loyalty') {
+      await renderLoyaltySection($mainArea, _dashUser);
     } else {
       await renderOverviewSection($mainArea, _dashUser);
     }
@@ -2892,4 +2897,213 @@ async function renderFollowingSection($container, user) {
       </div>
     `;
   }
+}
+
+
+// ─────────────────────────────────────────────
+//  LOYALTY & REWARDS SECTION (نادي الولاء والمكافآت)
+// ─────────────────────────────────────────────
+async function renderLoyaltySection($container, user) {
+  $container.innerHTML = '<div class="spinner spinner-lg" style="margin:4rem auto"></div>';
+
+  const [loyalty, userPlaces] = await Promise.all([
+    getUserLoyaltyProfile(user.uid),
+    getPlacesByOwner(user.uid).catch(() => [])
+  ]);
+
+  const levelInfo = getLoyaltyLevelInfo(loyalty?.points || 0);
+  const unverifiedPlaces = (userPlaces || []).filter(p => !p.isVerified);
+
+  $container.innerHTML = `
+    <div class="admin-fade-in" style="max-width:960px;margin:0 auto">
+      <!-- Header -->
+      <div class="dashboard-header" style="margin-bottom:24px">
+        <h1 class="dashboard-header__title" style="display:flex;align-items:center;gap:10px">
+          <span>🎁</span>
+          <span>نادي الولاء والمكافآت</span>
+          <span class="badge" style="background:#F5A623;color:#0B1E30;font-size:14px;font-weight:800;padding:3px 12px;border-radius:9999px">
+            ${levelInfo.currentLevel.icon} ${levelInfo.currentLevel.name}
+          </span>
+        </h1>
+        <div class="dashboard-header__subtitle">
+          اجمع النقاط بتفاعلك وتقييماتك في الدليل، واستبدل <strong>5,000 نقطة</strong> بتوثيق مجاني رسمي لمكانك (علامة التوثيق ✓)!
+        </div>
+      </div>
+
+      <!-- Main Status Card -->
+      <div style="background:linear-gradient(135deg,#0F2B48,#1B4F72);border-radius:20px;padding:24px;color:#fff;box-shadow:0 10px 30px rgba(15,43,72,0.25);border:1.5px solid rgba(245,166,35,0.3);margin-bottom:24px;position:relative;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px">
+          <div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-bottom:6px">رصيد نقاطك الحالي:</div>
+            <div style="font-size:2.6rem;font-weight:800;color:#F5A623;line-height:1;display:flex;align-items:center;gap:10px">
+              <span>${(levelInfo.points || 0).toLocaleString('ar-EG')}</span>
+              <span style="font-size:1.1rem;color:#fff;font-weight:600">نقطة</span>
+            </div>
+            <div style="font-size:12.5px;color:rgba(255,255,255,0.7);margin-top:6px">
+              إجمالي ما جمعته: ${(loyalty.totalEarned || 0).toLocaleString('ar-EG')} نقطة
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button type="button" id="btn-claim-daily-bonus" class="btn" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;font-weight:800;border-radius:12px;padding:10px 18px;font-size:13px">
+              <span>☀️</span> استلام مكافأة الدخول اليومي (+10 نقاط)
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress to 5000 points / Next Level -->
+        <div style="margin-top:20px;background:rgba(0,0,0,0.2);padding:14px 16px;border-radius:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;margin-bottom:8px">
+            <span>الهدف الذهبي: <strong>توثيق المكان الرسمي (5,000 نقطة)</strong></span>
+            <span style="color:#F5A623;font-weight:800">${Math.min(100, Math.round((levelInfo.points / 5000) * 100))}%</span>
+          </div>
+          <div style="width:100%;height:10px;background:rgba(255,255,255,0.15);border-radius:9999px;overflow:hidden">
+            <div style="width:${Math.min(100, Math.round((levelInfo.points / 5000) * 100))}%;height:100%;background:linear-gradient(90deg,#F5A623,#10B981);border-radius:9999px;transition:width 0.4s ease"></div>
+          </div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,0.8);margin-top:6px">
+            ${levelInfo.canRedeemVerification 
+              ? '🎉 مبروك! لقد جمعت 5,000 نقطة ويمكنك الآن توثيق نشاطك مجاناً!' 
+              : `متبقي لك <strong>${levelInfo.pointsToVerification.toLocaleString('ar-EG')} نقطة</strong> للحصول على التوثيق المجاني!`
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- 5000 Points Verification Redemption Feature Card -->
+      <div style="background:var(--surface,#fff);border:2px solid ${levelInfo.canRedeemVerification ? '#10B981' : 'var(--border,#e2e8f0)'};border-radius:18px;padding:22px;margin-bottom:24px;box-shadow:0 4px 20px rgba(0,0,0,0.06)">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:50px;height:50px;border-radius:14px;background:${levelInfo.canRedeemVerification ? 'rgba(16,185,129,0.15)' : 'rgba(245,166,35,0.15)'};color:${levelInfo.canRedeemVerification ? '#059669' : '#D97706'};display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">
+            ✓
+          </div>
+          <div style="flex:1">
+            <h3 style="font-weight:800;font-size:16px;color:var(--text-primary,#0F2B48);margin-bottom:4px">
+              🌟 استبدال 5,000 نقطة بتوثيق رسمي لمكانك (Verified Badge)
+            </h3>
+            <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:14px">
+              العلامة الموثقة الزرقاء/الخضراء تمنح نشاطك ثقة العملاء وتجعله يتصدر نتائج البحث ويوفر إحصائيات متقدمة مجاناً لمدة عام كامل.
+            </p>
+
+            ${levelInfo.canRedeemVerification ? `
+              <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:16px">
+                ${unverifiedPlaces.length > 0 ? `
+                  <div class="form-group" style="margin-bottom:12px">
+                    <label class="form-label" style="font-weight:700">اختر المكان الذي ترغب في توثيقه:</label>
+                    <select id="select-redeem-place" class="form-select" style="font-weight:700">
+                      ${unverifiedPlaces.map(p => `<option value="${escAttr(p.id)}">${escHtml(p.name)} (${escHtml(p.area || 'المنزلة')})</option>`).join('')}
+                    </select>
+                  </div>
+                  <button type="button" id="btn-redeem-verification-action" class="btn btn-primary" style="background:#10B981;border:none;border-radius:10px;padding:10px 24px;font-weight:800;font-size:14px">
+                    🚀 تأكيد استبدال 5,000 نقطة وتوثيق المكان فوراً ✓
+                  </button>
+                ` : (userPlaces.length > 0 ? `
+                  <div style="color:#059669;font-weight:700;font-size:13.5px">
+                    ✅ كافة الأماكن المسجلة بحسابك موثقة بالفعل! يمكنك الاحتفاظ بالنقاط أو إضافة مكان جديد لتوثيقه.
+                  </div>
+                ` : `
+                  <div style="color:#D97706;font-size:13px">
+                    💡 ليس لديك أماكن مضافة بعد. <a href="dashboard.html?section=add" style="font-weight:800;color:var(--primary)">أضف نشاطك أولاً</a> ثم استبدل الـ 5000 نقطة لتوثيقه فوراً.
+                  </div>
+                `)}
+              </div>
+            ` : `
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface-2,#f8fafc);padding:12px 16px;border-radius:10px;font-size:13px;flex-wrap:wrap;gap:10px">
+                <span style="color:var(--text-muted)">
+                  🔒 الزر سيتفعل تلقائياً فور وصول رصيدك إلى <strong>5,000 نقطة</strong>
+                </span>
+                <span style="font-weight:700;color:#0284C7">
+                  رصيدك: ${levelInfo.points} / 5,000
+                </span>
+              </div>
+            `}
+          </div>
+        </div>
+      </div>
+
+      <!-- How to Earn Points Guide -->
+      <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:18px;padding:20px;margin-bottom:24px">
+        <h3 style="font-weight:800;font-size:15px;color:var(--text-primary,#0F2B48);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          <span>⚡</span>
+          <span>كيف تجمع النقاط بسرعة في دليل المنزلة والمطرية؟</span>
+        </h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:10px">
+          ${Object.entries(POINTS_RULES).map(([k, rule]) => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface-2,#f8fafc);border-radius:10px;border:1px solid var(--border,#e2e8f0)">
+              <span style="font-size:13px;color:var(--text-primary,#0F2B48)">${escHtml(rule.label)}</span>
+              <span class="badge" style="background:rgba(245,166,35,0.18);color:#D97706;font-weight:800;font-size:12px">+${rule.points} نقطة</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Points Transaction History Log -->
+      <div style="background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:18px;padding:20px">
+        <h3 style="font-weight:800;font-size:15px;color:var(--text-primary,#0F2B48);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          <span>📜</span>
+          <span>سجل نشاط النقاط والمكافآت</span>
+        </h3>
+        ${loyalty.history && loyalty.history.length > 0 ? `
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${loyalty.history.map(item => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border,#e2e8f0)">
+                <div>
+                  <div style="font-weight:700;font-size:13px;color:var(--text-primary,#0F2B48)">${escHtml(item.label)}</div>
+                  <div style="font-size:11.5px;color:var(--text-muted)">${formatDate(item.createdAt || Date.now())}</div>
+                </div>
+                <span style="font-weight:800;font-size:14px;color:${item.pointsDelta > 0 ? '#10B981' : '#EF4444'}">
+                  ${item.amount} نقطة
+                </span>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">
+            لم تسجل أي حركات نقاط بعد. ابدأ بالتفاعل والتقييم لجمع أولى نقاطك! ⭐
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+
+  // Daily Bonus Listener
+  document.getElementById('btn-claim-daily-bonus')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-claim-daily-bonus');
+    if (btn) btn.disabled = true;
+    const res = await claimDailyBonus(user.uid);
+    if (res.success) {
+      toast.success('🎉 حصلت على +10 نقاط مكافأة تسجيل الدخول اليومي!');
+      await renderLoyaltySection($container, user);
+    } else if (res.reason === 'already_claimed') {
+      toast.info('لقد استلمت مكافأة اليوم بالفعل، عد غداً للحصول على 10 نقاط جديدة! ☀️');
+    }
+    if (btn) btn.disabled = false;
+  });
+
+  // Verification Redemption Listener
+  document.getElementById('btn-redeem-verification-action')?.addEventListener('click', async () => {
+    const select = document.getElementById('select-redeem-place');
+    const placeId = select?.value;
+    const placeName = select?.options[select.selectedIndex]?.textContent || '';
+
+    if (!placeId) {
+      toast.warning('يرجى اختيار المكان أولاً');
+      return;
+    }
+
+    const ok = await showConfirm({
+      title: '🌟 استبدال 5000 نقطة بالتوثيق',
+      message: `هل ترغب في استبدال 5,000 نقطة لتوثيق نشاطك (${placeName}) لمدة عام كامل؟`,
+      confirmText: 'نعم، استبدال وتوثيق فوراً',
+      cancelText: 'إلغاء'
+    });
+
+    if (ok) {
+      const res = await redeemPointsForVerification(user.uid, placeId, placeName);
+      if (res.success) {
+        toast.success(res.message);
+        await renderLoyaltySection($container, user);
+      } else {
+        toast.error(res.message || 'فشلت العملية');
+      }
+    }
+  });
 }
