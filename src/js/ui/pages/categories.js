@@ -4,6 +4,7 @@ import { renderPlaceCard } from '../components/PlaceCard.js';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { setMeta, setBreadcrumbSchema } from '../../utils/seo.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../utils/maps.js';
+import { isAtmPlace, filterAtmPlaces, isAtmReadyAndOperational } from '../../utils/atm.js';
 import { toast } from '../components/Toast.js';
 
 let _catUserLocation = null;
@@ -99,6 +100,13 @@ export async function renderCategoryPage($container, { slug, query, user }) {
     `;
     return;
   }
+
+  const isAtmCategory = Boolean(
+    cat.slug === 'atm' || 
+    cat.id === 'atm' || 
+    (cat.name || '').toLowerCase().includes('atm') || 
+    (cat.name || '').includes('صراف')
+  );
 
   setMeta({
     title: `${cat.name} في المنزلة — دليل الأماكن`,
