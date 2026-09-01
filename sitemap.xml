@@ -1,48 +1,71 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://elmanzala.com/</loc>
-    <changefreq>daily</changefreq>
+    <loc>https://dalilmanzala.com/</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://elmanzala.com/places.html</loc>
+    <loc>https://dalilmanzala.com/now.html</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>always</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/around-me.html</loc>
+    <lastmod>2026-09-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://elmanzala.com/categories.html</loc>
+    <loc>https://dalilmanzala.com/places.html</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/categories.html</loc>
+    <lastmod>2026-09-01</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://elmanzala.com/offers.html</loc>
+    <loc>https://dalilmanzala.com/offers.html</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/products.html</loc>
+    <lastmod>2026-09-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://elmanzala.com/products.html</loc>
+    <loc>https://dalilmanzala.com/search.html</loc>
+    <lastmod>2026-09-01</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://elmanzala.com/search.html</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://elmanzala.com/contact.html</loc>
+    <loc>https://dalilmanzala.com/contact.html</loc>
+    <lastmod>2026-09-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://elmanzala.com/privacy.html</loc>
-    <changefreq>yearly</changefreq>
+    <loc>https://dalilmanzala.com/privacy.html</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://elmanzala.com/terms.html</loc>
-    <changefreq>yearly</changefreq>
+    <loc>https://dalilmanzala.com/terms.html</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
 </urlset>

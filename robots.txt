@@ -1,4 +1,40 @@
+# robots.txt for https://dalilmanzala.com
 User-agent: *
 Allow: /
+Disallow: /admin.html
+Disallow: /dashboard.html
+Disallow: /login.html
 
-Sitemap: https://elmanzala.com/sitemap.xml
+# Google Search
+User-agent: Googlebot
+Allow: /
+Allow: /now.html
+Allow: /around-me.html
+Allow: /places.html
+Allow: /categories.html
+Allow: /category.html
+Allow: /place.html
+
+# AI Search Crawlers (SearchGPT, ChatGPT, Perplexity, Gemini, Claude)
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+Sitemap: https://dalilmanzala.com/sitemap.xml

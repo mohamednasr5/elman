@@ -1,13 +1,14 @@
 /**
- * المنزلة وناسها — SEO Utility
- * Dynamic meta tags, Schema.org, Open Graph per page
+ * دليل المنزلة والمطرية — Advanced SEO & AI Semantic Discovery Engine
+ * Dynamic meta tags, Open Graph, Twitter Cards, and Rich Schema.org (JSON-LD)
+ * Canonical Domain: https://dalilmanzala.com
  */
 
-const DEFAULT_TITLE = 'دليل المنزلة والمطرية الرقمي | المنزلة وناسها — المنزلة، المطرية، العصافرة، والقرى المجاورة';
-const DEFAULT_DESC  = 'دليل المنزلة والمطرية الرقمي الشامل — دليلك الأكبر لجميع المحلات، الأطباء، العيادات، الحرفيين والصنايعية (سباك، كهربائي، نجار، نقاش)، والخدمات في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، ميت شريف، وكافة القرى المجاورة بمحافظة الدقهلية.';
-const DEFAULT_KEYWORDS = 'دليل المنزلة والمطرية الرقمي, دليل المنزلة, دليل المطرية دقهلية, دليل العصافرة, دليل الجمالية, دليل ميت سلسيل, دليل البصراط, دليل العزيزة, دليل الاحمدية, دليل الروضة, دليل الحوتة, دليل النسايمة, دليل ميت خضير, دليل ميت شريف, محلات المنزلة, دكتور في المنزلة, دكتور في المطرية, سباك في المنزلة, كهربائي في المطرية, صيدليات المنزلة والمطرية, خدمات الدقهلية, بحيرة المنزلة';
-const DEFAULT_IMAGE = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
-const SITE_URL      = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : 'https://elmanzala.com';
+const DEFAULT_TITLE = 'دليل المنزلة والمطرية الرقمي الشامل | أنشطة، أطباء، خدمات، وفرص عمل';
+const DEFAULT_DESC  = 'دليل المنزلة والمطرية الرقمي الشامل (dalilmanzala.com) — دليلك الأكبر لجميع المحلات، الأطباء، العيادات، الصيدليات، ماكينات ATM، الحرفيين، الوظائف، والخدمات في المنزلة، المطرية، العصافرة، والقرى المجاورة بمحافظة الدقهلية.';
+const DEFAULT_KEYWORDS = 'دليل المنزلة والمطرية, دليل المنزلة, دليل المطرية دقهلية, dalilmanzala, دكتور في المنزلة, صيدلية في المنزلة, صيدلية في المطرية, ماكينات ATM المنزلة, وظائف المنزلة والمطرية, سباك المنزلة, كهربائي المطرية, خدمات الدقهلية, بحيرة المنزلة';
+const DEFAULT_IMAGE = 'https://dalilmanzala.com/icons/icon-512x512.png';
+const SITE_URL      = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.includes('dalilmanzala')) ? window.location.origin : 'https://dalilmanzala.com';
 
 const REGIONAL_COVERAGE_AREAS = [
   'المنزلة', 'المطرية', 'العصافرة', 'الجمالية', 'ميت سلسيل',
@@ -16,14 +17,14 @@ const REGIONAL_COVERAGE_AREAS = [
 ];
 
 /**
- * Update page meta tags
+ * Update page meta tags dynamically
  */
 export function setMeta({ title, description, keywords, image, url, type = 'website', noindex = false } = {}) {
-  const t = title ? `${title} | دليل المنزلة والمطرية الرقمي` : DEFAULT_TITLE;
+  const t = title ? `${title} | دليل المنزلة والمطرية` : DEFAULT_TITLE;
   const d = description || DEFAULT_DESC;
   const k = keywords || DEFAULT_KEYWORDS;
   const img = image || DEFAULT_IMAGE;
-  const u = url ? `${SITE_URL}${url}` : window.location.href;
+  const u = url ? (url.startsWith('http') ? url : `${SITE_URL}/${url.replace(/^\//, '')}`) : window.location.href;
 
   // Title
   document.title = t;
@@ -48,27 +49,29 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
   setTag('meta[property="og:url"]', 'property', 'og:url', 'content', u);
   setCanonical(u);
 
-  // Type
+  // Type & Site Name
   setTag('meta[property="og:type"]', 'property', 'og:type', 'content', type);
+  setTag('meta[property="og:site_name"]', 'property', 'og:site_name', 'content', 'دليل المنزلة والمطرية');
+  setTag('meta[property="og:locale"]', 'property', 'og:locale', 'content', 'ar_EG');
 
   // Twitter card
   setOrCreateMeta('name', 'twitter:card', 'summary_large_image');
 
-  // Noindex
-  setOrCreateMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow');
+  // Robots
+  setOrCreateMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
 }
 
 /**
- * Inject LocalBusiness schema for a place
+ * Inject LocalBusiness / Store / Medical / Restaurant schema for a place
  */
 export function setPlaceSchema(place, category) {
   const schema = {
     '@context': 'https://schema.org',
-    '@type': mapCategoryToSchema(category?.nameEn || 'LocalBusiness'),
+    '@type': mapCategoryToSchema(category?.nameEn || category?.slug || 'LocalBusiness'),
     name: place.name,
-    description: place.description || '',
-    image: place.coverImageUrl || DEFAULT_IMAGE,
-    url: `${SITE_URL}/place.html?slug=${place.slug}`,
+    description: place.description || `${place.name} في مدينة ${place.area || 'المنزلة والمطرية'} — العنوان وأرقام الهواتف ومواعيد العمل والتقييمات`,
+    image: place.coverImageUrl || place.logoUrl || DEFAULT_IMAGE,
+    url: `${SITE_URL}/place.html?slug=${place.slug || place.id}`,
     telephone: place.phone || undefined,
     areaServed: REGIONAL_COVERAGE_AREAS,
     address: {
@@ -80,143 +83,115 @@ export function setPlaceSchema(place, category) {
     },
     geo: place.location?.lat ? {
       '@type': 'GeoCoordinates',
-      latitude: place.location.lat,
-      longitude: place.location.lng
-    } : undefined,
+      latitude: Number(place.location.lat),
+      longitude: Number(place.location.lng)
+    } : {
+      '@type': 'GeoCoordinates',
+      latitude: 31.1585,
+      longitude: 31.9360
+    },
     openingHoursSpecification: buildOpeningHours(place.workingHours),
     sameAs: [
       place.social?.facebook,
       place.social?.instagram,
+      place.social?.whatsapp ? `https://wa.me/2${place.social.whatsapp.replace(/\D/g, '')}` : null,
       place.social?.website
     ].filter(Boolean),
     priceRange: '$$',
     aggregateRating: place.rating ? {
       '@type': 'AggregateRating',
       ratingValue: Number(place.rating).toFixed(1),
-      reviewCount: Math.max(1, place.reviewCount || 1)
+      reviewCount: Math.max(1, Number(place.reviewCount) || 1),
+      bestRating: '5',
+      worstRating: '1'
     } : undefined
   };
 
-  // Remove undefined fields
-  const cleaned = JSON.parse(JSON.stringify(schema));
-  injectSchema(cleaned, 'place-schema');
+  injectSchema('place-schema', schema);
 }
 
 /**
- * Inject BreadcrumbList schema
+ * Inject BreadcrumbList Schema
  */
 export function setBreadcrumbSchema(items) {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: items.map((item, i) => ({
+    itemListElement: items.map((item, index) => ({
       '@type': 'ListItem',
-      position: i + 1,
+      position: index + 1,
       name: item.name,
-      item: item.url ? `${SITE_URL}${item.url}` : undefined
+      item: item.url ? (item.url.startsWith('http') ? item.url : `${SITE_URL}/${item.url.replace(/^\//, '')}`) : SITE_URL
     }))
   };
-  injectSchema(schema, 'breadcrumb-schema');
+
+  injectSchema('breadcrumb-schema', schema);
 }
 
 /**
- * Inject Product schema
+ * Inject Website & Google Sitelinks Searchbox Schema
  */
-export function setProductSchema(product, placeName) {
+export function setWebsiteSearchSchema() {
   const schema = {
     '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.name,
-    description: product.description || '',
-    image: product.imageUrl || undefined,
-    sku: product.sku || undefined,
-    brand: { '@type': 'Brand', name: placeName },
-    offers: {
-      '@type': 'Offer',
-      price: product.price,
-      priceCurrency: 'EGP',
-      availability: product.inStock
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock'
+    '@type': 'WebSite',
+    name: 'دليل المنزلة والمطرية الرقمي',
+    alternateName: ['Dalil Manzala', 'دليل المنزلة', 'دليل المطرية'],
+    url: SITE_URL,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${SITE_URL}/search.html?q={search_term_string}`
+      },
+      'query-input': 'required name=search_term_string'
     }
   };
 
-  const cleaned = JSON.parse(JSON.stringify(schema));
-  injectSchema(cleaned, 'product-schema');
+  injectSchema('website-search-schema', schema);
 }
 
 /**
- * Inject Offer schema for a deal
+ * Helper: Inject JSON-LD Schema
  */
-export function setOfferSchema(offer, place) {
-  const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'Offer',
-    name: offer.title,
-    description: offer.description || '',
-    price: offer.newPrice,
-    priceCurrency: 'EGP',
-    validFrom: offer.startDate ? new Date(offer.startDate).toISOString() : undefined,
-    validThrough: offer.endDate ? new Date(offer.endDate).toISOString() : undefined,
-    seller: {
-      '@type': 'LocalBusiness',
-      name: place.name
-    }
-  };
-
-  const cleaned = JSON.parse(JSON.stringify(schema));
-  injectSchema(cleaned, 'offer-schema');
+function injectSchema(id, schemaObj) {
+  if (typeof document === 'undefined') return;
+  // Clean undefined
+  const cleaned = JSON.parse(JSON.stringify(schemaObj));
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.id = id;
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(cleaned, null, 2);
 }
 
-/**
- * Set FAQ schema
- */
-export function setFaqSchema(faqs) {
-  const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqs.map(faq => ({
-      '@type': 'Question',
-      name: faq.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.answer
-      }
-    }))
-  };
-  injectSchema(schema, 'faq-schema');
-}
-
-/**
- * Clean up schemas when navigating away
- */
-export function clearSchemas() {
-  document.querySelectorAll('script[data-schema]').forEach(el => el.remove());
-}
-
-// ── Private helpers ──
-
-function setOrCreateMeta(attr, value, content) {
-  let el = document.querySelector(`meta[${attr}="${value}"]`);
+function setOrCreateMeta(keyAttr, keyVal, content) {
+  if (typeof document === 'undefined') return;
+  let el = document.querySelector(`meta[${keyAttr}="${keyVal}"]`);
   if (!el) {
     el = document.createElement('meta');
-    el.setAttribute(attr, value);
+    el.setAttribute(keyAttr, keyVal);
     document.head.appendChild(el);
   }
   el.setAttribute('content', content);
 }
 
-function setTag(selector, attr, attrVal, contentAttr, content) {
+function setTag(selector, attr, attrVal, contentAttr, contentVal) {
+  if (typeof document === 'undefined') return;
   let el = document.querySelector(selector);
   if (!el) {
     el = document.createElement('meta');
     el.setAttribute(attr, attrVal);
     document.head.appendChild(el);
   }
-  el.setAttribute(contentAttr, content);
+  el.setAttribute(contentAttr, contentVal);
 }
 
 function setCanonical(url) {
+  if (typeof document === 'undefined') return;
   let el = document.querySelector('link[rel="canonical"]');
   if (!el) {
     el = document.createElement('link');
@@ -226,55 +201,37 @@ function setCanonical(url) {
   el.href = url;
 }
 
-function injectSchema(schema, id) {
-  let el = document.querySelector(`script[data-schema="${id}"]`);
-  if (!el) {
-    el = document.createElement('script');
-    el.type = 'application/ld+json';
-    el.setAttribute('data-schema', id);
-    document.head.appendChild(el);
-  }
-  el.textContent = JSON.stringify(schema);
-}
-
-function mapCategoryToSchema(categoryNameEn) {
-  const map = {
-    'pharmacy': 'Pharmacy',
-    'doctor': 'Physician',
-    'supermarket': 'GroceryStore',
-    'bakery': 'Bakery',
-    'restaurant': 'Restaurant',
-    'delivery': 'DeliveryService',
-    'store': 'Store',
-  };
-  const key = categoryNameEn.toLowerCase();
-  return map[key] || 'LocalBusiness';
+function mapCategoryToSchema(nameEn = '') {
+  const lower = nameEn.toLowerCase();
+  if (lower.includes('doctor') || lower.includes('clinic')) return 'MedicalBusiness';
+  if (lower.includes('pharmacy')) return 'Pharmacy';
+  if (lower.includes('restaurant') || lower.includes('food')) return 'Restaurant';
+  if (lower.includes('cafe')) return 'CafeOrCoffeeShop';
+  if (lower.includes('bank') || lower.includes('atm')) return 'AutomatedTeller';
+  if (lower.includes('store') || lower.includes('market')) return 'Store';
+  if (lower.includes('hotel')) return 'Hotel';
+  return 'LocalBusiness';
 }
 
 function buildOpeningHours(workingHours) {
   if (!workingHours) return undefined;
+  if (typeof workingHours === 'string') return undefined;
 
-  const dayMap = {
-    saturday:  'Sa',
-    sunday:    'Su',
-    monday:    'Mo',
-    tuesday:   'Tu',
-    wednesday: 'We',
-    thursday:  'Th',
-    friday:    'Fr'
+  const daysMap = {
+    saturday: 'Saturday', sunday: 'Sunday', monday: 'Monday',
+    tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday'
   };
 
-  return Object.entries(workingHours)
-    .filter(([, hours]) => !hours.closed && hours.open && hours.close)
-    .map(([day, hours]) => ({
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: `https://schema.org/${getDayName(dayMap[day])}`,
-      opens: hours.open,
-      closes: hours.close
-    }));
-}
-
-function getDayName(abbr) {
-  const map = { Mo:'Monday', Tu:'Tuesday', We:'Wednesday', Th:'Thursday', Fr:'Friday', Sa:'Saturday', Su:'Sunday' };
-  return map[abbr] || abbr;
+  const specs = [];
+  for (const [day, val] of Object.entries(workingHours)) {
+    if (val && !val.closed && val.open && val.close) {
+      specs.push({
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: daysMap[day] || day,
+        opens: val.open,
+        closes: val.close
+      });
+    }
+  }
+  return specs.length ? specs : undefined;
 }

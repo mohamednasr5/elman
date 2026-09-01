@@ -16,7 +16,7 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
   <meta name="description" content="${desc}"/>
   <meta name="keywords" content="دليل المنزلة والمطرية الرقمي, المنزلة, المطرية دقهلية, العصافرة, الجمالية, ميت سلسيل, البصراط, العزيزة, الأحمدية, الروضة, الحوتة, النسايمة, ميت خضير, ميت شريف, محلات, أطباء, حرفيين, خدمات الدقهلية"/>
   <meta name="robots" content="index,follow"/>
-  <link rel="canonical" href="https://elmanzala.com/${file}"/>
+  <link rel="canonical" href="https://dalilmanzala.com/${file}"/>
   <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي"/>
   <meta property="og:title" content="${title} | دليل المنزلة والمطرية الرقمي"/>
   <meta property="og:description" content="${desc}"/>

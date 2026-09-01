@@ -50,7 +50,7 @@ export function mountLivePulseSection(containerId) {
                 </div>
                 <h2 style="font-size:1.45rem;font-weight:900;color:#fff;margin:0;display:flex;align-items:center;gap:8px">
                   <span>المنزلة والمطرية الآن</span>
-                  <span class="badge" style="background:#EF4444;color:#fff;font-size:11px;font-weight:900;padding:2px 8px;border-radius:9999px;letter-spacing:0.8px;box-shadow:0 0 10px rgba(239,68,68,0.6)">يحدث الآن</span>
+                  <span class="badge-live-pulse-vibrant"><span class="live-beacon-dot"></span><span>يحدث الآن</span></span>
                 </h2>
               </div>
               <p style="font-size:13px;color:rgba(255,255,255,0.85);margin:0;line-height:1.5">
