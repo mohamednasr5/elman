@@ -93,11 +93,14 @@ function saveLocalStore(items) {
 /**
  * Fetch published live news reports
  */
+/**
+ * Fetch published live news reports strictly from Cloud Firebase & user contributions
+ */
 export async function getPublishedLiveNews({ city = '', category = '', limit = 40 } = {}) {
   const deletedIds = getDeletedLiveNewsIds();
   const allMap = new Map();
 
-  // 1. Load from Cloud Firebase
+  // 1. Load from Cloud Firebase Realtime Database
   try {
     const db = getDB();
     const snap = await db.ref('liveNews').once('value');
@@ -105,7 +108,8 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
       snap.forEach(child => {
         const val = child.val();
         const id = String(child.key);
-        if (val && !deletedIds.has(id) && val.status !== 'deleted') {
+        // Exclude deleted items and exclude legacy mock templates
+        if (val && !deletedIds.has(id) && val.status !== 'deleted' && !id.startsWith('init_')) {
           allMap.set(id, { id, ...val });
         }
       });
@@ -114,27 +118,15 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
     console.debug('[LiveNews] Cloud read handled gracefully:', err.message);
   }
 
-  // 2. Merge with LocalStorage store
+  // 2. Merge with LocalStorage store (only real user posts)
   const localItems = getLocalStore();
   if (localItems && Array.isArray(localItems)) {
     localItems.forEach(localItem => {
       const id = String(localItem.id);
-      if (!deletedIds.has(id) && localItem.status !== 'deleted') {
+      if (!deletedIds.has(id) && localItem.status !== 'deleted' && !id.startsWith('init_')) {
         allMap.set(id, { ...(allMap.get(id) || {}), ...localItem });
       }
     });
-  }
-
-  // 3. Fallback to initial realistic news ONLY on very first app run (and if not deleted)
-  const isInitialized = typeof localStorage !== 'undefined' && localStorage.getItem(INITIALIZED_KEY) === 'true';
-  if (allMap.size === 0 && !isInitialized) {
-    const defaultNews = getFallbackDefaultNews();
-    defaultNews.forEach(item => {
-      if (!deletedIds.has(String(item.id))) {
-        allMap.set(String(item.id), item);
-      }
-    });
-    saveLocalStore(Array.from(allMap.values()));
   }
 
   let published = Array.from(allMap.values()).filter(i => i.status === 'published' || !i.status);
@@ -154,9 +146,6 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
   return published.slice(0, limit);
 }
 
-/**
- * Fetch pending live news for Admin moderation
- */
 export async function getPendingLiveNews() {
   const deletedIds = getDeletedLiveNewsIds();
   const allMap = new Map();

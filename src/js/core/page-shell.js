@@ -471,8 +471,23 @@ function _renderUser(user) {
 
     const btn = document.getElementById('usr-btn');
     const dd  = document.getElementById('usr-dd');
-    btn?.addEventListener('click', e => { e.stopPropagation(); dd?.classList.toggle('open'); });
-    document.addEventListener('click', () => dd?.classList.remove('open'));
+    if (btn && dd) {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const isOpen = dd.classList.contains('open');
+        dd.classList.toggle('open', !isOpen);
+        btn.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#usr-btn') && !e.target.closest('#usr-dd')) {
+          dd.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
       await signOut();
       toast.success('تم تسجيل الخروج بنجاح');
