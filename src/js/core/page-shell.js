@@ -313,6 +313,18 @@ export async function initPage(activeFile = '') {
   if ('serviceWorker' in navigator)
     navigator.serviceWorker.register('./sw.js').catch(() => {});
 
+  // Automatically purge legacy stale data caches (Keep only Auth & Theme)
+  try {
+    const staleKeys = [
+      'manzala_fast_places_cache',
+      'manzala_live_news_store_v2',
+      'manzala_live_news_store_v3',
+      'manzala_global_broadcast_notifs_cache',
+      'manzala_live_news_initialized_v3'
+    ];
+    staleKeys.forEach(k => localStorage.removeItem(k));
+  } catch (_) {}
+
   /* 12. Universal Realtime PWA Sync Bus (0ms Sync) */
   initRealtimePwaSyncBus();
 
