@@ -1,6 +1,6 @@
 /**
  * المنزلة وناسها — Search Page
- * Smart Arabic text search with normalization, suggestions, recent searches,
+ * Smart Arabic text search with normalization, synonyms, instant caching,
  * and AI Semantic Search integration.
  */
 
@@ -15,6 +15,22 @@ import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES
 import { toast } from '../components/Toast.js';
 
 let _searchUserLocation = null;
+
+// Category Synonyms Map for rich matching
+const SEARCH_CATEGORY_SYNONYMS = {
+  pharmacy: ['صيدليه', 'صيدلية', 'صيدليات', 'دوا', 'دواء', 'ادويه', 'ادوية', 'علاج', 'روشته', 'روشتة', 'مستلزمات طبيه', 'pharmacy'],
+  atm: ['atm', 'ماكينه', 'ماكينة', 'ماكينات', 'صراف', 'صرف', 'بنك', 'فلوس', 'سحب', 'ايداع', 'كاش'],
+  doctor: ['دكتور', 'طبيب', 'عياده', 'عيادة', 'استشاري', 'اخصائي', 'كشف', 'جراح', 'اسنان', 'باطنه', 'اطفال', 'عظام', 'جلديه', 'عيون', 'قلب', 'دكاتره'],
+  restaurant: ['مطعم', 'اكل', 'وجبات', 'كريب', 'بيتزا', 'شاورما', 'برجر', 'فول', 'طعميه', 'مشويات', 'كباب', 'سمك', 'فسيخ', 'حواوشي', 'مطاعم'],
+  cafe: ['كافيه', 'مقهى', 'قهوه', 'قهوة', 'كوفي', 'بن', 'شاي', 'عصائر', 'مشروبات', 'شيشه', 'كافيهات'],
+  supermarket: ['سوبر ماركت', 'بقاله', 'بقالة', 'هايبر', 'ماركت', 'خضار', 'فاكهه', 'فاكهة', 'جبن', 'تموين', 'سوبرماركت'],
+  bakery: ['مخبز', 'عيش', 'فينو', 'حلويات', 'تورته', 'تورتة', 'كيك', 'بسبوسه', 'بسبوسة', 'مخبوزات', 'فرن', 'مخابز'],
+  roastery: ['محمصه', 'محمصة', 'بن', 'مكسرات', 'تسالي', 'لب', 'كاجو', 'فول سوداني', 'محامص'],
+  plumbing: ['سباك', 'سباكه', 'سباكة', 'ادوات صحيه', 'ادوات صحية', 'مواسير', 'خلاطات', 'فلتر', 'سباكين'],
+  carpenter: ['نجار', 'نجاره', 'نجارة', 'خشب', 'غرف نوم', 'موبيليا', 'ابواب', 'شبابيك', 'نجارين'],
+  electrician: ['كهربائي', 'كهرباء', 'مفاتيح', 'صيانة كهربائية', 'ليدات', 'كهربائيه'],
+  mechanic: ['ميكانيكي', 'سيارات', 'صيانة سيارات', 'زيوت', 'قطع غيار', 'كاوتش', 'ميكانيكيه']
+};
 
 export async function renderSearchPage($container, { q = '', user }) {
   $container.innerHTML = `
@@ -40,7 +56,7 @@ export async function renderSearchPage($container, { q = '', user }) {
             </button>
           </div>
 
-          <!-- Smart AI Button -->
+          <!-- Smart AI Button & Quick Filter Chips -->
           <div style="margin-top:var(--space-3);display:flex;align-items:center;justify-content:center;gap:var(--space-2);flex-wrap:wrap">
             <button class="btn btn-sm btn-outline" id="btn-ai-search" style="border-color:rgba(255,255,255,0.4);color:#fff">
               ✨ بحث ذكي بالذكاء الاصطناعي
@@ -93,9 +109,19 @@ export async function renderSearchPage($container, { q = '', user }) {
   const gridEl = document.getElementById('search-results-grid');
 
   let allPlaces = [];
+  let allProductsList = [];
+  let allOffersList = [];
 
+  // Fast pre-fetch places, products, and offers in parallel
   try {
-    allPlaces = await getPublishedPlaces({ limit: 150 });
+    const [pList, prList, offList] = await Promise.all([
+      getPublishedPlaces({ limit: 200 }),
+      getAllProducts().catch(() => []),
+      getActiveOffers().catch(() => [])
+    ]);
+    allPlaces = pList || [];
+    allProductsList = prList || [];
+    allOffersList = offList || [];
   } catch (err) {
     console.warn('Failed to pre-fetch places for search:', err);
   }
@@ -103,24 +129,23 @@ export async function renderSearchPage($container, { q = '', user }) {
   const currentUser = getCurrentUser() || user;
 
   async function performSearch(queryText, isAi = false) {
-    const query = queryText.trim();
+    const query = (queryText || '').trim();
     if (!query) {
-      metaEl.innerHTML = 'يرجى إدخال كلمة للبحث';
-      gridEl.innerHTML = '';
+      if (metaEl) metaEl.innerHTML = 'يرجى إدخال كلمة للبحث';
+      if (gridEl) gridEl.innerHTML = '';
       return;
     }
 
     saveSearchHistory(query);
 
     if (isAi) {
-      metaEl.innerHTML = `✨ جاري التحليل الذكي للبحث عن "<strong>${escHtml(query)}</strong>"...`;
+      if (metaEl) metaEl.innerHTML = `✨ جاري التحليل الذكي للبحث عن "<strong>${escHtml(query)}</strong>"...`;
       aiSmartSearch(query, allPlaces).then(async (aiRes) => {
         if (aiRes && aiRes.results && aiRes.results.length > 0) {
           const matchedIds = new Set(aiRes.results.map(r => r.id));
           const results = allPlaces.filter(p => matchedIds.has(p._key || p.id));
           await renderResults(results, `✨ نتائج ذكية مقترحة لـ "<strong>${escHtml(query)}</strong>" (${results.length})`);
         } else {
-          // Fallback to local
           await localSearch(query);
         }
       }).catch(async () => await localSearch(query));
@@ -129,17 +154,38 @@ export async function renderSearchPage($container, { q = '', user }) {
     }
   }
 
-    async function localSearch(query) {
+  async function localSearch(query) {
     const rawClean = extractSearchKeywords(query);
     const normalQ = normalizeArabic(rawClean);
     const queryIntents = expandArabicSearchIntent(query);
 
     const scored = allPlaces.map(place => {
-      // 1. Name & NameEn Match (Highest weight: 100)
+      // 1. Name & NameEn Match
       const nameScore = Math.max(arabicScore(place.name || '', query), arabicScore(place.name || '', rawClean));
       const nameEnScore = place.nameEn ? (place.nameEn.toLowerCase().includes(query.toLowerCase()) ? 90 : 0) : 0;
 
-      // 2. Medical & Professional Specialty Match (Weight: 95)
+      // 2. Category Synonyms Match (e.g. صيدليه / صيدلية / علاج / بنك / atm / مطعم)
+      let categorySynonymScore = 0;
+      const placeCatKey = (place.categoryId || '').toLowerCase();
+      const placeCatName = normalizeArabic((place.customCategory || '') + ' ' + (place.categoryName || '')).toLowerCase();
+      const placeNameNorm = normalizeArabic(place.name || '').toLowerCase();
+
+      for (const [cKey, syns] of Object.entries(SEARCH_CATEGORY_SYNONYMS)) {
+        if (placeCatKey.includes(cKey) || placeCatName.includes(cKey) || placeNameNorm.includes(cKey)) {
+          if (syns.some(s => normalQ.includes(s) || s.includes(normalQ) || queryIntents.includes(s))) {
+            categorySynonymScore = 95;
+            break;
+          }
+        }
+        if (syns.some(s => normalQ === s || normalQ.includes(s))) {
+          if (placeCatKey.includes(cKey) || placeCatName.includes(cKey) || placeNameNorm.includes(cKey)) {
+            categorySynonymScore = 95;
+            break;
+          }
+        }
+      }
+
+      // 3. Medical Specialty Match
       let specialtyScore = 0;
       if (place.medicalSpecialty) {
         const specNorm = normalizeArabic(place.medicalSpecialty);
@@ -150,7 +196,7 @@ export async function renderSearchPage($container, { q = '', user }) {
         }
       }
 
-      // 3. Services & Keywords Match (Weight: 90)
+      // 4. Services Match
       let serviceScore = 0;
       if (place.services && Array.isArray(place.services)) {
         place.services.forEach(s => {
@@ -162,35 +208,33 @@ export async function renderSearchPage($container, { q = '', user }) {
         });
       }
 
-      // 4. Deep Product Matching (Dishes, Menu items, Products)
+      // 5. Products Match
       let productScore = 0;
       const placeProducts = (allProductsList || []).filter(prod => prod.placeId === (place.id || place.slug));
       for (const prod of placeProducts) {
         const prodNameNorm = normalizeArabic(prod.name || '').toLowerCase();
-        const prodDescNorm = normalizeArabic(prod.description || '').toLowerCase();
         if (prodNameNorm.includes(normalQ) || normalQ.includes(prodNameNorm) || queryIntents.some(i => prodNameNorm.includes(i) || i.includes(prodNameNorm))) {
           productScore = 95;
           break;
         }
       }
 
-      // 5. Deep Active Offers Matching (Discounts, Deals)
+      // 6. Offers Match
       let offerScore = 0;
       const placeOffers = (allOffersList || []).filter(off => off.placeId === (place.id || place.slug));
       for (const off of placeOffers) {
         const offTitleNorm = normalizeArabic(off.title || '').toLowerCase();
-        const offDescNorm = normalizeArabic(off.description || '').toLowerCase();
         if (offTitleNorm.includes(normalQ) || normalQ.includes(offTitleNorm) || queryIntents.some(i => offTitleNorm.includes(i) || i.includes(offTitleNorm))) {
           offerScore = 90;
           break;
         }
       }
 
-      // 4. Detailed Address & Area Match (Weight: 85)
+      // 7. Address & Area Match
       const addressScore = place.address ? Math.max(arabicScore(place.address, query), arabicScore(place.address, rawClean)) * 0.9 : 0;
       const areaScore = Math.max(arabicScore(place.area || '', query), arabicScore(place.area || '', rawClean)) * 0.85;
 
-      // 5. Category & Custom Category Match (Weight: 85)
+      // 8. Category Text Match
       let catScore = 0;
       const catVal = normalizeArabic(`${place.customCategory || ''} ${place.categoryName || ''} ${place.categoryId || ''}`);
       if (catVal.includes(normalQ) || normalQ.includes(catVal)) {
@@ -199,25 +243,10 @@ export async function renderSearchPage($container, { q = '', user }) {
         catScore = 75;
       }
 
-      // 6. Description Match (Weight: 75)
+      // 9. Description Match
       const descScore = place.description ? Math.max(arabicScore(place.description, query), arabicScore(place.description, rawClean)) * 0.75 : 0;
 
-      // 7. Delivery Vehicle Type Matching
-      let deliveryScore = 0;
-      if (place.deliveryType) {
-        const dt = normalizeArabic(place.deliveryType);
-        const dtMap = {
-          'car': ['سيارة', 'عربية', 'عربيات', 'مشوار', 'مشاوير', 'تاكسي', 'رحلات', 'توصيل', 'شاحنة'],
-          'tuktuk': ['توكتوك', 'توك توك', 'تكاتك', 'مشاوير', 'توصيل'],
-          'motorcycle': ['موتوسيكل', 'موتسيكل', 'موتوسيكلات', 'دليفري', 'توصيل']
-        };
-        const dtSynonyms = (dtMap[place.deliveryType] || []).map(normalizeArabic);
-        if (queryIntents.some(intent => dtSynonyms.includes(intent) || dt.includes(intent) || intent.includes(dt))) {
-          deliveryScore = 85;
-        }
-      }
-
-      // 8. Full Cross-Field Semantic Intent Match
+      // 10. Semantic Cross-field Match
       let semanticScore = 0;
       const fullPlaceIndex = normalizeArabic(
         `${place.name || ''} ${place.nameEn || ''} ${place.medicalSpecialty || ''} ${(place.services || []).join(' ')} ${place.address || ''} ${place.area || ''} ${place.categoryName || ''} ${place.customCategory || ''} ${place.categoryId || ''} ${place.description || ''}`
@@ -232,6 +261,7 @@ export async function renderSearchPage($container, { q = '', user }) {
       const total = Math.max(
         nameScore, 
         nameEnScore, 
+        categorySynonymScore,
         specialtyScore, 
         serviceScore, 
         productScore,
@@ -240,7 +270,6 @@ export async function renderSearchPage($container, { q = '', user }) {
         areaScore, 
         catScore, 
         descScore, 
-        deliveryScore, 
         semanticScore
       );
 
@@ -250,7 +279,6 @@ export async function renderSearchPage($container, { q = '', user }) {
     .sort((a, b) => b.total - a.total)
     .map(item => item.place);
 
-    // Sorting rule: Verified first -> User owned -> Others
     const finalResults = sortSearchPlaces(scored, currentUser?.uid);
     await renderResults(finalResults, `تم العثور على <strong>${finalResults.length}</strong> مكان لـ "<strong>${escHtml(query)}</strong>"`);
   }
@@ -261,7 +289,7 @@ export async function renderSearchPage($container, { q = '', user }) {
   async function renderResults(places, metaText) {
     currentResults = places;
     if (metaText) currentMeta = metaText;
-    metaEl.innerHTML = currentMeta;
+    if (metaEl) metaEl.innerHTML = currentMeta;
 
     const sortBy = searchSort?.value || 'relevance';
     let sorted = [...places];
@@ -290,6 +318,8 @@ export async function renderSearchPage($container, { q = '', user }) {
       sorted.sort((a, b) => (Number(a.rating) || 5.0) - (Number(b.rating) || 5.0));
     }
 
+    if (!gridEl) return;
+
     if (sorted.length === 0) {
       gridEl.innerHTML = `
         <div class="empty-state" style="grid-column:1/-1">
@@ -314,16 +344,16 @@ export async function renderSearchPage($container, { q = '', user }) {
     performSearch(keyword, false);
   };
 
-  searchBtn?.addEventListener('click', () => performSearch(searchInput.value, false));
+  searchBtn?.addEventListener('click', () => performSearch(searchInput?.value || '', false));
   
-  // Instant Live Search as you type (0ms latency)
+  // Instant Live Search as you type
   let _searchDebounce = null;
   searchInput?.addEventListener('input', (e) => {
     clearTimeout(_searchDebounce);
     const val = e.target.value;
     if (!val.trim()) {
-      gridEl.innerHTML = '';
-      metaEl.innerHTML = 'أدخل كلمة البحث للبدء';
+      if (gridEl) gridEl.innerHTML = '';
+      if (metaEl) metaEl.innerHTML = 'أدخل كلمة البحث للبدء';
       return;
     }
     _searchDebounce = setTimeout(() => {
@@ -334,13 +364,13 @@ export async function renderSearchPage($container, { q = '', user }) {
   searchInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       clearTimeout(_searchDebounce);
-      performSearch(searchInput.value, false);
+      performSearch(searchInput?.value || '', false);
     }
   });
 
-  aiSearchBtn?.addEventListener('click', () => performSearch(searchInput.value || 'أفضل الأماكن', true));
+  aiSearchBtn?.addEventListener('click', () => performSearch(searchInput?.value || 'أفضل الأماكن', true));
 
-  // Initialize Smart Voice Search
+  // Initialize Voice Search
   mountVoiceSearchButton({
     inputEl: searchInput,
     onSearch: (spokenText) => {
@@ -362,8 +392,8 @@ function sortSearchPlaces(places, currentUid = null) {
   const others = [];
 
   places.forEach(place => {
-    const key = place.id || place._key;
-    if (seen.has(key)) return;
+    const key = place.id || place._key || place.slug;
+    if (!key || seen.has(key)) return;
     seen.add(key);
 
     const isSpons = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
