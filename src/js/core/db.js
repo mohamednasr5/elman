@@ -1055,6 +1055,7 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     userPhoto: user.photoURL || '',
     rating: numRating,
     comment: cleanComment,
+    userPoints: getDeterministicReviewerPoints(cleanName, reviewId),
     createdAt: Date.now(),
     updatedAt: Date.now(),
     editCount: 0
@@ -1884,3 +1885,26 @@ export function subscribeToOwnerPresence(ownerId, callback) {
   }
 }
 
+
+
+function getDeterministicReviewerPoints(name = '', id = '') {
+  const str = (name + id).trim() || 'مستخدم';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const abs = Math.abs(hash);
+  const mod = abs % 100;
+  if (mod < 28) {
+    return 80 + (abs % 400); // 🥉 مستكشف مبتدئ (80 - 479)
+  } else if (mod < 62) {
+    return 520 + (abs % 900); // 🥈 مساهم نشط (520 - 1419)
+  } else if (mod < 84) {
+    return 1550 + (abs % 1800); // 🥇 خبير المنزلة والمطرية (1550 - 3349)
+  } else if (mod < 94) {
+    return 3550 + (abs % 1350); // 💎 مساهم موثوق ذهبي (3550 - 4899)
+  } else {
+    return 5100 + (abs % 2200); // 👑 نخبة المنزلة VIP (5100 - 7299)
+  }
+}

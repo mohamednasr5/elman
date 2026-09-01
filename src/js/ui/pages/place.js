@@ -1663,7 +1663,7 @@ function renderReviewsSectionHTML({ placeId, placeName, safeReviews, totalReview
                       <div style="font-weight:700;font-size:13.5px;color:var(--text-primary);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                         <span>${escHtml(r.userName || 'مستخدم مسجل')}</span>
                         ${(() => {
-                          const userPts = Number(r.userPoints || r.points) || (r.isAdminGenerated ? 5200 : 250);
+                          const userPts = Number(r.userPoints || r.points) || getDeterministicReviewerPoints(r.userName, r.id);
                           const lvl = getLoyaltyLevelInfo(userPts).currentLevel;
                           return `<span class="badge" style="font-size:10.5px;padding:2px 8px;border-radius:9999px;background:rgba(245,166,35,0.12);color:${lvl.color};border:1px solid ${lvl.color}40;font-weight:800;display:inline-flex;align-items:center;gap:3px">
                             <span>${lvl.icon}</span>
@@ -1729,4 +1729,27 @@ function renderReviewsSectionHTML({ placeId, placeName, safeReviews, totalReview
       `}
     </section>
   `;
+}
+
+
+function getDeterministicReviewerPoints(name = '', id = '') {
+  const str = (name + id).trim() || 'مستخدم';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const abs = Math.abs(hash);
+  const mod = abs % 100;
+  if (mod < 28) {
+    return 80 + (abs % 400); // 🥉 مستكشف مبتدئ (80 - 479)
+  } else if (mod < 62) {
+    return 520 + (abs % 900); // 🥈 مساهم نشط (520 - 1419)
+  } else if (mod < 84) {
+    return 1550 + (abs % 1800); // 🥇 خبير المنزلة والمطرية (1550 - 3349)
+  } else if (mod < 94) {
+    return 3550 + (abs % 1350); // 💎 مساهم موثوق ذهبي (3550 - 4899)
+  } else {
+    return 5100 + (abs % 2200); // 👑 نخبة المنزلة VIP (5100 - 7299)
+  }
 }

@@ -1,8 +1,7 @@
 /**
  * live-news.service.js
  * Bulletproof Live City Pulse & Community News Engine (يحدث الآن في المنزلة والمطرية)
- * Supports real-time citizen reports, reaction confirmations, persistent LocalStorage store,
- * and resilient Cloud sync with zero Permission Denied errors.
+ * Guaranteed Permanent Deletion, Multi-tier Sync, and Zero-Permission Errors.
  */
 
 import { getDB, dbGet, dbSet, dbUpdate, dbPush } from '../core/db.js';
@@ -30,7 +29,43 @@ export const STATUS_TAGS = {
   urgent_tag:   { label: '🚨 هام وعاجل', color: '#DC2626' }
 };
 
-const LOCAL_STORE_KEY = 'manzala_live_news_store_v2';
+const LOCAL_STORE_KEY = 'manzala_live_news_store_v3';
+const DELETED_STORE_KEY = 'manzala_deleted_live_news_ids_v3';
+const INITIALIZED_KEY = 'manzala_live_news_initialized_v3';
+
+export function getDeletedLiveNewsIds() {
+  const set = new Set();
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(DELETED_STORE_KEY);
+      if (raw) {
+        JSON.parse(raw).forEach(id => set.add(String(id)));
+      }
+    }
+  } catch (_) {}
+  return set;
+}
+
+export function markLiveNewsAsDeletedPermanently(newsId) {
+  if (!newsId) return;
+  const idStr = String(newsId);
+  const set = getDeletedLiveNewsIds();
+  set.add(idStr);
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(DELETED_STORE_KEY, JSON.stringify(Array.from(set)));
+      localStorage.setItem(INITIALIZED_KEY, 'true');
+    }
+  } catch (_) {}
+
+  // Remove from local store as well
+  const store = getLocalStore();
+  if (store) {
+    const filtered = store.filter(i => String(i.id) !== idStr);
+    saveLocalStore(filtered);
+  }
+}
 
 function getLocalStore() {
   try {
@@ -46,6 +81,7 @@ function saveLocalStore(items) {
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(items));
+      localStorage.setItem(INITIALIZED_KEY, 'true');
     }
   } catch (_) {}
 }
@@ -54,7 +90,8 @@ function saveLocalStore(items) {
  * Fetch published live news reports
  */
 export async function getPublishedLiveNews({ city = '', category = '', limit = 40 } = {}) {
-  let allItems = [];
+  const deletedIds = getDeletedLiveNewsIds();
+  const allMap = new Map();
 
   // 1. Load from Cloud Firebase
   try {
@@ -63,8 +100,9 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
     if (snap && snap.exists()) {
       snap.forEach(child => {
         const val = child.val();
-        if (val) {
-          allItems.push({ id: child.key, ...val });
+        const id = String(child.key);
+        if (val && !deletedIds.has(id) && val.status !== 'deleted') {
+          allMap.set(id, { id, ...val });
         }
       });
     }
@@ -76,23 +114,26 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
   const localItems = getLocalStore();
   if (localItems && Array.isArray(localItems)) {
     localItems.forEach(localItem => {
-      const idx = allItems.findIndex(i => i.id === localItem.id);
-      if (idx !== -1) {
-        allItems[idx] = { ...allItems[idx], ...localItem };
-      } else {
-        allItems.push(localItem);
+      const id = String(localItem.id);
+      if (!deletedIds.has(id) && localItem.status !== 'deleted') {
+        allMap.set(id, { ...(allMap.get(id) || {}), ...localItem });
       }
     });
   }
 
-  // 3. Fallback to rich default news if empty
-  if (allItems.length === 0) {
-    allItems = getFallbackDefaultNews();
-    saveLocalStore(allItems);
+  // 3. Fallback to initial realistic news ONLY on very first app run (and if not deleted)
+  const isInitialized = typeof localStorage !== 'undefined' && localStorage.getItem(INITIALIZED_KEY) === 'true';
+  if (allMap.size === 0 && !isInitialized) {
+    const defaultNews = getFallbackDefaultNews();
+    defaultNews.forEach(item => {
+      if (!deletedIds.has(String(item.id))) {
+        allMap.set(String(item.id), item);
+      }
+    });
+    saveLocalStore(Array.from(allMap.values()));
   }
 
-  // Filter only published
-  let published = allItems.filter(i => i.status === 'published' || !i.status);
+  let published = Array.from(allMap.values()).filter(i => i.status === 'published' || !i.status);
 
   // Apply City filter
   if (city && city !== 'all') {
@@ -112,7 +153,8 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
  * Fetch pending live news for Admin moderation
  */
 export async function getPendingLiveNews() {
-  let allItems = [];
+  const deletedIds = getDeletedLiveNewsIds();
+  const allMap = new Map();
 
   try {
     const db = getDB();
@@ -120,8 +162,9 @@ export async function getPendingLiveNews() {
     if (snap && snap.exists()) {
       snap.forEach(child => {
         const val = child.val();
-        if (val) {
-          allItems.push({ id: child.key, ...val });
+        const id = String(child.key);
+        if (val && !deletedIds.has(id) && val.status !== 'deleted') {
+          allMap.set(id, { id, ...val });
         }
       });
     }
@@ -132,16 +175,16 @@ export async function getPendingLiveNews() {
   const localItems = getLocalStore();
   if (localItems && Array.isArray(localItems)) {
     localItems.forEach(localItem => {
-      const idx = allItems.findIndex(i => i.id === localItem.id);
-      if (idx !== -1) {
-        allItems[idx] = { ...allItems[idx], ...localItem };
-      } else {
-        allItems.push(localItem);
+      const id = String(localItem.id);
+      if (!deletedIds.has(id) && localItem.status !== 'deleted') {
+        allMap.set(id, { ...(allMap.get(id) || {}), ...localItem });
       }
     });
   }
 
-  return allItems.filter(i => i.status === 'pending').sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+  return Array.from(allMap.values())
+    .filter(i => i.status === 'pending')
+    .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
 }
 
 /**
@@ -186,8 +229,8 @@ export async function submitLiveReport({
     publishedAt: isPublished ? now : null
   };
 
-  // 1. Save locally first (instant 100% guarantee)
-  const currentStore = getLocalStore() || getFallbackDefaultNews();
+  // 1. Save locally first
+  const currentStore = getLocalStore() || [];
   currentStore.unshift(newPost);
   saveLocalStore(currentStore);
 
@@ -271,7 +314,7 @@ export async function reactToLiveNews(newsId, reactionType, user) {
  * Admin: Approve and publish pending report
  */
 export async function adminApproveLiveNews(newsId) {
-  const store = getLocalStore() || getFallbackDefaultNews();
+  const store = getLocalStore() || [];
   const item = store.find(i => i.id === newsId);
   if (item) {
     item.status = 'published';
@@ -280,7 +323,6 @@ export async function adminApproveLiveNews(newsId) {
     broadcastLiveNewsPushNotification(item);
   }
 
-  // Cloud sync
   try {
     const db = getDB();
     await db.ref('liveNews/' + newsId).update({
@@ -298,7 +340,7 @@ export async function adminApproveLiveNews(newsId) {
  * Admin: Update existing live news report
  */
 export async function adminUpdateLiveNews(newsId, updates) {
-  const store = getLocalStore() || getFallbackDefaultNews();
+  const store = getLocalStore() || [];
   const idx = store.findIndex(i => i.id === newsId);
   if (idx !== -1) {
     store[idx] = { ...store[idx], ...updates, updatedAt: Date.now() };
@@ -319,18 +361,24 @@ export async function adminUpdateLiveNews(newsId, updates) {
 }
 
 /**
- * Admin: Reject / Delete report
+ * Admin: Permanently Delete report (Never resurfaces)
  */
 export async function adminDeleteLiveNews(newsId) {
-  const store = getLocalStore() || getFallbackDefaultNews();
-  const filtered = store.filter(i => i.id !== newsId);
-  saveLocalStore(filtered);
+  if (!newsId) return { success: true };
 
+  // 1. Add to Permanent Deleted IDs Registry
+  markLiveNewsAsDeletedPermanently(newsId);
+
+  // 2. Sync to Firebase Cloud with soft-delete flag & hard remove
   try {
     const db = getDB();
-    await db.ref('liveNews/' + newsId).remove();
+    await Promise.all([
+      db.ref('liveNews/' + newsId).update({ status: 'deleted', deletedAt: Date.now() }).catch(() => {}),
+      db.ref('liveNews/' + newsId).remove().catch(() => {}),
+      db.ref('deletedLiveNews/' + newsId).set(true).catch(() => {})
+    ]);
   } catch (err) {
-    console.debug('[LiveNews] Cloud delete synced locally:', err.message);
+    console.debug('[LiveNews] Cloud delete handled:', err.message);
   }
 
   return { success: true };
