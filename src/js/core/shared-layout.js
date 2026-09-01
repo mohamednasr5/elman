@@ -1,10 +1,10 @@
-import { initGlobalRealtimeNotificationsListener, updateAllNotificationBadges } from '../services/notification.service.js';
+import { initGlobalRealtimeNotificationsListener, updateAllNotificationBadges, mountPushNotificationPrompt, setupForegroundMessageListener } from '../services/notification.service.js';
 /**
  * shared-layout.js
  * بناء الـ Header + Footer + Bottom-Nav المشترك بين جميع الصفحات
  * يُستدعى من كل صفحة HTML مستقلة
  */
-import { initFirebase } from './firebase.js';
+import { initFirebase, FCM_VAPID_KEY } from './firebase.js';
 import { initAuth, signInWithGoogle, signOut, getCurrentUser, onAuthStateChange } from './auth.js';
 import { getSettings } from './db.js';
 import { toast } from '../ui/components/Toast.js';
@@ -27,6 +27,8 @@ export async function initSharedLayout(activeHref = '') {
   setupInstantLinkPrefetcher();
   bindGlobalVoiceAssistantFab();
   initGlobalRealtimeNotificationsListener(getCurrentUser());
+  mountPushNotificationPrompt(FCM_VAPID_KEY);
+  setupForegroundMessageListener();
 
   // Bell button navigation & badge setup
   document.querySelectorAll('#header-notif-bell-btn, .header-notif-bell-btn').forEach(btn => {

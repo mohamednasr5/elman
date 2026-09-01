@@ -21,6 +21,9 @@ export const WORKER_URL = 'https://elmanzala.nonm1724.workers.dev';
 // R2 Public CDN base URL
 export const R2_PUBLIC_URL = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev';
 
+// Web Push VAPID Key Pair
+export const FCM_VAPID_KEY = 'BGysPV54ekHXamWK9ZZ_dkoW2PgeGjQbniLME3oEY277KzX4KlgjPWVwdvz_e5eZosozZjk9GjdvhzWRE1R4yxQ';
+
 /**
  * Firebase initialization is done once in index.html via CDN scripts.
  * This module exports references to Firebase services.

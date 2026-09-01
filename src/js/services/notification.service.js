@@ -466,3 +466,222 @@ export function initGlobalRealtimeNotificationsListener(currentUser) {
     console.debug('[RealtimeNotifications] Listener setup handled:', err);
   }
 }
+
+
+// ═════════════════════════════════════════════════════════════════════
+//  FIREBASE CLOUD MESSAGING (FCM) WEB PUSH NOTIFICATION ENGINE
+// ═════════════════════════════════════════════════════════════════════
+
+let _fcmMessaging = null;
+let _defaultVapidKey = 'BGysPV54ekHXamWK9ZZ_dkoW2PgeGjQbniLME3oEY277KzX4KlgjPWVwdvz_e5eZosozZjk9GjdvhzWRE1R4yxQ';
+
+/**
+ * Get or initialize Firebase Messaging instance
+ */
+export function getFirebaseMessaging() {
+  if (!_fcmMessaging && typeof window !== 'undefined' && typeof firebase !== 'undefined' && firebase.messaging) {
+    try {
+      _fcmMessaging = firebase.messaging();
+    } catch (err) {
+      console.warn('[FCM] Messaging init warning:', err);
+    }
+  }
+  return _fcmMessaging;
+}
+
+/**
+ * Generate or retrieve a persistent device ID for this browser/phone
+ */
+function getOrCreateDeviceId() {
+  if (typeof localStorage === 'undefined') return 'device_' + Math.random().toString(36).substr(2, 9);
+  let id = localStorage.getItem('manzala_device_id');
+  if (!id) {
+    id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 8);
+    localStorage.setItem('manzala_device_id', id);
+  }
+  return id;
+}
+
+/**
+ * Register FCM Push Token in Firebase Database for user / device
+ */
+export async function registerDevicePushToken(token, user = null) {
+  if (!token) return;
+  const deviceId = getOrCreateDeviceId();
+  const db = getDB();
+
+  const deviceInfo = {
+    fcmToken: token,
+    platform: navigator.platform || 'unknown',
+    userAgent: navigator.userAgent || 'unknown',
+    notificationsEnabled: true,
+    lastActive: firebase.database.ServerValue.TIMESTAMP,
+    updatedAt: new Date().toISOString()
+  };
+
+  // 1. If user is logged in, register in user's devices node
+  if (user && user.uid) {
+    await db.ref(`users/${user.uid}/devices/${deviceId}`).update(deviceInfo).catch(() => {});
+  }
+
+  // 2. Register in global active FCM tokens pool for general broadcasts & ATM updates
+  const tokenKey = token.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+  await db.ref(`fcmTokens/${tokenKey}`).set({
+    token,
+    deviceId,
+    uid: user?.uid || null,
+    lastUpdated: firebase.database.ServerValue.TIMESTAMP
+  }).catch(() => {});
+
+  localStorage.setItem('manzala_fcm_token', token);
+}
+
+/**
+ * Request Push Notification Permission and acquire FCM Token
+ */
+export async function requestFCMNotificationPermission(vapidKey = '') {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return { success: false, reason: 'unsupported' };
+  }
+
+  const effectiveVapid = vapidKey || _defaultVapidKey || window._MANZALA_VAPID_KEY || '';
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      return { success: false, reason: 'denied' };
+    }
+
+    const messaging = getFirebaseMessaging();
+    if (!messaging) {
+      return { success: false, reason: 'no_messaging' };
+    }
+
+    // Get FCM registration token
+    const tokenOptions = {
+      serviceWorkerRegistration: await navigator.serviceWorker.ready
+    };
+    if (effectiveVapid) {
+      tokenOptions.vapidKey = effectiveVapid;
+    }
+
+    const token = await messaging.getToken(tokenOptions);
+    if (token) {
+      const user = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+      await registerDevicePushToken(token, user);
+      playNotificationSound();
+      return { success: true, token };
+    }
+
+    return { success: false, reason: 'no_token' };
+  } catch (err) {
+    console.error('[FCM] Permission/Token error:', err);
+    return { success: false, error: err };
+  }
+}
+
+/**
+ * Listen for foreground push messages while PWA is open
+ */
+export function setupForegroundMessageListener(onMessageCallback) {
+  const messaging = getFirebaseMessaging();
+  if (!messaging) return;
+
+  messaging.onMessage((payload) => {
+    console.log('[FCM] Foreground push message received:', payload);
+    playNotificationSound();
+
+    const title = payload.notification?.title || payload.data?.title || 'تنبيه جديد';
+    const body = payload.notification?.body || payload.data?.body || '';
+
+    // Show in-app banner or toast
+    if (typeof toast !== 'undefined' && toast.info) {
+      toast.info(`🔔 ${title}: ${body}`);
+    }
+
+    if (onMessageCallback) {
+      onMessageCallback(payload);
+    }
+  });
+}
+
+/**
+ * Mount smart in-app Push Notification prompt banner on first visit
+ */
+export function mountPushNotificationPrompt(vapidKey = '') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (!('Notification' in window) || Notification.permission === 'granted') return;
+  if (sessionStorage.getItem('manzala_push_prompt_dismissed')) return;
+
+  if (vapidKey) _defaultVapidKey = vapidKey;
+
+  setTimeout(() => {
+    if (document.getElementById('manzala-push-permission-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'manzala-push-permission-banner';
+    banner.style.cssText = `
+      position: fixed;
+      bottom: 75px;
+      right: 16px;
+      left: 16px;
+      max-width: 440px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, #0F2B48, #1B4F72);
+      color: #fff;
+      border: 1.5px solid #F5A623;
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      animation: pushSlideUp 0.35s ease forwards;
+    `;
+
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:180px">
+        <span style="font-size:24px">🔔</span>
+        <div>
+          <div style="font-weight:800;font-size:13.5px;color:#fff;margin-bottom:2px">تفعيل إشعارات دليل المنزلة والمطرية</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,0.8);line-height:1.4">تلقي تنبيهات العروض، وتحديثات ماكينات ATM والأماكن فوراً</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button type="button" id="btn-accept-push-notif" style="background:#F5A623;color:#0F2B48;border:none;border-radius:8px;padding:7px 14px;font-weight:800;font-size:12px;cursor:pointer">
+          تفعيل 🔔
+        </button>
+        <button type="button" id="btn-dismiss-push-notif" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer;opacity:0.7;padding:4px">
+          ✕
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(banner);
+
+    document.getElementById('btn-dismiss-push-notif')?.addEventListener('click', () => {
+      banner.remove();
+      sessionStorage.setItem('manzala_push_prompt_dismissed', 'true');
+    });
+
+    document.getElementById('btn-accept-push-notif')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-accept-push-notif');
+      if (btn) btn.textContent = 'جاري التفعيل...';
+      const res = await requestFCMNotificationPermission(_defaultVapidKey);
+      if (res.success) {
+        banner.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;color:#10B981;font-weight:800;font-size:13px">
+            <span>✓</span>
+            <span>تم تفعيل إشعارات الهاتف بنجاح! 🔔</span>
+          </div>
+        `;
+        setTimeout(() => banner.remove(), 2500);
+      } else {
+        banner.remove();
+      }
+    });
+  }, 2000);
+}
