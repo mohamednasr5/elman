@@ -4,12 +4,13 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification } from '../../core/db.js';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification } from '../../core/db.js';
 import { isAdmin } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { formatDate } from '../../utils/date.js';
+import { getPendingLiveNews, getPublishedLiveNews, adminApproveLiveNews, adminDeleteLiveNews, submitLiveReport, NEWS_CATEGORIES, STATUS_TAGS } from '../../services/live-news.service.js';
 import { getLoyaltyLevelInfo, LOYALTY_LEVELS } from '../../services/loyalty.service.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { arabicMatch } from '../../utils/arabic.js';
@@ -280,6 +281,7 @@ async function switchAdminSection(sectionName, pushState = true) {
     if      (sectionName === 'overview')      await renderAdminOverview($main);
     else if (sectionName === 'places')        await renderAdminPlaces($main);
     else if (sectionName === 'products')      await renderAdminProducts($main);
+    else if (sectionName === 'live-news')     await renderAdminLiveNews($main);
     else if (sectionName === 'reviews')       await renderAdminReviews($main);
     else if (sectionName === 'verification')  await renderAdminVerification($main);
     else if (sectionName === 'categories')    await renderAdminCategories($main);
@@ -4689,4 +4691,242 @@ function escHtml(str) {
 function escAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+
+// ─────────────────────────────────────────────
+//  LIVE NEWS & COMMUNITY PULSE MODERATION (إدارة يحدث الآن)
+// ─────────────────────────────────────────────
+async function renderAdminLiveNews($container) {
+  $container.innerHTML = '<div class="spinner spinner-lg" style="margin:4rem auto"></div>';
+
+  const [pendingNews, publishedNews] = await Promise.all([
+    getPendingLiveNews(),
+    getPublishedLiveNews({ limit: 40 })
+  ]);
+
+  $container.innerHTML = `
+    <div class="admin-fade-in">
+      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+        <div>
+          <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:800;display:flex;align-items:center;gap:8px">
+            <span>🔥</span>
+            <span>إدارة أخبار (المنزلة والمطرية الآن)</span>
+            ${pendingNews.length > 0 ? `<span class="badge" style="background:#EF4444;color:#fff;font-size:12px;font-weight:800;padding:2px 10px;border-radius:9999px">${pendingNews.length} بانتظار المراجعة</span>` : ''}
+          </h1>
+          <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
+            مراجعة واعتماد الأخبار الحية الواردة من المواطنين، ونشر تنبيهات رسمية عاجلة
+          </div>
+        </div>
+
+        <button type="button" id="btn-admin-post-live-news" class="btn btn-primary" style="background:#F5A623;color:#0B1E30;font-weight:800;border:none;border-radius:12px;gap:6px">
+          <span>📢</span> نشر خبر / تنبيه رسمي الآن
+        </button>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:20px">
+        <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1px solid ${pendingNews.length > 0 ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.1)'}">
+          <div style="font-size:12px;color:${pendingNews.length > 0 ? '#EF4444' : 'rgba(255,255,255,0.6)'};margin-bottom:4px">طلبات بانتظار الاعتماد ⏳</div>
+          <div style="font-size:1.8rem;font-weight:800;color:${pendingNews.length > 0 ? '#EF4444' : '#fff'}">${pendingNews.length}</div>
+        </div>
+        <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1)">
+          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:4px">أخبار منشورة نشطة 🟢</div>
+          <div style="font-size:1.8rem;font-weight:800;color:#10B981">${publishedNews.length}</div>
+        </div>
+      </div>
+
+      <!-- Pending Submissions Section -->
+      ${pendingNews.length > 0 ? `
+        <div style="margin-bottom:24px">
+          <h2 style="font-size:15px;font-weight:800;color:#EF4444;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+            <span>⏳</span> الأخبار الواردة من المستخدمين بانتظار موافقتك (${pendingNews.length})
+          </h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px">
+            ${pendingNews.map(item => `
+              <div style="background:#0F273D;border:1.5px solid rgba(239,68,68,0.4);border-radius:14px;padding:16px;box-shadow:0 4px 15px rgba(0,0,0,0.2)">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <span class="badge" style="background:rgba(2,132,199,0.2);color:#38BDF8;font-weight:800;font-size:11px;padding:2px 8px;border-radius:4px">
+                    ${escHtml(item.city || 'المنزلة')} • ${escHtml(item.category || 'عام')}
+                  </span>
+                  <span style="font-size:11px;color:rgba(255,255,255,0.5)">${formatDate(item.createdAt || Date.now())}</span>
+                </div>
+                <h3 style="font-size:14px;font-weight:800;color:#fff;margin:0 0 6px 0">${escHtml(item.title)}</h3>
+                <div style="font-size:12px;color:#F5A623;margin-bottom:6px">📍 ${escHtml(item.location)}</div>
+                ${item.details ? `<p style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin:0 0 10px 0">${escHtml(item.details)}</p>` : ''}
+                <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">
+                  بواسطة: <strong>${escHtml(item.userName || 'مستخدم')}</strong>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <button type="button" class="btn btn-sm btn-success btn-approve-news" data-nid="${escAttr(item.id)}" style="flex:1;border-radius:8px;font-weight:800;font-size:12px;padding:6px">
+                    ✓ اعتماد ونشر فوراً
+                  </button>
+                  <button type="button" class="btn btn-sm btn-danger btn-delete-news" data-nid="${escAttr(item.id)}" style="border-radius:8px;font-weight:800;font-size:12px;padding:6px 12px">
+                    ✕ رفض
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Published News Table -->
+      <div>
+        <h2 style="font-size:15px;font-weight:800;color:#fff;margin-bottom:12px">
+          الأخبار والتحديثات المنشورة حالياً في الدليل (${publishedNews.length})
+        </h2>
+        <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
+          <table class="dashboard-table" style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:12px">
+                <th style="padding:10px">الخبر / الحدث</th>
+                <th style="padding:10px">الموقع والمدينة</th>
+                <th style="padding:10px">التصنيف</th>
+                <th style="padding:10px">التفاعلات</th>
+                <th style="padding:10px">التاريخ</th>
+                <th style="text-align:center;padding:10px">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${publishedNews.map(item => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                  <td style="padding:10px;color:#fff;font-weight:700;font-size:13px">${escHtml(item.title)}</td>
+                  <td style="padding:10px;color:#38BDF8;font-size:12px">📍 ${escHtml(item.location)} (${escHtml(item.city || 'المنزلة')})</td>
+                  <td style="padding:10px;font-size:12px;color:rgba(255,255,255,0.8)">${escHtml(item.category || 'عام')}</td>
+                  <td style="padding:10px;font-size:12px;color:#10B981;font-weight:700">
+                    👍 ${item.reactions?.confirm || 0} • ❤️ ${item.reactions?.love || 0}
+                  </td>
+                  <td style="padding:10px;font-size:11.5px;color:rgba(255,255,255,0.6)">${formatDate(item.createdAt || Date.now())}</td>
+                  <td style="text-align:center;padding:10px">
+                    <button class="btn btn-xs btn-danger btn-delete-news" data-nid="${escAttr(item.id)}" style="border-radius:6px;padding:4px 8px" title="حذف">
+                      ${ICONS.trash}
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Approve Listener
+  $container.querySelectorAll('.btn-approve-news').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const nid = btn.getAttribute('data-nid');
+      try {
+        await adminApproveLiveNews(nid);
+        toast.success('تم اعتماد ونشر الخبر بنجاح! 🔥');
+        renderAdminLiveNews($container);
+      } catch (err) {
+        toast.error(err.message || 'فشلت العملية');
+      }
+    });
+  });
+
+  // Delete Listener
+  $container.querySelectorAll('.btn-delete-news').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const nid = btn.getAttribute('data-nid');
+      const ok = await showConfirm({
+        title: 'حذف الخبر',
+        message: 'هل أنت متأكد من حذف هذا التحديث نهائياً من يحدث الآن؟',
+        confirmText: 'نعم، حذف',
+        cancelText: 'إلغاء'
+      });
+      if (ok) {
+        try {
+          await adminDeleteLiveNews(nid);
+          toast.success('تم حذف التحديث بنجاح');
+          renderAdminLiveNews($container);
+        } catch (err) {
+          toast.error(err.message || 'فشل الحذف');
+        }
+      }
+    });
+  });
+
+  // Post Admin News Directly
+  document.getElementById('btn-admin-post-live-news')?.addEventListener('click', () => {
+    const user = getCurrentUser();
+    const modal = showModal({
+      title: '📢 نشر خبر / تنبيه رسمي مباشر',
+      size: 'md',
+      content: `
+        <form id="form-admin-direct-news" style="display:flex;flex-direction:column;gap:12px" onsubmit="return false">
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">عنوان الخبر / التنبيه <span class="required">*</span></label>
+            <input type="text" id="admin-news-title" class="form-input" placeholder="مثال: تنبيه بخصوص انقطاع المياه غداً / افتتاح معرض..." required />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label" style="font-weight:700">المدينة <span class="required">*</span></label>
+              <select id="admin-news-city" class="form-select">
+                <option value="المنزلة">📍 المنزلة</option>
+                <option value="المطرية">🌊 المطرية</option>
+                <option value="العصافرة">🌾 العصافرة والقرى المجاورة</option>
+                <option value="المنزلة والمطرية">🏙️ المنزلة والمطرية معاً</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label" style="font-weight:700">التصنيف <span class="required">*</span></label>
+              <select id="admin-news-cat" class="form-select">
+                ${Object.entries(NEWS_CATEGORIES).map(([k, c]) => `
+                  <option value="${k}">${c.icon} ${c.label}</option>
+                `).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">المكان / المنطقة بالتحديد <span class="required">*</span></label>
+            <input type="text" id="admin-news-location" class="form-input" placeholder="مثال: شارع عبد المنعم رياض، المنزلة" required />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">تفاصيل الخبر / التنبيه</label>
+            <textarea id="admin-news-details" class="form-textarea" rows="3" placeholder="تفاصيل وبيان الخبر..."></textarea>
+          </div>
+        </form>
+      `,
+      buttons: [
+        {
+          label: '🚀 نشر الخبر فوراً في الدليل',
+          type: 'primary',
+          closeOnClick: false,
+          onClick: async () => {
+            const title = document.getElementById('admin-news-title')?.value.trim();
+            const location = document.getElementById('admin-news-location')?.value.trim();
+            const city = document.getElementById('admin-news-city')?.value;
+            const category = document.getElementById('admin-news-cat')?.value;
+            const details = document.getElementById('admin-news-details')?.value.trim();
+
+            if (!title || !location) {
+              toast.warning('يرجى ملء العنوان والمكان');
+              return;
+            }
+
+            try {
+              await submitLiveReport({
+                title,
+                location,
+                city,
+                category,
+                statusTagKey: 'urgent_tag',
+                details,
+                user,
+                isAdminUser: true
+              });
+              toast.success('تم نشر التنبيه الرسمي بنجاح في يحدث الآن! 📢');
+              modal.close();
+              renderAdminLiveNews($container);
+            } catch (err) {
+              toast.error(err.message || 'فشل النشر');
+            }
+          }
+        },
+        { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+      ]
+    });
+  });
 }

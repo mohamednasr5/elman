@@ -221,6 +221,8 @@ function _esc(s) {
 export function getSharedHeaderHTML(activePage = '') {
   const nav = [
     { href: 'index.html',      label: 'الرئيسية' },
+    { href: 'now.html',        label: '🔥 يحدث الآن' },
+    { href: 'around-me.html',  label: '🗺️ اكتشف حولك' },
     { href: 'places.html',     label: 'الأماكن' },
     { href: 'categories.html', label: 'التصنيفات' },
     { href: 'offers.html',     label: 'العروض' },

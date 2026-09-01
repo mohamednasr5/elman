@@ -12,6 +12,8 @@ import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } 
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
+import { mountLivePulseSection } from '../components/LivePulseSection.js';
+import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 
 const CATEGORY_EMOJIS = {
   'pharmacy':      { emoji: '💊', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
@@ -65,6 +67,9 @@ export async function renderHomePage($main, { user } = {}) {
     const allPlaces = places || [];
 
     // Render sections
+    mountLivePulseSection('home-live-pulse-container');
+    mountAroundMeRadar('home-around-me-container');
+
     mountSponsoredShowcase('home-sponsored-container', allPlaces, {
       title: 'أماكن وإعلانات مميزة في المنزلة والمطرية',
       subtitle: 'أنشطة تجارية وخدمات موصى بها ومعتمدة في المدينة'
@@ -749,6 +754,12 @@ function getHomeHTML() {
         </div>
       </div>
     </section>
+
+    <!-- 🔥 المنزلة والمطرية الآن (يحدث الآن) -->
+    <div id="home-live-pulse-container"></div>
+
+    <!-- 🗺️ اكتشف ما حولك (GPS Radar) -->
+    <div id="home-around-me-container"></div>
 
     <!-- Dedicated Sponsored Showcase Section -->
     <div class="container section" style="padding-bottom:0" id="home-sponsored-container"></div>

@@ -253,6 +253,28 @@ const pages = [
   await renderStaticPage(document.getElementById('page-container'), 'terms');`
   },
   {
+    file: 'now.html',
+    title: 'المنزلة والمطرية الآن — يحدث الآن',
+    desc: 'تحديثات حية لحظة بلحظة: ماكينات ATM، حالة الطرق والازدحام، الافتتاحات، العروض، والمناسبات في المنزلة والمطرية.',
+    activeNav: 'now.html',
+    moduleScript: `
+  import { initPage } from './src/js/core/page-shell.js';
+  import { renderNowPage } from './src/js/ui/pages/now.js';
+  await initPage('now.html');
+  await renderNowPage(document.getElementById('page-container'));`
+  },
+  {
+    file: 'around-me.html',
+    title: 'اكتشف ما حولك — الأقرب إليك بالـ GPS',
+    desc: 'ابحث عن أقرب الصيدليات، ماكينات الصراف الآلي ATM، الأطباء، والمطاعم المحيطة بموقعك الحالي فوراً في المنزلة والمطرية.',
+    activeNav: 'around-me.html',
+    moduleScript: `
+  import { initPage } from './src/js/core/page-shell.js';
+  import { renderAroundMePage } from './src/js/ui/pages/around-me.js';
+  await initPage('around-me.html');
+  await renderAroundMePage(document.getElementById('page-container'));`
+  },
+  {
     file: 'contact.html',
     title: 'تواصل معنا',
     desc: 'تواصل مع إدارة منصة دليل المنزلة والمطرية الرقمي لاستفساراتك وطلبات التوثيق',
