@@ -257,10 +257,65 @@ export async function submitLiveReport({
       awardPoints(user.uid, 'ADD_REVIEW', { label: 'مكافأة نشر خبر وتحديث في (يحدث الآن)' });
     }
     broadcastLiveNewsPushNotification(newPost);
+  } else {
+    // Dispatch Telegram Bot Alert for Admin Review
+    sendTelegramPendingAlert(newPost);
   }
 
   playNotificationSound();
   return { success: true, id, isPublished, post: newPost };
+}
+
+function sendTelegramPendingAlert(report) {
+  try {
+    const rawConfig = typeof localStorage !== 'undefined' ? localStorage.getItem('manzala_telegram_bot_config') : null;
+    let botToken = '';
+    let chatId = '';
+
+    if (rawConfig) {
+      try {
+        const parsed = JSON.parse(rawConfig);
+        botToken = parsed.botToken;
+        chatId = parsed.chatId;
+      } catch (_) {}
+    }
+
+    if (!botToken || !chatId) return;
+
+    const text = `
+🚨 <b>طلب نشر خبر / تحديث جديد في (يحدث الآن)</b>
+━━━━━━━━━━━━━━━━━━━━
+📌 <b>العنوان:</b> ${String(report.title || '').replace(/</g, '&lt;')}
+📍 <b>المكان:</b> ${String(report.location || '').replace(/</g, '&lt;')} (${report.city || 'المنزلة والمطرية'})
+👤 <b>المرسل:</b> ${String(report.userName || 'مواطن').replace(/</g, '&lt;')}
+${report.phone ? `📞 <b>الهاتف:</b> <code>${report.phone}</code>\n` : ''}
+${report.details ? `📝 <b>التفاصيل:</b> <i>${String(report.details).replace(/</g, '&lt;')}</i>\n` : ''}
+━━━━━━━━━━━━━━━━━━━━
+⏳ <i>يرجى اتخاذ إجراء بالموافقة أو الرفض:</i>
+    `.trim();
+
+    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '✅ موافقة ونشر فوري', callback_data: `approve_${report.id}` },
+              { text: '❌ رفض وحذف', callback_data: `reject_${report.id}` }
+            ],
+            [
+              { text: '🌐 فتح قسم يحدث الآن', url: 'https://dalilmanzala.com/now.html' },
+              { text: '👑 لوحة الإدارة', url: 'https://dalilmanzala.com/admin.html?section=live-news' }
+            ]
+          ]
+        }
+      })
+    }).catch(() => {});
+  } catch (_) {}
 }
 
 /**

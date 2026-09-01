@@ -308,6 +308,93 @@ async function switchAdminSection(sectionName, pushState = true) {
   }
 }
 
+function setupAdminNavigation() {
+  const nav = document.getElementById('admin-sidebar-nav');
+  if (nav && !nav.dataset.listening) {
+    nav.dataset.listening = 'true';
+    nav.addEventListener('click', (e) => {
+      const link = e.target.closest('a[data-section]');
+      if (link) {
+        e.preventDefault();
+        const section = link.getAttribute('data-section');
+        switchAdminSection(section, true);
+      }
+    });
+  }
+
+  // Mobile Bottom Nav & More Sheet Listeners
+  const mobileNav = document.getElementById('admin-mobile-bottom-nav');
+  const moreSheetBackdrop = document.getElementById('admin-more-sheet-backdrop');
+  const btnOpenMore = document.getElementById('btn-admin-open-more-sheet');
+  const btnCloseMore = document.getElementById('btn-close-admin-more-sheet');
+
+  function openMoreSheet() {
+    if (moreSheetBackdrop) moreSheetBackdrop.classList.add('visible');
+  }
+
+  function closeMoreSheet() {
+    if (moreSheetBackdrop) moreSheetBackdrop.classList.remove('visible');
+  }
+
+  btnOpenMore?.addEventListener('click', openMoreSheet);
+  btnCloseMore?.addEventListener('click', closeMoreSheet);
+  moreSheetBackdrop?.addEventListener('click', (e) => {
+    if (e.target === moreSheetBackdrop) closeMoreSheet();
+  });
+
+  document.querySelectorAll('.admin-sheet-item[data-admin-sec]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const sec = btn.getAttribute('data-admin-sec');
+      closeMoreSheet();
+      switchAdminSection(sec, true);
+    });
+  });
+
+  if (mobileNav && !mobileNav.dataset.listening) {
+    mobileNav.dataset.listening = 'true';
+    mobileNav.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-admin-sec]');
+      if (btn) {
+        e.preventDefault();
+        const section = btn.getAttribute('data-admin-sec');
+        closeMoreSheet();
+        switchAdminSection(section, true);
+      }
+    });
+  }
+
+  // Admin PWA Standalone Install Trigger
+  let _adminDeferredPrompt = null;
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      _adminDeferredPrompt = e;
+    });
+  }
+
+  document.getElementById('btn-admin-pwa-install-app')?.addEventListener('click', async () => {
+    if (_adminDeferredPrompt) {
+      _adminDeferredPrompt.prompt();
+      const { outcome } = await _adminDeferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        toast.success('تم تثبيت تطبيق لوحة إدارة الدليل بنجاح! 📲');
+      }
+      _adminDeferredPrompt = null;
+    } else {
+      toast.info('لتثبيت تطبيق الإدارة: افتح قائمة المتصفح (⋮) واختر "إضافة إلى الشاشة الرئيسية" أو "تثبيت التطبيق"');
+    }
+  });
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('popstate', () => {
+      const params = new URLSearchParams(location.search);
+      const section = params.get('section') || 'overview';
+      switchAdminSection(section, false);
+    });
+  }
+}
+
 if (typeof window !== 'undefined') {
   window.refreshCurrentAdminSection = () => switchAdminSection(_currentSection, false);
 
@@ -2953,6 +3040,12 @@ async function renderAdminSettings($container) {
 
       await dbUpdate('settings', updates);
       adminCache.settings = null;
+      if (updates['telegram/botToken'] && updates['telegram/adminChatId']) {
+        localStorage.setItem('manzala_telegram_bot_config', JSON.stringify({
+          botToken: updates['telegram/botToken'],
+          chatId: updates['telegram/adminChatId']
+        }));
+      }
       toast.success('تم حفظ إعدادات المنصة بنجاح! ✓');
     } catch (err) {
       toast.error('فشل حفظ الإعدادات: ' + err.message);
