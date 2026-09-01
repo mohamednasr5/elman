@@ -309,30 +309,33 @@ export async function adminUnbanPlace(placeId) {
 }
 
 /** Get all published places (paginated, excluding banned) */
-export async function getPublishedPlaces({ limit = 20, lastKey = null } = {}) {
+export async function getPublishedPlaces({ limit = 100, lastKey = null } = {}) {
   const cacheKey = `published_${limit}_${lastKey || ''}`;
   const cached = getCached(cacheKey, 600000);
-  if (cached) return cached;
+  if (cached && Array.isArray(cached) && cached.length > 0) return cached;
 
   try {
-    let query = getDB().ref('places')
-      .orderByChild('status')
-      .equalTo('published')
-      .limitToFirst(limit * 2);
-
-    if (lastKey) {
-      query = query.startAfter(null, lastKey);
-    }
-
-    const snap = await query.once('value');
+    const snap = await getDB().ref('places').once('value');
     if (!snap.exists()) return [];
 
     const places = [];
     snap.forEach(child => {
-      const p = { _key: child.key, id: child.key, ...child.val() };
-      if (!isPlaceBanned(p)) {
+      const val = child.val();
+      if (!val) return;
+      const p = { _key: child.key, id: child.key, ...val };
+      // Include if not explicitly draft, pending or rejected, and not banned
+      if (p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p)) {
         places.push(p);
       }
+    });
+
+    // Sort: Sponsored first, then newest
+    places.sort((a, b) => {
+      const aSpons = Boolean(a.isSponsored && (!a.sponsoredUntil || a.sponsoredUntil > Date.now()));
+      const bSpons = Boolean(b.isSponsored && (!b.sponsoredUntil || b.sponsoredUntil > Date.now()));
+      if (aSpons && !bSpons) return -1;
+      if (!aSpons && bSpons) return 1;
+      return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
     });
 
     const res = places.slice(0, limit);

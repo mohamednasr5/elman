@@ -685,3 +685,70 @@ export function mountPushNotificationPrompt(vapidKey = '') {
     });
   }, 2000);
 }
+
+
+/**
+ * Broadcasts an approved live news update to ALL users via In-App Notifications and Web Push
+ */
+/**
+ * Broadcasts an approved live news update to ALL users via In-App Notifications and Web Push
+ */
+export async function broadcastLiveNewsPushNotification(post) {
+  if (!post || !post.title) return;
+
+  try {
+    const db = getDB();
+    const notifId = db.ref('globalNotifications').push().key;
+
+    const notifData = {
+      id: notifId,
+      title: '🔥 يحدث الآن: ' + post.title,
+      message: '📍 ' + (post.location || 'المنزلة والمطرية') + ' (' + (post.city || 'المنزلة') + ') ' + (post.details ? '— ' + post.details : ''),
+      url: 'now.html',
+      type: 'live_news',
+      category: post.category || 'general',
+      icon: './icons/icon-192x192.png',
+      badge: './icons/icon-96x96.png',
+      newsId: post.id || null,
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    // 1. Write to both globalNotifications and notifications nodes in Firebase
+    await Promise.all([
+      db.ref('globalNotifications/' + notifId).set(notifData),
+      db.ref('notifications/' + notifId).set(notifData)
+    ]);
+
+    // 2. Play chime sound and show live popup locally
+    playNotificationSound();
+    showLiveNotificationPopup(notifData);
+    updateAllNotificationBadges();
+
+    // 3. Trigger Browser Web Push Notification if granted
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && reg.showNotification) {
+            reg.showNotification(notifData.title, {
+              body: notifData.message,
+              icon: './icons/icon-192x192.png',
+              badge: './icons/icon-96x96.png',
+              vibrate: [100, 50, 150],
+              data: { url: 'now.html' },
+              tag: 'live-news-' + (post.id || notifId),
+              renotify: true
+            });
+          }
+        }
+      } catch (pushErr) {
+        console.warn('[NotificationService] Local push warning:', pushErr);
+      }
+    }
+
+    console.log('[NotificationService] Broadcasted live news notification successfully:', notifId);
+    return notifData;
+  } catch (err) {
+    console.warn('[NotificationService] broadcastLiveNewsPushNotification error:', err);
+  }
+}

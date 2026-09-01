@@ -6,7 +6,7 @@
 
 import { getDB, dbGet, dbSet, dbUpdate, dbPush } from '../core/db.js';
 import { awardPoints } from './loyalty.service.js';
-import { playNotificationSound } from './notification.service.js';
+import { playNotificationSound, broadcastLiveNewsPushNotification } from './notification.service.js';
 
 export const NEWS_CATEGORIES = {
   atm:        { icon: '🏧', label: 'ماكينة صراف ATM', color: '#0284C7' },
@@ -138,8 +138,9 @@ export async function submitLiveReport({
 
   await db.ref(`liveNews/${id}`).set(newPost);
 
-  if (isPublished && user?.uid) {
-    awardPoints(user.uid, 'ADD_REVIEW', { label: 'مكافأة نشر خبر وتحديث في (يحدث الآن)' });
+  if (isPublished) {
+    if (user?.uid) awardPoints(user.uid, 'ADD_REVIEW', { label: 'مكافأة نشر خبر وتحديث في (يحدث الآن)' });
+    broadcastLiveNewsPushNotification(newPost);
   }
 
   playNotificationSound();
@@ -204,6 +205,8 @@ export async function adminApproveLiveNews(newsId) {
     status: 'published',
     publishedAt: firebase.database.ServerValue.TIMESTAMP
   });
+
+  broadcastLiveNewsPushNotification({ ...post, status: 'published' });
 
   if (post.userId) {
     awardPoints(post.userId, 'ADD_REVIEW', { label: 'مكافأة اعتماد خبرك في (يحدث الآن)' });
