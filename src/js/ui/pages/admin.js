@@ -95,6 +95,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         <nav class="dashboard-sidebar__nav" id="admin-sidebar-nav">
           ${navLink('overview',      '#', ICONS.chart,     'الإحصائيات',     section === 'overview')}
           ${navLink('places',        '#', ICONS.pin,       'الأماكن',         section === 'places')}
+          ${navLink('live-news',     '#', svgIcon('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'), 'المنزلة والمطرية الآن 🔥', section === 'live-news')}
           ${navLink('products',      '#', ICONS.tag,       'المنتجات والمراجعة 🛍️', section === 'products')}
           ${navLink('reviews',       '#', ICONS.star,      'التقييمات ⭐',    section === 'reviews')}
           ${navLink('verification',  '#', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
@@ -180,6 +181,10 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           </div>
 
           <div class="admin-sheet-grid">
+            <button type="button" class="admin-sheet-item" data-admin-sec="live-news" style="border-color:rgba(245,166,35,0.4)">
+              <span>🔥</span>
+              <span style="color:#F5A623;font-weight:800">يحدث الآن</span>
+            </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="products">
               <span>🛍️</span>
               <span>المنتجات</span>
@@ -4694,74 +4699,89 @@ function escAttr(str) {
 }
 
 
-// ─────────────────────────────────────────────
-//  LIVE NEWS & COMMUNITY PULSE MODERATION (إدارة يحدث الآن)
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+//  LIVE NEWS & COMMUNITY PULSE FULL CRUD (إدارة المنزلة والمطرية الآن)
+// ─────────────────────────────────────────────────────────────────────────
 async function renderAdminLiveNews($container) {
   $container.innerHTML = '<div class="spinner spinner-lg" style="margin:4rem auto"></div>';
 
   const [pendingNews, publishedNews] = await Promise.all([
     getPendingLiveNews(),
-    getPublishedLiveNews({ limit: 40 })
+    getPublishedLiveNews({ limit: 60 })
   ]);
 
   $container.innerHTML = `
     <div class="admin-fade-in">
-      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <!-- Section Header -->
+      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
         <div>
-          <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:800;display:flex;align-items:center;gap:8px">
-            <span>🔥</span>
-            <span>إدارة أخبار (المنزلة والمطرية الآن)</span>
-            ${pendingNews.length > 0 ? `<span class="badge" style="background:#EF4444;color:#fff;font-size:12px;font-weight:800;padding:2px 10px;border-radius:9999px">${pendingNews.length} بانتظار المراجعة</span>` : ''}
+          <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:800;display:flex;align-items:center;gap:10px">
+            <span style="color:#F5A623">🔥</span>
+            <span>إدارة قسم (المنزلة والمطرية الآن)</span>
+            ${pendingNews.length > 0 ? `<span class="badge" style="background:#EF4444;color:#fff;font-size:12px;font-weight:800;padding:3px 10px;border-radius:9999px;box-shadow:0 0 10px rgba(239,68,68,0.5)">${pendingNews.length} بانتظار الموافقة</span>` : ''}
           </h1>
           <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
-            مراجعة واعتماد الأخبار الحية الواردة من المواطنين، ونشر تنبيهات رسمية عاجلة
+            التحكم الكامل: نشر تنبيهات رسمية، تعديل وحذف الأخبار، ومراجعة تقارير المواطنين الحية
           </div>
         </div>
 
-        <button type="button" id="btn-admin-post-live-news" class="btn btn-primary" style="background:#F5A623;color:#0B1E30;font-weight:800;border:none;border-radius:12px;gap:6px">
-          <span>📢</span> نشر خبر / تنبيه رسمي الآن
+        <button type="button" id="btn-admin-post-live-news" class="btn btn-primary" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#0B1E30;font-weight:800;border:none;border-radius:12px;padding:10px 20px;font-size:13.5px;box-shadow:0 4px 15px rgba(245,166,35,0.3);gap:8px">
+          <span>📢</span>
+          <span>نشر خبر / تنبيه رسمي عاجل</span>
         </button>
       </div>
 
-      <!-- Quick Stats -->
-      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:20px">
-        <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1px solid ${pendingNews.length > 0 ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.1)'}">
-          <div style="font-size:12px;color:${pendingNews.length > 0 ? '#EF4444' : 'rgba(255,255,255,0.6)'};margin-bottom:4px">طلبات بانتظار الاعتماد ⏳</div>
-          <div style="font-size:1.8rem;font-weight:800;color:${pendingNews.length > 0 ? '#EF4444' : '#fff'}">${pendingNews.length}</div>
+      <!-- Quick Stats Grid -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-bottom:24px">
+        <div class="stat-card" style="background:#0F273D;padding:18px;border-radius:16px;border:1.5px solid ${pendingNews.length > 0 ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}">
+          <div style="font-size:12.5px;color:${pendingNews.length > 0 ? '#EF4444' : 'rgba(255,255,255,0.6)'};margin-bottom:6px;font-weight:700">⏳ طلبات تنتظر مراجعتك والاعتماد</div>
+          <div style="font-size:2rem;font-weight:900;color:${pendingNews.length > 0 ? '#EF4444' : '#fff'}">${pendingNews.length}</div>
         </div>
-        <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1)">
-          <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:4px">أخبار منشورة نشطة 🟢</div>
-          <div style="font-size:1.8rem;font-weight:800;color:#10B981">${publishedNews.length}</div>
+        <div class="stat-card" style="background:#0F273D;padding:18px;border-radius:16px;border:1.5px solid rgba(255,255,255,0.1)">
+          <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:700">🟢 أخبار وتحديثات منشورة على الموقع</div>
+          <div style="font-size:2rem;font-weight:900;color:#10B981">${publishedNews.length}</div>
         </div>
       </div>
 
-      <!-- Pending Submissions Section -->
+      <!-- 1. Pending Approvals Section -->
       ${pendingNews.length > 0 ? `
-        <div style="margin-bottom:24px">
-          <h2 style="font-size:15px;font-weight:800;color:#EF4444;margin-bottom:12px;display:flex;align-items:center;gap:6px">
-            <span>⏳</span> الأخبار الواردة من المستخدمين بانتظار موافقتك (${pendingNews.length})
-          </h2>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:12px">
+        <div style="margin-bottom:28px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+            <span style="font-size:20px">⏳</span>
+            <h2 style="font-size:16px;font-weight:800;color:#EF4444;margin:0">
+              أخبار واردة من المواطنين بانتظار موافقتك واعتمادها (${pendingNews.length})
+            </h2>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:14px">
             ${pendingNews.map(item => `
-              <div style="background:#0F273D;border:1.5px solid rgba(239,68,68,0.4);border-radius:14px;padding:16px;box-shadow:0 4px 15px rgba(0,0,0,0.2)">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                  <span class="badge" style="background:rgba(2,132,199,0.2);color:#38BDF8;font-weight:800;font-size:11px;padding:2px 8px;border-radius:4px">
-                    ${escHtml(item.city || 'المنزلة')} • ${escHtml(item.category || 'عام')}
-                  </span>
-                  <span style="font-size:11px;color:rgba(255,255,255,0.5)">${formatDate(item.createdAt || Date.now())}</span>
+              <div style="background:#0F273D;border:1.5px solid rgba(239,68,68,0.4);border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,0.25);display:flex;flex-direction:column;justify-content:space-between">
+                <div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                    <span class="badge" style="background:rgba(2,132,199,0.25);color:#38BDF8;font-weight:800;font-size:11.5px;padding:3px 8px;border-radius:6px">
+                      📍 ${escHtml(item.city || 'المنزلة')} • ${escHtml(NEWS_CATEGORIES[item.category]?.label || 'عام')}
+                    </span>
+                    <span style="font-size:11.5px;color:rgba(255,255,255,0.5)">${formatDate(item.createdAt || Date.now())}</span>
+                  </div>
+
+                  <h3 style="font-size:15px;font-weight:800;color:#fff;margin:0 0 6px 0;line-height:1.4">${escHtml(item.title)}</h3>
+                  <div style="font-size:12.5px;color:#F5A623;font-weight:700;margin-bottom:8px">📍 ${escHtml(item.location)}</div>
+                  
+                  ${item.details ? `<p style="font-size:12.5px;color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.06);padding:10px;border-radius:8px;margin:0 0 12px 0;line-height:1.5">${escHtml(item.details)}</p>` : ''}
+                  
+                  <div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-bottom:14px">
+                    بواسطة: <strong style="color:#fff">${escHtml(item.userName || 'مواطن')}</strong>
+                  </div>
                 </div>
-                <h3 style="font-size:14px;font-weight:800;color:#fff;margin:0 0 6px 0">${escHtml(item.title)}</h3>
-                <div style="font-size:12px;color:#F5A623;margin-bottom:6px">📍 ${escHtml(item.location)}</div>
-                ${item.details ? `<p style="font-size:12px;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.05);padding:8px;border-radius:6px;margin:0 0 10px 0">${escHtml(item.details)}</p>` : ''}
-                <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">
-                  بواسطة: <strong>${escHtml(item.userName || 'مستخدم')}</strong>
-                </div>
-                <div style="display:flex;gap:8px">
-                  <button type="button" class="btn btn-sm btn-success btn-approve-news" data-nid="${escAttr(item.id)}" style="flex:1;border-radius:8px;font-weight:800;font-size:12px;padding:6px">
-                    ✓ اعتماد ونشر فوراً
+
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button type="button" class="btn btn-sm btn-success btn-approve-news" data-nid="${escAttr(item.id)}" style="flex:1;border-radius:8px;font-weight:800;font-size:12px;padding:7px">
+                    ✓ اعتماد ونشر
                   </button>
-                  <button type="button" class="btn btn-sm btn-danger btn-delete-news" data-nid="${escAttr(item.id)}" style="border-radius:8px;font-weight:800;font-size:12px;padding:6px 12px">
+                  <button type="button" class="btn btn-sm btn-outline btn-edit-news" data-nid="${escAttr(item.id)}" style="border-radius:8px;font-weight:800;font-size:12px;padding:7px 12px;color:#38BDF8;border-color:#38BDF8">
+                    ✏️ تعديل
+                  </button>
+                  <button type="button" class="btn btn-sm btn-danger btn-delete-news" data-nid="${escAttr(item.id)}" style="border-radius:8px;font-weight:800;font-size:12px;padding:7px 12px">
                     ✕ رفض
                   </button>
                 </div>
@@ -4771,34 +4791,42 @@ async function renderAdminLiveNews($container) {
         </div>
       ` : ''}
 
-      <!-- Published News Table -->
+      <!-- 2. Published News Table with Edit / Delete Controls -->
       <div>
-        <h2 style="font-size:15px;font-weight:800;color:#fff;margin-bottom:12px">
-          الأخبار والتحديثات المنشورة حالياً في الدليل (${publishedNews.length})
-        </h2>
-        <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+          <h2 style="font-size:16px;font-weight:800;color:#fff;margin:0">
+            الأخبار والتحديثات المنشورة الحالية (${publishedNews.length})
+          </h2>
+
+          <input type="text" id="admin-search-live-news" class="form-input" placeholder="🔍 بحث في الأخبار المنشورة..." style="max-width:260px;font-size:12.5px;padding:6px 12px;margin:0" />
+        </div>
+
+        <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:16px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
           <table class="dashboard-table" style="width:100%;border-collapse:collapse">
             <thead>
               <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:12px">
-                <th style="padding:10px">الخبر / الحدث</th>
-                <th style="padding:10px">الموقع والمدينة</th>
-                <th style="padding:10px">التصنيف</th>
-                <th style="padding:10px">التفاعلات</th>
-                <th style="padding:10px">التاريخ</th>
-                <th style="text-align:center;padding:10px">إجراءات</th>
+                <th style="padding:12px">الخبر / الحدث</th>
+                <th style="padding:12px">الموقع والمدينة</th>
+                <th style="padding:12px">التصنيف</th>
+                <th style="padding:12px">التفاعلات</th>
+                <th style="padding:12px">التاريخ</th>
+                <th style="text-align:center;padding:12px">إجراءات التحكم</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="admin-live-news-tbody">
               ${publishedNews.map(item => `
-                <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                  <td style="padding:10px;color:#fff;font-weight:700;font-size:13px">${escHtml(item.title)}</td>
-                  <td style="padding:10px;color:#38BDF8;font-size:12px">📍 ${escHtml(item.location)} (${escHtml(item.city || 'المنزلة')})</td>
-                  <td style="padding:10px;font-size:12px;color:rgba(255,255,255,0.8)">${escHtml(item.category || 'عام')}</td>
-                  <td style="padding:10px;font-size:12px;color:#10B981;font-weight:700">
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05)" class="admin-news-table-row" data-search-text="${escAttr((item.title + ' ' + item.location + ' ' + (item.city || '')).toLowerCase())}">
+                  <td style="padding:12px;color:#fff;font-weight:700;font-size:13.5px">${escHtml(item.title)}</td>
+                  <td style="padding:12px;color:#38BDF8;font-size:12px">📍 ${escHtml(item.location)} (${escHtml(item.city || 'المنزلة')})</td>
+                  <td style="padding:12px;font-size:12px;color:rgba(255,255,255,0.8)">${escHtml(NEWS_CATEGORIES[item.category]?.label || item.category || 'عام')}</td>
+                  <td style="padding:12px;font-size:12px;color:#10B981;font-weight:700">
                     👍 ${item.reactions?.confirm || 0} • ❤️ ${item.reactions?.love || 0}
                   </td>
-                  <td style="padding:10px;font-size:11.5px;color:rgba(255,255,255,0.6)">${formatDate(item.createdAt || Date.now())}</td>
-                  <td style="text-align:center;padding:10px">
+                  <td style="padding:12px;font-size:11.5px;color:rgba(255,255,255,0.6)">${formatDate(item.createdAt || Date.now())}</td>
+                  <td style="text-align:center;padding:12px;white-space:nowrap">
+                    <button class="btn btn-xs btn-outline btn-edit-news" data-nid="${escAttr(item.id)}" style="border-radius:6px;padding:4px 10px;margin-left:4px;color:#38BDF8;border-color:#38BDF8" title="تعديل">
+                      ✏️ تعديل
+                    </button>
                     <button class="btn btn-xs btn-danger btn-delete-news" data-nid="${escAttr(item.id)}" style="border-radius:6px;padding:4px 8px" title="حذف">
                       ${ICONS.trash}
                     </button>
@@ -4812,16 +4840,37 @@ async function renderAdminLiveNews($container) {
     </div>
   `;
 
+  // Search Filter Handler
+  document.getElementById('admin-search-live-news')?.addEventListener('input', (e) => {
+    const q = (e.target.value || '').trim().toLowerCase();
+    $container.querySelectorAll('.admin-news-table-row').forEach(row => {
+      const text = row.getAttribute('data-search-text') || '';
+      row.style.display = text.includes(q) ? '' : 'none';
+    });
+  });
+
   // Approve Listener
   $container.querySelectorAll('.btn-approve-news').forEach(btn => {
     btn.addEventListener('click', async () => {
       const nid = btn.getAttribute('data-nid');
       try {
         await adminApproveLiveNews(nid);
-        toast.success('تم اعتماد ونشر الخبر بنجاح! 🔥');
+        toast.success('تم اعتماد ونشر الخبر وإرسال إشعار فوري للجميع! 🔥');
         renderAdminLiveNews($container);
       } catch (err) {
         toast.error(err.message || 'فشلت العملية');
+      }
+    });
+  });
+
+  // Edit Listener
+  $container.querySelectorAll('.btn-edit-news').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const nid = btn.getAttribute('data-nid');
+      const allNews = [...pendingNews, ...publishedNews];
+      const item = allNews.find(n => n.id === nid);
+      if (item) {
+        openEditLiveNewsModal(item, () => renderAdminLiveNews($container));
       }
     });
   });
@@ -4833,7 +4882,7 @@ async function renderAdminLiveNews($container) {
       const ok = await showConfirm({
         title: 'حذف الخبر',
         message: 'هل أنت متأكد من حذف هذا التحديث نهائياً من يحدث الآن؟',
-        confirmText: 'نعم، حذف',
+        confirmText: 'نعم، حذف نهائي',
         cancelText: 'إلغاء'
       });
       if (ok) {
@@ -4852,7 +4901,7 @@ async function renderAdminLiveNews($container) {
   document.getElementById('btn-admin-post-live-news')?.addEventListener('click', () => {
     const user = getCurrentUser();
     const modal = showModal({
-      title: '📢 نشر خبر / تنبيه رسمي مباشر',
+      title: '📢 نشر خبر / تنبيه رسمي عاجل',
       size: 'md',
       content: `
         <form id="form-admin-direct-news" style="display:flex;flex-direction:column;gap:12px" onsubmit="return false">
@@ -4891,7 +4940,7 @@ async function renderAdminLiveNews($container) {
       `,
       buttons: [
         {
-          label: '🚀 نشر الخبر فوراً في الدليل',
+          label: '🚀 نشر وإرسال إشعار فوري للجميع',
           type: 'primary',
           closeOnClick: false,
           onClick: async () => {
@@ -4917,7 +4966,7 @@ async function renderAdminLiveNews($container) {
                 user,
                 isAdminUser: true
               });
-              toast.success('تم نشر التنبيه الرسمي بنجاح في يحدث الآن! 📢');
+              toast.success('تم نشر التنبيه الرسمي وإرسال إشعار فوري للجميع! 📢');
               modal.close();
               renderAdminLiveNews($container);
             } catch (err) {
@@ -4928,5 +4977,101 @@ async function renderAdminLiveNews($container) {
         { label: 'إلغاء', type: 'ghost', closeOnClick: true }
       ]
     });
+  });
+}
+
+/**
+ * Modal to Edit an Existing Live News Report
+ */
+function openEditLiveNewsModal(item, onSaveCallback) {
+  const modal = showModal({
+    title: '✏️ تعديل خبر في (المنزلة والمطرية الآن)',
+    size: 'md',
+    content: `
+      <form id="form-edit-live-news" style="display:flex;flex-direction:column;gap:12px" onsubmit="return false">
+        <div class="form-group" style="margin:0">
+          <label class="form-label" style="font-weight:700">عنوان الخبر <span class="required">*</span></label>
+          <input type="text" id="edit-news-title" class="form-input" value="${escAttr(item.title || '')}" required />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">المدينة <span class="required">*</span></label>
+            <select id="edit-news-city" class="form-select">
+              <option value="المنزلة" ${item.city === 'المنزلة' ? 'selected' : ''}>📍 المنزلة</option>
+              <option value="المطرية" ${item.city === 'المطرية' ? 'selected' : ''}>🌊 المطرية</option>
+              <option value="العصافرة" ${item.city === 'العصافرة' ? 'selected' : ''}>🌾 العصافرة والقرى المجاورة</option>
+              <option value="المنزلة والمطرية" ${item.city === 'المنزلة والمطرية' ? 'selected' : ''}>🏙️ المنزلة والمطرية معاً</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">التصنيف <span class="required">*</span></label>
+            <select id="edit-news-cat" class="form-select">
+              ${Object.entries(NEWS_CATEGORIES).map(([k, c]) => `
+                <option value="${k}" ${item.category === k ? 'selected' : ''}>${c.icon} ${c.label}</option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">المكان / الشارع بالتحديد <span class="required">*</span></label>
+            <input type="text" id="edit-news-location" class="form-input" value="${escAttr(item.location || '')}" required />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700">شارة الحالة</label>
+            <select id="edit-news-tag" class="form-select">
+              ${Object.entries(STATUS_TAGS).map(([k, t]) => `
+                <option value="${k}" ${item.statusTagKey === k ? 'selected' : ''}>${t.label}</option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label" style="font-weight:700">تفاصيل الخبر</label>
+          <textarea id="edit-news-details" class="form-textarea" rows="3">${escHtml(item.details || '')}</textarea>
+        </div>
+      </form>
+    `,
+    buttons: [
+      {
+        label: '💾 حفظ التعديلات ونشرها',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async () => {
+          const title = document.getElementById('edit-news-title')?.value.trim();
+          const location = document.getElementById('edit-news-location')?.value.trim();
+          const city = document.getElementById('edit-news-city')?.value;
+          const category = document.getElementById('edit-news-cat')?.value;
+          const statusTagKey = document.getElementById('edit-news-tag')?.value;
+          const details = document.getElementById('edit-news-details')?.value.trim();
+
+          if (!title || !location) {
+            toast.warning('يرجى ملء العنوان والمكان');
+            return;
+          }
+
+          try {
+            const db = getDB();
+            await db.ref('liveNews/' + item.id).update({
+              title,
+              location,
+              city,
+              category,
+              statusTagKey,
+              details,
+              status: 'published',
+              updatedAt: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            toast.success('تم حفظ تعديلات الخبر بنجاح! 💾');
+            modal.close();
+            if (onSaveCallback) onSaveCallback();
+          } catch (err) {
+            toast.error(err.message || 'فشل حفظ التعديل');
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
   });
 }

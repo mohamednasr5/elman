@@ -28,6 +28,7 @@ import { isAdmin } from '../../core/auth.js';
 import { formatPrice, arabicMatch } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
+import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 
 let _dashUser = null;
 let _dashPlacesCache = null;
@@ -67,6 +68,9 @@ export async function renderDashboard($container, { user, section = 'overview', 
           </a>
           <a href="dashboard.html?section=following" data-section="following" class="dashboard-nav-item ${section === 'following' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">⭐</span> متابعاتي وعروضها
+          </a>
+          <a href="dashboard.html?section=around-me" data-section="around-me" class="dashboard-nav-item ${section === 'around-me' ? 'active' : ''}">
+            <span class="dashboard-nav-item__icon">🗺️</span> بالقرب مني (GPS)
           </a>
           <a href="dashboard.html?section=loyalty" data-section="loyalty" class="dashboard-nav-item ${section === 'loyalty' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">🎁</span> نادي الولاء والنقاط
@@ -3106,4 +3110,28 @@ async function renderLoyaltySection($container, user) {
       }
     }
   });
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────
+//  DASHBOARD AROUND ME SECTION (بالقرب مني بالـ GPS)
+// ─────────────────────────────────────────────────────────────────────────
+async function renderDashboardAroundMeSection($container) {
+  $container.innerHTML = `
+    <div class="admin-fade-in">
+      <div class="dashboard-header" style="margin-bottom:20px">
+        <h1 class="dashboard-header__title" style="display:flex;align-items:center;gap:8px">
+          <span>🗺️</span>
+          <span>الأماكن والخدمات بالقرب مني</span>
+        </h1>
+        <div class="dashboard-header__subtitle">
+          اكتشف الصيدليات، ماكينات ATM، الأطباء، والمطاعم الأقرب لموقعك الحالي في المنزلة والمطرية
+        </div>
+      </div>
+
+      <div id="dash-around-me-radar-mount"></div>
+    </div>
+  `;
+
+  mountAroundMeRadar('dash-around-me-radar-mount');
 }
