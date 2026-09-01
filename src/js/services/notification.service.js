@@ -257,99 +257,86 @@ export async function markAllUserNotificationsAsRead(uid) {
 /**
  * Get filtered & managed user notifications (100% Cross-Device Realtime Synced)
  */
+/**
+ * Get filtered & managed user notifications (Direct Cloud RTDB Stream from /platformNotifications/)
+ */
 export async function fetchManagedUserNotifications(uid) {
   const deletedIds = getDeletedNotifIds(uid);
   const readIds = getReadNotifIds(uid);
   const mergedMap = {};
 
-  // 1. Global Broadcast Notifications from Firebase RTDB
+  // 1. Primary Direct Cloud /platformNotifications/ Stream (Zero latency, all users)
   try {
-    const globalNotifsMap = (await dbGet('globalNotifications')) || {};
-    Object.entries(globalNotifsMap).forEach(([id, n]) => {
-      const notifId = String(id);
-      if (!deletedIds.has(notifId)) {
-        mergedMap[notifId] = { id: notifId, ...n, isBroadcast: true, isRead: readIds.has(notifId) };
-      }
-    });
-  } catch (_) {}
+    const db = getDB();
+    const snap = await db.ref('platformNotifications').once('value');
+    if (snap && snap.exists()) {
+      snap.forEach(child => {
+        const id = String(child.key);
+        const val = child.val();
+        if (val && !deletedIds.has(id)) {
+          mergedMap[id] = { id, ...val, isBroadcast: true, isRead: readIds.has(id) };
+        }
+      });
+    }
+  } catch (err) {
+    console.debug('[NotificationService] Cloud read fallback:', err.message);
+  }
 
   // 2. Personal User Notifications Inbox
   if (uid) {
     try {
-      const userNotifsMap = (await dbGet(`userNotifications/${uid}`)) || {};
-      Object.entries(userNotifsMap).forEach(([id, n]) => {
-        const notifId = String(id);
-        if (!deletedIds.has(notifId)) {
-          mergedMap[notifId] = { 
-            id: notifId, 
-            ...n, 
-            isBroadcast: !!n.type && n.type !== 'profile_visit',
-            isRead: Boolean(n.isRead || readIds.has(notifId))
-          };
-        }
-      });
+      const db = getDB();
+      const snap = await db.ref(`userNotifications/${uid}`).once('value');
+      if (snap && snap.exists()) {
+        snap.forEach(child => {
+          const id = String(child.key);
+          const val = child.val();
+          if (val && !deletedIds.has(id)) {
+            mergedMap[id] = { 
+              id, 
+              ...val, 
+              isBroadcast: !!val.type && val.type !== 'profile_visit',
+              isRead: Boolean(val.isRead || readIds.has(id))
+            };
+          }
+        });
+      }
     } catch (_) {}
   }
 
-  // 3. Universal Cross-Device Verified & New Places Synthesizer
-  // Ensures Mobile PWA, PC, and any new device always have full access to verification announcements
+  // 3. Fallback: Synthesize from Verified Places
   try {
-    const placesMap = (await dbGet('places')) || {};
-    Object.entries(placesMap).forEach(([placeId, place]) => {
-      if (!place) return;
-      const id = place.id || placeId;
-      const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || id);
-
-      // A) Verified place notification
-      if (place.isVerified) {
-        const notifId = 'notif_verified_' + id;
-        if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
-          mergedMap[notifId] = {
-            id: notifId,
-            type: 'place_verified',
-            title: '👑 توثيق رسمي: ' + (place.name || 'مكان موثق'),
-            placeId: id,
-            placeName: place.name || 'المكان',
-            placeSlug: place.slug || id,
-            message: 'وثّق (' + (place.name || 'المكان') + ') ملفه لكي يظهر أمام الكل في كامل دليل المنزلة والمطرية الرقمي أولاً!',
-            actionText: 'وثّق ملفك الآن 🚀',
-            actionUrl: targetUrl,
-            url: targetUrl,
-            icon: place.logoUrl || './icons/icon-192x192.png',
-            createdAt: Number(place.verifiedAt || place.updatedAt || place.createdAt || (Date.now() - 3600000)),
-            isBroadcast: true,
-            isRead: readIds.has(notifId)
-          };
+    const db = getDB();
+    const snap = await db.ref('places').once('value');
+    if (snap && snap.exists()) {
+      snap.forEach(child => {
+        const place = child.val();
+        const id = child.key;
+        if (place && place.isVerified) {
+          const notifId = 'notif_verified_' + id;
+          if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+            const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || id);
+            mergedMap[notifId] = {
+              id: notifId,
+              type: 'place_verified',
+              title: '👑 توثيق رسمي: ' + (place.name || 'مكان موثق'),
+              placeId: id,
+              placeName: place.name || 'المكان',
+              placeSlug: place.slug || id,
+              message: 'وثّق (' + (place.name || 'المكان') + ') ملَفَه لكي يظهر أمام الكل في كامل دليل المنزلة والمطرية الرقمي أولاً!',
+              actionText: 'وثّق ملفك الآن 🚀',
+              actionUrl: targetUrl,
+              url: targetUrl,
+              icon: place.logoUrl || './icons/icon-192x192.png',
+              createdAt: Number(place.verifiedAt || place.updatedAt || place.createdAt || (Date.now() - 3600000)),
+              isBroadcast: true,
+              isRead: readIds.has(notifId)
+            };
+          }
         }
-      }
-
-      // B) New place joined notification (if added within last 14 days)
-      const createdTime = Number(place.createdAt || 0);
-      if (createdTime > Date.now() - 14 * 24 * 60 * 60 * 1000) {
-        const notifId = 'notif_new_' + id;
-        if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
-          mergedMap[notifId] = {
-            id: notifId,
-            type: 'new_place',
-            title: '🎉 انضمام نشاط جديد: ' + (place.name || 'نشاط جديد'),
-            placeId: id,
-            placeName: place.name || 'المكان',
-            placeSlug: place.slug || id,
-            message: 'انضم (' + (place.name || 'المكان') + ') حديثاً إلى دليل المنزلة والمطرية الرقمي — تصفح الخدمات والتفاصيل الآن!',
-            actionText: 'زيارة المكان ↗',
-            actionUrl: targetUrl,
-            url: targetUrl,
-            icon: place.logoUrl || './icons/icon-192x192.png',
-            createdAt: createdTime,
-            isBroadcast: true,
-            isRead: readIds.has(notifId)
-          };
-        }
-      }
-    });
-  } catch (err) {
-    console.debug('[NotificationService] Places synthesizer handled:', err.message);
-  }
+      });
+    }
+  } catch (_) {}
 
   const all = Object.values(mergedMap).map(n => ({
     ...n,
@@ -384,7 +371,7 @@ export async function updateAllNotificationBadges(uid) {
         badge.style.display = unread > 0 ? 'inline-flex' : 'none';
         if (unread > 0) {
           badge.classList.remove('badge-pop-anim');
-          void badge.offsetWidth; // Trigger reflow for CSS pulse
+          void badge.offsetWidth;
           badge.classList.add('badge-pop-anim');
         }
       });
@@ -395,46 +382,36 @@ export async function updateAllNotificationBadges(uid) {
 let _isLiveNotifSubscribed = false;
 
 /**
- * Initialize 100% Real-Time Live Notification Subscriber with Zero Page Refresh
+ * Initialize Direct Live Notification Stream from /platformNotifications/
  */
 export function initLiveNotificationSubscriber(uid) {
   if (typeof window === 'undefined') return;
 
-  // Immediate initial badge calculation
   updateAllNotificationBadges(uid);
 
   if (_isLiveNotifSubscribed) return;
   _isLiveNotifSubscribed = true;
 
-  // 1. Listen to Local Custom Events (Triggered on any action across tabs & windows)
-  window.addEventListener('manzala:realtime_sync', () => {
-    updateAllNotificationBadges(uid);
-  });
-
+  // Listen to Local Cross-Window sync
+  window.addEventListener('manzala:realtime_sync', () => updateAllNotificationBadges(uid));
   window.addEventListener('manzala:new_broadcast_notification', (e) => {
     updateAllNotificationBadges(uid);
     if (e.detail) showLiveNotificationPopup(e.detail);
   });
+  window.addEventListener('focus', () => updateAllNotificationBadges(uid));
 
-  window.addEventListener('focus', () => {
-    updateAllNotificationBadges(uid);
-  });
-
-  // 2. Listen to Cloud Firebase Realtime Database Live Streams
+  // Live Firebase RTDB Stream on /platformNotifications/
   try {
     const db = getDB();
     const startTime = Date.now();
 
-    // Listen for places being verified live
-    db.ref('places').on('child_changed', (snap) => {
-      const p = snap.val();
-      if (p && p.isVerified) {
-        updateAllNotificationBadges(uid);
-      }
+    // Any notification change or addition triggers instant badge update
+    db.ref('platformNotifications').on('value', () => {
+      updateAllNotificationBadges(uid);
     });
 
-    // Listen for global broadcast notifications
-    db.ref('globalNotifications').on('child_added', (snap) => {
+    // New notification added in real-time -> Trigger pop chime & floating banner
+    db.ref('platformNotifications').on('child_added', (snap) => {
       const n = snap.val();
       updateAllNotificationBadges(uid);
       if (n && (Number(n.createdAt) || 0) > startTime - 3000) {
@@ -442,20 +419,15 @@ export function initLiveNotificationSubscriber(uid) {
       }
     });
 
-    // Listen for personal user notifications
+    // Live personal notifications
     if (uid) {
       db.ref(`userNotifications/${uid}`).on('value', () => {
         updateAllNotificationBadges(uid);
       });
     }
 
-    // Periodic fast heartbeat to guarantee zero-latency badge freshness
-    setInterval(() => {
-      updateAllNotificationBadges(uid);
-    }, 15000);
-
   } catch (err) {
-    console.debug('[NotificationService] Live RTDB subscriber initialized with fallback:', err.message);
+    console.debug('[NotificationService] Live stream initialized:', err.message);
   }
 }
 
