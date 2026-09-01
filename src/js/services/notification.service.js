@@ -254,24 +254,15 @@ export async function markAllUserNotificationsAsRead(uid) {
 /**
  * Get filtered & managed user notifications
  */
+/**
+ * Get filtered & managed user notifications (100% Cross-Device Realtime Synced)
+ */
 export async function fetchManagedUserNotifications(uid) {
   const deletedIds = getDeletedNotifIds(uid);
   const readIds = getReadNotifIds(uid);
   const mergedMap = {};
 
-  // 1. Local broadcast cache
-  try {
-    const raw = localStorage.getItem('manzala_global_broadcast_notifs_cache') || '[]';
-    const list = JSON.parse(raw);
-    list.forEach(n => {
-      const notifId = String(n.id);
-      if (!deletedIds.has(notifId)) {
-        mergedMap[notifId] = { ...n, id: notifId, isRead: readIds.has(notifId) };
-      }
-    });
-  } catch (_) {}
-
-  // 2. Global Broadcast Notifications from Firebase
+  // 1. Global Broadcast Notifications from Firebase RTDB
   try {
     const globalNotifsMap = (await dbGet('globalNotifications')) || {};
     Object.entries(globalNotifsMap).forEach(([id, n]) => {
@@ -282,7 +273,7 @@ export async function fetchManagedUserNotifications(uid) {
     });
   } catch (_) {}
 
-  // 3. Personal User Notifications Inbox
+  // 2. Personal User Notifications Inbox
   if (uid) {
     try {
       const userNotifsMap = (await dbGet(`userNotifications/${uid}`)) || {};
@@ -300,6 +291,66 @@ export async function fetchManagedUserNotifications(uid) {
     } catch (_) {}
   }
 
+  // 3. Universal Cross-Device Verified & New Places Synthesizer
+  // Ensures Mobile PWA, PC, and any new device always have full access to verification announcements
+  try {
+    const placesMap = (await dbGet('places')) || {};
+    Object.entries(placesMap).forEach(([placeId, place]) => {
+      if (!place) return;
+      const id = place.id || placeId;
+      const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || id);
+
+      // A) Verified place notification
+      if (place.isVerified) {
+        const notifId = 'notif_verified_' + id;
+        if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+          mergedMap[notifId] = {
+            id: notifId,
+            type: 'place_verified',
+            title: '👑 توثيق رسمي: ' + (place.name || 'مكان موثق'),
+            placeId: id,
+            placeName: place.name || 'المكان',
+            placeSlug: place.slug || id,
+            message: 'وثّق (' + (place.name || 'المكان') + ') ملفه لكي يظهر أمام الكل في كامل دليل المنزلة والمطرية الرقمي أولاً!',
+            actionText: 'وثّق ملفك الآن 🚀',
+            actionUrl: targetUrl,
+            url: targetUrl,
+            icon: place.logoUrl || './icons/icon-192x192.png',
+            createdAt: Number(place.verifiedAt || place.updatedAt || place.createdAt || (Date.now() - 3600000)),
+            isBroadcast: true,
+            isRead: readIds.has(notifId)
+          };
+        }
+      }
+
+      // B) New place joined notification (if added within last 14 days)
+      const createdTime = Number(place.createdAt || 0);
+      if (createdTime > Date.now() - 14 * 24 * 60 * 60 * 1000) {
+        const notifId = 'notif_new_' + id;
+        if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+          mergedMap[notifId] = {
+            id: notifId,
+            type: 'new_place',
+            title: '🎉 انضمام نشاط جديد: ' + (place.name || 'نشاط جديد'),
+            placeId: id,
+            placeName: place.name || 'المكان',
+            placeSlug: place.slug || id,
+            message: 'انضم (' + (place.name || 'المكان') + ') حديثاً إلى دليل المنزلة والمطرية الرقمي — تصفح الخدمات والتفاصيل الآن!',
+            actionText: 'زيارة المكان ↗',
+            actionUrl: targetUrl,
+            url: targetUrl,
+            icon: place.logoUrl || './icons/icon-192x192.png',
+            createdAt: createdTime,
+            isBroadcast: true,
+            isRead: readIds.has(notifId)
+          };
+        }
+      }
+    });
+  } catch (err) {
+    console.debug('[NotificationService] Places synthesizer handled:', err.message);
+  }
+
   const all = Object.values(mergedMap).map(n => ({
     ...n,
     isRead: Boolean(n.isRead || readIds.has(String(n.id)))
@@ -308,9 +359,6 @@ export async function fetchManagedUserNotifications(uid) {
   return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
-/**
- * Update Notification Badges across Header and Sidebar
- */
 export async function updateAllNotificationBadges(uid) {
   try {
     const notifs = await fetchManagedUserNotifications(uid);
