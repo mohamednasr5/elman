@@ -1,44 +1,26 @@
 /**
  * mobile-tooltip.js
- * Universal Mobile Touch Tooltip & Badge Explainer
- * Allows users on smartphones/tablets to tap any badge or label to see its explanation clearly.
+ * Mobile Touch Tooltip Engine strictly for:
+ * 1. إعلان ممول / إعلان مدفوع
+ * 2. موثق
+ * 3. رتبة المستخدم
  */
 
 const BADGE_DESCRIPTIONS = {
-  'موثق': {
+  'verified': {
     title: '👑 نشاط موثق رسمياً بالعلامة الزرقاء',
     desc: 'تم التحقق من هوية هذا النشاط التجاري ومقره الفعلي لضمان أعلى مستويات الثقة والمصداقية لجميع أهالي المنزلة والمطرية.',
     icon: '👑'
   },
-  'إعلان مدفوع': {
-    title: '⭐ نشاط تجاري مميز وإعلان مدفوع',
+  'sponsored': {
+    title: '⭐ نشاط تجاري مميز وإعلان ممول',
     desc: 'هذا النشاط يظهر في قمة نتائج البحث والأقسام الرئيسية لتسهيل وصول العملاء إليه وتقديم أفضل العروض.',
     icon: '⭐'
   },
-  'قيد المراجعة': {
-    title: '⏳ قيد المراجعة والتدقيق',
-    desc: 'هذا الطلب أو التحديث يخضع حالياً لمراجعة وتدقيق إدارة المنصة للتأكد من صحة البيانات قبل نشره.',
-    icon: '⏳'
-  },
-  'وظيفة شاغرة': {
-    title: '💼 فرصة عمل متاحة حالياً',
-    desc: 'إعلان عن طلب موظفين أو عمالة.. يمكنك النقر للتواصل المباشر مع صاحب العمل عبر الهاتف أو واتساب.',
-    icon: '💼'
-  },
-  'باحث عن عمل': {
-    title: '🧑‍💼 باحث عن فرصة عمل',
-    desc: 'مواطن يعرض مهاراته وخبراته للالتحاق بفرصة عمل مناسبة داخل المنزلة أو المطرية أو المناطق المجاورة.',
-    icon: '🧑‍💼'
-  },
-  'صراف آلي': {
-    title: '🏧 ماكينة صراف آلي (ATM)',
-    desc: 'ماكينة بنكية تتيح السحب النقدي الفوري والإيداع ومتابعة حالتها اللحظية في قسم يحدث الآن.',
-    icon: '🏧'
-  },
-  'توصيل': {
-    title: '🛵 متوفر خدمة التوصيل للمنازل (دليفري)',
-    desc: 'يقدم هذا المكان خدمة التوصيل السريع للطلبات إلى المنازل في المنزلة والمطرية والقرى التابعة.',
-    icon: '🛵'
+  'rank': {
+    title: '🎖️ رتبة المستخدم ومستوى المساهمة',
+    desc: 'رتبة شرفية تُمنح للمستخدم بناءً على عدد مشاركاته، تقييماته للأماكن، ونقاط ولائه في الدليل.',
+    icon: '🎖️'
   }
 };
 
@@ -48,29 +30,22 @@ let _activeTimeout = null;
 export function initUniversalMobileTouchTooltips() {
   if (typeof document === 'undefined') return;
 
-  // Intercept touch & click on badges, labels, and elements with title/data-tooltip
   document.addEventListener('click', (e) => {
-    // 0. Explicitly EXCLUDE notification bell buttons, badges, user profile dropdowns, and interactive buttons
+    // Exclude notification bell, profile button, dropdowns, navigation links
     if (
       e.target.closest('.header-notif-btn') ||
       e.target.closest('#header-notifs-badge') ||
-      e.target.closest('.header-notif-badge') ||
-      e.target.closest('#sidebar-notifs-badge') ||
-      e.target.closest('.sidebar-notifs-badge') ||
-      e.target.closest('#bottom-notifs-badge') ||
-      e.target.closest('a[href*="notifications"]') ||
       e.target.closest('#usr-btn') ||
       e.target.closest('#usr-dd') ||
-      e.target.closest('.header__user-btn') ||
-      e.target.closest('.btn:not(.badge)')
+      e.target.closest('a[href*="notifications"]')
     ) {
       dismissActiveTooltip();
       return;
     }
 
-    // 1. Find matched badge or tooltip element
+    // Strictly match ONLY 1. Verified, 2. Sponsored, 3. User Rank
     const badgeEl = e.target.closest(
-      '.badge, .badge-verified, .badge-sponsored, .badge-pending, .badge-job-pulse, .badge-job-seeker-pulse, .badge-live-pulse-vibrant, [data-tooltip], [title], [data-badge-info]'
+      '.badge-verified, .badge-sponsored, .badge-user-rank, .user-rank-badge, .loyalty-rank-badge, [data-badge="verified"], [data-badge="sponsored"], [data-badge="rank"]'
     );
 
     if (!badgeEl) {
@@ -78,44 +53,42 @@ export function initUniversalMobileTouchTooltips() {
       return;
     }
 
-    // Determine explanation text
-    const textContent = (badgeEl.textContent || '').trim();
-    let title = badgeEl.getAttribute('title') || badgeEl.getAttribute('data-tooltip') || badgeEl.getAttribute('aria-label') || '';
-    let desc = '';
-    let icon = '💡';
+    const text = (badgeEl.textContent || '').trim();
+    let info = null;
 
-    // Match dictionary
-    for (const [key, info] of Object.entries(BADGE_DESCRIPTIONS)) {
-      if (textContent.includes(key) || title.includes(key)) {
-        title = info.title;
-        desc = info.desc;
-        icon = info.icon;
-        break;
-      }
+    if (badgeEl.classList.contains('badge-verified') || text.includes('موثق')) {
+      info = BADGE_DESCRIPTIONS.verified;
+    } else if (badgeEl.classList.contains('badge-sponsored') || text.includes('إعلان') || text.includes('ممول') || text.includes('مدفوع')) {
+      info = BADGE_DESCRIPTIONS.sponsored;
+    } else if (
+      badgeEl.classList.contains('badge-user-rank') || 
+      badgeEl.classList.contains('user-rank-badge') ||
+      text.includes('مستكشف') || 
+      text.includes('سفير') || 
+      text.includes('عمدة') || 
+      text.includes('رائد') ||
+      text.includes('رتبة') ||
+      text.includes('مدير')
+    ) {
+      info = BADGE_DESCRIPTIONS.rank;
     }
 
-    if (!title && !desc) {
-      if (textContent) {
-        title = textContent;
-        desc = 'تلميح توضيحي لحالة العنصر في دليل المنزلة والمطرية الرقمي.';
-      } else {
-        return;
-      }
+    if (!info) {
+      dismissActiveTooltip();
+      return;
     }
 
-    // Prevent navigation if badge is inside a link/card
+    // Intercept click only for these 3 badges to show explanation
     e.preventDefault();
     e.stopPropagation();
 
-    // Haptic feedback on mobile
     if (navigator.vibrate) {
       try { navigator.vibrate(25); } catch (_) {}
     }
 
-    showTouchTooltip(badgeEl, { title, desc, icon });
+    showTouchTooltip(badgeEl, info);
   }, { capture: true });
 
-  // Dismiss on scroll or touch outside
   window.addEventListener('scroll', dismissActiveTooltip, { passive: true });
 }
 
@@ -137,13 +110,12 @@ function showTouchTooltip(targetEl, { title, desc, icon }) {
 
   document.body.appendChild(_tooltipContainer);
 
-  const rect = targetEl.getBoundingClientRect();
   const isMobile = window.innerWidth <= 640;
-
   if (isMobile) {
     _tooltipContainer.classList.add('mobile-mode-bottom');
   } else {
     _tooltipContainer.classList.add('desktop-mode-floating');
+    const rect = targetEl.getBoundingClientRect();
     const top = rect.top + window.scrollY - 10;
     const left = rect.left + window.scrollX + (rect.width / 2);
     _tooltipContainer.style.top = `${top}px`;
