@@ -650,21 +650,6 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       <div class="form-section" id="p-desc-section">
         <h2 class="form-section__title"><span>📝</span> وصف المكان والنشاط والكلمات المفتاحية</h2>
 
-        <!-- Specialized Keywords Suggestions Chips -->
-        <div class="form-group" id="p-taxonomy-suggestions-group" style="background:var(--surface-2);border:1px dashed var(--secondary,#F5A623);border-radius:var(--radius-md);padding:12px;margin-bottom:14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-            <div style="font-weight:700;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
-              <span>🎯</span> الكلمات المفتاحية والخدمات المقترحة لتصنيف نشاطك:
-            </div>
-            <button type="button" class="btn btn-sm btn-ghost" id="btn-add-all-taxonomy-keywords" style="font-size:11.5px;color:var(--primary);font-weight:700;padding:2px 8px">
-              ➕ إضافة جميع الكلمات للخدمات
-            </button>
-          </div>
-          <div id="p-taxonomy-chips-container" style="display:flex;flex-wrap:wrap;gap:6px">
-            <!-- Dynamically populated via JS based on selected category -->
-          </div>
-        </div>
-
         <div class="form-group">
           <label class="form-label" style="font-weight:700">الخدمات والكلمات المفتاحية لنشاطك (اضغط Enter بعد كل كلمة)</label>
           
@@ -849,12 +834,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
       <!-- Services & Tags -->
       <div class="form-section" id="p-services-section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);flex-wrap:wrap;gap:6px">
-          <h2 class="form-section__title" style="margin-bottom:0"><span>✨</span> الخدمات والكلمات المفتاحية</h2>
-          <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-services" title="اقتراح أهم الكلمات المفتاحية والخدمات للظهور في نتائج البحث الأولى">
-            ✨ توليد خدمات سيو (SEO) بالذكاء الاصطناعي
-          </button>
-        </div>
+        <h2 class="form-section__title"><span>✨</span> الخدمات والكلمات المفتاحية</h2>
         <div class="form-group">
           <label class="form-label">اكتب الخدمات مفصولة بفواصل (، أو ,)</label>
           <input type="text" id="p-services" class="form-input" placeholder="توصيل للمنازل، دفع بالفيزا، متاح 24 ساعة، كشف منزلي" value="${escAttr(place?.services ? place.services.join('، ') : '')}" />
@@ -1203,37 +1183,6 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       }
     } catch {
       toast.error('تعذر توليد الوصف، يرجى المحاولة ثانية');
-    } finally {
-      btn.classList.remove('loading');
-      btn.disabled = false;
-    }
-  });
-
-  // AI SEO Services & Keywords Generation
-  document.getElementById('btn-ai-gen-services')?.addEventListener('click', async () => {
-    const name = document.getElementById('p-name')?.value.trim();
-    const catSelect = document.getElementById('p-category');
-    const catText = catSelect?.options[catSelect.selectedIndex]?.text?.replace(/^[^\s]+\s+/, '') || '';
-    const customCat = document.getElementById('p-custom-category')?.value.trim();
-    const catName = customCat || catText || '';
-
-    if (!name && !catName) {
-      toast.warning('اكتب اسم المكان أو اختر التصنيف أولاً لاقتراح الخدمات');
-      return;
-    }
-
-    const btn = document.getElementById('btn-ai-gen-services');
-    btn.classList.add('loading');
-    btn.disabled = true;
-
-    try {
-      const services = await generateSeoServices(name, catName);
-      if (services) {
-        document.getElementById('p-services').value = services;
-        toast.success('تم توليد الكلمات المفتاحية والخدمات بنجاح ✨');
-      }
-    } catch {
-      toast.error('تعذر اقتراح الخدمات');
     } finally {
       btn.classList.remove('loading');
       btn.disabled = false;
