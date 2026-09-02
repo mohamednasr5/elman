@@ -384,6 +384,9 @@ let _isLiveNotifSubscribed = false;
 /**
  * Initialize Direct Live Notification Stream from /platformNotifications/
  */
+/**
+ * Initialize Direct Live Notification Stream from Firebase RTDB (Places + Notifications)
+ */
 export function initLiveNotificationSubscriber(uid) {
   if (typeof window === 'undefined') return;
 
@@ -392,7 +395,7 @@ export function initLiveNotificationSubscriber(uid) {
   if (_isLiveNotifSubscribed) return;
   _isLiveNotifSubscribed = true;
 
-  // Listen to Local Cross-Window sync
+  // 1. Local window listeners
   window.addEventListener('manzala:realtime_sync', () => updateAllNotificationBadges(uid));
   window.addEventListener('manzala:new_broadcast_notification', (e) => {
     updateAllNotificationBadges(uid);
@@ -400,18 +403,45 @@ export function initLiveNotificationSubscriber(uid) {
   });
   window.addEventListener('focus', () => updateAllNotificationBadges(uid));
 
-  // Live Firebase RTDB Stream on /platformNotifications/
+  // 2. Firebase Live RTDB Stream
   try {
     const db = getDB();
     const startTime = Date.now();
 
-    // Any notification change or addition triggers instant badge update
-    db.ref('platformNotifications').on('value', () => {
+    // A) When places are verified or updated in Firebase RTDB
+    db.ref('places').on('child_changed', (snap) => {
+      const place = snap.val();
       updateAllNotificationBadges(uid);
+      if (place && place.isVerified) {
+        showLiveNotificationPopup({
+          id: 'notif_verified_' + snap.key,
+          type: 'place_verified',
+          title: '👑 توثيق رسمي جديد: ' + (place.name || 'مكان موثق'),
+          message: 'تم توثيق (' + (place.name || 'المكان') + ') رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!',
+          actionUrl: 'place.html?slug=' + encodeURIComponent(place.slug || snap.key),
+          createdAt: Date.now()
+        });
+      }
     });
 
-    // New notification added in real-time -> Trigger pop chime & floating banner
-    db.ref('platformNotifications').on('child_added', (snap) => {
+    // B) When new places are added to Firebase RTDB
+    db.ref('places').limitToLast(1).on('child_added', (snap) => {
+      const place = snap.val();
+      if (place && (Number(place.createdAt) || 0) > startTime - 3000) {
+        updateAllNotificationBadges(uid);
+        showLiveNotificationPopup({
+          id: 'notif_new_place_' + snap.key,
+          type: 'new_place',
+          title: '🎉 انضمام نشاط جديد: ' + (place.name || 'نشاط جديد'),
+          message: '(' + (place.name || 'مكان جديد') + ') انضم حديثاً إلى دليل المنزلة والمطرية.',
+          actionUrl: 'place.html?slug=' + encodeURIComponent(place.slug || snap.key),
+          createdAt: Date.now()
+        });
+      }
+    });
+
+    // C) Global notifications
+    db.ref('globalNotifications').on('child_added', (snap) => {
       const n = snap.val();
       updateAllNotificationBadges(uid);
       if (n && (Number(n.createdAt) || 0) > startTime - 3000) {
@@ -419,7 +449,7 @@ export function initLiveNotificationSubscriber(uid) {
       }
     });
 
-    // Live personal notifications
+    // D) Personal user notifications
     if (uid) {
       db.ref(`userNotifications/${uid}`).on('value', () => {
         updateAllNotificationBadges(uid);
@@ -427,7 +457,7 @@ export function initLiveNotificationSubscriber(uid) {
     }
 
   } catch (err) {
-    console.debug('[NotificationService] Live stream initialized:', err.message);
+    console.debug('[NotificationService] Live stream subscriber handled:', err.message);
   }
 }
 

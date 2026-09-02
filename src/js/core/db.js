@@ -689,8 +689,8 @@ function saveToLocalBroadcastCache(notification) {
  */
 export async function broadcastNewPlaceNotification(place) {
   if (!place) return;
-  const placeId = place.id || place._key || place.slug;
-  const notifId = 'notif_new_place_' + placeId + '_' + Date.now();
+  const placeId = place.id || place._key || place._id || place.slug;
+  const notifId = 'notif_new_place_' + placeId;
   const address = [place.area, place.address].filter(Boolean).join(' — ') || 'مدينة المنزلة والمطرية';
   const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || place._key || placeId);
   
@@ -706,26 +706,22 @@ export async function broadcastNewPlaceNotification(place) {
     actionText: 'مشاهدة المكان 👁️',
     actionUrl: targetUrl,
     url: targetUrl,
-    icon: './icons/icon-192x192.png',
+    icon: place.logoUrl || './icons/icon-192x192.png',
     createdAt: Date.now(),
     isRead: false
   };
 
-  // 1. Save to local broadcast cache immediately
   saveToLocalBroadcastCache(notification);
-
-  // 2. Trigger Native Mobile & PWA Notification
   triggerNativePwaNotification(notification);
 
-  // 3. Save to Firebase global nodes
   try {
+    const db = getDB();
     await Promise.all([
-      dbSet('globalNotifications/' + notifId, notification).catch(() => {}),
-      dbSet('notifications/' + notifId, notification).catch(() => {})
+      db.ref('globalNotifications/' + notifId).set(notification).catch(() => {}),
+      db.ref('platformNotifications/' + notifId).set(notification).catch(() => {})
     ]);
   } catch (_) {}
 
-  // 4. Send to Cloudflare Worker
   try {
     fetch(WORKER_URL + '/api/notifications/broadcast', {
       method: 'POST',
@@ -736,13 +732,10 @@ export async function broadcastNewPlaceNotification(place) {
   } catch (_) {}
 }
 
-/**
- * Broadcast a place verification notification to all users across the directory
- */
 export async function broadcastPlaceVerifiedNotification(place) {
   if (!place) return;
-  const placeId = place.id || place._key || place.slug;
-  const notifId = 'notif_verified_' + placeId + '_' + Date.now();
+  const placeId = place.id || place._key || place._id || place.slug;
+  const notifId = 'notif_verified_' + placeId;
   const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || place._key || placeId);
 
   const notification = {
@@ -756,26 +749,22 @@ export async function broadcastPlaceVerifiedNotification(place) {
     actionText: 'مشاهدة المكان الموثق 🚀',
     actionUrl: targetUrl,
     url: targetUrl,
-    icon: './icons/icon-192x192.png',
+    icon: place.logoUrl || './icons/icon-192x192.png',
     createdAt: Date.now(),
     isRead: false
   };
 
-  // 1. Save to local broadcast cache immediately
   saveToLocalBroadcastCache(notification);
-
-  // 2. Trigger Native Mobile & PWA Notification
   triggerNativePwaNotification(notification);
 
-  // 3. Save to Firebase global nodes
   try {
+    const db = getDB();
     await Promise.all([
-      dbSet('globalNotifications/' + notifId, notification).catch(() => {}),
-      dbSet('notifications/' + notifId, notification).catch(() => {})
+      db.ref('globalNotifications/' + notifId).set(notification).catch(() => {}),
+      db.ref('platformNotifications/' + notifId).set(notification).catch(() => {})
     ]);
   } catch (_) {}
 
-  // 4. Send to Cloudflare Worker
   try {
     fetch(WORKER_URL + '/api/notifications/broadcast', {
       method: 'POST',
