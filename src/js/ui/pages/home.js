@@ -364,7 +364,7 @@ function renderStatsBar(placesCount, categoriesCount) {
   const bar = document.getElementById('stats-bar');
   if (!bar) return;
 
-  const targetPlaces = Math.max(24, Number(placesCount) || 0);
+  const targetPlaces = Math.max(15000, Number(placesCount) || 0);
   const targetCategories = Math.max(72, Number(categoriesCount) || 0);
   const targetVillages = 54;
 
