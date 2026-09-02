@@ -50,6 +50,24 @@ export function initUniversalMobileTouchTooltips() {
 
   // Intercept touch & click on badges, labels, and elements with title/data-tooltip
   document.addEventListener('click', (e) => {
+    // 0. Explicitly EXCLUDE notification bell buttons, badges, user profile dropdowns, and interactive buttons
+    if (
+      e.target.closest('.header-notif-btn') ||
+      e.target.closest('#header-notifs-badge') ||
+      e.target.closest('.header-notif-badge') ||
+      e.target.closest('#sidebar-notifs-badge') ||
+      e.target.closest('.sidebar-notifs-badge') ||
+      e.target.closest('#bottom-notifs-badge') ||
+      e.target.closest('a[href*="notifications"]') ||
+      e.target.closest('#usr-btn') ||
+      e.target.closest('#usr-dd') ||
+      e.target.closest('.header__user-btn') ||
+      e.target.closest('.btn:not(.badge)')
+    ) {
+      dismissActiveTooltip();
+      return;
+    }
+
     // 1. Find matched badge or tooltip element
     const badgeEl = e.target.closest(
       '.badge, .badge-verified, .badge-sponsored, .badge-pending, .badge-job-pulse, .badge-job-seeker-pulse, .badge-live-pulse-vibrant, [data-tooltip], [title], [data-badge-info]'
