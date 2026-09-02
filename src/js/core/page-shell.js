@@ -329,9 +329,7 @@ export async function initPage(activeFile = '') {
     const staleKeys = [
       'manzala_fast_places_cache',
       'manzala_live_news_store_v2',
-      'manzala_live_news_store_v3',
-      'manzala_global_broadcast_notifs_cache',
-      'manzala_live_news_initialized_v3'
+      'manzala_global_broadcast_notifs_cache'
     ];
     staleKeys.forEach(k => localStorage.removeItem(k));
   } catch (_) {}

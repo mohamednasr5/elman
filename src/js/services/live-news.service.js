@@ -96,9 +96,15 @@ function saveLocalStore(items) {
 /**
  * Fetch published live news reports strictly from Cloud Firebase & user contributions
  */
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000; // 24 Hours
+
+/**
+ * Fetch published live news reports strictly from Cloud Firebase & user contributions (24-Hour Active Window)
+ */
 export async function getPublishedLiveNews({ city = '', category = '', limit = 40 } = {}) {
   const deletedIds = getDeletedLiveNewsIds();
   const allMap = new Map();
+  const now = Date.now();
 
   // 1. Load from Cloud Firebase Realtime Database
   try {
@@ -129,7 +135,23 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
     });
   }
 
-  let published = Array.from(allMap.values()).filter(i => i.status === 'published' || !i.status);
+  let published = Array.from(allMap.values()).filter(i => {
+    if (i.status !== 'published' && i.status) return false;
+    
+    // Strict 24-Hour Expiration Rule:
+    const publishTime = Number(i.publishedAt || i.createdAt || 0);
+    const expireTime = Number(i.expiresAt || 0);
+
+    if (expireTime > 0) {
+      return expireTime > now;
+    }
+
+    if (publishTime > 0) {
+      return (now - publishTime) <= TWENTY_FOUR_HOURS_MS;
+    }
+
+    return true;
+  });
 
   // Apply City filter
   if (city && city !== 'all') {
@@ -142,7 +164,7 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
     published = published.filter(i => cats.includes(i.category));
   }
 
-  published.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+  published.sort((a, b) => (Number(b.publishedAt || b.createdAt) || 0) - (Number(a.publishedAt || a.createdAt) || 0));
   return published.slice(0, limit);
 }
 
@@ -224,7 +246,8 @@ export async function submitLiveReport({
     reactions: { confirm: 1, love: 0, doubt: 0 },
     reactedUsers: user?.uid ? { [user.uid]: 'confirm' } : {},
     createdAt: now,
-    publishedAt: isPublished ? now : null
+    publishedAt: isPublished ? now : null,
+    expiresAt: isPublished ? (now + (24 * 60 * 60 * 1000)) : null
   };
 
   // 1. Save locally first
@@ -367,11 +390,14 @@ export async function reactToLiveNews(newsId, reactionType, user) {
  * Admin: Approve and publish pending report
  */
 export async function adminApproveLiveNews(newsId) {
+  const now = Date.now();
+  const expiresAt = now + (24 * 60 * 60 * 1000); // 24 Hours
   const store = getLocalStore() || [];
   const item = store.find(i => i.id === newsId);
   if (item) {
     item.status = 'published';
-    item.publishedAt = Date.now();
+    item.publishedAt = now;
+    item.expiresAt = expiresAt;
     saveLocalStore(store);
     broadcastLiveNewsPushNotification(item);
   }
