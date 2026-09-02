@@ -716,7 +716,93 @@ export async function generateCoverImage(placeName = '', categoryName = '', area
   return `https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&h=500&q=80&sig=${seed}`;
 }
 
-export function generateSeoServices(categoryName = '') {
-  const taxonomy = getCategoryTaxonomy(categoryName);
-  return taxonomy?.keywords || [];
+/**
+ * Detects the true semantic business domain from Name & Category
+ */
+export function resolveSemanticDomain(name = '', category = '') {
+  const text = (name + ' ' + category).toLowerCase();
+  
+  if (text.includes('لبن') || text.includes('البان') || text.includes('ألبان') || text.includes('جبن') || text.includes('جبنة') || text.includes('قشطة') || text.includes('زبدة') || text.includes('زبادي') || text.includes('مش')) {
+    return 'dairy';
+  }
+  if (text.includes('صيدل') || text.includes('دواء') || text.includes('علاج') || text.includes('روشت') || text.includes('مستلزمات طبية') || text.includes('مستلزمات طبيه')) {
+    return 'pharmacy';
+  }
+  if (text.includes('اسنان') || text.includes('أسنان') || text.includes('ضرس') || text.includes('طبيب اسنان') || text.includes('دكتور اسنان') || text.includes('الكوش')) {
+    return 'dental';
+  }
+  if (text.includes('محمص') || text.includes('مقل') || text.includes('تسالي') || text.includes('لب') || text.includes('مكسرات') || text.includes('ياميش') || text.includes('كاجو')) {
+    return 'roastery';
+  }
+  if (text.includes('عصير') || text.includes('قصب') || text.includes('فرش') || text.includes('فريش') || text.includes('سموذي') || text.includes('كوكتيل')) {
+    return 'juice';
+  }
+  if (text.includes('موبايل') || text.includes('هواتف') || text.includes('تليفون') || text.includes('صيانة موبايل') || text.includes('جرابات')) {
+    return 'mobile';
+  }
+  if (text.includes('فسيخ') || text.includes('رنجة') || text.includes('سمك') || text.includes('اسماك') || text.includes('أسماك') || text.includes('جمبري') || text.includes('سي فود')) {
+    return 'seafood';
+  }
+  if (text.includes('سوبر ماركت') || text.includes('هايبر') || text.includes('ماركت') || text.includes('بقالة') || text.includes('بقاله')) {
+    return 'supermarket';
+  }
+  if (text.includes('مخبز') || text.includes('حلواني') || text.includes('حلويات') || text.includes('تورتة') || text.includes('كحك') || text.includes('فينو') || text.includes('عيش')) {
+    return 'bakery';
+  }
+  if (text.includes('بويات') || text.includes('دهانات') || text.includes('معجون') || text.includes('جدران') || text.includes('الوان دهانات')) {
+    return 'paints';
+  }
+  if (text.includes('سباك') || text.includes('ادوات صحية') || text.includes('مواسير') || text.includes('خلاطات')) {
+    return 'plumbing';
+  }
+  if (text.includes('كهربا') || text.includes('ليدات') || text.includes('لمبات') || text.includes('نجف') || text.includes('اسلاك')) {
+    return 'electrical';
+  }
+  if (text.includes('عطار') || text.includes('بهارات') || text.includes('توابل') || text.includes('اعشاب') || text.includes('أعشاب')) {
+    return 'herbal';
+  }
+
+  return 'general';
+}
+
+export const DOMAIN_KEYWORDS_MAP = {
+  dairy: ['جبنة بيضاء فلاحي', 'جبنة قديمة ومش', 'جبنة رومي', 'زبدة بلدي', 'قشطة فلاحي', 'لبن جاموسي وبقري طازج', 'جبنة قريش', 'زبادي بلدي طازج'],
+  pharmacy: ['أدوية علاجية', 'مستلزمات طبية', 'فيتامينات ومكملات غذائية', 'قياس ضغط وسكر', 'مستحضرات عناية بالبشرة', 'رعاية صحية وتوصيل للمنازل'],
+  dental: ['كشف وفحص أسنان', 'زراعة أسنان', 'تقويم أسنان', 'حشو تجميلي وعلاج جذور', 'تبييض وتجميل الأسنان', 'طب أسنان أطفال'],
+  roastery: ['بن محوج وسادة', 'مكسرات فاخرة', 'لب وتسالي طازجة', 'شوكولاتة وياميش', 'كاجو وعين جمل وفستق', 'مقرمشات وتسالي'],
+  juice: ['عصير قصب طازج', 'عصائر فواكه طبيعية', 'كوكتيلات فريش', 'سموذي وميلك شيك', 'سلطة فواكه وأيس كريم'],
+  mobile: ['هواتف ذكية جديدة ومستعملة', 'صيانة هواتف وشاشات', 'إكسسوارات موبايل', 'شواحن وسماعات أصلية', 'جرابات ولاصقات حماية'],
+  seafood: ['سمك بلطي وبوري طازج', 'فسيخ المنزلة السوبر', 'رنجة هولندي فاخرة', 'جمبري وسي فود', 'تنظيف وقلي وشوي سمك'],
+  supermarket: ['سلع تموينية', 'زيت وسكر وأرز', 'مكرونة ومعلبات', 'منتجات ألبان وبقالة', 'منظفات منزلية', 'مشروبات وعصائر'],
+  bakery: ['عيش بلدي وفينو', 'حلويات شرقية وغربية', 'تورت وجاتوهات', 'كحك وبسكويت', 'فطائر ومخبوزات طازجة'],
+  paints: ['دهانات حوائط وجدران', 'بويات كمبيوتر', 'معجون وعوازل', 'ألوان حديثة', 'فراشي ورولات دهان'],
+  plumbing: ['مواسير مياه وصرف', 'خلاطات وحنفيات إيطالي', 'محابس ووصلات سباكة', 'أطقم حمامات', 'صيانة وتأسيس سباكة'],
+  electrical: ['أسلاك وكابلات معتمدة', 'لمبات ليد وتوفير طاقة', 'مفاتيح وأفياش', 'نجف وإضاءة حديثة', 'لوازم تأسيس كهرباء'],
+  herbal: ['توابل وبهارات طازجة', 'أعشاب طبيعية وزيوت نقية', 'حبوب وبقوليات', 'خلطات عطارة علاجية', 'مشروبات دافئة وعسل طبيعي']
+};
+
+export async function generateSeoServices(arg1 = '', arg2 = '') {
+  let placeName = '';
+  let categoryName = '';
+
+  if (typeof arg1 === 'object' && arg1 !== null) {
+    placeName = arg1.placeName || arg1.name || '';
+    categoryName = arg1.categoryName || arg1.category || '';
+  } else {
+    placeName = arg1 || '';
+    categoryName = arg2 || '';
+  }
+
+  const domain = resolveSemanticDomain(placeName, categoryName);
+  
+  if (DOMAIN_KEYWORDS_MAP[domain]) {
+    return DOMAIN_KEYWORDS_MAP[domain].join('، ');
+  }
+
+  const taxonomy = getCategoryTaxonomy(categoryName) || getCategoryTaxonomy(placeName);
+  if (taxonomy && Array.isArray(taxonomy.keywords) && taxonomy.keywords.length > 0) {
+    return taxonomy.keywords.join('، ');
+  }
+
+  return ['خدمات متميزة', 'جودة عالية', 'أسعار مناسبة', 'توصيل متاح'].join('، ');
 }
