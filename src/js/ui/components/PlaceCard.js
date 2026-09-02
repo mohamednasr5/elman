@@ -3,6 +3,7 @@
  */
 
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from './VerifiedBadge.js';
+import { resolveDoctorSpecialty } from '../../utils/specialty.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, getAtmLiveStatus, formatAtmTimeAgo } from '../../utils/atm.js';
 
 /**
@@ -58,6 +59,16 @@ export function renderPlaceCard(place) {
   const phoneBtn = place.phone
     ? `<a href="tel:${cleanPhone(place.phone)}" class="place-card__action-btn" title="اتصال" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','phoneClicks')">📞</a>`
     : '';
+
+  const docInfo = resolveDoctorSpecialty(place);
+  const doctorSpecialtyBadge = docInfo.isDoctor ? `
+    <div style="margin:4px 0 2px 0">
+      <span class="badge" style="background:#E0F2FE;color:#0369A1;font-weight:800;font-size:11.5px;padding:2px 8px;border-radius:9999px;border:1px solid #BAE6FD;display:inline-flex;align-items:center;gap:4px">
+        <span>${docInfo.icon}</span>
+        <span>${docInfo.shortLabel || docInfo.specialtyTitle}</span>
+      </span>
+    </div>
+  ` : '';
 
   const waBtn = place.whatsapp
     ? `<a href="https://wa.me/${formatWhatsApp(place.whatsapp)}" target="_blank" rel="noopener" class="place-card__action-btn place-card__action-btn--whatsapp" title="واتساب" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','whatsappClicks')">💬</a>`

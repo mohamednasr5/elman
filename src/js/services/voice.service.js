@@ -629,6 +629,25 @@ export async function openManzalaVoiceAssistantModal() {
           totalScore += aNameScore * 6;
         }
 
+        // ── Doctor & Medical Specialty Intelligence ──
+        const docInfo = resolveDoctorSpecialty(p);
+        if (docInfo.isDoctor) {
+          const isDocQuery = queryTokens.some(t => t.includes('دكتور') || t.includes('طبيب') || t.includes('عياد'));
+          const matchedSpec = MEDICAL_SPECIALTY_MAP.find(m => m.keywords.some(k => normQ.includes(normalizeArabic(k).toLowerCase())));
+
+          if (isDocQuery && matchedSpec) {
+            if (docInfo.specialtyKey === matchedSpec.key) {
+              totalScore += 3000;
+              matchReason = `${docInfo.icon} ${docInfo.specialtyTitle} مطابقة لتخصصك`;
+            }
+          } else if (matchedSpec) {
+            if (docInfo.specialtyKey === matchedSpec.key) {
+              totalScore += 2200;
+              matchReason = `${docInfo.icon} ${docInfo.specialtyTitle}`;
+            }
+          }
+        }
+
         // ── 2. Specialty Match (Weight: 400 pts) ──
         if (pSpec) {
           if (pSpec.includes(normQ)) {

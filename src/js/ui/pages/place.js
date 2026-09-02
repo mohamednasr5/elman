@@ -16,6 +16,7 @@ import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { resolveMapEmbedInfo, extractCoordinates } from '../../utils/maps.js';
+import { resolveDoctorSpecialty } from '../../utils/specialty.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, ATM_POLL_QUESTIONS, formatAtmTimeAgo, submitAtmPollVote } from '../../utils/atm.js';
 import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service.js';
 
@@ -130,6 +131,7 @@ export async function renderPlacePage($container, { slug, user }) {
 
     // Resolve Smart Google Map info (supports coords, short links, Plus codes, and addresses)
     const mapInfo = resolveMapEmbedInfo(place);
+    const docInfo = resolveDoctorSpecialty(place, category);
 
     // Render Full Page
     $container.innerHTML = `
