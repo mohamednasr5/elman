@@ -12,6 +12,7 @@ import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
 import { initRealtimePwaSyncBus } from '../services/realtime-sync.service.js';
 import { initLiveNotificationSubscriber, updateAllNotificationBadges } from '../services/notification.service.js';
 import { initFcmMessaging } from '../services/fcm.service.js';
+import { initUniversalMobileTouchTooltips } from '../utils/mobile-tooltip.js';
 
 /* ─────────────────────────────────────────────────────────
    HTML BUILDERS
@@ -338,7 +339,10 @@ export async function initPage(activeFile = '') {
   /* 13. Universal Realtime PWA Sync Bus (0ms Sync) */
   initRealtimePwaSyncBus();
 
-  /* 14. Instant Link Prefetching for 0ms page loads */
+  /* 14. Universal Mobile Touch Tooltips (Tap on badges/labels) */
+  initUniversalMobileTouchTooltips();
+
+  /* 15. Instant Link Prefetching for 0ms page loads */
   _setupInstantPrefetch();
 }
 
