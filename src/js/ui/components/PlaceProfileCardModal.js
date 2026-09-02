@@ -6,6 +6,8 @@
  */
 
 import { toast } from './Toast.js';
+import { resolveDoctorSpecialty } from '../../utils/specialty.js';
+import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 
 export const CARD_COLOR_THEMES = [
   { id: 'navy', name: 'أزرق نيلي', start: '#0284c7', mid: '#0369a1', end: '#075985', swatch: '#0284c7' },
@@ -311,9 +313,22 @@ async function generateAndDownloadPlaceCard({ place, categoryName, fullAddress, 
     }
   }
 
+// Fallback Cover Background: Rich Deep Navy Gradient with Subtle Radial Glow
   if (!coverLoaded) {
-    ctx.fillStyle = '#F8FAFC';
+    ctx.save();
+    const fallbackCoverGrad = ctx.createLinearGradient(0, 0, W, topH);
+    fallbackCoverGrad.addColorStop(0, '#0F172A');
+    fallbackCoverGrad.addColorStop(0.5, '#1E293B');
+    fallbackCoverGrad.addColorStop(1, '#0B1E30');
+    ctx.fillStyle = fallbackCoverGrad;
     ctx.fillRect(0, 0, W, topH);
+
+    const glow = ctx.createRadialGradient(W / 2, topH / 2, 20, W / 2, topH / 2, 300);
+    glow.addColorStop(0, 'rgba(56, 189, 248, 0.20)');
+    glow.addColorStop(1, 'rgba(56, 189, 248, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, topH);
+    ctx.restore();
   }
 
   // 3. Top Header text "تعرفوا على"
@@ -377,17 +392,22 @@ async function generateAndDownloadPlaceCard({ place, categoryName, fullAddress, 
     }
   }
 
-  if (!logoLoaded) {
-    // Fallback Initial
+if (!logoLoaded) {
     ctx.save();
     drawRoundedRect(ctx, avatarX + 8, avatarY + 8, avatarSize - 16, avatarSize - 16, radius - 6);
+    ctx.clip();
+    const avatarGrad = ctx.createLinearGradient(avatarX, avatarY, avatarX, avatarY + avatarSize);
+    avatarGrad.addColorStop(0, '#FFFFFF');
+    avatarGrad.addColorStop(1, '#F8FAFC');
+    ctx.fillStyle = avatarGrad;
+    ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+
     ctx.fillStyle = theme.mid;
-    ctx.fill();
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 120px "Cairo", sans-serif';
+    ctx.font = 'bold 95px "Cairo", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText((place.name || 'م').charAt(0), W / 2, avatarY + avatarSize / 2);
+    const catIcon = defaultAssets.categoryIcon || '🏪';
+    ctx.fillText(catIcon, W / 2, avatarY + (avatarSize / 2) - 8);
     ctx.restore();
   }
 
@@ -569,6 +589,7 @@ async function loadSafeImageToCanvas(srcUrl) {
         resolve(null);
       };
       img.src = finalSrc;
+      setTimeout(() => resolve(null), 2500);
     });
   } catch (err) {
     console.warn('[loadSafeImageToCanvas] Exception:', err);
