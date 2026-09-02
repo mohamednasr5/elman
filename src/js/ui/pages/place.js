@@ -1282,17 +1282,16 @@ function setupPlaceSharing(place) {
 
   const placeName = place.name || 'المكان';
   const placeAddress = place.address || place.area || 'مدينة المنزلة، محافظة الدقهلية';
-  const placeUrl = window.location.href;
   const placeSlug = place.slug || place.id || '';
-  const ogProxyUrl = `https://elmanzala.nonm1724.workers.dev/p/${encodeURIComponent(placeSlug)}`;
+  const canonicalPlaceUrl = `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(placeSlug)}`;
   const coverUrl = place.coverImageUrl || place.logoUrl || 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
 
   const shareText = `📍 *${placeName}*
 📌 العنوان: ${placeAddress}
-🔗 رابط المكان على الدليل: ${placeUrl}
+🔗 رابط المكان على الدليل: ${canonicalPlaceUrl}
 
 ✨ تم مشاركة هذه البطاقة من دليل المنزلة والمطرية الرقمي.. أنتم كمان ممكن تضيفوا محلكم أو شركتكم مجاناً معنا من هنا:
-🌐 https://dalilmanzala.com`;
+🌐 https://dalilmanzala.com/`;
 
   triggers.forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -1301,29 +1300,28 @@ function setupPlaceSharing(place) {
         try {
           await navigator.share({
             title: `${placeName} | دليل المنزلة والمطرية الرقمي`,
-            text: shareText,
-            url: ogProxyUrl
+            text: shareText
           });
           return;
         } catch (err) {
           if (err.name !== 'AbortError') {
-            openCustomShareModal({ placeName, placeAddress, placeUrl, ogProxyUrl, coverUrl, shareText });
+            openCustomShareModal({ placeName, placeAddress, placeUrl: canonicalPlaceUrl, coverUrl, shareText });
           }
           return;
         }
       }
 
       // 2. Custom Share Modal Fallback
-      openCustomShareModal({ placeName, placeAddress, placeUrl, ogProxyUrl, coverUrl, shareText });
+      openCustomShareModal({ placeName, placeAddress, placeUrl: canonicalPlaceUrl, coverUrl, shareText });
     });
   });
 }
 
-function openCustomShareModal({ placeName, placeAddress, placeUrl, ogProxyUrl, coverUrl, shareText }) {
+function openCustomShareModal({ placeName, placeAddress, placeUrl, coverUrl, shareText }) {
   const waShare = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-  const tgShare = `https://t.me/share/url?url=${encodeURIComponent(ogProxyUrl || placeUrl)}&text=${encodeURIComponent(shareText)}`;
-  const fbShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(ogProxyUrl || placeUrl)}`;
-  const twShare = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(ogProxyUrl || placeUrl)}`;
+  const tgShare = `https://t.me/share/url?url=${encodeURIComponent(placeUrl)}&text=${encodeURIComponent(shareText)}`;
+  const fbShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(placeUrl)}`;
+  const twShare = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
 
   const modal = showModal({
     title: '📤 مشاركة بطاقة المكان',
@@ -1344,7 +1342,7 @@ function openCustomShareModal({ placeName, placeAddress, placeUrl, ogProxyUrl, c
         <div style="font-size:12px;color:var(--text-secondary);background:var(--surface-2);padding:10px 12px;border-radius:var(--radius-md);line-height:1.6;border:1px solid var(--border)">
           ✨ تم مشاركة هذه البطاقة من دليل المنزلة والمطرية الرقمي..<br/>
           أنتم كمان ممكن تضيفوا محلكم أو شركتكم مجاناً معنا من هنا:<br/>
-          <a href="https://dalilmanzala.com" target="_blank" rel="noopener" style="color:var(--primary);font-weight:700">dalilmanzala.com</a>
+          <a href="https://dalilmanzala.com/" target="_blank" rel="noopener" style="color:var(--primary);font-weight:700">dalilmanzala.com</a>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
