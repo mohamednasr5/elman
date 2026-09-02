@@ -79,8 +79,9 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
     : ((place.area && String(place.area).trim()) ? place.area.trim() : 'مدينة المنزلة');
   
   // Resolve exact image URLs
-  const coverUrl = place.coverImageUrl || place.coverImage || place.image || place.photos?.[0] || '';
-  const logoUrl = place.logoUrl || place.logo || place.photoURL || coverUrl || '';
+  const defaultAssets = getDefaultPlaceAssets(place, category);
+  const coverUrl = place.coverImageUrl || place.coverImage || place.image || place.photos?.[0] || defaultAssets.coverImageUrl;
+  const logoUrl = place.logoUrl || place.logo || place.photoURL || defaultAssets.logoUrl;
   const phone = place.phone || '';
   const whatsapp = place.whatsapp || place.phone || '';
 

@@ -17,6 +17,7 @@ import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.j
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { resolveMapEmbedInfo, extractCoordinates } from '../../utils/maps.js';
 import { resolveDoctorSpecialty } from '../../utils/specialty.js';
+import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, ATM_POLL_QUESTIONS, formatAtmTimeAgo, submitAtmPollVote } from '../../utils/atm.js';
 import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service.js';
 
@@ -126,8 +127,9 @@ export async function renderPlacePage($container, { slug, user }) {
     const workingHoursList = formatWorkingHours(place.workingHours);
 
     const isAtm = isAtmPlace(place, category);
-    const placeCover = isAtm ? ATM_UNIFIED_COVER : place.coverImageUrl;
-    const placeLogo = isAtm ? ATM_UNIFIED_LOGO : place.logoUrl;
+    const defaultAssets = getDefaultPlaceAssets(place, category);
+    const placeCover = isAtm ? ATM_UNIFIED_COVER : (place.coverImageUrl || defaultAssets.coverImageUrl);
+    const placeLogo = isAtm ? ATM_UNIFIED_LOGO : (place.logoUrl || defaultAssets.logoUrl);
 
     // Resolve Smart Google Map info (supports coords, short links, Plus codes, and addresses)
     const mapInfo = resolveMapEmbedInfo(place);
