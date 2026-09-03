@@ -65,7 +65,8 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
  * Inject LocalBusiness / Store / Medical / Restaurant schema for a place
  */
 export function setPlaceSchema(place, category) {
-  const placeSlug = place.slug || place.id || '';
+  const rawSlug = place.slug || place.id || '';
+  const placeSlug = String(rawSlug).replace(/-[a-z0-9_]{5,7}$/i, '') || rawSlug;
   const cleanFriendlyUrl = `${SITE_URL}/${placeSlug}`;
   const schema = {
     '@context': 'https://schema.org',

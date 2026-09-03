@@ -37,7 +37,9 @@ export function buildContextualWhatsAppLink(phone, options = {}) {
   } = options;
 
   let msg = '';
-  const placeLink = placeSlug ? `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(placeSlug)}` : 'https://dalilmanzala.com/';
+  // Clean short friendly URL without random hash suffix
+  const cleanShort = placeSlug ? String(placeSlug).replace(/-[a-z0-9_]{5,7}$/i, '') : '';
+  const placeLink = cleanShort ? `https://dalilmanzala.com/${encodeURIComponent(cleanShort)}` : (placeSlug ? `https://dalilmanzala.com/${encodeURIComponent(placeSlug)}` : 'https://dalilmanzala.com/');
 
   switch (source) {
     case 'voice_assistant':
