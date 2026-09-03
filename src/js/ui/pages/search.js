@@ -5,6 +5,7 @@
  */
 
 import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers } from '../../core/db.js';
+import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent, arabicMatch } from '../../utils/arabic.js';
