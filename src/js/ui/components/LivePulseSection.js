@@ -147,69 +147,71 @@ export function mountLivePulseSection(containerId) {
       const isOfficialPost = item.isOfficial || item.category === 'official_manzala' || item.category === 'official_matariya';
 
       return `
-        <div class="live-news-card-luxury live-card-stagger ${isJobVacant ? 'card-job-vacant' : ''} ${isJobSeeker ? 'card-job-seeker' : ''} ${isOfficialPost ? 'card-official-pulse' : ''}" data-news-id="${item.id}" style="animation-delay:${index * 0.07}s">
-          <div>
-            <!-- Card Top: Category + Pulsing Tag + Live Time -->
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="live-news-card-luxury live-card-stagger ${isJobVacant ? 'card-job-vacant' : ''} ${isJobSeeker ? 'card-job-seeker' : ''} ${isOfficialPost ? 'card-official-pulse' : ''}" data-news-id="${item.id}" style="animation-delay:${index * 0.05}s">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <!-- Card Top: Category + Time -->
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                 ${isOfficialPost ? `
-                  <span class="badge" style="background:linear-gradient(135deg,#0B1E30,#0369A1);color:#fff;font-weight:900;font-size:11.5px;padding:4px 12px;border-radius:8px;box-shadow:0 2px 8px rgba(3,105,161,0.25);border:1px solid rgba(255,255,255,0.2)">
-                    🏛️ منشور رسمي موثق
+                  <span class="badge" style="background:linear-gradient(135deg,#0B1E30,#0369A1);color:#fff;font-weight:800;font-size:11px;padding:3px 10px;border-radius:6px">
+                    🏛️ رسمي
                   </span>
                 ` : isJobVacant ? `
                   <span class="badge-job-pulse">
-                    <span>💼</span> <span>وظيفة شاغرة تنبض</span>
+                    💼 وظيفة شاغرة
                   </span>
                 ` : isJobSeeker ? `
                   <span class="badge-job-seeker-pulse">
-                    <span>🧑‍💼</span> <span>باحث عن عمل</span>
+                    🧑‍💼 باحث عن عمل
                   </span>
                 ` : `
-                  <span class="badge" style="background:rgba(2,132,199,0.12);color:${cat.color};font-weight:800;font-size:11.5px;padding:4px 10px;border-radius:8px">
+                  <span class="badge" style="background:rgba(2,132,199,0.08);color:${cat.color};font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px">
                     ${cat.icon} ${cat.label}
                   </span>
-                  <span class="badge" style="background:rgba(16,185,129,0.12);color:${tag.color};font-weight:800;font-size:11.5px;padding:4px 10px;border-radius:8px">
+                  <span class="badge" style="background:rgba(16,185,129,0.08);color:${tag.color};font-weight:700;font-size:11px;padding:3px 8px;border-radius:6px">
                     ${tag.label}
                   </span>
                 `}
               </div>
-              <span style="font-size:11.5px;color:var(--text-muted);font-weight:700;display:flex;align-items:center;gap:4px">
-                <span style="color:#10B981">●</span> ${timeAgo(item.createdAt)}
+              <span style="font-size:11px;color:var(--text-muted);font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:4px">
+                <span style="color:#10B981;font-size:9px">●</span> ${timeAgo(item.createdAt)}
               </span>
             </div>
 
             <!-- Title -->
-            <h3 style="font-size:15px;font-weight:800;color:var(--text-primary,#0F2B48);margin:0 0 6px 0;line-height:1.45">
+            <h3 style="font-size:14.5px;font-weight:800;color:var(--text-primary,#0F2B48);margin:0;line-height:1.4">
               ${esc(item.title)}
             </h3>
 
             <!-- Location & City -->
-            <div style="font-size:12.5px;color:var(--primary,#1B4F72);font-weight:800;display:flex;align-items:center;gap:4px;margin-bottom:8px">
-              <span>📍</span>
-              <span>${esc(item.location)} (${esc(item.city || 'المنزلة والمطرية')})</span>
+            <div style="font-size:12px;color:var(--text-muted);font-weight:600;display:flex;align-items:center;gap:4px">
+              <span style="color:#0284C7">📍</span>
+              <span>${esc(item.location)}</span>
+              <span style="color:var(--border)">•</span>
+              <span style="color:var(--primary);font-weight:700">${esc(item.city || 'المنزلة والمطرية')}</span>
             </div>
 
             <!-- Details -->
             ${item.details ? `
-              <p style="font-size:12.5px;color:var(--text-secondary,#475569);line-height:1.55;margin:0 0 10px 0;background:var(--surface-2,#F8FAFC);padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,0.03)">
+              <p style="font-size:12px;color:var(--text-secondary,#475569);line-height:1.55;margin:0;background:var(--surface-2,#F8FAFC);padding:8px 10px;border-radius:8px;border:1px solid rgba(0,0,0,0.03)">
                 ${esc(item.details)}
               </p>
             ` : ''}
 
             <!-- Direct Contact & Inquiry Buttons for Jobs -->
             ${(isJobVacant || isJobSeeker) ? `
-              <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px">
                 ${item.inquiryLink ? `
-                  <a href="${esc(item.inquiryLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:linear-gradient(135deg,#0369A1,#0284C7);color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:7px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(3,105,161,0.25)">
-                    <span>🔗</span> <span>رابط الاستعلام والتقديم</span>
+                  <a href="${esc(item.inquiryLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:#0369A1;color:#fff;border-radius:8px;font-weight:700;font-size:11.5px;padding:6px 10px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:4px">
+                    <span>🔗 استعلام وتقديم</span>
                   </a>
                 ` : ''}
                 ${item.phone ? `
-                  <a href="${buildContextualWhatsAppLink(item.phone, { source: 'job_pulse', jobTitle: item.title, placeName: item.userName })}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:#25D366;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:7px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(37,211,102,0.3)">
-                    <img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /> <span>واتساب: ${esc(item.phone)}</span>
+                  <a href="${buildContextualWhatsAppLink(item.phone, { source: 'job_pulse', jobTitle: item.title, placeName: item.userName })}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:#25D366;color:#fff;border-radius:8px;font-weight:700;font-size:11.5px;padding:6px 10px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:4px">
+                    <span>واتساب</span>
                   </a>
-                  <a href="tel:${esc(item.phone)}" class="btn btn-sm" style="background:#0F2B48;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:7px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
-                    <span>📞 اتصال</span>
+                  <a href="tel:${esc(item.phone)}" class="btn btn-sm" style="background:#0F2B48;color:#fff;border-radius:8px;font-weight:700;font-size:11.5px;padding:6px 10px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+                    <span>اتصال</span>
                   </a>
                 ` : ''}
               </div>
@@ -217,46 +219,44 @@ export function mountLivePulseSection(containerId) {
 
             <!-- Source & Direct View for Official Municipal Posts -->
             ${(item.isOfficial || item.category === 'official_manzala' || item.category === 'official_matariya' || item.facebookPostUrl) ? `
-              <div style="background:rgba(2,132,199,0.06);border:1px solid rgba(2,132,199,0.2);border-radius:12px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                <span style="font-size:11.5px;color:#0369A1;font-weight:800;display:flex;align-items:center;gap:5px">
-                  <span>🏛️</span>
-                  <span>المصدر: ${esc(item.sourceName || (item.city === 'المطرية' ? 'رئاسة مركز ومدينة المطرية' : 'مركز ومدينة المنزلة'))} (Facebook)</span>
+              <div style="background:rgba(2,132,199,0.05);border:1px solid rgba(2,132,199,0.15);border-radius:8px;padding:6px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <span style="font-size:11px;color:#0369A1;font-weight:700">
+                  🏛️ المصدر: ${esc(item.city === 'المطرية' ? 'رئاسة مركز المطرية' : 'مركز ومدينة المنزلة')}
                 </span>
-                <a href="${esc(item.facebookPostUrl || item.inquiryLink || (item.city === 'المطرية' ? 'https://www.facebook.com/profile.php?id=100064388064434' : 'https://www.facebook.com/profile.php?id=100064659433354'))}" target="_blank" rel="noopener noreferrer" class="btn btn-xs" style="background:#1877F2;color:#fff;font-weight:800;border-radius:8px;padding:4px 10px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
-                  <span>عرض على Facebook ↗</span>
+                <a href="${esc(item.facebookPostUrl || item.inquiryLink || (item.city === 'المطرية' ? 'https://www.facebook.com/profile.php?id=100064388064434' : 'https://www.facebook.com/profile.php?id=100064659433354'))}" target="_blank" rel="noopener noreferrer" style="color:#1877F2;font-size:11px;font-weight:800;text-decoration:none">
+                  Facebook ↗
                 </a>
               </div>
             ` : ''}
           </div>
 
-          <!-- Bottom: Author + Interactive Reactions -->
-          <div style="border-top:1px solid var(--border,#E2E8F0);padding-top:12px;margin-top:8px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:12px">
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="color:var(--text-muted)">بواسطة:</span>
-                <strong style="color:var(--text-primary)">${esc(item.userName || 'مواطن')}</strong>
-                <span class="badge" style="font-size:10.5px;padding:2px 8px;background:${item.isOfficial ? 'rgba(3,105,161,0.15)' : item.isAutoIngested ? 'rgba(2,132,199,0.12)' : 'rgba(245,166,35,0.15)'};color:${item.isOfficial ? '#0369A1' : item.isAutoIngested ? '#0284C7' : authorLvl.color};border-radius:6px;font-weight:800">
-                  ${item.isOfficial ? '🏛️ صفحة رسمية موثقة' : item.isAutoIngested ? '📢 تقرير معتمد' : `${authorLvl.icon} ${authorLvl.name}`}
+          <!-- Bottom: Clean Single-line Meta & Compact Reaction Buttons -->
+          <div style="border-top:1px solid var(--border,#E2E8F0);padding-top:10px;margin-top:10px;display:flex;flex-direction:column;gap:8px">
+            
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px">
+              <span style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                بواسطة: <strong style="color:var(--text-primary)">${esc(item.userName || 'مواطن')}</strong>
+              </span>
+              ${confirms > 0 ? `
+                <span style="color:#059669;font-weight:700;white-space:nowrap;flex-shrink:0">
+                  👥 ${confirms} تأكيد
                 </span>
-              </div>
-              <div style="font-size:11.5px;color:#059669;font-weight:800;display:flex;align-items:center;gap:4px">
-                <span>👥</span>
-                <span>${confirms} أكدوا ذلك</span>
-              </div>
+              ` : ''}
             </div>
 
             <!-- Reaction Buttons -->
-            <div style="display:flex;align-items:center;gap:8px">
-              <button type="button" class="btn btn-xs btn-react-live btn-reaction-pop" data-nid="${item.id}" data-type="confirm" style="flex:1;border-radius:10px;font-weight:800;font-size:12px;padding:6px 10px;background:${userReaction === 'confirm' ? '#10B981' : 'var(--surface-2,#F1F5F9)'};color:${userReaction === 'confirm' ? '#fff' : '#0F2B48'};border:1px solid ${userReaction === 'confirm' ? '#10B981' : 'var(--border,#CBD5E1)'}">
+            <div style="display:flex;align-items:center;gap:6px">
+              <button type="button" class="btn btn-xs btn-react-live btn-reaction-pop" data-nid="${item.id}" data-type="confirm" style="flex:1;border-radius:8px;font-weight:700;font-size:11.5px;padding:5px 6px;background:${userReaction === 'confirm' ? '#10B981' : 'var(--surface-2,#F1F5F9)'};color:${userReaction === 'confirm' ? '#fff' : '#0F2B48'};border:1px solid ${userReaction === 'confirm' ? '#10B981' : 'var(--border,#CBD5E1)'}">
                 👍 تأكيد (${confirms})
               </button>
-              <button type="button" class="btn btn-xs btn-react-live btn-reaction-pop" data-nid="${item.id}" data-type="love" style="border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;background:${userReaction === 'love' ? '#EF4444' : 'var(--surface-2,#F1F5F9)'};color:${userReaction === 'love' ? '#fff' : '#0F2B48'};border:1px solid ${userReaction === 'love' ? '#EF4444' : 'var(--border,#CBD5E1)'}">
-                ❤️ (${loves})
+              <button type="button" class="btn btn-xs btn-react-live btn-reaction-pop" data-nid="${item.id}" data-type="love" style="border-radius:8px;font-weight:700;font-size:11.5px;padding:5px 10px;background:${userReaction === 'love' ? '#EF4444' : 'var(--surface-2,#F1F5F9)'};color:${userReaction === 'love' ? '#fff' : '#0F2B48'};border:1px solid ${userReaction === 'love' ? '#EF4444' : 'var(--border,#CBD5E1)'}">
+                ❤️ ${loves > 0 ? loves : ''}
               </button>
-              <button type="button" class="btn btn-xs btn-react-live btn-reaction-pop" data-nid="${item.id}" data-type="doubt" style="border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;background:${userReaction === 'doubt' ? '#64748B' : 'var(--surface-2,#F1F5F9)'};color:${userReaction === 'doubt' ? '#fff' : '#0F2B48'};border:1px solid ${userReaction === 'doubt' ? '#64748B' : 'var(--border,#CBD5E1)'}" title="غير دقيق">
-                👎 (${doubts})
+              <button type="button" class="btn btn-xs btn-react-live btn-reaction-pop" data-nid="${item.id}" data-type="doubt" style="border-radius:8px;font-weight:700;font-size:11.5px;padding:5px 10px;background:${userReaction === 'doubt' ? '#64748B' : 'var(--surface-2,#F1F5F9)'};color:${userReaction === 'doubt' ? '#fff' : '#0F2B48'};border:1px solid ${userReaction === 'doubt' ? '#64748B' : 'var(--border,#CBD5E1)'}" title="غير دقيق">
+                👎 ${doubts > 0 ? doubts : ''}
               </button>
             </div>
+
           </div>
         </div>
       `;
