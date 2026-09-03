@@ -63,6 +63,9 @@ export async function renderDashboard($container, { user, section = 'overview', 
         </div>
 
         <nav class="dashboard-sidebar__nav" id="dashboard-sidebar-nav">
+          <a href="index.html" class="dashboard-nav-item" style="background:rgba(2,132,199,0.08);color:var(--primary);font-weight:700;border:1px solid rgba(2,132,199,0.25);margin-bottom:8px">
+            <span class="dashboard-nav-item__icon">🏠</span> الرئيسية (البحث في الدليل)
+          </a>
           <a href="dashboard.html" data-section="overview" class="dashboard-nav-item ${section === 'overview' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📊</span> نظرة عامة
           </a>
@@ -78,8 +81,8 @@ export async function renderDashboard($container, { user, section = 'overview', 
           <a href="dashboard.html?section=loyalty" data-section="loyalty" class="dashboard-nav-item ${section === 'loyalty' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">🎁</span> نادي الولاء والنقاط
           </a>
-          <a href="dashboard.html?section=add" data-section="add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}">
-            <span class="dashboard-nav-item__icon">➕</span> إضافة مكان جديد
+          <a href="dashboard.html?section=add" data-section="add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}" style="background:rgba(16,185,129,0.1);color:#059669;font-weight:800;border:1.5px solid rgba(16,185,129,0.3)">
+            <span class="dashboard-nav-item__icon" style="color:#10B981">➕</span> إضافة مكان جديد
           </a>
           <a href="dashboard.html?section=notifications" data-section="notifications" class="dashboard-nav-item ${section === 'notifications' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">🔔</span> الإشعارات والزيارات
@@ -232,14 +235,19 @@ async function renderOverviewSection($container, user) {
   });
 
   $container.innerHTML = `
-    <div class="dashboard-header animate-fade-in">
+    <div class="dashboard-header animate-fade-in" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
       <div>
         <h1 class="dashboard-header__title">أهلاً بك، ${escHtml(user.name.split(' ')[0])} 👋</h1>
         <div class="dashboard-header__subtitle">إليك ملخص تفاعل الزوار مع أنشطتك وأماكنك في المنزلة</div>
       </div>
-      <a href="dashboard.html?section=add" class="btn btn-primary">
-        <span>➕</span> إضافة مكان جديد
-      </a>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <a href="index.html" class="btn btn-outline" style="background:#fff;border-color:var(--primary);color:var(--primary);font-weight:700;display:inline-flex;align-items:center;gap:6px">
+          <span>🔍</span> الذهاب للدليل للبحث
+        </a>
+        <a href="dashboard.html?section=add" class="btn" style="background:linear-gradient(135deg,#10B981 0%,#059669 100%);color:#fff;border:none;font-weight:800;box-shadow:0 4px 14px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:6px">
+          <span style="font-size:16px">➕</span> إضافة مكان جديد
+        </a>
+      </div>
     </div>
 
     <!-- Stats Grid -->
@@ -280,14 +288,19 @@ async function renderPlacesSection($container, user) {
   const places = await getPlacesByOwner(user.uid);
 
   $container.innerHTML = `
-    <div class="dashboard-header animate-fade-in">
+    <div class="dashboard-header animate-fade-in" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
       <div>
         <h1 class="dashboard-header__title">إدارة أماكني</h1>
         <div class="dashboard-header__subtitle">تحكم في بيانات الأماكن، العروض، والمنتجات</div>
       </div>
-      <a href="dashboard.html?section=add" class="btn btn-primary">
-        <span>➕</span> إضافة مكان جديد
-      </a>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <a href="index.html" class="btn btn-outline" style="background:#fff;border-color:var(--primary);color:var(--primary);font-weight:700;display:inline-flex;align-items:center;gap:6px">
+          <span>🔍</span> الذهاب للدليل للبحث
+        </a>
+        <a href="dashboard.html?section=add" class="btn" style="background:linear-gradient(135deg,#10B981 0%,#059669 100%);color:#fff;border:none;font-weight:800;box-shadow:0 4px 14px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:6px">
+          <span style="font-size:16px">➕</span> إضافة مكان جديد
+        </a>
+      </div>
     </div>
 
     ${renderPlacesListHTML(places)}

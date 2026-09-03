@@ -369,6 +369,17 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
       }
     });
 
+    places.sort((a, b) => {
+      const aSpons = Boolean(a.isSponsored && (!a.sponsoredUntil || a.sponsoredUntil > Date.now()));
+      const bSpons = Boolean(b.isSponsored && (!b.sponsoredUntil || b.sponsoredUntil > Date.now()));
+      if (aSpons && !bSpons) return -1;
+      if (!aSpons && bSpons) return 1;
+      const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
+      const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
+      if (timeA && timeB && timeA !== timeB) return timeB - timeA;
+      return String(b._key || b.id || '').localeCompare(String(a._key || a.id || ''));
+    });
+
     const res = places.slice(0, limit);
     return setCache(cacheKey, res);
   } catch (err) {
@@ -377,7 +388,7 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
   }
 }
 
-/** Get places by owner */
+/** Get places by owner (newest added first) */
 export async function getPlacesByOwner(uid) {
   if (!uid) return [];
   const cacheKey = `places_owner_${uid}`;
@@ -395,6 +406,15 @@ export async function getPlacesByOwner(uid) {
     const places = [];
     snap.forEach(child => {
       places.push({ _key: child.key, ...child.val() });
+    });
+
+    // Sort newest places at the top
+    places.sort((a, b) => {
+      const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
+      const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
+      if (timeA && timeB && timeA !== timeB) return timeB - timeA;
+      // Fallback to Firebase Push ID chronological comparison
+      return String(b._key || b.id || '').localeCompare(String(a._key || a.id || ''));
     });
 
     return setCache(cacheKey, places);

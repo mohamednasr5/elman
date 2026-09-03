@@ -7,7 +7,7 @@
 const DEFAULT_TITLE = 'دليل المنزلة والمطرية الرقمي الشامل | أنشطة، أطباء، خدمات، وفرص عمل';
 const DEFAULT_DESC  = 'دليل المنزلة والمطرية الرقمي الشامل (dalilmanzala.com) — دليلك الأكبر لجميع المحلات، الأطباء، العيادات، الصيدليات، ماكينات ATM، الحرفيين، الوظائف، والخدمات في المنزلة، المطرية، العصافرة، والقرى المجاورة بمحافظة الدقهلية.';
 const DEFAULT_KEYWORDS = 'دليل المنزلة والمطرية, دليل المنزلة, دليل المطرية دقهلية, dalilmanzala, دكتور في المنزلة, صيدلية في المنزلة, صيدلية في المطرية, ماكينات ATM المنزلة, وظائف المنزلة والمطرية, سباك المنزلة, كهربائي المطرية, خدمات الدقهلية, بحيرة المنزلة';
-const DEFAULT_IMAGE = 'https://dalilmanzala.com/icons/icon-512x512.png';
+const DEFAULT_IMAGE = 'https://dalilmanzala.com/og-image.png';
 const SITE_URL      = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.includes('dalilmanzala')) ? window.location.origin : 'https://dalilmanzala.com';
 
 const REGIONAL_COVERAGE_AREAS = [
@@ -149,6 +149,16 @@ export function setWebsiteSearchSchema() {
   };
 
   injectSchema('website-search-schema', schema);
+
+  const orgSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'دليل المنزلة والمطرية الرقمي',
+    url: SITE_URL,
+    logo: `${SITE_URL}/icons/icon-512x512.png`,
+    image: `${SITE_URL}/icons/icon-512x512.png`
+  };
+  injectSchema('organization-brand-schema', orgSchema);
 }
 
 /**
