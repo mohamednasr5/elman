@@ -62,8 +62,12 @@ export function openStorefrontQrModal(place = {}, category = {}) {
             </h3>
 
             <!-- Category / Specialty -->
-            <p style="font-size:12px;color:#64748B;margin:0 0 12px 0;font-weight:800">
-              ${docInfo.isDoctor ? `${docInfo.icon} ${docInfo.specialtyLabel || docInfo.specialtyTitle}` : `${defaultAssets.categoryIcon} ${categoryName}`}
+            <p style="font-size:13px;color:#0369A1;margin:0 0 12px 0;font-weight:800">
+              ${place.medicalSpecialty 
+                ? `🩺 ${place.medicalSpecialty}` 
+                : (docInfo.isDoctor 
+                    ? `${docInfo.icon} ${docInfo.specialtyLabel || docInfo.specialtyTitle}` 
+                    : `${defaultAssets.categoryIcon || '🏪'} ${categoryName}`)}
             </p>
 
             <!-- QR Code Frame -->
@@ -219,9 +223,11 @@ async function generateAndDownloadQrPoster({
   ctx.fillStyle = '#475569';
   ctx.font = 'bold 40px "Cairo", sans-serif';
   ctx.textAlign = 'center';
-  const subtitle = docInfo.isDoctor 
-    ? `${docInfo.icon} ${docInfo.specialtyLabel || docInfo.specialtyTitle}` 
-    : `${defaultAssets.categoryIcon || '🏪'} ${categoryName}`;
+  const subtitle = place.medicalSpecialty 
+    ? `🩺 ${place.medicalSpecialty}` 
+    : (docInfo.isDoctor 
+        ? `${docInfo.icon} ${docInfo.specialtyLabel || docInfo.specialtyTitle}` 
+        : `${defaultAssets.categoryIcon || '🏪'} ${categoryName}`);
   ctx.fillText(subtitle, W / 2, 325);
 
   // 6. Center QR Code Frame

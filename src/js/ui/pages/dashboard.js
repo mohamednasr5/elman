@@ -1,3 +1,4 @@
+import { showAddPlaceOnboardingModal } from '../components/AddPlaceOnboardingModal.js';
 import { 
   fetchManagedUserNotifications, 
   deleteSingleNotification, 
@@ -379,6 +380,13 @@ function renderPlacesListHTML(places) {
 async function renderPlaceFormSection($container, user, placeId = null) {
   const isEdit = !!placeId;
   let place = null;
+
+  // Show 3D Onboarding Guide for first-time place creators
+  if (!isEdit) {
+    setTimeout(() => {
+      showAddPlaceOnboardingModal(false);
+    }, 150);
+  }
 
   if (isEdit) {
     place = await getPlace(placeId);

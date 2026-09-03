@@ -1859,3 +1859,236 @@ img, video, iframe, canvas, svg {
   width: 18px;
   height: 18px;
 }
+
+
+/* ========================================================
+   Interactive 3D Add Place Onboarding Animation Modal
+   ======================================================== */
+.onboarding-3d-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 30, 48, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeInModal 0.3s ease-out forwards;
+}
+
+.onboarding-3d-modal {
+  background: var(--surface, #FFFFFF);
+  border: 1.5px solid rgba(2, 132, 199, 0.3);
+  border-radius: 28px;
+  max-width: 980px;
+  width: 100%;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: scaleUp3D 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.onboarding-3d-header {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border, #E2E8F0);
+  background: linear-gradient(180deg, rgba(240, 249, 255, 0.6) 0%, transparent 100%);
+}
+
+.onboarding-badge-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0284C7, #0284C7);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+}
+
+.onboarding-close-btn {
+  background: var(--surface-2, #F1F5F9);
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 15px;
+  color: var(--text-primary, #0F172A);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.onboarding-close-btn:hover {
+  background: var(--surface-3, #E2E8F0);
+  transform: scale(1.1);
+}
+
+.onboarding-3d-stage {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  padding: 28px 24px;
+  perspective: 1200px;
+}
+
+@media (max-width: 860px) {
+  .onboarding-3d-stage {
+    grid-template-columns: 1fr;
+    max-height: 55vh;
+    overflow-y: auto;
+    padding: 16px;
+    gap: 16px;
+  }
+}
+
+.card-3d-wrapper {
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
+}
+
+.card-3d-wrapper.step-1 { animation: cardRotateIn1 0.7s ease-out forwards; }
+.card-3d-wrapper.step-2 { animation: cardRotateIn2 0.85s ease-out forwards; }
+.card-3d-wrapper.step-3 { animation: cardRotateIn3 1s ease-out forwards; }
+
+.card-3d-wrapper:hover {
+  transform: translateY(-8px) rotateX(4deg) rotateY(-4deg) scale(1.02);
+}
+
+.card-3d-inner {
+  background: #FFFFFF;
+  border: 2px solid #E0F2FE;
+  border-radius: 22px;
+  padding: 22px 18px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(2, 132, 199, 0.08);
+}
+
+.step-num-pill {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #0284C7;
+  color: #fff;
+  font-weight: 900;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+}
+
+.card-3d-icon {
+  font-size: 34px;
+  margin-bottom: 12px;
+}
+
+.card-3d-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0F172A;
+  margin: 0 0 8px 0;
+}
+
+.card-3d-desc {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0 0 14px 0;
+}
+
+.example-box {
+  background: #F8FAFC;
+  border: 1px dashed #0284C7;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+  text-align: center;
+  position: relative;
+}
+
+.example-tag {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  background: #0284C7;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 6px;
+}
+
+.card-tip {
+  font-size: 11.5px;
+  color: #0369A1;
+  background: #E0F2FE;
+  padding: 8px 10px;
+  border-radius: 10px;
+  line-height: 1.45;
+  margin-top: auto;
+  font-weight: 700;
+}
+
+.onboarding-3d-footer {
+  padding: 18px 24px;
+  background: var(--surface-2, #F8FAFC);
+  border-top: 1px solid var(--border, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.onboarding-dont-show-again {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary, #475569);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-onboarding-start {
+  border-radius: var(--radius-full, 9999px);
+  padding: 12px 28px;
+  font-weight: 900;
+  font-size: 14.5px;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.35);
+  cursor: pointer;
+}
+
+@keyframes scaleUp3D {
+  from { opacity: 0; transform: scale(0.85) translateY(30px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes cardRotateIn1 {
+  from { opacity: 0; transform: rotateY(25deg) translateY(40px); }
+  to { opacity: 1; transform: rotateY(0deg) translateY(0); }
+}
+@keyframes cardRotateIn2 {
+  from { opacity: 0; transform: rotateY(25deg) translateY(40px); }
+  to { opacity: 1; transform: rotateY(0deg) translateY(0); }
+}
+@keyframes cardRotateIn3 {
+  from { opacity: 0; transform: rotateY(25deg) translateY(40px); }
+  to { opacity: 1; transform: rotateY(0deg) translateY(0); }
+}

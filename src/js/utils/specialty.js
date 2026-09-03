@@ -1,3 +1,16 @@
+function cleanRootWords(text) {
+  if (!text) return '';
+  return normalizeArabic(text)
+    .split(/\s+/)
+    .map(w => {
+      let word = w;
+      if (word.startsWith('و') && word.length > 3) word = word.slice(1);
+      if (word.startsWith('ال') && word.length > 3) word = word.slice(2);
+      return word;
+    })
+    .join(' ');
+}
+
 /**
  * specialty.js
  * Comprehensive Medical Specialty & Professional Classifier for Doctors, Clinics, and Services
@@ -8,7 +21,7 @@ import { normalizeArabic } from './arabic.js';
 export const MEDICAL_SPECIALTY_MAP = [
   {
     key: 'general_surgery',
-    keywords: ['جراحة عامة', 'جراحه عامه', 'جراح عام', 'جراحة', 'جراحه', 'جراح', 'مناظير جراحية', 'فتق', 'مرارة', 'بواسير', 'استئصال', 'اورام'],
+    keywords: ['جراحة عامة', 'جراحه عامه', 'جراح عام', 'مناظير جراحية', 'جراحة البطن', 'فتق', 'مرارة', 'بواسير', 'استئصال اورام', 'اورام'],
     title: 'دكتور جراحة عامة',
     label: 'استشاري الجراحة العامة والمناظير والأورام',
     shortLabel: 'الجراحة العامة والمناظير',
@@ -24,7 +37,7 @@ export const MEDICAL_SPECIALTY_MAP = [
   },
   {
     key: 'dental',
-    keywords: ['اسنان', 'أسنان', 'سنان', 'فم', 'تجميل الاسنان', 'تجميل الأسنان', 'زراعة الاسنان', 'تقويم الاسنان', 'ضروس', 'حشو', 'خلع ضرس', 'الكوش', 'كوش'],
+    keywords: ['اسنان', 'أسنان', 'سنان', 'فم', 'جراحة الفم', 'جراحة الفم والاسنان', 'طب وجراحة الفم', 'تجميل الاسنان', 'تجميل الأسنان', 'زراعة الاسنان', 'تقويم الاسنان', 'ضروس', 'حشو', 'خلع ضرس', 'الكوش', 'كوش'],
     title: 'دكتور أسنان',
     label: 'أخصائي طب وجراحة الفم وتجميل وزراعة الأسنان',
     shortLabel: 'طب وتجميل الأسنان',
@@ -185,36 +198,77 @@ export function resolveDoctorSpecialty(place = {}, category = {}) {
 
   const normalizedSource = normalizeArabic(searchSource);
 
-  // 1. Check exact custom specialty string if exists
+  // 1. If explicit medicalSpecialty or doctorSpecialty is specified on the place:
   if (customSpecialty && customSpecialty.trim()) {
-    const matched = MEDICAL_SPECIALTY_MAP.find(m => m.keywords.some(k => normalizeArabic(customSpecialty).includes(normalizeArabic(k))));
-    if (matched) {
+    const normSpec = normalizeArabic(customSpecialty);
+    const rootSpec = cleanRootWords(customSpecialty);
+    
+    // Find best match prioritizing longest keyword match
+    let bestMatch = null;
+    let maxKwLength = 0;
+    for (const item of MEDICAL_SPECIALTY_MAP) {
+      for (const kw of item.keywords) {
+        const normKw = normalizeArabic(kw);
+        const rootKw = cleanRootWords(kw);
+        if ((normSpec.includes(normKw) || rootSpec.includes(rootKw)) && normKw.length > maxKwLength) {
+          maxKwLength = normKw.length;
+          bestMatch = item;
+        }
+      }
+    }
+    
+    if (bestMatch) {
       return {
         isDoctor: true,
-        specialtyKey: matched.key,
-        specialtyTitle: matched.title,
-        specialtyLabel: matched.label,
-        shortLabel: matched.shortLabel,
-        icon: matched.icon
+        specialtyKey: bestMatch.key,
+        specialtyTitle: bestMatch.title,
+        specialtyLabel: customSpecialty.trim().startsWith('استشاري') || customSpecialty.trim().startsWith('أخصائي') 
+          ? customSpecialty.trim() 
+          : bestMatch.label,
+        shortLabel: bestMatch.shortLabel,
+        icon: bestMatch.icon
       };
     }
+
+    // If explicit specialty is written but not in taxonomy, display it cleanly!
+    return {
+      isDoctor: true,
+      specialtyKey: 'custom_doctor',
+      specialtyTitle: customSpecialty.trim(),
+      specialtyLabel: customSpecialty.trim(),
+      shortLabel: customSpecialty.trim(),
+      icon: '🩺'
+    };
   }
 
-  // 2. Scan text for medical specialty keywords
+  // 2. Scan text for medical specialty keywords with specificity scoring (longest phrase wins)
+  let bestCandidate = null;
+  let maxScore = 0;
+
+  const rootSource = cleanRootWords(searchSource);
   for (const item of MEDICAL_SPECIALTY_MAP) {
     for (const kw of item.keywords) {
       const normKw = normalizeArabic(kw);
-      if (normalizedSource.includes(normKw)) {
-        return {
-          isDoctor: true,
-          specialtyKey: item.key,
-          specialtyTitle: item.title,
-          specialtyLabel: item.label,
-          shortLabel: item.shortLabel,
-          icon: item.icon
-        };
+      const rootKw = cleanRootWords(kw);
+      if (normalizedSource.includes(normKw) || (rootKw.length >= 3 && rootSource.includes(rootKw))) {
+        const score = normKw.length * (normKw.includes(' ') ? 3 : 1);
+        if (score > maxScore) {
+          maxScore = score;
+          bestCandidate = item;
+        }
       }
     }
+  }
+
+  if (bestCandidate) {
+    return {
+      isDoctor: true,
+      specialtyKey: bestCandidate.key,
+      specialtyTitle: bestCandidate.title,
+      specialtyLabel: bestCandidate.label,
+      shortLabel: bestCandidate.shortLabel,
+      icon: bestCandidate.icon
+    };
   }
 
   if (isDoctorCategory || hasDoctorTitleInName) {
