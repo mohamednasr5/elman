@@ -17,7 +17,7 @@ import { getCategoryTaxonomy, SPECIALIZED_CATEGORIES_TAXONOMY } from '../../util
  * AI translation, AI cover generator, and verification requests.
  */
 
-import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace } from '../../core/db.js';
+import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace, clearDbCache } from '../../core/db.js';
 import { createPlace, updatePlace, deletePlace, addOffer, updateOffer, deleteOffer, addProduct, updateProduct, deleteProduct, submitVerificationRequest } from '../../services/places.service.js';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { uploadImage } from '../../services/upload.service.js';
@@ -1374,6 +1374,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         } catch (_) {}
       }
 
+      clearDbCache();
       window.location.href = 'dashboard.html?section=places';
     } catch (err) {
       console.error('Save place error:', err);

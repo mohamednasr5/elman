@@ -1,3 +1,4 @@
+import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 /**
  * المنزلة وناسها — Place Detail Page
  * Full production place view with cover, logo, verified badge, working hours,
@@ -233,7 +234,7 @@ export async function renderPlacePage($container, { slug, user }) {
               ` : ''}
               
               ${place.whatsapp ? `
-                <a href="https://wa.me/${formatWhatsApp(place.whatsapp)}?text=${encodeURIComponent(`مرحباً، وجدتك على دليل المنزلة والمطرية الرقمي وأود الاستفسار عن خدماتك`)}" 
+                <a href="${buildContextualWhatsAppLink(place.whatsapp, { source: 'place_page', placeName: place.name, placeSlug: place.slug })}" 
                    target="_blank" 
                    rel="noopener" 
                    class="btn btn-whatsapp" onclick="trackStat('${escAttr(placeId)}', 'whatsappClicks')" title="محادثة واتساب">

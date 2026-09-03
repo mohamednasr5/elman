@@ -1,3 +1,4 @@
+import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 /**
  * المنزلة وناسها — PlaceCard Component
  */
@@ -82,7 +83,7 @@ export function renderPlaceCard(place) {
   ` : '';
 
   const waBtn = place.whatsapp
-    ? `<a href="https://wa.me/${formatWhatsApp(place.whatsapp)}" target="_blank" rel="noopener" class="place-card__action-btn place-card__action-btn--whatsapp" title="محادثة واتساب" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','whatsappClicks')"><img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /></a>`
+    ? `<a href="${buildContextualWhatsAppLink(place.whatsapp, { source: 'place_card', placeName: place.name, placeSlug: place.slug })}" target="_blank" rel="noopener" class="place-card__action-btn place-card__action-btn--whatsapp" title="محادثة واتساب" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','whatsappClicks')"><img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /></a>`
     : '';
 
   const cardClasses = [

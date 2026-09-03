@@ -4,7 +4,8 @@
  */
 
 import { getDB } from '../core/firebase.js';
-import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification } from '../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache } from '../core/db.js';
+import { broadcastRealtimeChange } from './realtime-sync.service.js';
 import { generatePlaceSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';
 import { isAtmPlace } from '../utils/atm.js';
@@ -150,6 +151,12 @@ export async function createPlace(placeData, currentUser) {
     ownerName: currentUser.name || currentUser.displayName || currentUser.email
   });
 
+  // Invalidate local and persistent database cache immediately
+  clearDbCache();
+
+  // Broadcast realtime event across all open tabs, windows and PWA
+  broadcastRealtimeChange('NEW_PLACE', { place: { id: placeId, ...newPlace } });
+
   return placeId;
 }
 
@@ -195,6 +202,8 @@ export async function updatePlace(placeId, placeData) {
   };
 
   await dbUpdate(`places/${placeId}`, updates);
+  clearDbCache();
+  broadcastRealtimeChange('PLACE_UPDATED', { place: { id: placeId, ...updates } });
 }
 
 /**
@@ -216,6 +225,9 @@ export async function deletePlace(placeId, ownerId) {
   if (place.categoryId) {
     dbIncrement(`categories/${place.categoryId}/placeCount`, -1);
   }
+
+  clearDbCache();
+  broadcastRealtimeChange('PLACE_DELETED', { placeId });
 }
 
 /**

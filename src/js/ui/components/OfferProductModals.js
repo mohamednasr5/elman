@@ -1,3 +1,4 @@
+import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 /**
  * المنزلة وناسها — Offer & Product Full Details Modals
  * Renders rich uncropped high-resolution view, pricing breakdown,
@@ -45,10 +46,13 @@ export function openOfferFullDetailsModal(offer, place = {}) {
   const placeSlug = place?.slug || offer.placeSlug || '';
 
   const cleanPhone = (placePhone || '').replace(/\D/g, '');
-  let cleanWa = formatModalWhatsApp(placeWhatsapp || placePhone);
-
-  const waMessage = encodeURIComponent(`السلام عليكم، أرغب في طلب / الاستفسار عن عرض:\n🎁 *${offer.title}*\n💰 بسعر: *${offer.newPrice || 0} ج.م*\n🏪 من: *${placeName}*\nعبر دليل المنزلة والمطرية الرقمي.`);
-  const waLink = cleanWa ? `https://wa.me/${cleanWa}?text=${waMessage}` : null;
+  const waLink = (placeWhatsapp || placePhone) ? buildContextualWhatsAppLink(placeWhatsapp || placePhone, {
+    source: 'offer',
+    placeName,
+    offerTitle: offer.title,
+    price: offer.newPrice,
+    placeSlug
+  }) : null;
 
   showModal({
     title: `🎁 تفاصيل العرض: ${escHtml(offer.title)}`,
@@ -160,10 +164,13 @@ export function openProductFullDetailsModal(product, place = {}) {
   const placeSlug = place?.slug || product.placeSlug || '';
 
   const cleanPhone = (placePhone || '').replace(/\D/g, '');
-  let cleanWa = formatModalWhatsApp(placeWhatsapp || placePhone);
-
-  const waMessage = encodeURIComponent(`السلام عليكم، أرغب في طلب / حجز منتج:\n🛍️ *${product.name}*\n💰 السعر: *${product.price || 0} ج.م*\n🏪 من: *${placeName}*\nعبر دليل المنزلة والمطرية الرقمي.`);
-  const waLink = cleanWa ? `https://wa.me/${cleanWa}?text=${waMessage}` : null;
+  const waLink = (placeWhatsapp || placePhone) ? buildContextualWhatsAppLink(placeWhatsapp || placePhone, {
+    source: 'product',
+    placeName,
+    productName: product.name,
+    price: product.price,
+    placeSlug
+  }) : null;
 
   showModal({
     title: `🛍️ تفاصيل المنتج: ${escHtml(product.name)}`,

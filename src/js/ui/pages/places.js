@@ -120,7 +120,9 @@ export async function renderPlacesPage($container, { query = {}, user }) {
   `;
 
   try {
-    const [places, categories] = await Promise.all([
+    let places = [];
+    let categories = [];
+    [places, categories] = await Promise.all([
       getPublishedPlaces({ limit: 100 }),
       getCategories()
     ]);

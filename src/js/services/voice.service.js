@@ -1,3 +1,4 @@
+import { buildContextualWhatsAppLink } from './whatsapp.service.js';
 /**
  * المنزلة وناسها — Smart Voice Search Service (البحث الصوتي الذكي)
  * Arabic (Egyptian / Standard) voice recognition with instant normalization (أ/إ/آ, ى/ي, ة/ه),
@@ -644,7 +645,7 @@ export async function openManzalaVoiceAssistantModal() {
                 </a>
               ` : ''}
               ${whatsapp ? `
-                <a href="https://wa.me/${formatVoiceWhatsApp(whatsapp)}" target="_blank" rel="noopener" class="btn btn-sm btn-whatsapp" style="padding:6px 10px;font-size:12px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="محادثة واتساب"><img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /></a>
+                <a href="${buildContextualWhatsAppLink(whatsapp, { source: 'voice_assistant', placeName: item.name, placeSlug })}" target="_blank" rel="noopener" class="btn btn-sm btn-whatsapp" style="padding:6px 10px;font-size:12px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="محادثة واتساب"><img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /></a>
               ` : ''}
               <a href="place.html?slug=${escapeAttr(placeSlug)}" class="btn btn-sm btn-outline" style="padding:6px 10px;font-size:12px;border-radius:8px;text-decoration:none" title="عرض التفاصيل">
                 👁️

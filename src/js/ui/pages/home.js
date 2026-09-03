@@ -58,7 +58,7 @@ export async function renderHomePage($main, { user } = {}) {
   try {
     const [categories, places, offers, ads] = await Promise.all([
       getCategories(),
-      getPublishedPlaces({ limit: 40 }),
+      getPublishedPlaces({ limit: 100 }),
       getActiveOffers(8),
       getAds('homepage')
     ]);
@@ -782,7 +782,7 @@ function getHomeHTML() {
       <div class="container">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">
           <h2 class="section-title">
-            <span>✅</span> أماكن موثقة
+            <span>⭐</span> الأكثر شهرة في المنزلة والمطرية
           </h2>
           <a href="places.html?filter=verified" class="section-link">عرض الكل ←</a>
         </div>
