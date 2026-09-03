@@ -1,6 +1,7 @@
 /**
  * StorefrontQrModal.js
  * Storefront QR Placard & Printable Poster Generator (لوحة QR الذكية لواجهة المحل)
+ * Displays prominent phone & WhatsApp numbers directly under the QR code
  */
 
 import { toast } from './Toast.js';
@@ -19,6 +20,9 @@ export function openStorefrontQrModal(place = {}, category = {}) {
   const placeUrl = `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(placeSlug)}`;
   const defaultAssets = getDefaultPlaceAssets(place, category);
   const isVerified = checkIsPlaceVerified(place);
+
+  const phone = (place.phone || '').trim();
+  const whatsapp = (place.whatsapp || '').trim();
 
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(placeUrl)}&format=png&margin=1`;
 
@@ -43,40 +47,58 @@ export function openStorefrontQrModal(place = {}, category = {}) {
 
       <!-- Poster Preview -->
       <div class="profile-card-modal__body" style="padding:16px;background:var(--surface-2);display:flex;justify-content:center">
-        <div id="qr-poster-preview" style="background:#FFFFFF;border:2px solid #E2E8F0;border-radius:18px;padding:24px 20px;width:100%;max-width:380px;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,0.1);color:#0F172A">
+        <div id="qr-poster-preview" style="background:#FFFFFF;border:2px solid #E2E8F0;border-radius:18px;padding:24px 20px;width:100%;max-width:390px;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,0.1);color:#0F172A">
           
-          <div style="border:2px dashed #0284C7;border-radius:12px;padding:18px 14px">
+          <div style="border:2.5px dashed #0284C7;border-radius:14px;padding:18px 14px;background:#FAFCFF">
             <!-- Platform Crest -->
-            <div style="font-size:12px;font-weight:800;color:#0284C7;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:4px">
+            <div style="font-size:12.5px;font-weight:900;color:#0284C7;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:5px">
               <span>🛡️</span> دليل المنزلة والمطرية الرقمي
             </div>
 
             <!-- Place Name -->
-            <h3 style="font-size:18px;font-weight:900;color:#0F172A;margin:8px 0 4px 0;line-height:1.3">
+            <h3 style="font-size:19px;font-weight:900;color:#0F172A;margin:6px 0 4px 0;line-height:1.3">
               ${placeName}
-              ${isVerified ? '<span style="color:#0284C7;font-size:15px">✓</span>' : ''}
+              ${isVerified ? '<span style="color:#0284C7;font-size:16px">✓</span>' : ''}
             </h3>
 
             <!-- Category / Specialty -->
-            <p style="font-size:12px;color:#64748B;margin:0 0 14px 0;font-weight:700">
+            <p style="font-size:12px;color:#64748B;margin:0 0 12px 0;font-weight:800">
               ${docInfo.isDoctor ? `${docInfo.icon} ${docInfo.specialtyLabel || docInfo.specialtyTitle}` : `${defaultAssets.categoryIcon} ${categoryName}`}
             </p>
 
             <!-- QR Code Frame -->
-            <div style="background:#F8FAFC;border:2px solid #E2E8F0;border-radius:14px;padding:12px;display:inline-block;margin:6px 0 12px 0">
-              <img src="${qrImageUrl}" alt="QR Code" style="width:190px;height:190px;display:block;border-radius:8px" />
+            <div style="background:#FFFFFF;border:2px solid #CBD5E1;border-radius:14px;padding:12px;display:inline-block;margin:4px 0 10px 0;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
+              <img src="${qrImageUrl}" alt="QR Code" style="width:180px;height:180px;display:block;border-radius:8px" />
             </div>
+
+            <!-- PROMINENT PHONE NUMBERS UNDER QR -->
+            ${(phone || whatsapp) ? `
+              <div style="background:#FFFFFF;border:2px solid #0284C7;border-radius:12px;padding:10px 14px;margin:8px 0 12px 0;box-shadow:0 2px 8px rgba(2,132,199,0.1)">
+                ${phone ? `
+                  <div style="font-size:17px;font-weight:900;color:#0F172A;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:6px;direction:ltr;margin:2px 0">
+                    <span style="font-size:16px">📞</span>
+                    <span>${phone}</span>
+                  </div>
+                ` : ''}
+                ${whatsapp && whatsapp !== phone ? `
+                  <div style="font-size:16px;font-weight:900;color:#15803D;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:6px;direction:ltr;margin:4px 0 2px 0;border-top:${phone ? '1px dashed #E2E8F0;padding-top:4px' : 'none'}">
+                    <img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" />
+                    <span>${whatsapp}</span>
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
 
             <!-- Scan Prompt -->
             <p style="font-size:12px;font-weight:800;color:#0F172A;margin:4px 0">
               📲 امسح الرمز بكاميرا هاتفك
             </p>
             <p style="font-size:11px;color:#64748B;margin:0;line-height:1.4">
-              للتعرف على مواعيد العمل، العروض، والاتصال المباشر
+              لعرض مواعيد العمل، العروض، وأرقام التواصل المباشر
             </p>
 
             <!-- Footer Domain -->
-            <div style="margin-top:12px;padding-top:10px;border-top:1px solid #E2E8F0;font-size:11.5px;font-weight:800;color:#0284C7">
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid #E2E8F0;font-size:12px;font-weight:900;color:#0284C7">
               dalilmanzala.com
             </div>
           </div>
@@ -116,7 +138,9 @@ export function openStorefrontQrModal(place = {}, category = {}) {
         defaultAssets,
         placeUrl,
         qrImageUrl,
-        isVerified
+        isVerified,
+        phone,
+        whatsapp
       });
       toast.success('تم إنشاء لوحة الـ QR بنجاح وجاهزة للطباعة! 🖨️✨');
     } catch (err) {
@@ -129,6 +153,9 @@ export function openStorefrontQrModal(place = {}, category = {}) {
   });
 }
 
+/**
+ * محرك رسم لوحة الـ QR بدقة طباعة فائقة (1400 × 2040 A4 Portrait)
+ */
 async function generateAndDownloadQrPoster({
   place,
   categoryName,
@@ -136,13 +163,15 @@ async function generateAndDownloadQrPoster({
   defaultAssets = {},
   placeUrl,
   qrImageUrl,
-  isVerified
+  isVerified,
+  phone = '',
+  whatsapp = ''
 }) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
   const W = 1400;
-  const H = 1980;
+  const H = 2040;
   canvas.width = W;
   canvas.height = H;
 
@@ -164,7 +193,7 @@ async function generateAndDownloadQrPoster({
   ctx.font = 'bold 44px "Cairo", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('🛡️ دليل المنزلة والمطرية الرقمي', W / 2, 140);
+  ctx.fillText('🛡️ دليل المنزلة والمطرية الرقمي', W / 2, 130);
 
   // 4. Place Name & Verified Check
   const placeName = place.name || 'اسم النشاط';
@@ -179,32 +208,32 @@ async function generateAndDownloadQrPoster({
     const startX = (W - totalW) / 2;
     
     ctx.textAlign = 'left';
-    ctx.fillText(placeName, startX + (badgeRadius * 2) + gap, 260);
-    drawCanvasVerifiedBadge(ctx, startX + badgeRadius, 260, badgeRadius);
+    ctx.fillText(placeName, startX + (badgeRadius * 2) + gap, 240);
+    drawCanvasVerifiedBadge(ctx, startX + badgeRadius, 240, badgeRadius);
   } else {
     ctx.textAlign = 'center';
-    ctx.fillText(placeName, W / 2, 260);
+    ctx.fillText(placeName, W / 2, 240);
   }
 
   // 5. Category / Specialty Subtitle
   ctx.fillStyle = '#475569';
-  ctx.font = 'bold 42px "Cairo", sans-serif';
+  ctx.font = 'bold 40px "Cairo", sans-serif';
   ctx.textAlign = 'center';
   const subtitle = docInfo.isDoctor 
     ? `${docInfo.icon} ${docInfo.specialtyLabel || docInfo.specialtyTitle}` 
     : `${defaultAssets.categoryIcon || '🏪'} ${categoryName}`;
-  ctx.fillText(subtitle, W / 2, 345);
+  ctx.fillText(subtitle, W / 2, 325);
 
   // 6. Center QR Code Frame
-  const qrBoxSize = 780;
+  const qrBoxSize = 740;
   const qrBoxX = (W - qrBoxSize) / 2;
-  const qrBoxY = 460;
+  const qrBoxY = 410;
 
   ctx.save();
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-  ctx.shadowBlur = 30;
-  ctx.shadowOffsetY = 10;
-  ctx.fillStyle = '#F8FAFC';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize);
   ctx.strokeStyle = '#CBD5E1';
   ctx.lineWidth = 6;
@@ -222,29 +251,96 @@ async function generateAndDownloadQrPoster({
     });
 
     if (qrImg) {
-      const innerSize = 680;
+      const innerSize = 650;
       const innerX = (W - innerSize) / 2;
       const innerY = qrBoxY + (qrBoxSize - innerSize) / 2;
       ctx.drawImage(qrImg, innerX, innerY, innerSize, innerSize);
     }
   } catch (_) {}
 
-  // 7. Scan Instruction Box
+  // 7. PROMINENT PHONE NUMBERS BOX DIRECTLY UNDER QR
+  let nextY = 1220;
+  if (phone || whatsapp) {
+    const phoneBoxW = 900;
+    const hasBoth = Boolean(phone && whatsapp && phone !== whatsapp);
+    const phoneBoxH = hasBoth ? 190 : 120;
+    const phoneBoxX = (W - phoneBoxW) / 2;
+    const phoneBoxY = 1190;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(2, 132, 199, 0.18)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 6;
+    ctx.fillStyle = '#F0F9FF';
+    ctx.strokeStyle = '#0284C7';
+    ctx.lineWidth = 5;
+
+    // Draw rounded rectangle for phone box
+    const r = 24;
+    ctx.beginPath();
+    ctx.moveTo(phoneBoxX + r, phoneBoxY);
+    ctx.lineTo(phoneBoxX + phoneBoxW - r, phoneBoxY);
+    ctx.quadraticCurveTo(phoneBoxX + phoneBoxW, phoneBoxY, phoneBoxX + phoneBoxW, phoneBoxY + r);
+    ctx.lineTo(phoneBoxX + phoneBoxW, phoneBoxY + phoneBoxH - r);
+    ctx.quadraticCurveTo(phoneBoxX + phoneBoxW, phoneBoxY + phoneBoxH, phoneBoxX + phoneBoxW - r, phoneBoxY + phoneBoxH);
+    ctx.lineTo(phoneBoxX + r, phoneBoxY + phoneBoxH);
+    ctx.quadraticCurveTo(phoneBoxX, phoneBoxY + phoneBoxH, phoneBoxX, phoneBoxY + phoneBoxH - r);
+    ctx.lineTo(phoneBoxX, phoneBoxY + r);
+    ctx.quadraticCurveTo(phoneBoxX, phoneBoxY, phoneBoxX + r, phoneBoxY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // Draw Numbers with Icons
+    if (hasBoth) {
+      // Primary Phone
+      ctx.fillStyle = '#0F172A';
+      ctx.font = '900 58px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`📞 ${phone}`, W / 2, phoneBoxY + 65);
+
+      // Divider line
+      ctx.strokeStyle = '#BAE6FD';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(phoneBoxX + 60, phoneBoxY + 105);
+      ctx.lineTo(phoneBoxX + phoneBoxW - 60, phoneBoxY + 105);
+      ctx.stroke();
+
+      // WhatsApp Phone
+      ctx.fillStyle = '#15803D';
+      ctx.font = '900 54px "Segoe UI", sans-serif';
+      ctx.fillText(`💬 واتساب: ${whatsapp}`, W / 2, phoneBoxY + 155);
+
+      nextY = phoneBoxY + phoneBoxH + 60;
+    } else {
+      const singleNum = phone || whatsapp;
+      ctx.fillStyle = '#0F172A';
+      ctx.font = '900 66px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`📞 ${singleNum}`, W / 2, phoneBoxY + 75);
+
+      nextY = phoneBoxY + phoneBoxH + 60;
+    }
+  }
+
+  // 8. Scan Instruction Box
   ctx.fillStyle = '#0F172A';
-  ctx.font = '900 52px "Cairo", sans-serif';
+  ctx.font = '900 48px "Cairo", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('📲 امسح الرمز بكاميرا هاتفك', W / 2, 1340);
+  ctx.fillText('📲 امسح الرمز بكاميرا هاتفك', W / 2, nextY);
 
   ctx.fillStyle = '#64748B';
-  ctx.font = '600 38px "Cairo", sans-serif';
-  ctx.fillText('لعرض مواعيد العمل، المنتجات، وأرقام التواصل المباشر', W / 2, 1420);
+  ctx.font = '600 36px "Cairo", sans-serif';
+  ctx.fillText('لعرض مواعيد العمل، المنتجات، وأرقام التواصل المباشر', W / 2, nextY + 70);
 
-  // 8. Footer Strip
+  // 9. Footer Strip
   ctx.fillStyle = '#0284C7';
   ctx.font = 'bold 44px "Segoe UI", sans-serif';
-  ctx.fillText('dalilmanzala.com', W / 2, 1540);
+  ctx.fillText('dalilmanzala.com', W / 2, nextY + 165);
 
-  // 9. Trigger Download
+  // 10. Trigger Download
   return new Promise((resolve) => {
     try {
       canvas.toBlob((blob) => {

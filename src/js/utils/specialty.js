@@ -72,7 +72,7 @@ export const MEDICAL_SPECIALTY_MAP = [
   },
   {
     key: 'dermatology',
-    keywords: ['جلديه', 'جلدية', 'تجميل', 'ليزر', 'بشرة', 'شعر', 'بوتوكس', 'فيلر', 'تناسلية', 'امراض ذكورة وتناسلية'],
+    keywords: ['جلديه', 'جلدية', 'دكتور جلدية', 'طبيب جلدية', 'عيادة جلدية', 'امراض جلدية', 'امراض ذكورة وتناسلية', 'تناسلية وعقم', 'بوتوكس', 'فيلر'],
     title: 'دكتور جلدية',
     label: 'استشاري الأمراض الجلدية والتجميل والليزر',
     shortLabel: 'الجلدية والتجميل والليزر',
@@ -155,13 +155,30 @@ export const MEDICAL_SPECIALTY_MAP = [
 export function resolveDoctorSpecialty(place = {}, category = {}) {
   const catSlug = (category.slug || place.categoryId || '').toLowerCase();
   const catName = (category.name || place.categoryName || '').toLowerCase();
-  const isDoctorCategory = catSlug.includes('doctor') || catSlug.includes('clinic') || catName.includes('دكتور') || catName.includes('طبيب') || catName.includes('عياد');
+  const placeNameNorm = normalizeArabic(place.name || '');
+
+  // Strict check: Is this place truly a Doctor / Clinic / Medical Center / Hospital?
+  const isDoctorCategory = catSlug.includes('doctor') || catSlug.includes('clinic') || catName.includes('دكتور') || catName.includes('طبيب') || catName.includes('عياد') || catName.includes('مستشف');
+  const hasDoctorTitleInName = placeNameNorm.includes('دكتور') || placeNameNorm.includes('طبيب') || placeNameNorm.includes('عيادة') || placeNameNorm.includes('استشاري') || placeNameNorm.includes('اخصائي') || placeNameNorm.includes('جراح');
 
   const customSpecialty = place.customSpecialty || place.doctorSpecialty || place.specialty || place.medicalSpecialty || '';
+
+  // If it is NOT a doctor category and does not have a doctor title in its name, it's a store/company/service, NOT a medical doctor!
+  if (!isDoctorCategory && !hasDoctorTitleInName && !place.doctorSpecialty && !place.medicalSpecialty) {
+    return {
+      isDoctor: false,
+      specialtyKey: null,
+      specialtyTitle: null,
+      specialtyLabel: null,
+      shortLabel: null,
+      icon: null
+    };
+  }
+
   const searchSource = [
     place.name || '',
-    place.description || '',
     customSpecialty,
+    place.description || '',
     Array.isArray(place.services) ? place.services.join(' ') : (place.services || ''),
     place.customCategory || ''
   ].join(' ');
@@ -200,7 +217,7 @@ export function resolveDoctorSpecialty(place = {}, category = {}) {
     }
   }
 
-  if (isDoctorCategory) {
+  if (isDoctorCategory || hasDoctorTitleInName) {
     return {
       isDoctor: true,
       specialtyKey: 'general_doctor',
