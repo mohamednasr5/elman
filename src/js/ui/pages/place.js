@@ -107,21 +107,31 @@ export async function renderPlacePage($container, { slug, user }) {
     // Track View Count & Profile Visitor safely
     try { trackPlaceView(place, currentUser); } catch (_) {}
 
-    // Update SEO safely
+    // Update SEO safely for top Google Indexing
     try {
+      const placeSpecialty = place.specialty || catInfo.name || 'دليل الأنشطة';
+      const placeArea = place.area || 'المنزلة والمطرية';
+      const phoneText = place.phone ? `، الهاتف: ${place.phone}` : '';
+      const addressText = place.address ? `، العنوان: ${place.address}` : '';
+      
+      const seoTitle = `${place.name} في ${placeArea} | ${placeSpecialty} - أرقام وتفاصيل الدليل`;
+      const seoDesc = `${place.name} في ${placeArea}. ${placeSpecialty}${addressText}${phoneText}. مواعيد العمل، تقييمات العملاء، وأرقام التواصل عبر دليل المنزلة والمطرية الرقمي.`;
+      const placeCanonical = `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(place.slug || place.id)}`;
+
       setMeta({
-        title: `${place.name} — ${catInfo.name || 'دليل المنزلة والمطرية الرقمي'}`,
-        description: place.description || `تعرف على ${place.name} في المنزلة والمطرية — مواعيد العمل، أرقام التواصل، العنوان، والخدمات`,
+        title: seoTitle,
+        description: seoDesc,
+        keywords: `${place.name}, ${placeSpecialty}, ${placeArea}, دليل المنزلة, دليل المطرية, رقم ${place.name}, عنوان ${place.name}, ${place.tags ? (Array.isArray(place.tags) ? place.tags.join(', ') : place.tags) : ''}`,
         image: place.coverImageUrl || place.logoUrl,
-        url: `https://elmanzala.com/place.html?slug=${place.slug}`
+        url: placeCanonical
       });
 
       setPlaceSchema(place, category);
       setBreadcrumbSchema([
-        { name: 'الرئيسية', url: 'https://elmanzala.com/' },
-        { name: 'الأماكن', url: 'https://elmanzala.com/places.html' },
-        { name: catInfo.name || 'القسم', url: `https://elmanzala.com/category.html?slug=${catInfo.slug}` },
-        { name: place.name, url: `https://elmanzala.com/place.html?slug=${place.slug}` }
+        { name: 'الرئيسية', url: 'https://dalilmanzala.com/' },
+        { name: 'الأماكن', url: 'https://dalilmanzala.com/places.html' },
+        { name: catInfo.name || 'القسم', url: `https://dalilmanzala.com/category.html?slug=${catInfo.slug || ''}` },
+        { name: place.name, url: placeCanonical }
       ]);
     } catch (_) {}
 

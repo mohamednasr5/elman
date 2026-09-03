@@ -275,9 +275,15 @@ class SearchIndex {
 
       // ── 3. EGYPTIAN DIALECT & SYNONYM CLUSTERS (+700 PTS) ──
       for (const [clusterKey, clusterData] of Object.entries(EGYPTIAN_DIALECT_SYNONYMS)) {
-        const isQueryInCluster = clusterData.synonyms.some(syn => normQ.includes(normalizeArabic(syn)));
+        const isQueryInCluster = clusterData.synonyms.some(syn => {
+          const nSyn = normalizeArabic(syn);
+          return normQ === nSyn || normQ.startsWith(nSyn + ' ') || normQ.endsWith(' ' + nSyn) || normQ.includes(' ' + nSyn + ' ');
+        });
         if (isQueryInCluster) {
-          const isDocInCluster = clusterData.synonyms.some(syn => doc.searchText.includes(normalizeArabic(syn)));
+          const isDocInCluster = clusterData.synonyms.some(syn => {
+            const nSyn = normalizeArabic(syn);
+            return doc.searchText.includes(nSyn);
+          });
           if (isDocInCluster) {
             score += 700;
             if (!matchedReason) matchedReason = clusterData.canonical;
@@ -290,7 +296,7 @@ class SearchIndex {
       if (isDoctor && doc.docInfo.isDoctor) {
         score += 500;
       }
-      if (doc.categoryNorm.includes(normQ) || normQ.includes(doc.categoryNorm)) {
+      if (doc.categoryNorm && (doc.categoryNorm.includes(normQ) || (normQ.length >= 3 && normQ.includes(doc.categoryNorm)))) {
         score += 500;
         if (!matchedReason) matchedReason = doc.category;
       }
@@ -310,25 +316,33 @@ class SearchIndex {
         }
       });
 
-      // ── 7. VERIFIED & QUALITY BOOST ──
-      if (doc.isVerified) score += 60;
-      score += Math.min(50, Math.floor(doc.rating * 10));
+      // ── 7. VERIFIED & QUALITY BOOST (Only if place actually matches query) ──
+      if (score > 0) {
+        if (doc.isVerified) score += 60;
+        score += Math.min(50, Math.floor(doc.rating * 10));
 
-      // ── 8. OPEN NOW BOOST ──
-      if (wantsOpenNow && doc.openHours) {
-        const isOpen = isPlaceOpen(doc.openHours).isOpen;
-        if (isOpen) score += 100;
+        // ── 8. OPEN NOW BOOST ──
+        if (wantsOpenNow && doc.openHours) {
+          const isOpen = isPlaceOpen(doc.openHours).isOpen;
+          if (isOpen) score += 100;
+        }
+
+        // ── 9. DISTANCE PROXIMITY BOOST ──
+        if (userCoords && doc.lat && doc.lng) {
+          const distKm = calculateDistanceKm(userCoords.lat, userCoords.lng, doc.lat, doc.lng);
+          doc.distanceKm = distKm;
+          if (distKm <= 2) score += 150;
+          else if (distKm <= 5) score += 80;
+        }
       }
 
-      // ── 9. DISTANCE PROXIMITY BOOST ──
-      if (userCoords && doc.lat && doc.lng) {
-        const distKm = calculateDistanceKm(userCoords.lat, userCoords.lng, doc.lat, doc.lng);
-        doc.distanceKm = distKm;
-        if (distKm <= 2) score += 150;
-        else if (distKm <= 5) score += 80;
+      // ── 10. SUBSTRING & CHAR MATCH FALLBACK (+350 pts) ──
+      if (score === 0 && (doc.searchText.includes(normQ) || normQ.includes(doc.nameNorm))) {
+        score += 350;
+        if (!matchedReason) matchedReason = 'مطابقة في الدليل';
       }
 
-      if (score >= 100) {
+      if (score >= 80) {
         results.push({
           ...doc,
           score,

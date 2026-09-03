@@ -77,19 +77,8 @@ export async function renderHomePage($main, { user } = {}) {
 
     renderCategories(categories || []);
     
-    // Verified Places: Verified places only, sponsored first, then newest
-    const verifiedPlaces = allPlaces
-      .filter(p => p.isVerified && !isAtmPlace(p))
-      .sort((a, b) => {
-        const aSpons = isPlaceSponsored(a);
-        const bSpons = isPlaceSponsored(b);
-        if (aSpons && !bSpons) return -1;
-        if (!aSpons && bSpons) return 1;
-        const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
-        const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
-        return timeB - timeA;
-      });
-    renderVerifiedPlaces(verifiedPlaces.slice(0, 8));
+    // Verified Places: Sponsored ALWAYS first, then dynamic 1-minute random rotation for all other places
+    startVerifiedPlacesRotation(allPlaces);
 
     // Latest Places (أحدث الأماكن): Sponsored first ALWAYS, then newest added places regardless of verification
     const latestPlaces = sortLatestPlaces(allPlaces, currentUser?.uid);
@@ -173,7 +162,50 @@ function renderCategories(categories) {
   }).join('');
 }
 
-function renderVerifiedPlaces(places) {
+let _verifiedPlacesInterval = null;
+
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function startVerifiedPlacesRotation(allPlaces) {
+  if (_verifiedPlacesInterval) {
+    clearInterval(_verifiedPlacesInterval);
+    _verifiedPlacesInterval = null;
+  }
+
+  const eligiblePlaces = allPlaces.filter(p => p.isVerified && !isAtmPlace(p));
+  if (!eligiblePlaces.length) {
+    document.getElementById('verified-places-section')?.remove();
+    return;
+  }
+
+  // Separate sponsored places (always first) from non-sponsored places
+  const sponsored = eligiblePlaces.filter(p => isPlaceSponsored(p));
+  const regular = eligiblePlaces.filter(p => !isPlaceSponsored(p));
+
+  const updateDisplay = (isInterval = false) => {
+    // Sponsored stays at the front; regular places are randomized every minute
+    const shuffledRegular = shuffleArray(regular);
+    const combined = [...sponsored, ...shuffledRegular];
+    renderVerifiedPlaces(combined.slice(0, 8), isInterval);
+  };
+
+  // Immediate first render
+  updateDisplay(false);
+
+  // Rotate randomly every 60 seconds (1 minute)
+  _verifiedPlacesInterval = setInterval(() => {
+    updateDisplay(true);
+  }, 60000);
+}
+
+function renderVerifiedPlaces(places, animate = false) {
   const section = document.getElementById('verified-places-section');
   const grid = document.getElementById('verified-places-grid');
   if (!grid) return;
@@ -183,7 +215,16 @@ function renderVerifiedPlaces(places) {
     return;
   }
 
-  grid.innerHTML = places.map(p => renderPlaceCard(p)).join('');
+  if (animate) {
+    grid.style.transition = 'opacity 0.3s ease';
+    grid.style.opacity = '0.3';
+    setTimeout(() => {
+      grid.innerHTML = places.map(p => renderPlaceCard(p)).join('');
+      grid.style.opacity = '1';
+    }, 300);
+  } else {
+    grid.innerHTML = places.map(p => renderPlaceCard(p)).join('');
+  }
 }
 
 function renderLatestPlaces(places) {
