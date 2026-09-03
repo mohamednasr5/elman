@@ -497,10 +497,48 @@ export async function openManzalaVoiceAssistantModal() {
   _modalVoiceInstance.start();
 
   // Orb click to toggle / restart listening
-  orbBtn?.addEventListener('click', () => {
-    if (_modalVoiceInstance.isListening) {
+  orbBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!_modalVoiceInstance) {
+      _modalVoiceInstance = new VoiceSearch({
+        onStart: () => {
+          if (statusText) statusText.innerHTML = '🟢 <span style="color:var(--success,#10B981);font-weight:800">استمع إليك الآن..</span> تفضل بالحديث';
+          if (waveform) waveform.classList.add('active');
+          if (orbBtn) orbBtn.classList.add('listening');
+        },
+        onInterim: (interim) => {
+          if (transcriptBox) {
+            transcriptBox.innerHTML = `<span class="mvm-live-interim">"${interim}"</span>`;
+          }
+          executeVoiceAssistantSearch(interim, true);
+        },
+        onResult: (finalText) => {
+          if (transcriptBox) {
+            transcriptBox.innerHTML = `<span class="mvm-final-query">🔍 "${finalText}"</span>`;
+          }
+          executeVoiceAssistantSearch(finalText, false);
+        },
+        onEnd: () => {
+          if (waveform) waveform.classList.remove('active');
+          if (orbBtn) orbBtn.classList.remove('listening');
+          if (statusText && !transcriptBox?.querySelector('.mvm-final-query')) {
+            statusText.innerHTML = '🎙️ اضغط على حرف <strong>M</strong> في المنتصف للتحدث مجدداً';
+          }
+        },
+        onError: () => {
+          if (waveform) waveform.classList.remove('active');
+          if (orbBtn) orbBtn.classList.remove('listening');
+          if (statusText) {
+            statusText.innerHTML = '⚠️ اضغط على حرف <strong>M</strong> للتحدث مرة أخرى';
+          }
+        }
+      });
+    }
+
+    if (_modalVoiceInstance && _modalVoiceInstance.isListening) {
       _modalVoiceInstance.stop();
-    } else {
+    } else if (_modalVoiceInstance) {
       _modalVoiceInstance.start();
     }
   });
@@ -517,10 +555,23 @@ export async function openManzalaVoiceAssistantModal() {
   });
 
   // Close Handlers
-  document.getElementById('mvm-close-btn')?.addEventListener('click', closeManzalaVoiceAssistantModal);
+  const closeBtn = document.getElementById('mvm-close-btn');
+  const doClose = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    closeManzalaVoiceAssistantModal();
+  };
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', doClose);
+    closeBtn.addEventListener('touchend', doClose, { passive: false });
+  }
+
   modalBackdrop.addEventListener('click', (e) => {
-    if (e.target === modalBackdrop) {
-      closeManzalaVoiceAssistantModal();
+    if (e.target === modalBackdrop || e.target.closest('#mvm-close-btn')) {
+      doClose(e);
     }
   });
 
@@ -640,13 +691,15 @@ export function closeManzalaVoiceAssistantModal() {
     } catch (_) {}
     _modalVoiceInstance = null;
   }
-  if (_activeVoiceModal) {
-    _activeVoiceModal.classList.remove('visible');
+  const modals = document.querySelectorAll('.manzala-voice-modal-backdrop, #manzala-voice-modal-backdrop');
+  modals.forEach(m => {
+    m.classList.remove('visible');
     setTimeout(() => {
-      _activeVoiceModal?.remove();
-      _activeVoiceModal = null;
-    }, 250);
-  }
+      m.remove();
+    }, 200);
+  });
+  _activeVoiceModal = null;
+  try { window.speechSynthesis?.cancel(); } catch (_) {}
 }
 
 function escapeHtml(str) {

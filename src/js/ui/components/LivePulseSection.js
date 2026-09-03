@@ -205,8 +205,8 @@ export function mountLivePulseSection(containerId) {
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="color:var(--text-muted)">بواسطة:</span>
                 <strong style="color:var(--text-primary)">${esc(item.userName || 'مواطن')}</strong>
-                <span class="badge" style="font-size:10px;padding:2px 6px;background:rgba(245,166,35,0.15);color:${authorLvl.color};border-radius:6px;font-weight:800" title="${authorLvl.name}">
-                  ${authorLvl.icon} ${authorLvl.name}
+                <span class="badge" style="font-size:10.5px;padding:2px 8px;background:${item.isAutoIngested ? 'rgba(2,132,199,0.12)' : 'rgba(245,166,35,0.15)'};color:${item.isAutoIngested ? '#0284C7' : authorLvl.color};border-radius:6px;font-weight:800">
+                  ${item.isAutoIngested ? '📢 تقرير معتمد' : `${authorLvl.icon} ${authorLvl.name}`}
                 </span>
               </div>
               <div style="font-size:11.5px;color:#059669;font-weight:800;display:flex;align-items:center;gap:4px">
