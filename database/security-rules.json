@@ -15,7 +15,11 @@
     },
     "places": {
       ".read": true,
-      ".indexOn": ["status", "ownerId", "categoryId"],
+      ".indexOn": [
+        "status",
+        "ownerId",
+        "categoryId"
+      ],
       "$placeId": {
         ".write": "auth != null && (auth.uid === data.child('ownerId').val() || !data.exists() || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
         "isVerified": {
@@ -23,6 +27,9 @@
         },
         "verificationStatus": {
           ".write": "auth != null && (newData.val() === 'verification_requested' || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+        },
+        "stats": {
+          ".write": true
         }
       }
     },
@@ -32,7 +39,10 @@
     },
     "offers": {
       ".read": true,
-      ".indexOn": ["placeId", "status"],
+      ".indexOn": [
+        "placeId",
+        "status"
+      ],
       "$offerId": {
         ".write": "auth != null && (auth.uid === data.child('ownerId').val() || !data.exists() || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
       }
@@ -65,6 +75,20 @@
     "categoryRequests": {
       ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
       ".write": "auth != null"
+    },
+    "userNotifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": true
+      }
+    },
+    "globalNotifications": {
+      ".read": true,
+      ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+    },
+    "liveNews": {
+      ".read": true,
+      ".write": true
     }
   }
 }
