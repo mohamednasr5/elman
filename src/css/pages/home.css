@@ -15,8 +15,148 @@
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.03) 0%, transparent 40%);
+    radial-gradient(circle at 20% 50%, rgba(255,255,255,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.04) 0%, transparent 40%);
+}
+
+/* ── Manzala & Matariya Heritage Decorative Watermarks ── */
+.hero-heritage-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.decor-item {
+  position: absolute;
+  color: #ffffff;
+  opacity: 0.12;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Right Palm Tree */
+.decor-palm-right {
+  bottom: 30px;
+  right: -15px;
+  width: 140px;
+  height: 180px;
+  opacity: 0.14;
+  transform: rotate(-6deg);
+}
+
+/* Left Palm Tree */
+.decor-palm-left {
+  bottom: 25px;
+  left: -20px;
+  width: 150px;
+  height: 190px;
+  opacity: 0.13;
+  transform: rotate(8deg);
+}
+
+/* Lake Fishing Boats (فلائك الصيد بالمطرية والمنزلة) */
+.decor-boat-left {
+  top: 18%;
+  left: 4%;
+  width: 130px;
+  height: 75px;
+  opacity: 0.11;
+  animation: boatFloatSlow 7s ease-in-out infinite alternate;
+}
+
+.decor-boat-right {
+  top: 24%;
+  right: 5%;
+  width: 115px;
+  height: 65px;
+  opacity: 0.10;
+  animation: boatFloatSlow 8.5s ease-in-out infinite alternate-reverse;
+}
+
+/* Swimming Fishes (أسماك بحيرة المنزلة الطازجة) */
+.decor-fish-1 {
+  bottom: 22%;
+  left: 14%;
+  width: 60px;
+  height: 30px;
+  opacity: 0.13;
+  animation: fishSwimLeft 14s linear infinite;
+}
+
+.decor-fish-2 {
+  bottom: 16%;
+  right: 18%;
+  width: 48px;
+  height: 24px;
+  opacity: 0.11;
+  animation: fishSwimRight 16s linear infinite;
+}
+
+.decor-fish-3 {
+  top: 45%;
+  left: 24%;
+  width: 40px;
+  height: 20px;
+  opacity: 0.09;
+  animation: fishSwimLeft 18s linear infinite;
+}
+
+/* Lake Water Waves (أمواج بحيرة المنزلة) */
+.decor-waves {
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 50px;
+  opacity: 0.12;
+  animation: waveDrift 6s ease-in-out infinite alternate;
+}
+
+/* Flying Birds */
+.decor-birds {
+  top: 10%;
+  right: 25%;
+  width: 90px;
+  height: 35px;
+  opacity: 0.13;
+  animation: birdsFly 10s ease-in-out infinite alternate;
+}
+
+@keyframes boatFloatSlow {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(1.5deg); }
+  100% { transform: translateY(2px) rotate(-1deg); }
+}
+
+@keyframes fishSwimLeft {
+  0% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(18px) translateY(-4px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+@keyframes fishSwimRight {
+  0% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(-16px) translateY(3px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+@keyframes waveDrift {
+  0% { transform: translateX(-52%); }
+  100% { transform: translateX(-48%); }
+}
+
+@keyframes birdsFly {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-8px) scale(1.04); }
+}
+
+@media (max-width: 768px) {
+  .decor-palm-right { width: 100px; height: 130px; opacity: 0.10; right: -25px; }
+  .decor-palm-left { width: 105px; height: 135px; opacity: 0.09; left: -25px; }
+  .decor-boat-left { width: 95px; height: 55px; opacity: 0.09; top: 12%; left: 1%; }
+  .decor-boat-right { width: 85px; height: 50px; opacity: 0.08; top: 15%; right: 1%; }
+  .decor-fish-3 { display: none; }
 }
 
 .hero::after {

@@ -724,6 +724,60 @@ function getHomeHTML() {
   return `
     <!-- Hero Section -->
     <section class="hero" aria-labelledby="hero-title">
+      <!-- Manzala & Matariya Heritage Watermark Decorative Silhouettes -->
+      <div class="hero-heritage-decor" aria-hidden="true">
+        <!-- Palm Trees Right & Left -->
+        <svg class="decor-item decor-palm-right" viewBox="0 0 100 130" fill="currentColor">
+          <path d="M50 130 C48 95 47 65 52 45 C40 38 25 42 12 52 C20 40 32 32 50 38 C42 22 28 14 10 16 C25 10 40 18 52 35 C52 18 48 5 38 0 C50 3 56 18 56 35 C64 18 78 10 92 16 C76 15 63 24 57 38 C75 32 88 40 95 52 C82 42 68 38 56 45 C58 65 57 95 55 130 Z" />
+        </svg>
+        <svg class="decor-item decor-palm-left" viewBox="0 0 100 130" fill="currentColor">
+          <path d="M50 130 C52 95 53 65 48 45 C60 38 75 42 88 52 C80 40 68 32 50 38 C58 22 72 14 90 16 C75 10 60 18 48 35 C48 18 52 5 62 0 C50 3 44 18 44 35 C36 18 22 10 8 16 C24 15 37 24 43 38 C25 32 12 40 5 52 C18 42 32 38 44 45 C42 65 43 95 45 130 Z" />
+        </svg>
+
+        <!-- Traditional Fishing Boat / Faluka with Sail (فلوكة صيد بحيرة المنزلة والمطرية) -->
+        <svg class="decor-item decor-boat-left" viewBox="0 0 120 70" fill="currentColor">
+          <path d="M15 48 C35 56 85 56 105 48 C115 54 95 62 60 62 C25 62 5 54 15 48 Z" />
+          <path d="M58 48 L58 10 L88 38 L58 44 Z" opacity="0.9" />
+          <path d="M54 48 L54 18 L32 42 L54 45 Z" opacity="0.75" />
+          <path d="M10 65 C30 63 50 67 70 65 C90 63 110 67 118 65" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>
+        </svg>
+
+        <svg class="decor-item decor-boat-right" viewBox="0 0 100 60" fill="currentColor">
+          <path d="M12 40 C30 48 70 48 88 40 C96 46 80 52 50 52 C20 52 4 46 12 40 Z" />
+          <path d="M48 40 L48 8 L72 32 L48 36 Z" opacity="0.9" />
+          <path d="M45 40 L45 16 L28 35 L45 37 Z" opacity="0.7" />
+        </svg>
+
+        <!-- Swimming Fishes (سمك بحيرة المنزلة الطازج - بلطي ووقار) -->
+        <svg class="decor-item decor-fish-1" viewBox="0 0 70 35" fill="currentColor">
+          <path d="M5 17 C20 6 45 6 60 17 C45 28 20 28 5 17 Z M60 17 L70 8 L66 17 L70 26 Z" />
+          <circle cx="22" cy="14" r="2" fill="#fff" opacity="0.5"/>
+          <path d="M30 11 Q36 8 42 11" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.7"/>
+        </svg>
+
+        <svg class="decor-item decor-fish-2" viewBox="0 0 55 28" fill="currentColor">
+          <path d="M5 14 C16 5 36 5 48 14 C36 23 16 23 5 14 Z M48 14 L56 7 L53 14 L56 21 Z" />
+          <circle cx="18" cy="11" r="1.5" fill="#fff" opacity="0.5"/>
+        </svg>
+
+        <svg class="decor-item decor-fish-3" viewBox="0 0 45 22" fill="currentColor">
+          <path d="M4 11 C13 4 30 4 39 11 C30 18 13 18 4 11 Z M39 11 L46 5 L43 11 L46 17 Z" />
+        </svg>
+
+        <!-- Water Ripples / Lake Waves (أمواج بحيرة المنزلة الهادئة) -->
+        <svg class="decor-item decor-waves" viewBox="0 0 600 60" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M10 20 C40 10 70 30 100 20 C130 10 160 30 190 20 C220 10 250 30 280 20 C310 10 340 30 370 20 C400 10 430 30 460 20 C490 10 520 30 550 20 C570 14 590 24 600 20" opacity="0.45"/>
+          <path d="M30 40 C60 30 90 50 120 40 C150 30 180 50 210 40 C240 30 270 50 300 40 C330 30 360 50 390 40 C420 30 450 50 480 40 C510 30 540 50 570 40" opacity="0.3"/>
+        </svg>
+
+        <!-- Flying Lake Waterbirds (نوارس وطائر البجع فوق بحيرة المنزلة) -->
+        <svg class="decor-item decor-birds" viewBox="0 0 100 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M5 25 Q15 12 25 25 Q35 12 45 25" opacity="0.6"/>
+          <path d="M50 16 Q58 5 66 16 Q74 5 82 16" opacity="0.45"/>
+          <path d="M80 28 Q86 19 92 28 Q98 19 104 28" opacity="0.4"/>
+        </svg>
+      </div>
+
       <div class="hero__inner">
         <div class="hero__eyebrow animate-fade-in">
           <span aria-hidden="true">📍</span>
