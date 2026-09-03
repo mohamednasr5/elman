@@ -190,7 +190,7 @@ export function mountLivePulseSection(containerId) {
             ${(isJobVacant || isJobSeeker) && item.phone ? `
               <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
                 <a href="https://wa.me/2${item.phone.replace(/\D/g,'')}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:#25D366;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(37,211,102,0.3)">
-                  <span>💬</span> <span>واتساب للتقديم: ${esc(item.phone)}</span>
+                  <img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /> <span>واتساب للتقديم: ${esc(item.phone)}</span>
                 </a>
                 <a href="tel:${esc(item.phone)}" class="btn btn-sm" style="background:#0F2B48;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
                   <span>📞 اتصال</span>

@@ -53,8 +53,10 @@ export function playNotificationSound() {
       osc.stop(now + index * 0.08 + 0.6);
     });
 
-    if (navigator.vibrate) {
-      navigator.vibrate([70, 40, 110]);
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      try {
+        navigator.vibrate([70, 40, 110]);
+      } catch (_) {}
     }
   } catch (err) {
     console.debug('[NotificationSound] Audio play handled:', err);

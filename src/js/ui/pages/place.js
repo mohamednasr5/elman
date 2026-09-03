@@ -236,10 +236,8 @@ export async function renderPlacePage($container, { slug, user }) {
                 <a href="https://wa.me/${formatWhatsApp(place.whatsapp)}?text=${encodeURIComponent(`مرحباً، وجدتك على دليل المنزلة والمطرية الرقمي وأود الاستفسار عن خدماتك`)}" 
                    target="_blank" 
                    rel="noopener" 
-                   class="btn btn-whatsapp" 
-                   onclick="trackStat('${escAttr(placeId)}', 'whatsappClicks')" 
-                   title="محادثة واتساب">
-                  <span>💬</span>
+                   class="btn btn-whatsapp" onclick="trackStat('${escAttr(placeId)}', 'whatsappClicks')" title="محادثة واتساب">
+                  <img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon" />
                   <span>محادثة واتساب</span>
                 </a>
               ` : ''}
@@ -674,6 +672,15 @@ export async function renderPlacePage($container, { slug, user }) {
     document.querySelectorAll('.btn-download-profile-trigger').forEach(btn => {
       btn.addEventListener('click', () => {
         openPlaceProfileCardModal(place, category);
+      });
+    });
+
+    // Setup Storefront QR Placard & Poster Generator Modal
+    document.querySelectorAll('.btn-open-storefront-qr, #btn-open-storefront-qr').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openStorefrontQrModal(place, category);
       });
     });
 
