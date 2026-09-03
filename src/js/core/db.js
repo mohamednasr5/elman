@@ -241,7 +241,25 @@ export async function getPlaceBySlug(slug) {
       }
     }
 
-    // 5. Special match for Mohamed Hammad location
+    // 5. Short Slug Match (e.g. cleanSlug is "mhnds-mhmd-hmad" and p.slug is "mhnds-mhmd-hmad-5lQJ1o")
+    for (const [key, p] of Object.entries(allPlaces)) {
+      if (!p || !p.slug) continue;
+      const baseSlug = p.slug.replace(/-[a-z0-9]{4,8}$/i, '');
+      if (baseSlug && baseSlug.toLowerCase() === lower) {
+        return { id: key, _key: key, ...p };
+      }
+    }
+
+    // 6. Reverse check: if cleanSlug had a suffix or place slug starts with cleanSlug
+    for (const [key, p] of Object.entries(allPlaces)) {
+      if (!p || !p.slug) continue;
+      const placeSlugLower = p.slug.toLowerCase();
+      if (placeSlugLower.startsWith(lower + '-') || lower.startsWith(placeSlugLower + '-')) {
+        return { id: key, _key: key, ...p };
+      }
+    }
+
+    // 7. Special match for Mohamed Hammad location
     if (cleanSlug.includes('mhmd-hmad') || cleanSlug.includes('hammad') || cleanSlug.includes('5lQJ1o')) {
       for (const [key, p] of Object.entries(allPlaces)) {
         if (!p) continue;

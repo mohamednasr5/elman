@@ -3,6 +3,44 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- Smart Route Resolver for Clean Place URLs (e.g. /mhnds-mhmd-hmad) -->
+  <script>
+    (function() {
+      try {
+        var pathname = window.location.pathname || '';
+        // Extract the path segment
+        var parts = pathname.replace(/^\/+|\/+$/g, '').split('/');
+        var candidateSlug = parts[parts.length - 1];
+        
+        // Excluded system pages and static files
+        var systemFiles = [
+          'index.html', '404.html', 'places.html', 'place.html', 'categories.html', 'category.html',
+          'search.html', 'offers.html', 'emergency.html', 'about.html', 'contact.html',
+          'privacy.html', 'terms.html', 'login.html', 'register.html', 'dashboard.html',
+          'admin.html', 'profile.html', 'products.html', 'manzala.html', 'matariya.html',
+          'around-me.html', 'sitemap.xml', 'sw.js', 'manifest.webmanifest'
+        ];
+
+        // If candidate is a valid slug and not a static file or asset path
+        if (candidateSlug && 
+            !candidateSlug.includes('.') && 
+            !candidateSlug.startsWith('src') && 
+            !candidateSlug.startsWith('icons') && 
+            !candidateSlug.startsWith('assets') && 
+            !candidateSlug.startsWith('docs') && 
+            !candidateSlug.startsWith('admin') &&
+            systemFiles.indexOf(candidateSlug.toLowerCase()) === -1) {
+          
+          // Instantly redirect to place.html with slug
+          var targetUrl = 'place.html?slug=' + encodeURIComponent(candidateSlug);
+          if (window.location.search) {
+            targetUrl += '&' + window.location.search.replace(/^\?/, '');
+          }
+          window.location.replace(targetUrl);
+        }
+      } catch (e) {}
+    })();
+  </script>
   <title>404 — الصفحة غير موجودة | دليل المنزلة والمطرية الرقمي</title>
   <meta name="description" content="عذراً، الصفحة التي تبحث عنها غير موجودة في دليل المنزلة والمطرية الرقمي." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />

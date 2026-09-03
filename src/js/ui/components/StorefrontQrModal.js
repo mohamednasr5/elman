@@ -17,7 +17,7 @@ export function openStorefrontQrModal(place = {}, category = {}) {
   const categoryName = category.name || place.categoryName || place.customCategory || 'نشاط تجاري وخدمات';
   const docInfo = resolveDoctorSpecialty(place, category);
   const placeSlug = place.slug || place.id || '';
-  const placeUrl = `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(placeSlug)}`;
+  const placeUrl = `https://dalilmanzala.com/${encodeURIComponent(placeSlug)}`;
   const defaultAssets = getDefaultPlaceAssets(place, category);
   const isVerified = checkIsPlaceVerified(place);
 

@@ -65,13 +65,15 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
  * Inject LocalBusiness / Store / Medical / Restaurant schema for a place
  */
 export function setPlaceSchema(place, category) {
+  const placeSlug = place.slug || place.id || '';
+  const cleanFriendlyUrl = `${SITE_URL}/${placeSlug}`;
   const schema = {
     '@context': 'https://schema.org',
     '@type': mapCategoryToSchema(category?.nameEn || category?.slug || 'LocalBusiness'),
     name: place.name,
     description: place.description || `${place.name} في مدينة ${place.area || 'المنزلة والمطرية'} — العنوان وأرقام الهواتف ومواعيد العمل والتقييمات`,
     image: place.coverImageUrl || place.logoUrl || DEFAULT_IMAGE,
-    url: `${SITE_URL}/place.html?slug=${place.slug || place.id}`,
+    url: cleanFriendlyUrl,
     telephone: place.phone || undefined,
     areaServed: REGIONAL_COVERAGE_AREAS,
     address: {

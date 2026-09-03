@@ -71,9 +71,12 @@ async function run() {
   }
 
   for (const place of places) {
-    const slug = place.slug || place.id;
+    let slug = place.slug || place.id;
     if (!slug) continue;
-    const placeUrl = `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(slug)}`;
+    // Strip random hash suffix if it exists to generate the cleanest canonical short slug
+    const cleanShortSlug = String(slug).replace(/-[a-z0-9_]{5,7}$/i, '');
+    const finalSlug = cleanShortSlug && cleanShortSlug.length >= 3 ? cleanShortSlug : slug;
+    const placeUrl = `https://dalilmanzala.com/${encodeURIComponent(finalSlug)}`;
     const lastMod = place.updatedAt ? new Date(place.updatedAt).toISOString().split('T')[0] : today;
 
     xml += '  <url>\n';

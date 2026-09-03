@@ -140,6 +140,42 @@ export function generatePlaceSlug(name, placeId) {
 }
 
 /**
+ * Generate a clean, readable, short slug without random ID suffixes
+ * e.g. "مهندس محمد حماد" -> "mhnds-mhmd-hmad"
+ */
+export function generateCleanSlug(text) {
+  if (!text) return 'place';
+
+  let slug = transliterateArabic(text)
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')       // Remove non-word chars
+    .replace(/\s+/g, '-')           // Spaces to hyphens
+    .replace(/-+/g, '-')            // Multiple hyphens to single
+    .replace(/^-+|-+$/g, '');       // Trim hyphens
+
+  return slug || 'place';
+}
+
+/**
+ * Get the standardized canonical friendly URL for any place
+ * Supports short path e.g. "/mhnds-mhmd-hmad" and relative navigation
+ */
+export function getPlaceUrl(placeOrSlug) {
+  if (!placeOrSlug) return 'places.html';
+  const slug = typeof placeOrSlug === 'string' ? placeOrSlug : (placeOrSlug.slug || placeOrSlug.id || placeOrSlug._key || '');
+  if (!slug) return 'places.html';
+  return `${encodeURIComponent(slug)}`;
+}
+
+/**
+ * Get the full absolute URL for sharing and SEO
+ */
+export function getPlaceAbsoluteUrl(placeOrSlug) {
+  const rel = getPlaceUrl(placeOrSlug);
+  return `https://dalilmanzala.com/${rel.replace(/^\//, '')}`;
+}
+
+/**
  * Validate a slug format
  */
 export function isValidSlug(slug) {

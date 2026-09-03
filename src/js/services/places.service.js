@@ -6,7 +6,7 @@
 import { getDB } from '../core/firebase.js';
 import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache } from '../core/db.js';
 import { broadcastRealtimeChange } from './realtime-sync.service.js';
-import { generatePlaceSlug } from '../utils/slug.js';
+import { generatePlaceSlug, generateCleanSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';
 import { isAtmPlace } from '../utils/atm.js';
 import { WORKER_URL } from '../core/firebase.js';
@@ -81,7 +81,19 @@ export async function createPlace(placeData, currentUser) {
   const newPlaceRef = placesRef.push();
   const placeId = newPlaceRef.key;
 
-  const slug = generatePlaceSlug(placeData.name, placeId);
+  // Generate clean readable slug (e.g. "mhnds-mhmd-hmad")
+  const cleanCandidate = generateCleanSlug(placeData.name);
+  let slug = cleanCandidate;
+
+  // Verify slug isn't already taken in slugIndex; if taken, append short suffix
+  try {
+    const existingKey = await dbGet(`slugIndex/${slug}`);
+    if (existingKey && existingKey !== placeId) {
+      slug = `${cleanCandidate}-${placeId.slice(-5)}`;
+    }
+  } catch (_) {
+    slug = cleanCandidate;
+  }
 
   const newPlace = {
     id: placeId,

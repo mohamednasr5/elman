@@ -438,7 +438,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
   const isCrawler = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Discordbot|SkypeUriPreview|Googlebot|bingbot|Baiduspider|YandexBot/i.test(userAgent);
 
   let place = null;
-  const canonicalBase = 'https://mohamednasr5.github.io/elman';
+  const canonicalBase = 'https://dalilmanzala.com';
 
   // Seeded fallback for Mohamed Hammad
   if (cleanSlug.includes('mhmd-hmad') || cleanSlug.includes('hammad') || cleanSlug.includes('5lQJ1o')) {
@@ -447,7 +447,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
       description: 'مهندس محمد حماد متخصص في الذكاء الاصطناعي، تطوير المواقع والمتاجر الإلكترونية، وحملات التسويق الرقمي الاحترافية في المنزلة والدقهلية.',
       coverImageUrl: 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/hammad-cover.webp',
       logoUrl: 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/hammad-logo.webp',
-      slug: 'mhnds-mhmd-hmad-5lQJ1o',
+      slug: 'mhnds-mhmd-hmad',
       area: 'المنزلة، محافظة الدقهلية'
     };
   }
@@ -457,8 +457,12 @@ async function handleDynamicOpenGraph(slug, request, env) {
     const rtdbRes = await fetch('https://elmanzala-default-rtdb.firebaseio.com/places.json');
     if (rtdbRes.ok) {
       const allPlaces = await rtdbRes.json();
+      const lowerSlug = cleanSlug.toLowerCase();
       for (const [key, p] of Object.entries(allPlaces || {})) {
-        if (p && (p.slug === cleanSlug || key === cleanSlug || p.id === cleanSlug || (cleanSlug && p.name && p.name.includes(cleanSlug)))) {
+        if (!p) continue;
+        const pSlug = (p.slug || '').toLowerCase();
+        const baseSlug = pSlug.replace(/-[a-z0-9]{4,8}$/i, '');
+        if (pSlug === lowerSlug || baseSlug === lowerSlug || key === cleanSlug || p.id === cleanSlug || (cleanSlug && p.name && p.name.includes(cleanSlug))) {
           place = { id: key, ...p };
           break;
         }

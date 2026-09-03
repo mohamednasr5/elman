@@ -107,7 +107,8 @@ export async function renderPlacePage($container, { slug, user }) {
       
       const seoTitle = `${place.name} في ${placeArea} | ${placeSpecialty} - أرقام وتفاصيل الدليل`;
       const seoDesc = `${place.name} في ${placeArea}. ${placeSpecialty}${addressText}${phoneText}. مواعيد العمل، تقييمات العملاء، وأرقام التواصل عبر دليل المنزلة والمطرية الرقمي.`;
-      const placeCanonical = `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(place.slug || place.id)}`;
+      const cleanSlug = place.slug || place.id;
+      const placeCanonical = `https://dalilmanzala.com/${encodeURIComponent(cleanSlug)}`;
 
       setMeta({
         title: seoTitle,
@@ -1312,7 +1313,7 @@ function setupPlaceSharing(place) {
   const placeName = place.name || 'المكان';
   const placeAddress = place.address || place.area || 'مدينة المنزلة، محافظة الدقهلية';
   const placeSlug = place.slug || place.id || '';
-  const canonicalPlaceUrl = `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(placeSlug)}`;
+  const canonicalPlaceUrl = `https://dalilmanzala.com/${encodeURIComponent(placeSlug)}`;
   const coverUrl = place.coverImageUrl || place.logoUrl || 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
 
   const shareText = `📍 *${placeName}*
