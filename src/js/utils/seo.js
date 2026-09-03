@@ -245,3 +245,44 @@ function buildOpeningHours(workingHours) {
   }
   return specs.length ? specs : undefined;
 }
+
+/**
+ * Inject Article / Encyclopedic Schema for Google Top Rankings
+ */
+export function injectArticleSchema({ headline, description, url, keywords }) {
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': url.startsWith('http') ? url : `https://dalilmanzala.com/${url.replace(/^\//, '')}`
+    },
+    headline,
+    description,
+    image: 'https://dalilmanzala.com/og-image.png',
+    author: {
+      '@type': 'Organization',
+      name: 'دليل المنزلة والمطرية الرقمي',
+      url: 'https://dalilmanzala.com'
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'دليل المنزلة والمطرية الرقمي',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://dalilmanzala.com/icons/icon-512x512.png'
+      }
+    },
+    keywords
+  };
+
+  let el = document.getElementById('schema-article');
+  if (!el) {
+    el = document.createElement('script');
+    el.id = 'schema-article';
+    el.type = 'application/ld+json';
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(schema, null, 2);
+}
+

@@ -287,6 +287,28 @@ const pages = [
   const user = await waitForAuth();
   await renderContactPage(document.getElementById('page-container'), { user });`
   },
+  {
+    file: 'manzala.html',
+    title: 'مدينة المنزلة محافظة الدقهلية | التاريخ والموقع والسكان والقرى وأشهر الأعلام',
+    desc: 'دليل شامل وموثق لمدينة المنزلة محافظة الدقهلية: تاريخ المنزلة، المجاهد حسن طوبار، بحيرة المنزلة، القرى، الأحياء، الأنشطة الاقتصادية، وأشهر الأعلام.',
+    activeNav: '',
+    moduleScript: `
+  import { initPage } from './src/js/core/page-shell.js';
+  import { renderManzalaPage } from './src/js/ui/pages/manzala.js';
+  await initPage('');
+  await renderManzalaPage(document.getElementById('page-container'));`
+  },
+  {
+    file: 'matariya.html',
+    title: 'مدينة المطرية محافظة الدقهلية | التاريخ والبحيرة والصيد وزيارة الرئيس السادات وأشهر الأعلام',
+    desc: 'تعرف على مدينة المطرية محافظة الدقهلية، تاريخها وموقعها على بحيرة المنزلة، أشهر معالمها، الصيد، مقاومة الحملة الفرنسية، قصة اختباء الرئيس أنور السادات وزيارته 1979.',
+    activeNav: '',
+    moduleScript: `
+  import { initPage } from './src/js/core/page-shell.js';
+  import { renderMatariyaPage } from './src/js/ui/pages/matariya.js';
+  await initPage('');
+  await renderMatariyaPage(document.getElementById('page-container'));`
+  },
 ];
 
 // ── Write all files ──────────────────────────────────────────

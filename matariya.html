@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
-  <title>تصنيف ومهنة | دليل المنزلة والمطرية الرقمي</title>
-  <meta name="description" content="تصفح الأماكن ومقدمي الخدمات في هذا التصنيف بالمنزلة، المطرية، والقرى المجاورة"/>
+  <title>مدينة المطرية محافظة الدقهلية | التاريخ والبحيرة والصيد وزيارة الرئيس السادات وأشهر الأعلام | دليل المنزلة والمطرية الرقمي</title>
+  <meta name="description" content="تعرف على مدينة المطرية محافظة الدقهلية، تاريخها وموقعها على بحيرة المنزلة، أشهر معالمها، الصيد، مقاومة الحملة الفرنسية، قصة اختباء الرئيس أنور السادات وزيارته 1979."/>
   <meta name="keywords" content="دليل المنزلة والمطرية الرقمي, المنزلة, المطرية دقهلية, العصافرة, الجمالية, ميت سلسيل, البصراط, العزيزة, الأحمدية, الروضة, الحوتة, النسايمة, ميت خضير, ميت شريف, محلات, أطباء, حرفيين, خدمات الدقهلية"/>
   <meta name="robots" content="index,follow"/>
-  <link rel="canonical" href="https://dalilmanzala.com/category.html"/>
+  <link rel="canonical" href="https://dalilmanzala.com/matariya.html"/>
   <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي"/>
-  <meta property="og:title" content="تصنيف ومهنة | دليل المنزلة والمطرية الرقمي"/>
-  <meta property="og:description" content="تصفح الأماكن ومقدمي الخدمات في هذا التصنيف بالمنزلة، المطرية، والقرى المجاورة"/>
+  <meta property="og:title" content="مدينة المطرية محافظة الدقهلية | التاريخ والبحيرة والصيد وزيارة الرئيس السادات وأشهر الأعلام | دليل المنزلة والمطرية الرقمي"/>
+  <meta property="og:description" content="تعرف على مدينة المطرية محافظة الدقهلية، تاريخها وموقعها على بحيرة المنزلة، أشهر معالمها، الصيد، مقاومة الحملة الفرنسية، قصة اختباء الرئيس أنور السادات وزيارته 1979."/>
   <meta property="og:locale" content="ar_EG"/>
   <meta property="og:type" content="website"/>
   <meta name="theme-color" content="#1B4F72"/>
@@ -64,10 +64,9 @@
 <script type="module">
 
   import { initPage } from './src/js/core/page-shell.js';
-  import { renderCategoryPage } from './src/js/ui/pages/categories.js';
-  await initPage('categories.html');
-  const slug = new URLSearchParams(location.search).get('slug') || '';
-  await renderCategoryPage(document.getElementById('page-container'), { slug });
+  import { renderMatariyaPage } from './src/js/ui/pages/matariya.js';
+  await initPage('');
+  await renderMatariyaPage(document.getElementById('page-container'));
 </script>
 </body>
 </html>

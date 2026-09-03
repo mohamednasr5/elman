@@ -200,11 +200,13 @@ function _footerHTML() {
         </ul>
       </div>
       <div>
-        <h3 class="footer__col-title">الخدمات</h3>
+        <h3 class="footer__col-title">الخدمات والدليل</h3>
         <ul class="footer__links">
-          <li><a href="dashboard.html?section=add" class="footer__link">إضافة مكان</a></li>
-          <li><a href="dashboard.html"             class="footer__link">لوحة التحكم</a></li>
-          <li><a href="search.html"                class="footer__link">البحث المتقدم</a></li>
+          <li><a href="dashboard.html?section=add" class="footer__link">➕ إضافة مكان جديد</a></li>
+          <li><a href="dashboard.html"             class="footer__link">📊 لوحة التحكم</a></li>
+          <li><a href="search.html"                class="footer__link">🔍 البحث المتقدم</a></li>
+          <li><a href="manzala.html"               class="footer__link" style="color:var(--secondary,#F5A623);font-weight:700">🏛️ عن مدينة المنزلة</a></li>
+          <li><a href="matariya.html"              class="footer__link" style="color:var(--secondary,#F5A623);font-weight:700">⛵ عن مدينة المطرية</a></li>
         </ul>
       </div>
       <div>

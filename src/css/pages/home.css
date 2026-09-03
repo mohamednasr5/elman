@@ -652,6 +652,104 @@
   gap: var(--space-6);
 }
 
+/* ── CTA Section Heritage Watermark Silhouettes ── */
+.home-cta-section {
+  position: relative;
+  overflow: hidden;
+  padding: var(--space-16) 0 !important;
+}
+
+.cta-heritage-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.cta-decor-item {
+  position: absolute;
+  color: #ffffff;
+  opacity: 0.11;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Right Palm */
+.cta-palm-right {
+  bottom: 0;
+  right: -10px;
+  width: 130px;
+  height: 170px;
+  opacity: 0.13;
+  transform: rotate(-8deg);
+}
+
+/* Left Palm */
+.cta-palm-left {
+  bottom: 0;
+  left: -15px;
+  width: 140px;
+  height: 175px;
+  opacity: 0.12;
+  transform: rotate(10deg);
+}
+
+/* Fishing Net (شباك الصيد المنزلاوية) */
+.cta-net {
+  top: 10px;
+  left: 30px;
+  width: 160px;
+  height: 90px;
+  opacity: 0.09;
+}
+
+/* Fishing Boat with Sail (فلوكة صيد بحيرة المنزلة) */
+.cta-boat {
+  top: 25px;
+  right: 8%;
+  width: 120px;
+  height: 70px;
+  opacity: 0.11;
+  animation: boatFloatSlow 8s ease-in-out infinite alternate;
+}
+
+/* Jumping Fishes */
+.cta-fish-left {
+  bottom: 25px;
+  left: 18%;
+  width: 55px;
+  height: 28px;
+  opacity: 0.12;
+  animation: fishSwimLeft 15s linear infinite;
+}
+
+.cta-fish-right {
+  bottom: 35px;
+  right: 22%;
+  width: 45px;
+  height: 22px;
+  opacity: 0.10;
+  animation: fishSwimRight 18s linear infinite;
+}
+
+/* Gentle Lake Ripples */
+.cta-waves {
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 45px;
+  opacity: 0.12;
+  animation: waveDrift 7s ease-in-out infinite alternate;
+}
+
+@media (max-width: 768px) {
+  .cta-palm-right { width: 90px; height: 120px; opacity: 0.09; right: -20px; }
+  .cta-palm-left { width: 95px; height: 125px; opacity: 0.08; left: -20px; }
+  .cta-boat { width: 85px; height: 50px; opacity: 0.08; top: 10px; right: 2%; }
+  .cta-net { width: 110px; height: 65px; opacity: 0.07; left: 10px; }
+}
+
 @media (min-width: 1024px) {
   .section-with-sidebar {
     grid-template-columns: 1fr 320px;
@@ -791,3 +889,108 @@
 }
 
 .footer__bottom-link:hover { color: rgba(255,255,255,0.9); }
+
+/* ═══════════════════════════════════════════════════════════
+   High-Impact Pulsating & Glowing CTA Button (زر إضافة مكان)
+   ═══════════════════════════════════════════════════════════ */
+.btn-pulse-cta {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #F5A623 0%, #D97706 100%) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  font-size: 1.15rem !important;
+  padding: 16px 36px !important;
+  border-radius: 9999px !important;
+  border: 2px solid rgba(255, 255, 255, 0.7) !important;
+  text-decoration: none !important;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(245, 166, 35, 0.5), 0 0 0 0 rgba(245, 166, 35, 0.6) !important;
+  animation: pulseCtaGlow 2.2s infinite cubic-bezier(0.45, 0, 0.55, 1);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, background 0.25s ease;
+  z-index: 2;
+}
+
+/* Moving Light Beam / Shimmer Effect across the button */
+.cta-btn-shimmer {
+  position: absolute;
+  top: -50%;
+  left: -120%;
+  width: 70%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0) 80%
+  );
+  transform: rotate(25deg);
+  animation: ctaShimmerSwipe 3.5s infinite ease-in-out;
+  pointer-events: none;
+}
+
+/* Pulsating Icon Micro-bounce */
+.cta-btn-icon {
+  font-size: 1.45rem;
+  line-height: 1;
+  display: inline-block;
+  animation: ctaIconPop 2.2s infinite ease-in-out;
+}
+
+.cta-btn-text {
+  position: relative;
+  z-index: 1;
+  letter-spacing: -0.2px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+
+/* Interactive Hover & Press States */
+.btn-pulse-cta:hover {
+  transform: translateY(-3px) scale(1.04);
+  background: linear-gradient(135deg, #FBBF24 0%, #F5A623 100%) !important;
+  box-shadow: 0 12px 35px rgba(245, 166, 35, 0.7), 0 0 0 8px rgba(245, 166, 35, 0.25) !important;
+}
+
+.btn-pulse-cta:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+/* ── Keyframes for Glowing Pulse & Shimmer ── */
+@keyframes pulseCtaGlow {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 6px 20px rgba(245, 166, 35, 0.45), 0 0 0 0 rgba(245, 166, 35, 0.7);
+  }
+  50% {
+    transform: scale(1.035);
+    box-shadow: 0 10px 30px rgba(245, 166, 35, 0.65), 0 0 0 14px rgba(245, 166, 35, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 6px 20px rgba(245, 166, 35, 0.45), 0 0 0 0 rgba(245, 166, 35, 0);
+  }
+}
+
+@keyframes ctaShimmerSwipe {
+  0% { left: -120%; }
+  35% { left: 160%; }
+  100% { left: 160%; }
+}
+
+@keyframes ctaIconPop {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.2) rotate(8deg); }
+}
+
+@media (max-width: 600px) {
+  .btn-pulse-cta {
+    font-size: 1.05rem !important;
+    padding: 14px 28px !important;
+    width: 90%;
+    max-width: 320px;
+  }
+}

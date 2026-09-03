@@ -691,14 +691,40 @@
       }
     }
 
+    // Contextual Detection: Deleted Place or General 404
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPlaceDeleted = urlParams.get('type') === 'place' || urlParams.get('reason') === 'deleted';
+    if (isPlaceDeleted) {
+      const titleEl = document.querySelector('.error-title');
+      const descEl = document.querySelector('.error-desc');
+      if (titleEl) {
+        titleEl.innerHTML = '⚠️ عذراً.. تم مسح أو حذف هذا المكان من الدليل! 🏪';
+      }
+      if (descEl) {
+        descEl.innerHTML = 'المكان أو النشاط الذي تبحث عنه تم حذفه أو لم يعد متاحاً في دليل المنزلة والمطرية. يمكنك تصفح آلاف الأماكن والأنشطة الأخرى المشابهة في الدليل.';
+      }
+    }
+
     document.getElementById('btn-lake-audio')?.addEventListener('click', toggleLakeAudio);
 
-    // Try auto-play on first click anywhere on page
-    document.addEventListener('click', () => {
+    // ── Auto-Play Sound By Default ──
+    window.addEventListener('DOMContentLoaded', () => {
+      initLakeAudio();
+    });
+
+    // Browser Autoplay Policy: if AudioContext suspended, resume on any earliest user interaction
+    const unlockAudio = () => {
       if (!audioCtx) {
         initLakeAudio();
+      } else if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+        isPlaying = true;
+        updateAudioUI();
       }
-    }, { once: true });
+    };
+    ['click', 'touchstart', 'touchend', 'keydown', 'scroll', 'mousemove'].forEach(evt => {
+      document.addEventListener(evt, unlockAudio, { once: true, passive: true });
+    });
   </script>
 </body>
 </html>

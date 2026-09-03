@@ -927,17 +927,61 @@ function getHomeHTML() {
     </section>
 
     <!-- Call to Action -->
-    <section class="section" style="background:linear-gradient(135deg,var(--primary-dark) 0%,var(--primary) 100%);color:#fff">
-      <div class="container text-center">
+    <section class="section home-cta-section" style="background:linear-gradient(135deg,var(--primary-dark) 0%,var(--primary) 100%);color:#fff;position:relative;overflow:hidden">
+      <!-- Manzala & Matariya Heritage Watermark Decorative Silhouettes for CTA Section -->
+      <div class="cta-heritage-decor" aria-hidden="true">
+        <!-- Right Palm Tree -->
+        <svg class="cta-decor-item cta-palm-right" viewBox="0 0 100 130" fill="currentColor">
+          <path d="M50 130 C48 95 47 65 52 45 C40 38 25 42 12 52 C20 40 32 32 50 38 C42 22 28 14 10 16 C25 10 40 18 52 35 C52 18 48 5 38 0 C50 3 56 18 56 35 C64 18 78 10 92 16 C76 15 63 24 57 38 C75 32 88 40 95 52 C82 42 68 38 56 45 C58 65 57 95 55 130 Z" />
+        </svg>
+
+        <!-- Left Palm Tree -->
+        <svg class="cta-decor-item cta-palm-left" viewBox="0 0 100 130" fill="currentColor">
+          <path d="M50 130 C52 95 53 65 48 45 C60 38 75 42 88 52 C80 40 68 32 50 38 C58 22 72 14 90 16 C75 10 60 18 48 35 C48 18 52 5 62 0 C50 3 44 18 44 35 C36 18 22 10 8 16 C24 15 37 24 43 38 C25 32 12 40 5 52 C18 42 32 38 44 45 C42 65 43 95 45 130 Z" />
+        </svg>
+
+        <!-- Fishing Net / شباك الصيد التراثية لبحيرة المنزلة -->
+        <svg class="cta-decor-item cta-net" viewBox="0 0 180 100" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M10 10 L170 90 M30 10 L180 80 M50 10 L180 60 M70 10 L180 40 M90 10 L180 20 M10 30 L160 100 M10 50 L140 100 M10 70 L120 100 M10 90 L100 100" opacity="0.35"/>
+          <path d="M170 10 L10 90 M150 10 L0 80 M130 10 L0 60 M110 10 L0 40 M90 10 L0 20 M170 30 L20 100 M170 50 L40 100 M170 70 L60 100 M170 90 L80 100" opacity="0.35"/>
+        </svg>
+
+        <!-- Faluka / Fishing Boat with Sail -->
+        <svg class="cta-decor-item cta-boat" viewBox="0 0 120 70" fill="currentColor">
+          <path d="M15 48 C35 56 85 56 105 48 C115 54 95 62 60 62 C25 62 5 54 15 48 Z" />
+          <path d="M58 48 L58 10 L88 38 L58 44 Z" opacity="0.9" />
+          <path d="M54 48 L54 18 L32 42 L54 45 Z" opacity="0.75" />
+        </svg>
+
+        <!-- Jumping Fish (سمك البلطي والوقار) -->
+        <svg class="cta-decor-item cta-fish-left" viewBox="0 0 65 32" fill="currentColor">
+          <path d="M5 16 C18 6 42 6 56 16 C42 26 18 26 5 16 Z M56 16 L65 8 L61 16 L65 24 Z" />
+          <circle cx="20" cy="13" r="1.8" fill="#fff" opacity="0.5"/>
+        </svg>
+
+        <svg class="cta-decor-item cta-fish-right" viewBox="0 0 50 25" fill="currentColor">
+          <path d="M4 12 C14 5 33 5 44 12 C33 19 14 19 4 12 Z M44 12 L50 6 L47 12 L50 18 Z" />
+        </svg>
+
+        <!-- Gentle Lake Waves -->
+        <svg class="cta-decor-item cta-waves" viewBox="0 0 600 50" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M0 15 C30 8 60 22 90 15 C120 8 150 22 180 15 C210 8 240 22 270 15 C300 8 330 22 360 15 C390 8 420 22 450 15 C480 8 510 22 540 15 C570 8 600 22 630 15" opacity="0.4"/>
+          <path d="M20 32 C50 25 80 39 110 32 C140 25 170 39 200 32 C230 25 260 39 290 32 C320 25 350 39 380 32 C410 25 440 39 470 32 C500 25 530 39 560 32 C590 25 620 39 650 32" opacity="0.25"/>
+        </svg>
+      </div>
+
+      <div class="container text-center" style="position:relative;z-index:1">
         <div style="font-size:3rem;margin-bottom:var(--space-4)">🏪</div>
         <h2 style="color:#fff;font-size:var(--font-size-2xl);font-weight:800;margin-bottom:var(--space-3)">
           أضف مكانك في دليل المنزلة والمطرية الرقمي
         </h2>
-        <p style="color:rgba(255,255,255,0.8);max-width:480px;margin:0 auto var(--space-6)">
+        <p style="color:rgba(255,255,255,0.85);max-width:520px;margin:0 auto var(--space-6);line-height:1.6">
           سجّل محلك أو خدمتك الآن وكن جزءاً من أكبر دليل رقمي لمدينتي المنزلة والمطرية وكافة القرى المجاورة
         </p>
-        <a href="dashboard.html?section=add" class="btn btn-secondary btn-xl">
-          <span>➕</span> أضف مكانك الآن — مجاناً
+        <a href="dashboard.html?section=add" class="btn btn-secondary btn-xl btn-pulse-cta">
+          <span class="cta-btn-shimmer" aria-hidden="true"></span>
+          <span class="cta-btn-icon">➕</span>
+          <span class="cta-btn-text">أضف مكانك الآن — مجاناً</span>
         </a>
       </div>
     </section>

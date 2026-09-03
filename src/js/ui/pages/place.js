@@ -38,16 +38,7 @@ export async function renderPlacePage($container, { slug, user }) {
     const place = await getPlaceBySlug(slug);
 
     if (!place) {
-      $container.innerHTML = `
-        <div class="error-page">
-          <div class="error-page__content animate-fade-in-up">
-            <div class="error-page__code">404</div>
-            <h1 class="error-page__title">المكان غير موجود</h1>
-            <p class="error-page__text">عذراً، لم يتم العثور على هذا المكان أو قد يكون تم حذفه</p>
-            <a href="places.html" class="btn btn-primary btn-lg">تصفح دليل الأماكن</a>
-          </div>
-        </div>
-      `;
+      window.location.replace('404.html?type=place&reason=deleted');
       return;
     }
 
