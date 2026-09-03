@@ -1099,6 +1099,42 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   await dbSet(`places/${placeId}/reviews/${reviewId}`, reviewData);
   await recalculatePlaceRating(placeId);
 
+  // Notify Place Owner directly (يظهر لصاحب المكان فقط)
+  try {
+    const place = await getPlace(placeId);
+    const ownerId = place?.ownerId;
+    if (ownerId && ownerId !== user.uid) {
+      const isPositive = numRating >= 4;
+      const evalType = isPositive ? 'إيجابي' : 'سلبي';
+      const evalBadge = isPositive ? '⭐ تقييم إيجابي' : '⚠️ تقييم سلبي';
+      const starText = '⭐'.repeat(numRating);
+      
+      const ownerNotification = {
+        type: 'place_review',
+        placeId,
+        placeName: placeName || place?.name || 'المكان',
+        placeSlug: placeSlug || place?.slug || placeId,
+        reviewerUid: user.uid,
+        reviewerName: userName,
+        reviewerPhoto: user.photoURL || '',
+        rating: numRating,
+        isPositive,
+        evalType,
+        title: `${evalBadge}: ${userName} قيّم (${placeName || place?.name || 'مكانك'})`,
+        message: `قام ${userName} بتقييم (${placeName || place?.name || 'مكانك'}) بعدد (${numRating}) نجوم ${starText} بتقييم ${evalType}.`,
+        comment: cleanComment,
+        actionText: 'عرض التقييم في المكان ↗',
+        actionUrl: `place.html?slug=${encodeURIComponent(placeSlug || place?.slug || placeId)}#reviews`,
+        createdAt: Date.now(),
+        isRead: false
+      };
+
+      await dbPush(`userNotifications/${ownerId}`, ownerNotification);
+    }
+  } catch (err) {
+    console.warn('[addReview] Owner notification failed:', err);
+  }
+
   // Send Instant Dual-Channel Notification to Admin Telegram Bot
   sendTelegramAdminNotification('new_review', {
     placeId,
@@ -1312,6 +1348,43 @@ export async function adminAddReview({ placeId, placeName, placeSlug, userId, us
 
   await dbSet(`places/${placeId}/reviews/${reviewId}`, reviewData);
   await recalculatePlaceRating(placeId);
+
+  // Notify Place Owner directly (يظهر لصاحب المكان فقط)
+  try {
+    const place = await getPlace(placeId);
+    const ownerId = place?.ownerId;
+    if (ownerId && ownerId !== userId) {
+      const isPositive = numRating >= 4;
+      const evalType = isPositive ? 'إيجابي' : 'سلبي';
+      const evalBadge = isPositive ? '⭐ تقييم إيجابي' : '⚠️ تقييم سلبي';
+      const starText = '⭐'.repeat(numRating);
+      
+      const ownerNotification = {
+        type: 'place_review',
+        placeId,
+        placeName: placeName || place?.name || 'المكان',
+        placeSlug: placeSlug || place?.slug || placeId,
+        reviewerUid: userId || 'admin',
+        reviewerName: cleanName,
+        reviewerPhoto: userPhoto || '',
+        rating: numRating,
+        isPositive,
+        evalType,
+        title: `${evalBadge}: ${cleanName} قيّم (${placeName || place?.name || 'مكانك'})`,
+        message: `قام ${cleanName} بتقييم (${placeName || place?.name || 'مكانك'}) بعدد (${numRating}) نجوم ${starText} بتقييم ${evalType}.`,
+        comment: cleanComment,
+        actionText: 'عرض التقييم في المكان ↗',
+        actionUrl: `place.html?slug=${encodeURIComponent(placeSlug || place?.slug || placeId)}#reviews`,
+        createdAt: Date.now(),
+        isRead: false
+      };
+
+      await dbPush(`userNotifications/${ownerId}`, ownerNotification);
+    }
+  } catch (err) {
+    console.warn('[adminAddReview] Owner notification failed:', err);
+  }
+
   return reviewData;
 }
 

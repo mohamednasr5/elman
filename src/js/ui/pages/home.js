@@ -782,7 +782,7 @@ function getHomeHTML() {
       <div class="container">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">
           <h2 class="section-title">
-            <span>⭐</span> الأكثر شهرة في المنزلة والمطرية
+            <span class="sparkle-star-icon">⭐</span> الأكثر شهرة في المنزلة والمطرية
           </h2>
           <a href="places.html?filter=verified" class="section-link">عرض الكل ←</a>
         </div>

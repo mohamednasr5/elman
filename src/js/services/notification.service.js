@@ -386,8 +386,15 @@ export function initLiveNotificationSubscriber(uid) {
       }
     });
 
-    // 4. Personal user notifications
+    // 4. Personal user notifications (Reviews on owner's places, visits, etc.)
     if (uid) {
+      db.ref(`userNotifications/${uid}`).limitToLast(1).on('child_added', (snap) => {
+        const notif = snap.val();
+        updateAllNotificationBadges(uid);
+        if (notif && (Number(notif.createdAt) || 0) > startTime - 3000) {
+          showLiveNotificationPopup({ id: snap.key, ...notif });
+        }
+      });
       db.ref(`userNotifications/${uid}`).on('value', () => {
         updateAllNotificationBadges(uid);
       });
@@ -446,13 +453,15 @@ export function showLiveNotificationPopup(notification) {
     text-align: right;
   `;
 
-  const iconEmoji = notification.type === 'place_verified' ? '👑' : '🎉';
+  let iconEmoji = '🎉';
+  if (notification.type === 'place_verified') iconEmoji = '👑';
+  else if (notification.type === 'place_review') iconEmoji = notification.isPositive ? '⭐' : '⚠️';
   const targetUrl = notification.actionUrl || notification.url || 'dashboard.html?section=notifications';
 
   notifEl.innerHTML = `
     <div style="font-size:24px;flex-shrink:0">${iconEmoji}</div>
     <div style="flex:1;min-width:0">
-      <strong style="display:block;font-size:13.5px;color:#38BDF8">${notification.title || 'إشعار جديد'}</strong>
+      <strong style="display:block;font-size:13.5px;color:${notification.type === 'place_review' ? (notification.isPositive ? '#FBBF24' : '#F87171') : '#38BDF8'}">${notification.title || 'إشعار جديد'}</strong>
       <span style="font-size:12px;color:#CBD5E1;display:block;margin-top:2px">${notification.message || ''}</span>
     </div>
     <button type="button" style="background:none;border:none;color:#94A3B8;font-size:14px;cursor:pointer;padding:4px" aria-label="إغلاق">✕</button>

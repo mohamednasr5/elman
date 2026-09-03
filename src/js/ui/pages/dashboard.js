@@ -2417,12 +2417,14 @@ async function renderDashboardNotifications($container, user) {
   const unreadCount = allNotifs.filter(n => !n.isRead).length;
   const newPlacesCount = allNotifs.filter(n => n.type === 'new_place').length;
   const verifiedCount = allNotifs.filter(n => n.type === 'place_verified').length;
+  const reviewsCount = allNotifs.filter(n => n.type === 'place_review').length;
   const visitsCount = allNotifs.filter(n => n.type === 'profile_visit' || !n.type).length;
 
   let filteredNotifs = allNotifs;
   if (_activeNotifFilter === 'unread') filteredNotifs = allNotifs.filter(n => !n.isRead);
   else if (_activeNotifFilter === 'new_place') filteredNotifs = allNotifs.filter(n => n.type === 'new_place');
   else if (_activeNotifFilter === 'verified') filteredNotifs = allNotifs.filter(n => n.type === 'place_verified');
+  else if (_activeNotifFilter === 'reviews') filteredNotifs = allNotifs.filter(n => n.type === 'place_review');
   else if (_activeNotifFilter === 'visits') filteredNotifs = allNotifs.filter(n => n.type === 'profile_visit' || !n.type);
 
   const soundOn = isNotificationSoundEnabled();
@@ -2435,7 +2437,7 @@ async function renderDashboardNotifications($container, user) {
           ${unreadCount > 0 ? `<span class="badge badge--danger" style="font-size:12px;padding:2px 8px">${unreadCount} جديد</span>` : ''}
         </h1>
         <p class="dashboard-subtitle" style="margin:0;color:var(--text-muted);font-size:13px">
-          إدارة شاملة لجميع التنبيهات وزوار الأماكن والأنشطة المنضمة والموثقة حديثاً
+          إدارة شاملة لجميع التنبيهات، تقييمات العملاء، وزوار الأماكن والأنشطة المنضمة والموثقة حديثاً
         </p>
       </div>
 
@@ -2469,6 +2471,11 @@ async function renderDashboardNotifications($container, user) {
       <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'unread' ? 'btn-primary' : 'btn-outline'}" data-filter="unread" style="border-radius:9999px;font-size:12px">
         🔴 غير المقروءة (${unreadCount})
       </button>
+      ${reviewsCount > 0 ? `
+        <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'reviews' ? 'btn-primary' : 'btn-outline'}" data-filter="reviews" style="border-radius:9999px;font-size:12px">
+          ⭐ تقييمات أماكني (${reviewsCount})
+        </button>
+      ` : ''}
       <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'new_place' ? 'btn-primary' : 'btn-outline'}" data-filter="new_place" style="border-radius:9999px;font-size:12px">
         🎉 انضمام جديد (${newPlacesCount})
       </button>
@@ -2553,6 +2560,67 @@ async function renderDashboardNotifications($container, user) {
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <a href="${escAttr(n.actionUrl || 'https://wa.me/wasendernew')}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;background:linear-gradient(135deg, #10B981 0%, #059669 100%);color:#fff;border:none;box-shadow:0 2px 8px rgba(16,185,129,0.3);display:inline-flex;align-items:center">
                     <span>🚀</span> وثّق ملفك الآن
+                  </a>
+                  ${isUnread ? `
+                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:5px 8px;border-radius:var(--radius-full)">
+                      ✓
+                    </button>
+                  ` : ''}
+                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="حذف وإخفاء هذا الإشعار" style="color:var(--danger);font-size:13px;padding:4px 8px;border-radius:var(--radius-full)">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            `;
+          }
+
+          if (n.type === 'place_review') {
+            const isPos = Boolean(n.isPositive || (n.rating && n.rating >= 4));
+            const cardBg = isUnread 
+              ? (isPos ? 'rgba(16, 185, 129, 0.07)' : 'rgba(239, 68, 68, 0.07)')
+              : 'var(--surface)';
+            const cardBorder = isUnread
+              ? (isPos ? '#10B981' : '#EF4444')
+              : 'var(--border)';
+            const badgeBg = isPos ? '#D1FAE5' : '#FEE2E2';
+            const badgeColor = isPos ? '#065F46' : '#991B1B';
+            const starStr = '⭐'.repeat(n.rating || 5);
+
+            return `
+              <div class="notification-card" id="notif-card-${n.id}" style="background:${cardBg};border:1.5px solid ${cardBorder};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:flex-start;gap:14px;transition:all 0.25s ease;flex-wrap:wrap">
+                <div style="width:48px;height:48px;border-radius:50%;background:${isPos ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'};color:${isPos ? '#059669' : '#DC2626'};display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid ${isPos ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}">
+                  ${isPos ? '⭐' : '⚠️'}
+                </div>
+
+                <div style="flex:1;min-width:220px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                      <span class="badge" style="background:${badgeBg};color:${badgeColor};font-weight:700;font-size:11px;padding:2px 8px;border-radius:var(--radius-full)">
+                        ${isPos ? '⭐ تقييم إيجابي' : '⚠️ تقييم سلبي'} (${n.rating || 5} نجوم)
+                      </span>
+                      <strong style="font-size:13.5px;color:var(--text-primary)">${escHtml(n.reviewerName || 'عميل')}</strong>
+                      <span style="font-size:12px;color:var(--text-muted)">قيّم</span>
+                      <span class="badge" style="background:rgba(2, 132, 199, 0.1);color:#0284C7;font-weight:700;font-size:11.5px;padding:2px 8px;border-radius:var(--radius-full)">
+                        ${escHtml(n.placeName || 'مكانك')}
+                      </span>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted)">⏱️ ${timeStr}</div>
+                  </div>
+
+                  <div style="font-size:13.5px;font-weight:600;color:var(--text-primary);margin-top:6px;line-height:1.5">
+                    قام <strong>${escHtml(n.reviewerName || 'العميل')}</strong> بتقييم (<strong>${escHtml(n.placeName || 'المكان')}</strong>) بعدد (<strong>${n.rating || 5}</strong>) نجوم ${starStr} بتقييم <strong>${isPos ? 'إيجابي' : 'سلبي'}</strong>.
+                  </div>
+
+                  ${n.comment ? `
+                    <div style="font-size:12.5px;color:var(--text-secondary);background:var(--surface-2);border-right:3px solid ${isPos ? '#10B981' : '#EF4444'};padding:8px 12px;border-radius:6px;margin-top:6px;line-height:1.5;font-style:italic">
+                      "${escHtml(n.comment)}"
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;align-self:center">
+                  <a href="${escAttr(n.actionUrl || `place.html?slug=${n.placeSlug}#reviews`)}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
+                    <span>💬</span> مشاهدة التقييم والرد
                   </a>
                   ${isUnread ? `
                     <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:5px 8px;border-radius:var(--radius-full)">
