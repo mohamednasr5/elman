@@ -173,12 +173,24 @@ function cleanPhone(phone) {
 }
 
 function formatWhatsApp(phone) {
-  let cleaned = cleanPhone(phone);
-  if (cleaned.startsWith('01') && cleaned.length === 11) {
-    return '2' + cleaned;
+  if (!phone) return '';
+  let cleaned = String(phone).replace(/\D/g, '');
+  if (cleaned.startsWith('201') && cleaned.length === 12) {
+    return cleaned;
   }
-  // If it already starts with 201, return as is
-  return cleaned;
+  if (cleaned.startsWith('00201') && cleaned.length === 14) {
+    return cleaned.slice(2);
+  }
+  if (cleaned.startsWith('01') && cleaned.length === 11) {
+    return '2' + cleaned; // Produces 201xxxxxxxxx (2 + 01...)
+  }
+  if (cleaned.startsWith('1') && cleaned.length === 10) {
+    return '20' + cleaned; // Produces 201xxxxxxxxx
+  }
+  if (cleaned.startsWith('21') && cleaned.length === 11) {
+    return '20' + cleaned.slice(1); // Fixes 2100xxxxxxx -> 20100xxxxxxx
+  }
+  return cleaned.startsWith('0') ? '2' + cleaned : cleaned;
 }
 
 function getCategoryCardCover(placeOrCatId) {

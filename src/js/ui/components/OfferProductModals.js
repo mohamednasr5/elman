@@ -45,9 +45,7 @@ export function openOfferFullDetailsModal(offer, place = {}) {
   const placeSlug = place?.slug || offer.placeSlug || '';
 
   const cleanPhone = (placePhone || '').replace(/\D/g, '');
-  let cleanWa = (placeWhatsapp || '').replace(/\D/g, '');
-  if (cleanWa.startsWith('0')) cleanWa = '2' + cleanWa;
-  if (!cleanWa && cleanPhone) cleanWa = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone;
+  let cleanWa = formatModalWhatsApp(placeWhatsapp || placePhone);
 
   const waMessage = encodeURIComponent(`السلام عليكم، أرغب في طلب / الاستفسار عن عرض:\n🎁 *${offer.title}*\n💰 بسعر: *${offer.newPrice || 0} ج.م*\n🏪 من: *${placeName}*\nعبر دليل المنزلة والمطرية الرقمي.`);
   const waLink = cleanWa ? `https://wa.me/${cleanWa}?text=${waMessage}` : null;
@@ -162,9 +160,7 @@ export function openProductFullDetailsModal(product, place = {}) {
   const placeSlug = place?.slug || product.placeSlug || '';
 
   const cleanPhone = (placePhone || '').replace(/\D/g, '');
-  let cleanWa = (placeWhatsapp || '').replace(/\D/g, '');
-  if (cleanWa.startsWith('0')) cleanWa = '2' + cleanWa;
-  if (!cleanWa && cleanPhone) cleanWa = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone;
+  let cleanWa = formatModalWhatsApp(placeWhatsapp || placePhone);
 
   const waMessage = encodeURIComponent(`السلام عليكم، أرغب في طلب / حجز منتج:\n🛍️ *${product.name}*\n💰 السعر: *${product.price || 0} ج.م*\n🏪 من: *${placeName}*\nعبر دليل المنزلة والمطرية الرقمي.`);
   const waLink = cleanWa ? `https://wa.me/${cleanWa}?text=${waMessage}` : null;
@@ -262,4 +258,15 @@ export function openProductFullDetailsModal(product, place = {}) {
       { label: 'إغلاق', type: 'ghost', closeOnClick: true }
     ]
   });
+}
+
+function formatModalWhatsApp(phone) {
+  if (!phone) return '';
+  let cleaned = String(phone).replace(/\D/g, '');
+  if (cleaned.startsWith('201') && cleaned.length === 12) return cleaned;
+  if (cleaned.startsWith('00201') && cleaned.length === 14) return cleaned.slice(2);
+  if (cleaned.startsWith('01') && cleaned.length === 11) return '2' + cleaned;
+  if (cleaned.startsWith('1') && cleaned.length === 10) return '20' + cleaned;
+  if (cleaned.startsWith('21') && cleaned.length === 11) return '20' + cleaned.slice(1);
+  return cleaned.startsWith('0') ? '2' + cleaned : cleaned;
 }

@@ -644,7 +644,7 @@ export async function openManzalaVoiceAssistantModal() {
                 </a>
               ` : ''}
               ${whatsapp ? `
-                <a href="https://wa.me/2${escapeAttr(whatsapp.replace(/^0+/, ''))}" target="_blank" rel="noopener" class="btn btn-sm btn-whatsapp" style="padding:6px 10px;font-size:12px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="محادثة واتساب"><img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /></a>
+                <a href="https://wa.me/${formatVoiceWhatsApp(whatsapp)}" target="_blank" rel="noopener" class="btn btn-sm btn-whatsapp" style="padding:6px 10px;font-size:12px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="محادثة واتساب"><img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /></a>
               ` : ''}
               <a href="place.html?slug=${escapeAttr(placeSlug)}" class="btn btn-sm btn-outline" style="padding:6px 10px;font-size:12px;border-radius:8px;text-decoration:none" title="عرض التفاصيل">
                 👁️
@@ -755,4 +755,15 @@ export function bindGlobalVoiceAssistantFab() {
       }
     }, { capture: true });
   }
+}
+
+function formatVoiceWhatsApp(phone) {
+  if (!phone) return '';
+  let cleaned = String(phone).replace(/\D/g, '');
+  if (cleaned.startsWith('201') && cleaned.length === 12) return cleaned;
+  if (cleaned.startsWith('00201') && cleaned.length === 14) return cleaned.slice(2);
+  if (cleaned.startsWith('01') && cleaned.length === 11) return '2' + cleaned;
+  if (cleaned.startsWith('1') && cleaned.length === 10) return '20' + cleaned;
+  if (cleaned.startsWith('21') && cleaned.length === 11) return '20' + cleaned.slice(1);
+  return cleaned.startsWith('0') ? '2' + cleaned : cleaned;
 }

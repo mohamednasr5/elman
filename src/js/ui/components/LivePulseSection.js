@@ -189,7 +189,7 @@ export function mountLivePulseSection(containerId) {
             <!-- Direct Contact Button for Jobs -->
             ${(isJobVacant || isJobSeeker) && item.phone ? `
               <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-                <a href="https://wa.me/2${item.phone.replace(/\D/g,'')}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:#25D366;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(37,211,102,0.3)">
+                <a href="https://wa.me/${formatPulseWhatsApp(item.phone)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:#25D366;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(37,211,102,0.3)">
                   <img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /> <span>واتساب للتقديم: ${esc(item.phone)}</span>
                 </a>
                 <a href="tel:${esc(item.phone)}" class="btn btn-sm" style="background:#0F2B48;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
@@ -420,4 +420,15 @@ export function openLiveReportModal(onSuccessCallback) {
       else if (catSelect.value === 'jobs_seeker') tagSelect.value = 'job_seeking';
     });
   }
+}
+
+function formatPulseWhatsApp(phone) {
+  if (!phone) return '';
+  let cleaned = String(phone).replace(/\D/g, '');
+  if (cleaned.startsWith('201') && cleaned.length === 12) return cleaned;
+  if (cleaned.startsWith('00201') && cleaned.length === 14) return cleaned.slice(2);
+  if (cleaned.startsWith('01') && cleaned.length === 11) return '2' + cleaned;
+  if (cleaned.startsWith('1') && cleaned.length === 10) return '20' + cleaned;
+  if (cleaned.startsWith('21') && cleaned.length === 11) return '20' + cleaned.slice(1);
+  return cleaned.startsWith('0') ? '2' + cleaned : cleaned;
 }
