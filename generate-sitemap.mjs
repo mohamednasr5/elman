@@ -85,8 +85,12 @@ async function run() {
     xml += '    <changefreq>weekly</changefreq>\n';
     xml += '    <priority>0.9</priority>\n';
 
-    const img = place.coverImageUrl || place.logoUrl;
+    let img = place.coverImageUrl || place.logoUrl;
     if (img) {
+      // Ensure Google sitemap images are full absolute URLs (must start with https://)
+      if (!img.startsWith('http://') && !img.startsWith('https://')) {
+        img = `https://dalilmanzala.com/${img.replace(/^\/+/, '')}`;
+      }
       const escImg = escapeXml(img);
       const title = escapeXml(place.name || '');
       xml += '    <image:image>\n';
