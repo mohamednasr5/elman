@@ -7,8 +7,24 @@ import { normalizeArabic } from './arabic.js';
 
 export const MEDICAL_SPECIALTY_MAP = [
   {
+    key: 'general_surgery',
+    keywords: ['جراحة عامة', 'جراحه عامه', 'جراح عام', 'جراحة', 'جراحه', 'جراح', 'مناظير جراحية', 'فتق', 'مرارة', 'بواسير', 'استئصال', 'اورام'],
+    title: 'دكتور جراحة عامة',
+    label: 'استشاري الجراحة العامة والمناظير والأورام',
+    shortLabel: 'الجراحة العامة والمناظير',
+    icon: '⚕️'
+  },
+  {
+    key: 'vascular_surgery',
+    keywords: ['اوعية دموية', 'أوعية دموية', 'اوعيه دمويه', 'أوعيه دمويه', 'قدم سكري', 'قدم سكرى', 'دوالي', 'دوالى', 'شرايين', 'قسطرة طرفية', 'جراحة اوعية دموية'],
+    title: 'دكتور جراحة أوعية دموية',
+    label: 'استشاري جراحة الأوعية الدموية والقدم السكري والدوالي',
+    shortLabel: 'جراحة الأوعية الدموية والقدم السكري',
+    icon: '🩸'
+  },
+  {
     key: 'dental',
-    keywords: ['اسنان', 'أسنان', 'فم', 'تجميل الاسنان', 'تجميل الأسنان', 'زراعة الاسنان', 'تقويم الاسنان', 'ضروس', 'حشو', 'الكوش', 'كوش'],
+    keywords: ['اسنان', 'أسنان', 'سنان', 'فم', 'تجميل الاسنان', 'تجميل الأسنان', 'زراعة الاسنان', 'تقويم الاسنان', 'ضروس', 'حشو', 'خلع ضرس', 'الكوش', 'كوش'],
     title: 'دكتور أسنان',
     label: 'أخصائي طب وجراحة الفم وتجميل وزراعة الأسنان',
     shortLabel: 'طب وتجميل الأسنان',
@@ -40,7 +56,7 @@ export const MEDICAL_SPECIALTY_MAP = [
   },
   {
     key: 'orthopedics',
-    keywords: ['عظام', 'مفاصل', 'كسور', 'عمود فقري', 'غضروف', 'مفصل الركبة', 'تشوهات عظام', 'مناظير مفاصل'],
+    keywords: ['عظام', 'مفاصل', 'كسور', 'عمود فقري', 'غضروف', 'مفصل الركبة', 'تشوهات عظام', 'مناظير مفاصل', 'جبيرة'],
     title: 'دكتور عظام',
     label: 'استشاري جراحة العظام والمفاصل والعمود الفقري والكسور',
     shortLabel: 'جراحة العظام والمفاصل والكسور',
@@ -72,7 +88,7 @@ export const MEDICAL_SPECIALTY_MAP = [
   },
   {
     key: 'cardiology',
-    keywords: ['قلب', 'اوعية دموية', 'أوعية دموية', 'قسطرة', 'ضغط الدم', 'شرايين', 'ايكو', 'رسم قلب'],
+    keywords: ['قلب', 'قسطرة', 'ضغط الدم', 'شرايين القلب', 'ايكو', 'رسم قلب'],
     title: 'دكتور قلب',
     label: 'استشاري أمراض القلب والأوعية الدموية والقسطرة التداخلية',
     shortLabel: 'أمراض القلب والأوعية الدموية',
@@ -101,14 +117,6 @@ export const MEDICAL_SPECIALTY_MAP = [
     label: 'أخصائي العلاج الطبيعي والتأهيل الحركي وإصابات الملاعب',
     shortLabel: 'العلاج الطبيعي والتأهيل الحركي',
     icon: '🏃'
-  },
-  {
-    key: 'surgery',
-    keywords: ['جراحة عامة', 'جراحه عامه', 'اورام', 'أورام', 'مناظير جراحية', 'فتق', 'مرارة', 'بواسير'],
-    title: 'دكتور جراحة عامة',
-    label: 'استشاري الجراحة العامة والمناظير والأورام',
-    shortLabel: 'الجراحة العامة والمناظير',
-    icon: '⚕️'
   },
   {
     key: 'pulmonology',
@@ -149,44 +157,66 @@ export function resolveDoctorSpecialty(place = {}, category = {}) {
   const catName = (category.name || place.categoryName || '').toLowerCase();
   const isDoctorCategory = catSlug.includes('doctor') || catSlug.includes('clinic') || catName.includes('دكتور') || catName.includes('طبيب') || catName.includes('عياد');
 
-  const rawText = [
+  const customSpecialty = place.customSpecialty || place.doctorSpecialty || place.specialty || place.medicalSpecialty || '';
+  const searchSource = [
     place.name || '',
-    place.specialty || '',
-    place.medicalSpecialty || '',
-    place.subCategory || '',
-    place.tagline || '',
     place.description || '',
-    (place.services || []).join(' ')
+    customSpecialty,
+    Array.isArray(place.services) ? place.services.join(' ') : (place.services || ''),
+    place.customCategory || ''
   ].join(' ');
 
-  const normalized = normalizeArabic(rawText).toLowerCase();
+  const normalizedSource = normalizeArabic(searchSource);
 
-  for (const spec of MEDICAL_SPECIALTY_MAP) {
-    if (spec.keywords.some(k => normalized.includes(normalizeArabic(k).toLowerCase()))) {
+  // 1. Check exact custom specialty string if exists
+  if (customSpecialty && customSpecialty.trim()) {
+    const matched = MEDICAL_SPECIALTY_MAP.find(m => m.keywords.some(k => normalizeArabic(customSpecialty).includes(normalizeArabic(k))));
+    if (matched) {
       return {
         isDoctor: true,
-        specialtyKey: spec.key,
-        specialtyTitle: spec.title,
-        specialtyLabel: spec.label,
-        shortLabel: spec.shortLabel,
-        icon: spec.icon,
-        badgeText: `${spec.icon} ${spec.title}: ${spec.label}`
+        specialtyKey: matched.key,
+        specialtyTitle: matched.title,
+        specialtyLabel: matched.label,
+        shortLabel: matched.shortLabel,
+        icon: matched.icon
       };
     }
   }
 
+  // 2. Scan text for medical specialty keywords
+  for (const item of MEDICAL_SPECIALTY_MAP) {
+    for (const kw of item.keywords) {
+      const normKw = normalizeArabic(kw);
+      if (normalizedSource.includes(normKw)) {
+        return {
+          isDoctor: true,
+          specialtyKey: item.key,
+          specialtyTitle: item.title,
+          specialtyLabel: item.label,
+          shortLabel: item.shortLabel,
+          icon: item.icon
+        };
+      }
+    }
+  }
+
   if (isDoctorCategory) {
-    const explicitSpec = place.medicalSpecialty || place.specialty || place.subCategory;
     return {
       isDoctor: true,
-      specialtyKey: 'general',
-      specialtyTitle: 'دكتور واستشاري',
-      specialtyLabel: explicitSpec || 'استشاري وأخصائي طبي',
-      shortLabel: explicitSpec || 'استشاري طبي',
-      icon: '🩺',
-      badgeText: `🩺 ${explicitSpec ? `تخصص: ${explicitSpec}` : 'أخصائي واستشاري طبي'}`
+      specialtyKey: 'general_doctor',
+      specialtyTitle: 'طبيب بشري وعيادة',
+      specialtyLabel: 'عيادة طبية متخصصة',
+      shortLabel: 'طبيب بشري',
+      icon: '🩺'
     };
   }
 
-  return { isDoctor: false, specialtyKey: null, specialtyTitle: null, specialtyLabel: null, shortLabel: null, icon: null, badgeText: null };
+  return {
+    isDoctor: false,
+    specialtyKey: null,
+    specialtyTitle: null,
+    specialtyLabel: null,
+    shortLabel: null,
+    icon: null
+  };
 }

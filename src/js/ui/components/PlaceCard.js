@@ -6,6 +6,7 @@ import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from '
 import { resolveDoctorSpecialty } from '../../utils/specialty.js';
 import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, getAtmLiveStatus, formatAtmTimeAgo } from '../../utils/atm.js';
+import { getPlaceLiveStatus } from '../../utils/live-hours.js';
 
 /**
  * Render a place card HTML string
@@ -62,6 +63,14 @@ export function renderPlaceCard(place) {
     ? `<a href="tel:${cleanPhone(place.phone)}" class="place-card__action-btn" title="اتصال" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','phoneClicks')">📞</a>`
     : '';
 
+  const liveHours = getPlaceLiveStatus(place.openHours);
+  const liveHoursBadge = !isAtm ? `
+    <span class="badge" style="background:${liveHours.isOpen ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'};color:${liveHours.color};font-weight:800;font-size:11px;padding:2px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">
+      <span>${liveHours.isOpen ? '🟢' : '🔴'}</span>
+      <span>${liveHours.badgeText}</span>
+    </span>
+  ` : '';
+
   const docInfo = resolveDoctorSpecialty(place);
   const doctorSpecialtyBadge = docInfo.isDoctor ? `
     <div style="margin:4px 0 2px 0">
@@ -98,6 +107,7 @@ export function renderPlaceCard(place) {
           ${verifiedBadge}
         </h3>
         <div class="place-card__category" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap">
+          ${liveHoursBadge}
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span>📍 ${escHtml(place.area || 'المنزلة')}</span>
             ${place._distanceStr ? `<span class="badge" style="background:rgba(16,185,129,0.12);color:var(--success);font-size:10.5px;padding:1px 6px;border-radius:var(--radius-sm);font-weight:700">على بعد ${escHtml(place._distanceStr)}</span>` : ''}

@@ -14,6 +14,8 @@ import { showModal, showConfirm } from '../components/Modal.js';
 import { submitVerificationRequest } from '../../services/places.service.js';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
+import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
+import { getPlaceLiveStatus } from '../../utils/live-hours.js';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { resolveMapEmbedInfo, extractCoordinates } from '../../utils/maps.js';
 import { resolveDoctorSpecialty } from '../../utils/specialty.js';
@@ -172,7 +174,12 @@ export async function renderPlacePage($container, { slug, user }) {
                   <div class="place-title-actions-row">
                     <button type="button" class="btn-download-profile-card btn-download-profile-trigger" id="btn-download-profile-card" data-pid="${escAttr(placeId)}" title="تحميل البطاقة التعريفية لمشاركتها كصورة">
                       <span class="card-icon">🪪</span>
-                      <span>تحميل البطاقة التعريفية</span>
+                      <span>تحميل البطاقة</span>
+                    </button>
+
+                    <button type="button" class="btn btn-sm btn-outline btn-open-storefront-qr" id="btn-open-storefront-qr" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;background:var(--surface);border-color:var(--border)" title="طباعة لوحة QR ذكية لواجهة المحل">
+                      <span>🖨️</span>
+                      <span>لوحة QR للمحل</span>
                     </button>
 
                     <button type="button" class="btn btn-sm btn-outline btn-follow-place-trigger ${isFollowing ? 'following' : ''}" id="btn-follow-place" data-pid="${escAttr(placeId)}" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;${isFollowing ? 'background:rgba(16,185,129,0.12);color:var(--success);border-color:var(--success);font-weight:700' : 'background:var(--surface);border-color:var(--border)'}" title="متابعة المكان ومشاهدة عروضه في حسابك">

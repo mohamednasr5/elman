@@ -662,12 +662,46 @@ function escapeAttr(str) {
 export function bindGlobalVoiceAssistantFab() {
   if (typeof document === 'undefined') return;
 
-  const fabBtns = document.querySelectorAll('.fab-voice-assistant, #btn-global-voice-assistant, .global-voice-trigger');
-  fabBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openManzalaVoiceAssistantModal();
+  // 1. Direct Bind to all known floating FABs & Nav buttons
+  const selectors = [
+    '#global-voice-assistant-fab',
+    '.bottom-nav__voice-assistant-fab',
+    '.fab-voice-assistant',
+    '#btn-global-voice-assistant',
+    '.global-voice-trigger',
+    '.btn-voice-search',
+    '[data-action="voice-search"]',
+    '[data-voice-trigger]'
+  ];
+
+  const handleTrigger = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openManzalaVoiceAssistantModal();
+  };
+
+  selectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(btn => {
+      btn.removeEventListener('click', handleTrigger);
+      btn.addEventListener('click', handleTrigger);
+      btn.addEventListener('touchend', (e) => {
+        // Prevent ghost click on touch devices
+        e.preventDefault();
+        openManzalaVoiceAssistantModal();
+      }, { passive: false });
     });
   });
+
+  // 2. Global Event Delegation as foolproof safety net
+  if (!window._globalVoiceFabDelegated) {
+    window._globalVoiceFabDelegated = true;
+    document.addEventListener('click', (e) => {
+      const target = e.target.closest('#global-voice-assistant-fab, .bottom-nav__voice-assistant-fab, .fab-voice-assistant, #btn-global-voice-assistant, .global-voice-trigger, [data-voice-trigger]');
+      if (target) {
+        e.preventDefault();
+        e.stopPropagation();
+        openManzalaVoiceAssistantModal();
+      }
+    }, { capture: true });
+  }
 }

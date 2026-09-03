@@ -1,6 +1,6 @@
 /**
  * search-engine.service.js
- * High-Speed Local In-Memory Unified Search Engine for "دليل المنزلة والمطرية"
+ * Advanced Local In-Memory Unified Search Engine with Query Deconstruction & Field-Specific Weighting
  */
 
 import { normalizeArabic } from '../utils/arabic.js';
@@ -11,6 +11,14 @@ import { isPlaceOpen } from '../utils/date.js';
 import { calculateDistanceKm } from '../utils/maps.js';
 
 export const EGYPTIAN_DIALECT_SYNONYMS = {
+  general_surgery: {
+    canonical: 'دكتور جراحة عامة',
+    synonyms: ['جراحة عامة', 'جراحه عامه', 'جراح عام', 'دكتور جراحة', 'دكتور جراحه', 'دكتور جراح', 'عيادة جراحة', 'جراحة']
+  },
+  vascular_surgery: {
+    canonical: 'دكتور جراحة أوعية دموية',
+    synonyms: ['اوعية دموية', 'أوعية دموية', 'اوعيه دمويه', 'قدم سكري', 'قدم سكرى', 'دوالي', 'دوالى', 'دكتور اوعية دموية', 'جراح اوعية دموية']
+  },
   dental: {
     canonical: 'دكتور أسنان',
     synonyms: ['سنان', 'اسنان', 'أسنان', 'دكتور سنان', 'طبيب سنان', 'دكتور اسنان', 'وجع سنان', 'ضروس', 'حشو', 'تجميل اسنان', 'زراعة اسنان', 'تقويم', 'خلع ضرس', 'عيادة اسنان']
@@ -101,6 +109,30 @@ export const EGYPTIAN_DIALECT_SYNONYMS = {
   }
 };
 
+export function deconstructQuery(query = '') {
+  const norm = normalizeArabic(query).trim().toLowerCase();
+  
+  const isDoctor = norm.includes('دكتور') || norm.includes('طبيب') || norm.includes('عياد') || norm.includes('عيادة') || norm.includes('استشاري') || norm.includes('اخصائي') || norm.includes('جراح');
+  
+  let targetSpecialty = null;
+  for (const item of MEDICAL_SPECIALTY_MAP) {
+    const isMatched = item.keywords.some(k => norm.includes(normalizeArabic(k)));
+    if (isMatched) {
+      targetSpecialty = item;
+      break;
+    }
+  }
+
+  const location = extractLocationFromQuery(norm);
+
+  return {
+    isDoctor,
+    targetSpecialty,
+    location,
+    normalizedQuery: norm
+  };
+}
+
 class SearchIndex {
   constructor() {
     this.documents = [];
@@ -164,6 +196,7 @@ class SearchIndex {
         categoryNorm: normalizeArabic(pCat),
         specialty: pSpec,
         specialtyNorm: normalizeArabic(pSpec),
+        specialtyKey: docInfo.specialtyKey,
         subCategory: pSub,
         description: pDesc,
         descriptionNorm: normalizeArabic(pDesc),
@@ -203,12 +236,10 @@ class SearchIndex {
       return this.documents.slice(0, options.limit || 10).map(d => ({ ...d, score: 100 }));
     }
 
-    const normQ = normalizeArabic(query).trim().toLowerCase();
+    const { isDoctor, targetSpecialty, location, normalizedQuery: normQ } = deconstructQuery(query);
     const queryTokens = normQ.split(/\s+/).filter(Boolean);
     const results = [];
 
-    const locationEntity = extractLocationFromQuery(normQ);
-    const isDocQuery = queryTokens.some(t => t.includes('دكتور') || t.includes('طبيب') || t.includes('عياد') || t.includes('سنان'));
     const wantsOpenNow = options.wantsOpenNow || normQ.includes('فاتح') || normQ.includes('شغال') || normQ.includes('دلوقت');
     const userCoords = options.userCoords || null;
 
@@ -216,76 +247,80 @@ class SearchIndex {
       let score = 0;
       let matchedReason = '';
 
-      // 1. EXACT NAME MATCH (+1500)
-      if (doc.nameNorm === normQ) {
-        score += 1500;
-        matchedReason = 'مطابقة تامة لاسم المكان';
-      } else if (doc.nameNorm.includes(normQ)) {
-        score += 1000;
-        matchedReason = 'اسم المكان';
-      } else if (queryTokens.every(tok => doc.nameNorm.includes(tok))) {
-        score += 800;
-        matchedReason = 'كلمات اسم المكان';
-      }
-
-      // 2. DOCTOR & MEDICAL SPECIALTY MATCH (+1000)
-      if (doc.docInfo.isDoctor) {
-        const matchedSpec = MEDICAL_SPECIALTY_MAP.find(m => m.keywords.some(k => normQ.includes(normalizeArabic(k))));
-        if (matchedSpec && doc.docInfo.specialtyKey === matchedSpec.key) {
-          score += (isDocQuery ? 1200 : 900);
-          matchedReason = `${doc.docInfo.icon} ${doc.docInfo.specialtyTitle}`;
+      // ── 1. TARGET MEDICAL SPECIALTY EXACT MATCH (+2200 PTS) ──
+      if (targetSpecialty && doc.docInfo.isDoctor) {
+        if (doc.specialtyKey === targetSpecialty.key) {
+          score += 2200;
+          matchedReason = `${targetSpecialty.icon} ${targetSpecialty.title}`;
+        } else {
+          const hasKeyword = targetSpecialty.keywords.some(k => doc.searchText.includes(normalizeArabic(k)));
+          if (hasKeyword) {
+            score += 1400;
+            if (!matchedReason) matchedReason = `${targetSpecialty.icon} ${targetSpecialty.title}`;
+          }
         }
       }
 
-      // 3. EGYPTIAN DIALECT & SYNONYM CLUSTER MATCH (+650)
+      // ── 2. EXACT NAME MATCH (+1500 PTS) ──
+      if (doc.nameNorm === normQ) {
+        score += 1500;
+        if (!matchedReason) matchedReason = 'مطابقة تامة لاسم المكان';
+      } else if (doc.nameNorm.includes(normQ)) {
+        score += 1000;
+        if (!matchedReason) matchedReason = 'اسم المكان';
+      } else if (queryTokens.every(tok => doc.nameNorm.includes(tok))) {
+        score += 800;
+        if (!matchedReason) matchedReason = 'كلمات اسم المكان';
+      }
+
+      // ── 3. EGYPTIAN DIALECT & SYNONYM CLUSTERS (+700 PTS) ──
       for (const [clusterKey, clusterData] of Object.entries(EGYPTIAN_DIALECT_SYNONYMS)) {
         const isQueryInCluster = clusterData.synonyms.some(syn => normQ.includes(normalizeArabic(syn)));
         if (isQueryInCluster) {
           const isDocInCluster = clusterData.synonyms.some(syn => doc.searchText.includes(normalizeArabic(syn)));
           if (isDocInCluster) {
-            score += 650;
+            score += 700;
             if (!matchedReason) matchedReason = clusterData.canonical;
             break;
           }
         }
       }
 
-      // 4. CATEGORY & SPECIALTY MATCH (+500)
+      // ── 4. CATEGORY MATCH (+500 PTS) ──
+      if (isDoctor && doc.docInfo.isDoctor) {
+        score += 500;
+      }
       if (doc.categoryNorm.includes(normQ) || normQ.includes(doc.categoryNorm)) {
         score += 500;
         if (!matchedReason) matchedReason = doc.category;
       }
-      if (doc.specialtyNorm && (doc.specialtyNorm.includes(normQ) || normQ.includes(doc.specialtyNorm))) {
-        score += 600;
-        if (!matchedReason) matchedReason = doc.specialty;
-      }
 
-      // 5. VILLAGE / LOCATION MATCH (+400)
-      if (locationEntity) {
-        const locNorm = normalizeArabic(locationEntity.name).toLowerCase();
+      // ── 5. LOCATION MATCH (+400 PTS) ──
+      if (location) {
+        const locNorm = normalizeArabic(location.name).toLowerCase();
         if (doc.searchText.includes(locNorm)) {
           score += 400;
         }
       }
 
-      // 6. TOKEN OVERLAP (+120 per token)
+      // ── 6. TOKEN OVERLAP (+100 per token) ──
       queryTokens.forEach(tok => {
         if (tok.length > 1 && doc.searchText.includes(tok)) {
-          score += 120;
+          score += 100;
         }
       });
 
-      // 7. VERIFIED & QUALITY BOOST
+      // ── 7. VERIFIED & QUALITY BOOST ──
       if (doc.isVerified) score += 60;
       score += Math.min(50, Math.floor(doc.rating * 10));
 
-      // 8. OPEN NOW BOOST
+      // ── 8. OPEN NOW BOOST ──
       if (wantsOpenNow && doc.openHours) {
         const isOpen = isPlaceOpen(doc.openHours).isOpen;
         if (isOpen) score += 100;
       }
 
-      // 9. DISTANCE PROXIMITY BOOST
+      // ── 9. DISTANCE PROXIMITY BOOST ──
       if (userCoords && doc.lat && doc.lng) {
         const distKm = calculateDistanceKm(userCoords.lat, userCoords.lng, doc.lat, doc.lng);
         doc.distanceKm = distKm;
@@ -297,7 +332,7 @@ class SearchIndex {
         results.push({
           ...doc,
           score,
-          matchedReason: matchedReason || 'مطابقة في الدليل'
+          matchedReason: matchedReason || doc.specialty || doc.category || 'مطابقة في الدليل'
         });
       }
     }

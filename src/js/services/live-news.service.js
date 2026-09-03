@@ -7,6 +7,7 @@
 import { getDB, dbGet, dbSet, dbUpdate, dbPush } from '../core/db.js';
 import { awardPoints } from './loyalty.service.js';
 import { playNotificationSound, broadcastLiveNewsPushNotification } from './notification.service.js';
+import { getLiveCommunityFeedItems } from './social-news-sync.service.js';
 
 export const NEWS_CATEGORIES = {
   jobs_vacant: { icon: '💼', label: 'وظيفة شاغرة (مطلوب موظف/عامل)', color: '#059669', isJob: true },
@@ -134,6 +135,17 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
       }
     });
   }
+
+  // 3. Ingest Live Community Pulse Feed (Social News without external branding)
+  try {
+    const communityFeed = getLiveCommunityFeedItems();
+    communityFeed.forEach(feedItem => {
+      const id = String(feedItem.id);
+      if (!deletedIds.has(id) && !allMap.has(id)) {
+        allMap.set(id, feedItem);
+      }
+    });
+  } catch (_) {}
 
   let published = Array.from(allMap.values()).filter(i => {
     if (i.status !== 'published' && i.status) return false;
