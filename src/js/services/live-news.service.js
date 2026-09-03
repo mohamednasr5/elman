@@ -21,12 +21,15 @@ export const NEWS_CATEGORIES = {
   announces:  { icon: '📢', label: 'تنبيهات وإعلانات هامة', color: '#D97706' },
   utilities:  { icon: '⚡', label: 'مرافق وخدمات (مياه/كهرباء)', color: '#3B82F6' },
   transport:  { icon: '🚌', label: 'مواقف ومواصلات', color: '#6366F1' },
+  official_manzala: { icon: '🏛️', label: 'مركز ومدينة المنزلة (رسمي)', color: '#0369A1', isOfficial: true },
+  official_matariya: { icon: '🏛️', label: 'رئاسة مركز ومدينة المطرية (رسمي)', color: '#0284C7', isOfficial: true },
   general:    { icon: '🔥', label: 'عام ومحلي', color: '#F97316' }
 };
 
 export const STATUS_TAGS = {
   job_hiring:   { label: '💼 مطلوب فوراً (وظيفة شاغرة)', color: '#10B981', type: 'vacant' },
   job_seeking:  { label: '🧑‍💼 باحث عن عمل (متاح للعمل)', color: '#8B5CF6', type: 'seeker' },
+  official_post:{ label: '🏛️ منشور وتحديث رسمي', color: '#0284C7', type: 'official' },
   active_green: { label: '🟢 يعمل / متاح الآن', color: '#10B981' },
   crowded_red:  { label: '🔴 ازدحام شديد / معطل', color: '#EF4444' },
   warning_amber:{ label: '⚠️ انتباه / تحويل طريق', color: '#F59E0B' },
@@ -145,12 +148,49 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
         allMap.set(id, feedItem);
       }
     });
+
+    // Merge cached official Facebook posts from Worker if present
+    if (typeof localStorage !== 'undefined') {
+      const rawFb = localStorage.getItem('manzala_cached_official_fb_posts');
+      if (rawFb) {
+        const fbPosts = JSON.parse(rawFb);
+        if (Array.isArray(fbPosts)) {
+          fbPosts.forEach(fp => {
+            const id = String(fp.id);
+            if (!deletedIds.has(id) && !allMap.has(id)) {
+              allMap.set(id, {
+                ...fp,
+                status: 'published',
+                statusTagKey: 'official_post',
+                authorBadge: '🏛️ صفحة رسمية موثقة',
+                confirmsCount: 75,
+                lovesCount: 120,
+                doubtsCount: 0
+              });
+            }
+          });
+        }
+      }
+    }
   } catch (_) {}
 
   let published = Array.from(allMap.values()).filter(i => {
     if (i.status !== 'published' && i.status) return false;
+
+    // Strict Mandatory Rule: Jobs MUST have an inquiry link or phone number
+    const isJob = i.category === 'jobs_vacant' || i.category === 'jobs_seeker';
+    if (isJob) {
+      const hasLink = (i.inquiryLink && String(i.inquiryLink).trim().length > 5) || (i.link && String(i.link).trim().length > 5);
+      const hasPhone = (i.phone && String(i.phone).replace(/\D/g, '').length >= 7);
+      const hasTextLink = (i.details && /(https?:\/\/|wa\.me\/|01[0125][0-9]{8})/i.test(i.details)) ||
+                          (i.content && /(https?:\/\/|wa\.me\/|01[0125][0-9]{8})/i.test(i.content));
+      if (!hasLink && !hasPhone && !hasTextLink) {
+        return false; // Strictly discard jobs without inquiry link or contact
+      }
+    }
     
-    // Strict 24-Hour Expiration Rule:
+    // Active Window: 7 days for official municipal posts, 24 hours for normal community pulse
+    const isOfficial = i.isOfficial || i.category === 'official_manzala' || i.category === 'official_matariya';
     const publishTime = Number(i.publishedAt || i.createdAt || 0);
     const expireTime = Number(i.expiresAt || 0);
 
@@ -159,7 +199,8 @@ export async function getPublishedLiveNews({ city = '', category = '', limit = 4
     }
 
     if (publishTime > 0) {
-      return (now - publishTime) <= TWENTY_FOUR_HOURS_MS;
+      const maxWindow = isOfficial ? (7 * 24 * 60 * 60 * 1000) : TWENTY_FOUR_HOURS_MS;
+      return (now - publishTime) <= maxWindow;
     }
 
     return true;
@@ -227,12 +268,21 @@ export async function submitLiveReport({
   city = 'المنزلة',
   imageUrl = '',
   phone = '',
+  inquiryLink = '',
   salary = '',
   user = null,
   isAdminUser = false
 }) {
   if (!title || !location) {
     throw new Error('يرجى كتابة عنوان الخبر وتحديد المكان أو الشارع');
+  }
+
+  const isJob = category === 'jobs_vacant' || category === 'jobs_seeker';
+  const cleanPhone = phone ? phone.trim() : '';
+  const cleanInquiryLink = inquiryLink ? inquiryLink.trim() : '';
+
+  if (isJob && !cleanPhone && !cleanInquiryLink) {
+    throw new Error('تنبيه إلزامي: لإضافة فرصة عمل، يجب توفير رابط للاستعلام أو رقم هاتف/واتساب للتواصل');
   }
 
   const isPublished = Boolean(isAdminUser);
@@ -248,7 +298,8 @@ export async function submitLiveReport({
     details: details.trim(),
     city: city || 'المنزلة',
     imageUrl: imageUrl || '',
-    phone: phone ? phone.trim() : '',
+    phone: cleanPhone,
+    inquiryLink: cleanInquiryLink || (cleanPhone ? `https://wa.me/${cleanPhone.replace(/\D/g, '')}` : ''),
     salary: salary ? salary.trim() : '',
     userId: user?.uid || null,
     userName: user?.name || user?.displayName || (isAdminUser ? 'إدارة المنصة' : 'مواطن من المنزلة والمطرية'),

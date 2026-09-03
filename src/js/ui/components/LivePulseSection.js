@@ -6,6 +6,7 @@ import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js'
  */
 
 import { getPublishedLiveNews, submitLiveReport, reactToLiveNews, NEWS_CATEGORIES, STATUS_TAGS } from '../../services/live-news.service.js';
+import { startTwentyMinuteNewsSync } from '../../services/social-news-sync.service.js';
 import { getCurrentUser, isAdmin } from '../../core/auth.js';
 import { getLoyaltyLevelInfo } from '../../services/loyalty.service.js';
 import { formatDate } from '../../utils/date.js';
@@ -72,6 +73,9 @@ export function mountLivePulseSection(containerId) {
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="all" data-cat="jobs_vacant,jobs_seeker" style="border-radius:9999px;font-weight:800;font-size:12px;padding:6px 16px;color:#34D399;border-color:#34D399;flex-shrink:0;background:rgba(16,185,129,0.15)">
               💼 وظائف وفرص عمل
+            </button>
+            <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="all" data-cat="official_manzala,official_matariya" style="border-radius:9999px;font-weight:800;font-size:12px;padding:6px 16px;color:#38BDF8;border-color:#38BDF8;flex-shrink:0;background:rgba(56,189,248,0.15)">
+              🏛️ الأخبار الرسمية
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="المنزلة" data-cat="all" style="border-radius:9999px;font-weight:700;font-size:12px;padding:6px 16px;color:#fff;border-color:rgba(255,255,255,0.3);flex-shrink:0">
               📍 المنزلة
@@ -140,14 +144,19 @@ export function mountLivePulseSection(containerId) {
 
       const isJobVacant = item.category === 'jobs_vacant' || item.statusTagKey === 'job_hiring';
       const isJobSeeker = item.category === 'jobs_seeker' || item.statusTagKey === 'job_seeking';
+      const isOfficialPost = item.isOfficial || item.category === 'official_manzala' || item.category === 'official_matariya';
 
       return `
-        <div class="live-news-card-luxury live-card-stagger ${isJobVacant ? 'card-job-vacant' : ''} ${isJobSeeker ? 'card-job-seeker' : ''}" data-news-id="${item.id}" style="animation-delay:${index * 0.07}s">
+        <div class="live-news-card-luxury live-card-stagger ${isJobVacant ? 'card-job-vacant' : ''} ${isJobSeeker ? 'card-job-seeker' : ''} ${isOfficialPost ? 'card-official-pulse' : ''}" data-news-id="${item.id}" style="animation-delay:${index * 0.07}s">
           <div>
             <!-- Card Top: Category + Pulsing Tag + Live Time -->
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                ${isJobVacant ? `
+                ${isOfficialPost ? `
+                  <span class="badge" style="background:linear-gradient(135deg,#0B1E30,#0369A1);color:#fff;font-weight:900;font-size:11.5px;padding:4px 12px;border-radius:8px;box-shadow:0 2px 8px rgba(3,105,161,0.25);border:1px solid rgba(255,255,255,0.2)">
+                    🏛️ منشور رسمي موثق
+                  </span>
+                ` : isJobVacant ? `
                   <span class="badge-job-pulse">
                     <span>💼</span> <span>وظيفة شاغرة تنبض</span>
                   </span>
@@ -187,14 +196,34 @@ export function mountLivePulseSection(containerId) {
               </p>
             ` : ''}
 
-            <!-- Direct Contact Button for Jobs -->
-            ${(isJobVacant || isJobSeeker) && item.phone ? `
+            <!-- Direct Contact & Inquiry Buttons for Jobs -->
+            ${(isJobVacant || isJobSeeker) ? `
               <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-                <a href="${buildContextualWhatsAppLink(item.phone, { source: 'job_pulse', jobTitle: item.title, placeName: item.userName })}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:#25D366;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(37,211,102,0.3)">
-                  <img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /> <span>واتساب للتقديم: ${esc(item.phone)}</span>
-                </a>
-                <a href="tel:${esc(item.phone)}" class="btn btn-sm" style="background:#0F2B48;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
-                  <span>📞 اتصال</span>
+                ${item.inquiryLink ? `
+                  <a href="${esc(item.inquiryLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:linear-gradient(135deg,#0369A1,#0284C7);color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:7px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(3,105,161,0.25)">
+                    <span>🔗</span> <span>رابط الاستعلام والتقديم</span>
+                  </a>
+                ` : ''}
+                ${item.phone ? `
+                  <a href="${buildContextualWhatsAppLink(item.phone, { source: 'job_pulse', jobTitle: item.title, placeName: item.userName })}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="flex:1;background:#25D366;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:7px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(37,211,102,0.3)">
+                    <img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /> <span>واتساب: ${esc(item.phone)}</span>
+                  </a>
+                  <a href="tel:${esc(item.phone)}" class="btn btn-sm" style="background:#0F2B48;color:#fff;border-radius:10px;font-weight:800;font-size:12px;padding:7px 12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center">
+                    <span>📞 اتصال</span>
+                  </a>
+                ` : ''}
+              </div>
+            ` : ''}
+
+            <!-- Source & Direct View for Official Municipal Posts -->
+            ${(item.isOfficial || item.category === 'official_manzala' || item.category === 'official_matariya' || item.facebookPostUrl) ? `
+              <div style="background:rgba(2,132,199,0.06);border:1px solid rgba(2,132,199,0.2);border-radius:12px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <span style="font-size:11.5px;color:#0369A1;font-weight:800;display:flex;align-items:center;gap:5px">
+                  <span>🏛️</span>
+                  <span>المصدر: ${esc(item.sourceName || (item.city === 'المطرية' ? 'رئاسة مركز ومدينة المطرية' : 'مركز ومدينة المنزلة'))} (Facebook)</span>
+                </span>
+                <a href="${esc(item.facebookPostUrl || item.inquiryLink || (item.city === 'المطرية' ? 'https://www.facebook.com/profile.php?id=100064388064434' : 'https://www.facebook.com/profile.php?id=100064659433354'))}" target="_blank" rel="noopener noreferrer" class="btn btn-xs" style="background:#1877F2;color:#fff;font-weight:800;border-radius:8px;padding:4px 10px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+                  <span>عرض على Facebook ↗</span>
                 </a>
               </div>
             ` : ''}
@@ -206,8 +235,8 @@ export function mountLivePulseSection(containerId) {
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="color:var(--text-muted)">بواسطة:</span>
                 <strong style="color:var(--text-primary)">${esc(item.userName || 'مواطن')}</strong>
-                <span class="badge" style="font-size:10.5px;padding:2px 8px;background:${item.isAutoIngested ? 'rgba(2,132,199,0.12)' : 'rgba(245,166,35,0.15)'};color:${item.isAutoIngested ? '#0284C7' : authorLvl.color};border-radius:6px;font-weight:800">
-                  ${item.isAutoIngested ? '📢 تقرير معتمد' : `${authorLvl.icon} ${authorLvl.name}`}
+                <span class="badge" style="font-size:10.5px;padding:2px 8px;background:${item.isOfficial ? 'rgba(3,105,161,0.15)' : item.isAutoIngested ? 'rgba(2,132,199,0.12)' : 'rgba(245,166,35,0.15)'};color:${item.isOfficial ? '#0369A1' : item.isAutoIngested ? '#0284C7' : authorLvl.color};border-radius:6px;font-weight:800">
+                  ${item.isOfficial ? '🏛️ صفحة رسمية موثقة' : item.isAutoIngested ? '📢 تقرير معتمد' : `${authorLvl.icon} ${authorLvl.name}`}
                 </span>
               </div>
               <div style="font-size:11.5px;color:#059669;font-weight:800;display:flex;align-items:center;gap:4px">
@@ -280,6 +309,13 @@ export function mountLivePulseSection(containerId) {
   document.getElementById('btn-open-live-report-modal')?.addEventListener('click', () => {
     openLiveReportModal(renderNewsCards);
   });
+
+  // Start 20-Minute Automatic News & Jobs Sync Cycle
+  try {
+    startTwentyMinuteNewsSync(() => {
+      renderNewsCards();
+    });
+  } catch (_) {}
 }
 
 /**
@@ -350,10 +386,16 @@ export function openLiveReportModal(onSuccessCallback) {
           </div>
         </div>
 
-        <!-- Phone / WhatsApp for direct contact (Recommended for Jobs) -->
-        <div class="form-group" style="margin:0">
-          <label class="form-label" style="font-weight:800">رقم الهاتف / واتساب للتواصل (مهم للوظائف)</label>
-          <input type="tel" id="live-input-phone" class="form-input" placeholder="مثال: 01012345678" />
+        <!-- Inquiry Link & Phone for Jobs -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="job-inquiry-fields-container">
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:800">رابط الاستعلام / التقديم الإلكتروني <span id="label-req-link" style="display:none;color:#EF4444">*</span></label>
+            <input type="url" id="live-input-inquiry-link" class="form-input" placeholder="https://... أو رابط واتساب" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:800">رقم هاتف أو واتساب للتواصل <span id="label-req-phone" style="display:none;color:#EF4444">*</span></label>
+            <input type="tel" id="live-input-phone" class="form-input" placeholder="مثال: 01012345678" />
+          </div>
         </div>
 
         <div class="form-group" style="margin:0">
@@ -374,11 +416,20 @@ export function openLiveReportModal(onSuccessCallback) {
           const city = document.getElementById('live-select-city')?.value;
           const category = document.getElementById('live-select-category')?.value;
           const statusTagKey = document.getElementById('live-select-status-tag')?.value;
+          const inquiryLink = document.getElementById('live-input-inquiry-link')?.value.trim();
           const phone = document.getElementById('live-input-phone')?.value.trim();
           const details = document.getElementById('live-input-details')?.value.trim();
 
           if (!title || !location) {
             toast.warning('يرجى ملء عنوان الإعلان وتحديد المكان');
+            return;
+          }
+
+          // Strict mandatory rule for jobs: Must have inquiry link or contact phone/whatsapp
+          const isJob = category === 'jobs_vacant' || category === 'jobs_seeker';
+          if (isJob && !inquiryLink && !phone) {
+            toast.warning('تنبيه إلزامي: لإضافة فرصة عمل، يجب إدخال رابط للاستعلام أو رقم هاتف/واتساب للتواصل');
+            document.getElementById('live-input-inquiry-link')?.focus();
             return;
           }
 
@@ -390,6 +441,7 @@ export function openLiveReportModal(onSuccessCallback) {
               category,
               statusTagKey,
               phone,
+              inquiryLink,
               details,
               user,
               isAdminUser: isUserAdmin
@@ -412,11 +464,18 @@ export function openLiveReportModal(onSuccessCallback) {
     ]
   });
 
-  // Auto-switch status tag when choosing job category
+  // Auto-switch status tag & highlight inquiry requirements when choosing job category
   const catSelect = document.getElementById('live-select-category');
   const tagSelect = document.getElementById('live-select-status-tag');
+  const reqLink = document.getElementById('label-req-link');
+  const reqPhone = document.getElementById('label-req-phone');
   if (catSelect && tagSelect) {
     catSelect.addEventListener('change', () => {
+      const isJob = catSelect.value === 'jobs_vacant' || catSelect.value === 'jobs_seeker';
+      if (reqLink && reqPhone) {
+        reqLink.style.display = isJob ? 'inline' : 'none';
+        reqPhone.style.display = isJob ? 'inline' : 'none';
+      }
       if (catSelect.value === 'jobs_vacant') tagSelect.value = 'job_hiring';
       else if (catSelect.value === 'jobs_seeker') tagSelect.value = 'job_seeking';
     });
