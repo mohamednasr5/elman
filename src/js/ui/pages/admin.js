@@ -12,8 +12,8 @@ import { toast } from '../components/Toast.js';
 import { formatDate } from '../../utils/date.js';
 import { getPendingLiveNews, getPublishedLiveNews, adminApproveLiveNews, adminUpdateLiveNews, adminDeleteLiveNews, submitLiveReport, NEWS_CATEGORIES, STATUS_TAGS } from '../../services/live-news.service.js';
 import { getLoyaltyLevelInfo, LOYALTY_LEVELS } from '../../services/loyalty.service.js';
-import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
-import { arabicMatch } from '../../utils/arabic.js';
+import { arabicMatch, normalizeArabic } from '../../utils/arabic.js';
+import { normalizePhoneNumber } from '../../utils/phone.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 
 // ── In-Memory Cache Store for 0ms Tab Switching ──
@@ -1900,10 +1900,26 @@ async function renderAdminReviews($container) {
               />
               <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔎</span>
             </div>
-            <select id="add-rev-place" class="form-select" required>
+            <select id="add-rev-place" class="form-select" required style="border-radius:10px;font-weight:600">
               <option value="">-- اختر المكان من القائمة (${places.length} مكان) --</option>
-              ${places.map(p => `<option value="${escAttr(p.id)}" data-slug="${escAttr(p.slug || '')}">${escHtml(p.name)}</option>`).join('')}
+              ${places.map(p => `
+                <option value="${escAttr(p.id)}" data-slug="${escAttr(p.slug || '')}" data-name="${escAttr(p.name)}" data-cat="${escAttr(p.categoryName || p.categoryId || '')}" data-area="${escAttr(p.area || 'المنزلة')}" data-phone="${escAttr(p.phone || '')}" data-img="${escAttr(p.coverImageUrl || p.logoUrl || '')}">
+                  ${escHtml(p.name)} (${escHtml(p.categoryName || p.categoryId || 'عام')} - ${escHtml(p.area || 'المنزلة')}) ${p.phone ? '📞 ' + escHtml(p.phone) : ''}
+                </option>
+              `).join('')}
             </select>
+
+            <!-- Preview Card -->
+            <div id="add-rev-place-preview-card" style="display:none;margin-top:8px;padding:8px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;align-items:center;gap:10px">
+              <div class="place-preview-img" style="width:36px;height:36px;border-radius:6px;background:var(--primary-alpha);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:16px">
+                🏢
+              </div>
+              <div style="flex:1;min-width:0">
+                <div class="place-preview-name" style="font-weight:700;font-size:13px;color:var(--text-primary)" class="truncate">اسم المكان</div>
+                <div class="place-preview-meta" style="font-size:11px;color:var(--text-muted)" class="truncate">التصنيف والمنطقة</div>
+              </div>
+              <span class="chip chip--success" style="font-size:10px;padding:2px 6px">تم الاختيار ✓</span>
+            </div>
           </div>
 
           <!-- User Mode -->
@@ -2014,34 +2030,12 @@ async function renderAdminReviews($container) {
     });
 
     // Live search filter for add-rev-place
-    const addRevSearch = document.getElementById('add-rev-place-search');
-    const addRevSelect = document.getElementById('add-rev-place');
-    const addRevMatchCount = document.getElementById('add-rev-place-match-count');
-
-    addRevSearch?.addEventListener('input', (e) => {
-      const q = e.target.value.trim();
-      let matchedCount = 0;
-      let firstMatchedId = null;
-
-      Array.from(addRevSelect.options).forEach((opt, idx) => {
-        if (idx === 0) return;
-        const text = opt.textContent || '';
-        const match = !q || arabicMatch(text, q);
-        opt.hidden = !match;
-        opt.style.display = match ? 'block' : 'none';
-        if (match) {
-          matchedCount++;
-          if (!firstMatchedId) firstMatchedId = opt.value;
-        }
-      });
-
-      if (addRevMatchCount) {
-        addRevMatchCount.textContent = q ? `${matchedCount} مطابق للبحث` : `${places.length} مكان متاح`;
-      }
-
-      if (q && matchedCount > 0 && firstMatchedId) {
-        addRevSelect.value = firstMatchedId;
-      }
+    setupPlaceLiveSearch({
+      searchInputId: 'add-rev-place-search',
+      selectElementId: 'add-rev-place',
+      matchCountId: 'add-rev-place-match-count',
+      previewCardId: 'add-rev-place-preview-card',
+      totalCount: places.length
     });
 
     // Toggle custom/registered user fields
@@ -2080,13 +2074,29 @@ async function renderAdminReviews($container) {
               />
               <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔎</span>
             </div>
-            <select id="bulk-rev-place" class="form-select" required>
+            <select id="bulk-rev-place" class="form-select" required style="border-radius:10px;font-weight:600">
               <option value="">-- اختر المكان من القائمة (${places.length} مكان) --</option>
               ${places.map(p => {
                 const isHammad = (p.slug === HAMMAD_PLACE_SLUG || p.name?.includes('محمد حماد'));
-                return `<option value="${escAttr(p.id)}" ${isHammad ? 'selected' : ''}>${escHtml(p.name)} ${isHammad ? '⭐ (مهندس محمد حماد)' : ''}</option>`;
+                return `
+                  <option value="${escAttr(p.id)}" ${isHammad ? 'selected' : ''} data-name="${escAttr(p.name)}" data-slug="${escAttr(p.slug || '')}" data-cat="${escAttr(p.categoryName || p.categoryId || '')}" data-area="${escAttr(p.area || 'المنزلة')}" data-phone="${escAttr(p.phone || '')}" data-img="${escAttr(p.coverImageUrl || p.logoUrl || '')}">
+                    ${escHtml(p.name)} ${isHammad ? '⭐ (مهندس محمد حماد)' : `(${escHtml(p.categoryName || p.categoryId || 'عام')} - ${escHtml(p.area || 'المنزلة')})`} ${p.phone ? '📞 ' + escHtml(p.phone) : ''}
+                  </option>
+                `;
               }).join('')}
             </select>
+
+            <!-- Preview Card -->
+            <div id="bulk-rev-place-preview-card" style="display:none;margin-top:8px;padding:8px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;align-items:center;gap:10px">
+              <div class="place-preview-img" style="width:36px;height:36px;border-radius:6px;background:var(--primary-alpha);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:16px">
+                🏢
+              </div>
+              <div style="flex:1;min-width:0">
+                <div class="place-preview-name" style="font-weight:700;font-size:13px;color:var(--text-primary)" class="truncate">اسم المكان</div>
+                <div class="place-preview-meta" style="font-size:11px;color:var(--text-muted)" class="truncate">التصنيف والمنطقة</div>
+              </div>
+              <span class="chip chip--primary" style="font-size:10px;padding:2px 6px">المكان المختار ✓</span>
+            </div>
           </div>
 
           <!-- Mega Generator Controls Box -->
@@ -2274,44 +2284,18 @@ async function renderAdminReviews($container) {
     });
 
     // Live Search Filter for Bulk Review Place Dropdown
-    const bulkPlaceSearch = document.getElementById('bulk-rev-place-search');
-    const bulkPlaceSelect = document.getElementById('bulk-rev-place');
-    const bulkPlaceMatchCount = document.getElementById('bulk-place-match-count');
-
-    bulkPlaceSearch?.addEventListener('input', (e) => {
-      const q = e.target.value.trim();
-      let matchedCount = 0;
-      let firstMatchedId = null;
-
-      Array.from(bulkPlaceSelect.options).forEach((opt, idx) => {
-        if (idx === 0) return;
-        const text = opt.textContent || '';
-        const match = !q || arabicMatch(text, q);
-        opt.hidden = !match;
-        opt.style.display = match ? 'block' : 'none';
-        if (match) {
-          matchedCount++;
-          if (!firstMatchedId) firstMatchedId = opt.value;
+    setupPlaceLiveSearch({
+      searchInputId: 'bulk-rev-place-search',
+      selectElementId: 'bulk-rev-place',
+      matchCountId: 'bulk-place-match-count',
+      previewCardId: 'bulk-rev-place-preview-card',
+      totalCount: places.length,
+      onSelectCallback: (selectedId) => {
+        const targetPlace = places.find(p => p.id === selectedId);
+        const specInput = document.getElementById('gen-rev-specialty');
+        if (targetPlace && specInput) {
+          specInput.value = targetPlace.categoryName || targetPlace.category || targetPlace.description || 'الخدمات والنشاط';
         }
-      });
-
-      if (bulkPlaceMatchCount) {
-        bulkPlaceMatchCount.textContent = q ? `${matchedCount} مطابق للبحث` : `${places.length} مكان متاح`;
-      }
-
-      if (q && matchedCount > 0 && firstMatchedId) {
-        bulkPlaceSelect.value = firstMatchedId;
-        bulkPlaceSelect.dispatchEvent(new Event('change'));
-      }
-    });
-
-    // Auto update specialty when place changes
-    document.getElementById('bulk-rev-place')?.addEventListener('change', (e) => {
-      const selectedId = e.target.value;
-      const targetPlace = places.find(p => p.id === selectedId);
-      const specInput = document.getElementById('gen-rev-specialty');
-      if (targetPlace && specInput) {
-        specInput.value = targetPlace.categoryName || targetPlace.category || targetPlace.description || 'الخدمات والنشاط';
       }
     });
 
@@ -3130,20 +3114,50 @@ function showAddAdModal(user, onDone) {
 
       <!-- Option 1: Promote Place -->
       <div id="ad-place-group" class="form-group">
-        <label class="form-label">اختر المكان لترويجه كإعلان مدفوع <span class="required">*</span></label>
-        <select id="ad-place-id" class="form-select">
-          <option value="">-- اختر المكان من القائمة --</option>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <label class="form-label" style="margin:0;font-weight:700">اختر المكان لترويجه كإعلان مدفوع <span class="required">*</span></label>
+          <span id="ad-place-match-count" style="font-size:11px;color:var(--text-muted)">${placesList.length} مكان متاح</span>
+        </div>
+
+        <!-- Fast Search Input -->
+        <div style="position:relative;margin-bottom:8px">
+          <input 
+            type="search" 
+            id="ad-place-search" 
+            class="form-input" 
+            placeholder="🔍 اكتب اسم المكان، التصنيف، المنطقة، أو رقم الهاتف للبحث السريع..." 
+            autocomplete="off" 
+            style="padding-right:34px;font-size:13px;border-radius:10px"
+          />
+          <span style="position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">🔎</span>
+        </div>
+
+        <select id="ad-place-id" class="form-select" style="border-radius:10px;font-weight:600">
+          <option value="">-- اختر المكان من القائمة (${placesList.length} مكان) --</option>
           ${placesList.map(p => `
-            <option value="${escAttr(p._id)}" data-name="${escAttr(p.name)}" data-slug="${escAttr(p.slug)}" data-img="${escAttr(p.coverImageUrl || p.logoUrl || '')}">
-              ${escHtml(p.name)} (${escHtml(p.categoryId || 'عام')} - ${escHtml(p.area || 'المنزلة')})
+            <option value="${escAttr(p._id)}" data-name="${escAttr(p.name)}" data-slug="${escAttr(p.slug)}" data-img="${escAttr(p.coverImageUrl || p.logoUrl || '')}" data-phone="${escAttr(p.phone || '')}" data-cat="${escAttr(p.categoryName || p.categoryId || '')}" data-area="${escAttr(p.area || 'المنزلة')}">
+              ${escHtml(p.name)} (${escHtml(p.categoryName || p.categoryId || 'عام')} - ${escHtml(p.area || 'المنزلة')}) ${p.phone ? '📞 ' + escHtml(p.phone) : ''}
             </option>
           `).join('')}
         </select>
-        <div style="margin-top:10px">
-          <label class="form-label">مدة الإعلان (بالأيام) <span class="required">*</span></label>
-          <input type="number" id="ad-place-days" class="form-input" value="30" placeholder="عدد الأيام (مثال: 7 أو 30 أو 90)" />
+
+        <!-- Selected Place Preview Card -->
+        <div id="ad-place-preview-card" style="display:none;margin-top:10px;padding:10px 14px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:12px;align-items:center;gap:12px">
+          <div class="place-preview-img" style="width:44px;height:44px;border-radius:8px;background:var(--primary-alpha);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:20px">
+            🏢
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="place-preview-name" style="font-weight:800;font-size:13.5px;color:var(--text-primary)" class="truncate">اسم المكان</div>
+            <div class="place-preview-meta" style="font-size:11.5px;color:var(--text-muted)" class="truncate">التصنيف والمنطقة</div>
+          </div>
+          <span class="chip chip--warning" style="font-size:11px;padding:3px 8px;font-weight:700">ترويج كإعلان مدفوع ⭐</span>
         </div>
-        <div class="form-hint">عند اختيار مكان، سيتم منحه شارة "إعلان مدفوع" وإعطائه الأولوية القصوى ليظهر أولاً في كل الصفحات حتى تاريخ انتهاء المدة المحددة.</div>
+
+        <div style="margin-top:12px">
+          <label class="form-label" style="font-weight:700">مدة الإعلان (بالأيام) <span class="required">*</span></label>
+          <input type="number" id="ad-place-days" class="form-input" value="30" placeholder="عدد الأيام (مثال: 7 أو 30 أو 90)" style="border-radius:10px" />
+        </div>
+        <div class="form-hint" style="margin-top:6px">عند اختيار مكان، سيتم منحه شارة "إعلان مدفوع" وإعطائه الأولوية القصوى ليظهر أولاً في كل الصفحات حتى تاريخ انتهاء المدة المحددة.</div>
       </div>
 
       <!-- Option 2: Custom Banner Fields -->
@@ -3281,6 +3295,15 @@ function showAddAdModal(user, onDone) {
     const customFields = document.getElementById('ad-custom-fields');
     if (placeGroup) placeGroup.style.display = isPlace ? 'block' : 'none';
     if (customFields) customFields.style.display = isPlace ? 'none' : 'block';
+  });
+
+  // Fast live search for places in Ad modal
+  setupPlaceLiveSearch({
+    searchInputId: 'ad-place-search',
+    selectElementId: 'ad-place-id',
+    matchCountId: 'ad-place-match-count',
+    previewCardId: 'ad-place-preview-card',
+    totalCount: placesList.length
   });
 }
 
@@ -4684,6 +4707,113 @@ function escHtml(str) {
 function escAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/**
+ * Setup a Live Search input linked to a Place <select> dropdown
+ * Supports filtering by Arabic text, Egyptian dialect normalization, and phone numbers.
+ * Also manages real-time match count badges and a visual preview card.
+ */
+function setupPlaceLiveSearch({
+  searchInputId,
+  selectElementId,
+  matchCountId,
+  previewCardId,
+  totalCount = 0,
+  onSelectCallback = null
+}) {
+  const searchInput = document.getElementById(searchInputId);
+  const selectEl = document.getElementById(selectElementId);
+  const matchCountEl = matchCountId ? document.getElementById(matchCountId) : null;
+  const previewCard = previewCardId ? document.getElementById(previewCardId) : null;
+
+  function updatePreview() {
+    if (!previewCard || !selectEl) return;
+    const opt = selectEl.selectedOptions ? selectEl.selectedOptions[0] : null;
+    if (!opt || !opt.value) {
+      previewCard.style.display = 'none';
+      return;
+    }
+    previewCard.style.display = 'flex';
+    const name = opt.dataset.name || opt.textContent.trim();
+    const cat = opt.dataset.cat || '';
+    const area = opt.dataset.area || '';
+    const phone = opt.dataset.phone || '';
+    const img = opt.dataset.img || '';
+
+    const nameEl = previewCard.querySelector('.place-preview-name');
+    const metaEl = previewCard.querySelector('.place-preview-meta');
+    const imgEl = previewCard.querySelector('.place-preview-img');
+
+    if (nameEl) nameEl.textContent = name;
+    if (metaEl) {
+      const parts = [];
+      if (cat) parts.push(cat);
+      if (area) parts.push(area);
+      if (phone) parts.push(`📞 ${phone}`);
+      metaEl.textContent = parts.join(' • ');
+    }
+    if (imgEl) {
+      if (img) {
+        imgEl.innerHTML = `<img src="${escAttr(img)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='🏢'" />`;
+      } else {
+        imgEl.innerHTML = '🏢';
+      }
+    }
+  }
+
+  selectEl?.addEventListener('change', () => {
+    updatePreview();
+    if (onSelectCallback) onSelectCallback(selectEl.value, selectEl.selectedOptions ? selectEl.selectedOptions[0] : null);
+  });
+
+  searchInput?.addEventListener('input', (e) => {
+    const q = e.target.value.trim();
+    const qNorm = normalizeArabic(q);
+    const qPhone = normalizePhoneNumber(q);
+    let matchedCount = 0;
+    let firstMatchedId = null;
+
+    Array.from(selectEl.options).forEach((opt, idx) => {
+      if (idx === 0) return; // Keep placeholder option
+      const name = opt.dataset.name || opt.textContent || '';
+      const cat = opt.dataset.cat || '';
+      const area = opt.dataset.area || '';
+      const phone = opt.dataset.phone || '';
+      const fullText = `${name} ${cat} ${area} ${phone}`;
+
+      let match = !q;
+      if (q) {
+        if (arabicMatch(fullText, q)) match = true;
+        else if (normalizeArabic(fullText).includes(qNorm)) match = true;
+        else if (qPhone && phone && normalizePhoneNumber(phone).includes(qPhone)) match = true;
+      }
+
+      opt.hidden = !match;
+      opt.style.display = match ? 'block' : 'none';
+      if (match) {
+        matchedCount++;
+        if (!firstMatchedId) firstMatchedId = opt.value;
+      }
+    });
+
+    if (matchCountEl) {
+      matchCountEl.textContent = q ? `${matchedCount} مطابق للبحث` : `${totalCount || (selectEl.options.length - 1)} مكان متاح`;
+    }
+
+    if (q && matchedCount > 0 && firstMatchedId) {
+      selectEl.value = firstMatchedId;
+      updatePreview();
+      if (onSelectCallback) onSelectCallback(selectEl.value, selectEl.selectedOptions ? selectEl.selectedOptions[0] : null);
+    } else if (q && matchedCount === 0) {
+      selectEl.value = '';
+      updatePreview();
+      if (onSelectCallback) onSelectCallback('', null);
+    }
+  });
+
+  // Initial preview
+  updatePreview();
 }
 
 

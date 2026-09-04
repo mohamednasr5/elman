@@ -1347,14 +1347,14 @@ function setupPlaceSharing(place) {
   const rawSlug = place.slug || place.id || '';
   const cleanShortSlug = String(rawSlug).replace(/-[a-z0-9_]{5,7}$/i, '');
   const finalSlug = (cleanShortSlug && cleanShortSlug.length >= 3) ? cleanShortSlug : rawSlug;
-  const canonicalPlaceUrl = `https://dalilmanzala.com/${encodeURIComponent(finalSlug)}`;
-  const coverUrl = place.coverImageUrl || place.logoUrl || 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
+  const canonicalPlaceUrl = `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(finalSlug || rawSlug)}`;
+  const coverUrl = place.coverImageUrl || place.logoUrl || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
 
   const shareText = `📍 *${placeName}*
 📌 العنوان: ${placeAddress}
 🔗 رابط المكان على الدليل: ${canonicalPlaceUrl}
 
-✨ تم مشاركة هذه البطاقة من دليل المنزلة والمطرية الرقمي.. أنتم كمان ممكن تضيفوا محلكم أو شركتكم مجاناً معنا من هنا:
+✨ دليل المنزلة والمطرية الرقمي — دليلك الشامل لجميع الأنشطة والخدمات والأطباء بالمنزلة والمطرية
 🌐 https://dalilmanzala.com/`;
 
   triggers.forEach(btn => {
@@ -1648,7 +1648,7 @@ function renderWorkingHoursSectionHTML({ isOpen, workingHoursList }) {
           <div class="working-hours__row ${h.isToday ? 'working-hours__row--today' : ''}">
             <span class="working-hours__day">${h.name} ${h.isToday ? '(اليوم)' : ''}</span>
             <span class="working-hours__time ${h.closed ? 'working-hours__time--closed' : ''}">
-              ${h.closed ? 'مغلق' : `${h.open} — ${h.close}`}
+              ${h.closed ? 'مغلق' : ((h.open === '00:00' && (h.close === '23:59' || h.close === '24:00')) ? 'مفتوح 24 ساعة 🟢' : `${h.open} — ${h.close}`)}
             </span>
           </div>
         `).join('')}

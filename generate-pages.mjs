@@ -17,12 +17,30 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
   <meta name="keywords" content="دليل المنزلة والمطرية الرقمي, المنزلة, المطرية دقهلية, العصافرة, الجمالية, ميت سلسيل, البصراط, العزيزة, الأحمدية, الروضة, الحوتة, النسايمة, ميت خضير, ميت شريف, محلات, أطباء, حرفيين, خدمات الدقهلية"/>
   <meta name="robots" content="index,follow"/>
   <link rel="canonical" href="https://dalilmanzala.com/${file}"/>
+  
+  <!-- Open Graph / WhatsApp / Facebook -->
+  <meta property="og:type" content="website"/>
+  <meta property="og:url" content="https://dalilmanzala.com/${file}"/>
   <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي"/>
   <meta property="og:title" content="${title} | دليل المنزلة والمطرية الرقمي"/>
   <meta property="og:description" content="${desc}"/>
-  <meta property="og:image" content="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp"/>
+  <meta property="og:image" content="https://dalilmanzala.com/assets/images/og-whatsapp.jpg"/>
+  <meta property="og:image:secure_url" content="https://dalilmanzala.com/assets/images/og-whatsapp.jpg"/>
+  <meta property="og:image:type" content="image/jpeg"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:alt" content="${title} | دليل المنزلة والمطرية الرقمي"/>
   <meta property="og:locale" content="ar_EG"/>
-  <meta property="og:type" content="website"/>
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:url" content="https://dalilmanzala.com/${file}"/>
+  <meta name="twitter:title" content="${title} | دليل المنزلة والمطرية الرقمي"/>
+  <meta name="twitter:description" content="${desc}"/>
+  <meta name="twitter:image" content="https://dalilmanzala.com/assets/images/og-whatsapp.jpg"/>
+
+  <!-- Image source for older scrapers -->
+  <link rel="image_src" href="https://dalilmanzala.com/assets/images/og-whatsapp.jpg"/>
   <meta name="theme-color" content="#1B4F72"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -121,8 +139,8 @@ const pages = [
   },
   {
     file: 'place.html',
-    title: 'تفاصيل المكان أو النشاط',
-    desc: 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والعنوان والعروض والخدمات في المنزلة والمطرية',
+    title: 'تفاصيل ومواعيد وأرقام التواصل للمكان والنشاط',
+    desc: 'دليل المنزلة والمطرية — تصفح أرقام الهاتف والواتساب، مواعيد وساعات العمل، العنوان بالتفصيل على الخريطة، العروض الحصرية، والتقييمات للأنشطة والمحلات والأطباء والحرفيين بالمنزلة والمطرية',
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';

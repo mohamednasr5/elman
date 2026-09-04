@@ -114,6 +114,7 @@ export async function createPlace(placeData, currentUser) {
     mapsLink: placeData.mapsLink || '',
     location: placeData.location || { lat: 31.1578, lng: 31.9367 }, // Default El Manzala
     alwaysOpen: Boolean(placeData.alwaysOpen),
+    alwaysOpenExcept: Boolean(placeData.alwaysOpenExcept),
     workingHours: placeData.workingHours || getDefaultWorkingHours(),
     coverImageUrl: placeData.coverImageUrl || '',
     logoUrl: placeData.logoUrl || '',
@@ -218,6 +219,7 @@ export async function updatePlace(placeId, placeData) {
     mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''),
     location: placeData.location !== undefined ? placeData.location : current.location,
     alwaysOpen: placeData.alwaysOpen !== undefined ? Boolean(placeData.alwaysOpen) : Boolean(current.alwaysOpen),
+    alwaysOpenExcept: placeData.alwaysOpenExcept !== undefined ? Boolean(placeData.alwaysOpenExcept) : Boolean(current.alwaysOpenExcept),
     workingHours: placeData.workingHours || current.workingHours,
     coverImageUrl: placeData.coverImageUrl !== undefined ? placeData.coverImageUrl : current.coverImageUrl,
     logoUrl: placeData.logoUrl !== undefined ? placeData.logoUrl : current.logoUrl,

@@ -493,7 +493,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
 
   // Fetch from Firebase RTDB
   try {
-    const rtdbRes = await fetch('https://elmanzala-default-rtdb.firebaseio.com/places.json');
+    const rtdbRes = await fetch('https://elmanzla-default-rtdb.firebaseio.com/places.json');
     if (rtdbRes.ok) {
       const allPlaces = await rtdbRes.json();
       const lowerSlug = cleanSlug.toLowerCase();
@@ -509,9 +509,9 @@ async function handleDynamicOpenGraph(slug, request, env) {
     }
   } catch (_) {}
 
-  const placeName = place?.name || 'تفاصيل المكان | دليل المنزلة والمطرية الرقمي';
+  const placeName = place?.name || 'تفاصيل ومواعيد وأرقام التواصل | دليل المنزلة والمطرية';
   const placeDesc = place?.description || 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والعنوان والعروض والخدمات في دليل المنزلة والمطرية الرقمي';
-  const placeImg = place?.coverImageUrl || place?.logoUrl || 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
+  const placeImg = place?.coverImageUrl || place?.logoUrl || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
   const placeTargetSlug = place?.slug || cleanSlug;
   const destinationUrl = `${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`;
 

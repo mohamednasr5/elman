@@ -443,6 +443,41 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     initialServices = place.services.split(/[,،]+/).map(s => s.trim()).filter(Boolean);
   }
 
+  const weekDays = [
+    { key: 'saturday', label: 'السبت' },
+    { key: 'sunday', label: 'الأحد' },
+    { key: 'monday', label: 'الاثنين' },
+    { key: 'tuesday', label: 'الثلاثاء' },
+    { key: 'wednesday', label: 'الأربعاء' },
+    { key: 'thursday', label: 'الخميس' },
+    { key: 'friday', label: 'الجمعة' }
+  ];
+
+  let initialHoursMode = 'custom';
+  let initialClosedDaysInExcept = [];
+
+  if (place) {
+    if (place.alwaysOpen) {
+      initialHoursMode = 'always';
+    } else if (place.alwaysOpenExcept) {
+      initialHoursMode = 'always_except';
+      initialClosedDaysInExcept = weekDays.filter(d => place.workingHours?.[d.key]?.closed).map(d => d.key);
+    } else if (place.workingHours) {
+      const openDays = weekDays.filter(d => !place.workingHours[d.key]?.closed);
+      const closedDays = weekDays.filter(d => place.workingHours[d.key]?.closed);
+      const allOpenDays24 = openDays.length > 0 && openDays.every(d => {
+        const h = place.workingHours[d.key];
+        return h?.open === '00:00' && (h?.close === '23:59' || h?.close === '24:00');
+      });
+      if (allOpenDays24 && closedDays.length > 0) {
+        initialHoursMode = 'always_except';
+        initialClosedDaysInExcept = closedDays.map(d => d.key);
+      } else if (openDays.length === 7 && allOpenDays24) {
+        initialHoursMode = 'always';
+      }
+    }
+  }
+
   $container.innerHTML = `
     <div class="dashboard-header">
       <div>
@@ -802,29 +837,65 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       <div class="form-section" id="p-working-hours-section">
         <h2 class="form-section__title"><span>🕒</span> مواعيد وساعات العمل</h2>
         
-        <!-- Quick 24/7 Toggle -->
-        <div class="form-group" style="margin-bottom:var(--space-4);background:var(--surface-2);padding:var(--space-4);border-radius:var(--radius-md);border:1px solid var(--border)">
-          <label style="display:flex;align-items:center;gap:var(--space-3);cursor:pointer;font-weight:var(--font-weight-bold)">
-            <input type="checkbox" id="p-always-open" style="width:18px;height:18px" ${place?.alwaysOpen ? 'checked' : ''} />
-            <span>🟢 مفتوح دائماً على مدار 24 ساعة (طوال أيام الأسبوع)</span>
+        <!-- Working Hours Mode Selection Box -->
+        <div class="form-group" style="margin-bottom:var(--space-4);background:var(--surface-2);padding:14px 16px;border-radius:var(--radius-md);border:1px solid var(--border);display:flex;flex-direction:column;gap:12px">
+          
+          <!-- Option 1: Always Open 24/7 all week -->
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;font-size:13.5px">
+            <input type="radio" name="p-hours-mode" id="hours-mode-always" value="always" style="width:18px;height:18px;accent-color:var(--primary)" ${initialHoursMode === 'always' ? 'checked' : ''} />
+            <span style="display:flex;align-items:center;gap:6px">
+              <span>🟢</span> مفتوح دائماً على مدار 24 ساعة (طوال أيام الأسبوع بلا توقف)
+            </span>
           </label>
+
+          <!-- Option 2: Always Open 24 Hours Except Specific Days -->
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;font-size:13.5px">
+            <input type="radio" name="p-hours-mode" id="hours-mode-always-except" value="always_except" style="width:18px;height:18px;accent-color:var(--primary)" ${initialHoursMode === 'always_except' ? 'checked' : ''} />
+            <span style="display:flex;align-items:center;gap:6px">
+              <span>⏱️</span> مفتوح دائماً 24 ساعة عدا أيام محددة (تحديد أيام العطلة الأسبوعية)
+            </span>
+          </label>
+
+          <!-- Closed Days Selection (Active only when Option 2 is checked) -->
+          <div id="p-always-except-days-container" style="${initialHoursMode === 'always_except' ? 'display:block' : 'display:none'};margin:2px 0 6px 0;padding:12px 14px;background:rgba(239,68,68,0.05);border:1.5px dashed rgba(239,68,68,0.3);border-radius:10px">
+            <div style="font-weight:700;font-size:12.5px;color:var(--danger,#DC2626);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+              <span>🚫</span> حدد الأيام التي يكون فيها النشاط <strong>مغلقاً</strong> (باقي الأيام ستكون مفتوحة 24 ساعة تلقائياً):
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px" id="except-days-chips-wrapper">
+              ${weekDays.map(d => {
+                const isDayClosed = initialClosedDaysInExcept.includes(d.key);
+                return `
+                  <label class="always-except-chip" data-day="${d.key}" style="display:inline-flex;align-items:center;gap:6px;background:${isDayClosed ? '#FEE2E2' : 'var(--surface)'};color:${isDayClosed ? '#DC2626' : 'var(--text-primary)'};border:1.5px solid ${isDayClosed ? '#F87171' : 'var(--border)'};padding:6px 14px;border-radius:9999px;cursor:pointer;font-size:12.5px;font-weight:700;user-select:none;transition:all 0.15s">
+                    <input type="checkbox" class="always-except-day-cb" value="${d.key}" style="width:15px;height:15px;accent-color:#DC2626" ${isDayClosed ? 'checked' : ''} />
+                    <span>${d.label}</span>
+                    <span class="except-chip-status" style="font-size:11px;opacity:0.85">${isDayClosed ? '(مغلق)' : ''}</span>
+                  </label>
+                `;
+              }).join('')}
+            </div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">
+              💡 مثال: اختر (الجمعة) إذا كان المكان مفتوحاً 24 ساعة من السبت إلى الخميس ومغلقاً الجمعة فقط.
+            </div>
+          </div>
+
+          <!-- Option 3: Custom Schedule -->
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700;font-size:13.5px">
+            <input type="radio" name="p-hours-mode" id="hours-mode-custom" value="custom" style="width:18px;height:18px;accent-color:var(--primary)" ${initialHoursMode === 'custom' ? 'checked' : ''} />
+            <span style="display:flex;align-items:center;gap:6px">
+              <span>📅</span> تحديد مواعيد وساعات عمل مخصصة لكل يوم (أوقات فتح وإغلاق محددة)
+            </span>
+          </label>
+
         </div>
 
-        <div id="working-hours-schedule" style="${place?.alwaysOpen ? 'display:none' : ''}">
+        <!-- Custom Schedule Table -->
+        <div id="working-hours-schedule" style="${initialHoursMode === 'custom' ? 'display:block' : 'display:none'}">
           <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-3)">
             حدد أوقات العمل لكل يوم أو علم على "مغلق" لأيام العطلات:
           </p>
 
           <div style="display:flex;flex-direction:column;gap:8px">
-            ${[
-              { key: 'saturday', label: 'السبت' },
-              { key: 'sunday', label: 'الأحد' },
-              { key: 'monday', label: 'الاثنين' },
-              { key: 'tuesday', label: 'الثلاثاء' },
-              { key: 'wednesday', label: 'الأربعاء' },
-              { key: 'thursday', label: 'الخميس' },
-              { key: 'friday', label: 'الجمعة' }
-            ].map(day => {
+            ${weekDays.map(day => {
               const h = place?.workingHours?.[day.key] || { open: '09:00', close: '22:00', closed: false };
               return `
                 <div style="display:flex;align-items:center;gap:var(--space-2);background:var(--surface-2);padding:6px 12px;border-radius:var(--radius-md);flex-wrap:wrap">
@@ -1176,10 +1247,34 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     if (selectedAreaBadgeName) selectedAreaBadgeName.textContent = val || 'بلد مخصص';
   });
 
-  // Always Open 24/7 toggle
-  document.getElementById('p-always-open')?.addEventListener('change', (e) => {
-    const schedule = document.getElementById('working-hours-schedule');
-    if (schedule) schedule.style.display = e.target.checked ? 'none' : 'block';
+  // Working Hours Mode Switcher (Always 24/7 vs Always Except vs Custom)
+  const hoursModeRadios = document.querySelectorAll('input[name="p-hours-mode"]');
+  const scheduleEl = document.getElementById('working-hours-schedule');
+  const exceptContainerEl = document.getElementById('p-always-except-days-container');
+
+  hoursModeRadios.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      const mode = e.target.value;
+      if (scheduleEl) scheduleEl.style.display = mode === 'custom' ? 'block' : 'none';
+      if (exceptContainerEl) exceptContainerEl.style.display = mode === 'always_except' ? 'block' : 'none';
+    });
+  });
+
+  // Closed Days Chips Interaction
+  document.querySelectorAll('.always-except-day-cb').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      const chip = e.target.closest('.always-except-chip');
+      const statusSpan = chip?.querySelector('.except-chip-status');
+      if (chip) {
+        chip.style.background = isChecked ? '#FEE2E2' : 'var(--surface)';
+        chip.style.color = isChecked ? '#DC2626' : 'var(--text-primary)';
+        chip.style.borderColor = isChecked ? '#F87171' : 'var(--border)';
+      }
+      if (statusSpan) {
+        statusSpan.textContent = isChecked ? '(مغلق)' : '';
+      }
+    });
   });
 
   // AI Name Translation
@@ -1429,13 +1524,21 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         return;
       }
 
-      const alwaysOpen = document.getElementById('p-always-open')?.checked || false;
+      const hoursMode = document.querySelector('input[name="p-hours-mode"]:checked')?.value || 'custom';
+      const alwaysOpen = hoursMode === 'always';
+      const alwaysOpenExcept = hoursMode === 'always_except';
       const days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
       const workingHours = {};
 
       if (alwaysOpen) {
         days.forEach(d => {
           workingHours[d] = { open: '00:00', close: '23:59', closed: false };
+        });
+      } else if (alwaysOpenExcept) {
+        const selectedClosedDays = Array.from(document.querySelectorAll('.always-except-day-cb:checked')).map(cb => cb.value);
+        days.forEach(d => {
+          const isClosed = selectedClosedDays.includes(d);
+          workingHours[d] = { open: '00:00', close: '23:59', closed: isClosed };
         });
       } else {
         days.forEach(d => {
@@ -1465,6 +1568,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         coverImageUrl: document.getElementById('p-cover-url').value,
         logoUrl: document.getElementById('p-logo-url').value,
         alwaysOpen,
+        alwaysOpenExcept,
         workingHours,
         services,
         social: {
