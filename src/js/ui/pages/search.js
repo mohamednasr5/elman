@@ -13,6 +13,7 @@ import { isAtmPlace, isAtmReadyAndOperational } from '../../utils/atm.js';
 import { aiSearch, aiSmartSearch } from '../../services/ai.service.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
+import { isPhoneSearchQuery, normalizePhoneNumber, matchPlaceByPhone, formatPhoneNumberForDisplay, extractPlacePhoneNumbers } from '../../utils/phone.js';
 import { toast } from '../components/Toast.js';
 
 let _searchUserLocation = null;
@@ -65,7 +66,7 @@ export async function renderSearchPage($container, { q = '', user }) {
               type="search"
               id="search-page-input"
               class="hero-search__input"
-              placeholder="ابحث عن مكان، دكتور، صيدلية، سباك، محل في المنزلة والمطرية والقرى..."
+              placeholder="ابحث عن مكان، دكتور، صيدلية، سباك، محل، أو برقم الهاتف (01... / 05...)..."
               value="${escAttr(q)}"
               autocomplete="off"
             />
@@ -149,12 +150,70 @@ export async function renderSearchPage($container, { q = '', user }) {
   async function performSearch(queryText, isAi = false) {
     const query = (queryText || '').trim();
     if (!query) {
-      if (metaEl) metaEl.innerHTML = 'يرجى إدخال كلمة للبحث';
+      if (metaEl) metaEl.innerHTML = 'يرجى إدخال كلمة أو رقم هاتف للبحث';
       if (gridEl) gridEl.innerHTML = '';
       return;
     }
 
     saveSearchHistory(query);
+
+    // ── Dedicated Phone Number Search (01... mobile or 05... landline) ──
+    if (isPhoneSearchQuery(query)) {
+      const qPhone = normalizePhoneNumber(query);
+      const displayPhone = formatPhoneNumberForDisplay(qPhone);
+      const matched = allPlaces.filter(p => matchPlaceByPhone(p, qPhone) && (!isAtmPlace(p) || isAtmReadyAndOperational(p, 15)));
+
+      if (matched.length > 0) {
+        toast.success(`تم العثور على (${matched.length}) نشاط مرتبط برقم الهاتف 📞`);
+        const meta = `📞 تم العثور على <strong>${matched.length}</strong> نشاط تجاري مرتبط برقم الهاتف: <span style="direction:ltr;display:inline-block;font-weight:900;color:var(--primary);font-size:15px">${escHtml(displayPhone)}</span>`;
+        await renderResults(matched, meta);
+      } else {
+        // User requested: "وان لم يكن مرتبط اظهر اشعار لايوجد نشاط مرتبط برقم الهاتف"
+        toast.warning(`لا يوجد أي نشاط تجاري مرتبط برقم الهاتف (${displayPhone})`);
+        if (metaEl) {
+          metaEl.innerHTML = `
+            <div style="display:inline-flex;align-items:center;gap:8px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:10px;padding:8px 16px;font-size:13.5px;font-weight:700">
+              <span>⚠️</span>
+              <span>لا يوجد أي نشاط تجاري مسجل مرتبط برقم الهاتف:</span>
+              <span style="direction:ltr;font-family:monospace;font-size:14px;color:#B45309">${escHtml(displayPhone)}</span>
+            </div>
+          `;
+        }
+        if (gridEl) {
+          gridEl.innerHTML = `
+            <div class="empty-state phone-empty-state animate-fade-in" style="grid-column:1/-1;background:var(--surface);border:1.5px solid #F59E0B;border-radius:20px;padding:40px 24px;text-align:center;box-shadow:0 12px 36px rgba(245,158,11,0.08);max-width:640px;margin:1.5rem auto">
+              <div style="width:76px;height:76px;border-radius:50%;background:rgba(245,158,11,0.14);color:#D97706;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 16px auto;border:2px solid rgba(245,158,11,0.3)">
+                📞
+              </div>
+              <h2 style="font-size:1.4rem;font-weight:900;color:var(--text-primary);margin-bottom:8px">
+                لا يوجد نشاط مرتبط برقم الهاتف
+              </h2>
+              <div style="display:inline-block;background:rgba(2,132,199,0.08);color:#0284C7;font-weight:900;font-size:16px;padding:6px 20px;border-radius:9999px;margin-bottom:14px;direction:ltr">
+                ${escHtml(displayPhone)}
+              </div>
+              <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin:0 0 24px 0">
+                لم نعثر على أي مكان أو دكتور أو محل أو ورشة مسجلة برقم الهاتف هذا في دليل المنزلة والمطرية الرقمي. إذا كنت صاحب هذا الرقم أو النشاط، يمكنك إضافته الآن مجاناً ليظهر لآلاف الزوار.
+              </p>
+              <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+                <a href="dashboard.html?section=add&phone=${encodeURIComponent(qPhone)}" class="btn btn-primary" style="padding:10px 22px;border-radius:12px;font-size:13.5px;gap:8px">
+                  <span>➕</span> إضافة هذا النشاط للدليل الآن
+                </a>
+                <button type="button" class="btn btn-outline" id="btn-phone-clear-search" style="padding:10px 20px;border-radius:12px;font-size:13.5px">
+                  🔍 البحث باسم أو نشاط آخر
+                </button>
+              </div>
+            </div>
+          `;
+          document.getElementById('btn-phone-clear-search')?.addEventListener('click', () => {
+            if (searchInput) {
+              searchInput.value = '';
+              searchInput.focus();
+            }
+          });
+        }
+      }
+      return;
+    }
 
     if (isAi) {
       if (metaEl) metaEl.innerHTML = `✨ جاري التحليل الذكي للبحث عن "<strong>${escHtml(query)}</strong>"...`;
@@ -276,6 +335,12 @@ export async function renderSearchPage($container, { q = '', user }) {
         }
       });
 
+      // 11. Phone Match
+      let phoneScore = 0;
+      if (matchPlaceByPhone(place, query)) {
+        phoneScore = 120;
+      }
+
       const total = Math.max(
         nameScore, 
         nameEnScore, 
@@ -288,7 +353,8 @@ export async function renderSearchPage($container, { q = '', user }) {
         areaScore, 
         catScore, 
         descScore, 
-        semanticScore
+        semanticScore,
+        phoneScore
       );
 
       return { place, total };

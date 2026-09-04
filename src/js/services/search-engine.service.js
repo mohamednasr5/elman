@@ -9,6 +9,7 @@ import { resolveDoctorSpecialty, MEDICAL_SPECIALTY_MAP } from '../utils/specialt
 import { MASTER_LOCATIONS, extractLocationFromQuery } from '../utils/locations-data.js';
 import { isPlaceOpen } from '../utils/date.js';
 import { calculateDistanceKm } from '../utils/maps.js';
+import { isPhoneSearchQuery, matchPlaceByPhone } from '../utils/phone.js';
 
 export const EGYPTIAN_DIALECT_SYNONYMS = {
   general_surgery: {
@@ -242,10 +243,17 @@ class SearchIndex {
 
     const wantsOpenNow = options.wantsOpenNow || normQ.includes('فاتح') || normQ.includes('شغال') || normQ.includes('دلوقت');
     const userCoords = options.userCoords || null;
+    const isPhoneQuery = isPhoneSearchQuery(query);
 
     for (const doc of this.documents) {
       let score = 0;
       let matchedReason = '';
+
+      // ── 0. PHONE NUMBER DIRECT MATCH (+5000 PTS) ──
+      if (isPhoneQuery && matchPlaceByPhone(doc.raw, query)) {
+        score += 5000;
+        matchedReason = '📞 مطابقة رقم الهاتف';
+      }
 
       // ── 1. TARGET MEDICAL SPECIALTY EXACT MATCH (+2200 PTS) ──
       if (targetSpecialty && doc.docInfo.isDoctor) {

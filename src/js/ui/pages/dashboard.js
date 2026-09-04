@@ -415,10 +415,33 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     categories.unshift({ _key: 'atm', slug: 'atm', name: 'ماكينة صراف آلي (ATM)', icon: '🏧' });
   }
 
-  const currentArea = place?.area ? place.area.trim() : 'المنزلة';
-  const isCustomArea = Boolean(currentArea && !MANZALA_VILLAGES_LIST.includes(currentArea));
-  const currentAreaVal = isCustomArea ? 'other' : currentArea;
-  const currentAreaName = isCustomArea ? currentArea : (currentArea || 'المنزلة');
+  // Robust Category Resolution (handles slug, key, id, or legacy category names)
+  const rawCatId = place?.categoryId || place?.category || place?.categorySlug || '';
+  const matchedCat = categories.find(c => 
+    (c.slug && c.slug === rawCatId) ||
+    (c._key && c._key === rawCatId) ||
+    (c.id && c.id === rawCatId) ||
+    (c.name && (c.name === rawCatId || c.name === place?.categoryName))
+  );
+  const isCustomCat = Boolean(place?.customCategory || (rawCatId && !matchedCat && rawCatId !== 'atm'));
+  const currentCatVal = matchedCat ? (matchedCat.slug || matchedCat._key || matchedCat.id) : (isCustomCat ? 'other' : rawCatId);
+  const currentCustomCatName = place?.customCategory || (!matchedCat && isCustomCat ? rawCatId : '');
+  const selectedCatDisplayName = matchedCat ? matchedCat.name : (currentCustomCatName || rawCatId);
+
+  // Robust Area Resolution
+  const currentArea = (place?.area || '').trim() || 'المنزلة';
+  const matchedArea = MANZALA_VILLAGES_LIST.find(v => v.trim().toLowerCase() === currentArea.toLowerCase());
+  const isCustomArea = Boolean(currentArea && !matchedArea);
+  const currentAreaVal = isCustomArea ? 'other' : (matchedArea || currentArea);
+  const currentAreaName = isCustomArea ? currentArea : currentAreaVal;
+
+  // Services / Tags list normalization
+  let initialServices = [];
+  if (Array.isArray(place?.services)) {
+    initialServices = place.services.map(s => String(s).trim()).filter(Boolean);
+  } else if (typeof place?.services === 'string' && place.services.trim()) {
+    initialServices = place.services.split(/[,،]+/).map(s => s.trim()).filter(Boolean);
+  }
 
   $container.innerHTML = `
     <div class="dashboard-header">
@@ -456,9 +479,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <div class="form-group" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-2)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
             <label class="form-label" style="margin-bottom:0;font-weight:var(--font-weight-bold)">التصنيف الرئيسي والمهنة <span class="required">*</span></label>
-            <div id="p-selected-cat-badge" style="font-size:12px;color:var(--primary);display:${place?.categoryId ? 'flex' : 'none'};align-items:center;gap:6px">
+            <div id="p-selected-cat-badge" style="font-size:12px;color:var(--primary);display:${currentCatVal ? 'flex' : 'none'};align-items:center;gap:6px">
               <span>المختار:</span>
-              <span id="p-selected-cat-name" class="chip chip--primary" style="font-weight:700">${place?.categoryId ? (categories.find(c => (c.slug || c._key) === place.categoryId)?.name || (place.customCategory ? place.customCategory : place.categoryId)) : ''}</span>
+              <span id="p-selected-cat-name" class="chip chip--primary" style="font-weight:700">${escHtml(selectedCatDisplayName)}</span>
             </div>
           </div>
 
@@ -477,13 +500,17 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
           <!-- Category Quick Selection Pills Box -->
           <div id="p-category-picker-box" style="max-height:170px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;padding:6px;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--border)">
-            ${categories.map(c => `
-              <button type="button" class="category-select-pill ${place?.categoryId === (c.slug || c._key) ? 'active' : ''}" data-cat-id="${escAttr(c.slug || c._key)}" data-cat-name="${escAttr(c.name)}">
-                <span>${c.icon || '📁'}</span>
-                <span>${escHtml(c.name)}</span>
-              </button>
-            `).join('')}
-            <button type="button" class="category-select-pill ${place?.customCategory ? 'active' : ''}" data-cat-id="other" data-cat-name="أخرى (اكتب تصنيفاً جديداً)">
+            ${categories.map(c => {
+              const cKey = c.slug || c._key || c.id;
+              const isActive = (currentCatVal === cKey);
+              return `
+                <button type="button" class="category-select-pill ${isActive ? 'active' : ''}" data-cat-id="${escAttr(cKey)}" data-cat-name="${escAttr(c.name)}">
+                  <span>${c.icon || '📁'}</span>
+                  <span>${escHtml(c.name)}</span>
+                </button>
+              `;
+            }).join('')}
+            <button type="button" class="category-select-pill ${isCustomCat ? 'active' : ''}" data-cat-id="other" data-cat-name="أخرى (اكتب تصنيفاً جديداً)">
               <span>✨</span>
               <span>أخرى (اكتب تصنيفاً جديداً)</span>
             </button>
@@ -495,20 +522,19 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           <!-- Hidden Synchronized Select for Form Validation & Submission -->
           <select id="p-category" class="form-select" style="display:none" required>
             <option value="">اختر التصنيف...</option>
-            ${categories.map(c => `
-              <option value="${c.slug || c._key}" ${place?.categoryId === (c.slug || c._key) ? 'selected' : ''}>
-                ${c.icon || '📁'} ${c.name}
-              </option>
-            `).join('')}
-            <option value="other" ${place?.customCategory ? 'selected' : ''}>✨ أخرى (اكتب تصنيفاً جديداً)</option>
+            ${categories.map(c => {
+              const cKey = c.slug || c._key || c.id;
+              return `<option value="${cKey}" ${currentCatVal === cKey ? 'selected' : ''}>${c.icon || '📁'} ${c.name}</option>`;
+            }).join('')}
+            <option value="other" ${isCustomCat ? 'selected' : ''}>✨ أخرى (اكتب تصنيفاً جديداً)</option>
           </select>
         </div>
 
         <!-- Custom Category Input Box (shows when 'other' is selected) -->
-        <div class="form-group animate-fade-in" id="custom-category-group" style="${place?.customCategory ? '' : 'display:none'}">
+        <div class="form-group animate-fade-in" id="custom-category-group" style="${isCustomCat ? '' : 'display:none'}">
           <label class="form-label">اكتب اسم التصنيف الجديد <span class="required">*</span></label>
           <div style="display:flex;gap:var(--space-2)">
-            <input type="text" id="p-custom-category" class="form-input" placeholder="مثال: مطبعة، ستوديو تصوير، مركز تدريب، محل حيوانات أليفة" value="${escAttr(place?.customCategory || '')}" />
+            <input type="text" id="p-custom-category" class="form-input" placeholder="مثال: مطبعة، ستوديو تصوير، مركز تدريب، محل حيوانات أليفة" value="${escAttr(currentCustomCatName)}" />
           </div>
           <p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:4px">
             💡 سيتم إرسال هذا التصنيف للإدارة لاعتماده وإضافته في دليل المنزلة والمطرية الرقمي.
@@ -874,16 +900,6 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         </div>
       </div>
 
-      <!-- Services & Tags -->
-      <div class="form-section" id="p-services-section">
-        <h2 class="form-section__title"><span>✨</span> الخدمات والكلمات المفتاحية</h2>
-        <div class="form-group">
-          <label class="form-label">اكتب الخدمات مفصولة بفواصل (، أو ,)</label>
-          <input type="text" id="p-services" class="form-input" placeholder="توصيل للمنازل، دفع بالفيزا، متاح 24 ساعة، كشف منزلي" value="${escAttr(place?.services ? place.services.join('، ') : '')}" />
-          <div class="form-hint">الكلمات والخدمات المكتوبة هنا تجعل مكانك يظهر في صدارة نتائج البحث عند كتابة أي منها.</div>
-        </div>
-      </div>
-
       <!-- Submit buttons -->
       <div style="display:flex;gap:var(--space-3);padding-bottom:var(--space-8)">
         <button type="submit" class="btn btn-primary btn-lg" id="btn-save-place">
@@ -896,6 +912,67 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   `;
 
   // ── Handlers ──
+
+  // ── Services & Interactive Tags Management ──
+  let _currentTagsList = [...initialServices];
+
+  function renderTagsList() {
+    const listEl = document.getElementById('p-tags-list');
+    const hiddenInput = document.getElementById('p-services');
+    if (!listEl) return;
+
+    listEl.innerHTML = _currentTagsList.map((tag, idx) => `
+      <span class="tag-chip" style="display:inline-flex;align-items:center;gap:6px;background:rgba(2, 132, 199, 0.12);color:#0284C7;border:1px solid rgba(2, 132, 199, 0.3);padding:4px 10px;border-radius:9999px;font-size:12.5px;font-weight:700">
+        <span>${escHtml(tag)}</span>
+        <button type="button" class="btn-remove-tag" data-tag-index="${idx}" style="background:none;border:none;color:#0284C7;font-size:14px;cursor:pointer;padding:0;line-height:1" title="حذف">&times;</button>
+      </span>
+    `).join('');
+
+    if (hiddenInput) {
+      hiddenInput.value = _currentTagsList.join('، ');
+    }
+
+    listEl.querySelectorAll('.btn-remove-tag').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const i = parseInt(btn.getAttribute('data-tag-index'), 10);
+        _currentTagsList.splice(i, 1);
+        renderTagsList();
+      });
+    });
+  }
+
+  function addServiceTag() {
+    const tagInput = document.getElementById('p-service-tag-input');
+    if (!tagInput) return;
+    const rawVal = tagInput.value.trim();
+    if (!rawVal) return;
+
+    const parts = rawVal.split(/[,،]+/).map(s => s.trim()).filter(Boolean);
+    parts.forEach(p => {
+      if (!_currentTagsList.includes(p)) {
+        _currentTagsList.push(p);
+      }
+    });
+    tagInput.value = '';
+    renderTagsList();
+  }
+
+  const tagInputEl = document.getElementById('p-service-tag-input');
+  tagInputEl?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addServiceTag();
+    }
+  });
+
+  document.getElementById('btn-add-typed-tag')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    addServiceTag();
+  });
+
+  // Render initial tags into chips
+  renderTagsList();
 
   // Live Category Search Filter & Pill Selection
   const catSearchInput = document.getElementById('p-category-search-input');
@@ -996,7 +1073,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     const phoneInput = document.getElementById('p-phone');
     const workingSection = document.getElementById('p-working-hours-section');
     const socialSection = document.getElementById('p-social-section');
-    const servicesSection = document.getElementById('p-services-section');
+    const descSection = document.getElementById('p-desc-section');
     const imagesSection = document.getElementById('p-images-section');
     const coverUploadZone = document.getElementById('cover-upload-zone');
     const logoUploadZone = document.getElementById('logo-upload-zone');
@@ -1012,7 +1089,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       if (phoneInput) { phoneInput.required = false; if (!phoneInput.value) phoneInput.value = '19666'; }
       if (workingSection) workingSection.style.display = 'none';
       if (socialSection) socialSection.style.display = 'none';
-      if (servicesSection) servicesSection.style.display = 'none';
+      if (descSection) descSection.style.display = 'none';
       if (imagesSection) imagesSection.style.display = 'none';
     } else {
       if (nameLabel) nameLabel.innerHTML = 'اسم المكان أو النشاط أو المهنة / الحرفي <span class="required">*</span>';
@@ -1025,16 +1102,14 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       if (phoneInput) phoneInput.required = true;
       if (workingSection) workingSection.style.display = 'block';
       if (socialSection) socialSection.style.display = 'block';
-      if (servicesSection) servicesSection.style.display = 'block';
+      if (descSection) descSection.style.display = 'block';
       if (imagesSection) imagesSection.style.display = 'block';
     }
   }
 
   // Initial checks on load
-  if (place?.categoryId || place?.customCategory || place?.medicalSpecialty) {
-    updateAtmMode(place?.categoryId || '');
-    updateDoctorSpecialtyVisibility(place?.categoryId || '', place?.customCategory || '', '');
-  }
+  updateAtmMode(currentCatVal);
+  updateDoctorSpecialtyVisibility(currentCatVal, currentCustomCatName, selectedCatDisplayName);
 
   // Category toggle for delivery vehicle and custom category
   document.getElementById('p-category')?.addEventListener('change', (e) => {
@@ -1326,6 +1401,11 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   });
   document.getElementById('p-address')?.addEventListener('change', updateMapPreview);
 
+  // Initialize Map preview if coordinates or link already exist
+  if (place?.location || place?.mapsLink || place?.address) {
+    updateMapPreview();
+  }
+
   // Form Submit
   document.getElementById('place-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1335,7 +1415,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
     try {
       const rawServices = document.getElementById('p-services')?.value || '';
-      const services = rawServices.split(/[,،]/).map(s => s.trim()).filter(Boolean);
+      const services = (_currentTagsList && _currentTagsList.length > 0)
+        ? _currentTagsList
+        : rawServices.split(/[,،]+/).map(s => s.trim()).filter(Boolean);
 
       const categoryVal = document.getElementById('p-category').value;
       const customCategory = categoryVal === 'other' ? (document.getElementById('p-custom-category')?.value.trim() || '') : null;

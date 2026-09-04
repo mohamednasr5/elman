@@ -708,6 +708,15 @@ export async function trackPlaceView(place, visitor = null) {
 function saveToLocalBroadcastCache(notification) {
   if (typeof localStorage === 'undefined' || !notification) return;
   try {
+    // Un-dismiss if previously marked deleted so fresh broadcasts always show
+    ['manzala_user_dismissed_notifs'].forEach(k => {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        const list = JSON.parse(raw).filter(id => id !== notification.id);
+        localStorage.setItem(k, JSON.stringify(list));
+      }
+    });
+
     const raw = localStorage.getItem('manzala_global_broadcast_notifs_cache') || '[]';
     const list = JSON.parse(raw);
     if (!list.some(n => n.id === notification.id)) {

@@ -76,6 +76,21 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
   const theme = CARD_COLOR_THEMES.find(t => t.id === _selectedThemeId) || CARD_COLOR_THEMES[0];
   const placeName = place.name || 'اسم النشاط';
   const categoryName = category.name || place.categoryName || place.customCategory || 'نشاط تجاري وخدمات';
+
+  // Resolve Doctor / Medical Specialty
+  const docInfo = resolveDoctorSpecialty(place, category);
+  const resolvedSpecialty = (place.medicalSpecialty && String(place.medicalSpecialty).trim())
+    ? place.medicalSpecialty.trim()
+    : (docInfo.isDoctor && (docInfo.specialtyLabel || docInfo.specialtyTitle)
+        ? (docInfo.specialtyLabel || docInfo.specialtyTitle)
+        : '');
+
+  const displaySubtitle = resolvedSpecialty 
+    ? (resolvedSpecialty.startsWith('دكتور') || resolvedSpecialty.startsWith('استشاري') || resolvedSpecialty.startsWith('أخصائي') || resolvedSpecialty.startsWith('عيادة')
+        ? `🩺 ${resolvedSpecialty}`
+        : `🩺 تخصص: ${resolvedSpecialty}`)
+    : categoryName;
+
   const fullAddress = (place.address && String(place.address).trim())
     ? place.address.trim()
     : ((place.area && String(place.area).trim()) ? place.area.trim() : 'مدينة المنزلة');
@@ -154,8 +169,8 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
                 ${checkIsPlaceVerified(place) ? '<span class="manhom-card-verified-badge" title="موثق">✓</span>' : ''}
               </h2>
 
-              <p class="manhom-card-category">
-                ${categoryName}
+              <p class="manhom-card-category" style="${resolvedSpecialty ? 'font-weight:700;letter-spacing:0.2px;line-height:1.4' : ''}">
+                ${displaySubtitle}
               </p>
 
               <div class="manhom-card-location" title="${fullAddress}">
@@ -247,7 +262,7 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
     try {
       await generateAndDownloadPlaceCard({
         place,
-        categoryName,
+        categoryName: displaySubtitle,
         fullAddress,
         theme: activeTheme,
         coverUrl,
@@ -459,8 +474,12 @@ if (!logoLoaded) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-  ctx.font = '600 38px "Cairo", "Segoe UI", sans-serif';
-  ctx.fillText(categoryName, W / 2, 750);
+  const subText = categoryName || '';
+  let subFontSize = 38;
+  if (subText.length > 45) subFontSize = 27;
+  else if (subText.length > 30) subFontSize = 32;
+  ctx.font = `600 ${subFontSize}px "Cairo", "Segoe UI", sans-serif`;
+  ctx.fillText(subText, W / 2, 750);
   ctx.restore();
 
   // 8. Full Address / Location Tag

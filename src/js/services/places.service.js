@@ -103,6 +103,8 @@ export async function createPlace(placeData, currentUser) {
     name: placeData.name.trim(),
     nameEn: placeData.nameEn || '',
     categoryId: placeData.categoryId || 'other',
+    customCategory: placeData.customCategory || null,
+    medicalSpecialty: placeData.medicalSpecialty || null,
     subcategoryId: placeData.subcategoryId || '',
     description: placeData.description || '',
     phone: placeData.phone || '',
@@ -111,12 +113,22 @@ export async function createPlace(placeData, currentUser) {
     area: placeData.area || 'المنزلة',
     mapsLink: placeData.mapsLink || '',
     location: placeData.location || { lat: 31.1578, lng: 31.9367 }, // Default El Manzala
+    alwaysOpen: Boolean(placeData.alwaysOpen),
     workingHours: placeData.workingHours || getDefaultWorkingHours(),
     coverImageUrl: placeData.coverImageUrl || '',
     logoUrl: placeData.logoUrl || '',
     imageUrls: placeData.imageUrls || [],
     services: placeData.services || [],
-    social: placeData.social || { facebook: '', instagram: '', tiktok: '', youtube: '' },
+    social: {
+      facebook: '',
+      instagram: '',
+      tiktok: '',
+      youtube: '',
+      x: '',
+      threads: '',
+      website: '',
+      ...(placeData.social || {})
+    },
     deliveryType: placeData.deliveryType || null,
     status: 'published', // Published by default, can be suspended by admin
     verificationStatus: 'unverified',
@@ -195,6 +207,8 @@ export async function updatePlace(placeId, placeData) {
     name: placeData.name ? placeData.name.trim() : current.name,
     nameEn: placeData.nameEn !== undefined ? placeData.nameEn : (current.nameEn || ''),
     categoryId: placeData.categoryId || current.categoryId,
+    customCategory: placeData.customCategory !== undefined ? placeData.customCategory : (current.customCategory || null),
+    medicalSpecialty: placeData.medicalSpecialty !== undefined ? placeData.medicalSpecialty : (current.medicalSpecialty || null),
     subcategoryId: placeData.subcategoryId || '',
     description: placeData.description !== undefined ? placeData.description : current.description,
     phone: placeData.phone || current.phone || '',
@@ -202,14 +216,18 @@ export async function updatePlace(placeId, placeData) {
     address: placeData.address !== undefined ? placeData.address : current.address,
     area: placeData.area || current.area || 'المنزلة',
     mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''),
-    location: placeData.location || current.location,
+    location: placeData.location !== undefined ? placeData.location : current.location,
+    alwaysOpen: placeData.alwaysOpen !== undefined ? Boolean(placeData.alwaysOpen) : Boolean(current.alwaysOpen),
     workingHours: placeData.workingHours || current.workingHours,
     coverImageUrl: placeData.coverImageUrl !== undefined ? placeData.coverImageUrl : current.coverImageUrl,
     logoUrl: placeData.logoUrl !== undefined ? placeData.logoUrl : current.logoUrl,
     imageUrls: placeData.imageUrls || current.imageUrls || [],
     services: placeData.services || current.services || [],
-    social: placeData.social || current.social || {},
-    deliveryType: placeData.deliveryType || null,
+    social: {
+      ...(current.social || {}),
+      ...(placeData.social || {})
+    },
+    deliveryType: placeData.deliveryType !== undefined ? placeData.deliveryType : (current.deliveryType || null),
     updatedAt: serverTimestamp()
   };
 

@@ -222,7 +222,13 @@ export async function fetchManagedUserNotifications(uid) {
         const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || id);
 
         // Verified Place Notification
-        if (place.isVerified) {
+        const isPlaceVerified = Boolean(
+          place.isVerified === true ||
+          place.verified === true ||
+          place.verificationStatus === 'verified' ||
+          place.isFeaturedVerified === true
+        );
+        if (isPlaceVerified) {
           const notifId = 'notif_verified_' + id;
           if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
             mergedMap[notifId] = {
@@ -232,6 +238,7 @@ export async function fetchManagedUserNotifications(uid) {
               placeId: id,
               placeName: place.name || 'المكان',
               placeSlug: place.slug || id,
+              placeAddress: place.address || place.area || 'المنزلة والمطرية',
               message: 'تم توثيق (' + (place.name || 'المكان') + ') رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية الرقمي!',
               actionText: 'مشاهدة المكان 🚀',
               actionUrl: targetUrl,
@@ -360,19 +367,32 @@ export function initLiveNotificationSubscriber(uid) {
     const db = getDB();
     const startTime = Date.now();
 
-    // 1. When places are verified or updated in Firebase RTDB
+    // 1. When places are verified in Firebase RTDB (only fire if newly verified in this session)
     db.ref('places').on('child_changed', (snap) => {
       const place = snap.val();
+      if (!place) return;
       updateAllNotificationBadges(uid);
-      if (place && place.isVerified) {
+
+      const isPlaceVerified = Boolean(
+        place.isVerified === true ||
+        place.verified === true ||
+        place.verificationStatus === 'verified'
+      );
+
+      // Only trigger chime & live popup if this place was genuinely verified right now (not an ordinary edit)
+      const verifiedTime = Number(place.verifiedAt || 0);
+      const isNewlyVerified = isPlaceVerified && (verifiedTime > startTime - 5000);
+
+      if (isNewlyVerified) {
         showLiveNotificationPopup({
           id: 'notif_verified_' + snap.key,
           type: 'place_verified',
           title: '👑 توثيق رسمي جديد: ' + (place.name || 'مكان موثق'),
+          placeName: place.name || 'المكان',
           message: 'تم توثيق (' + (place.name || 'المكان') + ') رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!',
           actionUrl: 'place.html?slug=' + encodeURIComponent(place.slug || snap.key),
-          createdAt: Date.now()
-        });
+          createdAt: verifiedTime || Date.now()
+        }, uid);
       }
     });
 
@@ -388,7 +408,7 @@ export function initLiveNotificationSubscriber(uid) {
           message: '(' + (place.name || 'مكان جديد') + ') انضم حديثاً إلى دليل المنزلة والمطرية.',
           actionUrl: 'place.html?slug=' + encodeURIComponent(place.slug || snap.key),
           createdAt: Date.now()
-        });
+        }, uid);
       }
     });
 
@@ -397,7 +417,7 @@ export function initLiveNotificationSubscriber(uid) {
       const n = snap.val();
       updateAllNotificationBadges(uid);
       if (n && (Number(n.createdAt) || 0) > startTime - 3000) {
-        showLiveNotificationPopup({ id: snap.key, ...n });
+        showLiveNotificationPopup({ id: snap.key, ...n }, uid);
       }
     });
 
@@ -407,7 +427,7 @@ export function initLiveNotificationSubscriber(uid) {
         const notif = snap.val();
         updateAllNotificationBadges(uid);
         if (notif && (Number(notif.createdAt) || 0) > startTime - 3000) {
-          showLiveNotificationPopup({ id: snap.key, ...notif });
+          showLiveNotificationPopup({ id: snap.key, ...notif }, uid);
         }
       });
       db.ref(`userNotifications/${uid}`).on('value', () => {
@@ -422,11 +442,20 @@ export function initLiveNotificationSubscriber(uid) {
 
 // ── In-App Live Floating Notification Banner ──
 
-export function showLiveNotificationPopup(notification) {
-  if (typeof document === 'undefined') return;
+export function showLiveNotificationPopup(notification, uid) {
+  if (typeof document === 'undefined' || !notification) return;
 
-  const deletedIds = getDeletedNotifIds();
+  const deletedIds = getDeletedNotifIds(uid);
   if (notification.id && deletedIds.has(String(notification.id))) return;
+
+  // Session deduplication: prevent playing chime / showing popup multiple times for same event
+  if (notification.id) {
+    const sessionKey = 'manzala_toast_seen_' + notification.id;
+    try {
+      if (sessionStorage.getItem(sessionKey)) return;
+      sessionStorage.setItem(sessionKey, '1');
+    } catch (_) {}
+  }
 
   playNotificationSound();
 

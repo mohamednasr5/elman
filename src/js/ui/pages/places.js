@@ -6,6 +6,7 @@ import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
+import { isPhoneSearchQuery, normalizePhoneNumber, matchPlaceByPhone, formatPhoneNumberForDisplay } from '../../utils/phone.js';
 import { toast } from '../components/Toast.js';
 
 let _userLocationCoords = null;
@@ -46,7 +47,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
             type="search" 
             id="places-search-filter" 
             class="form-input" 
-            placeholder="ابحث بالاسم أو الخدمة..." 
+            placeholder="ابحث بالاسم، التخصص، أو برقم الهاتف (01... / 05...)..." 
             value="${escAttr(initialQuery)}"
             style="margin:0;padding-left:45px"
           />
@@ -199,20 +200,48 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
       // Filter by search query
       if (q) {
-        filtered = filtered
-          .map(p => {
-            const score = Math.max(
-              arabicScore(p.name, q),
-              arabicScore(p.categoryName || '', q) * 0.9,
-              p.services?.some(s => arabicMatch(s, q)) ? 75 : 0,
-              arabicScore(p.area || '', q) * 0.85,
-              arabicScore(p.address || '', q) * 0.7
-            );
-            return { place: p, score };
-          })
-          .filter(item => item.score > 0)
-          .sort((a, b) => b.score - a.score)
-          .map(item => item.place);
+        const isPhone = isPhoneSearchQuery(q);
+        if (isPhone) {
+          const qPhone = normalizePhoneNumber(q);
+          const displayPhone = formatPhoneNumberForDisplay(qPhone);
+          filtered = filtered.filter(p => matchPlaceByPhone(p, qPhone));
+
+          if (filtered.length === 0) {
+            toast.warning(`لا يوجد أي نشاط تجاري مرتبط برقم الهاتف (${displayPhone})`);
+            if (countMeta) {
+              countMeta.innerHTML = `<span style="color:var(--danger,#DC2626);font-weight:700">⚠️ لا يوجد أي نشاط تجاري مرتبط برقم الهاتف: <span style="direction:ltr;display:inline-block">${escHtml(displayPhone)}</span></span>`;
+            }
+            if (grid) {
+              grid.innerHTML = `
+                <div class="empty-state phone-empty-state animate-fade-in" style="grid-column:1/-1;border:1.5px solid #F59E0B;border-radius:18px;padding:36px 20px;text-align:center;background:var(--surface);box-shadow:0 8px 24px rgba(245,158,11,0.08);max-width:560px;margin:1rem auto">
+                  <div style="font-size:38px;margin-bottom:10px">📞</div>
+                  <h3 style="font-size:1.25rem;font-weight:900;color:var(--text-primary);margin-bottom:6px">لا يوجد نشاط مرتبط برقم الهاتف</h3>
+                  <div style="direction:ltr;font-weight:900;color:#0284C7;font-size:16px;margin-bottom:12px">${escHtml(displayPhone)}</div>
+                  <p style="font-size:13.5px;color:var(--text-secondary);max-width:450px;margin:0 auto 18px auto;line-height:1.5">لم نجد أي مكان مسجل بهذا الرقم في دليل المنزلة والمطرية الرقمي.</p>
+                  <a href="dashboard.html?section=add&phone=${encodeURIComponent(qPhone)}" class="btn btn-primary btn-sm" style="border-radius:10px;padding:8px 18px">➕ أضف هذا المكان الآن</a>
+                </div>
+              `;
+            }
+            return;
+          }
+        } else {
+          filtered = filtered
+            .map(p => {
+              const score = Math.max(
+                arabicScore(p.name, q),
+                arabicScore(p.categoryName || '', q) * 0.9,
+                p.medicalSpecialty && arabicMatch(p.medicalSpecialty, q) ? 90 : 0,
+                p.services?.some(s => arabicMatch(s, q)) ? 75 : 0,
+                arabicScore(p.area || '', q) * 0.85,
+                arabicScore(p.address || '', q) * 0.7,
+                matchPlaceByPhone(p, q) ? 100 : 0
+              );
+              return { place: p, score };
+            })
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map(item => item.place);
+        }
       }
 
       // Sorting & Location Distance Filter
