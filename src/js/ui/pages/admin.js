@@ -488,7 +488,7 @@ async function renderAdminOverview($container) {
   $container.innerHTML = '<div class="spinner spinner-lg" style="margin:4rem auto"></div>';
 
   try {
-    if (!adminCache.places || !adminCache.users || !adminCache.products || !adminCache.offers) {
+    if (!adminCache.places || !adminCache.users || !adminCache._rawProducts || !adminCache.offers) {
       const [places, users, products, offers, reviews, cats, news] = await Promise.all([
         dbGet('places').catch(() => ({})),
         dbGet('users').catch(() => ({})),
@@ -500,7 +500,9 @@ async function renderAdminOverview($container) {
       ]);
       adminCache.places = places || {};
       adminCache.users = users || {};
-      adminCache.products = products || {};
+      // NOTE: raw products from dbGet is a nested object {placeId:{prodId:prod}},
+      // not an Array. We keep it separate so renderAdminProducts can fetch via getAllProducts().
+      adminCache._rawProducts = products || {};
       adminCache.offers = offers || {};
       adminCache.reviews = reviews || [];
       adminCache.categories = cats || [];
@@ -509,7 +511,11 @@ async function renderAdminOverview($container) {
 
     const placesList = Object.values(adminCache.places || {});
     const usersList = Object.values(adminCache.users || {});
-    const productsList = Object.values(adminCache.products || {});
+    // Count products from the raw nested map for the stat card only
+    const _rawProds = adminCache._rawProducts || {};
+    const productsList = Object.values(_rawProds).flatMap(placeProds =>
+      placeProds && typeof placeProds === 'object' ? Object.values(placeProds) : []
+    );
     const offersList = Object.values(adminCache.offers || {});
     const reviewsList = adminCache.reviews || [];
     const newsList = adminCache.liveNews || [];
@@ -954,7 +960,7 @@ function escXml(str) {
 //  2.4. Products Moderation (المنتجات والمراجعة)
 // ─────────────────────────────────────────────
 async function renderAdminProducts($container) {
-  if (!adminCache.products) {
+  if (!Array.isArray(adminCache.products)) {
     adminCache.products = await getAllProducts();
   }
   const products = adminCache.products || [];
@@ -1141,7 +1147,7 @@ function renderAdminProductsTableRows(products) {
 
 if (typeof window !== 'undefined') {
   window.adminViewProductAction = async (placeId, productId) => {
-    const products = adminCache.products || (await getAllProducts());
+    const products = Array.isArray(adminCache.products) ? adminCache.products : (await getAllProducts());
     const prod = products.find(p => p.id === productId && p.placeId === placeId) || (await dbGet(`places/${placeId}/products/${productId}`));
     
     if (!prod) {
@@ -1210,7 +1216,7 @@ if (typeof window !== 'undefined') {
   };
 
   window.adminEditProductAction = async (placeId, productId) => {
-    const products = adminCache.products || (await getAllProducts());
+    const products = Array.isArray(adminCache.products) ? adminCache.products : (await getAllProducts());
     const prod = products.find(p => p.id === productId && p.placeId === placeId) || (await dbGet(`places/${placeId}/products/${productId}`));
     
     if (!prod) {
@@ -1297,7 +1303,7 @@ if (typeof window !== 'undefined') {
 
             try {
               await dbUpdate(`places/${placeId}/products/${productId}`, updates);
-              if (adminCache.products) {
+              if (Array.isArray(adminCache.products)) {
                 const pItem = adminCache.products.find(p => p.id === productId && p.placeId === placeId);
                 if (pItem) Object.assign(pItem, updates);
               }
