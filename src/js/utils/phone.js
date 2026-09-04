@@ -1,4 +1,4 @@
-﻿/**
+/**
  * phone.js
  * Comprehensive phone number normalization, query detection, and matching utilities
  * Supports Egyptian mobiles (010, 011, 012, 015) and landlines (050 Dakahlia, 057 Damietta, etc.)
@@ -85,11 +85,11 @@ export function formatPhoneNumberForDisplay(phone = '') {
   if (!norm) return phone;
   // Egyptian mobile format: 010 3758 1121
   if (norm.length === 11 && norm.startsWith('01')) {
-    return ${norm.slice(0, 3)}  ;
+    return `${norm.slice(0, 3)} ${norm.slice(3, 7)} ${norm.slice(7)}`;
   }
   // Landline format: 050 771 2345
   if (norm.length >= 8 && norm.startsWith('05')) {
-    return ${norm.slice(0, 3)}  ;
+    return `${norm.slice(0, 3)} ${norm.slice(3, 6)} ${norm.slice(6)}`;
   }
   return norm;
 }
