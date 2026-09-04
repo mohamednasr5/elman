@@ -1099,10 +1099,10 @@ body.admin-page {
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 12px 35px rgba(11, 34, 57, 0.28);
-  overflow: visible;
+  overflow: hidden;
   margin-bottom: var(--space-4);
   animation: adminFadeIn 0.4s ease forwards;
-  z-index: 10;
+  z-index: 1;
 }
 
 .notif-hero-card::before {
@@ -1453,9 +1453,17 @@ body.admin-page {
   gap: 8px;
   align-items: center;
   overflow-x: auto;
-  padding: 6px 2px 14px 2px;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 4px 14px 4px;
+  margin-top: 14px;
   margin-bottom: var(--space-4);
   scrollbar-width: none;
+  position: relative;
+  z-index: 5;
+  clear: both;
+  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
 }
 
 .notif-tabs-bar::-webkit-scrollbar {
@@ -1466,7 +1474,7 @@ body.admin-page {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 16px;
+  padding: 8px 14px;
   border-radius: 9999px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1475,43 +1483,57 @@ body.admin-page {
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
 .notif-tab:hover {
   background: var(--surface-2);
   border-color: var(--primary);
   color: var(--primary);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .notif-tab.active {
-  background: linear-gradient(135deg, #1B4F72 0%, #0F2B48 100%);
-  color: #fff;
-  border-color: #1B4F72;
-  box-shadow: 0 4px 16px rgba(27, 79, 114, 0.3);
+  background: linear-gradient(135deg, #1B4F72 0%, #0F2B48 100%) !important;
+  color: #fff !important;
+  border-color: #1B4F72 !important;
+  box-shadow: 0 4px 14px rgba(27, 79, 114, 0.35);
   transform: translateY(-1px);
 }
 
+.notif-tab.active span {
+  color: #fff !important;
+}
+
 .notif-tab__count {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
   padding: 2px 7px;
   border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.07);
   color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  min-width: 18px;
   transition: all 0.2s ease;
 }
 
 .notif-tab.active .notif-tab__count {
   background: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  color: #fff !important;
 }
 
 .notif-tab--unread .notif-tab__count {
   background: #EF4444;
   color: #fff !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.35);
 }
 
 /* Notification Cards */
