@@ -4,7 +4,7 @@
  * Initializes Firebase, Auth, Theme, Floating Voice Assistant, Realtime Live Sync, and FCM.
  */
 
-import { initFirebase } from './firebase.js';
+import { initFirebase, ensureFirebaseReady } from './firebase.js';
 import { initAuth, onAuthStateChange, signOut, waitForAuth, isAdmin, getCurrentUser } from './auth.js';
 import { getSettings, getUserNotifications } from './db.js';
 import { toast } from '../ui/components/Toast.js';
@@ -107,7 +107,15 @@ function _bottomNavHTML(active) {
     <span class="bottom-nav__label">أماكني</span>
   </button>
   <div class="bottom-nav__fab">
-    <button type="button" data-dash-sec="add" class="bottom-nav__fab-btn" aria-label="إضافة مكان" title="إضافة مكان جديد">➕</button>
+    <div class="fab-guide-bubble" id="fab-add-place-guide" role="tooltip">
+      <span class="fab-guide-sparkle">✨</span>
+      <span class="fab-guide-text">إضافة مكان جديد</span>
+      <span class="fab-guide-arrow"></span>
+    </div>
+    <button type="button" data-dash-sec="add" class="bottom-nav__fab-btn fab-btn--pulsing-glow" aria-label="إضافة مكان" title="إضافة مكان جديد">
+      <span class="fab-icon-plus">➕</span>
+      <span class="fab-sun-rays"></span>
+    </button>
   </div>
   <button type="button" data-dash-sec="offers" class="bottom-nav__item">
     <span class="bottom-nav__icon">🏷️</span>
@@ -258,7 +266,7 @@ function _pwaBannerHTML() {
 ───────────────────────────────────────────────────────── */
 export async function initPage(activeFile = '') {
   /* 1. Firebase + Auth */
-  initFirebase();
+  await ensureFirebaseReady();
   initAuth();
 
   /* 2. Theme setup (Dark / Light) */

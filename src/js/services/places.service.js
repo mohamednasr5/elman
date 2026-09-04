@@ -29,11 +29,14 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
     return;
   }
 
-  if (!cleanPhoneNum || cleanPhoneNum.length < 7) {
-    throw new Error('يرجى إدخال رقم هاتف صحيح للمكان');
+  // Allow unified numbers (like 17555, 19xxx, 16xxx - 4 to 6 digits) as well as regular landlines and mobiles
+  if (!cleanPhoneNum || cleanPhoneNum.length < 4 || cleanPhoneNum.length > 15) {
+    throw new Error('يرجى إدخال رقم هاتف صحيح للمكان (موبايل، أرضي، أو رقم موحد مثل 17555)');
   }
 
   const allPlaces = (await dbGet('places')) || {};
+  const matchingPhonePlaces = [];
+
   for (const [id, p] of Object.entries(allPlaces)) {
     if (!p) continue;
     const currentId = p.id || p._key || id;
@@ -50,11 +53,17 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
       throw new Error(`يوجد مكان مسجل مسبقاً بنفس الاسم ("${p.name}")، يرجى اختيار اسم فريد ومميز لنشاطك.`);
     }
 
-    // 2. Strict Unique Phone Check
+    // 2. Phone Check: Track existing places using this phone
     const existingPhone = (p.phone || '').replace(/\D/g, '');
     if (existingPhone && existingPhone === cleanPhoneNum) {
-      throw new Error(`رقم الهاتف ("${phone}") مسجل بالفعل لنشاط آخر ("${p.name}")، لكل مكان رقم هاتف فريد.`);
+      matchingPhonePlaces.push(p);
     }
+  }
+
+  // Enforce maximum 2 places per phone number (allow up to 2 places only)
+  if (matchingPhonePlaces.length >= 2) {
+    const placesNames = matchingPhonePlaces.map(p => `"${p.name}"`).join(' و ');
+    throw new Error(`رقم الهاتف ("${phone}") مسجل بالفعل لمكانين (${placesNames})، والحد الأقصى المسموح به هو تسجيل نفس الرقم لمكانين فقط.`);
   }
 }
 

@@ -1,6 +1,7 @@
 import { showAddPlaceOnboardingModal } from '../components/AddPlaceOnboardingModal.js';
 import { 
   fetchManagedUserNotifications, 
+  getCachedManagedUserNotifications,
   deleteSingleNotification, 
   clearAllUserNotifications, 
   clearReadNotifications,
@@ -136,6 +137,16 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
     const isActive = sec === section || (sec === 'add' && (section === 'add-place' || section === 'add'));
     el.classList.toggle('active', isActive);
   });
+
+  // Hide guide bubble if already in 'add' section
+  const fabGuide = document.getElementById('fab-add-place-guide');
+  if (fabGuide) {
+    if (section === 'add' || section === 'add-place') {
+      fabGuide.style.display = 'none';
+    } else {
+      fabGuide.style.display = 'inline-flex';
+    }
+  }
 
   try {
     if (section === 'overview') {
@@ -719,7 +730,8 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <div class="form-row" id="p-phone-row">
           <div class="form-group">
             <label class="form-label">رقم الهاتف <span class="required">*</span></label>
-            <input type="tel" id="p-phone" class="form-input" required placeholder="01012345678" value="${escAttr(place?.phone || '')}" style="direction:ltr;text-align:right" />
+            <input type="tel" id="p-phone" class="form-input" required placeholder="01012345678 أو خط ساخن 17555" value="${escAttr(place?.phone || '')}" style="direction:ltr;text-align:right" />
+            <p style="font-size:11px;color:var(--text-muted);margin-top:3px">يدعم أرقام الموبايل، الأرضي، والخطوط الساخنة والأرقام الموحدة (مثل 17555). مسموح لنفس الرقم بمكانين كحد أقصى.</p>
           </div>
 
           <div class="form-group">
@@ -2654,8 +2666,20 @@ if (typeof window !== 'undefined') {
 let _activeNotifFilter = 'all';
 
 async function renderDashboardNotifications($container, user) {
-  $container.innerHTML = `<div class="spinner spinner-lg" style="margin:4rem auto"></div>`;
+  // 1. Instant Cache-First Display (0ms latency, eliminates loading spinner)
+  const cachedNotifs = getCachedManagedUserNotifications(user?.uid);
+  if (cachedNotifs && cachedNotifs.length > 0 && !$container.querySelector('.notif-hero-card')) {
+    renderNotificationsMarkup($container, user, cachedNotifs);
+  } else if (!$container.querySelector('.notif-hero-card')) {
+    $container.innerHTML = `<div class="spinner spinner-lg" style="margin:4rem auto"></div>`;
+  }
+
+  // 2. Background Revalidation
   const allNotifs = await fetchManagedUserNotifications(user.uid);
+  renderNotificationsMarkup($container, user, allNotifs);
+}
+
+function renderNotificationsMarkup($container, user, allNotifs) {
   const unreadCount = allNotifs.filter(n => !n.isRead).length;
   const newPlacesCount = allNotifs.filter(n => n.type === 'new_place').length;
   const verifiedCount = allNotifs.filter(n => n.type === 'place_verified').length;

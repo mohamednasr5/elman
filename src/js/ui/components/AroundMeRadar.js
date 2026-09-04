@@ -62,16 +62,16 @@ export function mountAroundMeRadar(containerId) {
             </button>
           </div>
 
-          <!-- Quick Category Filters -->
-          <div style="display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px;scrollbar-width:none">
-            <button type="button" class="btn btn-xs around-cat-btn active" data-cat="all" style="border-radius:9999px;font-weight:800;padding:5px 12px;background:#fff;color:#0B1E30;border:none">الكل</button>
-            <button type="button" class="btn btn-xs btn-outline around-cat-btn" data-cat="atm" style="border-radius:9999px;font-weight:700;padding:5px 12px;color:#fff;border-color:rgba(255,255,255,0.3)">🏧 ATM</button>
-            <button type="button" class="btn btn-xs btn-outline around-cat-btn" data-cat="pharmacy" style="border-radius:9999px;font-weight:700;padding:5px 12px;color:#fff;border-color:rgba(255,255,255,0.3)">💊 صيدليات</button>
-            <button type="button" class="btn btn-xs btn-outline around-cat-btn" data-cat="doctor" style="border-radius:9999px;font-weight:700;padding:5px 12px;color:#fff;border-color:rgba(255,255,255,0.3)">🩺 أطباء</button>
-            <button type="button" class="btn btn-xs btn-outline around-cat-btn" data-cat="restaurant" style="border-radius:9999px;font-weight:700;padding:5px 12px;color:#fff;border-color:rgba(255,255,255,0.3)">🍔 مطاعم</button>
-            <button type="button" class="btn btn-xs btn-outline around-cat-btn" data-cat="supermarket" style="border-radius:9999px;font-weight:700;padding:5px 12px;color:#fff;border-color:rgba(255,255,255,0.3)">🛒 سوبر ماركت</button>
-            <button type="button" class="btn btn-xs btn-outline around-cat-btn" data-cat="cafe" style="border-radius:9999px;font-weight:700;padding:5px 12px;color:#fff;border-color:rgba(255,255,255,0.3)">☕ كافيهات</button>
-            <button type="button" class="btn btn-xs btn-outline around-cat-btn" data-cat="service" style="border-radius:9999px;font-weight:700;padding:5px 12px;color:#fff;border-color:rgba(255,255,255,0.3)">🔧 صنايعية وخدمات</button>
+          <!-- Quick Category Filters (No overlap, smooth horizontal scroll) -->
+          <div class="around-me-cats-scroll">
+            <button type="button" class="around-cat-btn active" data-cat="all">الكل</button>
+            <button type="button" class="around-cat-btn" data-cat="atm">🏧 ATM</button>
+            <button type="button" class="around-cat-btn" data-cat="pharmacy">💊 صيدليات</button>
+            <button type="button" class="around-cat-btn" data-cat="doctor">🩺 أطباء</button>
+            <button type="button" class="around-cat-btn" data-cat="restaurant">🍔 مطاعم</button>
+            <button type="button" class="around-cat-btn" data-cat="supermarket">🛒 سوبر ماركت</button>
+            <button type="button" class="around-cat-btn" data-cat="cafe">☕ كافيهات</button>
+            <button type="button" class="around-cat-btn" data-cat="service">🔧 صنايعية وخدمات</button>
           </div>
 
           <!-- Radar Places Grid -->
@@ -203,14 +203,8 @@ export function mountAroundMeRadar(containerId) {
   // Filter Buttons Handler
   container.querySelectorAll('.around-cat-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      container.querySelectorAll('.around-cat-btn').forEach(b => {
-        b.classList.remove('active');
-        b.style.background = '';
-        b.style.color = '#fff';
-      });
+      container.querySelectorAll('.around-cat-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      btn.style.background = '#fff';
-      btn.style.color = '#0B1E30';
 
       activeCatFilter = btn.getAttribute('data-cat') || 'all';
       loadAndRenderClosestPlaces();

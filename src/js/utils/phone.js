@@ -27,11 +27,17 @@ export function normalizePhoneNumber(raw = '') {
 
 /**
  * Detects if a search query is intended as a phone number:
- * Starts with '01' (mobile) or '05' (landline) and has at least 3 digits.
+ * - Starts with '01' (mobile) or '05' (landline) with at least 3 digits.
+ * - Or unified hotline short numbers (e.g. 17555, 19xxx, 16xxx - 4 to 5 digits starting with 1).
  */
 export function isPhoneSearchQuery(query = '') {
   const norm = normalizePhoneNumber(query);
-  return (norm.startsWith('01') || norm.startsWith('05')) && norm.length >= 3;
+  if (!norm) return false;
+  // Egyptian mobiles (01...) or landlines (05...)
+  if ((norm.startsWith('01') || norm.startsWith('05')) && norm.length >= 3) return true;
+  // Egyptian hotlines / unified short numbers (e.g. 17555, 19xxx, 16xxx, 15xxx - typically 4-5 digits)
+  if (/^1[5-9]\d{3}$/.test(norm) || (norm.length >= 4 && norm.length <= 5 && /^\d+$/.test(String(query).trim()))) return true;
+  return false;
 }
 
 /**
@@ -52,7 +58,8 @@ export function extractPlacePhoneNumbers(place = {}) {
   candidates.forEach(c => {
     if (c) {
       const norm = normalizePhoneNumber(c);
-      if (norm && norm.length >= 6) {
+      // Support unified numbers like 17555 (length >= 4) as well as regular phone numbers
+      if (norm && norm.length >= 4) {
         numbers.add(norm);
       }
     }
@@ -83,6 +90,10 @@ export function matchPlaceByPhone(place, queryPhone) {
 export function formatPhoneNumberForDisplay(phone = '') {
   const norm = normalizePhoneNumber(phone);
   if (!norm) return phone;
+  // Unified / Hotline (e.g. 17555, 19666, 16xxx)
+  if (norm.length >= 4 && norm.length <= 5 && norm.startsWith('1')) {
+    return norm;
+  }
   // Egyptian mobile format: 010 3758 1121
   if (norm.length === 11 && norm.startsWith('01')) {
     return `${norm.slice(0, 3)} ${norm.slice(3, 7)} ${norm.slice(7)}`;

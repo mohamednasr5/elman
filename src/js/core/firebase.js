@@ -34,35 +34,71 @@ let _auth = null;
 let _db = null;
 
 /**
- * Initialize Firebase (call once on app start)
+ * Initialize Firebase (safely handles CDN script loading delay)
  */
 export function initFirebase() {
-  if (_app) return { app: _app, auth: _auth, db: _db };
+  if (_app && _db && _auth) return { app: _app, auth: _auth, db: _db };
 
-  // firebase is loaded globally from CDN
-  _app = firebase.initializeApp(firebaseConfig);
-  _auth = firebase.auth();
-  _db = firebase.database();
+  const fb = (typeof window !== 'undefined' && window.firebase) 
+    ? window.firebase 
+    : (typeof firebase !== 'undefined' ? firebase : null);
 
-  // Enable Analytics
-  if (typeof firebase.analytics !== 'undefined') {
-    try { firebase.analytics(); } catch(_) {}
+  if (!fb || typeof fb.initializeApp !== 'function') {
+    return null;
+  }
+
+  try {
+    _app = (fb.apps && fb.apps.length > 0) ? fb.apps[0] : fb.initializeApp(firebaseConfig);
+    _auth = fb.auth();
+    _db = fb.database();
+
+    // Enable Analytics
+    if (typeof fb.analytics !== 'undefined') {
+      try { fb.analytics(); } catch(_) {}
+    }
+  } catch (err) {
+    console.warn('[initFirebase] Warning:', err);
   }
 
   return { app: _app, auth: _auth, db: _db };
 }
 
+/**
+ * Ensures Firebase is loaded and ready before queries run
+ */
+export async function ensureFirebaseReady(timeoutMs = 5000) {
+  if (_app && _db && _auth) return { app: _app, auth: _auth, db: _db };
+
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const ready = initFirebase();
+    if (ready && ready.db) return ready;
+    await new Promise(r => setTimeout(r, 40));
+  }
+
+  return initFirebase();
+}
+
 export function getAuth() {
+  if (!_auth) {
+    initFirebase();
+  }
   if (!_auth) throw new Error('Firebase not initialized. Call initFirebase() first.');
   return _auth;
 }
 
 export function getDB() {
+  if (!_db) {
+    initFirebase();
+  }
   if (!_db) throw new Error('Firebase not initialized. Call initFirebase() first.');
   return _db;
 }
 
 export function getApp() {
+  if (!_app) {
+    initFirebase();
+  }
   if (!_app) throw new Error('Firebase not initialized. Call initFirebase() first.');
   return _app;
 }

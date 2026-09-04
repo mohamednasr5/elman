@@ -1099,21 +1099,21 @@ body.admin-page {
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 12px 35px rgba(11, 34, 57, 0.28);
-  overflow: hidden;
+  overflow: visible !important;
   margin-bottom: var(--space-4);
   animation: adminFadeIn 0.4s ease forwards;
-  z-index: 1;
+  z-index: 50;
 }
 
 .notif-hero-card::before {
   content: '';
   position: absolute;
-  top: -60px;
-  left: -40px;
-  width: 220px;
-  height: 220px;
+  top: 0;
+  left: 0;
+  width: 180px;
+  height: 180px;
   background: radial-gradient(circle, rgba(245, 166, 35, 0.18) 0%, transparent 70%);
-  border-radius: 50%;
+  border-radius: 20px 0 0 0;
   pointer-events: none;
   filter: blur(20px);
 }
@@ -1121,12 +1121,12 @@ body.admin-page {
 .notif-hero-card::after {
   content: '';
   position: absolute;
-  bottom: -50px;
-  right: -30px;
-  width: 200px;
-  height: 200px;
+  bottom: 0;
+  right: 0;
+  width: 180px;
+  height: 180px;
   background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
-  border-radius: 50%;
+  border-radius: 0 0 20px 0;
   pointer-events: none;
   filter: blur(25px);
 }
@@ -1313,6 +1313,7 @@ body.admin-page {
 /* Animated Clear & Manage Dropdown */
 .notif-clear-dropdown-wrap {
   position: relative;
+  z-index: 1000;
 }
 
 .btn-notif-manage {
@@ -1351,33 +1352,38 @@ body.admin-page {
   display: none;
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
   min-width: 260px;
-  max-width: 90vw;
+  max-width: 92vw;
   background: #0B2239;
   background: rgba(11, 34, 57, 0.98);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
   border-radius: 16px;
   padding: 8px;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
-  z-index: 99999;
-  transform-origin: top left;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  z-index: 999999 !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
 }
 
 [dir="rtl"] .notif-manage-menu {
   left: auto;
   right: 0;
-  transform-origin: top right;
 }
 
 @media (max-width: 500px) {
-  [dir="rtl"] .notif-manage-menu {
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    transform-origin: top center;
+  .notif-clear-dropdown-wrap {
+    position: static !important;
+  }
+  .notif-manage-menu {
+    left: 12px !important;
+    right: 12px !important;
+    max-width: calc(100vw - 24px) !important;
+    width: auto !important;
+    top: calc(100% + 8px);
   }
 }
 
@@ -1385,12 +1391,14 @@ body.admin-page {
   display: flex !important;
   flex-direction: column;
   gap: 4px;
-  animation: notifDropdownPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  animation: notifDropdownFade 0.2s ease-out forwards;
 }
 
-@keyframes notifDropdownPop {
-  0% { opacity: 0; transform: scale(0.92) translateY(-6px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+@keyframes notifDropdownFade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 .notif-menu-header {

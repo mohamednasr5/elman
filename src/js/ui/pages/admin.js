@@ -3846,7 +3846,7 @@ window.editPlaceAdmin = async (placeId) => {
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
           <div class="form-group">
             <label class="form-label">رقم الهاتف للتواصل</label>
-            <input type="tel" id="aep-phone" class="form-input" placeholder="010XXXXXXXX" value="${escAttr(place.phone || '')}" />
+            <input type="tel" id="aep-phone" class="form-input" placeholder="010XXXXXXXX أو 17555" value="${escAttr(place.phone || '')}" />
           </div>
           <div class="form-group">
             <label class="form-label">رقم الواتساب</label>

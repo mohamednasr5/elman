@@ -8,6 +8,7 @@ import { buildContextualWhatsAppLink } from './whatsapp.service.js';
 import { normalizeArabic, arabicScore, arabicMatch, expandArabicSearchIntent, extractSearchKeywords, stripAl } from '../utils/arabic.js';
 import { toast } from '../ui/components/Toast.js';
 import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers } from '../core/db.js';
+import { ensureFirebaseReady } from '../core/firebase.js';
 import { isAtmPlace, isAtmReadyAndOperational, getAtmLiveStatus, formatAtmTimeAgo, ATM_UNIFIED_LOGO } from '../utils/atm.js';
 import { getUserLocation, calculateDistanceKm, formatDistance, getPlaceCoords, MANZALA_CENTER } from '../utils/maps.js';
 import { isPlaceOpen } from '../utils/date.js';
@@ -81,9 +82,13 @@ export async function warmUpVoiceAssistantCache() {
   } catch (_) {}
 }
 
-// Auto warm up on module load
+// Auto warm up on module load safely when Firebase is ready
 if (typeof window !== 'undefined') {
-  setTimeout(warmUpVoiceAssistantCache, 100);
+  setTimeout(() => {
+    ensureFirebaseReady().then(() => {
+      warmUpVoiceAssistantCache();
+    }).catch(() => {});
+  }, 1000);
 }
 
 export class VoiceSearch {

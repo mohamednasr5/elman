@@ -186,117 +186,123 @@ export async function markAllUserNotificationsAsRead(uid) {
   }
 }
 
+// Local cache helper for instant sub-second notifications display (<10ms)
+export function getCachedManagedUserNotifications(uid) {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(`manzala_cached_managed_notifs_${uid || 'anon'}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const deletedIds = getDeletedNotifIds(uid);
+    const readIds = getReadNotifIds(uid);
+    return (Array.isArray(parsed) ? parsed : [])
+      .filter(n => n && n.id && !deletedIds.has(String(n.id)))
+      .map(n => ({
+        ...n,
+        isRead: Boolean(n.isRead || readIds.has(String(n.id)))
+      }));
+  } catch (_) {
+    return [];
+  }
+}
+
 /**
- * Fetch all notifications (Live Firebase RTDB + Verified/New Places Synthesizer)
+ * Fetch all notifications (Live Firebase RTDB + Verified/New Places Synthesizer with SWR Cache)
  */
 export async function fetchManagedUserNotifications(uid) {
   const deletedIds = getDeletedNotifIds(uid);
   const readIds = getReadNotifIds(uid);
   const mergedMap = {};
 
-  // 1. Fetch Global Notifications from Firebase RTDB
+  // 1. Fetch Global Notifications (dbGet uses memory & localStorage SWR cache)
   try {
-    const db = getDB();
-    const snap = await db.ref('globalNotifications').once('value');
-    if (snap && snap.exists()) {
-      snap.forEach(child => {
-        const id = String(child.key);
-        const val = child.val();
-        if (val && !deletedIds.has(id)) {
-          mergedMap[id] = { id, ...val, isBroadcast: true, isRead: readIds.has(id) };
-        }
-      });
-    }
+    const globalNotifs = (await dbGet('globalNotifications', true)) || {};
+    Object.entries(globalNotifs).forEach(([id, val]) => {
+      if (val && !deletedIds.has(String(id))) {
+        mergedMap[id] = { id: String(id), ...val, isBroadcast: true, isRead: readIds.has(String(id)) };
+      }
+    });
   } catch (_) {}
 
-  // 2. Synthesize directly from Verified Places & Latest Places in DB
+  // 2. Synthesize directly from Verified Places & Latest Places in DB (cached via dbGet)
   try {
-    const db = getDB();
-    const snap = await db.ref('places').once('value');
-    if (snap && snap.exists()) {
-      snap.forEach(child => {
-        const place = child.val();
-        const id = String(child.key);
-        if (!place) return;
+    const placesMap = (await dbGet('places', true)) || {};
+    Object.entries(placesMap).forEach(([id, place]) => {
+      if (!place) return;
+      id = String(place.id || place._key || id);
 
-        const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || id);
+      const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || id);
 
-        // Verified Place Notification
-        const isPlaceVerified = Boolean(
-          place.isVerified === true ||
-          place.verified === true ||
-          place.verificationStatus === 'verified' ||
-          place.isFeaturedVerified === true
-        );
-        if (isPlaceVerified) {
-          const notifId = 'notif_verified_' + id;
-          if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
-            mergedMap[notifId] = {
-              id: notifId,
-              type: 'place_verified',
-              title: '👑 توثيق رسمي: ' + (place.name || 'مكان موثق'),
-              placeId: id,
-              placeName: place.name || 'المكان',
-              placeSlug: place.slug || id,
-              placeAddress: place.address || place.area || 'المنزلة والمطرية',
-              message: 'تم توثيق (' + (place.name || 'المكان') + ') رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية الرقمي!',
-              actionText: 'مشاهدة المكان 🚀',
-              actionUrl: targetUrl,
-              url: targetUrl,
-              icon: place.logoUrl || './icons/icon-192x192.png',
-              createdAt: Number(place.verifiedAt || place.updatedAt || place.createdAt || (Date.now() - 3600000)),
-              isBroadcast: true,
-              isRead: readIds.has(notifId)
-            };
-          }
+      // Verified Place Notification
+      const isPlaceVerified = Boolean(
+        place.isVerified === true ||
+        place.verified === true ||
+        place.verificationStatus === 'verified' ||
+        place.isFeaturedVerified === true
+      );
+      if (isPlaceVerified) {
+        const notifId = 'notif_verified_' + id;
+        if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+          mergedMap[notifId] = {
+            id: notifId,
+            type: 'place_verified',
+            title: '👑 توثيق رسمي: ' + (place.name || 'مكان موثق'),
+            placeId: id,
+            placeName: place.name || 'المكان',
+            placeSlug: place.slug || id,
+            placeAddress: place.address || place.area || 'المنزلة والمطرية',
+            message: 'تم توثيق (' + (place.name || 'المكان') + ') رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية الرقمي!',
+            actionText: 'مشاهدة المكان 🚀',
+            actionUrl: targetUrl,
+            url: targetUrl,
+            icon: place.logoUrl || './icons/icon-192x192.png',
+            createdAt: Number(place.verifiedAt || place.updatedAt || place.createdAt || (Date.now() - 3600000)),
+            isBroadcast: true,
+            isRead: readIds.has(notifId)
+          };
         }
+      }
 
-        // New Place Joined Notification (Recent places)
-        const createdTime = Number(place.createdAt || 0);
-        if (createdTime > 0) {
-          const notifId = 'notif_new_place_' + id;
-          if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
-            mergedMap[notifId] = {
-              id: notifId,
-              type: 'new_place',
-              title: '🎉 انضمام نشاط جديد: ' + (place.name || 'نشاط جديد'),
-              placeId: id,
-              placeName: place.name || 'المكان',
-              placeSlug: place.slug || id,
-              message: 'انضم (' + (place.name || 'المكان') + ') من (' + (place.area || 'المنزلة والمطرية') + ') حديثاً إلى الدليل.',
-              actionText: 'زيارة المكان ↗',
-              actionUrl: targetUrl,
-              url: targetUrl,
-              icon: place.logoUrl || './icons/icon-192x192.png',
-              createdAt: createdTime,
-              isBroadcast: true,
-              isRead: readIds.has(notifId)
-            };
-          }
+      // New Place Joined Notification (Recent places)
+      const createdTime = Number(place.createdAt || 0);
+      if (createdTime > 0) {
+        const notifId = 'notif_new_place_' + id;
+        if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+          mergedMap[notifId] = {
+            id: notifId,
+            type: 'new_place',
+            title: '🎉 انضمام نشاط جديد: ' + (place.name || 'نشاط جديد'),
+            placeId: id,
+            placeName: place.name || 'المكان',
+            placeSlug: place.slug || id,
+            message: 'انضم (' + (place.name || 'المكان') + ') من (' + (place.area || 'المنزلة والمطرية') + ') حديثاً إلى الدليل.',
+            actionText: 'زيارة المكان ↗',
+            actionUrl: targetUrl,
+            url: targetUrl,
+            icon: place.logoUrl || './icons/icon-192x192.png',
+            createdAt: createdTime,
+            isBroadcast: true,
+            isRead: readIds.has(notifId)
+          };
         }
-      });
-    }
+      }
+    });
   } catch (_) {}
 
   // 3. Personal User Notifications
   if (uid) {
     try {
-      const db = getDB();
-      const snap = await db.ref(`userNotifications/${uid}`).once('value');
-      if (snap && snap.exists()) {
-        snap.forEach(child => {
-          const id = String(child.key);
-          const val = child.val();
-          if (val && !deletedIds.has(id)) {
-            mergedMap[id] = { 
-              id, 
-              ...val, 
-              isBroadcast: false,
-              isRead: Boolean(val.isRead || readIds.has(id))
-            };
-          }
-        });
-      }
+      const userNotifs = (await dbGet(`userNotifications/${uid}`, false)) || {};
+      Object.entries(userNotifs).forEach(([id, val]) => {
+        if (val && !deletedIds.has(String(id))) {
+          mergedMap[id] = { 
+            id: String(id), 
+            ...val, 
+            isBroadcast: false,
+            isRead: Boolean(val.isRead || readIds.has(String(id)))
+          };
+        }
+      });
     } catch (_) {}
   }
 
@@ -305,7 +311,16 @@ export async function fetchManagedUserNotifications(uid) {
     isRead: Boolean(n.isRead || readIds.has(String(n.id)))
   }));
 
-  return all.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+  const sorted = all.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+
+  // Save to instant local storage cache for 0ms loads
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(`manzala_cached_managed_notifs_${uid || 'anon'}`, JSON.stringify(sorted.slice(0, 150)));
+    }
+  } catch (_) {}
+
+  return sorted;
 }
 
 /**
