@@ -146,41 +146,97 @@ export function showModal({
  * Show a confirmation dialog
  */
 export function showConfirm({
-  title = 'تأكيد',
-  message = 'هل أنت متأكد؟',
+  title = 'تأكيد الإجراء',
+  message = 'هل أنت متأكد من المتابعة؟',
   confirmLabel = 'تأكيد',
   cancelLabel = 'إلغاء',
+  confirmText,
+  cancelText,
   confirmType = 'danger',
-  icon = '⚠️'
-}) {
+  icon = '🗑️'
+} = {}) {
+  const finalConfirmLabel = confirmText || confirmLabel;
+  const finalCancelLabel = cancelText || cancelLabel;
+  const isDanger = confirmType === 'danger';
+
   return new Promise((resolve) => {
-    const modal = showModal({
-      title,
-      size: 'sm',
-      closeable: true,
-      content: `
-        <div class="confirm-dialog">
-          <div class="confirm-dialog__icon">${icon}</div>
-          <div class="confirm-dialog__title">${title}</div>
-          <p class="confirm-dialog__text">${message}</p>
+    let settled = false;
+    const finish = (result) => {
+      if (!settled) {
+        settled = true;
+        resolve(result);
+      }
+    };
+
+    // Close any existing modal
+    if (_activeModal) _activeModal.close();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay modal-overlay--luxury';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+
+    const modal = document.createElement('div');
+    modal.className = `modal modal--confirm-luxury ${isDanger ? 'modal--confirm-danger' : 'modal--confirm-primary'}`;
+
+    modal.innerHTML = `
+      <div class="confirm-luxury-wrap">
+        <button class="confirm-luxury-close" aria-label="إغلاق">✕</button>
+        
+        <div class="confirm-luxury-icon-box ${isDanger ? 'icon-box--danger' : 'icon-box--primary'}">
+          <div class="confirm-icon-glow"></div>
+          <span class="confirm-icon-emoji">${icon}</span>
         </div>
-      `,
-      buttons: [
-        {
-          label: confirmLabel,
-          type: confirmType,
-          onClick: () => resolve(true),
-          closeOnClick: true
-        },
-        {
-          label: cancelLabel,
-          type: 'ghost',
-          onClick: () => resolve(false),
-          closeOnClick: true
-        }
-      ],
-      onClose: () => resolve(false)
+
+        <div class="confirm-luxury-header">
+          <h3 class="confirm-luxury-title">${title}</h3>
+          <p class="confirm-luxury-desc">${message}</p>
+        </div>
+
+        <div class="confirm-luxury-actions">
+          <button type="button" class="btn-luxury-confirm ${isDanger ? 'btn-luxury-danger' : 'btn-luxury-primary'}" id="btn-confirm-yes">
+            <span>${finalConfirmLabel}</span>
+          </button>
+          <button type="button" class="btn-luxury-cancel" id="btn-confirm-no">
+            <span>${finalCancelLabel}</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    requestAnimationFrame(() => {
+      overlay.classList.add('active');
     });
+
+    function doClose(res) {
+      overlay.classList.remove('active');
+      document.body.style.overflow = '';
+      setTimeout(() => overlay.remove(), 250);
+      _activeModal = null;
+      finish(res);
+    }
+
+    modal.querySelector('#btn-confirm-yes')?.addEventListener('click', () => doClose(true));
+    modal.querySelector('#btn-confirm-no')?.addEventListener('click', () => doClose(false));
+    modal.querySelector('.confirm-luxury-close')?.addEventListener('click', () => doClose(false));
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) doClose(false);
+    });
+
+    const keyHandler = (e) => {
+      if (e.key === 'Escape') {
+        document.removeEventListener('keydown', keyHandler);
+        doClose(false);
+      }
+    };
+    document.addEventListener('keydown', keyHandler);
+
+    _activeModal = { close: () => doClose(false) };
   });
 }
 
