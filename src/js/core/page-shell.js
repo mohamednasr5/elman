@@ -227,7 +227,7 @@ function _footerHTML() {
       </div>
     </div>
     <div class="footer__bottom">
-      <p class="footer__copyright">© 2026 دليل المنزلة والمطرية الرقمي (المنزلة وناسها). جميع الحقوق محفوظة.</p>
+      <p class="footer__copyright">© جميع الأماكن والبيانات والحقوق محفوظة لدليل المنزلة والمطرية الرقمي (${new Date().getFullYear()}).</p>
       <div class="footer__bottom-links">
         <a href="privacy.html" class="footer__bottom-link">الخصوصية</a>
         <a href="terms.html"   class="footer__bottom-link">الشروط</a>
