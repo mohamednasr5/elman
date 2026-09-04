@@ -23,7 +23,7 @@ export async function renderCategoriesPage($container) {
           تصنيفات الدليل
         </h1>
         <p style="color:var(--text-secondary);max-width:540px;margin:0 auto">
-          تصفح الأماكن والمحلات والأطباء في المنزلة مصنفة حسب النشاط
+          تصفح الأماكن والمحلات والأطباء والخدمات في المنزلة والمطرية والقرى المجاورة مصنفة حسب النشاط
         </p>
       </div>
     </div>
@@ -109,15 +109,15 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   );
 
   setMeta({
-    title: `${cat.name} في المنزلة — دليل الأماكن`,
-    description: `دليل ${cat.name} في مدينة المنزلة — ابحث عن العناوين وأرقام الهواتف ومواعيد العمل والأسعار`,
-    url: `https://elmanzala.com/category.html?slug=${slug}`
+    title: `${cat.name} في المنزلة والمطرية — دليل الأماكن والخدمات`,
+    description: `دليل ${cat.name} في المنزلة والمطرية — ابحث عن العناوين وأرقام الهواتف والتواصل ومواعيد العمل والتقييمات`,
+    url: `https://dalilmanzala.com/category.html?slug=${slug}`
   });
 
   setBreadcrumbSchema([
-    { name: 'الرئيسية', url: 'https://elmanzala.com/' },
-    { name: 'التصنيفات', url: 'https://elmanzala.com/categories.html' },
-    { name: cat.name, url: `https://elmanzala.com/category.html?slug=${slug}` }
+    { name: 'الرئيسية', url: 'https://dalilmanzala.com/' },
+    { name: 'التصنيفات', url: 'https://dalilmanzala.com/categories.html' },
+    { name: cat.name, url: `https://dalilmanzala.com/category.html?slug=${slug}` }
   ]);
 
   $container.innerHTML = `
@@ -127,10 +127,10 @@ export async function renderCategoryPage($container, { slug, query, user }) {
           ${cat.icon || '📁'}
         </div>
         <h1 style="font-size:var(--font-size-3xl);font-weight:800;color:var(--primary);margin-bottom:var(--space-2)">
-          ${escHtml(cat.name)} في المنزلة
+          ${escHtml(cat.name)} في المنزلة والمطرية
         </h1>
         <p style="color:var(--text-secondary);max-width:540px;margin:0 auto">
-          أفضل وأشهر الأماكن في قسم ${escHtml(cat.name)} بمدينة المنزلة
+          أفضل وأشهر الأماكن والأنشطة في قسم ${escHtml(cat.name)} بالمنزلة، المطرية، والقرى المجاورة
         </p>
       </div>
     </div>
@@ -177,16 +177,27 @@ export async function renderCategoryPage($container, { slug, query, user }) {
       <!-- Filter & Sort Bar -->
       <div class="filter-bar" style="margin-bottom:var(--space-5);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div style="font-size:14px;font-weight:700;color:var(--text-primary)">
-          <span>📋 قائمة الأماكن في قسم ${escHtml(cat.name)}</span>
+          <span>📋 قائمة الأماكن في قسم ${escHtml(cat.name)} بالمنزلة والمطرية</span>
         </div>
-        <select id="cat-sort-filter" class="form-select" style="max-width:210px;margin:0">
-          <option value="default">⭐ الافتراضي (المميز والموثق)</option>
-          <option value="nearest">📍 الأقرب إليّ (حسب موقعي GPS)</option>
-          <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
-          <option value="most-reviews">💬 الأكثر تقييماً وتفاعلاً</option>
-          <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
-          <option value="newest">🆕 الأحدث إضافة</option>
-        </select>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="cat-area-filter" class="form-select" style="max-width:180px;margin:0">
+            <option value="all">🏙️ المنزلة والمطرية (الكل)</option>
+            <option value="المنزلة">📍 المنزلة</option>
+            <option value="المطرية">📍 المطرية</option>
+            <option value="العصافرة">📍 العصافرة</option>
+            <option value="الجمالية">📍 الجمالية</option>
+            <option value="ميت سلسيل">📍 ميت سلسيل</option>
+            <option value="القرى">📍 القرى المجاورة</option>
+          </select>
+          <select id="cat-sort-filter" class="form-select" style="max-width:210px;margin:0">
+            <option value="default">⭐ الافتراضي (المميز والموثق)</option>
+            <option value="nearest">📍 الأقرب إليّ (حسب موقعي GPS)</option>
+            <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
+            <option value="most-reviews">💬 الأكثر تقييماً وتفاعلاً</option>
+            <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
+            <option value="newest">🆕 الأحدث إضافة</option>
+          </select>
+        </div>
       </div>
 
       <div class="places-grid" id="category-places-grid">
@@ -199,14 +210,15 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   let currentAtmFilter = 'all';
   const grid = document.getElementById('category-places-grid');
   const sortSelect = document.getElementById('cat-sort-filter');
+  const areaSelect = document.getElementById('cat-area-filter');
   if (!grid) return;
 
   if (!rawPlaces || rawPlaces.length === 0) {
     grid.innerHTML = `
       <div class="empty-state" style="grid-column:1/-1">
         <div class="empty-state__icon">${cat.icon || '🏪'}</div>
-        <h3 class="empty-state__title">لا توجد أماكن مسجلة في هذا القسم بعد</h3>
-        <p class="empty-state__text">هل تملك نشاطاً في هذا المجال؟ أضف مكانك الآن مجاناً</p>
+        <h3 class="empty-state__title">لا توجد أماكن مسجلة في قسم ${escHtml(cat.name)} بالمنزلة والمطرية بعد</h3>
+        <p class="empty-state__text">هل تملك نشاطاً أو محلاً في هذا المجال؟ أضف مكانك الآن مجاناً</p>
         <a href="dashboard.html?section=add" class="btn btn-primary">➕ إضافة مكان في قسم ${escHtml(cat.name)}</a>
       </div>
     `;
@@ -215,9 +227,38 @@ export async function renderCategoryPage($container, { slug, query, user }) {
 
   async function renderSortedPlaces() {
     const sortBy = sortSelect?.value || 'default';
+    const selectedArea = areaSelect?.value || 'all';
     let places = [...rawPlaces];
+
+    // Filter by Area / City
+    if (selectedArea !== 'all') {
+      if (selectedArea === 'القرى') {
+        places = places.filter(p => {
+          const loc = `${p.area || ''} ${p.address || ''}`;
+          return !loc.includes('المنزلة') && !loc.includes('المطرية');
+        });
+      } else {
+        places = places.filter(p => {
+          const loc = `${p.area || ''} ${p.address || ''}`;
+          return loc.includes(selectedArea);
+        });
+      }
+    }
+
     if (isAtmCategory && currentAtmFilter !== 'all') {
       places = filterAtmPlaces(places, currentAtmFilter, 15);
+    }
+
+    if (places.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="empty-state__icon">🔍</div>
+          <h3 class="empty-state__title">لا توجد أماكن مطابقة في ${escHtml(selectedArea === 'all' ? 'هذا التصنيف' : selectedArea)}</h3>
+          <p class="empty-state__text">يمكنك تجربة اختيار "المنزلة والمطرية (الكل)" أو إضافة نشاط جديد</p>
+          <a href="dashboard.html?section=add" class="btn btn-primary btn-sm" style="margin-top:var(--space-3)">➕ إضافة مكان جديد</a>
+        </div>
+      `;
+      return;
     }
 
     if (sortBy === 'nearest') {
@@ -230,7 +271,7 @@ export async function renderCategoryPage($container, { slug, query, user }) {
           if (err.code === 1) {
             toast.warning('يرجى السماح للمتصفح بالوصول للموقع (Allow Location) في شريط العنوان 📍');
           } else {
-            toast.info('تم الترتيب حسب المسافة من مركز المنزلة 📍');
+            toast.info('تم الترتيب حسب المسافة من مركز المنطقة 📍');
           }
           _catUserLocation = MANZALA_CENTER;
         }
@@ -258,6 +299,7 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   }
 
   sortSelect?.addEventListener('change', renderSortedPlaces);
+  areaSelect?.addEventListener('change', renderSortedPlaces);
 
   // ATM Filter button click handlers
   if (isAtmCategory) {
