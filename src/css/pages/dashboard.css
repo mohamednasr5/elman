@@ -1099,9 +1099,10 @@ body.admin-page {
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 12px 35px rgba(11, 34, 57, 0.28);
-  overflow: hidden;
+  overflow: visible;
   margin-bottom: var(--space-4);
   animation: adminFadeIn 0.4s ease forwards;
+  z-index: 10;
 }
 
 .notif-hero-card::before {
@@ -1351,15 +1352,17 @@ body.admin-page {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  min-width: 250px;
-  background: rgba(15, 39, 61, 0.96);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  min-width: 260px;
+  max-width: 90vw;
+  background: #0B2239;
+  background: rgba(11, 34, 57, 0.98);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
   border-radius: 16px;
   padding: 8px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-  z-index: 1000;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+  z-index: 99999;
   transform-origin: top left;
 }
 
@@ -1369,15 +1372,24 @@ body.admin-page {
   transform-origin: top right;
 }
 
+@media (max-width: 500px) {
+  [dir="rtl"] .notif-manage-menu {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    transform-origin: top center;
+  }
+}
+
 .notif-manage-menu.show {
-  display: flex;
+  display: flex !important;
   flex-direction: column;
   gap: 4px;
-  animation: notifDropdownPop 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: notifDropdownPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes notifDropdownPop {
-  0% { opacity: 0; transform: scale(0.9) translateY(-8px); }
+  0% { opacity: 0; transform: scale(0.92) translateY(-6px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 

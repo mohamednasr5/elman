@@ -2827,16 +2827,34 @@ async function renderDashboardNotifications($container, user) {
   // Clear / Manage Dropdown Trigger
   const manageTrigger = document.getElementById('btn-notif-manage-menu-trigger');
   const manageMenu = document.getElementById('notif-manage-menu');
+
+  function toggleManageMenu(open) {
+    const shouldOpen = open !== undefined ? open : !manageMenu?.classList.contains('show');
+    if (shouldOpen) {
+      manageTrigger?.classList.add('active');
+      manageMenu?.classList.add('show');
+    } else {
+      manageTrigger?.classList.remove('active');
+      manageMenu?.classList.remove('show');
+    }
+  }
+
   manageTrigger?.addEventListener('click', (e) => {
+    e.preventDefault();
     e.stopPropagation();
-    manageTrigger.classList.toggle('active');
-    manageMenu?.classList.toggle('show');
+    toggleManageMenu();
+  });
+
+  manageMenu?.addEventListener('click', (e) => {
+    e.stopPropagation();
   });
 
   document.addEventListener('click', (e) => {
-    if (!manageTrigger?.contains(e.target) && !manageMenu?.contains(e.target)) {
-      manageTrigger?.classList.remove('active');
-      manageMenu?.classList.remove('show');
+    if (manageMenu?.classList.contains('show')) {
+      const isInside = manageTrigger?.contains(e.target) || manageMenu?.contains(e.target);
+      if (!isInside) {
+        toggleManageMenu(false);
+      }
     }
   });
 
