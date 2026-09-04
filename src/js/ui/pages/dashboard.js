@@ -2968,6 +2968,36 @@ async function renderDashboardNotifications($container, user) {
                 <div style="font-size:12.5px;color:var(--text-secondary);margin-top:2px">
                   ${isGuest ? 'قام زائر بتصفح' : 'قام بزيارة وتصفح'} صفحة <strong>${escHtml(n.placeName || 'المكان')}</strong>
                 </div>
+
+                ${(n.ip || n.location || n.city || n.device) ? `
+                  <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;font-size:11.5px;align-items:center">
+                    ${n.ip ? `
+                      <span class="chip" style="background:rgba(2,132,199,0.1);color:#0284C7;border:1px solid rgba(2,132,199,0.25);font-family:monospace;font-weight:700;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" title="عنوان IP الخاص بالزائر">
+                        🌐 IP: ${escHtml(n.ip)}
+                      </span>
+                    ` : ''}
+                    ${(n.location || n.city || n.region) ? `
+                      <span class="chip" style="background:rgba(16,185,129,0.1);color:#059669;border:1px solid rgba(16,185,129,0.25);font-weight:700;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" title="الموقع الجغرافي التقريبي">
+                        📍 ${escHtml(n.location || [n.city, n.region, n.country].filter(Boolean).join('، '))}
+                      </span>
+                    ` : ''}
+                    ${n.isp ? `
+                      <span class="chip" style="background:rgba(139,92,246,0.1);color:#7C3AED;border:1px solid rgba(139,92,246,0.25);padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" title="شبكة / مزود خدمة الإنترنت">
+                        📡 ${escHtml(n.isp)}
+                      </span>
+                    ` : ''}
+                    ${n.device ? `
+                      <span class="chip" style="background:rgba(100,116,139,0.1);color:#475569;border:1px solid rgba(100,116,139,0.25);padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px" title="الجهاز ونوع المتصفح">
+                        📱 ${escHtml(n.device)}
+                      </span>
+                    ` : ''}
+                    ${n.mapsUrl ? `
+                      <a href="${escAttr(n.mapsUrl)}" target="_blank" rel="noopener" class="chip" style="background:rgba(245,166,35,0.15);color:#B45309;border:1px solid rgba(245,166,35,0.35);font-weight:800;padding:2px 8px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="عرض موقع الزائر على خرائط جوجل">
+                        🗺️ الخريطة ↗
+                      </a>
+                    ` : ''}
+                  </div>
+                ` : ''}
               </div>
 
               <div style="display:flex;align-items:center;gap:8px">

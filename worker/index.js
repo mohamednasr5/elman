@@ -497,11 +497,26 @@ async function handleDynamicOpenGraph(slug, request, env) {
     if (rtdbRes.ok) {
       const allPlaces = await rtdbRes.json();
       const lowerSlug = cleanSlug.toLowerCase();
+      const normSlug = lowerSlug.replace(/[-_\s]+/g, '');
+
       for (const [key, p] of Object.entries(allPlaces || {})) {
         if (!p) continue;
         const pSlug = (p.slug || '').toLowerCase();
-        const baseSlug = pSlug.replace(/-[a-z0-9]{4,8}$/i, '');
-        if (pSlug === lowerSlug || baseSlug === lowerSlug || key === cleanSlug || p.id === cleanSlug || (cleanSlug && p.name && p.name.includes(cleanSlug))) {
+        const pNormSlug = pSlug.replace(/[-_\s]+/g, '');
+        const pBaseSlug = pSlug.replace(/-[a-z0-9]{4,8}$/i, '');
+        const pName = (p.name || '').toLowerCase();
+        const pNormName = pName.replace(/[-_\s]+/g, '');
+
+        if (
+          pSlug === lowerSlug ||
+          pNormSlug === normSlug ||
+          pBaseSlug === lowerSlug ||
+          key === cleanSlug ||
+          p.id === cleanSlug ||
+          (normSlug && pNormSlug.includes(normSlug)) ||
+          (normSlug && pNormName.includes(normSlug)) ||
+          (cleanSlug && pName.includes(cleanSlug))
+        ) {
           place = { id: key, ...p };
           break;
         }
@@ -509,8 +524,9 @@ async function handleDynamicOpenGraph(slug, request, env) {
     }
   } catch (_) {}
 
-  const placeName = place?.name || 'تفاصيل ومواعيد وأرقام التواصل | دليل المنزلة والمطرية';
-  const placeDesc = place?.description || 'عرض معلومات وتفاصيل المكان كاملة — المواعيد وأرقام التواصل والعنوان والعروض والخدمات في دليل المنزلة والمطرية الرقمي';
+  const rawPlaceName = place?.name || 'تفاصيل ومواعيد وأرقام التواصل';
+  const fullShareTitle = `${rawPlaceName} | دليل المنزلة والمطرية الرقمي`;
+  const placeDesc = place?.description || `تعرف على مواعيد وأرقام تواصل وعنوان وخدمات ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`;
   const placeImg = place?.coverImageUrl || place?.logoUrl || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
   const placeTargetSlug = place?.slug || cleanSlug;
   const destinationUrl = `${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`;
@@ -526,16 +542,16 @@ async function handleDynamicOpenGraph(slug, request, env) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escapeHtml(placeName)} | دليل المنزلة والمطرية الرقمي</title>
+  <title>${escapeHtml(fullShareTitle)}</title>
   
   <!-- Primary Meta Tags -->
-  <meta name="title" content="${escapeHtml(placeName)}" />
+  <meta name="title" content="${escapeHtml(fullShareTitle)}" />
   <meta name="description" content="${escapeHtml(placeDesc)}" />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="${destinationUrl}" />
-  <meta property="og:title" content="${escapeHtml(placeName)}" />
+  <meta property="og:title" content="${escapeHtml(fullShareTitle)}" />
   <meta property="og:description" content="${escapeHtml(placeDesc)}" />
   <meta property="og:image" content="${escapeHtml(placeImg)}" />
   <meta property="og:image:secure_url" content="${escapeHtml(placeImg)}" />
@@ -547,7 +563,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="${destinationUrl}" />
-  <meta name="twitter:title" content="${escapeHtml(placeName)}" />
+  <meta name="twitter:title" content="${escapeHtml(fullShareTitle)}" />
   <meta name="twitter:description" content="${escapeHtml(placeDesc)}" />
   <meta name="twitter:image" content="${escapeHtml(placeImg)}" />
 
@@ -556,7 +572,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
   <script>window.location.replace("${destinationUrl}");</script>
 </head>
 <body style="font-family:sans-serif;text-align:center;padding:2rem;direction:rtl">
-  <h2>${escapeHtml(placeName)}</h2>
+  <h2>${escapeHtml(fullShareTitle)}</h2>
   <p>جاري تحويلك إلى صفحة المكان في دليل المنزلة والمطرية الرقمي...</p>
   <a href="${destinationUrl}">اضغط هنا إذا لم يتم تحويلك تلقائياً</a>
 </body>

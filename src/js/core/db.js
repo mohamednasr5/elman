@@ -659,6 +659,71 @@ export async function getSettings() {
   return dbGet('settings', true);
 }
 
+/**
+ * Get visitor IP, geographic location, and ISP details
+ */
+async function getVisitorClientInfo() {
+  try {
+    const res = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(3500) });
+    if (res.ok) {
+      const d = await res.json();
+      if (d && d.success !== false) {
+        const city = d.city || '';
+        const region = d.region || '';
+        const country = d.country || '';
+        const parts = [city, region, country].filter(Boolean);
+        return {
+          ip: d.ip || '',
+          city: city,
+          region: region,
+          country: country,
+          latitude: d.latitude || null,
+          longitude: d.longitude || null,
+          isp: d.connection?.isp || d.connection?.org || '',
+          location: parts.join('، ') || 'مصر',
+          mapsUrl: (d.latitude && d.longitude) ? `https://www.google.com/maps?q=${d.latitude},${d.longitude}` : ''
+        };
+      }
+    }
+  } catch (_) {}
+
+  try {
+    const res = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      const d = await res.json();
+      return {
+        ip: d.ip || '',
+        location: 'مصر',
+        city: '',
+        region: '',
+        country: 'مصر'
+      };
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+function getVisitorDeviceSummary() {
+  if (typeof navigator === 'undefined') return '';
+  const ua = navigator.userAgent || '';
+  let os = 'كمبيوتر';
+  if (/Android/i.test(ua)) os = 'هاتف أندرويد';
+  else if (/iPhone/i.test(ua)) os = 'آيفون';
+  else if (/iPad/i.test(ua)) os = 'آيباد';
+  else if (/Windows/i.test(ua)) os = 'ويندوز PC';
+  else if (/Macintosh/i.test(ua)) os = 'ماك Mac';
+  else if (/Linux/i.test(ua)) os = 'لينكس';
+
+  let browser = '';
+  if (/Edg/i.test(ua)) browser = 'Edge';
+  else if (/Chrome/i.test(ua)) browser = 'Chrome';
+  else if (/Safari/i.test(ua)) browser = 'Safari';
+  else if (/Firefox/i.test(ua)) browser = 'Firefox';
+
+  return browser ? `${os} (${browser})` : os;
+}
+
 /** Increment place view stat and notify place owner about profile visitors */
 export async function trackPlaceView(place, visitor = null) {
   if (!place) return;
@@ -681,6 +746,14 @@ export async function trackPlaceView(place, visitor = null) {
       sessionStorage.setItem(sessionKey, '1');
     }
 
+    // Capture visitor client details (IP, city, governorate, device)
+    let clientInfo = null;
+    let deviceSummary = '';
+    try {
+      deviceSummary = getVisitorDeviceSummary();
+      clientInfo = await getVisitorClientInfo();
+    } catch (_) {}
+
     const notification = {
       type: 'profile_view',
       placeId: placeId,
@@ -689,6 +762,14 @@ export async function trackPlaceView(place, visitor = null) {
       visitorName: visitor ? (visitor.displayName || visitor.name || visitor.email || 'مستخدم مسجل') : 'زائر (غير مسجل)',
       visitorPhoto: visitor?.photoURL || '',
       isGuest: !visitor,
+      ip: clientInfo?.ip || '',
+      location: clientInfo?.location || '',
+      city: clientInfo?.city || '',
+      region: clientInfo?.region || '',
+      country: clientInfo?.country || '',
+      isp: clientInfo?.isp || '',
+      mapsUrl: clientInfo?.mapsUrl || '',
+      device: deviceSummary || '',
       createdAt: Date.now(),
       isRead: false
     };

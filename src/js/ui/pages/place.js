@@ -1348,11 +1348,14 @@ function setupPlaceSharing(place) {
   const cleanShortSlug = String(rawSlug).replace(/-[a-z0-9_]{5,7}$/i, '');
   const finalSlug = (cleanShortSlug && cleanShortSlug.length >= 3) ? cleanShortSlug : rawSlug;
   const canonicalPlaceUrl = `https://dalilmanzala.com/place.html?slug=${encodeURIComponent(finalSlug || rawSlug)}`;
+  // Smart dynamic link routed through Cloudflare Worker for rich OpenGraph preview on Facebook, WhatsApp, Telegram, and X
+  const smartShareUrl = `https://elmanzala.nonm1724.workers.dev/p/${encodeURIComponent(finalSlug || rawSlug)}`;
   const coverUrl = place.coverImageUrl || place.logoUrl || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
 
+  const shareTitle = `${placeName} | دليل المنزلة والمطرية الرقمي`;
   const shareText = `📍 *${placeName}*
 📌 العنوان: ${placeAddress}
-🔗 رابط المكان على الدليل: ${canonicalPlaceUrl}
+🔗 رابط المكان: ${smartShareUrl}
 
 ✨ دليل المنزلة والمطرية الرقمي — دليلك الشامل لجميع الأنشطة والخدمات والأطباء بالمنزلة والمطرية
 🌐 https://dalilmanzala.com/`;
@@ -1363,29 +1366,31 @@ function setupPlaceSharing(place) {
       if (navigator.share) {
         try {
           await navigator.share({
-            title: `${placeName} | دليل المنزلة والمطرية الرقمي`,
-            text: shareText
+            title: shareTitle,
+            text: shareText,
+            url: smartShareUrl
           });
           return;
         } catch (err) {
           if (err.name !== 'AbortError') {
-            openCustomShareModal({ placeName, placeAddress, placeUrl: canonicalPlaceUrl, coverUrl, shareText });
+            openCustomShareModal({ placeName, placeAddress, placeUrl: smartShareUrl, coverUrl, shareText });
           }
           return;
         }
       }
 
       // 2. Custom Share Modal Fallback
-      openCustomShareModal({ placeName, placeAddress, placeUrl: canonicalPlaceUrl, coverUrl, shareText });
+      openCustomShareModal({ placeName, placeAddress, placeUrl: smartShareUrl, coverUrl, shareText });
     });
   });
 }
 
 function openCustomShareModal({ placeName, placeAddress, placeUrl, coverUrl, shareText }) {
+  const shareTitle = `${placeName} | دليل المنزلة والمطرية الرقمي`;
   const waShare = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-  const tgShare = `https://t.me/share/url?url=${encodeURIComponent(placeUrl)}&text=${encodeURIComponent(shareText)}`;
+  const tgShare = `https://t.me/share/url?url=${encodeURIComponent(placeUrl)}&text=${encodeURIComponent(`📍 *${shareTitle}*\n📌 العنوان: ${placeAddress}`)}`;
   const fbShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(placeUrl)}`;
-  const twShare = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+  const twShare = `https://twitter.com/intent/tweet?url=${encodeURIComponent(placeUrl)}&text=${encodeURIComponent(`📍 *${shareTitle}*`)}`;
 
   const modal = showModal({
     title: '📤 مشاركة بطاقة المكان',
