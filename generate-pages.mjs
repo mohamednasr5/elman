@@ -255,6 +255,17 @@ const pages = [
   }`
   },
   {
+    file: 'legal.html',
+    title: 'السياسة القانونية وإخلاء المسؤولية — دليل المنزلة والمطرية الرقمي',
+    desc: 'السياسة القانونية الرسمية وإخلاء المسؤولية وحدود المحتوى لمنصة دليل المنزلة والمطرية الرقمي',
+    activeNav: '',
+    moduleScript: `
+  import { initPage } from './src/js/core/page-shell.js';
+  import { renderStaticPage } from './src/js/ui/pages/static.js';
+  await initPage('');
+  await renderStaticPage(document.getElementById('page-container'), 'legal');`
+  },
+  {
     file: 'privacy.html',
     title: 'سياسة الخصوصية',
     desc: 'سياسة الخصوصية وحماية البيانات لمنصة دليل المنزلة والمطرية الرقمي',

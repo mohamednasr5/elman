@@ -221,6 +221,7 @@ function _footerHTML() {
         <h3 class="footer__col-title">تواصل معنا</h3>
         <ul class="footer__links">
           <li><a href="contact.html"  class="footer__link">📧 تواصل معنا</a></li>
+          <li><a href="legal.html"    class="footer__link" style="color:var(--secondary,#F5A623);font-weight:700">⚖️ قانوني وإخلاء المسؤولية</a></li>
           <li><a href="privacy.html"  class="footer__link">سياسة الخصوصية</a></li>
           <li><a href="terms.html"    class="footer__link">شروط الاستخدام</a></li>
         </ul>
@@ -229,6 +230,7 @@ function _footerHTML() {
     <div class="footer__bottom">
       <p class="footer__copyright">© جميع الأماكن والبيانات والحقوق محفوظة لدليل المنزلة والمطرية الرقمي (${new Date().getFullYear()}).</p>
       <div class="footer__bottom-links">
+        <a href="legal.html"   class="footer__bottom-link" style="color:#F5A623;font-weight:700">قانوني</a>
         <a href="privacy.html" class="footer__bottom-link">الخصوصية</a>
         <a href="terms.html"   class="footer__bottom-link">الشروط</a>
         <a href="contact.html" class="footer__bottom-link">تواصل</a>
@@ -352,6 +354,9 @@ export async function initPage(activeFile = '') {
 
   /* 15. Instant Link Prefetching for 0ms page loads */
   _setupInstantPrefetch();
+
+  /* 16. Content Protection & Decorative Console Security Warning */
+  _setupContentProtection();
 }
 
 function _checkApkPwaEnvironment() {
@@ -582,4 +587,112 @@ function _h(str) {
 function _a(str) {
   if (!str) return '';
   return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/**
+ * Universal Content Protection & Right-Click Guard & Decorative Console Warning
+ */
+function _setupContentProtection() {
+  if (typeof window === 'undefined') return;
+
+  const currentYear = new Date().getFullYear();
+
+  // 1. Decorative Console Warning Banner
+  const printConsoleWarning = () => {
+    try {
+      console.log(
+        `%c© جميع الأماكن والبيانات والحقوق محفوظة لدليل المنزلة والمطرية الرقمي (${currentYear}).`,
+        'background: linear-gradient(135deg, #0B2239, #153A5C); color: #F5A623; font-size: 16px; font-weight: 800; padding: 12px 20px; border-radius: 8px; border: 2px solid #F5A623; font-family: Cairo, Tahoma, sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.5);'
+      );
+      console.log(
+        `%c⚠️ تحذير قانوني رسمي:\nكافة المحتويات والبيانات وقواعد البيانات المنشورة مسجلة ومحمية رقمياً، ولا يمكن نقلها أو نسخها حتى لا يتم مساءلتك قانونياً أمام المحاكم بالمنزلة والمطرية.`,
+        'color: #EF4444; font-size: 13px; font-weight: 700; line-height: 1.8; font-family: Cairo, Tahoma, sans-serif;'
+      );
+      console.log(
+        `%cرابط البوابة الرسمية: %chttps://elmanzala.pages.dev`,
+        'color: #64748B; font-size: 11px; font-family: Cairo, sans-serif;',
+        'color: #0284C7; font-size: 11px; font-weight: 700; text-decoration: underline;'
+      );
+    } catch (_) {}
+  };
+
+  printConsoleWarning();
+
+  // Re-print when developer tools are opened / resized
+  let lastWidth = window.outerWidth - window.innerWidth;
+  let lastHeight = window.outerHeight - window.innerHeight;
+  window.addEventListener('resize', () => {
+    const diffW = window.outerWidth - window.innerWidth;
+    const diffH = window.outerHeight - window.innerHeight;
+    if (diffW !== lastWidth || diffH !== lastHeight) {
+      lastWidth = diffW;
+      lastHeight = diffH;
+      printConsoleWarning();
+    }
+  }, { passive: true });
+
+  // 2. Disable Context Menu (Right Click) across the site, except on input/textarea
+  document.addEventListener('contextmenu', (e) => {
+    const targetTag = e.target.tagName.toLowerCase();
+    if (targetTag === 'input' || targetTag === 'textarea' || e.target.isContentEditable) {
+      return; // Allow editing fields
+    }
+    e.preventDefault();
+    if (typeof toast !== 'undefined' && toast.info) {
+      toast.info('🛡️ المحتوى والبيانات محمية قانونياً — غير مصرح بنسخ أو نقل محتوى الدليل.');
+    }
+  });
+
+  // 3. Prevent Copy & Cut actions on protected text
+  document.addEventListener('copy', (e) => {
+    const targetTag = e.target.tagName ? e.target.tagName.toLowerCase() : '';
+    if (targetTag === 'input' || targetTag === 'textarea' || e.target.isContentEditable) {
+      return;
+    }
+    e.preventDefault();
+    if (e.clipboardData) {
+      e.clipboardData.setData('text/plain', `© جميع الأماكن والبيانات والحقوق محفوظة لدليل المنزلة والمطرية الرقمي (${currentYear}). https://elmanzala.pages.dev`);
+    }
+    if (typeof toast !== 'undefined' && toast.warning) {
+      toast.warning('⚠️ تم حفظ حقوق الملكية: لا يجوز نسخ أو اقتباس بيانات الدليل.');
+    }
+  });
+
+  document.addEventListener('cut', (e) => {
+    const targetTag = e.target.tagName ? e.target.tagName.toLowerCase() : '';
+    if (targetTag === 'input' || targetTag === 'textarea' || e.target.isContentEditable) {
+      return;
+    }
+    e.preventDefault();
+  });
+
+  // 4. Block common keyboard shortcuts (Ctrl+C, Ctrl+U, Ctrl+S, Ctrl+P, F12)
+  document.addEventListener('keydown', (e) => {
+    const targetTag = e.target.tagName ? e.target.tagName.toLowerCase() : '';
+    const isInput = targetTag === 'input' || targetTag === 'textarea' || e.target.isContentEditable;
+
+    // F12 or Ctrl+Shift+I or Ctrl+Shift+J or Ctrl+Shift+C (DevTools inspect)
+    if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c'))) {
+      printConsoleWarning();
+    }
+
+    // Ctrl+U (View Source), Ctrl+S (Save Page), Ctrl+P (Print)
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P')) {
+      e.preventDefault();
+      if (typeof toast !== 'undefined' && toast.warning) {
+        toast.warning('🔒 مصدر وبيانات الدليل محمية بموجب قانون الملكية الفكرية.');
+      }
+    }
+
+    // Ctrl+C on non-input elements
+    if (e.ctrlKey && (e.key === 'c' || e.key === 'C') && !isInput) {
+      const selection = window.getSelection ? window.getSelection().toString() : '';
+      if (selection.length > 0) {
+        e.preventDefault();
+        if (typeof toast !== 'undefined' && toast.warning) {
+          toast.warning('🛡️ المحتوى محمي: لا يمكن النسخ لمنع التعدي القانوني.');
+        }
+      }
+    }
+  });
 }

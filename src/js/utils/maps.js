@@ -68,7 +68,9 @@ export async function extractCoordinates(urlOrText) {
 export const MANZALA_VILLAGES_LIST = [
   'المنزلة',
   'المطرية',
+  'الجمالية',
   'العصافرة',
+  'ميت سلسيل',
   'الفروسات',
   'البصراط',
   'المنزلة الجديدة',
