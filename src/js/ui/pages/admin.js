@@ -2148,6 +2148,16 @@ async function renderAdminReviews($container) {
                   <option value="all">تشكيلة طبيعية شاملة (1 - 5 نجوم)</option>
                 </select>
               </div>
+
+              <!-- Gender selector -->
+              <div class="form-group" style="margin:0">
+                <label class="form-label" style="font-size:12px">جنس المعلقين 👥</label>
+                <select id="gen-rev-gender" class="form-select" style="font-size:12.5px;padding:6px 10px">
+                  <option value="mixed" selected>مختلط — رجال وبنات معاً (افتراضي)</option>
+                  <option value="male">رجال فقط 👨</option>
+                  <option value="female">بنات فقط 👩 (مناسب للكوافير والبيوتي)</option>
+                </select>
+              </div>
             </div>
 
             <!-- Action Buttons -->
@@ -2316,11 +2326,13 @@ async function renderAdminReviews($container) {
 
       const starRange = document.getElementById('gen-rev-stars')?.value || 'positive';
       const specialty = document.getElementById('gen-rev-specialty')?.value || '';
+      const gender = document.getElementById('gen-rev-gender')?.value || 'mixed';
       const placeSelect = document.getElementById('bulk-rev-place');
       const placeName = placeSelect?.options[placeSelect.selectedIndex]?.textContent || '';
 
-      toast.info(`جاري توليد ${count} تقييم فريد في مجال (${specialty || 'النشاط'})...`);
-      const generated = generateSyntheticReviews({ count, starRange, specialty, placeName });
+      const genderLabel = gender === 'male' ? ' (رجال فقط 👨)' : gender === 'female' ? ' (بنات فقط 👩)' : ' (مختلط)';
+      toast.info(`جاري توليد ${count} تقييم فريد في مجال (${specialty || 'النشاط'})${genderLabel}...`);
+      const generated = generateSyntheticReviews({ count, starRange, specialty, placeName, gender });
 
       const formattedTable = [
         '| # | اسم العميل | التقييم | نص التقييم |',
@@ -2331,7 +2343,7 @@ async function renderAdminReviews($container) {
       if (textarea) {
         textarea.value = formattedTable;
         updateLivePreview();
-        toast.success(`تم توليد ${generated.length} تقييم فريد بتخصص (${specialty}) وتعبئتها في الجدول بنجاح! ✨`);
+        toast.success(`تم توليد ${generated.length} تقييم فريد بتخصص (${specialty})${genderLabel} ✨`);
       }
     });
 

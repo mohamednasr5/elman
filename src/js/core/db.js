@@ -1684,7 +1684,7 @@ export async function adminBulkAddReviews(placeId, items = []) {
 /**
  * Mega Synthetic Reviews Generator (Generates up to 5,000 unique 100% Arabic Egyptian dialect reviews with customizable star ranges and specialty)
  */
-export function generateSyntheticReviews({ count = 50, starRange = '4-5', specialty = '', placeName = '', categoryName = '' }) {
+export function generateSyntheticReviews({ count = 50, starRange = '4-5', specialty = '', placeName = '', categoryName = '', gender = 'mixed' }) {
   const targetCount = Math.min(5000, Math.max(1, parseInt(count, 10) || 50));
   const spec = (specialty || categoryName || 'النشاط والخدمات').trim();
   const pName = (placeName || 'المكان').trim();
@@ -1813,12 +1813,30 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', specia
     let name = '';
     const typeRoll = Math.random();
 
-    if (typeRoll < 0.5) {
-      name = `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
-    } else if (typeRoll < 0.75) {
-      name = `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
+    if (gender === 'male') {
+      // Male only: Arabic male or English male names
+      if (typeRoll < 0.75) {
+        name = `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
+      } else {
+        name = `${pick(FIRST_NAMES_EN.filter(n => !['Sarah','Mariam','Nourhan','Dina','Aya','Rania','Mona','Reem','Hadeer','Salma','Farida','Nada','Nour'].includes(n)))} ${pick(LAST_NAMES_EN)}`;
+      }
+    } else if (gender === 'female') {
+      // Female only: Arabic female or English female names
+      const FIRST_NAMES_EN_F = ['Sara','Mariam','Nourhan','Dina','Aya','Rania','Mona','Reem','Hadeer','Salma','Farida','Nada','Nour','Yasmine','Hana','Laila','Rana'];
+      if (typeRoll < 0.75) {
+        name = `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
+      } else {
+        name = `${pick(FIRST_NAMES_EN_F)} ${pick(LAST_NAMES_EN)}`;
+      }
     } else {
-      name = `${pick(FIRST_NAMES_EN)} ${pick(LAST_NAMES_EN)}`;
+      // Mixed (default): male 50%, female 25%, English 25%
+      if (typeRoll < 0.5) {
+        name = `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
+      } else if (typeRoll < 0.75) {
+        name = `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
+      } else {
+        name = `${pick(FIRST_NAMES_EN)} ${pick(LAST_NAMES_EN)}`;
+      }
     }
 
     const normName = name.trim().toLowerCase();
