@@ -4,7 +4,7 @@
  * Native Mobile System Push Notifications & Background Sync Engine.
  */
 
-const CACHE_VERSION = 'v2.2.0-live-direct';
+const CACHE_VERSION = 'v2.3.0-crisp-icons';
 const STATIC_CACHE  = `manzala-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `manzala-dynamic-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `manzala-images-${CACHE_VERSION}`;
@@ -13,10 +13,13 @@ const STATIC_ASSETS = [
   './offline.html',
   './src/css/main.css',
   './manifest.webmanifest',
+  './icons/icon-48x48.png',
   './icons/icon-72x72.png',
   './icons/icon-96x96.png',
   './icons/icon-192x192.png',
-  './icons/icon-512x512.png'
+  './icons/icon-maskable-192x192.png',
+  './icons/icon-512x512.png',
+  './icons/icon-maskable-512x512.png'
 ];
 
 const OFFLINE_PAGE = './offline.html';

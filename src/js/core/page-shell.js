@@ -31,7 +31,7 @@ function _headerHTML(active) {
 <header class="header" id="site-header" role="banner">
   <div class="container header__inner">
     <a href="index.html" class="header__logo" aria-label="دليل المنزلة والمطرية الرقمي">
-      <img src="./icons/icon-72x72.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="36" height="36"/>
+      <img src="./icons/icon-192x192.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="36" height="36" class="header__logo-img"/>
       <div class="header__logo-text">
         <span class="header__logo-name">دليل المنزلة والمطرية</span>
       </div>
@@ -241,7 +241,7 @@ function _footerHTML() {
 function _pwaBannerHTML() {
   return `
 <div class="pwa-banner" id="pwa-banner" hidden>
-  <img src="./icons/icon-72x72.png" alt="" class="pwa-banner__icon" width="48" height="48"/>
+  <img src="./icons/icon-192x192.png" alt="" class="pwa-banner__icon" width="48" height="48"/>
   <div class="pwa-banner__content">
     <div class="pwa-banner__title">ثبّت دليل المنزلة والمطرية الرقمي</div>
     <div class="pwa-banner__text">تصفّح أسرع وتجربة أفضل على هاتفك</div>

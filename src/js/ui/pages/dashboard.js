@@ -3,6 +3,7 @@ import {
   fetchManagedUserNotifications, 
   deleteSingleNotification, 
   clearAllUserNotifications, 
+  clearReadNotifications,
   markSingleNotificationAsRead, 
   markAllUserNotificationsAsRead,
   updateAllNotificationBadges,
@@ -714,39 +715,59 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
         <!-- Cover Image -->
         <div class="form-group">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2)">
-            <label class="form-label">صورة الغلاف (Cover Image)</label>
-            <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-cover">
-              ✨ إنشاء غلاف بالذكاء الاصطناعي
-            </button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
+            <label class="form-label" style="margin:0">صورة الغلاف (Cover Image) <span style="font-weight:normal;color:var(--text-muted);font-size:12px">(اختياري - يوجد غلاف افتراضي أنيق للدليل)</span></label>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn btn-sm btn-outline" id="btn-reset-default-cover" style="font-size:11px;padding:3px 8px;border-radius:6px" title="استخدام غلاف الدليل الافتراضي">
+                🏛️ استعادة الغلاف الافتراضي
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-cover">
+                ✨ غلاف بالذكاء الاصطناعي
+              </button>
+            </div>
           </div>
           <div class="file-upload" id="cover-upload-zone">
             <div class="file-upload__icon">🌅</div>
             <div class="file-upload__text">اضغط هنا لاختيار صورة الغلاف أو اسحبها إلى هنا</div>
-            <div class="file-upload__hint">يُفضل مقاس عريض بجودة واضحة (الحد الأقصى 5 ميجابايت)</div>
+            <div class="file-upload__hint">يُفضل مقاس عريض بجودة واضحة (الحد الأقصى 5 ميجابايت) — إذا تركته فارغاً سيتم وضع غلاف الدليل الرسمي تلقائياً</div>
             <input type="file" id="p-cover-file" accept="image/jpeg,image/png,image/webp" />
           </div>
           <input type="hidden" id="p-cover-url" value="${escAttr(place?.coverImageUrl || '')}" />
-          <div id="cover-preview-wrapper" style="margin-top:var(--space-3);${place?.coverImageUrl ? '' : 'display:none'}">
-            <img id="cover-preview-img" src="${escAttr(place?.coverImageUrl || '')}" style="max-height:160px;width:100%;object-fit:cover;border-radius:var(--radius-md)" />
+          <div id="cover-preview-wrapper" style="margin-top:var(--space-3)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:12px;font-weight:700;color:var(--text-secondary)">معاينة الغلاف الحالي:</span>
+              <span id="cover-status-badge" class="badge" style="font-size:11px;background:rgba(27,79,114,0.08);color:var(--primary)">${place?.coverImageUrl ? '🖼️ غلاف مخصص' : '🏛️ الغلاف الافتراضي للدليل'}</span>
+            </div>
+            <img id="cover-preview-img" src="${escAttr(place?.coverImageUrl || 'assets/images/default-cover.png')}" style="max-height:160px;width:100%;object-fit:cover;border-radius:var(--radius-md);border:1px solid var(--border)" />
           </div>
         </div>
 
         <!-- Logo -->
         <div class="form-group">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2)">
-            <label class="form-label">شعار المكان أو الصورة الشخصية (Logo / Icon)</label>
-            <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-logo">
-              ✨ إنشاء لوجو ذكي بالاسم
-            </button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
+            <label class="form-label" style="margin:0">شعار المكان أو الصورة الشخصية (Logo / Icon) <span style="font-weight:normal;color:var(--text-muted);font-size:12px">(اختياري - يوجد شعار افتراضي)</span></label>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn btn-sm btn-outline" id="btn-reset-default-logo" style="font-size:11px;padding:3px 8px;border-radius:6px" title="استخدام شعار الدليل الافتراضي">
+                🏛️ استعادة الشعار الافتراضي
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" id="btn-ai-gen-logo">
+                ✨ لوجو بالاسم
+              </button>
+            </div>
           </div>
           <div class="file-upload" id="logo-upload-zone" style="padding:var(--space-4)">
-            <div class="file-upload__text">📷 اضغط لاختيار اللوجو أو اسحبه هنا</div>
+            <div class="file-upload__text">📷 اضغط لاختيار اللوجو أو اسحبه هنا (أو اتركه فارغاً للشعار الافتراضي)</div>
             <input type="file" id="p-logo-file" accept="image/jpeg,image/png,image/webp" />
           </div>
           <input type="hidden" id="p-logo-url" value="${escAttr(place?.logoUrl || '')}" />
-          <div id="logo-preview-wrapper" style="margin-top:var(--space-3);${place?.logoUrl ? '' : 'display:none'}">
-            <img id="logo-preview-img" src="${escAttr(place?.logoUrl || '')}" style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius-md);border:2px solid var(--border)" />
+          <div id="logo-preview-wrapper" style="margin-top:var(--space-3)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <img id="logo-preview-img" src="${escAttr(place?.logoUrl || 'assets/images/default-logo.png')}" style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius-md);border:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.08)" />
+              <div>
+                <span id="logo-status-badge" class="badge" style="font-size:11px;background:rgba(27,79,114,0.08);color:var(--primary)">${place?.logoUrl ? '📷 شعار مخصص' : '🏛️ الشعار الافتراضي للدليل'}</span>
+                <p style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0 0">يمكنك رفعه أو تغييره في أي وقت من زر التعديل.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1215,9 +1236,20 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     const res = await uploadImage(file, 'places');
     document.getElementById('p-cover-url').value = res.url;
     const preview = document.getElementById('cover-preview-img');
-    const wrapper = document.getElementById('cover-preview-wrapper');
-    if (preview && wrapper) { preview.src = res.url; wrapper.style.display = 'block'; }
+    const badge = document.getElementById('cover-status-badge');
+    if (preview) { preview.src = res.url; }
+    if (badge) { badge.textContent = '🖼️ غلاف مخصص'; }
     toast.success('تم رفع صورة الغلاف');
+  });
+
+  // Reset Default Cover
+  document.getElementById('btn-reset-default-cover')?.addEventListener('click', () => {
+    document.getElementById('p-cover-url').value = '';
+    const preview = document.getElementById('cover-preview-img');
+    const badge = document.getElementById('cover-status-badge');
+    if (preview) { preview.src = 'assets/images/default-cover.png'; }
+    if (badge) { badge.textContent = '🏛️ الغلاف الافتراضي للدليل'; }
+    toast.info('تمت استعادة الغلاف الافتراضي للدليل');
   });
 
   // Upload Logo
@@ -1225,9 +1257,20 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     const res = await uploadImage(file, 'places');
     document.getElementById('p-logo-url').value = res.url;
     const preview = document.getElementById('logo-preview-img');
-    const wrapper = document.getElementById('logo-preview-wrapper');
-    if (preview && wrapper) { preview.src = res.url; wrapper.style.display = 'block'; }
+    const badge = document.getElementById('logo-status-badge');
+    if (preview) { preview.src = res.url; }
+    if (badge) { badge.textContent = '📷 شعار مخصص'; }
     toast.success('تم رفع اللوجو');
+  });
+
+  // Reset Default Logo
+  document.getElementById('btn-reset-default-logo')?.addEventListener('click', () => {
+    document.getElementById('p-logo-url').value = '';
+    const preview = document.getElementById('logo-preview-img');
+    const badge = document.getElementById('logo-status-badge');
+    if (preview) { preview.src = 'assets/images/default-logo.png'; }
+    if (badge) { badge.textContent = '🏛️ الشعار الافتراضي للدليل'; }
+    toast.info('تمت استعادة الشعار الافتراضي للدليل');
   });
 
   // Live Google Maps Coordinate Auto-Extraction
@@ -2443,96 +2486,169 @@ async function renderDashboardNotifications($container, user) {
   const soundOn = isNotificationSoundEnabled();
 
   $container.innerHTML = `
-    <div class="dashboard-header animate-fade-in-up" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-4)">
-      <div>
-        <h1 class="dashboard-title" style="margin-bottom:4px;display:flex;align-items:center;gap:8px">
-          <span>🔔</span> سجل الإشعارات وزوار البروفايل
-          ${unreadCount > 0 ? `<span class="badge badge--danger" style="font-size:12px;padding:2px 8px">${unreadCount} جديد</span>` : ''}
-        </h1>
-        <p class="dashboard-subtitle" style="margin:0;color:var(--text-muted);font-size:13px">
-          إدارة شاملة لجميع التنبيهات، تقييمات العملاء، وزوار الأماكن والأنشطة المنضمة والموثقة حديثاً
-        </p>
-      </div>
+    <!-- Executive Luxury Notifications Hero Banner -->
+    <div class="notif-hero-card">
+      <div class="notif-hero-content">
+        <div class="notif-hero-info">
+          <div class="notif-hero-icon-wrap">
+            <span>🔔</span>
+            <div class="bell-halo"></div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+              <h1 class="notif-hero-title">سجل التنبيهات وزوار البروفايل</h1>
+              <span class="notif-live-pill">
+                <span class="pulse-dot"></span>
+                بث فوري مباشر
+              </span>
+              ${unreadCount > 0 ? `
+                <span class="badge" style="background:#EF4444;color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:9999px;box-shadow:0 0 12px rgba(239,68,68,0.5)">
+                  ${unreadCount} جديد
+                </span>
+              ` : ''}
+            </div>
+            <p class="notif-hero-sub">
+              إدارة فورية للتنبيهات، تقييمات العملاء، وزوار الأماكن والأنشطة المنضمة والموثقة حديثاً
+            </p>
+          </div>
+        </div>
 
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <!-- Sound Toggle Button -->
-        <button type="button" class="btn btn-sm ${soundOn ? 'btn-outline' : 'btn-ghost'}" id="btn-toggle-notif-sound" style="font-size:12px;gap:6px" title="تفعيل أو كتم صوت الإشعارات">
-          <span>${soundOn ? '🔊' : '🔇'}</span>
-          <span>${soundOn ? 'صوت الإشعارات: مفعّل' : 'صوت الإشعارات: مكتوم'}</span>
-        </button>
-
-        <button type="button" class="btn btn-sm btn-ghost" id="btn-test-notif-sound" style="font-size:12px;gap:4px" title="تجربة رنة التنبيه">
-          <span>🔔</span> تجربة الصوت
-        </button>
-
-        ${allNotifs.length > 0 ? `
-          <button class="btn btn-sm btn-outline" id="btn-mark-all-read" style="font-size:12px;gap:4px">
-            <span>✓</span> تحديد الكل كمقروء
+        <div class="notif-controls-hub">
+          <!-- Sound Switch Glass Pill -->
+          <button type="button" class="notif-sound-switch" id="btn-toggle-notif-sound" title="${soundOn ? 'كتم صوت التنبيهات' : 'تفعيل صوت التنبيهات'}">
+            <span>${soundOn ? '🔊' : '🔇'}</span>
+            <span>${soundOn ? 'صوت التنبيه: مفعّل' : 'صوت التنبيه: مكتوم'}</span>
+            ${soundOn ? `
+              <div class="sound-waves">
+                <span></span><span></span><span></span>
+              </div>
+            ` : ''}
           </button>
-          <button class="btn btn-sm btn-ghost" id="btn-clear-all-notifs" style="color:var(--danger);font-size:12px;gap:4px">
-            <span>🗑️</span> مسح الكل
+
+          <!-- Test Chime Button -->
+          <button type="button" class="btn-test-chime" id="btn-test-notif-sound" title="تجربة رنة التنبيه البلورية">
+            <span>🎵</span>
+            <span>تجربة النغمة</span>
           </button>
-        ` : ''}
+
+          <!-- Animated Clear & Manage Dropdown Menu -->
+          <div class="notif-clear-dropdown-wrap">
+            <button type="button" class="btn-notif-manage" id="btn-notif-manage-menu-trigger">
+              <span>⚡ خيارات ومسح الإشعارات</span>
+              <span class="manage-chevron">▼</span>
+            </button>
+            <div class="notif-manage-menu" id="notif-manage-menu">
+              <div class="notif-menu-header">خيارات مسح وصيانة الإشعارات</div>
+              
+              <button type="button" class="notif-menu-item" id="menu-mark-all-read" ${unreadCount === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
+                <span style="display:flex;align-items:center;gap:8px">
+                  <span class="notif-menu-item-icon" style="color:#10B981">✓</span>
+                  <span>تحديد الكل كمقروء</span>
+                </span>
+                <span class="badge" style="background:rgba(16,185,129,0.2);color:#10B981;font-size:10.5px;padding:2px 7px;border-radius:9999px">${unreadCount}</span>
+              </button>
+
+              <button type="button" class="notif-menu-item" id="menu-clear-read" ${allNotifs.length - unreadCount === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
+                <span style="display:flex;align-items:center;gap:8px">
+                  <span class="notif-menu-item-icon" style="color:#38BDF8">🧹</span>
+                  <span>مسح المقروء فقط</span>
+                </span>
+                <span class="badge" style="background:rgba(56,189,248,0.2);color:#38BDF8;font-size:10.5px;padding:2px 7px;border-radius:9999px">${allNotifs.length - unreadCount}</span>
+              </button>
+
+              <hr style="margin:4px 0;border:none;border-top:1px solid rgba(255,255,255,0.1)"/>
+
+              <button type="button" class="notif-menu-item notif-menu-item--danger" id="menu-clear-all" ${allNotifs.length === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>
+                <span style="display:flex;align-items:center;gap:8px">
+                  <span class="notif-menu-item-icon">🗑️</span>
+                  <span>تفريغ ومسح كافة الإشعارات</span>
+                </span>
+                <span class="badge" style="background:rgba(239,68,68,0.2);color:#FCA5A5;font-size:10.5px;padding:2px 7px;border-radius:9999px">${allNotifs.length}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Category Filter Tabs -->
-    <div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:12px;margin-bottom:var(--space-4)">
-      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'all' ? 'btn-primary' : 'btn-outline'}" data-filter="all" style="border-radius:9999px;font-size:12px">
-        🔔 الكل (${allNotifs.length})
+    <div class="notif-tabs-bar">
+      <button type="button" class="notif-tab ${_activeNotifFilter === 'all' ? 'active' : ''}" data-filter="all">
+        <span>🔔 الكل</span>
+        <span class="notif-tab__count">${allNotifs.length}</span>
       </button>
-      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'unread' ? 'btn-primary' : 'btn-outline'}" data-filter="unread" style="border-radius:9999px;font-size:12px">
-        🔴 غير المقروءة (${unreadCount})
+
+      <button type="button" class="notif-tab notif-tab--unread ${_activeNotifFilter === 'unread' ? 'active' : ''}" data-filter="unread">
+        <span>🔴 غير المقروءة</span>
+        <span class="notif-tab__count">${unreadCount}</span>
       </button>
+
       ${reviewsCount > 0 ? `
-        <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'reviews' ? 'btn-primary' : 'btn-outline'}" data-filter="reviews" style="border-radius:9999px;font-size:12px">
-          ⭐ تقييمات أماكني (${reviewsCount})
+        <button type="button" class="notif-tab ${_activeNotifFilter === 'reviews' ? 'active' : ''}" data-filter="reviews">
+          <span>⭐ تقييمات العملاء</span>
+          <span class="notif-tab__count">${reviewsCount}</span>
         </button>
       ` : ''}
-      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'new_place' ? 'btn-primary' : 'btn-outline'}" data-filter="new_place" style="border-radius:9999px;font-size:12px">
-        🎉 انضمام جديد (${newPlacesCount})
+
+      <button type="button" class="notif-tab ${_activeNotifFilter === 'new_place' ? 'active' : ''}" data-filter="new_place">
+        <span>🎉 انضمام جديد</span>
+        <span class="notif-tab__count">${newPlacesCount}</span>
       </button>
-      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'verified' ? 'btn-primary' : 'btn-outline'}" data-filter="verified" style="border-radius:9999px;font-size:12px">
-        👑 التوثيق الرسمي (${verifiedCount})
+
+      <button type="button" class="notif-tab ${_activeNotifFilter === 'verified' ? 'active' : ''}" data-filter="verified">
+        <span>👑 التوثيق الرسمي</span>
+        <span class="notif-tab__count">${verifiedCount}</span>
       </button>
-      <button type="button" class="btn btn-sm notif-filter-tab ${_activeNotifFilter === 'visits' ? 'btn-primary' : 'btn-outline'}" data-filter="visits" style="border-radius:9999px;font-size:12px">
-        👁️ زوار البروفايل (${visitsCount})
+
+      <button type="button" class="notif-tab ${_activeNotifFilter === 'visits' ? 'active' : ''}" data-filter="visits">
+        <span>👁️ زوار البروفايل</span>
+        <span class="notif-tab__count">${visitsCount}</span>
       </button>
     </div>
 
     ${filteredNotifs.length === 0 ? `
-      <div class="empty-state" style="background:var(--surface);border-radius:var(--radius-lg);padding:3rem 1.5rem;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:3.5rem;margin-bottom:12px">${_activeNotifFilter === 'unread' ? '✨' : '🔕'}</div>
-        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:6px">
-          ${_activeNotifFilter === 'unread' ? 'رائع! لا توجد أي إشعارات غير مقروءة' : 'لا توجد إشعارات في هذا القسم'}
+      <div class="notif-empty-card">
+        <div class="notif-empty-icon-wrap">
+          <span>${_activeNotifFilter === 'unread' ? '✨' : '🔕'}</span>
+        </div>
+        <h3 class="notif-empty-title">
+          ${_activeNotifFilter === 'unread' ? 'رائع! لا توجد أي إشعارات غير مقروءة' : 'صندوق الإشعارات فارغ حالياً'}
         </h3>
-        <p style="color:var(--text-muted);font-size:13px;max-width:400px;margin:0 auto">
-          ستظهر أي تنبيهات جديدة أو أماكن منضمة أو زيارات لملفك الشخصي فورياً هنا مع صوت تنبيهي.
+        <p class="notif-empty-desc">
+          ${_activeNotifFilter === 'unread' 
+            ? 'لقد اطّلعت على كافة التنبيهات والزيارات. سنخبرك فور وصول أي تقييم جديد أو نشاط منضم.' 
+            : 'ستظهر التنبيهات الفورية وزيارات البروفايل وتقييمات العملاء هنا مباشرة بصوت بلوري نقي فور حدوثها.'}
         </p>
+        <div class="notif-empty-features">
+          <span class="notif-empty-feat-chip">⚡ تنبيهات فورية حية</span>
+          <span class="notif-empty-feat-chip">🔔 نغمات صوتية بلورية</span>
+          <span class="notif-empty-feat-chip">🔒 خصوصية وأمان تام</span>
+        </div>
       </div>
     ` : `
       <div class="notifications-list" style="display:flex;flex-direction:column;gap:12px">
-        ${filteredNotifs.map(n => {
+        ${filteredNotifs.map((n, idx) => {
           const isUnread = !n.isRead;
           const timeStr = formatTimeAgo(n.createdAt);
           const isGuest = n.isGuest || !n.visitorUid;
 
           if (n.type === 'new_place') {
             return `
-              <div class="notification-card" id="notif-card-${n.id}" style="background:${isUnread ? 'rgba(16, 185, 129, 0.06)' : 'var(--surface)'};border:1px solid ${isUnread ? '#10B981' : 'var(--border)'};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:center;gap:14px;transition:all 0.25s ease;flex-wrap:wrap">
-                <div style="width:46px;height:46px;border-radius:50%;background:rgba(16, 185, 129, 0.15);color:#059669;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid rgba(16, 185, 129, 0.3)">
+              <div class="notif-card ${isUnread ? 'notif-card--unread' : ''}" id="notif-card-${n.id}" data-notif-id="${escAttr(n.id)}" data-is-read="${n.isRead ? '1' : '0'}" style="--notif-index:${idx}">
+                ${isUnread ? '<div class="notif-card-unread-indicator"></div>' : ''}
+                <div style="width:48px;height:48px;border-radius:14px;background:rgba(16, 185, 129, 0.15);color:#059669;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;border:1.5px solid rgba(16, 185, 129, 0.3)">
                   🏪
                 </div>
                 <div style="flex:1;min-width:220px">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
                     <div style="display:flex;align-items:center;gap:6px">
                       <span class="badge" style="background:#D1FAE5;color:#065F46;font-weight:700;font-size:11px;padding:2px 8px;border-radius:var(--radius-full)">🎉 انضمام جديد</span>
-                      <strong style="font-size:13.5px;color:var(--text-primary)">${escHtml(n.placeName)}</strong>
+                      <strong style="font-size:14px;color:var(--text-primary)">${escHtml(n.placeName)}</strong>
                     </div>
                     <div style="font-size:11px;color:var(--text-muted)">⏱️ ${timeStr}</div>
                   </div>
                   <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;line-height:1.5">
-                    (${escHtml(n.placeName)}) من (${escHtml(n.placeAddress || 'المنزلة')}) أنضم حديثاً إلى دليل المنزلة والمطرية الرقمي.
+                    (${escHtml(n.placeName)}) من (${escHtml(n.placeAddress || 'المنزلة والمطرية')}) انضم حديثاً إلى الدليل الرقمي.
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -2540,11 +2656,11 @@ async function renderDashboardNotifications($container, user) {
                     <span>👁️</span> مشاهدة المكان
                   </a>
                   ${isUnread ? `
-                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:5px 8px;border-radius:var(--radius-full)">
+                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:6px 9px;border-radius:var(--radius-full)">
                       ✓
                     </button>
                   ` : ''}
-                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="حذف وإخفاء هذا الإشعار" style="color:var(--danger);font-size:13px;padding:4px 8px;border-radius:var(--radius-full)">
+                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="مسح وإخفاء الإشعار" style="color:var(--danger);font-size:13px;padding:6px 9px;border-radius:var(--radius-full)">
                     🗑️
                   </button>
                 </div>
@@ -2554,20 +2670,21 @@ async function renderDashboardNotifications($container, user) {
 
           if (n.type === 'place_verified') {
             return `
-              <div class="notification-card" id="notif-card-${n.id}" style="background:${isUnread ? 'rgba(245, 158, 11, 0.07)' : 'var(--surface)'};border:1px solid ${isUnread ? '#F59E0B' : 'var(--border)'};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:center;gap:14px;transition:all 0.25s ease;flex-wrap:wrap">
-                <div style="width:46px;height:46px;border-radius:50%;background:rgba(245, 158, 11, 0.15);color:#D97706;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid rgba(245, 158, 11, 0.3)">
+              <div class="notif-card ${isUnread ? 'notif-card--unread' : ''}" id="notif-card-${n.id}" data-notif-id="${escAttr(n.id)}" data-is-read="${n.isRead ? '1' : '0'}" style="--notif-index:${idx}">
+                ${isUnread ? '<div class="notif-card-unread-indicator"></div>' : ''}
+                <div style="width:48px;height:48px;border-radius:14px;background:rgba(245, 166, 35, 0.15);color:#D97706;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;border:1.5px solid rgba(245, 166, 35, 0.3)">
                   👑
                 </div>
                 <div style="flex:1;min-width:220px">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
                     <div style="display:flex;align-items:center;gap:6px">
                       <span class="badge" style="background:#FEF3C7;color:#92400E;font-weight:700;font-size:11px;padding:2px 8px;border-radius:var(--radius-full)">👑 توثيق رسمي</span>
-                      <strong style="font-size:13.5px;color:var(--text-primary)">${escHtml(n.placeName)}</strong>
+                      <strong style="font-size:14px;color:var(--text-primary)">${escHtml(n.placeName)}</strong>
                     </div>
                     <div style="font-size:11px;color:var(--text-muted)">⏱️ ${timeStr}</div>
                   </div>
                   <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;line-height:1.5">
-                    وثّق (${escHtml(n.placeName)}) ملفه لكي يظهر أمام الكل في كامل دليل المنزلة والمطرية الرقمي أولاً!
+                    تم توثيق (${escHtml(n.placeName)}) رسمياً ليظهر في صدارة نتائج البحث بالمنزلة والمطرية.
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -2575,11 +2692,11 @@ async function renderDashboardNotifications($container, user) {
                     <span>🚀</span> وثّق ملفك الآن
                   </a>
                   ${isUnread ? `
-                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:5px 8px;border-radius:var(--radius-full)">
+                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:6px 9px;border-radius:var(--radius-full)">
                       ✓
                     </button>
                   ` : ''}
-                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="حذف وإخفاء هذا الإشعار" style="color:var(--danger);font-size:13px;padding:4px 8px;border-radius:var(--radius-full)">
+                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="مسح وإخفاء الإشعار" style="color:var(--danger);font-size:13px;padding:6px 9px;border-radius:var(--radius-full)">
                     🗑️
                   </button>
                 </div>
@@ -2589,19 +2706,14 @@ async function renderDashboardNotifications($container, user) {
 
           if (n.type === 'place_review') {
             const isPos = Boolean(n.isPositive || (n.rating && n.rating >= 4));
-            const cardBg = isUnread 
-              ? (isPos ? 'rgba(16, 185, 129, 0.07)' : 'rgba(239, 68, 68, 0.07)')
-              : 'var(--surface)';
-            const cardBorder = isUnread
-              ? (isPos ? '#10B981' : '#EF4444')
-              : 'var(--border)';
             const badgeBg = isPos ? '#D1FAE5' : '#FEE2E2';
             const badgeColor = isPos ? '#065F46' : '#991B1B';
             const starStr = '⭐'.repeat(n.rating || 5);
 
             return `
-              <div class="notification-card" id="notif-card-${n.id}" style="background:${cardBg};border:1.5px solid ${cardBorder};border-radius:var(--radius-md);padding:14px 18px;display:flex;align-items:flex-start;gap:14px;transition:all 0.25s ease;flex-wrap:wrap">
-                <div style="width:48px;height:48px;border-radius:50%;background:${isPos ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'};color:${isPos ? '#059669' : '#DC2626'};display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;border:1.5px solid ${isPos ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}">
+              <div class="notif-card ${isUnread ? 'notif-card--unread' : ''}" id="notif-card-${n.id}" data-notif-id="${escAttr(n.id)}" data-is-read="${n.isRead ? '1' : '0'}" style="--notif-index:${idx}">
+                ${isUnread ? '<div class="notif-card-unread-indicator"></div>' : ''}
+                <div style="width:48px;height:48px;border-radius:14px;background:${isPos ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'};color:${isPos ? '#059669' : '#DC2626'};display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;border:1.5px solid ${isPos ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}">
                   ${isPos ? '⭐' : '⚠️'}
                 </div>
 
@@ -2611,7 +2723,7 @@ async function renderDashboardNotifications($container, user) {
                       <span class="badge" style="background:${badgeBg};color:${badgeColor};font-weight:700;font-size:11px;padding:2px 8px;border-radius:var(--radius-full)">
                         ${isPos ? '⭐ تقييم إيجابي' : '⚠️ تقييم سلبي'} (${n.rating || 5} نجوم)
                       </span>
-                      <strong style="font-size:13.5px;color:var(--text-primary)">${escHtml(n.reviewerName || 'عميل')}</strong>
+                      <strong style="font-size:14px;color:var(--text-primary)">${escHtml(n.reviewerName || 'عميل')}</strong>
                       <span style="font-size:12px;color:var(--text-muted)">قيّم</span>
                       <span class="badge" style="background:rgba(2, 132, 199, 0.1);color:#0284C7;font-weight:700;font-size:11.5px;padding:2px 8px;border-radius:var(--radius-full)">
                         ${escHtml(n.placeName || 'مكانك')}
@@ -2621,11 +2733,11 @@ async function renderDashboardNotifications($container, user) {
                   </div>
 
                   <div style="font-size:13.5px;font-weight:600;color:var(--text-primary);margin-top:6px;line-height:1.5">
-                    قام <strong>${escHtml(n.reviewerName || 'العميل')}</strong> بتقييم (<strong>${escHtml(n.placeName || 'المكان')}</strong>) بعدد (<strong>${n.rating || 5}</strong>) نجوم ${starStr} بتقييم <strong>${isPos ? 'إيجابي' : 'سلبي'}</strong>.
+                    قام <strong>${escHtml(n.reviewerName || 'العميل')}</strong> بتقييم (<strong>${escHtml(n.placeName || 'المكان')}</strong>) بعدد (<strong>${n.rating || 5}</strong>) نجوم ${starStr}.
                   </div>
 
                   ${n.comment ? `
-                    <div style="font-size:12.5px;color:var(--text-secondary);background:var(--surface-2);border-right:3px solid ${isPos ? '#10B981' : '#EF4444'};padding:8px 12px;border-radius:6px;margin-top:6px;line-height:1.5;font-style:italic">
+                    <div style="font-size:12.5px;color:var(--text-secondary);background:var(--surface-2);border-right:3px solid ${isPos ? '#10B981' : '#EF4444'};padding:8px 12px;border-radius:8px;margin-top:6px;line-height:1.5;font-style:italic">
                       "${escHtml(n.comment)}"
                     </div>
                   ` : ''}
@@ -2633,14 +2745,14 @@ async function renderDashboardNotifications($container, user) {
 
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;align-self:center">
                   <a href="${escAttr(n.actionUrl || `place.html?slug=${n.placeSlug}#reviews`)}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
-                    <span>💬</span> مشاهدة التقييم والرد
+                    <span>💬</span> مشاهدة والرد
                   </a>
                   ${isUnread ? `
-                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:5px 8px;border-radius:var(--radius-full)">
+                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:6px 9px;border-radius:var(--radius-full)">
                       ✓
                     </button>
                   ` : ''}
-                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="حذف وإخفاء هذا الإشعار" style="color:var(--danger);font-size:13px;padding:4px 8px;border-radius:var(--radius-full)">
+                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="مسح وإخفاء الإشعار" style="color:var(--danger);font-size:13px;padding:6px 9px;border-radius:var(--radius-full)">
                     🗑️
                   </button>
                 </div>
@@ -2649,12 +2761,13 @@ async function renderDashboardNotifications($container, user) {
           }
 
           return `
-            <div class="notification-card" id="notif-card-${n.id}" style="background:${isUnread ? 'rgba(27, 79, 114, 0.05)' : 'var(--surface)'};border:1px solid ${isUnread ? 'var(--primary)' : 'var(--border)'};border-radius:var(--radius-md);padding:12px 16px;display:flex;align-items:center;gap:14px;transition:all 0.25s ease;flex-wrap:wrap">
-              <div style="width:44px;height:44px;border-radius:50%;background:${isGuest ? 'var(--surface-3)' : 'var(--primary-alpha)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1.5px solid var(--border)">
+            <div class="notif-card ${isUnread ? 'notif-card--unread' : ''}" id="notif-card-${n.id}" data-notif-id="${escAttr(n.id)}" data-is-read="${n.isRead ? '1' : '0'}" style="--notif-index:${idx}">
+              ${isUnread ? '<div class="notif-card-unread-indicator"></div>' : ''}
+              <div style="width:48px;height:48px;border-radius:14px;background:${isGuest ? 'var(--surface-3)' : 'var(--primary-alpha)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;border:1.5px solid var(--border)">
                 ${n.visitorPhoto ? `
                   <img src="${escAttr(n.visitorPhoto)}" alt="${escAttr(n.visitorName)}" style="width:100%;height:100%;object-fit:cover" />
                 ` : `
-                  <span style="font-size:1.3rem">${isGuest ? '👤' : (n.visitorName?.charAt(0) || '👤')}</span>
+                  <span style="font-size:1.4rem">${isGuest ? '👤' : (n.visitorName?.charAt(0) || '👤')}</span>
                 `}
               </div>
 
@@ -2671,13 +2784,13 @@ async function renderDashboardNotifications($container, user) {
                 </div>
               </div>
 
-              <div style="display:flex;align-items:center;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px">
                 ${isUnread ? `
-                  <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:5px 8px;border-radius:var(--radius-full)">
+                  <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:6px 9px;border-radius:var(--radius-full)">
                     ✓
                   </button>
                 ` : ''}
-                <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="حذف هذا الإشعار" style="color:var(--danger);font-size:13px;padding:4px 8px;border-radius:var(--radius-full)">
+                <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="حذف هذا الإشعار" style="color:var(--danger);font-size:13px;padding:6px 9px;border-radius:var(--radius-full)">
                   🗑️
                 </button>
               </div>
@@ -2691,7 +2804,7 @@ async function renderDashboardNotifications($container, user) {
   // ── Setup Action Listeners ──
 
   // Filter Tabs click
-  $container.querySelectorAll('.notif-filter-tab').forEach(tab => {
+  $container.querySelectorAll('.notif-tab').forEach(tab => {
     tab.addEventListener('click', async () => {
       _activeNotifFilter = tab.getAttribute('data-filter') || 'all';
       await renderDashboardNotifications($container, user);
@@ -2711,22 +2824,36 @@ async function renderDashboardNotifications($container, user) {
     toast.success('🔔 تم تشغيل نغمة التنبيه البلورية بنجاح');
   });
 
-  // Individual Delete Button Click
+  // Clear / Manage Dropdown Trigger
+  const manageTrigger = document.getElementById('btn-notif-manage-menu-trigger');
+  const manageMenu = document.getElementById('notif-manage-menu');
+  manageTrigger?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    manageTrigger.classList.toggle('active');
+    manageMenu?.classList.toggle('show');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!manageTrigger?.contains(e.target) && !manageMenu?.contains(e.target)) {
+      manageTrigger?.classList.remove('active');
+      manageMenu?.classList.remove('show');
+    }
+  });
+
+  // Individual Delete Button Click (with smooth swipe animation)
   $container.querySelectorAll('.btn-delete-one-notif').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const notifId = btn.getAttribute('data-notif-id');
       const card = document.getElementById(`notif-card-${notifId}`);
       if (card) {
-        card.style.opacity = '0';
-        card.style.transform = 'translateX(30px)';
+        card.classList.add('notif-card-deleting');
       }
       await deleteSingleNotification(notifId, user?.uid);
-      toast.info('تم حذف وإخفاء الإشعار بنجاح');
       setTimeout(async () => {
         await renderDashboardNotifications($container, user);
         await updateAllNotificationBadges(user?.uid);
-      }, 200);
+      }, 360);
     });
   });
 
@@ -2742,25 +2869,65 @@ async function renderDashboardNotifications($container, user) {
     });
   });
 
-  // Batch Mark All Read
-  document.getElementById('btn-mark-all-read')?.addEventListener('click', async () => {
+  // Dropdown Action: Mark All Read
+  document.getElementById('menu-mark-all-read')?.addEventListener('click', async () => {
+    manageMenu?.classList.remove('show');
+    manageTrigger?.classList.remove('active');
     await markAllUserNotificationsAsRead(user?.uid);
     toast.success('تم تحديد جميع الإشعارات كمقروءة ✓');
     await renderDashboardNotifications($container, user);
     await updateAllNotificationBadges(user?.uid);
   });
 
-  // Batch Clear All
-  document.getElementById('btn-clear-all-notifs')?.addEventListener('click', async () => {
+  // Dropdown Action: Clear Read Notifications (with cascading sweep animation)
+  document.getElementById('menu-clear-read')?.addEventListener('click', async () => {
+    manageMenu?.classList.remove('show');
+    manageTrigger?.classList.remove('active');
+
+    const readCards = Array.from($container.querySelectorAll('.notif-card[data-is-read="1"]'));
+    if (!readCards.length) {
+      toast.info('لا توجد إشعارات مقروءة لمسحها');
+      return;
+    }
+
+    readCards.forEach((c, idx) => {
+      c.style.setProperty('--sweep-delay', idx);
+      c.classList.add('notif-card-sweeping');
+    });
+
+    const waitTime = Math.min(650, 300 + readCards.length * 45);
+    await new Promise(r => setTimeout(r, waitTime));
+
+    await clearReadNotifications(user?.uid);
+    toast.success('تم مسح وتنظيف الإشعارات المقروءة بنجاح 🧹');
+    await renderDashboardNotifications($container, user);
+    await updateAllNotificationBadges(user?.uid);
+  });
+
+  // Dropdown Action: Clear All Notifications (with confirmation & cascading sweep animation)
+  document.getElementById('menu-clear-all')?.addEventListener('click', async () => {
+    manageMenu?.classList.remove('show');
+    manageTrigger?.classList.remove('active');
+
     const ok = await showConfirm({
-      title: 'مسح جميع الإشعارات',
-      message: 'هل أنت متأكد من رغبتك في حذف وإخفاء كافة سجلات الزيارات والإشعارات نهائياً؟',
-      confirmText: 'نعم، حذف الكل',
+      title: 'تفريغ ومسح كافة الإشعارات 🗑️',
+      message: 'هل أنت متأكد من رغبتك في حذف وإخفاء كافة سجلات الزيارات والتنبيهات نهائياً؟',
+      confirmText: 'نعم، مسح الكل الآن',
       cancelText: 'إلغاء'
     });
+
     if (ok) {
+      const cards = Array.from($container.querySelectorAll('.notif-card'));
+      cards.forEach((c, idx) => {
+        c.style.setProperty('--sweep-delay', idx);
+        c.classList.add('notif-card-sweeping');
+      });
+
+      const waitTime = Math.min(650, 300 + cards.length * 45);
+      await new Promise(r => setTimeout(r, waitTime));
+
       await clearAllUserNotifications(user?.uid);
-      toast.success('تم مسح جميع الإشعارات بنجاح 🗑️');
+      toast.success('تم مسح وتفريغ جميع الإشعارات بنجاح 🗑️');
       await renderDashboardNotifications($container, user);
       await updateAllNotificationBadges(user?.uid);
     }

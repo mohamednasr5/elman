@@ -35,6 +35,23 @@ const SEARCH_CATEGORY_SYNONYMS = {
 
 export async function renderSearchPage($container, { q = '', user }) {
   $container.innerHTML = `
+    <div class="container" style="padding-top:var(--space-3)">
+      <div class="page-back-bar">
+        <button type="button" class="btn-page-back" id="btn-search-back" title="الرجوع للصفحة السابقة">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 19 12 12 5"></polyline>
+          </svg>
+          <span>رجوع</span>
+        </button>
+        <nav class="page-breadcrumbs" aria-label="مسار التنقل">
+          <a href="index.html">الرئيسية</a>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current">البحث</span>
+        </nav>
+      </div>
+    </div>
+
     <div class="search-page-header">
       <div class="container text-center">
         <h1 style="font-size:var(--font-size-3xl);font-weight:800;color:#fff;margin-bottom:var(--space-4)">
@@ -360,6 +377,14 @@ export async function renderSearchPage($container, { q = '', user }) {
     _searchDebounce = setTimeout(() => {
       performSearch(val, false);
     }, 60);
+  });
+
+  document.getElementById('btn-search-back')?.addEventListener('click', () => {
+    if (window.history.length > 1 && document.referrer && !document.referrer.includes('login')) {
+      window.history.back();
+    } else {
+      window.location.href = 'index.html';
+    }
   });
 
   searchInput?.addEventListener('keydown', (e) => {

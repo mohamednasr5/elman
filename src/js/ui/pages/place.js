@@ -143,6 +143,28 @@ export async function renderPlacePage($container, { slug, user }) {
 
     // Render Full Page
     $container.innerHTML = `
+      <!-- Top Navigation & Return Bar -->
+      <div class="container" style="padding-top:var(--space-3);padding-bottom:var(--space-1)">
+        <div class="page-back-bar">
+          <button type="button" class="btn-page-back" id="btn-place-back" title="الرجوع للصفحة السابقة">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 19 12 12 5"></polyline>
+            </svg>
+            <span>رجوع</span>
+          </button>
+          <nav class="page-breadcrumbs" aria-label="مسار التنقل">
+            <a href="index.html">الرئيسية</a>
+            <span class="breadcrumb-sep">/</span>
+            <a href="categories.html">التصنيفات</a>
+            <span class="breadcrumb-sep">/</span>
+            <a href="category.html?slug=${catInfo.slug}">${escHtml(catInfo.name)}</a>
+            <span class="breadcrumb-sep">/</span>
+            <span class="breadcrumb-current">${escHtml(place.name)}</span>
+          </nav>
+        </div>
+      </div>
+
       <!-- Place Hero Cover -->
       <section class="place-hero">
         ${placeCover
@@ -602,6 +624,15 @@ export async function renderPlacePage($container, { slug, user }) {
           openProductFullDetailsModal(targetProduct, place);
         }
       });
+    });
+
+    // Smart Page Back Button
+    document.getElementById('btn-place-back')?.addEventListener('click', () => {
+      if (window.history.length > 1 && document.referrer && !document.referrer.includes('login')) {
+        window.history.back();
+      } else {
+        window.location.href = `category.html?slug=${catInfo.slug || 'all'}`;
+      }
     });
 
     // Verification Request Button

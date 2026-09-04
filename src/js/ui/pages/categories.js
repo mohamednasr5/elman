@@ -17,6 +17,23 @@ export async function renderCategoriesPage($container) {
   ]);
 
   $container.innerHTML = `
+    <div class="container" style="padding-top:var(--space-3)">
+      <div class="page-back-bar">
+        <button type="button" class="btn-page-back" id="btn-categories-back" title="الرجوع للصفحة السابقة">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 19 12 12 5"></polyline>
+          </svg>
+          <span>رجوع</span>
+        </button>
+        <nav class="page-breadcrumbs" aria-label="مسار التنقل">
+          <a href="index.html">الرئيسية</a>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current">التصنيفات والأنشطة</span>
+        </nav>
+      </div>
+    </div>
+
     <div class="category-page-header">
       <div class="container text-center">
         <h1 style="font-size:var(--font-size-3xl);font-weight:800;color:var(--primary);margin-bottom:var(--space-2)">
@@ -37,6 +54,14 @@ export async function renderCategoriesPage($container) {
       </div>
     </div>
   `;
+
+  document.getElementById('btn-categories-back')?.addEventListener('click', () => {
+    if (window.history.length > 1 && document.referrer && !document.referrer.includes('login')) {
+      window.history.back();
+    } else {
+      window.location.href = 'index.html';
+    }
+  });
 
   const [categories, places] = await Promise.all([
     getCategories(),
@@ -91,6 +116,17 @@ export async function renderCategoryPage($container, { slug, query, user }) {
 
   if (!cat) {
     $container.innerHTML = `
+      <div class="container" style="padding-top:var(--space-4)">
+        <div class="page-back-bar">
+          <button type="button" class="btn-page-back" id="btn-notfound-back">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 19 12 12 5"></polyline>
+            </svg>
+            <span>رجوع</span>
+          </button>
+        </div>
+      </div>
       <div class="error-page">
         <div class="error-page__content">
           <h1 class="error-page__title">التصنيف غير موجود</h1>
@@ -98,6 +134,10 @@ export async function renderCategoryPage($container, { slug, query, user }) {
         </div>
       </div>
     `;
+    document.getElementById('btn-notfound-back')?.addEventListener('click', () => {
+      if (window.history.length > 1) window.history.back();
+      else window.location.href = 'categories.html';
+    });
     return;
   }
 
@@ -121,6 +161,25 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   ]);
 
   $container.innerHTML = `
+    <div class="container" style="padding-top:var(--space-3)">
+      <div class="page-back-bar">
+        <button type="button" class="btn-page-back" id="btn-category-back" title="الرجوع للتصنيفات">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 19 12 12 5"></polyline>
+          </svg>
+          <span>رجوع</span>
+        </button>
+        <nav class="page-breadcrumbs" aria-label="مسار التنقل">
+          <a href="index.html">الرئيسية</a>
+          <span class="breadcrumb-sep">/</span>
+          <a href="categories.html">التصنيفات</a>
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-current">${escHtml(cat.name)}</span>
+        </nav>
+      </div>
+    </div>
+
     <div class="category-page-header">
       <div class="container text-center">
         <div class="category-page-icon" style="margin:0 auto var(--space-4);background:var(--primary-alpha)">
@@ -297,6 +356,14 @@ export async function renderCategoryPage($container, { slug, query, user }) {
 
     grid.innerHTML = places.map(p => renderPlaceCard(p)).join('');
   }
+
+  document.getElementById('btn-category-back')?.addEventListener('click', () => {
+    if (window.history.length > 1 && document.referrer && !document.referrer.includes('login')) {
+      window.history.back();
+    } else {
+      window.location.href = 'categories.html';
+    }
+  });
 
   sortSelect?.addEventListener('change', renderSortedPlaces);
   areaSelect?.addEventListener('change', renderSortedPlaces);

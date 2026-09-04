@@ -142,6 +142,21 @@ export async function clearAllUserNotifications(uid) {
   }
 }
 
+export async function clearReadNotifications(uid) {
+  const allNotifs = await fetchManagedUserNotifications(uid);
+  const set = getDeletedNotifIds(uid);
+
+  allNotifs.filter(n => n.isRead).forEach(n => {
+    if (n.id) set.add(String(n.id));
+  });
+
+  const arr = Array.from(set);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('manzala_user_dismissed_notifs', JSON.stringify(arr));
+    if (uid) localStorage.setItem(`dismissed_notifs_${uid}`, JSON.stringify(arr));
+  }
+}
+
 export async function markSingleNotificationAsRead(notifId, uid) {
   if (!notifId) return;
   const idStr = String(notifId);

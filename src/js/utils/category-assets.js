@@ -333,8 +333,11 @@ export const CATEGORY_ASSET_DEFINITIONS = [
   }
 ];
 
+export const DEFAULT_PLACE_COVER = 'assets/images/default-cover.png';
+export const DEFAULT_PLACE_LOGO = 'assets/images/default-logo.png';
+
 const DEFAULT_BUSINESS_ASSET = {
-  cover: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&h=500&q=85',
+  cover: DEFAULT_PLACE_COVER,
   icon: '🏪',
   name: 'نشاط تجاري وخدمات',
   color: '#1B4F72',
@@ -356,15 +359,8 @@ export function resolveCategoryAsset(categoryName = '', placeName = '') {
 }
 
 export function generateCategoryBrandLogo(placeName = '', categoryName = '') {
-  const asset = resolveCategoryAsset(categoryName, placeName);
-  const name = (placeName || asset.name).trim();
-  
-  const words = name.split(/\s+/).filter(Boolean);
-  const initials = words.length >= 2
-    ? words[0].slice(0, 1) + ' ' + words[1].slice(0, 1)
-    : name.slice(0, 2);
-
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${asset.bgColor}&color=${asset.textColor}&size=512&bold=true&font-size=0.40&rounded=false&format=svg`;
+  // If no custom logo, return the official directory logo asset
+  return DEFAULT_PLACE_LOGO;
 }
 
 export function getDefaultPlaceAssets(place = {}, category = {}) {
@@ -374,12 +370,14 @@ export function getDefaultPlaceAssets(place = {}, category = {}) {
 
   let finalCover = place.coverImageUrl || place.coverImage || place.image || place.photos?.[0] || '';
   if (!finalCover || String(finalCover).includes('placeholder') || String(finalCover).length < 8) {
-    finalCover = asset.cover;
+    // Priority: Default Directory Cover requested by user
+    finalCover = DEFAULT_PLACE_COVER;
   }
 
   let finalLogo = place.logoUrl || place.logo || place.photoURL || '';
   if (!finalLogo || String(finalLogo).includes('placeholder') || String(finalLogo).length < 8) {
-    finalLogo = generateCategoryBrandLogo(pName, catName);
+    // Priority: Default Directory Logo requested by user
+    finalLogo = DEFAULT_PLACE_LOGO;
   }
 
   return {
@@ -389,3 +387,4 @@ export function getDefaultPlaceAssets(place = {}, category = {}) {
     categoryColor: asset.color
   };
 }
+
