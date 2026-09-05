@@ -4,7 +4,8 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps } from '../../core/db.js';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerD1, invalidateLocalPlaceCache } from '../../core/db.js';
+import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
@@ -4953,6 +4954,10 @@ window.editPlaceAdmin = async (placeId) => {
           try {
             await dbUpdate(`places/${placeId}`, updates);
 
+            // Sync to Cloudflare D1 & Invalidate Worker and Local Cache
+            await syncPlaceToWorkerD1(placeId, { ...place, ...updates, id: placeId, slug: place.slug || updates.slug });
+            await invalidateLocalPlaceCache(placeId, place.slug);
+
             if (adminCache.places && adminCache.places[placeId]) {
               Object.assign(adminCache.places[placeId], updates);
             }
@@ -5000,6 +5005,11 @@ window.deletePlaceAdmin = async (placeId) => {
       if (!place) place = await dbGet(`places/${placeId}`);
       if (place?.slug) await dbRemove(`slugIndex/${place.slug}`).catch(() => {});
       await dbRemove(`places/${placeId}`);
+
+      // Sync deletion to Cloudflare D1 & Invalidate cache
+      fetch(`${WORKER_URL}/api/places/${encodeURIComponent(placeId)}`, { method: 'DELETE' }).catch(() => {});
+      await invalidateLocalPlaceCache(placeId, place?.slug);
+
       if (adminCache.places) {
         delete adminCache.places[placeId];
         for (const [k, v] of Object.entries(adminCache.places)) {

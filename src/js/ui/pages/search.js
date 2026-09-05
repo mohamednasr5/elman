@@ -4,7 +4,7 @@
  * and AI Semantic Search integration.
  */
 
-import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers } from '../../core/db.js';
+import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers, searchPlacesD1 } from '../../core/db.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
@@ -117,6 +117,12 @@ export async function renderSearchPage($container, { q = '', user }) {
       <div class="places-grid" id="search-results-grid">
         ${q ? Array(4).fill(renderPlaceCardSkeleton()).join('') : ''}
       </div>
+
+      <div id="search-pagination-container" style="text-align:center;margin-top:var(--space-6);display:none">
+        <button id="btn-load-more-search" class="btn btn-outline" style="padding:10px 28px;border-radius:12px;font-size:14px;font-weight:700">
+          عرض المزيد من النتائج ⬇️
+        </button>
+      </div>
     </div>
   `;
 
@@ -146,19 +152,32 @@ export async function renderSearchPage($container, { q = '', user }) {
   }
 
   const currentUser = getCurrentUser() || user;
+  const paginationContainer = document.getElementById('search-pagination-container');
+  const loadMoreBtn = document.getElementById('btn-load-more-search');
 
-  async function performSearch(queryText, isAi = false) {
+  let currentQuery = '';
+  let currentPage = 1;
+  let hasMoreResults = false;
+  let isSearching = false;
+
+  async function performSearch(queryText, isAi = false, page = 1) {
     const query = (queryText || '').trim();
     if (!query) {
       if (metaEl) metaEl.innerHTML = 'يرجى إدخال كلمة أو رقم هاتف للبحث';
       if (gridEl) gridEl.innerHTML = '';
+      if (paginationContainer) paginationContainer.style.display = 'none';
       return;
     }
 
-    saveSearchHistory(query);
+    if (page === 1) {
+      saveSearchHistory(query);
+      currentQuery = query;
+      currentPage = 1;
+    }
 
     // ── Dedicated Phone Number Search (01... mobile or 05... landline) ──
     if (isPhoneSearchQuery(query)) {
+      if (paginationContainer) paginationContainer.style.display = 'none';
       const qPhone = normalizePhoneNumber(query);
       const displayPhone = formatPhoneNumberForDisplay(qPhone);
       const matched = allPlaces.filter(p => matchPlaceByPhone(p, qPhone) && (!isAtmPlace(p) || isAtmReadyAndOperational(p, 15)));
@@ -166,9 +185,8 @@ export async function renderSearchPage($container, { q = '', user }) {
       if (matched.length > 0) {
         toast.success(`تم العثور على (${matched.length}) نشاط مرتبط برقم الهاتف 📞`);
         const meta = `📞 تم العثور على <strong>${matched.length}</strong> نشاط تجاري مرتبط برقم الهاتف: <span style="direction:ltr;display:inline-block;font-weight:900;color:var(--primary);font-size:15px">${escHtml(displayPhone)}</span>`;
-        await renderResults(matched, meta);
+        await renderResults(matched, meta, false);
       } else {
-        // User requested: "وان لم يكن مرتبط اظهر اشعار لايوجد نشاط مرتبط برقم الهاتف"
         toast.warning(`لا يوجد أي نشاط تجاري مرتبط برقم الهاتف (${displayPhone})`);
         if (metaEl) {
           metaEl.innerHTML = `
@@ -217,18 +235,50 @@ export async function renderSearchPage($container, { q = '', user }) {
 
     if (isAi) {
       if (metaEl) metaEl.innerHTML = `✨ جاري التحليل الذكي للبحث عن "<strong>${escHtml(query)}</strong>"...`;
+      if (paginationContainer) paginationContainer.style.display = 'none';
       aiSmartSearch(query, allPlaces).then(async (aiRes) => {
         if (aiRes && aiRes.results && aiRes.results.length > 0) {
           const matchedIds = new Set(aiRes.results.map(r => r.id));
           const results = allPlaces.filter(p => matchedIds.has(p._key || p.id));
-          await renderResults(results, `✨ نتائج ذكية مقترحة لـ "<strong>${escHtml(query)}</strong>" (${results.length})`);
+          await renderResults(results, `✨ نتائج ذكية مقترحة لـ "<strong>${escHtml(query)}</strong>" (${results.length})`, false);
         } else {
-          await localSearch(query);
+          await executeSearch(query, page);
         }
-      }).catch(async () => await localSearch(query));
+      }).catch(async () => await executeSearch(query, page));
     } else {
-      await localSearch(query);
+      await executeSearch(query, page);
     }
+  }
+
+  async function executeSearch(query, page = 1) {
+    if (page === 1 && gridEl) {
+      gridEl.innerHTML = Array(4).fill(renderPlaceCardSkeleton()).join('');
+    }
+
+    // 1. Try high-performance Cloudflare D1 Edge Search (20 items per page, cached)
+    try {
+      const offset = (page - 1) * 20;
+      const d1Res = await searchPlacesD1(query, { limit: 20, offset });
+      if (d1Res && Array.isArray(d1Res.places)) {
+        hasMoreResults = Boolean(d1Res.pagination && d1Res.pagination.hasMore);
+        const places = d1Res.places.filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
+        const finalResults = sortSearchPlaces(places, currentUser?.uid);
+        
+        const countText = hasMoreResults ? `أول ${finalResults.length} مكان (صفحة ${page})` : `${finalResults.length} مكان`;
+        await renderResults(finalResults, `تم العثور على <strong>${countText}</strong> لـ "<strong>${escHtml(query)}</strong>"`, page > 1);
+
+        if (paginationContainer) {
+          paginationContainer.style.display = hasMoreResults ? 'block' : 'none';
+        }
+        return;
+      }
+    } catch (d1Err) {
+      console.warn('[Search] D1 search fallback to local search:', d1Err);
+    }
+
+    // 2. Resilient fallback to local in-memory search
+    await localSearch(query);
+    if (paginationContainer) paginationContainer.style.display = 'none';
   }
 
   async function localSearch(query) {
@@ -370,13 +420,18 @@ export async function renderSearchPage($container, { q = '', user }) {
   let currentResults = [];
   let currentMeta = '';
 
-  async function renderResults(places, metaText) {
-    currentResults = places;
+  async function renderResults(places, metaText, append = false) {
+    if (append) {
+      currentResults = [...currentResults, ...places];
+    } else {
+      currentResults = places;
+    }
+
     if (metaText) currentMeta = metaText;
     if (metaEl) metaEl.innerHTML = currentMeta;
 
     const sortBy = searchSort?.value || 'relevance';
-    let sorted = [...places];
+    let sorted = [...currentResults];
 
     if (sortBy === 'nearest') {
       if (!_searchUserLocation) {
@@ -417,9 +472,28 @@ export async function renderSearchPage($container, { q = '', user }) {
     }
   }
 
+  loadMoreBtn?.addEventListener('click', async () => {
+    if (isSearching || !hasMoreResults || !currentQuery) return;
+    isSearching = true;
+    const origText = loadMoreBtn.innerHTML;
+    loadMoreBtn.innerHTML = 'جاري التحميل... ⏳';
+    loadMoreBtn.disabled = true;
+
+    try {
+      currentPage += 1;
+      await executeSearch(currentQuery, currentPage);
+    } catch (err) {
+      toast.error('تعذر جلب باقي النتائج');
+    } finally {
+      isSearching = false;
+      loadMoreBtn.innerHTML = origText;
+      loadMoreBtn.disabled = false;
+    }
+  });
+
   searchSort?.addEventListener('change', async () => {
     if (currentResults.length > 0) {
-      await renderResults(currentResults);
+      await renderResults(currentResults, null, false);
     }
   });
 

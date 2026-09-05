@@ -9,8 +9,7 @@
  *  5. Instant Push Test Chime & Diagnostics
  */
 
-import { getDB } from '../core/db.js';
-import { FCM_VAPID_KEY } from '../core/firebase.js';
+import { FCM_VAPID_KEY, WORKER_URL } from '../core/firebase.js';
 import { showLiveNotificationPopup, updateAllNotificationBadges, playNotificationSound } from './notification.service.js';
 import { toast } from '../ui/components/Toast.js';
 
@@ -144,20 +143,27 @@ async function registerDeviceFcmToken(messaging, serviceWorkerRegistration, user
 
     if (token) {
       localStorage.setItem('manzala_fcm_token', token);
-      const tokenKey = token.replace(/[^a-zA-Z0-9]/g, '_').slice(-40);
       const isAndroid = /Android/i.test(navigator.userAgent);
       const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const platform = isAndroid ? 'android' : (isIos ? 'ios' : 'desktop');
 
-      const db = getDB();
-      await db.ref('fcmTokens/' + tokenKey).set({
-        token,
-        uid: user?.uid || 'anonymous',
-        userName: user?.displayName || user?.name || 'مستخدم المنصة',
-        platform: isAndroid ? 'android' : (isIos ? 'ios' : 'desktop'),
-        userAgent: navigator.userAgent,
-        updatedAt: Date.now(),
-        lastActive: Date.now()
-      });
+      // 1. Store in Cloudflare D1 via Worker (Zero Firebase Database Storage)
+      try {
+        await fetch(`${WORKER_URL}/api/fcm/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token,
+            userId: user?.uid || 'anonymous',
+            userName: user?.displayName || user?.name || 'مستخدم المنصة',
+            platform,
+            userAgent: navigator.userAgent
+          }),
+          signal: AbortSignal.timeout(5000)
+        });
+      } catch (workerErr) {
+        console.debug('[FCM] D1 token sync fallback:', workerErr.message);
+      }
     }
   } catch (err) {
     console.debug('[FCM] Token registration handled:', err.message);

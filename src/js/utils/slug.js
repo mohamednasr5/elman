@@ -171,8 +171,10 @@ export function getPlaceUrl(placeOrSlug) {
  * Get the full absolute URL for sharing and SEO
  */
 export function getPlaceAbsoluteUrl(placeOrSlug) {
-  const rel = getPlaceUrl(placeOrSlug);
-  return `https://dalilmanzala.com/${rel.replace(/^\//, '')}`;
+  if (!placeOrSlug) return 'https://dalilmanzala.com/places.html';
+  const slug = typeof placeOrSlug === 'string' ? placeOrSlug : (placeOrSlug.slug || placeOrSlug.id || placeOrSlug._key || '');
+  if (!slug) return 'https://dalilmanzala.com/places.html';
+  return `https://dalilmanzala.com/p/${encodeURIComponent(slug)}`;
 }
 
 /**

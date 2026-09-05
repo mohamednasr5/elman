@@ -28,11 +28,125 @@ export default {
 
 try {
 
-  // ── D1: Get Places ─────────────────────────────────────────────
+  // ── D1: Search Places with Two-Tier Caching ────────────────────
+  // GET /api/search?q=...&category=...&area=...&limit=20&offset=0
+  if (url.pathname === '/api/search' && request.method === 'GET') {
+    const rawQuery = (url.searchParams.get('q') || '').trim();
+    const rawCat = (url.searchParams.get('category') || url.searchParams.get('cat') || '').trim();
+    const rawArea = (url.searchParams.get('area') || '').trim();
+    const limitParam = parseInt(url.searchParams.get('limit') || '20', 10);
+    const offsetParam = parseInt(url.searchParams.get('offset') || '0', 10);
+
+    const limit = Math.min(Math.max(limitParam, 1), 50);
+    const offset = Math.max(offsetParam, 0);
+
+    const normQ = normalizeArabicText(rawQuery);
+    const normCat = rawCat.toLowerCase();
+    const normArea = rawArea.toLowerCase();
+
+    // 1. Cloudflare Cache API (Worker-level Cache)
+    const cache = caches.default;
+    const cacheUrl = new URL('https://cache.local/api/search');
+    cacheUrl.searchParams.set('q', normQ);
+    if (normCat) cacheUrl.searchParams.set('cat', normCat);
+    if (normArea) cacheUrl.searchParams.set('area', normArea);
+    cacheUrl.searchParams.set('limit', String(limit));
+    cacheUrl.searchParams.set('offset', String(offset));
+
+    const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+    const cachedResponse = await cache.match(cacheKey);
+    if (cachedResponse) {
+      const response = new Response(cachedResponse.body, cachedResponse);
+      response.headers.set('X-Cache', 'HIT');
+      Object.entries(corsHeaders).forEach(([k, v]) => response.headers.set(k, v));
+      return response;
+    }
+
+    // 2. Query D1 with targeted filters and LIMIT
+    let sql = `
+      SELECT
+        id, name, name_en, slug, category_id, subcategory_id, custom_category,
+        address, area, phone, whatsapp, maps_link, latitude, longitude,
+        description, logo_url, cover_image_url, status, is_verified,
+        verification_status, offer_count, product_count, services_json,
+        social_json, stats_json, working_hours_json, created_at, updated_at
+      FROM places
+      WHERE status = 'published'
+    `;
+    const params = [];
+
+    if (rawQuery) {
+      sql += ` AND (name LIKE ? OR description LIKE ? OR custom_category LIKE ? OR address LIKE ? OR area LIKE ?)`;
+      const searchPattern = `%${rawQuery}%`;
+      params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+    }
+
+    if (normCat) {
+      sql += ` AND (category_id = ? OR custom_category LIKE ?)`;
+      params.push(normCat, `%${normCat}%`);
+    }
+
+    if (normArea) {
+      sql += ` AND area = ?`;
+      params.push(rawArea);
+    }
+
+    sql += ` ORDER BY is_verified DESC, updated_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit + 1, offset);
+
+    const result = await env.DB.prepare(sql).bind(...params).all();
+    const rows = result.results || [];
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+
+    const places = items.map(place => ({
+      ...place,
+      services: parseJson(place.services_json, []),
+      social: parseJson(place.social_json, {}),
+      stats: parseJson(place.stats_json, {}),
+      working_hours: parseJson(place.working_hours_json, {}),
+      is_verified: Boolean(place.is_verified)
+    }));
+
+    const responseData = {
+      success: true,
+      data: places,
+      pagination: {
+        limit,
+        offset,
+        returned: places.length,
+        hasMore
+      }
+    };
+
+    const finalResponse = jsonResponse(responseData, 200, {
+      ...corsHeaders,
+      'Cache-Control': 'public, max-age=60, s-maxage=60',
+      'X-Cache': 'MISS'
+    });
+
+    ctx.waitUntil(cache.put(cacheKey, finalResponse.clone()));
+    return finalResponse;
+  }
+
+  // ── D1: Get Place Details (Single or List with Caching) ────────
   // GET /api/places
   if (url.pathname === '/api/places' && request.method === 'GET') {
     const slugParam = (url.searchParams.get('slug') || url.searchParams.get('id') || '').trim();
     if (slugParam) {
+      const cleanSlug = slugParam.toLowerCase();
+      const cache = caches.default;
+      const cacheUrl = new URL(`https://cache.local/api/places?slug=${encodeURIComponent(cleanSlug)}`);
+      const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+
+      const cachedResponse = await cache.match(cacheKey);
+      if (cachedResponse) {
+        const response = new Response(cachedResponse.body, cachedResponse);
+        response.headers.set('X-Cache', 'HIT');
+        Object.entries(corsHeaders).forEach(([k, v]) => response.headers.set(k, v));
+        return response;
+      }
+
       const result = await env.DB.prepare(`
         SELECT *
         FROM places
@@ -49,7 +163,13 @@ try {
           working_hours: parseJson(result.working_hours_json, {}),
           is_verified: Boolean(result.is_verified)
         };
-        return jsonResponse({ success: true, data: place }, 200, corsHeaders);
+        const res = jsonResponse({ success: true, data: place }, 200, {
+          ...corsHeaders,
+          'Cache-Control': 'public, max-age=300, s-maxage=300',
+          'X-Cache': 'MISS'
+        });
+        ctx.waitUntil(cache.put(cacheKey, res.clone()));
+        return res;
       }
       return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
     }
@@ -62,36 +182,12 @@ try {
 
     const result = await env.DB.prepare(`
       SELECT
-        id,
-        name,
-        name_en,
-        slug,
-        category_id,
-        subcategory_id,
-        custom_category,
-        address,
-        area,
-        phone,
-        whatsapp,
-        maps_link,
-        latitude,
-        longitude,
-        description,
-        logo_url,
-        cover_image_url,
-        owner_id,
-        owner_email,
-        status,
-        is_verified,
-        verification_status,
-        offer_count,
-        product_count,
-        services_json,
-        social_json,
-        stats_json,
-        working_hours_json,
-        created_at,
-        updated_at
+        id, name, name_en, slug, category_id, subcategory_id, custom_category,
+        address, area, phone, whatsapp, maps_link, latitude, longitude,
+        description, logo_url, cover_image_url, owner_id, owner_email,
+        status, is_verified, verification_status, offer_count, product_count,
+        services_json, social_json, stats_json, working_hours_json,
+        created_at, updated_at
       FROM places
       ORDER BY updated_at DESC, created_at DESC
       LIMIT ? OFFSET ?
@@ -116,7 +212,276 @@ try {
         offset,
         returned: places.length
       }
+    }, 200, {
+      ...corsHeaders,
+      'Cache-Control': 'public, max-age=60, s-maxage=60'
+    });
+  }
+
+  // ── D1: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
+  if ((url.pathname === '/api/places/sync' || url.pathname === '/api/places') && (request.method === 'POST' || request.method === 'PUT')) {
+    const body = await request.json().catch(() => ({}));
+    const placeId = (body.id || body._id || body.placeId || '').trim();
+    if (!placeId) {
+      return jsonResponse({ error: 'معرف المكان (id) مطلوب' }, 400, corsHeaders);
+    }
+
+    const name = (body.name || '').trim();
+    const slug = (body.slug || '').trim();
+    const nameEn = body.nameEn || body.name_en || '';
+    const categoryId = body.categoryId || body.category_id || 'general';
+    const customCategory = body.customCategory || body.custom_category || '';
+    const subcategoryId = body.subcategoryId || body.subcategory_id || '';
+    const phone = body.phone || '';
+    const whatsapp = body.whatsapp || '';
+    const area = body.area || 'المنزلة';
+    const address = body.address || '';
+    const mapsLink = body.mapsLink || body.maps_link || '';
+    const lat = body.location?.lat || body.latitude || null;
+    const lng = body.location?.lng || body.longitude || null;
+    const description = body.description || '';
+    const logoUrl = body.logoUrl || body.logo_url || '';
+    const coverImageUrl = body.coverImageUrl || body.cover_image_url || '';
+    const status = body.status || 'published';
+    const isVerified = body.isVerified !== undefined ? (body.isVerified ? 1 : 0) : (body.is_verified ? 1 : 0);
+    const verificationStatus = body.verificationStatus || body.verification_status || (isVerified ? 'verified' : 'unverified');
+    const servicesJson = typeof body.services === 'object' ? JSON.stringify(body.services) : (body.services_json || '[]');
+    const socialJson = typeof body.social === 'object' ? JSON.stringify(body.social) : (body.social_json || '{}');
+    const workingHoursJson = typeof body.workingHours === 'object' ? JSON.stringify(body.workingHours) : (body.working_hours_json || '{}');
+    const statsJson = typeof body.stats === 'object' ? JSON.stringify(body.stats) : (body.stats_json || '{}');
+    const ownerId = body.ownerId || body.owner_id || '';
+    const ownerEmail = body.ownerEmail || body.owner_email || '';
+    const now = Date.now();
+
+    await env.DB.prepare(`
+      INSERT INTO places (
+        id, name, name_en, slug, category_id, subcategory_id, custom_category,
+        address, area, phone, whatsapp, maps_link, latitude, longitude,
+        description, logo_url, cover_image_url, owner_id, owner_email,
+        status, is_verified, verification_status, services_json, social_json,
+        stats_json, working_hours_json, updated_at
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        ?, ?, ?
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        name_en = excluded.name_en,
+        slug = COALESCE(excluded.slug, places.slug),
+        category_id = excluded.category_id,
+        subcategory_id = excluded.subcategory_id,
+        custom_category = excluded.custom_category,
+        address = excluded.address,
+        area = excluded.area,
+        phone = excluded.phone,
+        whatsapp = excluded.whatsapp,
+        maps_link = excluded.maps_link,
+        latitude = excluded.latitude,
+        longitude = excluded.longitude,
+        description = excluded.description,
+        logo_url = excluded.logo_url,
+        cover_image_url = excluded.cover_image_url,
+        status = excluded.status,
+        is_verified = excluded.is_verified,
+        verification_status = excluded.verification_status,
+        services_json = excluded.services_json,
+        social_json = excluded.social_json,
+        working_hours_json = excluded.working_hours_json,
+        updated_at = excluded.updated_at
+    `).bind(
+      placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
+      address, area, phone, whatsapp, mapsLink, lat, lng,
+      description, logoUrl, coverImageUrl, ownerId, ownerEmail,
+      status, isVerified, verificationStatus, servicesJson, socialJson,
+      statsJson, workingHoursJson, now
+    ).run();
+
+    // Cache Invalidation for this place
+    const cache = caches.default;
+    const purgeUrls = [
+      `https://cache.local/api/places?slug=${encodeURIComponent((slug || placeId).toLowerCase())}`,
+      `https://cache.local/api/places?id=${encodeURIComponent(placeId)}`
+    ];
+    ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)))));
+
+    return jsonResponse({
+      success: true,
+      message: 'تم تحديث المكان في Cloudflare D1 ومسح الكاش بنجاح',
+      id: placeId,
+      updatedAt: now
     }, 200, corsHeaders);
+  }
+
+  // ── D1: Delete Place (DELETE /api/places/:id or /api/places?id=...) ──
+  if ((url.pathname.startsWith('/api/places/') || url.pathname === '/api/places') && request.method === 'DELETE') {
+    const idFromPath = url.pathname.startsWith('/api/places/') ? url.pathname.replace('/api/places/', '') : '';
+    const id = (idFromPath || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
+
+    if (id) {
+      await env.DB.prepare(`DELETE FROM places WHERE id = ? OR slug = ?`).bind(id, id).run();
+
+      const cache = caches.default;
+      const purgeUrls = [
+        `https://cache.local/api/places?slug=${encodeURIComponent(id.toLowerCase())}`,
+        `https://cache.local/api/places?id=${encodeURIComponent(id)}`
+      ];
+      ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)))));
+    }
+
+    return jsonResponse({ success: true, message: 'تم حذف المكان من D1 ومسح الكاش' }, 200, corsHeaders);
+  }
+
+  // ── D1: Categories (GET /api/categories) ──────────────────────
+  if (url.pathname === '/api/categories' && request.method === 'GET') {
+    const cache = caches.default;
+    const cacheUrl = new URL('https://cache.local/api/categories');
+    const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      const response = new Response(cached.body, cached);
+      response.headers.set('X-Cache', 'HIT');
+      Object.entries(corsHeaders).forEach(([k, v]) => response.headers.set(k, v));
+      return response;
+    }
+
+    try {
+      const result = await env.DB.prepare(`
+        SELECT id, name, name_en, slug, icon, description, color, "order", place_count
+        FROM categories
+        ORDER BY "order" ASC, name ASC
+      `).all();
+
+      const categories = result.results || [];
+      const res = jsonResponse({ success: true, data: categories }, 200, {
+        ...corsHeaders,
+        'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+        'X-Cache': 'MISS'
+      });
+
+      if (categories.length > 0) {
+        ctx.waitUntil(cache.put(cacheKey, res.clone()));
+      }
+      return res;
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  // ── D1: Reviews (GET /api/reviews?place_id=... & POST /api/reviews) ──
+  if (url.pathname === '/api/reviews' && request.method === 'GET') {
+    const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || '').trim();
+    if (!placeId) {
+      return jsonResponse({ error: 'place_id مطلوب' }, 400, corsHeaders);
+    }
+
+    try {
+      const result = await env.DB.prepare(`
+        SELECT id, place_id, user_id, user_name, user_photo, rating, comment, likes, created_at, updated_at
+        FROM reviews
+        WHERE place_id = ? AND status = 'published'
+        ORDER BY created_at DESC
+        LIMIT 100
+      `).bind(placeId).all();
+
+      return jsonResponse({ success: true, data: result.results || [] }, 200, {
+        ...corsHeaders,
+        'Cache-Control': 'public, max-age=60, s-maxage=60'
+      });
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  if (url.pathname === '/api/reviews' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const placeId = (body.place_id || body.placeId || '').trim();
+    const userId = (body.user_id || body.userId || '').trim();
+    const rating = parseFloat(body.rating);
+
+    if (!placeId || !userId || isNaN(rating)) {
+      return jsonResponse({ error: 'place_id و user_id و rating مطلوبة' }, 400, corsHeaders);
+    }
+
+    const reviewId = body.id || `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const userName = body.user_name || body.userName || 'مستخدم';
+    const userPhoto = body.user_photo || body.userPhoto || '';
+    const comment = body.comment || '';
+    const now = Date.now();
+
+    try {
+      await env.DB.prepare(`
+        INSERT INTO reviews (id, place_id, user_id, user_name, user_photo, rating, comment, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          rating = excluded.rating,
+          comment = excluded.comment,
+          updated_at = excluded.updated_at
+      `).bind(reviewId, placeId, userId, userName, userPhoto, rating, comment, now, now).run();
+
+      return jsonResponse({ success: true, message: 'تم حفظ التقييم بنجاح', id: reviewId }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  // ── D1: FCM Token Registration (POST /api/fcm/token) ───────────
+  if (url.pathname === '/api/fcm/token' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const token = (body.token || '').trim();
+    if (!token) {
+      return jsonResponse({ error: 'token مطلوب' }, 400, corsHeaders);
+    }
+
+    const userId = body.userId || body.uid || 'anonymous';
+    const userName = body.userName || '';
+    const platform = body.platform || 'web';
+    const userAgent = request.headers.get('user-agent') || body.userAgent || '';
+    const now = Date.now();
+
+    try {
+      await env.DB.prepare(`
+        INSERT INTO fcm_tokens (token, user_id, user_name, platform, user_agent, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(token) DO UPDATE SET
+          user_id = excluded.user_id,
+          user_name = excluded.user_name,
+          platform = excluded.platform,
+          updated_at = excluded.updated_at
+      `).bind(token, userId, userName, platform, userAgent, now, now).run();
+
+      return jsonResponse({ success: true, message: 'تم تسجيل التوكن في D1' }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  // ── D1: Track Place Stat (POST /api/places/track-stat) ─────────
+  if (url.pathname === '/api/places/track-stat' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const placeId = (body.placeId || body.id || '').trim();
+    const stat = (body.stat || '').trim();
+    const allowed = ['phoneClicks', 'whatsappClicks', 'directionsClicks', 'productViews', 'offerViews', 'views'];
+
+    if (!placeId || !allowed.includes(stat)) {
+      return jsonResponse({ error: 'placeId و stat صالحة مطلوبة' }, 400, corsHeaders);
+    }
+
+    try {
+      // Read current stats_json, increment, and update
+      const place = await env.DB.prepare(`SELECT stats_json FROM places WHERE id = ? OR slug = ? LIMIT 1`).bind(placeId, placeId).first();
+      if (place) {
+        const stats = parseJson(place.stats_json, {});
+        stats[stat] = (Number(stats[stat]) || 0) + 1;
+        await env.DB.prepare(`UPDATE places SET stats_json = ?, updated_at = ? WHERE id = ? OR slug = ?`).bind(JSON.stringify(stats), Date.now(), placeId, placeId).run();
+      }
+      return jsonResponse({ success: true }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
   }
 
   // ── 1. Upload to R2 (POST /api/upload) ──
@@ -597,22 +962,23 @@ async function handleDynamicOpenGraph(slug, request, env) {
   }
 
   // ============================================================
-  // 2. محاولة البحث بالـ ID إذا لم نجد الـ slug
+  // 2. محاولة البحث بالـ ID أو بالـ Slug كبادئة (prefix match)
   // ============================================================
   if (!place) {
     try {
       const result = await env.DB.prepare(`
         SELECT *
         FROM places
-        WHERE id = ?
+        WHERE id = ? OR slug LIKE ?
+        ORDER BY updated_at DESC
         LIMIT 1
-      `).bind(cleanSlug).first();
+      `).bind(cleanSlug, `${cleanSlug}%`).first();
 
       if (result) {
         place = result;
       }
     } catch (err) {
-      console.error('[OG] D1 ID lookup error:', err);
+      console.error('[OG] D1 ID / prefix lookup error:', err);
     }
   }
 
@@ -787,13 +1153,26 @@ if (!isCrawler) {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
 
-      // مهم جدًا حتى لا يحتفظ Facebook/Cloudflare
-      // بنتيجة قديمة أثناء الاختبار
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      // Cache for social media crawlers (5 mins)
+      'Cache-Control': 'public, max-age=300, s-maxage=300',
 
       'X-Content-Type-Options': 'nosniff'
     }
   });
+}
+
+function normalizeArabicText(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/[ة]/g, 'ه')
+    .replace(/[يى]/g, 'ي')
+    .replace(/[ؤ]/g, 'و')
+    .replace(/[ئ]/g, 'ي')
+    .replace(/\s+/g, ' ');
 }
 
 function escapeHtml(str) {

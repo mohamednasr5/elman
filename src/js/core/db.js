@@ -204,24 +204,74 @@ export async function getPlace(placeId) {
   return null;
 }
 
+/** Sync place updates to Cloudflare D1 and invalidate worker cache */
+export async function syncPlaceToWorkerD1(placeId, updates = {}) {
+  if (!placeId) return false;
+  try {
+    const payload = {
+      id: placeId,
+      ...updates
+    };
+    const res = await fetch(`${WORKER_URL}/api/places/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(6000)
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[D1Sync] Failed to sync place to D1:', err);
+    return false;
+  }
+}
+
+/** Invalidate local caches (IndexedDB and in-memory SWR) for a place */
+export async function invalidateLocalPlaceCache(placeId, slug = '') {
+  try {
+    if (placeId) {
+      await idbDelete(STORES.PLACES, placeId).catch(() => {});
+    }
+    if (slug) {
+      await idbDelete(STORES.PLACES, slug).catch(() => {});
+    }
+    clearDbCache();
+  } catch (_) {}
+}
+
+/** Fast search against Cloudflare D1 with pagination and edge caching */
+export async function searchPlacesD1(query = '', { category = '', area = '', limit = 20, offset = 0 } = {}) {
+  try {
+    const url = new URL(`${WORKER_URL}/api/search`);
+    if (query) url.searchParams.set('q', query);
+    if (category) url.searchParams.set('category', category);
+    if (area) url.searchParams.set('area', area);
+    url.searchParams.set('limit', String(limit));
+    url.searchParams.set('offset', String(offset));
+
+    const res = await fetch(url.toString(), {
+      signal: AbortSignal.timeout(6000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.data)) {
+        return {
+          places: data.data.map(p => normalizeD1Place(p)),
+          pagination: data.pagination || { limit, offset, returned: data.data.length, hasMore: false }
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[SearchD1] Worker search failed:', err);
+  }
+  return null;
+}
+
 /** Get place by slug (with multi-tier resilient lookup) */
 export async function getPlaceBySlug(slug) {
   if (!slug) return null;
   const cleanSlug = String(slug).trim();
 
-  // 0. Fast local IndexedDB cache check (0ms, 0 bandwidth)
-  try {
-    const localPlaces = await idbGetAll(STORES.PLACES);
-    if (localPlaces && localPlaces.length > 0) {
-      const lower = cleanSlug.toLowerCase();
-      const p = localPlaces.find(item => 
-        item && (item.slug === cleanSlug || item.id === cleanSlug || item._key === cleanSlug || (item.slug && item.slug.toLowerCase() === lower))
-      );
-      if (p) return p;
-    }
-  } catch (_) {}
-
-  // 1. Direct Cloudflare D1 Lookup via Worker (0 Firebase reads)
+  // 1. Direct Cloudflare D1 Lookup via Worker (Edge Cached, 0 Firebase reads)
   try {
     const workerRes = await fetch(`${WORKER_URL}/api/places?slug=${encodeURIComponent(cleanSlug)}`, {
       signal: AbortSignal.timeout(4000)
@@ -250,7 +300,19 @@ export async function getPlaceBySlug(slug) {
     }
   } catch (_) {}
 
-  // 2. Fallback: Try slugIndex lookup in RTDB
+  // 2. Offline / Fallback: Local IndexedDB cache check (0ms)
+  try {
+    const localPlaces = await idbGetAll(STORES.PLACES);
+    if (localPlaces && localPlaces.length > 0) {
+      const lower = cleanSlug.toLowerCase();
+      const p = localPlaces.find(item => 
+        item && (item.slug === cleanSlug || item.id === cleanSlug || item._key === cleanSlug || (item.slug && item.slug.toLowerCase() === lower))
+      );
+      if (p) return p;
+    }
+  } catch (_) {}
+
+  // 3. Fallback: Try slugIndex lookup in RTDB
   try {
     const placeId = await dbGet(`slugIndex/${cleanSlug}`);
     if (placeId) {
@@ -735,6 +797,37 @@ export async function getCategories() {
     }
   } catch (_) {}
 
+  // Primary: Fetch from Cloudflare D1 via Worker
+  try {
+    const workerRes = await fetch(`${WORKER_URL}/api/categories`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (workerRes.ok) {
+      const data = await workerRes.json();
+      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const categories = data.data.map(c => ({
+          id: c.id || c.slug,
+          _key: c.id || c.slug,
+          slug: c.slug || c.id,
+          name: c.name,
+          nameEn: c.name_en || c.nameEn || '',
+          icon: c.icon || '🏪',
+          description: c.description || '',
+          color: c.color || '#1B4F72',
+          order: Number(c.order) || 0,
+          placeCount: Number(c.place_count || c.placeCount) || 0
+        }));
+
+        idbPutBulk(STORES.CATEGORIES, categories).catch(() => {});
+        idbSetMeta('lastCategoriesSync', Date.now()).catch(() => {});
+        return setCache(cacheKey, categories);
+      }
+    }
+  } catch (workerErr) {
+    console.debug('[getCategories] D1 categories handled, fallback:', workerErr.message);
+  }
+
+  // Fallback to RTDB
   try {
     const snap = await getDB().ref('categories')
       .orderByChild('order')
@@ -762,20 +855,30 @@ async function _refreshCategoriesInBackground() {
   const lastSync = await idbGetMeta('lastCategoriesSync', 0);
   if (Date.now() - lastSync < 3600000) return;
 
-  const snap = await getDB().ref('categories').orderByChild('order').once('value').catch(() => null);
-  if (!snap || !snap.exists()) return;
-
-  const categories = [];
-  snap.forEach(child => {
-    categories.push({ id: child.key, _key: child.key, slug: child.key, ...child.val() });
-  });
-
-  if (categories.length > 0) {
-    await idbClear(STORES.CATEGORIES);
-    await idbPutBulk(STORES.CATEGORIES, categories);
-    await idbSetMeta('lastCategoriesSync', Date.now());
-    clearDbCache('categories_all');
-  }
+  try {
+    const res = await fetch(`${WORKER_URL}/api/categories`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const categories = data.data.map(c => ({
+          id: c.id || c.slug,
+          _key: c.id || c.slug,
+          slug: c.slug || c.id,
+          name: c.name,
+          nameEn: c.name_en || c.nameEn || '',
+          icon: c.icon || '🏪',
+          description: c.description || '',
+          color: c.color || '#1B4F72',
+          order: Number(c.order) || 0,
+          placeCount: Number(c.place_count || c.placeCount) || 0
+        }));
+        await idbClear(STORES.CATEGORIES);
+        await idbPutBulk(STORES.CATEGORIES, categories);
+        await idbSetMeta('lastCategoriesSync', Date.now());
+        clearDbCache('categories_all');
+      }
+    }
+  } catch (_) {}
 }
 
 /** Get category by slug */
@@ -1327,9 +1430,23 @@ export async function clearAllNotifications(uid) {
 
 /** Increment place stat */
 export async function trackPlaceStat(placeId, stat) {
-  const allowed = ['phoneClicks', 'whatsappClicks', 'directionsClicks', 'productViews', 'offerViews'];
-  if (!allowed.includes(stat)) return;
-  await dbIncrement(`places/${placeId}/stats/${stat}`);
+  const allowed = ['phoneClicks', 'whatsappClicks', 'directionsClicks', 'productViews', 'offerViews', 'views'];
+  if (!allowed.includes(stat) || !placeId) return;
+
+  // 1. Primary: Cloudflare D1 via Worker
+  try {
+    fetch(`${WORKER_URL}/api/places/track-stat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ placeId, stat }),
+      signal: AbortSignal.timeout(3000)
+    }).catch(() => {});
+  } catch (_) {}
+
+  // Fallback to RTDB
+  try {
+    await dbIncrement(`places/${placeId}/stats/${stat}`);
+  } catch (_) {}
 }
 
 // ─────────────────────────────────────────────
@@ -1394,6 +1511,32 @@ export const HAMMAD_TESTIMONIALS = [
 /** Get all reviews for a place */
 export async function getPlaceReviews(placeId) {
   if (!placeId) return [];
+  // 1. Primary: Cloudflare D1 via Worker (Edge Caching, 0 Firebase Database reads)
+  try {
+    const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(placeId)}`, {
+      signal: AbortSignal.timeout(4000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        return data.data.map(r => ({
+          id: r.id,
+          placeId: r.place_id || placeId,
+          userId: r.user_id,
+          userName: r.user_name || 'مستخدم',
+          userPhoto: r.user_photo || '',
+          rating: Number(r.rating) || 5,
+          comment: r.comment || '',
+          likes: Number(r.likes) || 0,
+          createdAt: Number(r.created_at) || Date.now(),
+          updatedAt: Number(r.updated_at) || Date.now()
+        }));
+      }
+    }
+  } catch (d1Err) {
+    console.debug('[getPlaceReviews] D1 fetch handled, fallback:', d1Err.message);
+  }
+
   try {
     const placeReviewsMap = await dbGet(`places/${placeId}/reviews`) || {};
     let list = Object.entries(placeReviewsMap).map(([id, r]) => ({
@@ -1533,6 +1676,26 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     updatedAt: Date.now(),
     editCount: 0
   };
+
+  // 1. Sync review to Cloudflare D1 via Worker
+  try {
+    await fetch(`${WORKER_URL}/api/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: reviewId,
+        place_id: placeId,
+        user_id: user.uid,
+        user_name: userName,
+        user_photo: user.photoURL || '',
+        rating: numRating,
+        comment: cleanComment
+      }),
+      signal: AbortSignal.timeout(5000)
+    });
+  } catch (d1SyncErr) {
+    console.debug('[addPlaceReview] D1 sync error:', d1SyncErr.message);
+  }
 
   // Write inside places/${placeId}/reviews/${reviewId}
   await dbSet(`places/${placeId}/reviews/${reviewId}`, reviewData);

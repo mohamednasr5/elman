@@ -110,7 +110,7 @@ export async function renderPlacePage($container, { slug, user }) {
       const seoDesc = `${place.name} في ${placeArea}. ${placeSpecialty}${addressText}${phoneText}. مواعيد العمل، تقييمات العملاء، وأرقام التواصل عبر دليل المنزلة والمطرية الرقمي.`;
       const rawPlaceSlug = place.slug || place.id;
       const cleanSlug = String(rawPlaceSlug).replace(/-[a-z0-9_]{5,7}$/i, '') || rawPlaceSlug;
-      const placeCanonical = `https://dalilmanzala.com/${encodeURIComponent(cleanSlug)}`;
+      const placeCanonical = `https://dalilmanzala.com/p/${encodeURIComponent(cleanSlug)}`;
 
       setMeta({
         title: seoTitle,
@@ -1350,8 +1350,8 @@ function setupPlaceSharing(place) {
   const rawSlug = place.slug || place.id || '';
   const cleanShortSlug = String(rawSlug).replace(/-[a-z0-9_]{5,7}$/i, '');
   const finalSlug = (cleanShortSlug && cleanShortSlug.length >= 3) ? cleanShortSlug : rawSlug;
-  // Branded official short URL directly on dalilmanzala.com
-  const brandedShareUrl = `https://dalilmanzala.com/${encodeURIComponent(finalSlug || rawSlug)}`;
+  // Branded official share URL via Cloudflare Worker Dynamic OpenGraph handler
+  const brandedShareUrl = `https://dalilmanzala.com/p/${encodeURIComponent(finalSlug || rawSlug)}`;
   const coverUrl = place.coverImageUrl || place.logoUrl || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
 
   const shareTitle = `${placeName} | دليل المنزلة والمطرية الرقمي`;

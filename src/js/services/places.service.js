@@ -4,7 +4,7 @@
  */
 
 import { getDB } from '../core/firebase.js';
-import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache } from '../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerD1, invalidateLocalPlaceCache } from '../core/db.js';
 import { broadcastRealtimeChange } from './realtime-sync.service.js';
 import { generatePlaceSlug, generateCleanSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';
@@ -188,6 +188,9 @@ export async function createPlace(placeData, currentUser) {
   // Invalidate local and persistent database cache immediately
   clearDbCache();
 
+  // Sync new place to Cloudflare D1
+  syncPlaceToWorkerD1(placeId, newPlace).catch(() => {});
+
   // Broadcast realtime event across all open tabs, windows and PWA
   broadcastRealtimeChange('NEW_PLACE', { place: { id: placeId, ...newPlace } });
 
@@ -243,6 +246,11 @@ export async function updatePlace(placeId, placeData) {
   };
 
   await dbUpdate(`places/${placeId}`, updates);
+
+  // Sync to Cloudflare D1 and invalidate Worker and Local caches
+  await syncPlaceToWorkerD1(placeId, { ...current, ...updates, id: placeId, slug: current.slug });
+  await invalidateLocalPlaceCache(placeId, current.slug);
+
   clearDbCache();
   broadcastRealtimeChange('PLACE_UPDATED', { place: { id: placeId, ...updates } });
 }
@@ -266,6 +274,10 @@ export async function deletePlace(placeId, ownerId) {
   if (place.categoryId) {
     dbIncrement(`categories/${place.categoryId}/placeCount`, -1);
   }
+
+  // Delete from Cloudflare D1 and invalidate local caches
+  fetch(`${WORKER_URL}/api/places/${encodeURIComponent(placeId)}`, { method: 'DELETE' }).catch(() => {});
+  await invalidateLocalPlaceCache(placeId, place.slug);
 
   clearDbCache();
   broadcastRealtimeChange('PLACE_DELETED', { placeId });
