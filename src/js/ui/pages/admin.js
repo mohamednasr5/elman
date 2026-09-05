@@ -69,6 +69,18 @@ function navLink(sectionKey, href, icon, label, active) {
   </a>`;
 }
 
+export function getPlaceUrl(slugOrId) {
+  if (!slugOrId) return '#';
+  if (typeof slugOrId === 'string' && (slugOrId.startsWith('http://') || slugOrId.startsWith('https://'))) {
+    return slugOrId;
+  }
+  const slug = encodeURIComponent(slugOrId);
+  const isInsideAdminSubdir = typeof window !== 'undefined' && window.location.pathname.includes('/admin/');
+  const prefix = isInsideAdminSubdir ? '../' : './';
+  return `${prefix}place.html?slug=${slug}`;
+}
+
+
 // ─────────────────────────────────────────────
 //  MAIN ENTRY POINT
 // ─────────────────────────────────────────────
@@ -404,6 +416,23 @@ function setupAdminNavigation() {
     });
   }
 
+  // Delegated listener for all [data-admin-sec] elements across the page (shortcuts, tables, links)
+  if (typeof document !== 'undefined' && !document.body.dataset.adminSecListening) {
+    document.body.dataset.adminSecListening = 'true';
+    document.body.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-admin-sec]');
+      if (!btn) return;
+      // Skip if inside elements that have their own specific handlers
+      if (btn.closest('#admin-quick-nav-bar, #admin-mobile-bottom-nav, #admin-more-sheet-backdrop')) return;
+      e.preventDefault();
+      const sec = btn.getAttribute('data-admin-sec');
+      if (sec) {
+        closeMoreSheet();
+        switchAdminSection(sec, true);
+      }
+    });
+  }
+
   // Admin PWA Standalone Install Trigger
   let _adminDeferredPrompt = null;
   if (typeof window !== 'undefined') {
@@ -674,22 +703,22 @@ async function renderAdminOverview($container) {
             <span>روابط وإجراءات سريعة</span>
           </h2>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <a href="admin.html?section=places" class="btn btn-sm" style="background:#1B4F72;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+            <a href="?section=places" data-admin-sec="places" class="btn btn-sm" style="background:#1B4F72;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none;cursor:pointer">
               📍 إدارة الأماكن
             </a>
-            <a href="admin.html?section=live-news" class="btn btn-sm" style="background:#EF4444;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+            <a href="?section=live-news" data-admin-sec="live-news" class="btn btn-sm" style="background:#EF4444;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none;cursor:pointer">
               🔥 نشر خبر في يحدث الآن
             </a>
-            <a href="admin.html?section=verification" class="btn btn-sm" style="background:#10B981;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+            <a href="?section=verification" data-admin-sec="verification" class="btn btn-sm" style="background:#10B981;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none;cursor:pointer">
               👑 طلبات التوثيق
             </a>
-            <a href="admin.html?section=users" class="btn btn-sm" style="background:#8B5CF6;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+            <a href="?section=users" data-admin-sec="users" class="btn btn-sm" style="background:#8B5CF6;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none;cursor:pointer">
               👥 رتب ونقاط المستخدمين
             </a>
-            <a href="admin.html?section=reviews" class="btn btn-sm" style="background:#F5A623;color:#0B1E30;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+            <a href="?section=reviews" data-admin-sec="reviews" class="btn btn-sm" style="background:#F5A623;color:#0B1E30;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none;cursor:pointer">
               ⭐ إدارة التقييمات
             </a>
-            <a href="admin.html?section=settings" class="btn btn-sm" style="background:#334155;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none">
+            <a href="?section=settings" data-admin-sec="settings" class="btn btn-sm" style="background:#334155;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none;cursor:pointer">
               ⚙️ إعدادات المنصة وبوت تليجرام
             </a>
           </div>
@@ -702,7 +731,7 @@ async function renderAdminOverview($container) {
               <span>🆕</span>
               <span>أحدث الأماكن المسجلة حديثاً</span>
             </h2>
-            <a href="admin.html?section=places" style="color:#38BDF8;font-size:13px;font-weight:800;text-decoration:none">
+            <a href="?section=places" data-admin-sec="places" style="color:#38BDF8;font-size:13px;font-weight:800;text-decoration:none;cursor:pointer">
               عرض كل الأماكن (${totalPlaces}) ←
             </a>
           </div>
@@ -1093,7 +1122,7 @@ function renderAdminPlacesTableRows(places) {
             ${banButtonHtml}
             <button type="button" class="btn btn-xs" data-action="transfer" data-id="${escAttr(p._id)}" style="background:#8B5CF6;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="نقل ملكية هذا المكان لمستخدم مسجل"><span style="pointer-events:none;display:inline-flex">${ICONS.users}</span><span>نقل</span></button>
             <button type="button" class="btn btn-xs" data-action="edit" data-id="${escAttr(p._id)}" style="background:#0284C7;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="تعديل كافة بيانات المكان أو الشخص"><span style="pointer-events:none;display:inline-flex">${ICONS.edit}</span></button>
-            <a href="place.html?slug=${encodeURIComponent(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="عرض صفحة المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.eye}</span></a>
+            <a href="${getPlaceUrl(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="عرض صفحة المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.eye}</span></a>
             <button type="button" class="btn btn-xs" data-action="delete" data-id="${escAttr(p._id)}" style="background:#EF4444;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="حذف المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.trash}</span></button>
           </div>
         </td>
@@ -1315,7 +1344,7 @@ function renderAdminProductsTableRows(products) {
           ${p.category ? `<span class="badge" style="font-size:10px;margin-top:4px">${escHtml(p.category)}</span>` : ''}
         </td>
         <td>
-          <a href="place.html?slug=${escAttr(p.placeSlug || p.placeId)}" target="_blank" style="font-weight:600;color:var(--primary);display:inline-flex;align-items:center;gap:4px">
+          <a href="${getPlaceUrl(p.placeSlug || p.placeId)}" target="_blank" style="font-weight:600;color:var(--primary);display:inline-flex;align-items:center;gap:4px">
             ${escHtml(p.placeName || 'المكان')} ${ICONS.eye}
           </a>
         </td>
@@ -1789,7 +1818,7 @@ async function renderAdminReviews($container) {
         <td style="padding:10px">
           <div style="font-weight:700;color:#38BDF8;display:flex;align-items:center;gap:6px">
             <span>📍</span>
-            <a href="../place.html?slug=${escAttr(placeSlug)}" target="_blank" style="color:#38BDF8;text-decoration:none">
+            <a href="${getPlaceUrl(placeSlug)}" target="_blank" style="color:#38BDF8;text-decoration:none">
               ${escHtml(r.placeName || placeObj?.name || 'مكان غير معروف')}
             </a>
           </div>
@@ -3361,7 +3390,7 @@ function openAdminUserPlacesModal(user, onDone) {
                   </div>
 
                   <div style="display:flex;gap:6px;align-items:center">
-                    <a href="place.html?slug=${encodeURIComponent(slugOrId)}" target="_blank" class="btn btn-xs" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:600;text-decoration:none" title="مشاهدة المكان">
+                    <a href="${getPlaceUrl(slugOrId)}" target="_blank" class="btn btn-xs" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:600;text-decoration:none" title="مشاهدة المكان">
                       👁️ مشاهدة
                     </a>
                     <button class="btn btn-xs btn-user-place-edit" data-id="${escAttr(placeId)}" style="background:#0EA5E9;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer" title="تعديل المكان">
@@ -3866,7 +3895,7 @@ function renderAdminOffersTableRows(offers) {
           ${o.description ? `<div style="font-size:11.5px;color:var(--text-muted);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${escHtml(o.description)}</div>` : ''}
         </td>
         <td>
-          <a href="place.html?slug=${escAttr(o.placeSlug || o.placeId)}" target="_blank" style="color:var(--primary);font-weight:600;display:inline-flex;align-items:center;gap:4px">
+          <a href="${getPlaceUrl(o.placeSlug || o.placeId)}" target="_blank" style="color:var(--primary);font-weight:600;display:inline-flex;align-items:center;gap:4px">
             ${escHtml(o.placeName || 'المكان')}
           </a>
         </td>

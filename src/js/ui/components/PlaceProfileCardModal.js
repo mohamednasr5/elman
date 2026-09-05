@@ -285,6 +285,12 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
  * محرك رسم وتوليد الصورة بدقة فائقة عبر HTML5 Canvas مع إسناد الغلاف والشعار وجهات الاتصال
  */
 async function generateAndDownloadPlaceCard({ place, categoryName, fullAddress, theme, coverUrl, logoUrl, phone, whatsapp }) {
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+    try {
+      await document.fonts.ready;
+    } catch (_) {}
+  }
+
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
@@ -434,52 +440,132 @@ if (!logoLoaded) {
   ctx.stroke();
   ctx.restore();
 
-  // 6. Place Name on Colored Gradient with Verified Badge
+  // 6. Place Name on Colored Gradient with Verified Badge (Smart Multi-line Wrap & Balanced RTL Layout)
   ctx.save();
-  ctx.font = 'bold 58px "Cairo", "Segoe UI", sans-serif';
   ctx.fillStyle = '#FFFFFF';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.30)';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
   ctx.shadowBlur = 12;
   ctx.shadowOffsetY = 4;
   
-  const nameY = 670;
-  const nameText = place.name || 'اسم النشاط';
+  const nameText = (place.name || 'اسم النشاط').trim();
   const isVerified = checkIsPlaceVerified(place);
+  const badgeRadius = 18;
+  const badgeGap = 14;
+  const badgeDiameter = badgeRadius * 2;
 
-  if (isVerified) {
-    const textWidth = ctx.measureText(nameText).width;
-    const badgeRadius = 20;
-    const gap = 16;
-    const totalWidth = textWidth + gap + (badgeRadius * 2);
-    
-    // Centered group with badge on left in RTL
-    const startX = (W - totalWidth) / 2;
-    const badgeCenterX = startX + badgeRadius;
-    
-    // Draw Name text
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(nameText, startX + (badgeRadius * 2) + gap, nameY);
-    
-    // Draw Verified Badge
-    drawCanvasVerifiedBadge(ctx, badgeCenterX, nameY, badgeRadius);
-  } else {
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(nameText, W / 2, nameY);
+  // Max width for name text (accounting for badge and safe padding)
+  const maxNameWidth = isVerified ? 940 : 1020;
+
+  // Function to wrap text into lines with optimal balance
+  function wrapArabicWords(baseSize) {
+    let size = baseSize;
+    while (size >= 34) {
+      ctx.font = `bold ${size}px "Cairo", "Segoe UI", sans-serif`;
+      // Check if it fits on a single line
+      if (ctx.measureText(nameText).width <= maxNameWidth) {
+        return { size, lines: [nameText] };
+      }
+
+      // Break into words
+      const words = nameText.split(/\s+/);
+      const lines = [];
+      let cur = words[0];
+
+      for (let i = 1; i < words.length; i++) {
+        const test = cur + ' ' + words[i];
+        if (ctx.measureText(test).width <= maxNameWidth) {
+          cur = test;
+        } else {
+          lines.push(cur);
+          cur = words[i];
+        }
+      }
+      lines.push(cur);
+
+      if (lines.length <= 2) {
+        return { size, lines };
+      }
+      size -= 3;
+    }
+
+    // Fallback: 32px with up to 3 lines
+    ctx.font = `bold 32px "Cairo", "Segoe UI", sans-serif`;
+    const words = nameText.split(/\s+/);
+    const lines = [];
+    let cur = words[0];
+    for (let i = 1; i < words.length; i++) {
+      const test = cur + ' ' + words[i];
+      if (ctx.measureText(test).width <= maxNameWidth) {
+        cur = test;
+      } else {
+        lines.push(cur);
+        cur = words[i];
+      }
+    }
+    lines.push(cur);
+    return { size: 32, lines: lines.slice(0, 3) };
   }
+
+  const { size: nameFontSize, lines: nameLines } = wrapArabicWords(52);
+  ctx.font = `bold ${nameFontSize}px "Cairo", "Segoe UI", sans-serif`;
+  ctx.textBaseline = 'middle';
+
+  const lineCount = nameLines.length;
+  const nameLineHeight = Math.round(nameFontSize * 1.28);
+
+  // Dynamic vertical starting point based on number of lines
+  let startNameY;
+  if (lineCount === 1) {
+    startNameY = 665;
+  } else if (lineCount === 2) {
+    startNameY = 638;
+  } else {
+    startNameY = 618;
+  }
+
+  // Draw name lines
+  nameLines.forEach((lineStr, index) => {
+    const currentLineY = startNameY + (index * nameLineHeight);
+    const isLastLine = (index === lineCount - 1);
+
+    if (isVerified && isLastLine) {
+      // In RTL Arabic, the verified badge is placed to the left of the last line
+      const lineW = ctx.measureText(lineStr).width;
+      const totalBlockW = lineW + badgeGap + badgeDiameter;
+      const blockStartX = (W - totalBlockW) / 2;
+
+      // Badge on left in RTL
+      const badgeCenterX = blockStartX + badgeRadius;
+      // Text centered in remaining space
+      const textCenterX = blockStartX + badgeDiameter + badgeGap + (lineW / 2);
+
+      ctx.textAlign = 'center';
+      ctx.fillText(lineStr, textCenterX, currentLineY);
+      drawCanvasVerifiedBadge(ctx, badgeCenterX, currentLineY, badgeRadius);
+    } else {
+      ctx.textAlign = 'center';
+      ctx.fillText(lineStr, W / 2, currentLineY);
+    }
+  });
   ctx.restore();
+
+  // Dynamic spacing for subsequent sections
+  const lastNameY = startNameY + ((lineCount - 1) * nameLineHeight);
+  const subY = lastNameY + (lineCount === 1 ? 75 : 65);
+  const addrY = subY + 58;
+  const pillY = addrY + 48;
 
   // 7. Category / Subtitle
   ctx.save();
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
   const subText = categoryName || '';
-  let subFontSize = 38;
-  if (subText.length > 45) subFontSize = 27;
-  else if (subText.length > 30) subFontSize = 32;
+  let subFontSize = 36;
+  if (subText.length > 45) subFontSize = 26;
+  else if (subText.length > 30) subFontSize = 30;
   ctx.font = `600 ${subFontSize}px "Cairo", "Segoe UI", sans-serif`;
-  ctx.fillText(subText, W / 2, 750);
+  ctx.fillText(subText, W / 2, subY);
   ctx.restore();
 
   // 8. Full Address / Location Tag
@@ -489,11 +575,11 @@ if (!logoLoaded) {
   ctx.fillStyle = 'rgba(255, 255, 255, 0.90)';
   
   const addrText = `📍 ${fullAddress || 'مدينة المنزلة'}`;
-  let fontSize = 30;
+  let fontSize = 28;
   if (addrText.length > 55) {
-    fontSize = 24;
+    fontSize = 23;
   } else if (addrText.length > 40) {
-    fontSize = 27;
+    fontSize = 25;
   }
   ctx.font = `500 ${fontSize}px "Cairo", "Segoe UI", sans-serif`;
   
@@ -505,7 +591,7 @@ if (!logoLoaded) {
     ctx.font = `500 ${Math.max(19, Math.floor(fontSize * scale))}px "Cairo", "Segoe UI", sans-serif`;
   }
   
-  ctx.fillText(addrText, W / 2, 815);
+  ctx.fillText(addrText, W / 2, addrY);
   ctx.restore();
 
   // 9. Phone & WhatsApp Contacts Capsule Pill
@@ -514,7 +600,6 @@ if (!logoLoaded) {
     const pillW = 680;
     const pillH = 75;
     const pillX = (W - pillW) / 2;
-    const pillY = 875;
     const pillRadius = 38;
 
     // Pill Frosted Glass Background
@@ -530,13 +615,16 @@ if (!logoLoaded) {
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 28px "Cairo", "Segoe UI", sans-serif';
 
-    if (phone && whatsapp && phone !== whatsapp) {
-      // Both numbers
-      ctx.fillText(`📞 ${phone}   |   💬 ${whatsapp}`, W / 2, pillY + pillH / 2);
+    if (phone && whatsapp) {
+      if (phone === whatsapp) {
+        ctx.fillText(`📞 ${phone}     💬 ${whatsapp}`, W / 2, pillY + pillH / 2);
+      } else {
+        ctx.fillText(`📞 ${phone}   |   💬 ${whatsapp}`, W / 2, pillY + pillH / 2);
+      }
     } else {
-      // Single contact number with call & whatsapp icon
       const contactNum = phone || whatsapp;
-      ctx.fillText(`📞 اتصال & 💬 واتساب :  ${contactNum}`, W / 2, pillY + pillH / 2);
+      const icon = phone ? '📞' : '💬';
+      ctx.fillText(`${icon} ${contactNum}`, W / 2, pillY + pillH / 2);
     }
     ctx.restore();
   }
