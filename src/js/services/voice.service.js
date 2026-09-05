@@ -692,12 +692,12 @@ export async function openManzalaVoiceAssistantModal() {
       window.speechSynthesis.cancel();
       const pName = topResult.name || 'المكان';
       const text = totalCount === 1 
-        ? `لقيت لك ${pName}` 
-        : `لقيت لك ${totalCount} أماكن مطابقة، أول نتيجة هي ${pName}`;
+        ? `يُوجد مكان واحد بدليل المَنْزَلَةَ والمطرية الرقمي، وهو ${pName}` 
+        : `يُوجد ${totalCount} أماكن بدليل المَنْزَلَةَ والمطرية الرقمي، أول نتيجة هي ${pName}`;
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ar-EG';
-      utterance.rate = 1.05;
+      utterance.rate = 1.0;
       utterance.pitch = 1.0;
       window.speechSynthesis.speak(utterance);
     } catch (_) {}
