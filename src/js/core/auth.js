@@ -1,18 +1,20 @@
 /**
  * المنزلة وناسها — Authentication Module
- * Handles Google Sign-In, user profile management in RTDB
+ *
+ * Architecture (Final):
+ *   Firebase Auth  → Google Sign-In + ID Token ONLY
+ *   Firebase FCM   → Push Notifications ONLY
+ *   Cloudflare D1  → User profiles, roles, placeIds (via Worker)
+ *   NO Firebase Realtime Database usage whatsoever
  */
 
-import { getAuth, getDB, WORKER_URL } from './firebase.js';
+import { getAuth, WORKER_URL } from './firebase.js';
 import { appState } from './state.js';
 import { emit } from './events.js';
 
 let _authUnsubscribe = null;
 
-/**
- * Initialize auth state listener.
- * Creates/updates user profile in RTDB on every sign-in.
- */
+// ── Persistent Cache Key ───────────────────────────────────────────────────
 const PERSISTENT_USER_KEY = 'manzala_persistent_user';
 
 /**
@@ -37,60 +39,56 @@ if (_initialCachedUser) {
   appState.set('authLoading', false);
 }
 
+// ── Admin Emails ───────────────────────────────────────────────────────────
+export const ADMIN_EMAILS = [
+  'elfannanm@gmail.com',
+  'mohamednasrofficial@gmail.com'
+];
+
+// ── initAuth ───────────────────────────────────────────────────────────────
 /**
- * Initialize auth state listener with strict LOCAL persistence and zero-flicker session.
+ * Initialize auth state listener.
+ * On sign-in: syncs user to D1 and fetches full D1 profile (role, placeIds).
  */
 export function initAuth() {
   const auth = getAuth();
 
-  // 1. Set explicit local persistence so Firebase never drops session across tabs/PWA/restarts
+  // Set local persistence
   try {
     if (firebase?.auth?.Auth?.Persistence?.LOCAL) {
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
-        console.debug('[Auth] Persistence set warning:', err);
-      });
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
     }
   } catch (_) {}
 
-  // 2. Auth state change listener
   _authUnsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
     if (firebaseUser) {
       try {
-        const profile = await syncUserProfile(firebaseUser);
+        // Sync to D1 and get full profile back
+        const profile = await _syncUserToD1(firebaseUser);
         appState.set('user', profile);
         appState.set('authLoading', false);
-        try {
-          localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(profile));
-        } catch (_) {}
-        setupUserPresence(firebaseUser.uid);
+        try { localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(profile)); } catch (_) {}
         emit('auth:signedIn', profile);
       } catch (err) {
-        console.error('[Auth] Failed to sync user profile:', err);
-        const basic = buildBasicProfile(firebaseUser);
+        console.error('[Auth] D1 sync failed, using Firebase profile:', err);
+        const basic = _buildBasicProfile(firebaseUser);
         appState.set('user', basic);
         appState.set('authLoading', false);
-        try {
-          localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(basic));
-        } catch (_) {}
-        setupUserPresence(firebaseUser.uid);
+        try { localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(basic)); } catch (_) {}
         emit('auth:signedIn', basic);
       }
     } else {
-      // Only clear user if Firebase explicitly says no user AND we are not mid-login
       const currentStored = getInitialCachedUser();
       if (!currentStored) {
         appState.set('user', null);
         appState.set('authLoading', false);
-        cleanupUserPresence();
         emit('auth:signedOut');
       } else {
-        // Fallback grace check: wait a moment in case Firebase was still initializing
         setTimeout(() => {
           if (!auth.currentUser) {
             localStorage.removeItem(PERSISTENT_USER_KEY);
             appState.set('user', null);
             appState.set('authLoading', false);
-            cleanupUserPresence();
             emit('auth:signedOut');
           }
         }, 1500);
@@ -99,14 +97,11 @@ export function initAuth() {
   });
 }
 
-/**
- * Sign in with Google popup
- */
+// ── Sign In/Out ────────────────────────────────────────────────────────────
 export async function signInWithGoogle() {
   const auth = getAuth();
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
-
   try {
     const result = await auth.signInWithPopup(provider);
     return result.user;
@@ -116,9 +111,6 @@ export async function signInWithGoogle() {
   }
 }
 
-/**
- * Sign out
- */
 export async function signOut() {
   const auth = getAuth();
   try {
@@ -126,13 +118,13 @@ export async function signOut() {
     localStorage.removeItem('manzala_user');
   } catch (_) {}
   appState.set('user', null);
-  cleanupUserPresence();
   await auth.signOut();
   emit('auth:signedOut');
 }
 
+// ── Token ──────────────────────────────────────────────────────────────────
 /**
- * Get current Firebase ID Token (for worker requests)
+ * Get Firebase ID Token (for Worker API authorization)
  */
 export async function getIdToken(forceRefresh = false) {
   const auth = getAuth();
@@ -141,22 +133,11 @@ export async function getIdToken(forceRefresh = false) {
   return user.getIdToken(forceRefresh);
 }
 
-/**
- * Get current user (sync)
- */
+// ── Current User ───────────────────────────────────────────────────────────
 export function getCurrentUser() {
   return appState.get('user');
 }
 
-// ── Authorized Admin Emails ──
-export const ADMIN_EMAILS = [
-  'elfannanm@gmail.com',
-  'mohamednasrofficial@gmail.com'
-];
-
-/**
- * Check if user is admin or superadmin
- */
 export function isAdmin(user = null) {
   const u = user || getCurrentUser();
   if (!u) return false;
@@ -164,9 +145,6 @@ export function isAdmin(user = null) {
   return ADMIN_EMAILS.includes(email) || u.role === 'admin' || u.role === 'superadmin';
 }
 
-/**
- * Check if user is superadmin
- */
 export function isSuperAdmin(user = null) {
   const u = user || getCurrentUser();
   if (!u) return false;
@@ -174,82 +152,55 @@ export function isSuperAdmin(user = null) {
   return ADMIN_EMAILS.includes(email) || u.role === 'superadmin';
 }
 
-/**
- * Wait for auth to be ready (returns Promise)
- */
+// ── waitForAuth ────────────────────────────────────────────────────────────
 export function waitForAuth() {
   return new Promise((resolve) => {
     const cached = appState.get('user') || getInitialCachedUser();
-    if (cached) {
-      return resolve(cached);
-    }
-    if (!appState.get('authLoading')) {
-      return resolve(appState.get('user'));
-    }
-    
+    if (cached) return resolve(cached);
+    if (!appState.get('authLoading')) return resolve(appState.get('user'));
+
     let resolved = false;
     const finish = (val) => {
       if (resolved) return;
       resolved = true;
-      try { unsub(); } catch (e) {}
+      try { unsub(); } catch (_) {}
       resolve(val);
     };
 
     const unsub = appState.subscribe('authLoading', (loading) => {
-      if (!loading) {
-        finish(appState.get('user'));
-      }
+      if (!loading) finish(appState.get('user'));
     });
 
-    // Fallback timer
     setTimeout(() => {
       if (!resolved) {
         try {
-          const auth = getAuth();
-          const fbUser = auth?.currentUser;
-          if (fbUser) {
-            const profile = buildBasicProfile(fbUser);
-            finish(profile);
-          } else {
-            finish(appState.get('user'));
-          }
-        } catch (err) {
-          finish(appState.get('user'));
-        }
+          const fbUser = getAuth()?.currentUser;
+          finish(fbUser ? _buildBasicProfile(fbUser) : appState.get('user'));
+        } catch (_) { finish(appState.get('user')); }
       }
     }, 5000);
   });
 }
 
-/**
- * Subscribe to auth state changes
- */
+// ── onAuthStateChange ──────────────────────────────────────────────────────
 export function onAuthStateChange(callback) {
-  // If not loading anymore, call immediately
-  if (!appState.get('authLoading')) {
-    callback(appState.get('user'));
-  }
-  return appState.subscribe('user', (user) => {
-    callback(user);
-  });
+  if (!appState.get('authLoading')) callback(appState.get('user'));
+  return appState.subscribe('user', (user) => callback(user));
 }
 
+// ── Client IP ──────────────────────────────────────────────────────────────
 let _cachedClientIp = null;
 export async function getClientIp() {
   if (_cachedClientIp) return _cachedClientIp;
   try {
     const stored = sessionStorage.getItem('client_ip');
-    if (stored) {
-      _cachedClientIp = stored;
-      return stored;
-    }
+    if (stored) { _cachedClientIp = stored; return stored; }
   } catch (_) {}
-
   try {
     const res = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) });
     if (res.ok) {
       const data = await res.json();
-      if (data && data.ip) {
+      if (data?.ip) {
         _cachedClientIp = String(data.ip).trim();
         try { sessionStorage.setItem('client_ip', _cachedClientIp); } catch (_) {}
         return _cachedClientIp;
@@ -259,56 +210,74 @@ export async function getClientIp() {
   return null;
 }
 
+// ── D1 User Sync (Core) ────────────────────────────────────────────────────
 /**
- * Sync user profile (Local + Auth token based, No RTDB dependency)
+ * Sync Firebase user → D1 users table, then fetch full D1 profile.
+ * D1 is the source of truth for role, placeIds, status, etc.
+ * Firebase Auth is used ONLY for identity (uid, name, email, photoURL).
+ *
+ * @param {firebase.User} firebaseUser
+ * @returns {Promise<UserProfile>}
  */
-async function syncUserProfile(firebaseUser) {
+async function _syncUserToD1(firebaseUser) {
   const uid = firebaseUser.uid;
-  const userEmail = (firebaseUser.email || '').trim().toLowerCase();
-  const isSuper = ADMIN_EMAILS.includes(userEmail);
-  const defaultRole = isSuper ? 'superadmin' : 'user';
-  const ip = await getClientIp();
+  const email = (firebaseUser.email || '').trim().toLowerCase();
+  const name = firebaseUser.displayName || 'مستخدم';
+  const photoURL = firebaseUser.photoURL || '';
+  const isSuper = ADMIN_EMAILS.includes(email);
 
+  // 1. Upsert user in D1 (creates if new, updates name/photo if existing)
+  //    Role is preserved in D1 if already set (server-side logic)
+  const syncRes = await fetch(`${WORKER_URL}/api/users/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      uid,
+      name,
+      email,
+      photoURL,
+      role: isSuper ? 'superadmin' : 'user',
+      status: 'active'
+    }),
+    signal: AbortSignal.timeout(6000)
+  });
+
+  const syncData = await syncRes.json().catch(() => ({}));
+
+  // 2. Fetch full profile from D1 (to get the actual role stored in DB)
+  const profileRes = await fetch(`${WORKER_URL}/api/users/${uid}`, {
+    signal: AbortSignal.timeout(6000)
+  });
+
+  let d1Profile = null;
+  if (profileRes.ok) {
+    const profileData = await profileRes.json().catch(() => ({}));
+    d1Profile = profileData.data || profileData.user || null;
+  }
+
+  // 3. Build final profile object
   const profile = {
     uid,
-    name: firebaseUser.displayName || 'مستخدم',
-    email: firebaseUser.email || '',
-    photoURL: firebaseUser.photoURL || '',
-    createdAt: Date.now(),
+    name: d1Profile?.name || name,
+    email: d1Profile?.email || firebaseUser.email || '',
+    photoURL: d1Profile?.photo_url || photoURL,
+    role: d1Profile?.role || (isSuper ? 'superadmin' : 'user'),
+    status: d1Profile?.status || 'active',
+    phone: d1Profile?.phone || null,
+    createdAt: d1Profile?.created_at || Date.now(),
     lastLoginAt: Date.now(),
-    registrationIp: ip || null,
-    lastIp: ip || null,
-    status: 'active',
-    role: defaultRole,
-    placeIds: {}
+    // placeIds: will be fetched lazily when needed
   };
-
-  // Sync user profile to Cloudflare D1
-  try {
-    fetch(`${WORKER_URL}/api/users/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        uid,
-        name: profile.name,
-        email: profile.email,
-        photoURL: profile.photoURL,
-        role: profile.role,
-        status: profile.status
-      })
-    }).catch(() => {});
-  } catch (_) {}
 
   return profile;
 }
 
 /**
- * Build minimal profile from Firebase user (fallback)
+ * Build minimal profile from Firebase user alone (fallback when D1 fails)
  */
-function buildBasicProfile(firebaseUser) {
-  const userEmail = (firebaseUser.email || '').trim().toLowerCase();
-  const isSuper = ADMIN_EMAILS.includes(userEmail);
-
+function _buildBasicProfile(firebaseUser) {
+  const email = (firebaseUser.email || '').trim().toLowerCase();
+  const isSuper = ADMIN_EMAILS.includes(email);
   return {
     uid: firebaseUser.uid,
     name: firebaseUser.displayName || 'مستخدم',
@@ -316,28 +285,14 @@ function buildBasicProfile(firebaseUser) {
     photoURL: firebaseUser.photoURL || '',
     role: isSuper ? 'superadmin' : 'user',
     status: 'active',
-    placeIds: {}
+    phone: null,
   };
 }
 
-let _currentPresenceUid = null;
-
-function setupUserPresence(uid) {
-  _currentPresenceUid = uid;
-}
-
-function cleanupUserPresence() {
-  _currentPresenceUid = null;
-}
-
-/**
- * Cleanup auth listener
- */
+// ── Cleanup ────────────────────────────────────────────────────────────────
 export function destroyAuth() {
   if (_authUnsubscribe) {
     _authUnsubscribe();
     _authUnsubscribe = null;
   }
-  cleanupUserPresence();
 }
-

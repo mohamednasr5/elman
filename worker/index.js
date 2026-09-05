@@ -280,24 +280,34 @@ try {
 
     const limitParam = parseInt(url.searchParams.get('limit') || '50', 10);
     const offsetParam = parseInt(url.searchParams.get('offset') || '0', 10);
+    const ownerIdFilter = (url.searchParams.get('owner_id') || '').trim();
 
     const limit = Math.min(Math.max(limitParam, 1), 100);
     const offset = Math.max(offsetParam, 0);
 
-    const result = await env.DB.prepare(`
+    let sql = `
       SELECT
-        id, name, name_en, slug, category_id, subcategory_id, custom_category,
-        address, area, phone, whatsapp, maps_link, latitude, longitude,
-        description, logo_url, cover_image_url, owner_id, owner_email,
-        status, is_verified, verification_status, offer_count, product_count,
-        services_json, social_json, stats_json, working_hours_json,
-        created_at, updated_at
-      FROM places
-      ORDER BY updated_at DESC, created_at DESC
-      LIMIT ? OFFSET ?
-    `)
-      .bind(limit, offset)
-      .all();
+        p.id, p.name, p.name_en, p.slug, p.category_id, p.subcategory_id, p.custom_category,
+        p.address, p.area, p.phone, p.whatsapp, p.maps_link, p.latitude, p.longitude,
+        p.description, p.logo_url, p.cover_image_url, p.owner_id, p.owner_email,
+        p.status, p.is_verified, p.verification_status, p.offer_count, p.product_count,
+        p.services_json, p.social_json, p.stats_json, p.working_hours_json,
+        p.created_at, p.updated_at,
+        u.name AS owner_name, u.email AS owner_email_d1, u.photo_url AS owner_photo
+      FROM places p
+      LEFT JOIN users u ON u.id = p.owner_id
+    `;
+    const params = [];
+
+    if (ownerIdFilter) {
+      sql += ` WHERE p.owner_id = ?`;
+      params.push(ownerIdFilter);
+    }
+
+    sql += ` ORDER BY p.updated_at DESC, p.created_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const result = await env.DB.prepare(sql).bind(...params).all();
 
     const places = (result.results || []).map(place => ({
       ...place,
@@ -305,7 +315,9 @@ try {
       social: parseJson(place.social_json, {}),
       stats: parseJson(place.stats_json, {}),
       working_hours: parseJson(place.working_hours_json, {}),
-      is_verified: Boolean(place.is_verified)
+      is_verified: Boolean(place.is_verified),
+      // Normalize owner name from D1 join
+      owner_name: place.owner_name || place.owner_email || null,
     }));
 
     return jsonResponse({
@@ -317,6 +329,7 @@ try {
         returned: places.length
       }
     }, 200, {
+
       ...corsHeaders,
       'Cache-Control': 'public, max-age=60, s-maxage=60'
     });
@@ -652,6 +665,7 @@ try {
   }
 
   // ── D1: User Profile Sync (POST /api/users/sync) ──
+  // Architecture: D1 is the source of truth for role/status. Firebase Auth provides uid/name/email/photo only.
   if (url.pathname === '/api/users/sync' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const id = (body.uid || body.id || '').trim();
@@ -660,11 +674,12 @@ try {
     const name = (body.name || '').trim();
     const email = (body.email || '').trim().toLowerCase();
     const photoUrl = (body.photoURL || body.photo_url || '').trim();
-    const role = (body.role || 'user').trim();
+    const requestedRole = (body.role || 'user').trim();
     const status = (body.status || 'active').trim();
     const now = Date.now();
 
     try {
+      // Upsert: preserve existing role in D1 (server-side protection)
       await env.DB.prepare(`
         INSERT INTO users (id, name, email, photo_url, role, status, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -672,34 +687,117 @@ try {
           name = excluded.name,
           email = excluded.email,
           photo_url = excluded.photo_url,
-          role = CASE WHEN excluded.role = 'superadmin' THEN 'superadmin' ELSE users.role END,
+          role = CASE
+            WHEN excluded.role = 'superadmin' THEN 'superadmin'
+            WHEN users.role IN ('admin', 'superadmin') THEN users.role
+            ELSE excluded.role
+          END,
           updated_at = excluded.updated_at
-      `).bind(id, name, email, photoUrl, role, status, now, now).run();
+      `).bind(id, name, email, photoUrl, requestedRole, status, now, now).run();
 
-      return jsonResponse({ success: true, message: 'User synced to D1' }, 200, corsHeaders);
+      // Return full D1 profile so auth.js can use actual DB role
+      const profile = await env.DB.prepare(
+        `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
+      ).bind(id).first();
+
+      return jsonResponse({ success: true, data: profile || null }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
+  }
+
+  // ── D1: Get Single User by ID (GET /api/users/:id) ──
+  // Used by auth.js to fetch full D1 profile after login
+  if (url.pathname.startsWith('/api/users/') && request.method === 'GET') {
+    const userId = url.pathname.replace('/api/users/', '').trim();
+    if (!userId || userId === 'sync' || userId === 'seed') {
+      return jsonResponse({ error: 'Invalid user ID' }, 400, corsHeaders);
+    }
+    try {
+      const user = await env.DB.prepare(
+        `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
+      ).bind(userId).first();
+      if (!user) return jsonResponse({ success: false, error: 'User not found' }, 404, corsHeaders);
+      return jsonResponse({ success: true, data: user }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  // ── D1: Seed Missing Users (POST /api/users/seed) ──
+  // Recovery endpoint: inserts users who existed before D1 migration
+  // Does NOT overwrite role if user already exists in D1
+  if (url.pathname === '/api/users/seed' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const users = Array.isArray(body.users) ? body.users : (body.uid ? [body] : []);
+    if (!users.length) return jsonResponse({ error: 'users array required' }, 400, corsHeaders);
+
+    const results = [];
+    const now = Date.now();
+
+    for (const u of users) {
+      const uid = (u.uid || u.id || '').trim();
+      if (!uid) continue;
+      try {
+        await env.DB.prepare(`
+          INSERT INTO users (id, name, email, photo_url, role, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO NOTHING
+        `).bind(
+          uid,
+          (u.name || 'مستخدم').trim(),
+          (u.email || '').trim().toLowerCase(),
+          (u.photoURL || u.photo_url || '').trim(),
+          (u.role || 'user').trim(),
+          (u.status || 'active').trim(),
+          u.createdAt || now,
+          now
+        ).run();
+        results.push({ uid, status: 'seeded' });
+      } catch (err) {
+        results.push({ uid, status: 'error', error: err.message });
+      }
+    }
+
+    return jsonResponse({ success: true, results }, 200, corsHeaders);
   }
 
   // ── D1: Get Users List (GET /api/users) ──
   if (url.pathname === '/api/users' && request.method === 'GET') {
     try {
+      // Join with places count per user
       const result = await env.DB.prepare(`
-        SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at
-        FROM users
-        ORDER BY created_at DESC
-        LIMIT 200
+        SELECT
+          u.id, u.name, u.email, u.photo_url, u.phone, u.role, u.status,
+          u.created_at, u.updated_at,
+          COUNT(p.id) AS places_count
+        FROM users u
+        LEFT JOIN places p ON p.owner_id = u.id
+        GROUP BY u.id
+        ORDER BY u.created_at DESC
+        LIMIT 500
       `).all();
       return jsonResponse({ success: true, data: result.results || [] }, 200, corsHeaders);
     } catch (err) {
-      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+      // Fallback without JOIN if places table schema differs
+      try {
+        const result = await env.DB.prepare(`
+          SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at
+          FROM users ORDER BY created_at DESC LIMIT 500
+        `).all();
+        return jsonResponse({ success: true, data: result.results || [] }, 200, corsHeaders);
+      } catch (err2) {
+        return jsonResponse({ success: false, error: err2.message }, 500, corsHeaders);
+      }
     }
   }
 
-  // ── D1: Update User Status or Role (PUT/PATCH /api/users/:id or /api/users) ──
-  if ((url.pathname.startsWith('/api/users/') || url.pathname === '/api/users') && (request.method === 'PUT' || request.method === 'PATCH' || request.method === 'POST') && url.pathname !== '/api/users/sync') {
-    const idFromPath = url.pathname.startsWith('/api/users/') ? url.pathname.replace('/api/users/', '') : '';
+  // ── D1: Update User (PATCH/PUT /api/users/:id) ──
+  // Allows updating: role, status, name, email, phone
+  if ((url.pathname.startsWith('/api/users/') || url.pathname === '/api/users') &&
+      (request.method === 'PUT' || request.method === 'PATCH') &&
+      !url.pathname.endsWith('/sync') && !url.pathname.endsWith('/seed')) {
+    const idFromPath = url.pathname.startsWith('/api/users/') ? url.pathname.replace('/api/users/', '').trim() : '';
     const body = await request.json().catch(() => ({}));
     const id = (idFromPath || body.id || body.uid || '').trim();
 
@@ -707,23 +805,31 @@ try {
 
     try {
       const existing = await env.DB.prepare(`SELECT * FROM users WHERE id = ? LIMIT 1`).bind(id).first();
-      if (!existing) {
-        return jsonResponse({ error: 'User not found' }, 404, corsHeaders);
-      }
+      if (!existing) return jsonResponse({ error: 'User not found' }, 404, corsHeaders);
 
-      const role = body.role !== undefined ? body.role : existing.role;
+      const role   = body.role   !== undefined ? body.role   : existing.role;
       const status = body.status !== undefined ? body.status : existing.status;
-      const now = Date.now();
+      const name   = body.name   !== undefined ? body.name   : existing.name;
+      const email  = body.email  !== undefined ? body.email  : existing.email;
+      const phone  = body.phone  !== undefined ? body.phone  : existing.phone;
+      const now    = Date.now();
 
       await env.DB.prepare(`
-        UPDATE users SET role = ?, status = ?, updated_at = ? WHERE id = ?
-      `).bind(role, status, now, id).run();
+        UPDATE users SET role = ?, status = ?, name = ?, email = ?, phone = ?, updated_at = ?
+        WHERE id = ?
+      `).bind(role, status, name, email, phone, now, id).run();
 
-      return jsonResponse({ success: true, message: 'User updated in D1' }, 200, corsHeaders);
+      // Return updated profile
+      const updated = await env.DB.prepare(
+        `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
+      ).bind(id).first();
+
+      return jsonResponse({ success: true, data: updated }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
   }
+
 
   // ── D1: Category Requests (GET, POST, PUT, DELETE /api/category-requests) ──
   if (url.pathname === '/api/category-requests' && request.method === 'GET') {
