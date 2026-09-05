@@ -138,8 +138,28 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           </div>
         </div>
 
-        <div style="display:flex;align-items:center;justify-content:center;min-height:50vh">
-          <div class="spinner spinner-lg"></div>
+        <!-- Sticky Quick Jump Chip Bar for All Admin Sections -->
+        <div class="admin-quick-nav-wrapper" id="admin-quick-nav-bar">
+          <div class="admin-quick-nav-track">
+            <button type="button" class="admin-quick-chip ${section === 'overview' ? 'active' : ''}" data-admin-sec="overview">📊 الإحصائيات</button>
+            <button type="button" class="admin-quick-chip ${section === 'places' ? 'active' : ''}" data-admin-sec="places">📍 الأماكن والأنشطة</button>
+            <button type="button" class="admin-quick-chip ${section === 'live-news' ? 'active' : ''}" data-admin-sec="live-news">🔥 يحدث الآن</button>
+            <button type="button" class="admin-quick-chip ${section === 'products' ? 'active' : ''}" data-admin-sec="products">🛍️ مراجعة المنتجات</button>
+            <button type="button" class="admin-quick-chip ${section === 'reviews' ? 'active' : ''}" data-admin-sec="reviews">⭐ التقييمات</button>
+            <button type="button" class="admin-quick-chip ${section === 'verification' ? 'active' : ''}" data-admin-sec="verification">🛡️ طلبات التوثيق</button>
+            <button type="button" class="admin-quick-chip ${section === 'categories' ? 'active' : ''}" data-admin-sec="categories">📁 التصنيفات</button>
+            <button type="button" class="admin-quick-chip ${section === 'users' ? 'active' : ''}" data-admin-sec="users">👥 المستخدمين والحظر</button>
+            <button type="button" class="admin-quick-chip ${section === 'offers' ? 'active' : ''}" data-admin-sec="offers">🏷️ العروض والخصومات</button>
+            <button type="button" class="admin-quick-chip ${section === 'ads' ? 'active' : ''}" data-admin-sec="ads">📢 الإعلانات والترويج</button>
+            <button type="button" class="admin-quick-chip ${section === 'settings' ? 'active' : ''}" data-admin-sec="settings">⚙️ الإعدادات العامة</button>
+          </div>
+        </div>
+
+        <!-- Dynamic Content Mount Point -->
+        <div id="admin-section-content-mount">
+          <div style="display:flex;align-items:center;justify-content:center;min-height:50vh">
+            <div class="spinner spinner-lg"></div>
+          </div>
         </div>
       </main>
 
@@ -283,6 +303,11 @@ async function switchAdminSection(sectionName, pushState = true) {
     el.classList.toggle('active', el.getAttribute('data-admin-sec') === sectionName);
   });
 
+  // Update sticky quick-nav chips
+  document.querySelectorAll('#admin-quick-nav-bar .admin-quick-chip[data-admin-sec]').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-admin-sec') === sectionName);
+  });
+
   try {
     if      (sectionName === 'overview')      await renderAdminOverview($main);
     else if (sectionName === 'places')        await renderAdminPlaces($main);
@@ -319,6 +344,20 @@ function setupAdminNavigation() {
         e.preventDefault();
         const section = link.getAttribute('data-section');
         switchAdminSection(section, true);
+      }
+    });
+  }
+
+  // Sticky Quick-Nav Chip Bar Listeners
+  const quickBar = document.getElementById('admin-quick-nav-bar');
+  if (quickBar && !quickBar.dataset.listening) {
+    quickBar.dataset.listening = 'true';
+    quickBar.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-admin-sec]');
+      if (chip) {
+        e.preventDefault();
+        const sec = chip.getAttribute('data-admin-sec');
+        switchAdminSection(sec, true);
       }
     });
   }

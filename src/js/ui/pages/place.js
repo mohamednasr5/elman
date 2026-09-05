@@ -23,6 +23,7 @@ import { resolveDoctorSpecialty } from '../../utils/specialty.js';
 import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, ATM_POLL_QUESTIONS, formatAtmTimeAgo, submitAtmPollVote } from '../../utils/atm.js';
 import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service.js';
+import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
 
 export async function renderPlacePage($container, { slug, user }) {
   // Show skeleton
@@ -134,8 +135,10 @@ export async function renderPlacePage($container, { slug, user }) {
 
     const isAtm = isAtmPlace(place, category);
     const defaultAssets = getDefaultPlaceAssets(place, category);
-    const placeCover = isAtm ? ATM_UNIFIED_COVER : (place.coverImageUrl || defaultAssets.coverImageUrl);
-    const placeLogo = isAtm ? ATM_UNIFIED_LOGO : (place.logoUrl || defaultAssets.logoUrl);
+    const rawCover = isAtm ? ATM_UNIFIED_COVER : (place.coverImageUrl || defaultAssets.coverImageUrl);
+    const rawLogo = isAtm ? ATM_UNIFIED_LOGO : (place.logoUrl || defaultAssets.logoUrl);
+    const placeCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.MEDIUM);
+    const placeLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.MEDIUM);
 
     // Resolve Smart Google Map info (supports coords, short links, Plus codes, and addresses)
     const mapInfo = resolveMapEmbedInfo(place);

@@ -4,8 +4,10 @@
  */
 
 import { getDB, WORKER_URL } from './firebase.js';
+import { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES } from '../services/idb-cache.service.js';
 
 export { getDB };
+export { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES };
 
 // ── Ultra-Fast Multi-Tier SWR Cache (0ms Instant Navigation) ──
 const _dbMemoryCache = new Map();
@@ -389,28 +391,69 @@ export async function getAllBannedIps() {
   })).sort((a, b) => (b.bannedAt || 0) - (a.bannedAt || 0));
 }
 
-/** Get all published places (paginated, excluding banned) */
-export async function getPublishedPlaces({ limit = 100, lastKey = null } = {}) {
+/**
+ * Get all published places with IndexedDB Cache-First & Background Sync Engine
+ * 1. Checks memory & IndexedDB first for instant 0ms response
+ * 2. Checks system/dataVersion or lastSync to avoid redundant Firebase reads
+ * 3. Falls back to RTDB query only when necessary
+ */
+export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFresh = false } = {}) {
   const cacheKey = `published_${limit}_${lastKey || ''}`;
-  const cached = getCached(cacheKey, 600000);
-  if (cached && Array.isArray(cached) && cached.length > 0) return cached;
+  
+  if (!forceFresh) {
+    // 1. Fast in-memory SWR
+    const memCached = getCached(cacheKey, 300000);
+    if (memCached && Array.isArray(memCached) && memCached.length > 0) return memCached;
 
+    // 2. Fast IndexedDB local cache (0ms)
+    try {
+      const localPlaces = await idbGetAll(STORES.PLACES);
+      if (localPlaces && localPlaces.length > 0) {
+        const filtered = localPlaces.filter(p => p && p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p));
+        if (filtered.length > 0) {
+          filtered.sort((a, b) => {
+            const aSpons = Boolean(a.isSponsored && (!a.sponsoredUntil || a.sponsoredUntil > Date.now()));
+            const bSpons = Boolean(b.isSponsored && (!b.sponsoredUntil || b.sponsoredUntil > Date.now()));
+            if (aSpons && !bSpons) return -1;
+            if (!aSpons && bSpons) return 1;
+            return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
+          });
+          const res = filtered.slice(0, limit);
+          setCache(cacheKey, res);
+
+          // Background sync check (non-blocking)
+          _triggerBackgroundSyncPlaces().catch(() => {});
+          return res;
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 3. RTDB Network Fetch (Source of Truth)
   try {
     const snap = await getDB().ref('places').once('value');
     if (!snap.exists()) return [];
 
     const places = [];
+    const allForIdb = [];
+
     snap.forEach(child => {
       const val = child.val();
       if (!val) return;
       const p = { _key: child.key, id: child.key, ...val };
-      // Include if not explicitly draft, pending or rejected, and not banned
+      allForIdb.push(p);
+
       if (p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p)) {
         places.push(p);
       }
     });
 
-    // Sort: Sponsored first, then newest
+    // Save to IndexedDB asynchronously
+    if (allForIdb.length > 0) {
+      idbPutBulk(STORES.PLACES, allForIdb).catch(() => {});
+      idbSetMeta('lastPlacesSync', Date.now()).catch(() => {});
+    }
+
     places.sort((a, b) => {
       const aSpons = Boolean(a.isSponsored && (!a.sponsoredUntil || a.sponsoredUntil > Date.now()));
       const bSpons = Boolean(b.isSponsored && (!b.sponsoredUntil || b.sponsoredUntil > Date.now()));
@@ -424,6 +467,66 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null } = {}) {
   } catch (err) {
     console.warn('[getPublishedPlaces] Handled error:', err);
     return [];
+  }
+}
+
+let _isSyncingPlaces = false;
+async function _triggerBackgroundSyncPlaces() {
+  if (_isSyncingPlaces) return;
+  const lastSync = await idbGetMeta('lastPlacesSync', 0);
+  // Only check every 15 minutes in background unless version changed
+  if (Date.now() - lastSync < 900000) return;
+
+  _isSyncingPlaces = true;
+  try {
+    // Check system/dataVersion first
+    const versionSnap = await getDB().ref('system/dataVersion').once('value').catch(() => null);
+    const remoteVersion = versionSnap && versionSnap.exists() ? versionSnap.val() : null;
+    const localVersion = await idbGetMeta('dataVersion', 0);
+
+    if (remoteVersion && remoteVersion === localVersion) {
+      await idbSetMeta('lastPlacesSync', Date.now());
+      _isSyncingPlaces = false;
+      return;
+    }
+
+    // Delta sync using updatedAt > lastSync if available
+    let snap;
+    if (lastSync > 0) {
+      snap = await getDB().ref('places').orderByChild('updatedAt').startAt(lastSync).once('value').catch(() => null);
+    }
+    
+    if (snap && snap.exists()) {
+      const delta = [];
+      snap.forEach(child => {
+        delta.push({ _key: child.key, id: child.key, ...child.val() });
+      });
+      if (delta.length > 0) {
+        await idbPutBulk(STORES.PLACES, delta);
+        clearDbCache('published_');
+      }
+    } else if (!snap || !snap.exists()) {
+      // Full sync if delta not supported
+      const fullSnap = await getDB().ref('places').once('value').catch(() => null);
+      if (fullSnap && fullSnap.exists()) {
+        const full = [];
+        fullSnap.forEach(child => {
+          full.push({ _key: child.key, id: child.key, ...child.val() });
+        });
+        await idbClear(STORES.PLACES);
+        await idbPutBulk(STORES.PLACES, full);
+        clearDbCache('published_');
+      }
+    }
+
+    if (remoteVersion) {
+      await idbSetMeta('dataVersion', remoteVersion);
+    }
+    await idbSetMeta('lastPlacesSync', Date.now());
+  } catch (err) {
+    console.warn('[BackgroundSyncPlaces] Note:', err?.message || err);
+  } finally {
+    _isSyncingPlaces = false;
   }
 }
 
@@ -505,11 +608,23 @@ export async function getPlacesByOwner(uid) {
   }
 }
 
-/** Get all categories (ordered) */
+/** Get all categories (ordered) - Cached in IndexedDB & Memory */
 export async function getCategories() {
   const cacheKey = 'categories_all';
   const cached = getCached(cacheKey, 1800000);
   if (cached) return cached;
+
+  // Try local IndexedDB first (0ms)
+  try {
+    const idbCats = await idbGetAll(STORES.CATEGORIES);
+    if (idbCats && idbCats.length > 0) {
+      idbCats.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+      setCache(cacheKey, idbCats);
+      // Refresh categories in background if older than 1 hour
+      _refreshCategoriesInBackground().catch(() => {});
+      return idbCats;
+    }
+  } catch (_) {}
 
   try {
     const snap = await getDB().ref('categories')
@@ -520,13 +635,37 @@ export async function getCategories() {
 
     const categories = [];
     snap.forEach(child => {
-      categories.push({ _key: child.key, slug: child.key, ...child.val() });
+      categories.push({ id: child.key, _key: child.key, slug: child.key, ...child.val() });
     });
+
+    if (categories.length > 0) {
+      idbPutBulk(STORES.CATEGORIES, categories).catch(() => {});
+    }
 
     return setCache(cacheKey, categories);
   } catch (err) {
     console.warn('[getCategories] Handled error:', err);
     return [];
+  }
+}
+
+async function _refreshCategoriesInBackground() {
+  const lastSync = await idbGetMeta('lastCategoriesSync', 0);
+  if (Date.now() - lastSync < 3600000) return;
+
+  const snap = await getDB().ref('categories').orderByChild('order').once('value').catch(() => null);
+  if (!snap || !snap.exists()) return;
+
+  const categories = [];
+  snap.forEach(child => {
+    categories.push({ id: child.key, _key: child.key, slug: child.key, ...child.val() });
+  });
+
+  if (categories.length > 0) {
+    await idbClear(STORES.CATEGORIES);
+    await idbPutBulk(STORES.CATEGORIES, categories);
+    await idbSetMeta('lastCategoriesSync', Date.now());
+    clearDbCache('categories_all');
   }
 }
 

@@ -34,19 +34,11 @@ export function initRealtimePwaSyncBus() {
       _isListeningToFirebase = true;
       const startTime = Date.now();
 
-      // Listen to new places added remotely
-      db.ref('places').limitToLast(1).on('child_added', (snap) => {
-        const place = snap.val();
-        if (place && (Number(place.createdAt) || 0) > startTime - 5000) {
-          handleIncomingRealtimeEvent('NEW_PLACE', { place: { id: snap.key, ...place } }, true);
-        }
-      });
-
-      // Listen to place updates (verification, edit, sponsor)
-      db.ref('places').on('child_changed', (snap) => {
-        const place = snap.val();
-        if (place) {
-          handleIncomingRealtimeEvent('PLACE_UPDATED', { place: { id: snap.key, ...place } }, true);
+      // Listen to urgent announcements & notifications (where real-time is actually needed)
+      db.ref('sync/version').on('value', (snap) => {
+        const remoteVersion = snap.val();
+        if (remoteVersion) {
+          handleIncomingRealtimeEvent('DATA_VERSION_CHANGED', { version: remoteVersion }, true);
         }
       });
 
@@ -96,6 +88,13 @@ export function broadcastRealtimeChange(type, payload = {}) {
  */
 function handleIncomingRealtimeEvent(type, payload, isRemote = false) {
   if (!type) return;
+
+  if (type === 'DATA_VERSION_CHANGED') {
+    import('../core/db.js').then(m => {
+      m.clearDbCache('published_');
+      m.getPublishedPlaces({ limit: 100, forceFresh: true }).catch(() => {});
+    }).catch(() => {});
+  }
 
   // Clear stale cache so next navigation or search gets live data instantly
   try {

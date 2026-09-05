@@ -116,15 +116,12 @@
   }
 }
 
-/* Search in header (desktop) */
+/* Search in header */
 .header__search {
-  flex: 1;
-  max-width: 480px;
   position: relative;
-}
-
-@media (max-width: 767px) {
-  .header__search { display: none; }
+  display: flex;
+  align-items: center;
+  z-index: 100;
 }
 
 /* Nav links (desktop) */
@@ -281,23 +278,9 @@
   .header__menu-toggle { display: flex; }
 }
 
-/* Mobile search btn */
+/* Mobile search btn (Handled by expandable search pill) */
 .header__search-btn {
-  display: none;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  background: none;
-  font-size: 1.1rem;
-}
-
-@media (max-width: 767px) {
-  .header__search-btn { display: flex; }
+  display: none !important;
 }
 
 /* ── Bottom Navigation (Mobile) ── */

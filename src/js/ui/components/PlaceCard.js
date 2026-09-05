@@ -8,6 +8,7 @@ import { resolveDoctorSpecialty } from '../../utils/specialty.js';
 import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, getAtmLiveStatus, formatAtmTimeAgo } from '../../utils/atm.js';
 import { getPlaceLiveStatus } from '../../utils/live-hours.js';
+import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
 
 /**
  * Render a place card HTML string
@@ -18,18 +19,21 @@ export function renderPlaceCard(place) {
   const isSponsored = !isAtm && Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
   const catStyle = getCategoryCardCover(place);
   
-  const finalCover = isAtm ? ATM_UNIFIED_COVER : (place.coverImageUrl || defaultAssets.coverImageUrl);
-  const finalLogo = isAtm ? ATM_UNIFIED_LOGO : (place.logoUrl || defaultAssets.logoUrl);
+  const rawCover = isAtm ? ATM_UNIFIED_COVER : (place.coverImageUrl || defaultAssets.coverImageUrl);
+  const rawLogo = isAtm ? ATM_UNIFIED_LOGO : (place.logoUrl || defaultAssets.logoUrl);
+
+  const finalCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.THUMB);
+  const finalLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.THUMB);
 
   const coverImg = finalCover
-    ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" loading="lazy" />`
+    ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" loading="lazy" decoding="async" />`
     : `<div class="place-card__cover-placeholder" style="background:${catStyle.gradient}">
         <span class="place-card__cover-icon">${catStyle.icon}</span>
         <span class="place-card__cover-tag">${escHtml(catStyle.label)}</span>
        </div>`;
 
   const logoImg = finalLogo
-    ? `<img src="${escAttr(finalLogo)}" alt="${escAttr(place.name)} logo" loading="lazy" />`
+    ? `<img src="${escAttr(finalLogo)}" alt="${escAttr(place.name)} logo" loading="lazy" decoding="async" />`
     : `<div class="place-card__logo-placeholder">${catStyle.icon}</div>`;
 
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';

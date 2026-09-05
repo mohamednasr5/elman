@@ -401,9 +401,15 @@ export async function openManzalaVoiceAssistantModal() {
           <span class="wave-bar wb-7"></span>
         </div>
 
-        <!-- Live Status Label -->
-        <div class="mvm-status" id="mvm-status-text">
-          🎙️ جاري الاستماع.. قل ما تبحث عنه الآن
+        <!-- High-Prominence Live Listening Banner -->
+        <div class="mvm-listening-banner" id="mvm-listening-banner" style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(2,132,199,0.15));border:1.5px solid #10B981;border-radius:16px;padding:12px 18px;margin-bottom:14px;width:100%;max-width:440px;text-align:center;box-shadow:0 4px 15px rgba(16,185,129,0.15)">
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:900;color:#10B981;margin-bottom:4px">
+            <span style="display:inline-block;width:10px;height:10px;background:#10B981;border-radius:50%;box-shadow:0 0 10px #10B981;animation:pulseDot 1.5s infinite"></span>
+            <span>أنا أستمع إليك الآن.. تفضل بالتحدث!</span>
+          </div>
+          <div class="mvm-status" id="mvm-status-text" style="font-size:12.5px;color:var(--text-secondary,#475569);margin:0;font-weight:600">
+            تكلم بصوتك العادي عن أي مكان، عيادة، صيدلية، مطعم أو خدمة
+          </div>
         </div>
 
         <!-- Live Transcription Bubble -->
@@ -457,7 +463,12 @@ export async function openManzalaVoiceAssistantModal() {
   // Initialize Speech Recognition for Assistant
   _modalVoiceInstance = new VoiceSearch({
     onStart: () => {
-      if (statusText) statusText.innerHTML = '🟢 <span style="color:var(--success,#10B981);font-weight:800">استمع إليك الآن..</span> تفضل بالحديث';
+      const banner = document.getElementById('mvm-listening-banner');
+      if (banner) {
+        banner.style.borderColor = '#10B981';
+        banner.style.background = 'linear-gradient(135deg,rgba(16,185,129,0.15),rgba(2,132,199,0.15))';
+      }
+      if (statusText) statusText.innerHTML = '🟢 <strong style="color:#10B981">الميكروفون نشط الآن..</strong> تفضل بالحديث وسأجيبك فوراً';
       if (waveform) waveform.classList.add('active');
       if (orbBtn) orbBtn.classList.add('listening');
     },
@@ -475,7 +486,7 @@ export async function openManzalaVoiceAssistantModal() {
         transcriptBox.innerHTML = `<span class="mvm-final-query">🔍 "${query}"</span>`;
       }
       if (statusText) {
-        statusText.innerHTML = '⚡ <span style="color:var(--secondary,#F5A623);font-weight:800">تم التعرف! جاري جلب الأماكن فوراً...</span>';
+        statusText.innerHTML = '⚡ <strong style="color:var(--secondary,#F5A623)">تم التعرف على صوتك! جاري جلب الأماكن فوراً...</strong>';
       }
       if (waveform) waveform.classList.remove('active');
       if (orbBtn) orbBtn.classList.remove('listening');
@@ -486,15 +497,20 @@ export async function openManzalaVoiceAssistantModal() {
     onEnd: () => {
       if (waveform) waveform.classList.remove('active');
       if (orbBtn) orbBtn.classList.remove('listening');
+      const banner = document.getElementById('mvm-listening-banner');
+      if (banner && !transcriptBox?.querySelector('.mvm-final-query')) {
+        banner.style.borderColor = 'var(--border,#CBD5E1)';
+        banner.style.background = 'var(--surface-2,#F8FAFC)';
+      }
       if (statusText && !transcriptBox?.querySelector('.mvm-final-query')) {
-        statusText.innerHTML = '🎙️ اضغط على حرف <strong>M</strong> في المنتصف للتحدث مجدداً';
+        statusText.innerHTML = '🎙️ اضغط على الدائرة <strong>M</strong> في المنتصف للتحدث مجدداً';
       }
     },
     onError: () => {
       if (waveform) waveform.classList.remove('active');
       if (orbBtn) orbBtn.classList.remove('listening');
       if (statusText) {
-        statusText.innerHTML = '⚠️ اضغط على حرف <strong>M</strong> للتحدث مرة أخرى';
+        statusText.innerHTML = '⚠️ اضغط على زر <strong>M</strong> للتحدث مرة أخرى';
       }
     }
   });

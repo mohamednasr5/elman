@@ -5,6 +5,7 @@
 
 import { normalizeArabic } from '../utils/arabic.js';
 import { getPublishedPlaces, getCategories } from '../core/db.js';
+import { idbGetAll, STORES } from './idb-cache.service.js';
 import { resolveDoctorSpecialty, MEDICAL_SPECIALTY_MAP } from '../utils/specialty.js';
 import { MASTER_LOCATIONS, extractLocationFromQuery } from '../utils/locations-data.js';
 import { isPlaceOpen } from '../utils/date.js';
@@ -369,11 +370,25 @@ export const globalSearchIndex = new SearchIndex();
 
 export async function executeFastSearch(query = '', options = {}) {
   if (!globalSearchIndex.isReady || globalSearchIndex.documents.length === 0) {
-    const [places, categories] = await Promise.all([
-      getPublishedPlaces({ limit: 250 }).catch(() => []),
-      getCategories().catch(() => [])
-    ]);
-    globalSearchIndex.buildIndex(places, categories);
+    // 1. Try instant IndexedDB local index first (0ms)
+    try {
+      const [idbPlaces, idbCats] = await Promise.all([
+        idbGetAll(STORES.PLACES),
+        idbGetAll(STORES.CATEGORIES)
+      ]);
+      if (idbPlaces && idbPlaces.length > 0) {
+        globalSearchIndex.buildIndex(idbPlaces, idbCats || []);
+      }
+    } catch (_) {}
+
+    // 2. If index is still empty, load via getPublishedPlaces (which uses IDB + RTDB SWR)
+    if (!globalSearchIndex.isReady || globalSearchIndex.documents.length === 0) {
+      const [places, categories] = await Promise.all([
+        getPublishedPlaces({ limit: 500 }).catch(() => []),
+        getCategories().catch(() => [])
+      ]);
+      globalSearchIndex.buildIndex(places, categories);
+    }
   }
 
   return globalSearchIndex.search(query, options);
