@@ -1,0 +1,188 @@
+/* ═══════════════════════════════════════════════════════════
+   المنزلة وناسها — Badges
+   ═══════════════════════════════════════════════════════════ */
+
+/* Verified Badge */
+.badge-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: rgba(29, 161, 242, 0.08);
+  color: #1A73E8;
+  border: 1px solid rgba(29, 161, 242, 0.25);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  user-select: none;
+  position: relative;
+  cursor: help;
+  transition: all var(--transition-fast);
+  vertical-align: middle;
+}
+
+.badge-verified:hover {
+  background: rgba(29, 161, 242, 0.15);
+  border-color: #1DA1F2;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(29, 161, 242, 0.25);
+}
+
+.badge-verified__svg {
+  width: 17px;
+  height: 17px;
+  fill: #1DA1F2;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.badge-verified__text {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0d6efd;
+  line-height: 1;
+}
+
+/* Verification Requested Badge */
+.badge-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: var(--warning-alpha);
+  color: var(--secondary-dark);
+  border: 1px solid var(--secondary-light);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+/* Status Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.badge--published {
+  background: var(--success-alpha);
+  color: var(--accent-dark);
+}
+
+.badge--draft {
+  background: var(--surface-3);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.badge--pending {
+  background: var(--warning-alpha);
+  color: var(--secondary-dark);
+}
+
+.badge--suspended {
+  background: var(--danger-alpha);
+  color: var(--danger);
+}
+
+.badge--rejected {
+  background: var(--danger-alpha);
+  color: var(--danger);
+}
+
+/* Count Badge (notification dot) */
+.badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: var(--danger);
+  color: #fff;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+/* Delivery type badge */
+.badge-delivery {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  background: var(--primary-alpha);
+  color: var(--primary);
+  border: 1px solid rgba(27,79,114,0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Sponsored / Featured Place Badge & Card (Green Edition)
+   ═══════════════════════════════════════════════════════════ */
+.badge-sponsored {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: #ffffff !important;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  user-select: none;
+  cursor: help;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.4);
+  transition: all 0.2s ease;
+  animation: pulseSponsored 2.8s ease-in-out infinite;
+}
+
+.badge-sponsored:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px) scale(1.05);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.65);
+}
+
+@keyframes pulseSponsored {
+  0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4); }
+  50% { transform: scale(1.04); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.65); }
+}
+
+.place-card--sponsored {
+  border: 2px solid #10B981 !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2) !important;
+  position: relative;
+}
+
+.place-card--sponsored::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #10B981, #34D399, #10B981);
+  z-index: 6;
+}
+
+.place-card__sponsored-tag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+}
+

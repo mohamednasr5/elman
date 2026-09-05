@@ -1,0 +1,27 @@
+# دليل المنزلة والمطرية الرقمي الشامل (Dalil Manzala)
+
+> الدليل الرقمي الرسمي الموثق لمدينتي المنزلة والمطرية والقرى المجاورة بمحافظة الدقهلية، جمهورية مصر العربية.
+> الموقع الرسمي: https://dalilmanzala.com
+
+## أقسام وخدمات الدليل
+
+- [الرئيسية](https://dalilmanzala.com/): الصفحة الرئيسية لدليل المنزلة والمطرية الرقمي الشامل
+- [دليل الأماكن والأنشطة](https://dalilmanzala.com/places.html): تصفح جميع المحلات والأطباء والحرفيين والأنشطة التجارية في المنزلة والمطرية
+- [التصنيفات والمهن](https://dalilmanzala.com/categories.html): استكشف جميع تصنيفات الأماكن والمهن الحرفية والخدمات
+- [العروض والخصومات النشطة](https://dalilmanzala.com/offers.html): أحدث عروض وتخفيضات المحلات والخدمات في المنزلة والمطرية
+- [كتالوج المنتجات والأسعار](https://dalilmanzala.com/products.html): قوائم المنتجات والأسعار من المحلات الموثقة
+- [البحث الذكي السريع](https://dalilmanzala.com/search.html): ابحث بالذكاء الاصطناعي عن أي مكان أو طبيب أو صنايعي
+- [يحدث الآن](https://dalilmanzala.com/now.html): تحديثات حية لماكينات ATM وحالة الطرق والافتتاحات والمناسبات
+- [بالقرب مني](https://dalilmanzala.com/around-me.html): اكتشف أقرب الأماكن إليك بالـ GPS في المنزلة والمطرية
+- [مدينة المنزلة](https://dalilmanzala.com/manzala.html): دليل شامل لتاريخ وجغرافيا ومعالم مدينة المنزلة محافظة الدقهلية
+- [مدينة المطرية](https://dalilmanzala.com/matariya.html): دليل شامل لمدينة المطرية وبحيرة المنزلة وتاريخها
+
+## النطاق الجغرافي
+
+محافظة الدقهلية، مركز المنزلة، مركز المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، ميت شريف، والقرى المجاورة.
+
+## واجهات البرمجة العامة (API)
+
+- [بحث الأماكن](https://elmanzala.nonm1724.workers.dev/api/search?q=صيدلية): GET /api/search?q=query&category=cat&area=area
+- [قائمة الأماكن](https://elmanzala.nonm1724.workers.dev/api/places): GET /api/places?slug=place-slug
+- [التصنيفات](https://elmanzala.nonm1724.workers.dev/api/categories): GET /api/categories

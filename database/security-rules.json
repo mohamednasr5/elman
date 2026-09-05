@@ -1,0 +1,94 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
+        "role": {
+          ".write": "root.child('users/' + auth.uid + '/role').val() === 'superadmin' || auth.token.email === 'elfannanm@gmail.com' || auth.token.email === 'mohamednasrofficial@gmail.com'"
+        },
+        "status": {
+          ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin'"
+        }
+      }
+    },
+    "places": {
+      ".read": true,
+      ".indexOn": [
+        "status",
+        "ownerId",
+        "categoryId"
+      ],
+      "$placeId": {
+        ".write": "auth != null && (auth.uid === data.child('ownerId').val() || !data.exists() || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
+        "isVerified": {
+          ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin'"
+        },
+        "verificationStatus": {
+          ".write": "auth != null && (newData.val() === 'verification_requested' || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+        },
+        "stats": {
+          ".write": true
+        }
+      }
+    },
+    "categories": {
+      ".read": true,
+      ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+    },
+    "offers": {
+      ".read": true,
+      ".indexOn": [
+        "placeId",
+        "status"
+      ],
+      "$offerId": {
+        ".write": "auth != null && (auth.uid === data.child('ownerId').val() || !data.exists() || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+      }
+    },
+    "products": {
+      ".read": true,
+      "$placeId": {
+        ".write": "auth != null && (root.child('places/' + $placeId + '/ownerId').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+      }
+    },
+    "ads": {
+      ".read": true,
+      ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+    },
+    "settings": {
+      ".read": true,
+      ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+    },
+    "verificationRequests": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
+      "$requestId": {
+        ".read": "auth != null && auth.uid === data.child('ownerId').val()",
+        ".write": "auth != null"
+      }
+    },
+    "slugIndex": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "categoryRequests": {
+      ".read": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')",
+      ".write": "auth != null"
+    },
+    "userNotifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": true
+      }
+    },
+    "globalNotifications": {
+      ".read": true,
+      ".write": "auth != null && (root.child('users/' + auth.uid + '/role').val() === 'admin' || root.child('users/' + auth.uid + '/role').val() === 'superadmin')"
+    },
+    "liveNews": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
