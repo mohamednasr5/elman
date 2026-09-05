@@ -337,6 +337,14 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       }
     });
 
+    // Auto-rotate sponsored ads order every 60 seconds for fair visibility
+    const placesRotationTimer = setInterval(() => {
+      // Only re-apply if user is on default sort and not currently typing a search query
+      if (sortSelect?.value === 'default' && !searchInput?.value.trim()) {
+        applyFilters();
+      }
+    }, 60000);
+
   } catch (err) {
     console.error('[PlacesPage] Load error:', err);
   }
@@ -350,7 +358,16 @@ function isPlaceSponsored(place) {
   );
 }
 
-function sortDirectoryPlaces(places, currentUid = null) {
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function sortDirectoryPlaces(places, currentUid = null, shuffleSponsored = true) {
   const seen = new Set();
   const sponsored = [];
   const regular = [];
@@ -373,7 +390,10 @@ function sortDirectoryPlaces(places, currentUid = null) {
     }
   });
 
-  return [...sponsored, ...regular];
+  // Fair rotation: Randomly shuffle sponsored places every minute so each gets equal top billing
+  const finalSponsored = (shuffleSponsored && sponsored.length > 1) ? shuffleArray(sponsored) : sponsored;
+
+  return [...finalSponsored, ...regular];
 }
 
 function debounce(func, wait) {

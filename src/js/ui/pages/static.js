@@ -253,6 +253,22 @@ export async function renderStaticPage($container, type) {
               </div>
             </div>
 
+            <!-- Contact & Official Channels Card -->
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:16px 20px;margin-top:4px">
+              <div>
+                <div style="font-size:13px;font-weight:800;color:var(--text-primary);margin-bottom:3px">
+                  🌐 الموقع الرسمي: <a href="https://dalilmanzala.com/" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline">https://dalilmanzala.com/</a>
+                </div>
+                <div style="font-size:12.5px;color:var(--text-secondary)">
+                  للاستفسارات والإقتراحات يرجى التواصل معنا عبر الواتساب
+                </div>
+              </div>
+              <a href="https://wa.me/wasendernew" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm" style="display:inline-flex;align-items:center;gap:6px;font-weight:800;padding:8px 18px;border-radius:9999px">
+                <span>💬</span>
+                <span>تواصل عبر الواتساب</span>
+              </a>
+            </div>
+
             <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-top:10px;font-weight:700">
               © 2026 دليل المنزلة والمطرية الرقمي — جميع الحقوق محفوظة.
             </div>
@@ -265,67 +281,9 @@ export async function renderStaticPage($container, type) {
   }
 }
 
-export async function renderContactPage($container, { user }) {
-  const settings = await getSettings();
-  const waLink = settings?.contact?.whatsappLink || 'https://wa.me/wasendernew';
-
-  $container.innerHTML = `
-    <div class="search-page-header">
-      <div class="container text-center">
-        <h1 style="color:#fff;font-size:var(--font-size-3xl);margin-bottom:var(--space-2)">
-          📧 تواصل معنا
-        </h1>
-        <p style="color:rgba(255,255,255,0.8);max-width:540px;margin:0 auto">
-          يسعدنا تواصلكم واستقبال استفساراتكم واقتراحاتكم لتطوير منصة المنزلة وناسها
-        </p>
-      </div>
-    </div>
-
-    <div class="container section" style="max-width:680px">
-      <div class="form-section animate-fade-in-up">
-        
-        <div style="text-align:center;margin-bottom:var(--space-6)">
-          <div style="font-size:3rem;margin-bottom:var(--space-2)">💬</div>
-          <h2 style="font-size:var(--font-size-xl);margin-bottom:var(--space-2)">تواصل مباشر عبر WhatsApp</h2>
-          <p style="color:var(--text-muted);font-size:var(--font-size-sm)">أسرع وسيلة للرد على استفساراتكم وطلبات التوثيق والإعلانات</p>
-          <a href="${escAttr(waLink)}" target="_blank" rel="noopener" class="btn btn-whatsapp btn-lg" style="margin-top:var(--space-4)">
-            💬 فتح محادثة WhatsApp
-          </a>
-        </div>
-
-        <div class="divider"></div>
-
-        <h3 style="font-size:var(--font-size-base);font-weight:700;margin-bottom:var(--space-4)">أو أرسل لنا رسالة سريعة</h3>
-        <form id="contact-form">
-          <div class="form-group">
-            <label class="form-label">الاسم</label>
-            <input type="text" id="c-name" class="form-input" required value="${escAttr(user?.name || '')}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">رقم الهاتف أو البريد الإلكتروني</label>
-            <input type="text" id="c-contact" class="form-input" required value="${escAttr(user?.email || '')}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">نص الرسالة</label>
-            <textarea id="c-msg" class="form-textarea" required placeholder="اكتب استفسارك أو طلبك هنا..."></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary btn-block" id="btn-send-contact">
-            إرسال الرسالة
-          </button>
-        </form>
-
-      </div>
-    </div>
-  `;
-
-  document.getElementById('contact-form')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = document.getElementById('c-name')?.value;
-    const msg = document.getElementById('c-msg')?.value;
-    toast.success('شكراً لتواصلك! سيتم الرد عليك في أقرب وقت.');
-    const text = encodeURIComponent(`رسالة من موقع المنزلة وناسها:\nالاسم: ${name}\nالرسالة: ${msg}`);
-    window.open(`${waLink}?text=${text}`, '_blank');
-  });
+import { renderContactPage as renderContactPageImpl } from './contact.js';
+export async function renderContactPage($container, opts) {
+  return renderContactPageImpl($container, opts);
 }
 
 function escAttr(str) {

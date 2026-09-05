@@ -149,7 +149,8 @@ const pages = [
   await initPage('');
   const user = await waitForAuth();
   const params = new URLSearchParams(location.search);
-  const slug = params.get('slug') || params.get('id') || '';
+  let slug = params.get('slug') || params.get('id') || '';
+  if (slug === 'undefined' || slug === 'null') slug = '';
   if (!slug) { location.href = 'places.html'; }
   else await renderPlacePage(document.getElementById('page-container'), { slug, user });`
   },
@@ -316,7 +317,7 @@ const pages = [
     activeNav: '',
     moduleScript: `
   import { initPage } from './src/js/core/page-shell.js';
-  import { renderContactPage } from './src/js/ui/pages/static.js';
+  import { renderContactPage } from './src/js/ui/pages/contact.js';
   import { waitForAuth } from './src/js/core/auth.js';
   await initPage('');
   const user = await waitForAuth();

@@ -326,6 +326,69 @@ export async function adminUnbanPlace(placeId) {
   return updates;
 }
 
+/**
+ * IP & User Ban System
+ */
+export function sanitizeIpKey(ip) {
+  if (!ip) return '';
+  return String(ip).trim().replace(/[.:%[\]#$]/g, '_');
+}
+
+/** Check if an IP address is banned */
+export async function isIpBanned(ip) {
+  if (!ip) return false;
+  const key = sanitizeIpKey(ip);
+  const banInfo = await dbGet(`bannedIPs/${key}`, false);
+  if (!banInfo) return false;
+  
+  if (banInfo.isPermanent) return banInfo;
+  if (banInfo.bannedUntil && banInfo.bannedUntil > Date.now()) return banInfo;
+  
+  // Expired ban
+  return false;
+}
+
+/** Admin: Ban an IP address */
+export async function adminBanIp(ip, { reason = '', durationDays = 30, isPermanent = false, bannedBy = 'admin', userId = null, userName = '' } = {}) {
+  if (!ip) throw new Error('عنوان IP مطلوب للحظر');
+  const key = sanitizeIpKey(ip);
+  const now = Date.now();
+  const until = isPermanent ? null : (now + (Number(durationDays) * 86400000));
+
+  const banRecord = {
+    ip: String(ip).trim(),
+    ipKey: key,
+    reason: (reason || '').trim() || 'انتهاك سياسة واستخدام المنصة',
+    isPermanent: Boolean(isPermanent),
+    durationDays: isPermanent ? null : Number(durationDays),
+    bannedAt: now,
+    bannedUntil: until,
+    bannedBy,
+    userId: userId || null,
+    userName: userName || null
+  };
+
+  await dbSet(`bannedIPs/${key}`, banRecord);
+  return banRecord;
+}
+
+/** Admin: Unban an IP address */
+export async function adminUnbanIp(ipOrKey) {
+  if (!ipOrKey) throw new Error('معرف IP مطلوب');
+  const key = sanitizeIpKey(ipOrKey);
+  await dbRemove(`bannedIPs/${key}`);
+  return true;
+}
+
+/** Admin: Get all banned IPs */
+export async function getAllBannedIps() {
+  const data = (await dbGet('bannedIPs', false)) || {};
+  return Object.entries(data).map(([key, val]) => ({
+    ipKey: key,
+    ...val
+  })).sort((a, b) => (b.bannedAt || 0) - (a.bannedAt || 0));
+}
+
 /** Get all published places (paginated, excluding banned) */
 export async function getPublishedPlaces({ limit = 100, lastKey = null } = {}) {
   const cacheKey = `published_${limit}_${lastKey || ''}`;

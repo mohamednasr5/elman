@@ -116,7 +116,7 @@ function isPlaceSponsored(place) {
   );
 }
 
-function sortLatestPlaces(places, currentUid = null) {
+function sortLatestPlaces(places, currentUid = null, shuffleSponsored = false) {
   const seen = new Set();
   const sponsored = [];
   const regular = [];
@@ -140,8 +140,11 @@ function sortLatestPlaces(places, currentUid = null) {
     }
   });
 
+  // Fair rotation: Randomly shuffle sponsored places order so every sponsor gets equal top visibility
+  const finalSponsored = shuffleSponsored ? shuffleArray(sponsored) : sponsored;
+
   // Sponsored first, followed directly by the newest added places
-  return [...sponsored, ...regular];
+  return [...finalSponsored, ...regular];
 }
 
 function renderCategories(categories) {
@@ -185,21 +188,29 @@ function startVerifiedPlacesRotation(allPlaces) {
     return;
   }
 
-  // Separate sponsored places (always first) from non-sponsored places
+  // Separate sponsored places from non-sponsored places
   const sponsored = eligiblePlaces.filter(p => isPlaceSponsored(p));
   const regular = eligiblePlaces.filter(p => !isPlaceSponsored(p));
 
   const updateDisplay = (isInterval = false) => {
-    // Sponsored stays at the front; regular places are randomized every minute
+    // Both sponsored and regular places are shuffled randomly every minute for 100% fair rotation & equal exposure
+    const shuffledSponsored = shuffleArray(sponsored);
     const shuffledRegular = shuffleArray(regular);
-    const combined = [...sponsored, ...shuffledRegular];
+    const combined = [...shuffledSponsored, ...shuffledRegular];
     renderVerifiedPlaces(combined.slice(0, 8), isInterval);
+
+    // Also update and re-shuffle Latest Places sponsored ads fairly
+    const latestGrid = document.getElementById('latest-places-grid');
+    if (latestGrid) {
+      const latestPlaces = sortLatestPlaces(allPlaces, null, true);
+      renderLatestPlaces(latestPlaces.slice(0, 8));
+    }
   };
 
   // Immediate first render
   updateDisplay(false);
 
-  // Rotate randomly every 60 seconds (1 minute)
+  // Rotate randomly every 60 seconds (1 minute) to guarantee fair exposure for all advertisers
   _verifiedPlacesInterval = setInterval(() => {
     updateDisplay(true);
   }, 60000);

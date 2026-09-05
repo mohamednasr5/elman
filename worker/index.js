@@ -529,7 +529,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
   const placeDesc = place?.description || `تعرف على مواعيد وأرقام تواصل وعنوان وخدمات ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`;
   const placeImg = place?.coverImageUrl || place?.logoUrl || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
   const placeTargetSlug = place?.slug || cleanSlug;
-  const destinationUrl = `${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`;
+  const destinationUrl = `${canonicalBase}/${encodeURIComponent(placeTargetSlug)}`;
 
   // If real user (not crawler), redirect instantly
   if (!isCrawler) {

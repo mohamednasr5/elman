@@ -20,7 +20,10 @@ const REGIONAL_COVERAGE_AREAS = [
  * Update page meta tags dynamically
  */
 export function setMeta({ title, description, keywords, image, url, type = 'website', noindex = false } = {}) {
-  const t = title ? `${title} | دليل المنزلة والمطرية` : DEFAULT_TITLE;
+  let t = DEFAULT_TITLE;
+  if (title) {
+    t = title.includes('دليل المنزلة والمطرية') ? title : `${title} | دليل المنزلة والمطرية الرقمي`;
+  }
   const d = description || DEFAULT_DESC;
   const k = keywords || DEFAULT_KEYWORDS;
   const img = image || DEFAULT_IMAGE;
@@ -51,7 +54,7 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
 
   // Type & Site Name
   setTag('meta[property="og:type"]', 'property', 'og:type', 'content', type);
-  setTag('meta[property="og:site_name"]', 'property', 'og:site_name', 'content', 'دليل المنزلة والمطرية');
+  setTag('meta[property="og:site_name"]', 'property', 'og:site_name', 'content', 'دليل المنزلة والمطرية الرقمي');
   setTag('meta[property="og:locale"]', 'property', 'og:locale', 'content', 'ar_EG');
 
   // Twitter card

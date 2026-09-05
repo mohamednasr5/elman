@@ -90,7 +90,8 @@
   await initPage('');
   const user = await waitForAuth();
   const params = new URLSearchParams(location.search);
-  const slug = params.get('slug') || params.get('id') || '';
+  let slug = params.get('slug') || params.get('id') || '';
+  if (slug === 'undefined' || slug === 'null') slug = '';
   if (!slug) { location.href = 'places.html'; }
   else await renderPlacePage(document.getElementById('page-container'), { slug, user });
 </script>

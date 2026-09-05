@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification } from '../../core/db.js';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, getCategories, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps } from '../../core/db.js';
 import { isAdmin, getCurrentUser } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
@@ -15,6 +15,7 @@ import { getLoyaltyLevelInfo, LOYALTY_LEVELS } from '../../services/loyalty.serv
 import { arabicMatch, normalizeArabic } from '../../utils/arabic.js';
 import { normalizePhoneNumber } from '../../utils/phone.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
+import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 
 // ── In-Memory Cache Store for 0ms Tab Switching ──
 const adminCache = {
@@ -739,13 +740,17 @@ async function renderAdminPlaces($container) {
   }
   
   // Sort places by Latest Added First (الأحدث إضافة أولاً في الأعلى)
-  const places = Object.entries(adminCache.places || {})
-    .map(([id, p]) => ({ ...p, _id: id }))
+  const allPlaces = Object.entries(adminCache.places || {})
+    .map(([id, p]) => ({ ...p, _id: p._id || p.id || id }))
     .sort((a, b) => {
       const timeA = Number(a.createdAt || a.updatedAt || a.publishedAt || 0);
       const timeB = Number(b.createdAt || b.updatedAt || b.publishedAt || 0);
       return timeB - timeA;
     });
+
+  let currentPage = 1;
+  let pageSize = 25; // default 25 places per page for instant zero-lag rendering
+  let filteredPlaces = [...allPlaces];
 
   $container.innerHTML = `
     <div class="admin-fade-in">
@@ -754,68 +759,234 @@ async function renderAdminPlaces($container) {
           <h1 class="dashboard-header__title" style="color:#FFFFFF;font-weight:900;display:flex;align-items:center;gap:8px">
             <span>📍</span>
             <span>إدارة الأماكن والأنشطة</span>
-            <span class="badge" style="background:#F5A623;color:#0B1E30;font-size:13px;font-weight:900;padding:2px 10px;border-radius:9999px">
-              ${places.length} مكان
+            <span class="badge" id="admin-places-total-badge" style="background:#F5A623;color:#0B1E30;font-size:13px;font-weight:900;padding:2px 10px;border-radius:9999px">
+              ${allPlaces.length} مكان
             </span>
           </h1>
           <div class="dashboard-header__subtitle" style="color:#CBD5E1;font-size:13px">
-            الأماكن مرتبة بالأحدث إضافة أولاً — التحكم في التوثيق، الإعلانات المدفوعة، التعديل والحذف
+            الأماكن مرتبة بالأحدث إضافة أولاً — نظام متطور يدعم آلاف الأماكن بسرعة فائقة وتصفح مرن
           </div>
         </div>
       </div>
 
       <!-- Search Filter & Actions -->
       <div class="filter-bar" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:#0F2B48;padding:12px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1)">
-        <input type="search" id="admin-place-search" class="form-input" placeholder="🔍 بحث باسم المكان، المالك، المنطقة أو التصنيف..." style="max-width:420px;margin:0;background:#1B4F72;color:#fff;border-color:rgba(255,255,255,0.2)" />
+        <div style="flex:1;min-width:280px;max-width:500px;position:relative">
+          <input type="search" id="admin-place-search" class="form-input" placeholder="🔍 بحث فوري بالاسم، المالك، المنطقة، الهاتف أو التصنيف..." style="width:100%;margin:0;background:#1B4F72;color:#fff;border-color:rgba(255,255,255,0.2);padding-left:36px" />
+        </div>
         
-        <button type="button" class="btn btn-success" id="btn-export-places-excel" style="display:inline-flex;align-items:center;gap:8px;font-weight:800;padding:10px 18px;background:#10B981;border-color:#10B981;color:#fff;border-radius:10px;box-shadow:0 3px 12px rgba(16,185,129,0.3);cursor:pointer;transition:all 0.2s" title="تصدير جميع بيانات الأنشطة والأماكن إلى ملف Excel منسق بالكامل بالحدود والألوان">
-          <span style="font-size:16px">📊</span>
-          <span>تصدير ملف Excel منسق (.xlsx / .xls)</span>
-        </button>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button type="button" class="btn btn-success" id="btn-export-places-excel" style="display:inline-flex;align-items:center;gap:8px;font-weight:800;padding:10px 18px;background:#10B981;border-color:#10B981;color:#fff;border-radius:10px;box-shadow:0 3px 12px rgba(16,185,129,0.3);cursor:pointer;transition:all 0.2s" title="تصدير جميع بيانات الأنشطة والأماكن إلى ملف Excel منسق بالكامل بالحدود والألوان">
+            <span style="font-size:16px">📊</span>
+            <span>تصدير ملف Excel (.xlsx / .xls)</span>
+          </button>
+        </div>
       </div>
 
       <!-- Places Table -->
       <div class="dashboard-table-wrapper" style="background:#0F2B48;border-radius:14px;border:1px solid rgba(255,255,255,0.12);overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
-        <table class="dashboard-table" style="color:#FFFFFF">
+        <table class="dashboard-table" style="color:#FFFFFF;width:100%;border-collapse:collapse">
           <thead style="background:#0B1E30;color:#F8FAFC">
             <tr>
-              <th style="color:#F8FAFC;font-weight:800">المكان / المالك</th>
-              <th style="color:#F8FAFC;font-weight:800">التصنيف</th>
-              <th style="color:#F8FAFC;font-weight:800">المنطقة</th>
-              <th style="color:#F8FAFC;font-weight:800">إعلان مدفوع ⭐</th>
-              <th style="color:#F8FAFC;font-weight:800">التوثيق</th>
-              <th style="color:#F8FAFC;font-weight:800">الحالة</th>
-              <th style="color:#F8FAFC;font-weight:800">إجراءات</th>
+              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">المكان / المالك</th>
+              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">التصنيف</th>
+              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">المنطقة</th>
+              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">إعلان مدفوع ⭐</th>
+              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">التوثيق</th>
+              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">الحالة</th>
+              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px;min-width:180px">إجراءات</th>
             </tr>
           </thead>
           <tbody id="admin-places-tbody">
-            ${renderAdminPlacesTableRows(places)}
+            <!-- Rows rendered dynamically by renderCurrentPage() -->
           </tbody>
         </table>
+      </div>
+
+      <!-- Pagination & Performance Controls -->
+      <div id="admin-places-pagination-container" style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;background:#0F2B48;padding:12px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);color:#fff">
+        <div id="admin-places-page-info" style="font-size:13px;font-weight:700;color:#CBD5E1">
+          جاري تجهيز الصفحات...
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#CBD5E1">
+            <span>عرض بالصفحة:</span>
+            <select id="admin-places-page-size" class="form-select" style="width:auto;padding:5px 12px;margin:0;font-size:12.5px;font-weight:700;background:#1B4F72;color:#fff;border-color:rgba(255,255,255,0.2);border-radius:8px;cursor:pointer">
+              <option value="25" selected>25 مكان</option>
+              <option value="50">50 مكان</option>
+              <option value="100">100 مكان</option>
+              <option value="all">عرض الكل بدون تقسيم</option>
+            </select>
+          </div>
+
+          <div id="admin-places-pagination-buttons" style="display:flex;align-items:center;gap:4px">
+            <!-- Buttons dynamically generated -->
+          </div>
+        </div>
       </div>
     </div>
   `;
 
+  const tbody = document.getElementById('admin-places-tbody');
+  const pageInfo = document.getElementById('admin-places-page-info');
+  const pageButtons = document.getElementById('admin-places-pagination-buttons');
+  const pageSizeSelect = document.getElementById('admin-places-page-size');
+  const searchInput = document.getElementById('admin-place-search');
+  const totalBadge = document.getElementById('admin-places-total-badge');
+
+  function renderCurrentPage() {
+    const total = filteredPlaces.length;
+    const isAll = pageSize === 'all';
+    const numPageSize = isAll ? total : Number(pageSize);
+    const totalPages = isAll ? 1 : Math.max(1, Math.ceil(total / numPageSize));
+
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIdx = isAll ? 0 : (currentPage - 1) * numPageSize;
+    const endIdx = isAll ? total : Math.min(startIdx + numPageSize, total);
+    const pagedItems = filteredPlaces.slice(startIdx, endIdx);
+
+    if (tbody) tbody.innerHTML = renderAdminPlacesTableRows(pagedItems);
+
+    if (pageInfo) {
+      if (total === 0) {
+        pageInfo.textContent = 'لا توجد نتائج مطابقة للبحث';
+      } else {
+        pageInfo.innerHTML = `عرض <strong style="color:#F5A623">${startIdx + 1}</strong> إلى <strong style="color:#F5A623">${endIdx}</strong> من إجمالي <strong style="color:#38BDF8">${total}</strong> مكان ${total !== allPlaces.length ? `(مفلترة من ${allPlaces.length})` : ''}`;
+      }
+    }
+
+    if (totalBadge) {
+      totalBadge.textContent = `${total} مكان`;
+    }
+
+    // Render Pagination Buttons
+    if (pageButtons) {
+      if (isAll || totalPages <= 1) {
+        pageButtons.innerHTML = '';
+      } else {
+        let btnHtml = '';
+        
+        // Prev button
+        const prevDisabled = currentPage <= 1;
+        btnHtml += `<button type="button" class="btn btn-xs btn-page-nav" data-page="${currentPage - 1}" ${prevDisabled ? 'disabled style="opacity:0.4;cursor:not-allowed"' : 'style="cursor:pointer"'} style="background:#1B4F72;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:800">السابق ‹</button>`;
+
+        // Smart range of pages (show max 5 surrounding page numbers)
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, startPage + 4);
+
+        if (startPage > 1) {
+          btnHtml += `<button type="button" class="btn btn-xs btn-page-num" data-page="1" style="background:#1B4F72;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:800">1</button>`;
+          if (startPage > 2) btnHtml += `<span style="color:#64748B;padding:0 2px">…</span>`;
+        }
+
+        for (let p = startPage; p <= endPage; p++) {
+          const isActive = p === currentPage;
+          btnHtml += `<button type="button" class="btn btn-xs btn-page-num" data-page="${p}" style="background:${isActive ? '#F5A623' : '#1B4F72'};color:${isActive ? '#0B1E30' : '#fff'};border:none;border-radius:6px;padding:6px 10px;font-weight:900;cursor:pointer">${p}</button>`;
+        }
+
+        if (endPage < totalPages) {
+          if (endPage < totalPages - 1) btnHtml += `<span style="color:#64748B;padding:0 2px">…</span>`;
+          btnHtml += `<button type="button" class="btn btn-xs btn-page-num" data-page="${totalPages}" style="background:#1B4F72;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:800">${totalPages}</button>`;
+        }
+
+        // Next button
+        const nextDisabled = currentPage >= totalPages;
+        btnHtml += `<button type="button" class="btn btn-xs btn-page-nav" data-page="${currentPage + 1}" ${nextDisabled ? 'disabled style="opacity:0.4;cursor:not-allowed"' : 'style="cursor:pointer"'} style="background:#1B4F72;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:800">التالي ›</button>`;
+
+        pageButtons.innerHTML = btnHtml;
+      }
+    }
+  }
+
+  // Delegated handler for pagination buttons
+  pageButtons?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-page]');
+    if (!btn || btn.disabled) return;
+    const targetPage = Number(btn.getAttribute('data-page'));
+    if (!isNaN(targetPage) && targetPage > 0) {
+      currentPage = targetPage;
+      renderCurrentPage();
+      const tableWrapper = document.querySelector('.dashboard-table-wrapper');
+      if (tableWrapper) tableWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+
+  // Page Size change handler
+  pageSizeSelect?.addEventListener('change', (e) => {
+    pageSize = e.target.value;
+    currentPage = 1;
+    renderCurrentPage();
+  });
+
+  // Fast Debounced Search Filter
+  let searchTimer = null;
+  searchInput?.addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      const q = e.target.value.trim();
+      if (!q) {
+        filteredPlaces = [...allPlaces];
+      } else {
+        const normQ = normalizeArabic(q);
+        const normDigits = q.replace(/[^0-9]/g, '');
+        filteredPlaces = allPlaces.filter(p => {
+          if (arabicMatch(p.name, q)) return true;
+          if (normDigits && p.phone && p.phone.includes(normDigits)) return true;
+          if (p.area && arabicMatch(p.area, q)) return true;
+          if (p.address && arabicMatch(p.address, q)) return true;
+          if (p.categoryName && arabicMatch(p.categoryName, q)) return true;
+          if (p.categoryId && arabicMatch(p.categoryId, q)) return true;
+          if (p.ownerName && arabicMatch(p.ownerName, q)) return true;
+          if (p.ownerEmail && p.ownerEmail.toLowerCase().includes(q.toLowerCase())) return true;
+          if (p.description && arabicMatch(p.description, q)) return true;
+          return false;
+        });
+      }
+      currentPage = 1;
+      renderCurrentPage();
+    }, 120);
+  });
+
+  // Delegated Click Event Listener on tbody for 100% Reliable Action Handling
+  tbody?.addEventListener('click', (e) => {
+    const actionBtn = e.target.closest('[data-action]');
+    if (!actionBtn) return;
+    const action = actionBtn.getAttribute('data-action');
+    const id = actionBtn.getAttribute('data-id');
+    if (!id) return;
+
+    if (action === 'edit') {
+      if (typeof window.editPlaceAdmin === 'function') window.editPlaceAdmin(id);
+    } else if (action === 'delete') {
+      if (typeof window.deletePlaceAdmin === 'function') window.deletePlaceAdmin(id);
+    } else if (action === 'transfer') {
+      if (typeof window.transferPlaceOwnershipAdmin === 'function') window.transferPlaceOwnershipAdmin(id);
+    } else if (action === 'ban') {
+      const placeName = actionBtn.getAttribute('data-name') || '';
+      if (typeof window.adminBanPlaceAction === 'function') window.adminBanPlaceAction(id, placeName);
+    } else if (action === 'unban') {
+      if (typeof window.adminUnbanPlaceAction === 'function') window.adminUnbanPlaceAction(id);
+    } else if (action === 'toggle-sponsored') {
+      const status = actionBtn.getAttribute('data-status') === 'true';
+      if (typeof window.togglePlaceSponsored === 'function') window.togglePlaceSponsored(id, status);
+    } else if (action === 'toggle-verify') {
+      const status = actionBtn.getAttribute('data-status') === 'true';
+      if (typeof window.togglePlaceVerification === 'function') window.togglePlaceVerification(id, status);
+    }
+  });
+
   document.getElementById('btn-export-places-excel')?.addEventListener('click', exportPlacesToExcel);
 
-  document.getElementById('admin-place-search')?.addEventListener('input', (e) => {
-    const q = e.target.value.trim();
-    const filtered = places.filter(p => 
-      !q ||
-      arabicMatch(p.name, q) || 
-      arabicMatch(p.area, q) ||
-      arabicMatch(p.address, q) ||
-      arabicMatch(p.categoryName || p.categoryId, q) ||
-      arabicMatch(p.ownerEmail || p.ownerName, q) ||
-      arabicMatch(p.description, q)
-    );
-    document.getElementById('admin-places-tbody').innerHTML = renderAdminPlacesTableRows(filtered);
-  });
+  // Initial render
+  renderCurrentPage();
 }
 
 function renderAdminPlacesTableRows(places) {
   if (!places.length) {
-    return '<tr><td colspan="7" class="text-center" style="color:#94A3B8;padding:2rem">لا توجد أماكن مطابقة</td></tr>';
+    return '<tr><td colspan="7" class="text-center" style="color:#94A3B8;padding:2.5rem;font-weight:700">لا توجد أماكن مطابقة للبحث</td></tr>';
   }
 
   return places.map(p => {
@@ -829,11 +1000,11 @@ function renderAdminPlacesTableRows(places) {
       buttonHtml = `<span class="badge" style="background:#1B4F72;color:#38BDF8;font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px">🏧 صراف آلي</span>`;
     } else if (isCurrentlyActive) {
       const expText = p.sponsoredUntil ? `ينتهي: ${formatDate(p.sponsoredUntil)}` : 'دائم';
-      buttonHtml = `<button class="btn btn-xs" style="background:#10B981;color:#fff;font-weight:800;border:none;border-radius:6px;padding:4px 8px" onclick="togglePlaceSponsored('${escAttr(p._id)}', false)" title="${expText} - انقر للإلغاء">⭐ نشط (${expText}) ✕</button>`;
+      buttonHtml = `<button type="button" class="btn btn-xs" data-action="toggle-sponsored" data-id="${escAttr(p._id)}" data-status="false" style="background:#10B981;color:#fff;font-weight:800;border:none;border-radius:6px;padding:4px 8px;cursor:pointer" title="${expText} - انقر للإلغاء">⭐ نشط (${expText}) ✕</button>`;
     } else if (isExpired) {
-      buttonHtml = `<button class="btn btn-xs" style="background:#D97706;color:#fff;font-weight:800;border:none;border-radius:6px;padding:4px 8px" onclick="togglePlaceSponsored('${escAttr(p._id)}', true)" title="انتهت مدة الإعلان - انقر للتجديد">⚠️ انتهى الإعلان (تجديد)</button>`;
+      buttonHtml = `<button type="button" class="btn btn-xs" data-action="toggle-sponsored" data-id="${escAttr(p._id)}" data-status="true" style="background:#D97706;color:#fff;font-weight:800;border:none;border-radius:6px;padding:4px 8px;cursor:pointer" title="انتهت مدة الإعلان - انقر للتجديد">⚠️ انتهى الإعلان (تجديد)</button>`;
     } else {
-      buttonHtml = `<button class="btn btn-xs" style="background:#1E3A5F;color:#94A3B8;border:1px solid rgba(255,255,255,0.15);font-weight:800;border-radius:6px;padding:4px 8px" onclick="togglePlaceSponsored('${escAttr(p._id)}', true)" title="تعيين كإعلان مدفوع في قمة كل الصفحات">📢 تعيين كإعلان</button>`;
+      buttonHtml = `<button type="button" class="btn btn-xs" data-action="toggle-sponsored" data-id="${escAttr(p._id)}" data-status="true" style="background:#1E3A5F;color:#94A3B8;border:1px solid rgba(255,255,255,0.15);font-weight:800;border-radius:6px;padding:4px 8px;cursor:pointer" title="تعيين كإعلان مدفوع في قمة كل الصفحات">📢 تعيين كإعلان</button>`;
     }
 
     const banned = isPlaceBanned(p);
@@ -849,10 +1020,12 @@ function renderAdminPlacesTableRows(places) {
 
     let banButtonHtml = '';
     if (banned) {
-      banButtonHtml = `<button class="btn btn-xs" style="background:#10B981;color:#fff;border:none;font-weight:800;border-radius:6px" onclick="adminUnbanPlaceAction('${escAttr(p._id)}')" title="إلغاء الحظر وإعادة المكان للدليل فوراً">✅ فك الحظر</button>`;
+      banButtonHtml = `<button type="button" class="btn btn-xs" data-action="unban" data-id="${escAttr(p._id)}" style="background:#10B981;color:#fff;border:none;font-weight:800;border-radius:6px;cursor:pointer;padding:5px 8px" title="إلغاء الحظر وإعادة المكان للدليل فوراً">✅ فك الحظر</button>`;
     } else {
-      banButtonHtml = `<button class="btn btn-xs" style="background:rgba(239,68,68,0.2);color:#F87171;border:1px solid #EF4444;font-weight:800;border-radius:6px" onclick="adminBanPlaceAction('${escAttr(p._id)}', '${escAttr(p.name)}')" title="حظر هذا المكان مؤقتاً أو نهائياً">🚫 حظر</button>`;
+      banButtonHtml = `<button type="button" class="btn btn-xs" data-action="ban" data-id="${escAttr(p._id)}" data-name="${escAttr(p.name)}" style="background:rgba(239,68,68,0.2);color:#F87171;border:1px solid #EF4444;font-weight:800;border-radius:6px;cursor:pointer;padding:5px 8px" title="حظر هذا المكان مؤقتاً أو نهائياً">🚫 حظر</button>`;
     }
+
+    const targetSlug = p.slug || p._id || p.id;
 
     return `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.08);background:${banned ? 'rgba(239,68,68,0.1)' : 'transparent'}">
@@ -870,18 +1043,19 @@ function renderAdminPlacesTableRows(places) {
         <td style="color:#FCD34D;font-weight:800;padding:12px 14px">📍 ${escHtml(p.area || 'المنزلة')}</td>
         <td style="padding:12px 14px">${buttonHtml}</td>
         <td style="padding:12px 14px">
-          <button class="btn btn-xs" style="background:${p.isVerified ? '#DC2626' : '#F5A623'};color:${p.isVerified ? '#fff' : '#0B1E30'};font-weight:800;border:none;border-radius:6px;padding:5px 10px" onclick="togglePlaceVerification('${escAttr(p._id)}', ${!p.isVerified})">
-            ${p.isVerified ? ICONS.x + ' إلغاء التوثيق' : ICONS.shield + ' توثيق'}
+          <button type="button" class="btn btn-xs" data-action="toggle-verify" data-id="${escAttr(p._id)}" data-status="${!p.isVerified}" style="background:${p.isVerified ? '#DC2626' : '#F5A623'};color:${p.isVerified ? '#fff' : '#0B1E30'};font-weight:800;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+            <span style="pointer-events:none;display:inline-flex">${p.isVerified ? ICONS.x : ICONS.shield}</span>
+            <span>${p.isVerified ? 'إلغاء التوثيق' : 'توثيق'}</span>
           </button>
         </td>
         <td style="padding:12px 14px">${statusBadgeHtml}</td>
         <td style="padding:12px 14px">
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             ${banButtonHtml}
-            <button class="btn btn-xs" style="background:#8B5CF6;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px" onclick="transferPlaceOwnershipAdmin('${escAttr(p._id)}')" title="نقل ملكية هذا المكان لمستخدم مسجل">${ICONS.users} نقل</button>
-            <button class="btn btn-xs" style="background:#0284C7;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px" onclick="editPlaceAdmin('${escAttr(p._id)}')" title="تعديل كافة بيانات المكان أو الشخص">${ICONS.edit}</button>
-            <a href="place.html?slug=${escAttr(p.slug)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px" title="عرض صفحة المكان">${ICONS.eye}</a>
-            <button class="btn btn-xs" style="background:#EF4444;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px" onclick="deletePlaceAdmin('${escAttr(p._id)}')" title="حذف المكان">${ICONS.trash}</button>
+            <button type="button" class="btn btn-xs" data-action="transfer" data-id="${escAttr(p._id)}" style="background:#8B5CF6;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="نقل ملكية هذا المكان لمستخدم مسجل"><span style="pointer-events:none;display:inline-flex">${ICONS.users}</span><span>نقل</span></button>
+            <button type="button" class="btn btn-xs" data-action="edit" data-id="${escAttr(p._id)}" style="background:#0284C7;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="تعديل كافة بيانات المكان أو الشخص"><span style="pointer-events:none;display:inline-flex">${ICONS.edit}</span></button>
+            <a href="place.html?slug=${encodeURIComponent(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="عرض صفحة المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.eye}</span></a>
+            <button type="button" class="btn btn-xs" data-action="delete" data-id="${escAttr(p._id)}" style="background:#EF4444;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="حذف المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.trash}</span></button>
           </div>
         </td>
       </tr>
@@ -2639,13 +2813,43 @@ function showAddCategoryModal(onDone) {
 }
 
 // ─────────────────────────────────────────────
-//  5. Users
+//  5. Users (إدارة الأعضاء والتحكم الشامل)
 // ─────────────────────────────────────────────
 async function renderAdminUsers($container) {
+  // Load users, places, reviews, and banned IPs
   if (!adminCache.users) {
     adminCache.users = (await dbGet('users')) || {};
   }
-  const users = Object.entries(adminCache.users || {}).map(([uid, u]) => ({ uid, ...u }));
+  if (!adminCache.places) {
+    adminCache.places = (await dbGet('places')) || {};
+  }
+  if (!adminCache.reviews) {
+    adminCache.reviews = await getAllReviews();
+  }
+
+  const allPlaces = Object.entries(adminCache.places || {}).map(([id, p]) => ({ ...p, _id: p._id || p.id || id }));
+  const allReviews = adminCache.reviews || [];
+  const bannedIps = await getAllBannedIps();
+  const bannedIpsMap = new Map();
+  bannedIps.forEach(b => {
+    if (b.ip) bannedIpsMap.set(b.ip, b);
+  });
+
+  const users = Object.entries(adminCache.users || {}).map(([uid, u]) => {
+    const userPlaces = allPlaces.filter(p => p.ownerId === uid || (p.ownerEmail && u.email && p.ownerEmail.toLowerCase() === u.email.toLowerCase()));
+    const userReviews = allReviews.filter(r => r.userId === uid || (r.userEmail && u.email && r.userEmail.toLowerCase() === u.email.toLowerCase()));
+    const clientIp = u.lastIp || u.registrationIp || null;
+    const isIpBlocked = clientIp && bannedIpsMap.has(clientIp);
+    return {
+      uid,
+      ...u,
+      userPlaces,
+      userReviews,
+      clientIp,
+      isIpBlocked,
+      ipBanData: isIpBlocked ? bannedIpsMap.get(clientIp) : null
+    };
+  });
 
   $container.innerHTML = `
     <div class="admin-fade-in">
@@ -2653,83 +2857,187 @@ async function renderAdminUsers($container) {
         <div>
           <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:800;display:flex;align-items:center;gap:8px">
             <span>👥</span>
-            <span>إدارة المستخدمين ونقاط الولاء (${users.length})</span>
+            <span>إدارة المستخدمين والرقابة الكاملة (${users.length})</span>
           </h1>
           <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
-            التحكم في صلاحيات المستخدمين، ترقية المستويات، وإضافة أو خصم نقاط الولاء
+            تحكم شامل في الأماكن، مراجعة وتعديل وحذف التعليقات، حظر الـ IP، وتعديل النقاط والصلاحيات
           </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm btn-outline" id="btn-admin-show-banned-ips" style="border-radius:8px;font-weight:800;border-color:rgba(239,68,68,0.5);color:#EF4444">
+            🚫 سجل الـ IP المحظورة (${bannedIps.length})
+          </button>
+          <button class="btn btn-sm btn-outline" id="btn-admin-refresh-users" style="border-radius:8px;font-weight:700">
+            🔄 تحديث
+          </button>
         </div>
       </div>
 
-      <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
-        <table class="dashboard-table" style="width:100%;border-collapse:collapse">
+      <!-- Search & Filter Bar -->
+      <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <input type="text" id="admin-user-search-input" class="form-input" placeholder="🔍 ابحث بالاسم، البريد الإلكتروني، معرف المستخدم UID، أو عنوان IP..." style="flex:1;min-width:280px;background:#0F273D;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 14px" />
+      </div>
+
+      <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.1);overflow-x:auto">
+        <table class="dashboard-table" style="width:100%;border-collapse:collapse;min-width:980px" id="admin-users-table">
           <thead>
             <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:12.5px">
-              <th style="padding:12px">المستخدم</th>
-              <th style="padding:12px">البريد الإلكتروني</th>
-              <th style="padding:12px">رتبة ونقاط الولاء 🏆</th>
-              <th style="padding:12px">الصلاحية</th>
-              <th style="padding:12px">الحالة</th>
-              <th style="text-align:center;padding:12px">إجراءات</th>
+              <th style="padding:12px;text-align:right">المستخدم والـ IP</th>
+              <th style="padding:12px;text-align:center">الأماكن التابعة 🏪</th>
+              <th style="padding:12px;text-align:center">التعليقات ⭐</th>
+              <th style="padding:12px;text-align:center">الرتبة والنقاط 🏆</th>
+              <th style="padding:12px;text-align:center">الصلاحية</th>
+              <th style="padding:12px;text-align:center">الحالة</th>
+              <th style="text-align:center;padding:12px">لوحة التحكم السريعة</th>
             </tr>
           </thead>
-          <tbody>
-            ${users.map(u => {
-              const pts = Number(u.loyalty?.points ?? u.points ?? 0);
-              const lvlInfo = getLoyaltyLevelInfo(pts);
-              const lvl = lvlInfo.currentLevel;
-
-              return `
-                <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-                  <td style="padding:10px">
-                    <div style="display:flex;align-items:center;gap:10px">
-                      <img src="${u.photoURL || './icons/icon-72x72.png'}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.2)" />
-                      <div>
-                        <strong style="color:#fff;font-size:13.5px">${escHtml(u.name || 'مستخدم')}</strong>
-                        <div style="font-size:11px;color:rgba(255,255,255,0.5)">ID: ${escHtml(u.uid?.slice(0, 8))}...</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td style="font-size:12.5px;color:rgba(255,255,255,0.8);padding:10px">${escHtml(u.email || '—')}</td>
-                  <td style="padding:10px">
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                      <span class="badge" style="background:rgba(245,166,35,0.15);color:${lvl.color};border:1px solid ${lvl.color}40;font-weight:800;padding:2px 8px;border-radius:6px;font-size:11.5px">
-                        ${lvl.icon} ${lvl.name}
-                      </span>
-                      <span style="font-size:12px;font-weight:700;color:#F5A623">${pts.toLocaleString('ar-EG')} نقطة</span>
-                    </div>
-                  </td>
-                  <td style="padding:10px">
-                    <span class="chip ${u.role === 'admin' || u.role === 'superadmin' ? 'chip--warning' : 'chip--primary'}" style="font-size:11px">
-                      ${u.role === 'admin' || u.role === 'superadmin' ? '⭐ مشرف' : 'عضو'}
-                    </span>
-                  </td>
-                  <td style="padding:10px">
-                    ${u.status === 'suspended' 
-                      ? '<span class="badge badge--rejected" style="font-size:11px">موقوف</span>' 
-                      : '<span class="badge badge--published" style="font-size:11px">نشط</span>'
-                    }
-                  </td>
-                  <td style="text-align:center;padding:10px;white-space:nowrap">
-                    <div style="display:inline-flex;gap:6px">
-                      <button class="btn btn-xs btn-edit-user-points" data-uid="${escAttr(u.uid)}" data-name="${escAttr(u.name)}" data-pts="${pts}" style="background:#F5A623;color:#0B1E30;font-weight:800;border:none;border-radius:6px;padding:4px 10px;font-size:11.5px">
-                        🎁 تعديل النقاط والرتبة
-                      </button>
-                      <button class="btn btn-xs ${u.status === 'suspended' ? 'btn-success' : 'btn-danger'}" onclick="toggleUserStatus('${escAttr(u.uid)}', '${u.status === 'suspended' ? 'active' : 'suspended'}')" style="border-radius:6px;padding:4px 8px;font-size:11.5px">
-                        ${u.status === 'suspended' ? '✓ تفعيل' : '✕ إيقاف'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-            }).join('')}
+          <tbody id="admin-users-tbody">
+            ${_buildAdminUserRows(users)}
           </tbody>
         </table>
       </div>
     </div>
   `;
 
-  // Attach Points Modal Click Listeners
+  // Search Filter Handler
+  const searchInput = $container.querySelector('#admin-user-search-input');
+  searchInput?.addEventListener('input', () => {
+    const q = normalizeArabic(searchInput.value.trim().toLowerCase());
+    if (!q) {
+      $container.querySelector('#admin-users-tbody').innerHTML = _buildAdminUserRows(users);
+      _bindAdminUserRowEvents($container, users);
+      return;
+    }
+    const filtered = users.filter(u => {
+      const name = normalizeArabic((u.name || '').toLowerCase());
+      const email = (u.email || '').toLowerCase();
+      const uid = (u.uid || '').toLowerCase();
+      const ip = (u.clientIp || '').toLowerCase();
+      return name.includes(q) || email.includes(q) || uid.includes(q) || ip.includes(q);
+    });
+    $container.querySelector('#admin-users-tbody').innerHTML = _buildAdminUserRows(filtered);
+    _bindAdminUserRowEvents($container, filtered);
+  });
+
+  // Refresh Button
+  $container.querySelector('#btn-admin-refresh-users')?.addEventListener('click', async () => {
+    adminCache.users = null;
+    adminCache.places = null;
+    adminCache.reviews = null;
+    await renderAdminUsers($container);
+  });
+
+  // Banned IPs modal button
+  $container.querySelector('#btn-admin-show-banned-ips')?.addEventListener('click', () => {
+    openAdminBannedIpsModal(bannedIps, async () => {
+      await renderAdminUsers($container);
+    });
+  });
+
+  _bindAdminUserRowEvents($container, users);
+}
+
+function _buildAdminUserRows(usersList) {
+  if (!usersList.length) {
+    return `<tr><td colspan="7" style="text-align:center;padding:30px;color:rgba(255,255,255,0.5)">لا يوجد مستخدمون مطابقون</td></tr>`;
+  }
+
+  return usersList.map(u => {
+    const pts = Number(u.loyalty?.points ?? u.points ?? 0);
+    const lvlInfo = getLoyaltyLevelInfo(pts);
+    const lvl = lvlInfo.currentLevel;
+    const placesCount = u.userPlaces.length;
+    const reviewsCount = u.userReviews.length;
+
+    return `
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+        <!-- User Info & IP -->
+        <td style="padding:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="${u.photoURL || './icons/icon-72x72.png'}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.2);flex-shrink:0" />
+            <div style="min-width:0">
+              <strong style="color:#fff;font-size:13.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(u.name || 'مستخدم')}</strong>
+              <div style="font-size:11.5px;color:rgba(255,255,255,0.65)">${escHtml(u.email || 'بدون بريد')}</div>
+              <div style="display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap">
+                <span style="font-size:10px;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;color:rgba(255,255,255,0.5)">UID: ${escHtml((u.uid || '').slice(0, 8))}...</span>
+                ${u.clientIp ? `
+                  <span class="badge ${u.isIpBlocked ? 'badge--rejected' : ''}" style="font-size:10px;padding:1px 6px;border-radius:4px;background:${u.isIpBlocked ? '#EF4444' : 'rgba(14,165,233,0.15)'};color:${u.isIpBlocked ? '#fff' : '#38BDF8'}">
+                    IP: ${escHtml(u.clientIp)} ${u.isIpBlocked ? '🚫 محظور' : ''}
+                  </span>
+                ` : '<span style="font-size:10px;color:rgba(255,255,255,0.3)">IP: غير مسجل</span>'}
+              </div>
+            </div>
+          </div>
+        </td>
+
+        <!-- Places Button -->
+        <td style="text-align:center;padding:10px">
+          <button class="btn btn-xs btn-user-places-modal" data-uid="${escAttr(u.uid)}" style="background:rgba(14,165,233,0.15);color:#38BDF8;border:1px solid rgba(14,165,233,0.3);border-radius:8px;font-weight:800;padding:4px 10px;font-size:11.5px">
+            🏪 ${placesCount} ${placesCount === 1 ? 'مكان' : 'أماكن'}
+          </button>
+        </td>
+
+        <!-- Reviews Button -->
+        <td style="text-align:center;padding:10px">
+          <button class="btn btn-xs btn-user-reviews-modal" data-uid="${escAttr(u.uid)}" style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.3);border-radius:8px;font-weight:800;padding:4px 10px;font-size:11.5px">
+            💬 ${reviewsCount} ${reviewsCount === 1 ? 'تعليق' : 'تعليقات'}
+          </button>
+        </td>
+
+        <!-- Rank & Points -->
+        <td style="text-align:center;padding:10px">
+          <div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">
+            <span class="badge" style="background:rgba(245,166,35,0.15);color:${lvl.color};border:1px solid ${lvl.color}40;font-weight:800;padding:2px 8px;border-radius:6px;font-size:11px">
+              ${lvl.icon} ${lvl.name}
+            </span>
+            <span style="font-size:11.5px;font-weight:700;color:#F5A623">${pts.toLocaleString('ar-EG')} نقطة</span>
+          </div>
+        </td>
+
+        <!-- Role -->
+        <td style="text-align:center;padding:10px">
+          <button class="btn btn-xs btn-user-toggle-role" data-uid="${escAttr(u.uid)}" data-role="${escAttr(u.role || 'user')}" title="انقر لتبديل الصلاحية" style="font-size:11px;padding:3px 8px;border-radius:6px;border:none;background:${u.role === 'admin' || u.role === 'superadmin' ? '#F5A623' : 'rgba(255,255,255,0.1)'};color:${u.role === 'admin' || u.role === 'superadmin' ? '#0B1E30' : '#fff'};font-weight:800">
+            ${u.role === 'superadmin' ? '👑 سوبر آدمن' : (u.role === 'admin' ? '⭐ مشرف' : 'عضو')}
+          </button>
+        </td>
+
+        <!-- Status -->
+        <td style="text-align:center;padding:10px">
+          ${u.status === 'suspended' 
+            ? '<span class="badge badge--rejected" style="font-size:11px">موقوف</span>' 
+            : '<span class="badge badge--published" style="font-size:11px">نشط</span>'
+          }
+        </td>
+
+        <!-- Actions -->
+        <td style="text-align:center;padding:10px;white-space:nowrap">
+          <div style="display:inline-flex;gap:5px;align-items:center">
+            <!-- Points Modal Button -->
+            <button class="btn btn-xs btn-edit-user-points" data-uid="${escAttr(u.uid)}" data-name="${escAttr(u.name)}" data-pts="${pts}" title="تعديل النقاط والرتبة" style="background:#F5A623;color:#0B1E30;font-weight:800;border:none;border-radius:6px;padding:4px 8px;font-size:11.5px">
+              🎁 نقاط
+            </button>
+
+            <!-- Suspend / Activate Account -->
+            <button class="btn btn-xs ${u.status === 'suspended' ? 'btn-success' : 'btn-outline'}" onclick="toggleUserStatus('${escAttr(u.uid)}', '${u.status === 'suspended' ? 'active' : 'suspended'}')" title="${u.status === 'suspended' ? 'تفعيل الحساب' : 'إيقاف الحساب'}" style="border-radius:6px;padding:4px 8px;font-size:11.5px;${u.status === 'suspended' ? '' : 'color:#EF4444;border-color:rgba(239,68,68,0.4)'}">
+              ${u.status === 'suspended' ? '✓ تفعيل' : '✕ إيقاف'}
+            </button>
+
+            <!-- IP Ban Modal Button -->
+            <button class="btn btn-xs btn-ban-user-ip" data-uid="${escAttr(u.uid)}" data-name="${escAttr(u.name)}" data-ip="${escAttr(u.clientIp || '')}" title="حظر شامل لعنوان IP والجهاز" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.4);border-radius:6px;padding:4px 8px;font-size:11.5px;font-weight:800">
+              🚫 حظر IP
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function _bindAdminUserRowEvents($container, usersList) {
+  const usersMap = new Map();
+  usersList.forEach(u => usersMap.set(u.uid, u));
+
+  // Points Modal
   $container.querySelectorAll('.btn-edit-user-points').forEach(btn => {
     btn.addEventListener('click', () => {
       const uid = btn.getAttribute('data-uid');
@@ -2739,6 +3047,77 @@ async function renderAdminUsers($container) {
         adminCache.users = null;
         await renderAdminUsers($container);
       });
+    });
+  });
+
+  // Places Modal
+  $container.querySelectorAll('.btn-user-places-modal').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const uid = btn.getAttribute('data-uid');
+      const user = usersMap.get(uid);
+      if (user) {
+        openAdminUserPlacesModal(user, async () => {
+          adminCache.places = null;
+          await renderAdminUsers($container);
+        });
+      }
+    });
+  });
+
+  // Reviews Modal
+  $container.querySelectorAll('.btn-user-reviews-modal').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const uid = btn.getAttribute('data-uid');
+      const user = usersMap.get(uid);
+      if (user) {
+        openAdminUserReviewsModal(user, async () => {
+          adminCache.reviews = null;
+          await renderAdminUsers($container);
+        });
+      }
+    });
+  });
+
+  // Toggle Admin / Member Role
+  $container.querySelectorAll('.btn-user-toggle-role').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.getAttribute('data-uid');
+      const currentRole = btn.getAttribute('data-role');
+      if (currentRole === 'superadmin') {
+        toast.info('حساب السوبر أدمن محمي دائماً ولا يمكن تعديله');
+        return;
+      }
+      const newRole = currentRole === 'admin' ? 'user' : 'admin';
+      const ok = await showConfirm({
+        title: newRole === 'admin' ? 'ترقية لمشرف' : 'تخفيض إلى عضو عادي',
+        message: `هل أنت متأكد من تغيير صلاحية هذا المستخدم إلى (${newRole === 'admin' ? 'مشرف على المنصة' : 'عضو عادي'})؟`
+      });
+      if (ok) {
+        try {
+          await dbUpdate(`users/${uid}`, { role: newRole });
+          if (adminCache.users && adminCache.users[uid]) {
+            adminCache.users[uid].role = newRole;
+          }
+          toast.success('تم تعديل الصلاحية بنجاح');
+          await renderAdminUsers($container);
+        } catch (err) {
+          toast.error('فشل تعديل الصلاحية');
+        }
+      }
+    });
+  });
+
+  // IP Ban Modal
+  $container.querySelectorAll('.btn-ban-user-ip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const uid = btn.getAttribute('data-uid');
+      const user = usersMap.get(uid);
+      if (user) {
+        openAdminUserBanModal(user, async () => {
+          adminCache.users = null;
+          await renderAdminUsers($container);
+        });
+      }
     });
   });
 }
@@ -2898,6 +3277,478 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
         if (badge) badge.innerHTML = `${lvl.icon} ${lvl.name}`;
       }
     });
+  });
+}
+
+/**
+ * Modal to View, Edit, and Delete Places Owned by User
+ */
+function openAdminUserPlacesModal(user, onDone) {
+  const places = user.userPlaces || [];
+  
+  const modal = showModal({
+    title: `🏪 أماكن المستخدم: ${escHtml(user.name || 'مستخدم')} (${places.length})`,
+    size: 'lg',
+    content: `
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:13px;color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px">
+          قائمة بجميع الأنشطة والأماكن التي أضافها هذا المستخدم. يمكنك مشاهدتها، تعديل بياناتها، نقل ملكيتها لمستخدم آخر، أو حذفها نهائياً.
+        </div>
+
+        ${places.length === 0 ? `
+          <div style="text-align:center;padding:36px;color:rgba(255,255,255,0.5)">
+            <div style="font-size:36px;margin-bottom:8px">🏪</div>
+            لم يقم هذا المستخدم بإضافة أي أماكن حتى الآن.
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;padding-left:4px">
+            ${places.map(p => {
+              const placeId = p._id || p.id;
+              const slugOrId = p.slug || placeId;
+              return `
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
+                    <img src="${p.logoUrl || ATM_UNIFIED_LOGO}" style="width:46px;height:46px;border-radius:10px;object-fit:cover;border:1px solid rgba(255,255,255,0.15);flex-shrink:0" onerror="this.src='./icons/icon-72x72.png'" />
+                    <div style="min-width:0">
+                      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                        <strong style="color:#fff;font-size:14px">${escHtml(p.name || 'بدون اسم')}</strong>
+                        ${p.verified ? '<span class="badge badge--verified" style="font-size:10px">موثق ✓</span>' : ''}
+                        ${p.isSponsored ? '<span class="badge" style="font-size:10px;background:#F5A623;color:#0B1E30;font-weight:800">إعلان ممول ★</span>' : ''}
+                      </div>
+                      <div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:2px">
+                        ${escHtml(p.categoryName || 'بدون تصنيف')} • ${escHtml(p.area || 'المنزلة')} ${p.phone ? '• ' + escHtml(p.phone) : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <a href="place.html?slug=${encodeURIComponent(slugOrId)}" target="_blank" class="btn btn-xs btn-outline" style="border-radius:6px;padding:4px 8px;font-size:11px" title="مشاهدة المكان">
+                      👁️ مشاهدة
+                    </a>
+                    <button class="btn btn-xs btn-user-place-edit" data-id="${escAttr(placeId)}" style="background:#0EA5E9;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px" title="تعديل المكان">
+                      ✏️ تعديل
+                    </button>
+                    <button class="btn btn-xs btn-user-place-transfer" data-id="${escAttr(placeId)}" style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.3);border-radius:6px;padding:4px 8px;font-size:11px" title="نقل الملكية">
+                      🔄 نقل
+                    </button>
+                    <button class="btn btn-xs btn-user-place-delete" data-id="${escAttr(placeId)}" data-name="${escAttr(p.name)}" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:4px 8px;font-size:11px" title="حذف المكان">
+                      🗑️ حذف
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+    `,
+    buttons: [
+      { label: 'إغلاق', type: 'ghost', closeOnClick: true }
+    ]
+  });
+
+  // Attach Place Actions
+  const modalEl = document.querySelector('.modal-content') || document.body;
+  
+  modalEl.querySelectorAll('.btn-user-place-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pid = btn.getAttribute('data-id');
+      modal.close();
+      if (typeof window.editPlaceAdmin === 'function') window.editPlaceAdmin(pid);
+    });
+  });
+
+  modalEl.querySelectorAll('.btn-user-place-transfer').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pid = btn.getAttribute('data-id');
+      modal.close();
+      if (typeof window.transferPlaceOwnershipAdmin === 'function') window.transferPlaceOwnershipAdmin(pid);
+    });
+  });
+
+  modalEl.querySelectorAll('.btn-user-place-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const pid = btn.getAttribute('data-id');
+      const pname = btn.getAttribute('data-name');
+      const ok = await showConfirm({
+        title: 'حذف المكان نهائياً',
+        message: `هل أنت متأكد من حذف المكان "${pname}" نهائياً من الدليل؟ لا يمكن التراجع عن هذا الإجراء.`
+      });
+      if (ok) {
+        try {
+          await dbRemove(`places/${pid}`);
+          if (adminCache.places && adminCache.places[pid]) delete adminCache.places[pid];
+          toast.success('تم حذف المكان بنجاح');
+          modal.close();
+          if (onDone) onDone();
+        } catch (err) {
+          toast.error('فشل حذف المكان');
+        }
+      }
+    });
+  });
+}
+
+/**
+ * Modal to View, Edit, and Delete Comments/Reviews Written by User
+ */
+function openAdminUserReviewsModal(user, onDone) {
+  const reviews = user.userReviews || [];
+
+  const modal = showModal({
+    title: `💬 تعليقات وتقييمات: ${escHtml(user.name || 'مستخدم')} (${reviews.length})`,
+    size: 'lg',
+    content: `
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:13px;color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px">
+          استعراض شامل لكافة التقييمات والآراء التي كتبها هذا المستخدم في أي مكان بالدليل، مع إمكانية تعديل نص التقييم أو حذفه فوراً.
+        </div>
+
+        ${reviews.length === 0 ? `
+          <div style="text-align:center;padding:36px;color:rgba(255,255,255,0.5)">
+            <div style="font-size:36px;margin-bottom:8px">💬</div>
+            لم يقم هذا المستخدم بكتابة أي تقييمات أو تعليقات حتى الآن.
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;padding-left:4px">
+            ${reviews.map(r => {
+              const stars = '⭐'.repeat(r.rating || 5);
+              const dateStr = r.createdAt ? formatDate(r.createdAt) : '—';
+              return `
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                    <div>
+                      <span style="font-size:11px;color:rgba(255,255,255,0.5)">علق في:</span>
+                      <strong style="color:#38BDF8;font-size:13.5px;margin-right:4px">${escHtml(r.placeName || 'مكان بالدليل')}</strong>
+                      <span style="font-size:11px;color:rgba(255,255,255,0.4);margin-right:8px">${dateStr}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:12px">${stars}</span>
+                      <button class="btn btn-xs btn-user-review-edit" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" data-rating="${r.rating || 5}" data-comment="${escAttr(r.comment || '')}" style="background:#0EA5E9;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px">
+                        ✏️ تعديل
+                      </button>
+                      <button class="btn btn-xs btn-user-review-delete" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 8px;font-size:11px">
+                        🗑️ حذف
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:10px;font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6">
+                    ${escHtml(r.comment || 'بدون تعليق نصي')}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+    `,
+    buttons: [
+      { label: 'إغلاق', type: 'ghost', closeOnClick: true }
+    ]
+  });
+
+  const modalEl = document.querySelector('.modal-content') || document.body;
+
+  // Edit Review
+  modalEl.querySelectorAll('.btn-user-review-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pid = btn.getAttribute('data-pid');
+      const rid = btn.getAttribute('data-rid');
+      const rating = btn.getAttribute('data-rating');
+      const currentComment = btn.getAttribute('data-comment') || '';
+
+      const editModal = showModal({
+        title: '✏️ تعديل التعليق',
+        size: 'sm',
+        content: `
+          <form id="form-edit-user-single-review" style="display:flex;flex-direction:column;gap:12px" onsubmit="return false">
+            <div class="form-group">
+              <label class="form-label">التقييم بالنجوم:</label>
+              <select id="input-edit-rev-rating" class="form-select">
+                <option value="5" ${rating == 5 ? 'selected' : ''}>⭐⭐⭐⭐⭐ (5 نجوم)</option>
+                <option value="4" ${rating == 4 ? 'selected' : ''}>⭐⭐⭐⭐ (4 نجوم)</option>
+                <option value="3" ${rating == 3 ? 'selected' : ''}>⭐⭐⭐ (3 نجوم)</option>
+                <option value="2" ${rating == 2 ? 'selected' : ''}>⭐⭐ (نجمتان)</option>
+                <option value="1" ${rating == 1 ? 'selected' : ''}>⭐ (نجمة واحدة)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">نص التعليق:</label>
+              <textarea id="input-edit-rev-comment" class="form-textarea" rows="4">${escHtml(currentComment)}</textarea>
+            </div>
+          </form>
+        `,
+        buttons: [
+          {
+            label: '💾 حفظ التعديل',
+            type: 'primary',
+            closeOnClick: false,
+            onClick: async () => {
+              const newRating = parseInt(document.getElementById('input-edit-rev-rating')?.value, 10) || 5;
+              const newComment = document.getElementById('input-edit-rev-comment')?.value.trim() || '';
+              try {
+                await adminUpdateReview(pid, rid, { rating: newRating, comment: newComment });
+                toast.success('تم تحديث التعليق بنجاح');
+                editModal.close();
+                modal.close();
+                if (onDone) onDone();
+              } catch (err) {
+                toast.error(err.message || 'فشل تحديث التعليق');
+              }
+            }
+          },
+          { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+        ]
+      });
+    });
+  });
+
+  // Delete Review
+  modalEl.querySelectorAll('.btn-user-review-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const pid = btn.getAttribute('data-pid');
+      const rid = btn.getAttribute('data-rid');
+      const ok = await showConfirm({
+        title: 'حذف التعليق',
+        message: 'هل أنت متأكد من حذف هذا التعليق نهائياً؟'
+      });
+      if (ok) {
+        try {
+          await adminDeleteReview(pid, rid);
+          toast.success('تم حذف التعليق بنجاح');
+          modal.close();
+          if (onDone) onDone();
+        } catch (err) {
+          toast.error('فشل حذف التعليق');
+        }
+      }
+    });
+  });
+}
+
+/**
+ * Modal to Ban User & User IP Address
+ */
+function openAdminUserBanModal(user, onDone) {
+  const defaultIp = user.clientIp || '';
+
+  const modal = showModal({
+    title: `🚫 حظر المستخدم وعنوان IP: ${escHtml(user.name || 'مستخدم')}`,
+    size: 'md',
+    content: `
+      <form id="form-admin-ban-user-ip" style="display:flex;flex-direction:column;gap:14px" onsubmit="return false">
+        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px;font-size:13px;color:#FCA5A5;line-height:1.6">
+          ⚠️ <strong>إجراء حاسم:</strong> حظر المستخدم يمنعه من تسجيل الدخول، وحظر عنوان IP يمنع جهازه وشبكته من فتح أي صفحة في الدليل نهائياً، مع شاشة حظر توضح سبب المخالفة.
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-weight:800">عنوان IP الخاص بالمستخدم:</label>
+          <input type="text" id="input-ban-ip-address" class="form-input" value="${escAttr(defaultIp)}" placeholder="مثال: 197.35.120.44" style="direction:ltr;font-family:monospace;font-weight:700" />
+          <div style="font-size:11.5px;color:rgba(255,255,255,0.5);margin-top:4px">
+            ${defaultIp ? '✓ تم التقاط عنوان الـ IP تلقائياً من آخر تسجيل دخول' : 'لم يتم تسجيل IP تلقائياً، يمكنك إدخاله يدوياً'}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-weight:800">مدة الحظر:</label>
+          <select id="select-ban-ip-duration" class="form-select">
+            <option value="permanent">⛔ حظر نهائي ودائم (Permanent Ban)</option>
+            <option value="365">عام كامل (365 يوم)</option>
+            <option value="90">3 شهور (90 يوم)</option>
+            <option value="30" selected>شهر واحد (30 يوم)</option>
+            <option value="7">أسبوع واحد (7 أيام)</option>
+            <option value="1">24 ساعة (يوم واحد)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-weight:800">سبب الحظر (يظهر للمستخدم عند محاولة الدخول):</label>
+          <input type="text" id="input-ban-ip-reason" class="form-input" value="مخالفة معايير وسياسات النشر على دليل المنزلة والمطرية الرقمي" required />
+        </div>
+
+        <div style="display:flex;gap:10px;flex-direction:column;background:rgba(255,255,255,0.03);padding:10px;border-radius:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#fff;cursor:pointer">
+            <input type="checkbox" id="check-ban-user-account" checked />
+            <span>إيقاف حساب المستخدم فوراً (${escHtml(user.email || user.name)})</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#fff;cursor:pointer">
+            <input type="checkbox" id="check-ban-user-ip" checked />
+            <span>حظر عنوان الـ IP والشبكة بالكامل في قاعدة البيانات</span>
+          </label>
+        </div>
+      </form>
+    `,
+    buttons: [
+      {
+        label: '🚫 تنفيذ الحظر الصارم فوراً',
+        type: 'danger',
+        closeOnClick: false,
+        onClick: async () => {
+          const ip = document.getElementById('input-ban-ip-address')?.value.trim();
+          const durationVal = document.getElementById('select-ban-ip-duration')?.value;
+          const isPermanent = durationVal === 'permanent';
+          const durationDays = isPermanent ? null : parseInt(durationVal, 10);
+          const reason = document.getElementById('input-ban-ip-reason')?.value.trim() || 'مخالفة السياسات';
+          const banAccount = document.getElementById('check-ban-user-account')?.checked;
+          const banIp = document.getElementById('check-ban-user-ip')?.checked;
+
+          if (banIp && !ip) {
+            toast.warning('يرجى تحديد عنوان IP صالح للحظر، أو إلغاء تحديد خيار حظر الـ IP');
+            return;
+          }
+
+          try {
+            // 1. Suspend User Account
+            if (banAccount) {
+              await dbUpdate(`users/${user.uid}`, {
+                status: 'suspended',
+                suspendedAt: Date.now(),
+                suspensionReason: reason
+              });
+              if (adminCache.users && adminCache.users[user.uid]) {
+                adminCache.users[user.uid].status = 'suspended';
+              }
+            }
+
+            // 2. Ban IP in bannedIPs
+            if (banIp && ip) {
+              await adminBanIp(ip, {
+                reason,
+                durationDays: durationDays || 30,
+                isPermanent,
+                bannedBy: _currentUser?.name || 'إدارة الدليل',
+                userId: user.uid,
+                userName: user.name || 'مستخدم'
+              });
+            }
+
+            toast.success(`تم تنفيذ الحظر بنجاح!`);
+            modal.close();
+            if (onDone) onDone();
+          } catch (err) {
+            toast.error(err.message || 'فشلت عملية الحظر');
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+}
+
+/**
+ * Modal to View and Unban Banned IP Addresses
+ */
+function openAdminBannedIpsModal(bannedIpsList, onDone) {
+  const modal = showModal({
+    title: `🚫 سجل عناوين IP المحظورة (${bannedIpsList.length})`,
+    size: 'lg',
+    content: `
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:13px;color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px">
+          قائمة بجميع عناوين IP والأجهزة المحظورة من الوصول للمنصة. يمكنك إلغاء حظر أي عنوان بضغطة زر.
+        </div>
+
+        <!-- Add Manual IP Ban Input -->
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <input type="text" id="input-manual-ban-ip" class="form-input" placeholder="أدخل عنوان IP لحظره يدوياً (مثال: 156.204.11.89)" style="flex:1;min-width:200px;direction:ltr;font-family:monospace;font-weight:700" />
+          <input type="text" id="input-manual-ban-reason" class="form-input" placeholder="سبب الحظر" style="flex:1;min-width:180px" value="حظر إداري مباشر" />
+          <button class="btn btn-sm btn-danger" id="btn-submit-manual-ip-ban" style="border-radius:8px;font-weight:800;white-space:nowrap">
+            🚫 حظر هذا الـ IP
+          </button>
+        </div>
+
+        ${bannedIpsList.length === 0 ? `
+          <div style="text-align:center;padding:36px;color:rgba(255,255,255,0.5)">
+            <div style="font-size:36px;margin-bottom:8px">🛡️</div>
+            لا توجد أي عناوين IP محظورة حالياً. المنصة نظيفة تماماً!
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;gap:10px;max-height:55vh;overflow-y:auto;padding-left:4px">
+            ${bannedIpsList.map(b => {
+              const isPermanent = b.isPermanent;
+              const dateStr = b.bannedAt ? formatDate(b.bannedAt) : '—';
+              const untilStr = isPermanent ? 'حظر دائم' : (b.bannedUntil ? 'حتى ' + new Date(b.bannedUntil).toLocaleDateString('ar-EG') : '—');
+              return `
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                      <strong style="color:#EF4444;font-family:monospace;font-size:14px;direction:ltr">${escHtml(b.ip)}</strong>
+                      <span class="badge ${isPermanent ? 'badge--rejected' : 'badge--warning'}" style="font-size:11px">
+                        ${untilStr}
+                      </span>
+                      ${b.userName ? `<span style="font-size:11.5px;color:rgba(255,255,255,0.7)">المستخدم: ${escHtml(b.userName)}</span>` : ''}
+                    </div>
+                    <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:4px">
+                      السبب: ${escHtml(b.reason || 'مخالفة السياسة')}
+                    </div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">
+                      تاريخ الحظر: ${dateStr} • بواسطة: ${escHtml(b.bannedBy || 'الإدارة')}
+                    </div>
+                  </div>
+
+                  <div>
+                    <button class="btn btn-xs btn-success btn-unban-ip-action" data-ip="${escAttr(b.ip)}" data-key="${escAttr(b.ipKey)}" style="border-radius:6px;font-weight:800;padding:5px 12px;font-size:12px">
+                      ✓ إلغاء الحظر
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+    `,
+    buttons: [
+      { label: 'إغلاق', type: 'ghost', closeOnClick: true }
+    ]
+  });
+
+  const modalEl = document.querySelector('.modal-content') || document.body;
+
+  // Unban button
+  modalEl.querySelectorAll('.btn-unban-ip-action').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ip = btn.getAttribute('data-ip');
+      const ipKey = btn.getAttribute('data-key');
+      const ok = await showConfirm({
+        title: 'إلغاء حظر الـ IP',
+        message: `هل أنت متأكد من إلغاء الحظر عن عنوان IP (${ip}) والسماح له بدخول المنصة مجدداً؟`
+      });
+      if (ok) {
+        try {
+          await adminUnbanIp(ipKey || ip);
+          toast.success(`تم إلغاء الحظر عن ${ip} بنجاح`);
+          modal.close();
+          if (onDone) onDone();
+        } catch (err) {
+          toast.error('فشل إلغاء الحظر');
+        }
+      }
+    });
+  });
+
+  // Manual Ban Button
+  modalEl.querySelector('#btn-submit-manual-ip-ban')?.addEventListener('click', async () => {
+    const ip = modalEl.querySelector('#input-manual-ban-ip')?.value.trim();
+    const reason = modalEl.querySelector('#input-manual-ban-reason')?.value.trim() || 'حظر إداري مباشر';
+    if (!ip) {
+      toast.warning('يرجى كتابة عنوان IP صالح');
+      return;
+    }
+    try {
+      await adminBanIp(ip, {
+        reason,
+        durationDays: 365,
+        isPermanent: false,
+        bannedBy: _currentUser?.name || 'إدارة الدليل'
+      });
+      toast.success(`تم حظر ${ip} بنجاح`);
+      modal.close();
+      if (onDone) onDone();
+    } catch (err) {
+      toast.error('فشل حظر عنوان الـ IP');
+    }
   });
 }
 
@@ -3631,6 +4482,9 @@ window.togglePlaceVerification = async (placeId, status) => {
 
 window.transferPlaceOwnershipAdmin = async (placeId) => {
   let place = adminCache.places ? adminCache.places[placeId] : null;
+  if (!place && adminCache.places) {
+    place = Object.values(adminCache.places).find(p => p && (p._id === placeId || p.id === placeId));
+  }
   if (!place) {
     place = await dbGet(`places/${placeId}`);
   }
@@ -3792,6 +4646,9 @@ window.transferPlaceOwnershipAdmin = async (placeId) => {
 
 window.editPlaceAdmin = async (placeId) => {
   let place = adminCache.places ? adminCache.places[placeId] : null;
+  if (!place && adminCache.places) {
+    place = Object.values(adminCache.places).find(p => p && (p._id === placeId || p.id === placeId));
+  }
   if (!place) {
     place = await dbGet(`places/${placeId}`);
   }
@@ -4063,15 +4920,26 @@ window.editPlaceAdmin = async (placeId) => {
 window.deletePlaceAdmin = async (placeId) => {
   const ok = await showConfirm({
     title: 'حذف المكان نهائياً',
-    message: 'هل أنت متأكد من حذف هذا المكان من المنصة؟',
+    message: 'هل أنت متأكد من حذف هذا المكان من المنصة؟ لن تتمكن من استرجاع بياناته بعد الحذف.',
     confirmType: 'danger'
   });
   if (ok) {
     try {
-      const place = adminCache.places ? adminCache.places[placeId] : await dbGet(`places/${placeId}`);
-      if (place?.slug) await dbRemove(`slugIndex/${place.slug}`);
+      let place = adminCache.places ? adminCache.places[placeId] : null;
+      if (!place && adminCache.places) {
+        place = Object.values(adminCache.places).find(p => p && (p._id === placeId || p.id === placeId));
+      }
+      if (!place) place = await dbGet(`places/${placeId}`);
+      if (place?.slug) await dbRemove(`slugIndex/${place.slug}`).catch(() => {});
       await dbRemove(`places/${placeId}`);
-      if (adminCache.places) delete adminCache.places[placeId];
+      if (adminCache.places) {
+        delete adminCache.places[placeId];
+        for (const [k, v] of Object.entries(adminCache.places)) {
+          if (v && (v._id === placeId || v.id === placeId || k === placeId)) {
+            delete adminCache.places[k];
+          }
+        }
+      }
       toast.success('تم حذف المكان بنجاح');
       switchAdminSection('places', false);
     } catch (err) {

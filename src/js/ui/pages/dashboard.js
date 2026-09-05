@@ -19,7 +19,7 @@ import { getCategoryTaxonomy, SPECIALIZED_CATEGORIES_TAXONOMY } from '../../util
  * AI translation, AI cover generator, and verification requests.
  */
 
-import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace, clearDbCache } from '../../core/db.js';
+import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace, clearDbCache, getPublishedPlaces } from '../../core/db.js';
 import { createPlace, updatePlace, deletePlace, addOffer, updateOffer, deleteOffer, addProduct, updateProduct, deleteProduct, submitVerificationRequest } from '../../services/places.service.js';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { uploadImage } from '../../services/upload.service.js';
@@ -28,8 +28,9 @@ import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '..
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { isAdmin } from '../../core/auth.js';
-import { formatPrice, arabicMatch } from '../../utils/arabic.js';
+import { formatPrice, arabicMatch, normalizeArabic, arabicScore } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
+import { normalizePhoneNumber, extractPlacePhoneNumbers } from '../../utils/phone.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { formatDate } from '../../utils/date.js';
@@ -512,6 +513,8 @@ async function renderPlaceFormSection($container, user, placeId = null) {
               ✨ ترجمة En
             </button>
           </div>
+          <!-- Smart Duplicate Detection Banner Slot -->
+          <div id="p-duplicate-suggestion-slot" style="display:none;margin-top:12px"></div>
         </div>
 
         <div class="form-row">
@@ -1513,12 +1516,238 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     updateMapPreview();
   }
 
+  // ═══════════════════════════════════════════════════════════
+  //  SMART DUPLICATE PLACE DETECTION & SUGGESTION ENGINE
+  //  Prevents duplicate places and suggests matching businesses
+  // ═══════════════════════════════════════════════════════════
+  let _allPlacesListForDedupe = null;
+  const _ignoredDuplicateIds = new Set();
+  let _currentDuplicateMatch = null;
+
+  const GENERIC_BIZ_WORDS = [
+    'محل', 'معرض', 'عيادة', 'عياده', 'دكتور', 'صيدلية', 'صيدليه', 'ورشة', 'ورشه', 
+    'مركز', 'سوبر ماركت', 'سوبرماركت', 'ماركت', 'مطعم', 'كافيه', 'كافتيريا', 'جزارة', 
+    'جزاره', 'مخبز', 'فرن', 'مستشفى', 'مستشفي', 'معمل', 'استوديو', 'ستوديو', 'صالون', 
+    'حلاق', 'مغسلة', 'مغسله', 'مكتب', 'شركة', 'شركه', 'البان', 'ألبان', 'اولاد', 'أولاد', 
+    'ابناء', 'أبناء', 'للجزارة', 'للجزاره', 'للالبان', 'للألبان', 'خدمات', 'سنتر'
+  ];
+
+  function extractCoreBusinessName(nameStr) {
+    if (!nameStr) return '';
+    let norm = normalizeArabic(nameStr);
+    GENERIC_BIZ_WORDS.forEach(w => {
+      const regex = new RegExp(`(^|\\s)${w}(\\s|$)`, 'gi');
+      norm = norm.replace(regex, ' ');
+    });
+    return norm.replace(/\s+/g, ' ').trim();
+  }
+
+  function findBestSimilarPlace(inputName, inputPhone, inputArea, places) {
+    if (!inputName && !inputPhone) return null;
+    const cleanInputName = (inputName || '').trim();
+    const normInputName = normalizeArabic(cleanInputName);
+    const coreInputName = extractCoreBusinessName(cleanInputName);
+    const normInputPhone = normalizePhoneNumber(inputPhone || '');
+    const cleanInputArea = (inputArea || '').trim();
+
+    let bestMatch = null;
+    let highestScore = 0;
+    let bestReason = '';
+
+    for (const p of places) {
+      if (!p || !p.name) continue;
+      if (placeId && (p.id === placeId || p._id === placeId || p._key === placeId)) continue;
+
+      let score = 0;
+      let reason = '';
+
+      // 1. Phone number match (High confidence)
+      if (normInputPhone && normInputPhone.length >= 8) {
+        const placePhones = extractPlacePhoneNumbers(p);
+        if (placePhones.some(num => num && (num === normInputPhone || num.endsWith(normInputPhone) || normInputPhone.endsWith(num)))) {
+          score = 100;
+          reason = 'نفس رقم الهاتف مسجل مسبقاً بهذا المكان';
+        }
+      }
+
+      // 2. Name matching
+      if (score < 100 && normInputName.length >= 3) {
+        const normPlaceName = normalizeArabic(p.name);
+        const corePlaceName = extractCoreBusinessName(p.name);
+
+        // Exact match
+        if (normInputName === normPlaceName) {
+          score = 99;
+          reason = 'اسم مطابق تماماً لمكان مسجل مسبقاً';
+        } 
+        // Core business name exact match (e.g. "جزارة أبو عارف" vs "أبو عارف")
+        else if (coreInputName && corePlaceName && coreInputName === corePlaceName && coreInputName.length >= 3) {
+          score = 95;
+          reason = 'تطابق في الاسم التجاري الأساسي';
+        } 
+        // One contains the other
+        else if (coreInputName && corePlaceName && (corePlaceName.includes(coreInputName) || coreInputName.includes(corePlaceName)) && Math.min(coreInputName.length, corePlaceName.length) >= 4) {
+          score = 86;
+          reason = 'تشابه كبير في اسم النشاط';
+        } 
+        // Token and fuzzy scoring
+        else {
+          const sim = arabicScore(p.name, cleanInputName);
+          if (sim >= 70) {
+            score = sim;
+            reason = 'تشابه ملحوظ في الكلمات والاسم';
+          }
+        }
+
+        // Area Boost if name is similar and areas match
+        if (score >= 65 && cleanInputArea && p.area && (cleanInputArea === p.area || arabicMatch(cleanInputArea, p.area))) {
+          score = Math.min(score + 10, 98);
+        }
+      }
+
+      if (score > highestScore) {
+        highestScore = score;
+        bestMatch = p;
+        bestReason = reason;
+      }
+    }
+
+    if (highestScore >= 70 && bestMatch) {
+      return { place: bestMatch, score: highestScore, reason: bestReason };
+    }
+    return null;
+  }
+
+  const duplicateSlot = document.getElementById('p-duplicate-suggestion-slot');
+  let duplicateCheckDebounce = null;
+
+  async function triggerDuplicateCheck() {
+    if (isEdit) return;
+    const typedName = (document.getElementById('p-name')?.value || '').trim();
+    const typedPhone = (document.getElementById('p-phone')?.value || '').trim();
+    const typedArea = (document.getElementById('p-area')?.value || '').trim();
+
+    if (typedName.length < 3 && typedPhone.length < 8) {
+      if (duplicateSlot) duplicateSlot.style.display = 'none';
+      _currentDuplicateMatch = null;
+      return;
+    }
+
+    if (!_allPlacesListForDedupe) {
+      try {
+        _allPlacesListForDedupe = await getPublishedPlaces({ limit: 1000 }).catch(() => []);
+      } catch (_) {
+        _allPlacesListForDedupe = [];
+      }
+    }
+
+    const match = findBestSimilarPlace(typedName, typedPhone, typedArea, _allPlacesListForDedupe || []);
+    _currentDuplicateMatch = match;
+
+    if (match && match.score >= 70 && !_ignoredDuplicateIds.has(match.place.id)) {
+      renderDuplicateSuggestion(match.place, match.reason, match.score);
+    } else {
+      if (duplicateSlot) duplicateSlot.style.display = 'none';
+    }
+  }
+
+  function renderDuplicateSuggestion(p, reason, score) {
+    if (!duplicateSlot) return;
+    const targetSlug = p.slug || p.id || p._id;
+    const logoUrl = p.logoUrl || './icons/icon-72x72.png';
+
+    duplicateSlot.innerHTML = `
+      <div class="duplicate-suggestion-card animate-fade-in" style="background:linear-gradient(135deg, #1E293B 0%, #0F172A 100%);border:1.5px solid #F59E0B;border-radius:14px;padding:14px 16px;box-shadow:0 8px 24px rgba(245,158,11,0.18);color:#fff">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="font-size:26px;line-height:1;margin-top:2px">💡</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+              <div style="font-weight:900;color:#FBBF24;font-size:14px;display:flex;align-items:center;gap:6px">
+                <span>هل تقصد هذا المكان؟ (موجود مسبقاً في الدليل)</span>
+              </div>
+              <span class="badge" style="background:#F59E0B;color:#0B1E30;font-size:11px;font-weight:900;padding:2px 8px;border-radius:9999px">
+                ${escHtml(reason)}
+              </span>
+            </div>
+            
+            <p style="font-size:12px;color:#CBD5E1;margin:0 0 10px 0;line-height:1.5">
+              حرصاً على جودة الدليل وتفادي تكرار الأنشطة، وجدنا مكاناً مطابقاً أو مشابهاً جداً في <strong>${escHtml(p.area || 'المنزلة والمطرية')}</strong>:
+            </p>
+
+            <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:10px">
+                <img src="${escAttr(logoUrl)}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.15);background:#fff" onerror="this.src='./icons/icon-72x72.png'" />
+                <div>
+                  <div style="font-weight:800;color:#fff;font-size:14px">
+                    ${escHtml(p.name)} ${p.isVerified ? '<span style="color:#38BDF8;font-size:12px">✓ موثق</span>' : ''}
+                  </div>
+                  <div style="font-size:11.5px;color:#94A3B8;margin-top:2px">
+                    📍 ${escHtml(p.area || 'المنزلة')} • 📁 ${escHtml(p.categoryName || p.categoryId || 'عام')} 
+                    ${p.phone ? `• 📞 <span style="direction:ltr;display:inline-block">${escHtml(p.phone)}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <a href="place.html?slug=${encodeURIComponent(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#0284C7;color:#fff;border:none;border-radius:8px;font-weight:800;padding:6px 12px;display:inline-flex;align-items:center;gap:4px" title="فتح صفحة المكان في نافذة جديدة للتأكد منه">
+                  <span>👁️</span>
+                  <span>عرض المكان للتأكد</span>
+                </a>
+                <button type="button" id="btn-dismiss-duplicate" class="btn btn-xs" style="background:rgba(255,255,255,0.1);color:#CBD5E1;border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:6px 10px;cursor:pointer;font-weight:700">
+                  لا، مكاني نشاط مختلف تماماً
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    duplicateSlot.style.display = 'block';
+
+    document.getElementById('btn-dismiss-duplicate')?.addEventListener('click', () => {
+      _ignoredDuplicateIds.add(p.id);
+      duplicateSlot.style.display = 'none';
+      toast.info('تم تأكيد أن نشاطك مختلف وجديد، يمكنك إكمال البيانات.');
+    });
+  }
+
+  // Bind input events for live duplicate detection
+  if (!isEdit) {
+    const queueDedupeCheck = () => {
+      clearTimeout(duplicateCheckDebounce);
+      duplicateCheckDebounce = setTimeout(triggerDuplicateCheck, 250);
+    };
+
+    document.getElementById('p-name')?.addEventListener('input', queueDedupeCheck);
+    document.getElementById('p-phone')?.addEventListener('input', queueDedupeCheck);
+    document.getElementById('p-area')?.addEventListener('change', queueDedupeCheck);
+    document.getElementById('p-area-search-input')?.addEventListener('input', queueDedupeCheck);
+  }
+
   // Form Submit
   document.getElementById('place-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const saveBtn = document.getElementById('btn-save-place');
     saveBtn.classList.add('loading');
     saveBtn.disabled = true;
+
+    // Safety Interception: Warn user if a high-similarity duplicate exists
+    if (!isEdit && _currentDuplicateMatch && _currentDuplicateMatch.score >= 85 && !_ignoredDuplicateIds.has(_currentDuplicateMatch.place.id)) {
+      const ok = await showConfirm({
+        title: '💡 هل هذا المكان مسجل مسبقاً؟',
+        message: `وجدنا مكاناً في الدليل بنفس الاسم أو رقم الهاتف ("${_currentDuplicateMatch.place.name}" - ${_currentDuplicateMatch.place.area || 'المنزلة'}). لمنع تكرار الأماكن على المنصة، هل أنت متأكد من المتابعة وإضافة هذا المكان كنشاط جديد؟`,
+        confirmLabel: 'نعم، أضف مكاني (مختلف)',
+        cancelLabel: 'تراجع ومراجعة البيانات',
+        confirmType: 'warning',
+        icon: '💡'
+      });
+      if (!ok) {
+        saveBtn.classList.remove('loading');
+        saveBtn.disabled = false;
+        document.getElementById('p-name')?.focus();
+        return;
+      }
+    }
 
     try {
       const rawServices = document.getElementById('p-services')?.value || '';

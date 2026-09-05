@@ -234,7 +234,30 @@ export function onAuthStateChange(callback) {
   });
 }
 
-// ── Private helpers ──
+let _cachedClientIp = null;
+export async function getClientIp() {
+  if (_cachedClientIp) return _cachedClientIp;
+  try {
+    const stored = sessionStorage.getItem('client_ip');
+    if (stored) {
+      _cachedClientIp = stored;
+      return stored;
+    }
+  } catch (_) {}
+
+  try {
+    const res = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.ip) {
+        _cachedClientIp = String(data.ip).trim();
+        try { sessionStorage.setItem('client_ip', _cachedClientIp); } catch (_) {}
+        return _cachedClientIp;
+      }
+    }
+  } catch (_) {}
+  return null;
+}
 
 /**
  * Sync user profile to Firebase RTDB
@@ -251,6 +274,8 @@ async function syncUserProfile(firebaseUser) {
   const isSuper = ADMIN_EMAILS.includes(userEmail);
   const defaultRole = isSuper ? 'superadmin' : 'user';
 
+  const ip = await getClientIp();
+
   if (!snapshot.exists()) {
     // New user — create full profile
     const profile = {
@@ -260,6 +285,8 @@ async function syncUserProfile(firebaseUser) {
       photoURL: firebaseUser.photoURL || '',
       createdAt: now,
       lastLoginAt: now,
+      registrationIp: ip || null,
+      lastIp: ip || null,
       status: 'active',
       role: defaultRole,
       placeIds: {},
@@ -287,6 +314,11 @@ async function syncUserProfile(firebaseUser) {
       name: firebaseUser.displayName || existing.name,
       photoURL: firebaseUser.photoURL || existing.photoURL,
     };
+
+    if (ip) {
+      updates.lastIp = ip;
+      if (!existing.registrationIp) updates.registrationIp = ip;
+    }
 
     if (isSuper && existing.role !== 'superadmin' && existing.role !== 'admin') {
       updates.role = 'superadmin';

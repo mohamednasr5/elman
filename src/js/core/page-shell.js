@@ -5,8 +5,8 @@
  */
 
 import { initFirebase, ensureFirebaseReady } from './firebase.js';
-import { initAuth, onAuthStateChange, signOut, waitForAuth, isAdmin, getCurrentUser } from './auth.js';
-import { getSettings, getUserNotifications } from './db.js';
+import { initAuth, onAuthStateChange, signOut, waitForAuth, isAdmin, getCurrentUser, getClientIp } from './auth.js';
+import { getSettings, getUserNotifications, isIpBanned } from './db.js';
 import { toast } from '../ui/components/Toast.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
 import { initRealtimePwaSyncBus } from '../services/realtime-sync.service.js';
@@ -213,15 +213,15 @@ function _footerHTML() {
           <li><a href="dashboard.html?section=add" class="footer__link">➕ إضافة مكان جديد</a></li>
           <li><a href="dashboard.html"             class="footer__link">📊 لوحة التحكم</a></li>
           <li><a href="search.html"                class="footer__link">🔍 البحث المتقدم</a></li>
-          <li><a href="manzala.html"               class="footer__link" style="color:var(--secondary,#F5A623);font-weight:700">🏛️ عن مدينة المنزلة</a></li>
-          <li><a href="matariya.html"              class="footer__link" style="color:var(--secondary,#F5A623);font-weight:700">⛵ عن مدينة المطرية</a></li>
+          <li><a href="manzala.html"               class="footer__link">🏛️ عن مدينة المنزلة</a></li>
+          <li><a href="matariya.html"              class="footer__link">⛵ عن مدينة المطرية</a></li>
         </ul>
       </div>
       <div>
         <h3 class="footer__col-title">تواصل معنا</h3>
         <ul class="footer__links">
           <li><a href="contact.html"  class="footer__link">📧 تواصل معنا</a></li>
-          <li><a href="legal.html"    class="footer__link" style="color:var(--secondary,#F5A623);font-weight:700">⚖️ قانوني وإخلاء المسؤولية</a></li>
+          <li><a href="legal.html"    class="footer__link">⚖️ قانوني وإخلاء المسؤولية</a></li>
           <li><a href="privacy.html"  class="footer__link">سياسة الخصوصية</a></li>
           <li><a href="terms.html"    class="footer__link">شروط الاستخدام</a></li>
         </ul>
@@ -230,7 +230,7 @@ function _footerHTML() {
     <div class="footer__bottom">
       <p class="footer__copyright">© جميع الأماكن والبيانات والحقوق محفوظة لدليل المنزلة والمطرية الرقمي (${new Date().getFullYear()}).</p>
       <div class="footer__bottom-links">
-        <a href="legal.html"   class="footer__bottom-link" style="color:#F5A623;font-weight:700">قانوني</a>
+        <a href="legal.html"   class="footer__bottom-link">قانوني</a>
         <a href="privacy.html" class="footer__bottom-link">الخصوصية</a>
         <a href="terms.html"   class="footer__bottom-link">الشروط</a>
         <a href="contact.html" class="footer__bottom-link">تواصل</a>
@@ -270,6 +270,9 @@ export async function initPage(activeFile = '') {
   /* 1. Firebase + Auth */
   await ensureFirebaseReady();
   initAuth();
+
+  /* 1.1 Global IP & Account Ban Enforcement */
+  await _enforceBanGuard();
 
   /* 2. Theme setup (Dark / Light) */
   _setupTheme();
@@ -609,9 +612,14 @@ function _setupContentProtection() {
         'color: #EF4444; font-size: 13px; font-weight: 700; line-height: 1.8; font-family: Cairo, Tahoma, sans-serif;'
       );
       console.log(
-        `%cرابط البوابة الرسمية: %chttps://elmanzala.pages.dev`,
+        `%cرابط البوابة الرسمية: %chttps://dalilmanzala.com/`,
         'color: #64748B; font-size: 11px; font-family: Cairo, sans-serif;',
         'color: #0284C7; font-size: 11px; font-weight: 700; text-decoration: underline;'
+      );
+      console.log(
+        `%c💬 للاستفسارات والاقتراحات: %chttps://wa.me/wasendernew`,
+        'color: #64748B; font-size: 11px; font-family: Cairo, sans-serif;',
+        'color: #10B981; font-size: 11px; font-weight: 700; text-decoration: underline;'
       );
     } catch (_) {}
   };
@@ -651,7 +659,7 @@ function _setupContentProtection() {
     }
     e.preventDefault();
     if (e.clipboardData) {
-      e.clipboardData.setData('text/plain', `© جميع الأماكن والبيانات والحقوق محفوظة لدليل المنزلة والمطرية الرقمي (${currentYear}). https://elmanzala.pages.dev`);
+      e.clipboardData.setData('text/plain', `© جميع الأماكن والبيانات والحقوق محفوظة لدليل المنزلة والمطرية الرقمي (${currentYear}). https://dalilmanzala.com/`);
     }
     if (typeof toast !== 'undefined' && toast.warning) {
       toast.warning('⚠️ تم حفظ حقوق الملكية: لا يجوز نسخ أو اقتباس بيانات الدليل.');
@@ -696,3 +704,60 @@ function _setupContentProtection() {
     }
   });
 }
+
+/**
+ * Global IP & Account Ban Enforcement
+ * If user IP or user account is banned/suspended, blocks access completely.
+ */
+async function _enforceBanGuard() {
+  try {
+    const user = getCurrentUser();
+    // Superadmins and admins are never locked out
+    if (user && isAdmin(user)) return;
+
+    // Check account status if logged in
+    if (user && user.status === 'suspended') {
+      _showBannedScreen('تم إيقاف حسابك من قبل إدارة المنصة لمخالفة الشروط.');
+      return;
+    }
+
+    // Check IP
+    const clientIp = await getClientIp();
+    if (clientIp) {
+      const banInfo = await isIpBanned(clientIp);
+      if (banInfo) {
+        const reason = banInfo.reason || 'مخالفة معايير وسياسات المنصة';
+        const untilDate = banInfo.bannedUntil ? new Date(banInfo.bannedUntil).toLocaleDateString('ar-EG') : null;
+        const msg = banInfo.isPermanent 
+          ? `تم حظر عنوان جهازك (${clientIp}) نهائياً من دخول المنصة بسبب: ${reason}`
+          : `تم حظر عنوان جهازك (${clientIp}) حتى ${untilDate} بسبب: ${reason}`;
+        _showBannedScreen(msg);
+      }
+    }
+  } catch (err) {
+    console.debug('[_enforceBanGuard] notice:', err);
+  }
+}
+
+function _showBannedScreen(reasonMessage) {
+  // Wipe body and show locked screen
+  document.body.innerHTML = `
+    <div style="min-height:100vh;background:#06101E;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,sans-serif;direction:rtl;text-align:center">
+      <div style="max-width:540px;background:#0F273D;border:1px solid rgba(239,68,68,0.4);border-radius:20px;padding:36px 24px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
+        <div style="font-size:64px;margin-bottom:16px">🚫</div>
+        <h1 style="color:#EF4444;font-size:1.8rem;margin-bottom:12px;font-weight:900">تم حظر الوصول إلى المنصة</h1>
+        <p style="color:rgba(255,255,255,0.85);font-size:15px;line-height:1.7;margin-bottom:24px;background:rgba(239,68,68,0.1);padding:14px;border-radius:12px;border:1px dashed rgba(239,68,68,0.3)">
+          ${reasonMessage}
+        </p>
+        <div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.6;margin-bottom:24px">
+          دليل المنزلة والمطرية الرقمي يلتزم بحماية مستخدميه والحفاظ على نزاهة وأمان المجتمع المحلي. إذا كنت ترى أن هذا الإجراء تم بالخطأ، يمكنك التواصل مع الإدارة.
+        </div>
+        <a href="https://wa.me/wasendernew" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#000;font-weight:800;padding:12px 24px;border-radius:12px;text-decoration:none">
+          <span>💬</span>
+          <span>التواصل مع الدعم الفني عبر واتساب</span>
+        </a>
+      </div>
+    </div>
+  `;
+}
+
