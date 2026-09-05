@@ -428,6 +428,25 @@ try {
     }
   }
 
+  // ── D1: Delete Reviews (DELETE /api/reviews) ───────────────────
+  if (url.pathname === '/api/reviews' && request.method === 'DELETE') {
+    const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || '').trim();
+    const reviewId = (url.searchParams.get('id') || url.searchParams.get('review_id') || '').trim();
+
+    try {
+      if (reviewId) {
+        await env.DB.prepare(`DELETE FROM reviews WHERE id = ?`).bind(reviewId).run();
+      } else if (placeId) {
+        await env.DB.prepare(`DELETE FROM reviews WHERE place_id = ?`).bind(placeId).run();
+      } else {
+        return jsonResponse({ error: 'مطلوب id أو place_id لحذف المراجعات' }, 400, corsHeaders);
+      }
+      return jsonResponse({ success: true, message: 'تم حذف التقييمات بنجاح' }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
   // ── D1: FCM Token Registration (POST /api/fcm/token) ───────────
   if (url.pathname === '/api/fcm/token' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));

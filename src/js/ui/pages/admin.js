@@ -1742,6 +1742,9 @@ async function renderAdminReviews($container) {
           <button type="button" class="btn btn-sm btn-danger" id="btn-delete-selected-reviews" style="font-size:12px;padding:5px 14px;border-radius:8px;display:none;font-weight:700">
             <span>🗑️</span> حذف المحدد (<span id="btn-delete-count">0</span>)
           </button>
+          <button type="button" class="btn btn-sm btn-danger" id="btn-delete-place-all-reviews" style="font-size:12px;padding:5px 14px;border-radius:8px;display:none;font-weight:700;background:#DC2626;border-color:#DC2626">
+            <span>💥</span> حذف كل تعليقات هذا المكان (<span id="btn-delete-place-count">0</span>)
+          </button>
           <button type="button" class="btn btn-sm" id="btn-delete-filtered-negative" style="font-size:12px;padding:5px 14px;border-radius:8px;color:#EF4444;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08)">
             <span>⚠️</span> حذف كل السلبي (1-2 نجوم)
           </button>
@@ -1995,6 +1998,19 @@ async function renderAdminReviews($container) {
     bindRowEvents(tbody);
     updateBulkSelectionUI();
 
+    // Update place-specific bulk delete button visibility and count
+    const placeBtn = document.getElementById('btn-delete-place-all-reviews');
+    const placeCountSpan = document.getElementById('btn-delete-place-count');
+    if (placeBtn && placeCountSpan) {
+      if (placeFilter) {
+        const placeReviewsTotal = allReviews.filter(r => r.placeId === placeFilter);
+        placeCountSpan.textContent = placeReviewsTotal.length;
+        placeBtn.style.display = placeReviewsTotal.length > 0 ? 'inline-flex' : 'none';
+      } else {
+        placeBtn.style.display = 'none';
+      }
+    }
+
     if (loadMoreWrap) {
       loadMoreWrap.style.display = displayedCount < currentFilteredReviews.length ? 'block' : 'none';
     }
@@ -2019,7 +2035,7 @@ async function renderAdminReviews($container) {
   document.getElementById('admin-reviews-filter-place')?.addEventListener('change', triggerFilteredRender);
   document.getElementById('admin-reviews-filter-stars')?.addEventListener('change', triggerFilteredRender);
 
-  // Bulk Master Selection
+  // Bulk Master Selection (select all currently displayed checkboxes)
   const handleSelectAll = (checked) => {
     document.querySelectorAll('.admin-review-checkbox').forEach(cb => {
       cb.checked = checked;
@@ -2030,26 +2046,114 @@ async function renderAdminReviews($container) {
   document.getElementById('admin-reviews-select-all')?.addEventListener('change', (e) => handleSelectAll(e.target.checked));
   document.getElementById('admin-reviews-th-select-all')?.addEventListener('change', (e) => handleSelectAll(e.target.checked));
 
-  // Bulk Delete Actions
+  // 1. Bulk Delete Checked Reviews
   document.getElementById('btn-delete-selected-reviews')?.addEventListener('click', async () => {
     const checked = Array.from(document.querySelectorAll('.admin-review-checkbox:checked'));
     if (checked.length === 0) return;
     const ok = await showConfirm({
       title: 'حذف التقييمات المحددة',
-      message: `هل أنت متأكد من رغبتك في حذف ${checked.length} تقييم محدد؟`,
+      message: `هل أنت متأكد من رغبتك في حذف ${checked.length} تقييم محدد؟ لا يمكن التراجع عن هذا الإجراء.`,
       confirmText: 'نعم، حذف الكل',
       cancelText: 'إلغاء'
     });
     if (ok) {
       try {
-        for (const cb of checked) {
-          await adminDeleteReview(cb.getAttribute('data-pid'), cb.getAttribute('data-rid'));
-        }
+        const reviewsToDelete = checked.map(cb => ({
+          placeId: cb.getAttribute('data-pid'),
+          id: cb.getAttribute('data-rid')
+        }));
+        await adminBulkDeleteReviews(reviewsToDelete);
         toast.success(`تم حذف ${checked.length} تقييم بنجاح`);
         adminCache.reviews = null;
         await renderAdminReviews($container);
       } catch (err) {
         toast.error('حدث خطأ أثناء الحذف');
+      }
+    }
+  });
+
+  // 2. Bulk Delete All Reviews for the Selected Place
+  document.getElementById('btn-delete-place-all-reviews')?.addEventListener('click', async () => {
+    const placeFilter = document.getElementById('admin-reviews-filter-place')?.value;
+    if (!placeFilter) return;
+
+    const placeObj = adminCache.places?.[placeFilter];
+    const placeName = placeObj?.name || 'المكان المحدد';
+    const placeReviews = allReviews.filter(r => r.placeId === placeFilter);
+
+    if (placeReviews.length === 0) {
+      toast.info('لا توجد تعليقات لهذا المكان لحذفها');
+      return;
+    }
+
+    const ok = await showConfirm({
+      title: 'حذف كل تعليقات هذا المكان',
+      message: `تحذير: هل أنت متأكد تماماً من حذف جميع تعليقات (${placeName}) بالكامل بعدد (${placeReviews.length}) تعليق ومراجعة؟\n\nسيتم حذفها من قاعدة البيانات وتحديث تقييم المكان فوراً.`,
+      confirmText: 'نعم، احذف كل تعليقات المكان',
+      cancelText: 'إلغاء'
+    });
+
+    if (ok) {
+      try {
+        await adminBulkDeleteReviews(placeReviews);
+        toast.success(`تم حذف جميع تعليقات (${placeName}) بنجاح (${placeReviews.length} تعليق)`);
+        adminCache.reviews = null;
+        await renderAdminReviews($container);
+      } catch (err) {
+        toast.error('حدث خطأ أثناء حذف تعليقات المكان');
+      }
+    }
+  });
+
+  // 3. Bulk Delete Filtered Negative Reviews (1-2 Stars)
+  document.getElementById('btn-delete-filtered-negative')?.addEventListener('click', async () => {
+    const negativeReviews = currentFilteredReviews.filter(r => (Number(r.rating) || 5) <= 2);
+    if (negativeReviews.length === 0) {
+      toast.info('لا توجد تقييمات سلبية (1-2 نجوم) ضمن النتائج المعروضة حالياً');
+      return;
+    }
+
+    const ok = await showConfirm({
+      title: 'حذف التقييمات السلبية',
+      message: `هل أنت متأكد من حذف (${negativeReviews.length}) تقييم سلبي (1-2 نجوم) من النتائج المعروضة حالياً؟`,
+      confirmText: 'نعم، حذف السلبي',
+      cancelText: 'إلغاء'
+    });
+
+    if (ok) {
+      try {
+        await adminBulkDeleteReviews(negativeReviews);
+        toast.success(`تم حذف ${negativeReviews.length} تقييم سلبي بنجاح`);
+        adminCache.reviews = null;
+        await renderAdminReviews($container);
+      } catch (err) {
+        toast.error('حدث خطأ أثناء حذف التقييمات السلبية');
+      }
+    }
+  });
+
+  // 4. Bulk Delete All Currently Displayed/Filtered Reviews
+  document.getElementById('btn-delete-all-filtered')?.addEventListener('click', async () => {
+    if (currentFilteredReviews.length === 0) {
+      toast.info('لا توجد مراجعات معروضة حالياً لحذفها');
+      return;
+    }
+
+    const ok = await showConfirm({
+      title: 'حذف المراجعات المعروضة بالكامل',
+      message: `تحذير: هل أنت متأكد من رغبتك في حذف جميع المراجعات المطابقة للفلاتر المعروضة حالياً بعدد (${currentFilteredReviews.length}) مراجعة؟`,
+      confirmText: 'نعم، حذف المعروض بالكامل',
+      cancelText: 'إلغاء'
+    });
+
+    if (ok) {
+      try {
+        await adminBulkDeleteReviews(currentFilteredReviews);
+        toast.success(`تم حذف ${currentFilteredReviews.length} مراجعة بنجاح`);
+        adminCache.reviews = null;
+        await renderAdminReviews($container);
+      } catch (err) {
+        toast.error('حدث خطأ أثناء الحذف الشامل');
       }
     }
   });

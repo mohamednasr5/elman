@@ -2010,6 +2010,16 @@ export async function adminUpdateReview(placeId, reviewId, { rating, comment }) 
 /** Admin: Delete single review */
 export async function adminDeleteReview(placeId, reviewId) {
   if (!placeId || !reviewId) throw new Error('المكان والتقييم مطلوبان');
+
+  // 1. Delete from D1 via Worker
+  try {
+    fetch(`${WORKER_URL}/api/reviews?id=${encodeURIComponent(reviewId)}`, {
+      method: 'DELETE',
+      signal: AbortSignal.timeout(4000)
+    }).catch(() => {});
+  } catch (_) {}
+
+  // 2. Remove from RTDB & recalculate
   await dbRemove(`places/${placeId}/reviews/${reviewId}`);
   await recalculatePlaceRating(placeId);
 }
@@ -2030,6 +2040,14 @@ export async function adminBulkDeleteReviews(reviewsList = []) {
 
   let deletedCount = 0;
   for (const [placeId, rIds] of Object.entries(placeMap)) {
+    // Delete from D1
+    try {
+      fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(placeId)}`, {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(5000)
+      }).catch(() => {});
+    } catch (_) {}
+
     const CHUNK_SIZE = 500;
     for (let i = 0; i < rIds.length; i += CHUNK_SIZE) {
       const chunk = rIds.slice(i, i + CHUNK_SIZE);

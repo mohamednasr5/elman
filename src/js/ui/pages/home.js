@@ -14,6 +14,7 @@ import { getCurrentUser } from '../../core/auth.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
 import { mountLivePulseSection } from '../components/LivePulseSection.js';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
+import { executeFastSearch } from '../../services/search-engine.service.js';
 
 const CATEGORY_EMOJIS = {
   'pharmacy':      { emoji: '💊', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
@@ -538,8 +539,14 @@ function setupStatsBarCounter(bar) {
 }
 
 function setupHeroSearch(categories) {
+  const container = document.getElementById('hero-search-glow-wrap');
   const input = document.getElementById('hero-search-input');
   const btn = document.getElementById('hero-search-btn');
+  const clearBtn = document.getElementById('hero-search-clear');
+  const dropdown = document.getElementById('hero-live-dropdown');
+  const resultsList = document.getElementById('hero-live-list');
+  const countBadge = document.getElementById('hero-live-count');
+  const allBtn = document.getElementById('hero-live-all-btn');
 
   if (!input) return;
 
@@ -560,8 +567,125 @@ function setupHeroSearch(categories) {
     if (q) window.location.href = `search.html?q=${encodeURIComponent(q)}`;
   }
 
-  btn?.addEventListener('click', doSearch);
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+  btn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    doSearch();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      doSearch();
+    } else if (e.key === 'Escape') {
+      dropdown?.classList.remove('visible');
+    }
+  });
+
+  clearBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    input.value = '';
+    clearBtn.classList.remove('visible');
+    dropdown?.classList.remove('visible');
+    if (resultsList) resultsList.innerHTML = '';
+    input.focus();
+  });
+
+  input.addEventListener('focus', () => {
+    if (input.value.trim().length >= 1 && resultsList?.children.length > 0) {
+      dropdown?.classList.add('visible');
+    }
+  });
+
+  let debounceTimer = null;
+  let activeSearchReq = 0;
+
+  // ⚡ Live Search as user types in hero search
+  input.addEventListener('input', () => {
+    const query = input.value.trim();
+    clearBtn?.classList.toggle('visible', query.length > 0);
+
+    if (allBtn) {
+      allBtn.href = `search.html?q=${encodeURIComponent(query)}`;
+    }
+
+    if (!query) {
+      dropdown?.classList.remove('visible');
+      if (resultsList) resultsList.innerHTML = '';
+      return;
+    }
+
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      const currentReq = ++activeSearchReq;
+      try {
+        const results = await executeFastSearch(query, { limit: 6 });
+        if (currentReq !== activeSearchReq) return; // Discard stale response
+
+        if (!dropdown || !resultsList) return;
+
+        if (!results || results.length === 0) {
+          countBadge && (countBadge.textContent = '0');
+          resultsList.innerHTML = `
+            <div class="hero-live-empty">
+              <div class="hero-live-empty__icon">🔍</div>
+              <div class="hero-live-empty__title">لم يتم العثور على أماكن مطابقة</div>
+              <div class="hero-live-empty__desc">جرب كلمة أخرى مثل (صيدلية، دكتور، مطعم، نجار)</div>
+            </div>
+          `;
+          dropdown.classList.add('visible');
+          return;
+        }
+
+        countBadge && (countBadge.textContent = String(results.length));
+
+        resultsList.innerHTML = results.map(doc => {
+          const p = doc.raw || doc;
+          const name = p.name || 'مكان بالدليل';
+          const cat = p.categoryName || doc.category || '';
+          const area = p.area || p.address || 'مدينة المنزلة';
+          const slug = p.slug || p.id || '';
+          const photo = p.photoURL || p.logo || p.coverURL || '';
+          const isVerified = p.isVerified || false;
+          const isOpen = p.isOpen !== undefined ? p.isOpen : true;
+          const letter = (name.trim()[0] || 'م').toUpperCase();
+
+          return `
+            <a href="place.html?slug=${encodeURIComponent(slug)}" class="hero-live-dropdown__item" role="option">
+              <div class="hero-live-avatar">
+                ${photo
+                  ? `<img src="${escAttr(photo)}" alt="${escAttr(name)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'hero-live-avatar-fallback\\'>${letter}</div>'"/>`
+                  : `<div class="hero-live-avatar-fallback">${letter}</div>`
+                }
+              </div>
+              <div class="hero-live-content">
+                <div class="hero-live-title-row">
+                  <span class="hero-live-name">${escHtml(name)}</span>
+                  ${isVerified ? '<span class="hero-live-verified" title="مكان موثق">✓</span>' : ''}
+                </div>
+                <div class="hero-live-meta-row">
+                  ${cat ? `<span class="hero-live-cat">${escHtml(cat)}</span>` : ''}
+                  <span class="hero-live-area">${escHtml(area)}</span>
+                  <span class="${isOpen ? 'hero-live-status-open' : 'hero-live-status-closed'}">
+                    ${isOpen ? 'مفتوح الآن' : 'مغلق'}
+                  </span>
+                </div>
+              </div>
+            </a>
+          `;
+        }).join('');
+
+        dropdown.classList.add('visible');
+      } catch (err) {
+        console.warn('[HeroLiveSearch] error:', err);
+      }
+    }, 120);
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!container?.contains(e.target)) {
+      dropdown?.classList.remove('visible');
+    }
+  });
 
   // Initialize Smart Voice Search
   mountVoiceSearchButton({
@@ -809,19 +933,42 @@ function getHomeHTML() {
           دليلك الرقمي الشامل لجميع الأماكن، المحلات، الأطباء والعيادات، والمهن والحرفيين (سباك، نجار، مبلط، كهربائي، نقاش) في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، وميت شريف.
         </p>
 
-        <!-- Search Box -->
+        <!-- Search Box (Luxury Pill + Animated Blue Glow + Instant Live Results) -->
         <div class="hero__search">
-          <div class="hero-search" role="search">
-            <input
-              type="search"
-              id="hero-search-input"
-              class="hero-search__input"
-              placeholder="ابحث: سباك، دكتور، صيدلية، مطعم في المنزلة، المطرية، القرى..."
-              autocomplete="off"
-            />
-            <button class="hero-search__btn" id="hero-search-btn" aria-label="بحث">
-              <span>🔍</span> بحث
-            </button>
+          <div class="hero-search-glow-wrap" id="hero-search-glow-wrap">
+            <div class="hero-search-glow-border" aria-hidden="true"></div>
+            <div class="hero-search-pill" id="hero-search-pill" role="search">
+              <button class="hero-search-btn-trigger" id="hero-search-btn" aria-label="بحث في الدليل" title="بحث في الدليل">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </button>
+              <input
+                type="search"
+                id="hero-search-input"
+                class="hero-search-pill-input"
+                placeholder="ابحث: سباك، دكتور، صيدلية، مطعم في المنزلة، المطرية، القرى..."
+                autocomplete="off"
+                aria-label="ابحث في دليل المنزلة والمطرية"
+              />
+              <button type="button" class="hero-search-clear-btn" id="hero-search-clear" aria-label="مسح البحث" title="مسح">✕</button>
+            </div>
+
+            <!-- Hero Floating Live Results Dropdown -->
+            <div class="hero-live-dropdown" id="hero-live-dropdown" aria-live="polite">
+              <div class="hero-live-dropdown__header">
+                <span>⚡ نتائج بحث فورية في المنزلة والمطرية:</span>
+                <span class="hero-live-dropdown__count" id="hero-live-count">0</span>
+              </div>
+              <div class="hero-live-dropdown__list" id="hero-live-list"></div>
+              <div class="hero-live-dropdown__footer">
+                <a href="search.html" class="hero-live-dropdown__all-btn" id="hero-live-all-btn">
+                  <span>عرض كافة النتائج في صفحة البحث المتقدم</span>
+                  <span>←</span>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
