@@ -259,44 +259,73 @@
   z-index: 100;
 }
 
-/* Luxury Glowing Outer Border (متصل انيميشن أزرق ينور ويدور) */
+/* Luxury Glowing Border Tracing Animation (مستطيل أزرق ينور ويدور بالضبط على إطار البحث) */
 .hero-search-glow-wrap {
   position: relative;
   border-radius: 9999px;
   padding: 3px;
   background: transparent;
+  overflow: visible;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* 1. Concentrated Traveling Neon Blue Beam (شعاع أزرق فاقع يدور على الحافة بالضبط) */
 .hero-search-glow-border {
   position: absolute;
-  inset: -2px;
+  inset: -2.5px;
+  border-radius: 9999px;
+  padding: 3px;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg,
+    transparent 200deg,
+    rgba(2, 132, 199, 0.2) 240deg,
+    rgba(14, 165, 233, 0.6) 280deg,
+    #38BDF8 320deg,
+    #67E8F9 350deg,
+    #FFFFFF 360deg
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: rotateBorderNeon 3s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 2. Soft Glowing Aura behind the border (الهالة الضوئية الزرقاء المضيئة حول الإطار) */
+.hero-search-glow-border::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
   border-radius: 9999px;
   background: conic-gradient(
     from 0deg at 50% 50%,
-    #0284C7 0deg,
-    #38BDF8 60deg,
-    #60A5FA 120deg,
-    #2563EB 180deg,
-    #38BDF8 240deg,
-    #0284C7 300deg,
-    #0EA5E9 360deg
+    transparent 0deg,
+    transparent 220deg,
+    rgba(2, 132, 199, 0.4) 270deg,
+    #0284C7 310deg,
+    #38BDF8 345deg,
+    #67E8F9 360deg
   );
-  animation: rotateBlueGlow 4s linear infinite;
-  filter: blur(8px);
-  opacity: 0.85;
-  z-index: 0;
-  transition: opacity 0.3s ease, filter 0.3s ease;
+  filter: blur(10px);
+  opacity: 0.9;
+  z-index: -1;
+  animation: inherit;
 }
 
 .hero-search-glow-wrap:hover .hero-search-glow-border,
 .hero-search-glow-wrap:focus-within .hero-search-glow-border {
-  opacity: 1;
-  filter: blur(12px);
-  animation-duration: 2.2s;
+  animation-duration: 1.8s;
 }
 
-@keyframes rotateBlueGlow {
+.hero-search-glow-wrap:hover .hero-search-glow-border::after,
+.hero-search-glow-wrap:focus-within .hero-search-glow-border::after {
+  filter: blur(14px);
+  opacity: 1;
+}
+
+@keyframes rotateBorderNeon {
   0% {
     transform: rotate(0deg);
   }
@@ -312,17 +341,17 @@
   display: flex;
   align-items: center;
   background: #FFFFFF;
-  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  border: 2px solid rgba(2, 132, 199, 0.18);
   border-radius: 9999px;
   height: 54px;
   padding: 4px 6px 4px 10px;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.22), 0 2px 10px rgba(2, 132, 199, 0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 0 15px rgba(2, 132, 199, 0.12);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme="dark"] .hero-search-pill {
   background: #0F1D2F;
-  border-color: rgba(56, 189, 248, 0.3);
+  border-color: rgba(56, 189, 248, 0.25);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
 }
 
