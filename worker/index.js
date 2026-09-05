@@ -22,11 +22,104 @@ export default {
     };
 
     // Preflight OPTIONS
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+ if (request.method === 'OPTIONS') {
+  return new Response(null, { headers: corsHeaders });
+}
+
+try {
+
+  // ── D1: Get Places ─────────────────────────────────────────────
+  // GET /api/places
+  if (url.pathname === '/api/places' && request.method === 'GET') {
+    const slugParam = (url.searchParams.get('slug') || url.searchParams.get('id') || '').trim();
+    if (slugParam) {
+      const result = await env.DB.prepare(`
+        SELECT *
+        FROM places
+        WHERE slug = ? OR id = ?
+        LIMIT 1
+      `).bind(slugParam, slugParam).first();
+
+      if (result) {
+        const place = {
+          ...result,
+          services: parseJson(result.services_json, []),
+          social: parseJson(result.social_json, {}),
+          stats: parseJson(result.stats_json, {}),
+          working_hours: parseJson(result.working_hours_json, {}),
+          is_verified: Boolean(result.is_verified)
+        };
+        return jsonResponse({ success: true, data: place }, 200, corsHeaders);
+      }
+      return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
     }
 
-    try {
+    const limitParam = parseInt(url.searchParams.get('limit') || '50', 10);
+    const offsetParam = parseInt(url.searchParams.get('offset') || '0', 10);
+
+    const limit = Math.min(Math.max(limitParam, 1), 100);
+    const offset = Math.max(offsetParam, 0);
+
+    const result = await env.DB.prepare(`
+      SELECT
+        id,
+        name,
+        name_en,
+        slug,
+        category_id,
+        subcategory_id,
+        custom_category,
+        address,
+        area,
+        phone,
+        whatsapp,
+        maps_link,
+        latitude,
+        longitude,
+        description,
+        logo_url,
+        cover_image_url,
+        owner_id,
+        owner_email,
+        status,
+        is_verified,
+        verification_status,
+        offer_count,
+        product_count,
+        services_json,
+        social_json,
+        stats_json,
+        working_hours_json,
+        created_at,
+        updated_at
+      FROM places
+      ORDER BY updated_at DESC, created_at DESC
+      LIMIT ? OFFSET ?
+    `)
+      .bind(limit, offset)
+      .all();
+
+    const places = (result.results || []).map(place => ({
+      ...place,
+      services: parseJson(place.services_json, []),
+      social: parseJson(place.social_json, {}),
+      stats: parseJson(place.stats_json, {}),
+      working_hours: parseJson(place.working_hours_json, {}),
+      is_verified: Boolean(place.is_verified)
+    }));
+
+    return jsonResponse({
+      success: true,
+      data: places,
+      pagination: {
+        limit,
+        offset,
+        returned: places.length
+      }
+    }, 200, corsHeaders);
+  }
+
+  // ── 1. Upload to R2 (POST /api/upload) ──
       // ── 1. Upload to R2 (POST /api/upload) ──
       if (url.pathname === '/api/upload' && request.method === 'POST') {
         const formData = await request.formData();
@@ -473,116 +566,232 @@ function jsonResponse(data, status = 200, headers = {}) {
  */
 async function handleDynamicOpenGraph(slug, request, env) {
   const cleanSlug = decodeURIComponent(slug || '').trim();
-  const userAgent = request.headers.get('User-Agent') || '';
-  const isCrawler = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Discordbot|SkypeUriPreview|Googlebot|bingbot|Baiduspider|YandexBot/i.test(userAgent);
 
-  let place = null;
+  if (!cleanSlug) {
+    return new Response('Missing slug', {
+      status: 400,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    });
+  }
+
   const canonicalBase = 'https://dalilmanzala.com';
 
-  // Seeded fallback for Mohamed Hammad
-  if (cleanSlug.includes('mhmd-hmad') || cleanSlug.includes('hammad') || cleanSlug.includes('5lQJ1o')) {
-    place = {
-      name: 'مهندس محمد حماد — ذكاء اصطناعي وبرمجة وإعلانات',
-      description: 'مهندس محمد حماد متخصص في الذكاء الاصطناعي، تطوير المواقع والمتاجر الإلكترونية، وحملات التسويق الرقمي الاحترافية في المنزلة والدقهلية.',
-      coverImageUrl: 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/hammad-cover.webp',
-      logoUrl: 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/hammad-logo.webp',
-      slug: 'mhnds-mhmd-hmad',
-      area: 'المنزلة، محافظة الدقهلية'
-    };
-  }
+  let place = null;
 
-  // Fetch from Firebase RTDB
+  // ============================================================
+  // 1. البحث عن المكان في Cloudflare D1
+  // ============================================================
   try {
-    const rtdbRes = await fetch('https://elmanzla-default-rtdb.firebaseio.com/places.json');
-    if (rtdbRes.ok) {
-      const allPlaces = await rtdbRes.json();
-      const lowerSlug = cleanSlug.toLowerCase();
-      const normSlug = lowerSlug.replace(/[-_\s]+/g, '');
+    const result = await env.DB.prepare(`
+      SELECT *
+      FROM places
+      WHERE slug = ?
+      LIMIT 1
+    `).bind(cleanSlug).first();
 
-      for (const [key, p] of Object.entries(allPlaces || {})) {
-        if (!p) continue;
-        const pSlug = (p.slug || '').toLowerCase();
-        const pNormSlug = pSlug.replace(/[-_\s]+/g, '');
-        const pBaseSlug = pSlug.replace(/-[a-z0-9]{4,8}$/i, '');
-        const pName = (p.name || '').toLowerCase();
-        const pNormName = pName.replace(/[-_\s]+/g, '');
-
-        if (
-          pSlug === lowerSlug ||
-          pNormSlug === normSlug ||
-          pBaseSlug === lowerSlug ||
-          key === cleanSlug ||
-          p.id === cleanSlug ||
-          (normSlug && pNormSlug.includes(normSlug)) ||
-          (normSlug && pNormName.includes(normSlug)) ||
-          (cleanSlug && pName.includes(cleanSlug))
-        ) {
-          place = { id: key, ...p };
-          break;
-        }
-      }
+    if (result) {
+      place = result;
     }
-  } catch (_) {}
-
-  const rawPlaceName = place?.name || 'تفاصيل ومواعيد وأرقام التواصل';
-  const fullShareTitle = `${rawPlaceName} | دليل المنزلة والمطرية الرقمي`;
-  const placeDesc = place?.description || `تعرف على مواعيد وأرقام تواصل وعنوان وخدمات ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`;
-  const placeImg = place?.coverImageUrl || place?.logoUrl || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
-  const placeTargetSlug = place?.slug || cleanSlug;
-  const destinationUrl = `${canonicalBase}/${encodeURIComponent(placeTargetSlug)}`;
-
-  // If real user (not crawler), redirect instantly
-  if (!isCrawler) {
-    return Response.redirect(destinationUrl, 302);
+  } catch (err) {
+    console.error('[OG] D1 lookup error:', err);
   }
 
-  // If social crawler (Facebook, WhatsApp, Twitter, Telegram, etc.), return HTML with rich OpenGraph tags
-  const html = `<!DOCTYPE html>
+  // ============================================================
+  // 2. محاولة البحث بالـ ID إذا لم نجد الـ slug
+  // ============================================================
+  if (!place) {
+    try {
+      const result = await env.DB.prepare(`
+        SELECT *
+        FROM places
+        WHERE id = ?
+        LIMIT 1
+      `).bind(cleanSlug).first();
+
+      if (result) {
+        place = result;
+      }
+    } catch (err) {
+      console.error('[OG] D1 ID lookup error:', err);
+    }
+  }
+
+  // ============================================================
+  // 3. إذا لم يوجد المكان
+  // ============================================================
+  if (!place) {
+    return new Response(
+      `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="robots" content="noindex">
+  <title>المكان غير موجود | دليل المنزلة والمطرية الرقمي</title>
+</head>
+<body>
+  <h1>المكان غير موجود</h1>
+  <p>لم يتم العثور على هذا المكان في دليل المنزلة والمطرية الرقمي.</p>
+</body>
+</html>`,
+      {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=300'
+        }
+      }
+    );
+  }
+
+  // ============================================================
+  // 4. بيانات المكان
+  // ============================================================
+  const rawPlaceName =
+    place.name ||
+    'تفاصيل ومواعيد وأرقام التواصل';
+
+  const fullShareTitle =
+    `${rawPlaceName} | دليل المنزلة والمطرية الرقمي`;
+
+  const placeDesc =
+    place.description ||
+    `تعرف على عنوان ومواعيد وخدمات وأرقام التواصل الخاصة بـ ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`;
+
+  const placeImg =
+    place.cover_image_url ||
+    place.logo_url ||
+    'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
+
+  const placeTargetSlug =
+    place.slug ||
+    cleanSlug;
+
+  // ============================================================
+  // 5. الرابط القانوني للمشاركة
+  // ============================================================
+  const shareUrl =
+    `${canonicalBase}/p/${encodeURIComponent(placeTargetSlug)}`;
+
+  // ============================================================
+  // 6. صفحة المكان الحقيقية على GitHub Pages
+  // ============================================================
+  const destinationUrl =
+  `${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`;
+
+const userAgent = request.headers.get('user-agent') || '';
+
+const isCrawler =
+  /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|googlebot|bingbot|slackbot|discordbot/i.test(userAgent);
+
+// ============================================================
+// 7. Open Graph HTML
+// ============================================================
+const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
   <title>${escapeHtml(fullShareTitle)}</title>
-  
+
   <!-- Primary Meta Tags -->
-  <meta name="title" content="${escapeHtml(fullShareTitle)}" />
-  <meta name="description" content="${escapeHtml(placeDesc)}" />
+  <meta name="title"
+        content="${escapeHtml(fullShareTitle)}">
+
+  <meta name="description"
+        content="${escapeHtml(placeDesc)}">
+
+  <!-- Canonical -->
+  <link rel="canonical"
+        href="${escapeHtml(shareUrl)}">
 
   <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="${destinationUrl}" />
-  <meta property="og:title" content="${escapeHtml(fullShareTitle)}" />
-  <meta property="og:description" content="${escapeHtml(placeDesc)}" />
-  <meta property="og:image" content="${escapeHtml(placeImg)}" />
-  <meta property="og:image:secure_url" content="${escapeHtml(placeImg)}" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي" />
-  <meta property="og:locale" content="ar_EG" />
+  <meta property="og:type"
+        content="business.business">
 
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="${destinationUrl}" />
-  <meta name="twitter:title" content="${escapeHtml(fullShareTitle)}" />
-  <meta name="twitter:description" content="${escapeHtml(placeDesc)}" />
-  <meta name="twitter:image" content="${escapeHtml(placeImg)}" />
+  <meta property="og:url"
+        content="${escapeHtml(shareUrl)}">
 
-  <!-- Instant Browser Redirect -->
-  <meta http-equiv="refresh" content="0;url=${destinationUrl}" />
-  <script>window.location.replace("${destinationUrl}");</script>
+  <meta property="og:title"
+        content="${escapeHtml(fullShareTitle)}">
+
+  <meta property="og:description"
+        content="${escapeHtml(placeDesc)}">
+
+  <meta property="og:image"
+        content="${escapeHtml(placeImg)}">
+
+  <meta property="og:image:secure_url"
+        content="${escapeHtml(placeImg)}">
+
+  <meta property="og:image:type"
+        content="image/jpeg">
+
+  <meta property="og:image:width"
+        content="1200">
+
+  <meta property="og:image:height"
+        content="630">
+
+  <meta property="og:site_name"
+        content="دليل المنزلة والمطرية الرقمي">
+
+  <meta property="og:locale"
+        content="ar_EG">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card"
+        content="summary_large_image">
+
+  <meta name="twitter:url"
+        content="${escapeHtml(shareUrl)}">
+
+  <meta name="twitter:title"
+        content="${escapeHtml(fullShareTitle)}">
+
+  <meta name="twitter:description"
+        content="${escapeHtml(placeDesc)}">
+
+  <meta name="twitter:image"
+        content="${escapeHtml(placeImg)}">
 </head>
-<body style="font-family:sans-serif;text-align:center;padding:2rem;direction:rtl">
-  <h2>${escapeHtml(fullShareTitle)}</h2>
-  <p>جاري تحويلك إلى صفحة المكان في دليل المنزلة والمطرية الرقمي...</p>
-  <a href="${destinationUrl}">اضغط هنا إذا لم يتم تحويلك تلقائياً</a>
+
+<body style="
+  font-family:Arial,sans-serif;
+  text-align:center;
+  padding:40px;
+  direction:rtl;
+">
+
+  <h1>${escapeHtml(rawPlaceName)}</h1>
+
+  <p>
+    جاري تحويلك إلى صفحة المكان...
+  </p>
+
+  <p>
+    <a href="${escapeHtml(destinationUrl)}">
+      اضغط هنا للانتقال إلى صفحة المكان
+    </a>
+  </p>
+
 </body>
 </html>`;
-
+if (!isCrawler) {
+  return Response.redirect(destinationUrl, 302);
+}
   return new Response(html, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600'
+
+      // مهم جدًا حتى لا يحتفظ Facebook/Cloudflare
+      // بنتيجة قديمة أثناء الاختبار
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+
+      'X-Content-Type-Options': 'nosniff'
     }
   });
 }
@@ -591,4 +800,14 @@ function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+function parseJson(value, fallback) {
+  if (!value) return fallback;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
 

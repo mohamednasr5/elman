@@ -13,6 +13,7 @@ import { initRealtimePwaSyncBus } from '../services/realtime-sync.service.js';
 import { initLiveNotificationSubscriber, updateAllNotificationBadges } from '../services/notification.service.js';
 import { initFcmMessaging } from '../services/fcm.service.js';
 import { initUniversalMobileTouchTooltips } from '../utils/mobile-tooltip.js';
+import { executeFastSearch } from '../services/search-engine.service.js';
 
 /* ─────────────────────────────────────────────────────────
    HTML BUILDERS
@@ -37,11 +38,34 @@ function _headerHTML(active) {
       </div>
     </a>
 
-    <div class="header__search" role="search">
-      <input type="search" id="header-search-input" class="header__search-input"
-             placeholder="ابحث في المنزلة والمطرية والقرى المجاورة..."
-             autocomplete="off" aria-label="بحث في الدليل"/>
-      <span class="header__search-icon" aria-hidden="true">🔍</span>
+    <div class="header-search-expandable" id="header-search-container" role="search">
+      <div class="header-search-pill" id="header-search-pill">
+        <button type="button" class="header-search-btn-trigger" id="header-search-trigger" aria-label="بحث في الدليل" title="بحث سريع في المنزلة والمطرية">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <input type="search" id="header-search-input" class="header-search-input"
+               placeholder="ابحث عن مكان، دكتور، صيدلية، مطعم..."
+               autocomplete="off" aria-label="ابحث في دليل المنزلة والمطرية"/>
+        <button type="button" class="header-search-clear-btn" id="header-search-clear" aria-label="مسح البحث" title="مسح">✕</button>
+      </div>
+
+      <!-- Floating Live Results Dropdown -->
+      <div class="header-live-dropdown" id="header-live-dropdown" aria-live="polite">
+        <div class="header-live-dropdown__header">
+          <span>⚡ نتائج بحث فورية:</span>
+          <span class="header-live-dropdown__count" id="header-live-count">0</span>
+        </div>
+        <div class="header-live-dropdown__list" id="header-live-list"></div>
+        <div class="header-live-dropdown__footer">
+          <a href="search.html" class="header-live-dropdown__all-btn" id="header-live-all-btn">
+            <span>عرض كافة النتائج في صفحة البحث</span>
+            <span>←</span>
+          </a>
+        </div>
+      </div>
     </div>
 
     <nav class="header__nav" aria-label="التنقل الرئيسي">
@@ -49,8 +73,6 @@ function _headerHTML(active) {
         `<a href="${file}" class="header__nav-link${file === active ? ' active' : ''}">${label}</a>`
       ).join('')}
     </nav>
-
-    <button class="header__search-btn" id="mobile-search-btn" aria-label="بحث">🔍</button>
     
     <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="تبديل الوضع الليلي والنهاري" title="تبديل الوضع الليلي / الفاتح">
       <span class="theme-icon-light">☀️</span>
@@ -306,14 +328,8 @@ export async function initPage(activeFile = '') {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  /* 8. Header search */
-  document.getElementById('header-search-input')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && e.target.value.trim())
-      location.href = `search.html?q=${encodeURIComponent(e.target.value.trim())}`;
-  });
-  document.getElementById('mobile-search-btn')?.addEventListener('click', () => {
-    location.href = 'search.html';
-  });
+  /* 8. Header Luxury Expandable Search & Live Results Dropdown */
+  _setupHeaderSearch();
 
   /* 9. Auth UI & Live Notification / FCM Subscriber (reactive) */
   onAuthStateChange(user => {
@@ -334,9 +350,13 @@ export async function initPage(activeFile = '') {
   /* 11. PWA Install banner */
   _setupPwa();
 
-  /* 12. Service Worker */
+  /* 12. Service Worker & Realtime Web Push */
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => {
+        initFcmMessaging(getCurrentUser());
+      })
+      .catch(() => {});
   }
 
   // Automatically purge legacy stale data caches (Keep only Auth & Theme)
@@ -759,5 +779,165 @@ function _showBannedScreen(reasonMessage) {
       </div>
     </div>
   `;
+}
+
+function _setupHeaderSearch() {
+  const container = document.getElementById('header-search-container');
+  const pill = document.getElementById('header-search-pill');
+  const triggerBtn = document.getElementById('header-search-trigger');
+  const input = document.getElementById('header-search-input');
+  const clearBtn = document.getElementById('header-search-clear');
+  const dropdown = document.getElementById('header-live-dropdown');
+  const resultsList = document.getElementById('header-live-list');
+  const countBadge = document.getElementById('header-live-count');
+  const allBtn = document.getElementById('header-live-all-btn');
+
+  if (!input) return;
+
+  let debounceTimer = null;
+  let activeSearchReq = 0;
+
+  const openSearch = () => {
+    pill?.classList.add('expanded');
+    input.focus();
+    if (input.value.trim().length >= 1) {
+      dropdown?.classList.add('visible');
+    }
+  };
+
+  const closeSearch = () => {
+    pill?.classList.remove('expanded');
+    dropdown?.classList.remove('visible');
+  };
+
+  triggerBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (pill?.classList.contains('expanded') && input.value.trim()) {
+      window.location.href = `search.html?q=${encodeURIComponent(input.value.trim())}`;
+    } else {
+      openSearch();
+    }
+  });
+
+  input.addEventListener('focus', () => {
+    pill?.classList.add('expanded');
+    if (input.value.trim().length >= 1 && resultsList?.children.length > 0) {
+      dropdown?.classList.add('visible');
+    }
+  });
+
+  clearBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    input.value = '';
+    clearBtn.classList.remove('visible');
+    dropdown?.classList.remove('visible');
+    if (resultsList) resultsList.innerHTML = '';
+    input.focus();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && input.value.trim()) {
+      window.location.href = `search.html?q=${encodeURIComponent(input.value.trim())}`;
+    } else if (e.key === 'Escape') {
+      closeSearch();
+    }
+  });
+
+  // ⚡ Live Search as user types (Instant auto-complete)
+  input.addEventListener('input', () => {
+    const query = input.value.trim();
+    clearBtn?.classList.toggle('visible', query.length > 0);
+
+    if (allBtn) {
+      allBtn.href = `search.html?q=${encodeURIComponent(query)}`;
+    }
+
+    if (!query) {
+      dropdown?.classList.remove('visible');
+      if (resultsList) resultsList.innerHTML = '';
+      return;
+    }
+
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      const currentReq = ++activeSearchReq;
+      try {
+        const results = await executeFastSearch(query, { limit: 6 });
+        if (currentReq !== activeSearchReq) return; // Discard stale request
+
+        if (!dropdown || !resultsList) return;
+
+        if (!results || results.length === 0) {
+          countBadge && (countBadge.textContent = '0');
+          resultsList.innerHTML = `
+            <div class="header-live-empty">
+              <div class="header-live-empty__icon">🔍</div>
+              <div class="header-live-empty__title">لم يتم العثور على أماكن مطابقة</div>
+              <div class="header-live-empty__desc">جرب كلمة أخرى مثل (صيدلية، دكتور، مطعم، نجار)</div>
+            </div>
+          `;
+          dropdown.classList.add('visible');
+          return;
+        }
+
+        countBadge && (countBadge.textContent = String(results.length));
+
+        resultsList.innerHTML = results.map(doc => {
+          const p = doc.raw || doc;
+          const name = p.name || 'مكان بالدليل';
+          const cat = p.categoryName || doc.category || '';
+          const area = p.area || p.address || 'مدينة المنزلة';
+          const slug = p.slug || p.id || '';
+          const photo = p.photoURL || p.logo || p.coverURL || '';
+          const isVerified = p.isVerified || false;
+          const isOpen = p.isOpen !== undefined ? p.isOpen : true;
+
+          const letter = (name.trim()[0] || 'م').toUpperCase();
+
+          return `
+            <a href="place.html?slug=${encodeURIComponent(slug)}" class="header-live-dropdown__item" role="option">
+              <div class="header-live-avatar">
+                ${photo
+                  ? `<img src="${photo}" alt="${_esc(name)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'header-live-avatar-fallback\\'>${letter}</div>'"/>`
+                  : `<div class="header-live-avatar-fallback">${letter}</div>`
+                }
+              </div>
+              <div class="header-live-content">
+                <div class="header-live-title-row">
+                  <span class="header-live-name">${_esc(name)}</span>
+                  ${isVerified ? '<span class="header-live-verified" title="مكان موثق">✓</span>' : ''}
+                </div>
+                <div class="header-live-meta-row">
+                  ${cat ? `<span class="header-live-cat">${_esc(cat)}</span>` : ''}
+                  <span class="header-live-area">${_esc(area)}</span>
+                  <span class="${isOpen ? 'header-live-status-open' : 'header-live-status-closed'}">
+                    ${isOpen ? 'مفتوح الآن' : 'مغلق'}
+                  </span>
+                </div>
+              </div>
+            </a>
+          `;
+        }).join('');
+
+        dropdown.classList.add('visible');
+      } catch (err) {
+        console.warn('[HeaderLiveSearch] search error:', err);
+      }
+    }, 120);
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!container?.contains(e.target)) {
+      dropdown?.classList.remove('visible');
+      if (window.innerWidth <= 767) {
+        pill?.classList.remove('expanded');
+      }
+    }
+  });
+}
+
+function _esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 

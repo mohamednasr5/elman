@@ -209,7 +209,48 @@ export async function getPlaceBySlug(slug) {
   if (!slug) return null;
   const cleanSlug = String(slug).trim();
 
-  // 1. Try slugIndex lookup
+  // 0. Fast local IndexedDB cache check (0ms, 0 bandwidth)
+  try {
+    const localPlaces = await idbGetAll(STORES.PLACES);
+    if (localPlaces && localPlaces.length > 0) {
+      const lower = cleanSlug.toLowerCase();
+      const p = localPlaces.find(item => 
+        item && (item.slug === cleanSlug || item.id === cleanSlug || item._key === cleanSlug || (item.slug && item.slug.toLowerCase() === lower))
+      );
+      if (p) return p;
+    }
+  } catch (_) {}
+
+  // 1. Direct Cloudflare D1 Lookup via Worker (0 Firebase reads)
+  try {
+    const workerRes = await fetch(`${WORKER_URL}/api/places?slug=${encodeURIComponent(cleanSlug)}`, {
+      signal: AbortSignal.timeout(4000)
+    });
+    if (workerRes.ok) {
+      const data = await workerRes.json();
+      if (data && data.success && data.data) {
+        let rawPlace = null;
+        if (Array.isArray(data.data)) {
+          const lower = cleanSlug.toLowerCase();
+          rawPlace = data.data.find(item => 
+            item && (item.slug === cleanSlug || item.id === cleanSlug || (item.slug && item.slug.toLowerCase() === lower))
+          );
+        } else {
+          rawPlace = data.data;
+        }
+
+        if (rawPlace && (rawPlace.slug || rawPlace.id || rawPlace.name)) {
+          const p = normalizeD1Place(rawPlace);
+          if (p) {
+            idbPut(STORES.PLACES, p).catch(() => {});
+            return p;
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  // 2. Fallback: Try slugIndex lookup in RTDB
   try {
     const placeId = await dbGet(`slugIndex/${cleanSlug}`);
     if (placeId) {
@@ -397,6 +438,32 @@ export async function getAllBannedIps() {
  * 2. Checks system/dataVersion or lastSync to avoid redundant Firebase reads
  * 3. Falls back to RTDB query only when necessary
  */
+export function normalizeD1Place(p) {
+  if (!p) return null;
+  const id = String(p.id || p._key || p._id || '');
+  return {
+    ...p,
+    id,
+    _key: id,
+    slug: p.slug || id,
+    name: p.name || 'بدون اسم',
+    categoryId: p.categoryId || p.category_id || '',
+    customCategory: p.customCategory || p.custom_category || '',
+    categoryName: p.categoryName || p.category_name || p.customCategory || p.custom_category || '',
+    logoUrl: p.logoUrl || p.logo_url || null,
+    coverImageUrl: p.coverImageUrl || p.cover_image_url || null,
+    isVerified: Boolean(p.isVerified || p.is_verified || p.verified),
+    verified: Boolean(p.isVerified || p.is_verified || p.verified),
+    isSponsored: Boolean(p.isSponsored || p.is_sponsored),
+    createdAt: Number(p.createdAt || p.created_at || 0),
+    updatedAt: Number(p.updatedAt || p.updated_at || 0),
+    mapsLink: p.mapsLink || p.maps_link || '',
+    workingHours: p.workingHours || p.working_hours || {},
+    services: Array.isArray(p.services) ? p.services : (typeof p.services_json === 'string' ? JSON.parse(p.services_json || '[]') : []),
+    social: typeof p.social === 'object' ? p.social : (typeof p.social_json === 'string' ? JSON.parse(p.social_json || '{}') : {})
+  };
+}
+
 export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFresh = false } = {}) {
   const cacheKey = `published_${limit}_${lastKey || ''}`;
   
@@ -429,7 +496,49 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
     } catch (_) {}
   }
 
-  // 3. RTDB Network Fetch (Source of Truth)
+  // 3. Primary Network Fetch from Cloudflare D1 via Worker
+  try {
+    const workerRes = await fetch(`${WORKER_URL}/api/places?limit=${limit}`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (workerRes.ok) {
+      const data = await workerRes.json();
+      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const places = [];
+        const allForIdb = [];
+
+        data.data.forEach(item => {
+          const p = normalizeD1Place(item);
+          if (!p) return;
+          allForIdb.push(p);
+
+          if (p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p)) {
+            places.push(p);
+          }
+        });
+
+        if (allForIdb.length > 0) {
+          idbPutBulk(STORES.PLACES, allForIdb).catch(() => {});
+          idbSetMeta('lastPlacesSync', Date.now()).catch(() => {});
+        }
+
+        places.sort((a, b) => {
+          const aSpons = Boolean(a.isSponsored && (!a.sponsoredUntil || a.sponsoredUntil > Date.now()));
+          const bSpons = Boolean(b.isSponsored && (!b.sponsoredUntil || b.sponsoredUntil > Date.now()));
+          if (aSpons && !bSpons) return -1;
+          if (!aSpons && bSpons) return 1;
+          return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
+        });
+
+        const res = places.slice(0, limit);
+        return setCache(cacheKey, res);
+      }
+    }
+  } catch (workerErr) {
+    console.debug('[getPublishedPlaces] D1 fetch handled, falling back to RTDB:', workerErr.message);
+  }
+
+  // 4. Fallback RTDB Network Fetch (only if Worker/D1 is offline)
   try {
     const snap = await getDB().ref('places').once('value');
     if (!snap.exists()) return [];

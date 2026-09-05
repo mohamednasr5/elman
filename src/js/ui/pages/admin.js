@@ -3330,12 +3330,12 @@ function openAdminUserPlacesModal(user, onDone) {
     size: 'lg',
     content: `
       <div style="display:flex;flex-direction:column;gap:14px">
-        <div style="font-size:13px;color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px">
-          قائمة بجميع الأنشطة والأماكن التي أضافها هذا المستخدم. يمكنك مشاهدتها، تعديل بياناتها، نقل ملكيتها لمستخدم آخر، أو حذفها نهائياً.
+        <div style="font-size:13px;color:rgba(255,255,255,0.85);background:rgba(14,165,233,0.12);border:1px solid rgba(14,165,233,0.25);padding:12px 16px;border-radius:12px;line-height:1.5">
+          ℹ️ قائمة بجميع الأنشطة والأماكن التي أضافها هذا المستخدم. يمكنك مشاهدتها، تعديل بياناتها، نقل ملكيتها لمستخدم آخر، أو حذفها نهائياً.
         </div>
 
         ${places.length === 0 ? `
-          <div style="text-align:center;padding:36px;color:rgba(255,255,255,0.5)">
+          <div style="text-align:center;padding:36px;color:rgba(255,255,255,0.6)">
             <div style="font-size:36px;margin-bottom:8px">🏪</div>
             لم يقم هذا المستخدم بإضافة أي أماكن حتى الآن.
           </div>
@@ -3345,32 +3345,32 @@ function openAdminUserPlacesModal(user, onDone) {
               const placeId = p._id || p.id;
               const slugOrId = p.slug || placeId;
               return `
-                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
                   <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
-                    <img src="${p.logoUrl || ATM_UNIFIED_LOGO}" style="width:46px;height:46px;border-radius:10px;object-fit:cover;border:1px solid rgba(255,255,255,0.15);flex-shrink:0" onerror="this.src='./icons/icon-72x72.png'" />
+                    <img src="${p.logoUrl || ATM_UNIFIED_LOGO}" style="width:46px;height:46px;border-radius:10px;object-fit:cover;border:1px solid rgba(255,255,255,0.2);flex-shrink:0" onerror="this.src='./icons/icon-72x72.png'" />
                     <div style="min-width:0">
                       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                        <strong style="color:#fff;font-size:14px">${escHtml(p.name || 'بدون اسم')}</strong>
+                        <strong style="color:#ffffff;font-size:14.5px;font-weight:700">${escHtml(p.name || 'بدون اسم')}</strong>
                         ${p.verified ? '<span class="badge badge--verified" style="font-size:10px">موثق ✓</span>' : ''}
                         ${p.isSponsored ? '<span class="badge" style="font-size:10px;background:#F5A623;color:#0B1E30;font-weight:800">إعلان ممول ★</span>' : ''}
                       </div>
-                      <div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:2px">
+                      <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:3px">
                         ${escHtml(p.categoryName || 'بدون تصنيف')} • ${escHtml(p.area || 'المنزلة')} ${p.phone ? '• ' + escHtml(p.phone) : ''}
                       </div>
                     </div>
                   </div>
 
                   <div style="display:flex;gap:6px;align-items:center">
-                    <a href="place.html?slug=${encodeURIComponent(slugOrId)}" target="_blank" class="btn btn-xs btn-outline" style="border-radius:6px;padding:4px 8px;font-size:11px" title="مشاهدة المكان">
+                    <a href="place.html?slug=${encodeURIComponent(slugOrId)}" target="_blank" class="btn btn-xs" style="background:rgba(56,189,248,0.12);color:#38BDF8;border:1px solid rgba(56,189,248,0.3);border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:600;text-decoration:none" title="مشاهدة المكان">
                       👁️ مشاهدة
                     </a>
-                    <button class="btn btn-xs btn-user-place-edit" data-id="${escAttr(placeId)}" style="background:#0EA5E9;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px" title="تعديل المكان">
+                    <button class="btn btn-xs btn-user-place-edit" data-id="${escAttr(placeId)}" style="background:#0EA5E9;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer" title="تعديل المكان">
                       ✏️ تعديل
                     </button>
-                    <button class="btn btn-xs btn-user-place-transfer" data-id="${escAttr(placeId)}" style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.3);border-radius:6px;padding:4px 8px;font-size:11px" title="نقل الملكية">
+                    <button class="btn btn-xs btn-user-place-transfer" data-id="${escAttr(placeId)}" style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.3);border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer" title="نقل الملكية">
                       🔄 نقل
                     </button>
-                    <button class="btn btn-xs btn-user-place-delete" data-id="${escAttr(placeId)}" data-name="${escAttr(p.name)}" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:4px 8px;font-size:11px" title="حذف المكان">
+                    <button class="btn btn-xs btn-user-place-delete" data-id="${escAttr(placeId)}" data-name="${escAttr(p.name)}" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:600;cursor:pointer" title="حذف المكان">
                       🗑️ حذف
                     </button>
                   </div>
@@ -3439,12 +3439,12 @@ function openAdminUserReviewsModal(user, onDone) {
     size: 'lg',
     content: `
       <div style="display:flex;flex-direction:column;gap:14px">
-        <div style="font-size:13px;color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.05);padding:10px 14px;border-radius:10px">
-          استعراض شامل لكافة التقييمات والآراء التي كتبها هذا المستخدم في أي مكان بالدليل، مع إمكانية تعديل نص التقييم أو حذفه فوراً.
+        <div style="font-size:13px;color:rgba(255,255,255,0.85);background:rgba(14,165,233,0.12);border:1px solid rgba(14,165,233,0.25);padding:12px 16px;border-radius:12px;line-height:1.5">
+          ℹ️ استعراض شامل لكافة التقييمات والآراء التي كتبها هذا المستخدم في أي مكان بالدليل، مع إمكانية تعديل نص التقييم أو حذفه فوراً.
         </div>
 
         ${reviews.length === 0 ? `
-          <div style="text-align:center;padding:36px;color:rgba(255,255,255,0.5)">
+          <div style="text-align:center;padding:36px;color:rgba(255,255,255,0.6)">
             <div style="font-size:36px;margin-bottom:8px">💬</div>
             لم يقم هذا المستخدم بكتابة أي تقييمات أو تعليقات حتى الآن.
           </div>
@@ -3454,25 +3454,25 @@ function openAdminUserReviewsModal(user, onDone) {
               const stars = '⭐'.repeat(r.rating || 5);
               const dateStr = r.createdAt ? formatDate(r.createdAt) : '—';
               return `
-                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+                <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
                     <div>
-                      <span style="font-size:11px;color:rgba(255,255,255,0.5)">علق في:</span>
-                      <strong style="color:#38BDF8;font-size:13.5px;margin-right:4px">${escHtml(r.placeName || 'مكان بالدليل')}</strong>
-                      <span style="font-size:11px;color:rgba(255,255,255,0.4);margin-right:8px">${dateStr}</span>
+                      <span style="font-size:11.5px;color:rgba(255,255,255,0.6)">علق في:</span>
+                      <strong style="color:#38BDF8;font-size:14px;margin-right:4px">${escHtml(r.placeName || 'مكان بالدليل')}</strong>
+                      <span style="font-size:11.5px;color:rgba(255,255,255,0.5);margin-right:8px">${dateStr}</span>
                     </div>
                     <div style="display:flex;align-items:center;gap:6px">
                       <span style="font-size:12px">${stars}</span>
-                      <button class="btn btn-xs btn-user-review-edit" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" data-rating="${r.rating || 5}" data-comment="${escAttr(r.comment || '')}" style="background:#0EA5E9;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px">
+                      <button class="btn btn-xs btn-user-review-edit" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" data-rating="${r.rating || 5}" data-comment="${escAttr(r.comment || '')}" style="background:#0EA5E9;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11.5px;cursor:pointer">
                         ✏️ تعديل
                       </button>
-                      <button class="btn btn-xs btn-user-review-delete" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 8px;font-size:11px">
+                      <button class="btn btn-xs btn-user-review-delete" data-pid="${escAttr(r.placeId)}" data-rid="${escAttr(r.id)}" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:4px 10px;font-size:11.5px;cursor:pointer">
                         🗑️ حذف
                       </button>
                     </div>
                   </div>
 
-                  <div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:10px;font-size:13px;color:rgba(255,255,255,0.9);line-height:1.6">
+                  <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;font-size:13.5px;color:#FFFFFF;line-height:1.6">
                     ${escHtml(r.comment || 'بدون تعليق نصي')}
                   </div>
                 </div>

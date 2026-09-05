@@ -3404,20 +3404,28 @@ img, svg, .header__logo img, .header__logo-img, .pwa-banner__icon, .bottom-nav__
 /* Mobile & Tablet Responsive rules for Search Pill */
 @media (max-width: 767px) {
   .header-search-pill {
-    width: 40px;
+    width: 170px;
     height: 38px;
-    padding: 2px;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    justify-content: center;
+    padding: 2px 4px 2px 6px;
+    background: var(--surface, #FFFFFF);
+    border: 1.5px solid var(--border, #E2E8F0);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    border-radius: 9999px;
+    justify-content: flex-start;
     cursor: pointer;
   }
 
+  [data-theme="dark"] .header-search-pill {
+    background: #1E293B;
+    border-color: #334155;
+  }
+
   .header-search-pill .header-search-input {
-    display: none;
-    width: 0;
-    padding: 0 !important;
+    display: block;
+    width: 100%;
+    padding: 0 8px !important;
+    font-size: 11.5px;
+    height: 100%;
   }
 
   .header-search-pill .header-search-clear-btn {
@@ -3425,9 +3433,15 @@ img, svg, .header__logo img, .header__logo-img, .pwa-banner__icon, .bottom-nav__
   }
 
   .header-search-pill .header-search-btn-trigger {
-    width: 38px;
-    height: 38px;
-    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+  }
+
+  .header-search-pill .header-search-btn-trigger svg {
+    width: 14px;
+    height: 14px;
   }
 
   /* When expanded on mobile: Full header overlay bar */
@@ -3507,4 +3521,145 @@ textarea,
   -ms-user-select: text !important;
   user-select: text !important;
 }
+
+/* ═════════════════════════════════════════════════════════════════════
+   PWA & Web Push Notification Prompt Banner
+   ═════════════════════════════════════════════════════════════════════ */
+.push-prompt-card {
+  position: fixed;
+  bottom: 85px;
+  right: 20px;
+  left: 20px;
+  max-width: 480px;
+  margin-inline: auto;
+  z-index: 99999;
+  background: rgba(11, 28, 48, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(14, 165, 233, 0.35);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 16px 20px;
+  color: #FFFFFF;
+  opacity: 0;
+  transform: translateY(40px) scale(0.96);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  direction: rtl;
+  text-align: right;
+}
+
+.push-prompt-card.active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.push-prompt-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.push-prompt-icon-wrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(245, 166, 35, 0.25) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.push-prompt-text {
+  flex: 1;
+  min-width: 200px;
+}
+
+.push-prompt-title {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #38BDF8;
+  margin-bottom: 3px;
+}
+
+.push-prompt-desc {
+  font-size: 12px;
+  color: #CBD5E1;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.push-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.btn-push-allow {
+  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 8px 18px;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35);
+}
+
+.btn-push-allow:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.5);
+  background: linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%);
+}
+
+.btn-push-dismiss {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-push-dismiss:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 480px) {
+  .push-prompt-card {
+    bottom: 75px;
+    right: 12px;
+    left: 12px;
+    padding: 14px 16px;
+  }
+  .push-prompt-inner {
+    gap: 12px;
+  }
+  .push-prompt-icon-wrap {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+  .btn-push-allow {
+    flex: 1;
+    text-align: center;
+  }
+}
+
 

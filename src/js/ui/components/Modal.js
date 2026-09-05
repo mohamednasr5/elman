@@ -24,6 +24,7 @@ export function showModal({
   size = '',
   sheet = false,
   closeable = true,
+  className = '',
   onClose = null
 } = {}) {
   // Close any existing modal
@@ -38,7 +39,8 @@ export function showModal({
 
   // Create modal
   const modal = document.createElement('div');
-  modal.className = `modal${size ? ` modal--${size}` : ''}${sheet ? ' modal--sheet' : ''}`;
+  const isAdmin = typeof document !== 'undefined' && document.body && document.body.classList.contains('admin-page');
+  modal.className = `modal${size ? ` modal--${size}` : ''}${sheet ? ' modal--sheet' : ''}${isAdmin ? ' modal--admin' : ''}${className ? ` ${className}` : ''}`;
 
   // Drag handle for sheets
   if (sheet) {

@@ -170,9 +170,38 @@ export function resolveDoctorSpecialty(place = {}, category = {}) {
   const catName = (category.name || place.categoryName || '').toLowerCase();
   const placeNameNorm = normalizeArabic(place.name || '');
 
+  // Strict Exclusion: Check if this is a known non-medical category (computers, technical services, car repair, mobile, carpentry, etc.)
+  const nonMedicalTerms = [
+    'computer', 'laptop', 'كمبيوتر', 'لاب توب', 'انترنت', 'إنترنت', 'شبكات', 'برمجة',
+    'صيانة كمبيوتر', 'موبايل', 'هواتف', 'محارة', 'نجار', 'سباك', 'كهربائي', 'ميكانيكي',
+    'سيارات', 'كاوتش', 'تكييف', 'أجهزة منزلية', 'دش', 'ستالايت', 'سوبر ماركت', 'مطعم', 'كافيه',
+    'مخبز', 'حلواني', 'جزارة', 'دواجن', 'أسماك', 'ملابس', 'أحذية', 'أثاث'
+  ];
+
+  const isExplicitlyNonMedical = nonMedicalTerms.some(term => 
+    catSlug.includes(term) || catName.includes(term) || 
+    (placeNameNorm.includes(term) && !catSlug.includes('doctor') && !catSlug.includes('clinic') && !catName.includes('طبيب') && !catName.includes('عيادة'))
+  );
+
+  if (isExplicitlyNonMedical) {
+    return {
+      isDoctor: false,
+      specialtyKey: null,
+      specialtyTitle: null,
+      specialtyLabel: null,
+      shortLabel: null,
+      icon: null
+    };
+  }
+
   // Strict check: Is this place truly a Doctor / Clinic / Medical Center / Hospital?
   const isDoctorCategory = catSlug.includes('doctor') || catSlug.includes('clinic') || catName.includes('دكتور') || catName.includes('طبيب') || catName.includes('عياد') || catName.includes('مستشف');
-  const hasDoctorTitleInName = placeNameNorm.includes('دكتور') || placeNameNorm.includes('طبيب') || placeNameNorm.includes('عيادة') || placeNameNorm.includes('استشاري') || placeNameNorm.includes('اخصائي') || placeNameNorm.includes('جراح');
+  
+  // Doctor name check must ensure it refers to a human doctor / clinic, not a repair service like "دكتور كمبيوتر" or "دكتور دش"
+  const hasDoctorTitleInName = (
+    (placeNameNorm.startsWith('دكتور ') || placeNameNorm.startsWith('د.') || placeNameNorm.startsWith('طبيب ') || placeNameNorm.startsWith('عيادة ') || placeNameNorm.startsWith('مركز ') || placeNameNorm.startsWith('مستشفى ')) ||
+    placeNameNorm.includes('استشاري') || placeNameNorm.includes('اخصائي') || placeNameNorm.includes('جراح')
+  ) && !isExplicitlyNonMedical;
 
   const customSpecialty = place.customSpecialty || place.doctorSpecialty || place.specialty || place.medicalSpecialty || '';
 

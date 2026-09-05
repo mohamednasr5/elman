@@ -539,6 +539,25 @@ export function showLiveNotificationPopup(notification, uid) {
 
   popupBox.appendChild(notifEl);
 
+  // Trigger Native Android System Notification via Service Worker if permission granted
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      if (reg && reg.showNotification) {
+        reg.showNotification(notification.title || 'دليل المنزلة والمطرية 🔔', {
+          body: notification.message || notification.body || '',
+          icon: notification.icon || './icons/icon-192x192.png',
+          badge: './icons/icon-96x96.png',
+          dir: 'rtl',
+          lang: 'ar',
+          vibrate: [200, 100, 200],
+          tag: notification.id || ('manzala-notif-' + Date.now()),
+          renotify: true,
+          data: { url: targetUrl }
+        });
+      }
+    }).catch(() => {});
+  }
+
   setTimeout(() => {
     if (notifEl && notifEl.parentNode) {
       notifEl.style.opacity = '0';
@@ -551,8 +570,7 @@ export function showLiveNotificationPopup(notification, uid) {
 
 // ── Backward-Compatibility Export Aliases ──
 export const initGlobalRealtimeNotificationsListener = initLiveNotificationSubscriber;
-export const mountPushNotificationPrompt = () => {};
-export const setupForegroundMessageListener = () => {};
+export { mountPushNotificationPrompt, initFcmMessaging as setupForegroundMessageListener } from './fcm.service.js';
 
 export async function broadcastLiveNewsPushNotification(newsItem) {
   if (!newsItem) return;

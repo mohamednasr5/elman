@@ -2970,6 +2970,12 @@ function renderNotificationsMarkup($container, user, allNotifs) {
             <span>تجربة النغمة</span>
           </button>
 
+          <!-- Native Mobile Push Notifications Toggle / Test Button -->
+          <button type="button" class="btn-test-chime" id="btn-test-phone-push" style="border-color:rgba(14,165,233,0.4);background:rgba(14,165,233,0.12);color:#38BDF8" title="تجربة إشعار فوري على شاشة ونظام الهاتف">
+            <span>📲</span>
+            <span>${(typeof Notification !== 'undefined' && Notification.permission === 'granted') ? 'تجربة إشعار الهاتف 📲' : 'تفعيل إشعارات الهاتف 🔔'}</span>
+          </button>
+
           <!-- Animated Clear & Manage Dropdown Menu -->
           <div class="notif-clear-dropdown-wrap">
             <button type="button" class="btn-notif-manage" id="btn-notif-manage-menu-trigger">
@@ -3291,6 +3297,24 @@ function renderNotificationsMarkup($container, user, allNotifs) {
   document.getElementById('btn-test-notif-sound')?.addEventListener('click', () => {
     playNotificationSound();
     toast.success('🔔 تم تشغيل نغمة التنبيه البلورية بنجاح');
+  });
+
+  // Native Mobile Phone Push Test click
+  document.getElementById('btn-test-phone-push')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-test-phone-push');
+    if (btn) btn.disabled = true;
+    try {
+      const { testPhoneSystemNotification } = await import('../../services/fcm.service.js');
+      await testPhoneSystemNotification(user);
+      if (btn && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        const textSpan = btn.querySelector('span:last-child');
+        if (textSpan) textSpan.textContent = 'تجربة إشعار الهاتف 📲';
+      }
+    } catch (err) {
+      toast.error('خطأ: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   });
 
   // Clear / Manage Dropdown Trigger

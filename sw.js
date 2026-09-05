@@ -4,7 +4,49 @@
  * Native Mobile System Push Notifications & Background Sync Engine.
  */
 
-const CACHE_VERSION = 'v2.3.0-crisp-icons';
+// ── Firebase Cloud Messaging & Web Push Integration ──
+try {
+  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+
+  firebase.initializeApp({
+    apiKey: "AIzaSyBK0c6d7sCOqdj3ZikvVqz7qKy_lzJP3p0",
+    authDomain: "elmanzla.firebaseapp.com",
+    databaseURL: "https://elmanzla-default-rtdb.firebaseio.com",
+    projectId: "elmanzla",
+    storageBucket: "elmanzla.firebasestorage.app",
+    messagingSenderId: "230168369208",
+    appId: "1:230168369208:web:84175973e7838d07ddeecd"
+  });
+
+  const messaging = firebase.messaging();
+
+  messaging.onBackgroundMessage((payload) => {
+    const title = payload.notification?.title || payload.data?.title || 'دليل المنزلة والمطرية 🔔';
+    const body = payload.notification?.body || payload.data?.body || payload.data?.message || 'تنبيه جديد في دليل المنزلة والمطرية';
+    const url = payload.data?.url || payload.data?.actionUrl || payload.notification?.click_action || './';
+    const icon = payload.notification?.icon || payload.data?.icon || './icons/icon-192x192.png';
+    const badge = './icons/icon-96x96.png';
+
+    const options = {
+      body,
+      icon,
+      badge,
+      dir: 'rtl',
+      lang: 'ar',
+      vibrate: [200, 100, 200],
+      tag: payload.data?.tag || ('fcm-bg-' + Date.now()),
+      renotify: true,
+      data: { url, timestamp: Date.now() }
+    };
+
+    return self.registration.showNotification(title, options);
+  });
+} catch (err) {
+  console.warn('[SW] Firebase messaging init warning:', err);
+}
+
+const CACHE_VERSION = 'v2.5.0-push-sync';
 const STATIC_CACHE  = `manzala-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `manzala-dynamic-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `manzala-images-${CACHE_VERSION}`;
@@ -134,14 +176,18 @@ self.addEventListener('push', (event) => {
     try {
       data = event.data.json();
     } catch (_) {
-      data = { title: 'دليل المنزلة والمطرية 🔔', message: event.data.text() };
+      try {
+        data = { title: 'دليل المنزلة والمطرية 🔔', message: event.data.text() };
+      } catch (e) {
+        data = {};
+      }
     }
   }
 
-  const title = data.title || data.notification?.title || 'دليل المنزلة والمطرية 🔔';
-  const body = data.message || data.body || data.notification?.body || 'لديك تنبيه جديد في دليل المنزلة والمطرية';
-  const url = data.url || data.data?.url || './';
-  const icon = data.icon || './icons/icon-192x192.png';
+  const title = data.notification?.title || data.data?.title || data.title || 'دليل المنزلة والمطرية 🔔';
+  const body = data.notification?.body || data.data?.body || data.data?.message || data.message || data.body || 'لديك تنبيه جديد في دليل المنزلة والمطرية';
+  const url = data.data?.url || data.data?.actionUrl || data.url || data.notification?.click_action || './';
+  const icon = data.notification?.icon || data.data?.icon || data.icon || './icons/icon-192x192.png';
   const badge = './icons/icon-96x96.png';
 
   const options = {
@@ -150,8 +196,8 @@ self.addEventListener('push', (event) => {
     badge,
     dir: 'rtl',
     lang: 'ar',
-    vibrate: [150, 50, 150, 50, 200],
-    tag: data.tag || 'manzala-pwa-push-' + Date.now(),
+    vibrate: [200, 100, 200],
+    tag: data.tag || data.data?.tag || ('manzala-pwa-push-' + Date.now()),
     renotify: true,
     data: { url, timestamp: Date.now() }
   };
