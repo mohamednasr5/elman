@@ -671,7 +671,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
               type="search" 
               id="p-area-search-input" 
               class="form-input" 
-              placeholder="🔍 ابحث بالاسم عن قريتك أو منطقتك (54 قرية ومدينة)..." 
+              placeholder="🔍 ابحث بالاسم عن قريتك أو منطقتك (55 قرية ومدينة)..." 
               autocomplete="off"
               style="padding-right:38px;background:var(--surface);border-color:var(--primary)"
             />

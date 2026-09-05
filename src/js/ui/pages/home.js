@@ -418,7 +418,7 @@ function renderStatsBar(placesCount, categoriesCount) {
 
   const targetPlaces = Math.max(15000, Number(placesCount) || 0);
   const targetCategories = Math.max(72, Number(categoriesCount) || 0);
-  const targetVillages = 54;
+  const targetVillages = 55;
 
   bar.innerHTML = `
     <div class="stats-bar__inner container">
@@ -678,6 +678,7 @@ function getHomeHTML() {
   const villageList = [
     { name: 'المنزلة', icon: '🏙️', desc: 'المدينة والمركز' },
     { name: 'المطرية', icon: '🌊', desc: 'مدينة وبحيرة المنزلة' },
+    { name: 'الجمالية', icon: '🏛️', desc: 'مدينة ومجلس قروي الجمالية' },
     { name: 'العصافرة', icon: '🌾', desc: 'قرية العصافرة' },
     { name: 'الفروسات', icon: '🐎', desc: 'قرية الفروسات' },
     { name: 'البصراط', icon: '🏡', desc: 'قرية البصراط' },

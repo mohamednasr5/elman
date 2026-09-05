@@ -64,13 +64,12 @@ export async function extractCoordinates(urlOrText) {
 //  GEOLOCATION & DISTANCE CALCULATIONS (أقرب مكان)
 // ─────────────────────────────────────────────
 
-/** Complete List of 54 Towns, Villages, and Neighborhoods in El-Manzala & El-Matareya */
+/** Complete List of 55 Towns, Villages, and Neighborhoods in El-Manzala & El-Matareya */
 export const MANZALA_VILLAGES_LIST = [
   'المنزلة',
   'المطرية',
   'الجمالية',
   'العصافرة',
-  'ميت سلسيل',
   'الفروسات',
   'البصراط',
   'المنزلة الجديدة',

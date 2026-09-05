@@ -10,42 +10,131 @@ import { getSettings, dbPush, serverTimestamp } from '../../core/db.js';
 import { toast } from '../components/Toast.js';
 import { MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 
+/* ── Topic registry (single source of truth) ─────────────────── */
+const TOPICS = {
+  verification: {
+    icon: '🛡️',
+    title: 'توثيق حساب أو مكان',
+    desc: 'الشارة الرسمية المعتمدة لحماية اسمك ونشاطك',
+    hint: 'سنعطي طلبك أولوية مراجعة خاصة للتوثيق 🛡️',
+    emailLabel: 'طلب توثيق حساب أو مكان بالعلامة المعتمدة',
+    msgLabel: 'بيانات التوثيق وإثبات ملكية النشاط',
+    placeholder: 'اكتب اسم المحل أو النشاط أو العيادة بالضبط، وصفحات التواصل التي ترغب في ربطها بالتوثيق...'
+  },
+  ads: {
+    icon: '📢',
+    title: 'إعلان على الدليل',
+    desc: 'ظهور مميز في قمة الموقع والتطبيق لكل أهل المنطقة',
+    hint: 'أعلى معدل ظهور ونقرات لأهل المنزلة والمطرية 📢',
+    emailLabel: 'إعلان على الدليل وترويج مدفوع',
+    msgLabel: 'تفاصيل الإعلان والميزانية أو المدة المقترحة',
+    placeholder: 'أخبرنا عن نوع الإعلان الذي تريده (إعلان قمة الموقع، شريط إعلاني، ترويج صفحة مكانك) والمدة المقترحة...'
+  },
+  showcase: {
+    icon: '🔥',
+    title: 'ظهور منتجات وعروض',
+    desc: 'أبرز منتجاتك وخصوماتك أولاً لكل المتابعين',
+    hint: 'عروضك ستظهر أولاً لكل متابعي المنطقة 🔥',
+    emailLabel: 'طلب ظهور المنتجات والعروض الحصرية',
+    msgLabel: 'تفاصيل العروض والمنتجات المراد إبرازها',
+    placeholder: 'ما هي المنتجات أو العروض الترويجية والخصومات التي ترغب في إبرازها لأهالي المنزلة والمطرية؟...'
+  },
+  inquiry: {
+    icon: '💬',
+    title: 'استفسارات عامة',
+    desc: 'أي سؤال حول المنصة والخدمات والأماكن',
+    hint: 'فريق الدعم يرد خلال أقل من ساعتين 💬',
+    emailLabel: 'استفسارات عامة حول الدليل',
+    msgLabel: 'نص الاستفسار والتفاصيل',
+    placeholder: 'اكتب استفسارك بالتفصيل وسنرد عليك في أقرب وقت...'
+  },
+  suggestion: {
+    icon: '💡',
+    title: 'اقتراح لتطوير المنصة',
+    desc: 'شاركنا أفكارك لتطوير الدليل لخدمة أهل المنطقة',
+    hint: 'كل اقتراح يصل مباشرة للإدارة التنفيذية 💡',
+    emailLabel: 'اقتراح أو فكرة لتطوير المنصة',
+    msgLabel: 'نص الاقتراح والتفاصيل',
+    placeholder: 'شاركنا فكرتك أو اقتراحك لتطوير المنصة بالتفصيل...'
+  },
+  complaint: {
+    icon: '⚠️',
+    title: 'شكوى أو بلاغ',
+    desc: 'أبلغنا عن أي مشكلة أو محتوى مخالف بسرية تامة',
+    hint: 'بلاغاتك تُتعامل بسرية تامة وعاجلة ⚠️',
+    emailLabel: 'شكوى أو بلاغ عن نشاط أو محتوى',
+    msgLabel: 'نص الشكوى أو تفاصيل البلاغ',
+    placeholder: 'اشرح لنا المشكلة أو البلاغ بالتفصيل لنقوم بالتحقق العاجل واتخاذ اللازم فوراً...'
+  }
+};
+
+const TOPIC_ORDER = ['verification', 'ads', 'showcase', 'inquiry', 'suggestion', 'complaint'];
+
 export async function renderContactPage($container, { user } = {}) {
   const settings = await getSettings().catch(() => ({}));
   const waLink = settings?.contact?.whatsappLink || 'https://wa.me/wasendernew';
 
+  const topicOptionsHtml = TOPIC_ORDER.map(key => {
+    const t = TOPICS[key];
+    return `
+      <button type="button" class="cq-option cq-option--${key}" role="option" data-topic="${key}">
+        <span class="cq-option__icon">${t.icon}</span>
+        <span class="cq-option__text">
+          <span class="cq-option__title">${t.title}</span>
+          <span class="cq-option__desc">${t.desc}</span>
+        </span>
+        <span class="cq-option__check">✓</span>
+      </button>`;
+  }).join('');
+
   $container.innerHTML = `
     <!-- ═══════════════════════════════════════════════════════════
-         1. HERO SECTION (الواجهة البصرية الإبداعية الفاخرة)
+         1. HERO SECTION (الواجهة البصرية الإبداعية الفاخرة — بدون أي أرقام)
          ═══════════════════════════════════════════════════════════ -->
-    <section class="contact-hero-premium">
-      <div class="container" style="max-width:960px;margin:0 auto;position:relative;z-index:2">
-        <div class="contact-hero-badge">
-          <span>✨</span>
+    <section class="cx-hero">
+      <div class="cx-hero__bg" aria-hidden="true">
+        <div class="cx-orb cx-orb--1"></div>
+        <div class="cx-orb cx-orb--2"></div>
+        <div class="cx-orb cx-orb--3"></div>
+        <div class="cx-grid-overlay"></div>
+        <div class="cx-sparkles" id="cx-sparkles"></div>
+      </div>
+
+      <div class="cx-hero__content">
+        <div class="cx-hero__badge reveal">
+          <span class="cx-hero__badge-spark">✨</span>
           <span>المنصة الرقمية الأولى في المنزلة والمطرية ومحيطهما</span>
         </div>
 
-        <h1 class="contact-hero-title">
-          طوّر نشاطك، وثّق مكانك، وضاعف <span class="glow-gradient">مبيعاتك وأرباحك</span>
+        <h1 class="cx-hero__title reveal" style="--rd:90ms">
+          طوّر نشاطك، وثّق مكانك،
+          <br/>
+          وضاعف <span class="cx-gradient-text">مبيعاتك وأرباحك</span>
         </h1>
 
-        <p class="contact-hero-desc">
-          تواصل مباشر مع إدارة «دليل المنزلة والمطرية الرقمي». احصل على مكانة الصدارة في البحث، وشارة التوثيق الرسمية، وانقل عروضك ومنتجاتك لكل هاتف ومنزل في المنطقة.
+        <p class="cx-hero__desc reveal" style="--rd:180ms">
+          تواصل مباشر مع إدارة «دليل المنزلة والمطرية الرقمي». احصل على مكانة الصدارة في البحث،
+          وشارة التوثيق الرسمية، وانقل عروضك ومنتجاتك لكل هاتف ومنزل في المنطقة.
         </p>
 
-        <div class="contact-hero-actions">
-          <a href="#contact-form-section" class="btn btn-primary btn-lg" style="box-shadow:0 8px 24px rgba(2,132,199,0.35);border-radius:12px;font-weight:900;padding:14px 28px;gap:8px">
-            <span>🚀</span>
+        <div class="cx-hero__actions reveal" style="--rd:270ms">
+          <a href="#contact-form-section" id="cx-hero-cta" class="cx-btn cx-btn--gold">
+            <span class="cx-btn__shine" aria-hidden="true"></span>
+            <span class="cx-btn__ico">🚀</span>
             <span>ابدأ طلب الإعلان أو التوثيق</span>
           </a>
-          <a href="${escAttr(waLink)}" target="_blank" rel="noopener" class="btn btn-whatsapp btn-lg" style="border-radius:12px;font-weight:900;padding:14px 24px;gap:8px">
-            <span style="font-size:18px">💬</span>
+          <a href="${escAttr(waLink)}" target="_blank" rel="noopener" class="cx-btn cx-btn--wa">
+            <span class="cx-btn__ico">💬</span>
             <span>محادثة واتساب فورية</span>
           </a>
-          <a href="tel:01090101536" class="btn btn-outline btn-lg" style="color:#fff;border-color:rgba(255,255,255,0.3);border-radius:12px;font-weight:800;padding:14px 22px;gap:6px">
-            <span>📞</span>
-            <span>01090101536</span>
-          </a>
+        </div>
+
+        <div class="cx-hero__trust reveal" style="--rd:360ms">
+          <span class="cx-trust-pill">⭐ ثقة أهل المنطقة</span>
+          <span class="cx-trust-dot"></span>
+          <span class="cx-trust-pill">⚡ رد خلال ساعات</span>
+          <span class="cx-trust-dot"></span>
+          <span class="cx-trust-pill">🔒 سرية تامة</span>
         </div>
       </div>
     </section>
@@ -255,42 +344,31 @@ export async function renderContactPage($container, { user } = {}) {
             </p>
           </div>
 
-          <!-- Topic Selector Chips -->
-          <div style="margin-bottom:12px">
-            <label class="form-label" style="font-weight:800;font-size:13px;margin-bottom:10px">
-              حدد نوع طلبك أو موضوع الرسالة: <span class="required">*</span>
-            </label>
-            <div class="topic-chips-wrapper" id="contact-topic-chips">
-              <button type="button" class="topic-chip active active--sponsor" data-topic="ads">
-                <span>📢</span>
-                <span>إعلان على الدليل</span>
-              </button>
-              <button type="button" class="topic-chip active--verify" data-topic="verification">
-                <span>🛡️</span>
-                <span>توثيق حساب أو مكان</span>
-              </button>
-              <button type="button" class="topic-chip" data-topic="showcase">
-                <span>🔥</span>
-                <span>ظهور منتجات وعروض</span>
-              </button>
-              <button type="button" class="topic-chip" data-topic="inquiry">
-                <span>💬</span>
-                <span>استفسارات عامة</span>
-              </button>
-              <button type="button" class="topic-chip" data-topic="suggestion">
-                <span>💡</span>
-                <span>اقتراح لتطوير المنصة</span>
-              </button>
-              <button type="button" class="topic-chip" data-topic="complaint">
-                <span>⚠️</span>
-                <span>شكوى أو بلاغ</span>
-              </button>
+            <!-- هدف الرسالة: قائمة منسدلة فاخرة متحركة -->
+            <div class="form-group" style="margin-bottom:20px">
+              <label class="form-label cx-label" style="font-weight:800;font-size:14px;margin-bottom:8px">
+                هدف الرسالة <span class="required">*</span>
+              </label>
+              <div class="cq-select" id="cq-topic-select">
+                <button type="button" class="cq-select__trigger" id="cq-topic-trigger"
+                        aria-haspopup="listbox" aria-expanded="false" aria-controls="cq-topic-panel">
+                  <span class="cq-select__icon" id="cq-topic-icon">📩</span>
+                  <span class="cq-select__value is-placeholder" id="cq-topic-value">اختر هدف رسالتك من القائمة...</span>
+                  <span class="cq-select__chevron" aria-hidden="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </span>
+                </button>
+                <div class="cq-select__panel" id="cq-topic-panel" role="listbox" aria-label="هدف الرسالة">
+                  <div class="cq-select__panel-head">اختر نوع طلبك ✨</div>
+                  ${topicOptionsHtml}
+                </div>
+              </div>
+              <div class="cq-select__hint" id="cq-topic-hint">اختر الهدف وسنخصص نموذج الرسالة تلقائياً ليناسب طلبك ✨</div>
             </div>
-          </div>
 
           <!-- The Form -->
           <form id="contact-master-form" style="display:flex;flex-direction:column;gap:18px">
-            <input type="hidden" id="cf-selected-topic" value="ads" />
+            <input type="hidden" id="cf-selected-topic" value="" />
 
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
               <div class="form-group" style="margin:0">
@@ -375,13 +453,54 @@ export async function renderContactPage($container, { user } = {}) {
     </div>
   `;
 
-  // ═══════════════════════════════════════════════════════════
-  //  LOGIC & EVENT HANDLERS
-  // ═══════════════════════════════════════════════════════════
+  /* ═══════════════════════════════════════════════════════════
+     ANIMATION SYSTEMS & REVEALS
+     ═══════════════════════════════════════════════════════════ */
 
-  const topicChips = document.querySelectorAll('#contact-topic-chips .topic-chip');
+  // 1. Scroll Reveal
+  const revealEls = $container.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window) {
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    revealEls.forEach(el => revealObserver.observe(el));
+  } else {
+    revealEls.forEach(el => el.classList.add('in'));
+  }
+
+  // 2. Hero Sparkles
+  const sparklesBox = document.getElementById('cx-sparkles');
+  if (sparklesBox) {
+    for (let i = 0; i < 14; i++) {
+      const s = document.createElement('span');
+      s.className = 'cx-spark';
+      s.style.left = (Math.random() * 100).toFixed(1) + '%';
+      s.style.top = (Math.random() * 100).toFixed(1) + '%';
+      s.style.animationDelay = (Math.random() * 6).toFixed(2) + 's';
+      s.style.animationDuration = (4 + Math.random() * 4).toFixed(2) + 's';
+      const size = (2 + Math.random() * 3).toFixed(1);
+      s.style.width = size + 'px';
+      s.style.height = size + 'px';
+      sparklesBox.appendChild(s);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     CUSTOM TOPIC DROPDOWN (القائمة المنسدلة الفاخرة)
+     ═══════════════════════════════════════════════════════════ */
+
+  const cqRoot = document.getElementById('cq-topic-select');
+  const cqTrigger = document.getElementById('cq-topic-trigger');
+  const cqPanel = document.getElementById('cq-topic-panel');
+  const cqIcon = document.getElementById('cq-topic-icon');
+  const cqValue = document.getElementById('cq-topic-value');
+  const cqHint = document.getElementById('cq-topic-hint');
   const selectedTopicInput = document.getElementById('cf-selected-topic');
-  const placeGroup = document.getElementById('cf-place-group');
   const messageLabel = document.getElementById('cf-message-label');
   const messageInput = document.getElementById('cf-message');
   const areaSelect = document.getElementById('cf-area');
@@ -391,71 +510,87 @@ export async function renderContactPage($container, { user } = {}) {
   const submitBtn = document.getElementById('cf-submit-btn');
   const submitText = document.getElementById('cf-submit-text');
 
-  // Topic Labels Map
-  const TOPIC_LABELS = {
-    ads: 'إعلان على الدليل وترويج مدفوع',
-    verification: 'طلب توثيق حساب أو مكان بالعلامة المعتمدة',
-    showcase: 'طلب ظهور المنتجات والعروض الحصرية',
-    inquiry: 'استفسارات عامة حول الدليل',
-    suggestion: 'اقتراح أو فكرة لتطوير المنصة',
-    complaint: 'شكوى أو بلاغ عن نشاط أو محتوى'
+  const openPanel = () => {
+    if (!cqRoot || !cqTrigger) return;
+    cqRoot.classList.add('is-open');
+    cqTrigger.setAttribute('aria-expanded', 'true');
+  };
+  const closePanel = () => {
+    if (!cqRoot || !cqTrigger) return;
+    cqRoot.classList.remove('is-open');
+    cqTrigger.setAttribute('aria-expanded', 'false');
   };
 
-  // Change active topic helper
-  function setTopic(topicKey) {
-    if (selectedTopicInput) selectedTopicInput.value = topicKey;
+  cqTrigger?.addEventListener('click', (e) => {
+    e.preventDefault();
+    cqRoot.classList.contains('is-open') ? closePanel() : openPanel();
+  });
 
-    topicChips.forEach(chip => {
-      chip.classList.remove('active', 'active--sponsor', 'active--verify', 'active--complaint');
-      if (chip.getAttribute('data-topic') === topicKey) {
-        chip.classList.add('active');
-        if (topicKey === 'ads' || topicKey === 'showcase') chip.classList.add('active--sponsor');
-        else if (topicKey === 'verification') chip.classList.add('active--verify');
-        else if (topicKey === 'complaint') chip.classList.add('active--complaint');
-      }
+  document.addEventListener('click', (e) => {
+    if (cqRoot && !cqRoot.contains(e.target)) closePanel();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && cqRoot?.classList.contains('is-open')) {
+      closePanel();
+      cqTrigger?.focus();
+    }
+  });
+
+  // Apply topic: updates hidden input, dropdown visuals, message label/placeholder
+  function setTopic(topicKey, { fromUser = false } = {}) {
+    const t = TOPICS[topicKey];
+    if (!t) return;
+
+    if (selectedTopicInput) selectedTopicInput.value = topicKey;
+    if (cqRoot) {
+      cqRoot.dataset.topic = topicKey;
+      cqRoot.classList.remove('is-error');
+    }
+    if (cqIcon) cqIcon.textContent = t.icon;
+    if (cqValue) {
+      cqValue.textContent = t.title;
+      cqValue.classList.remove('is-placeholder');
+    }
+    if (cqHint) {
+      cqHint.textContent = t.hint;
+      cqHint.classList.add('is-active');
+    }
+
+    cqPanel?.querySelectorAll('.cq-option').forEach(opt => {
+      opt.classList.toggle('is-selected', opt.getAttribute('data-topic') === topicKey);
     });
 
-    // Dynamic placeholders & hints
-    if (topicKey === 'ads') {
-      if (messageInput) messageInput.placeholder = 'أخبرنا عن نوع الإعلان الذي تريده (إعلان قمة الموقع، شريط إعلاني، ترويج صفحة مكانك) والمدة المقترحة...';
-      if (messageLabel) messageLabel.innerHTML = 'تفاصيل الإعلان والميزانية أو المدة المقترحة <span class="required">*</span>';
-      if (placeGroup) placeGroup.style.display = 'block';
-    } else if (topicKey === 'verification') {
-      if (messageInput) messageInput.placeholder = 'اكتب اسم المحل أو النشاط أو العيادة بالضبط، وأي أرقام هواتف أو صفحات تواصل ترغب في ربطها بالتوثيق...';
-      if (messageLabel) messageLabel.innerHTML = 'بيانات التوثيق وإثبات ملكية النشاط <span class="required">*</span>';
-      if (placeGroup) placeGroup.style.display = 'block';
-    } else if (topicKey === 'showcase') {
-      if (messageInput) messageInput.placeholder = 'ما هي المنتجات أو العروض الترويجية والخصومات التي ترغب في إبرازها لأهالي المنزلة والمطرية؟...';
-      if (messageLabel) messageLabel.innerHTML = 'تفاصيل العروض والمنتجات المراد إبرازها <span class="required">*</span>';
-      if (placeGroup) placeGroup.style.display = 'block';
-    } else if (topicKey === 'complaint') {
-      if (messageInput) messageInput.placeholder = 'اشرح لنا المشكلة أو البلاغ بالتفصيل لنقوم بالتحقق العاجل واتخاذ اللازم فوراً...';
-      if (messageLabel) messageLabel.innerHTML = 'نص الشكوى أو تفاصيل البلاغ <span class="required">*</span>';
-      if (placeGroup) placeGroup.style.display = 'block';
-    } else {
-      if (messageInput) messageInput.placeholder = 'اكتب استفسارك أو اقتراحك أو رسالتك بالتفصيل هنا...';
-      if (messageLabel) messageLabel.innerHTML = 'نص الرسالة والتفاصيل <span class="required">*</span>';
-      if (placeGroup) placeGroup.style.display = 'block';
-    }
+    if (messageInput) messageInput.placeholder = t.placeholder;
+    if (messageLabel) messageLabel.innerHTML = `${t.msgLabel} <span class="required">*</span>`;
+
+    if (fromUser) closePanel();
   }
 
-  // Topic Chip Click
-  topicChips.forEach(chip => {
-    chip.addEventListener('click', () => {
-      setTopic(chip.getAttribute('data-topic'));
+  cqPanel?.querySelectorAll('.cq-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      setTopic(opt.getAttribute('data-topic'), { fromUser: true });
     });
   });
 
-  // Action Buttons from the 3 pillars
+  // Pillar CTA buttons → preselect topic + smooth scroll + pulse dropdown
   document.querySelectorAll('.btn-select-topic').forEach(btn => {
     btn.addEventListener('click', () => {
-      const topic = btn.getAttribute('data-topic');
-      setTopic(topic);
+      setTopic(btn.getAttribute('data-topic'));
       const formSection = document.getElementById('contact-form-section');
-      if (formSection) {
-        formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (formSection) formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (cqRoot) {
+        cqRoot.classList.remove('is-pulse');
+        void cqRoot.offsetWidth; // reflow to restart animation
+        cqRoot.classList.add('is-pulse');
+        setTimeout(() => cqRoot.classList.remove('is-pulse'), 1600);
       }
     });
+  });
+
+  // Hero CTA smooth scroll
+  document.getElementById('cx-hero-cta')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('contact-form-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   // Area select custom toggle
@@ -472,12 +607,37 @@ export async function renderContactPage($container, { user } = {}) {
       form.style.display = 'flex';
     }
     if (successState) successState.style.display = 'none';
-    setTopic('ads');
+    if (selectedTopicInput) selectedTopicInput.value = '';
+    if (cqRoot) {
+      delete cqRoot.dataset.topic;
+      cqRoot.classList.remove('is-error');
+    }
+    if (cqIcon) cqIcon.textContent = '📩';
+    if (cqValue) {
+      cqValue.textContent = 'اختر هدف رسالتك من القائمة...';
+      cqValue.classList.add('is-placeholder');
+    }
+    if (cqHint) {
+      cqHint.textContent = 'اختر الهدف وسنخصص نموذج الرسالة تلقائياً ليناسب طلبك ✨';
+      cqHint.classList.remove('is-active');
+    }
+    cqPanel?.querySelectorAll('.cq-option').forEach(opt => opt.classList.remove('is-selected'));
+    if (messageInput) messageInput.placeholder = 'اكتب تفاصيل طلبك للإعلان، أو نوع التوثيق المطلوب، أو أي استفسار تريده بالتفصيل...';
+    if (messageLabel) messageLabel.innerHTML = 'تفاصيل الطلب أو نص الرسالة <span class="required">*</span>';
   });
 
   // Form Submit Handler with Double-Email Forwarding & Database Sync
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    const topicKey = selectedTopicInput?.value || '';
+    if (!topicKey || !TOPICS[topicKey]) {
+      cqRoot?.classList.add('is-error');
+      cqRoot?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      toast.warning('يرجى اختيار هدف الرسالة من القائمة المنسدلة أولاً');
+      setTimeout(() => cqRoot?.classList.remove('is-error'), 2200);
+      return;
+    }
 
     const name = document.getElementById('cf-name')?.value.trim();
     const phone = document.getElementById('cf-phone')?.value.trim();
@@ -487,8 +647,7 @@ export async function renderContactPage($container, { user } = {}) {
       ? (document.getElementById('cf-custom-area')?.value.trim() || 'المنزلة والمطرية')
       : (areaSelect?.value || 'المنزلة');
     const message = document.getElementById('cf-message')?.value.trim();
-    const topicKey = selectedTopicInput?.value || 'inquiry';
-    const topicLabel = TOPIC_LABELS[topicKey] || topicKey;
+    const topicLabel = TOPICS[topicKey].emailLabel;
 
     if (!name || !phone || !message) {
       toast.warning('يرجى ملء كافة الحقول الإلزامية المطلوبة (الاسم، الهاتف، الرسالة)');
@@ -497,6 +656,7 @@ export async function renderContactPage($container, { user } = {}) {
 
     if (submitBtn) {
       submitBtn.disabled = true;
+      submitBtn.classList.add('is-loading');
       if (submitText) submitText.textContent = 'جاري الإرسال وتوصيل الرسالة...';
     }
 
@@ -574,6 +734,7 @@ export async function renderContactPage($container, { user } = {}) {
     } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
+        submitBtn.classList.remove('is-loading');
         if (submitText) submitText.textContent = 'إرسال الرسالة إلى الإدارة الآن';
       }
     }
