@@ -11,7 +11,7 @@ import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
-import { mountVoiceSearchButton } from '../../services/voice.service.js';
+import { mountVoiceSearchButton, openManzalaVoiceAssistantModal } from '../../services/voice.service.js';
 import { mountLivePulseSection } from '../components/LivePulseSection.js';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
@@ -687,14 +687,12 @@ function setupHeroSearch(categories) {
     }
   });
 
-  // Initialize Smart Voice Search
-  mountVoiceSearchButton({
-    inputEl: input,
-    onSearch: (spokenText) => {
-      if (spokenText) {
-        window.location.href = `search.html?q=${encodeURIComponent(spokenText)}`;
-      }
-    }
+  // Initialize Voice Search on the left blue microphone button
+  const voiceTriggerBtn = document.getElementById('hero-voice-trigger-btn');
+  voiceTriggerBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openManzalaVoiceAssistantModal();
   });
 }
 
@@ -933,26 +931,46 @@ function getHomeHTML() {
           دليلك الرقمي الشامل لجميع الأماكن، المحلات، الأطباء والعيادات، والمهن والحرفيين (سباك، نجار، مبلط، كهربائي، نقاش) في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، وميت شريف.
         </p>
 
-        <!-- Search Box (Luxury Pill + Animated Blue Glow + Instant Live Results) -->
+        <!-- Search Box (Exact Image Match: Full Glowing Horizontal Neon Border + Blue Voice Button + Search Button) -->
         <div class="hero__search">
           <div class="hero-search-glow-wrap" id="hero-search-glow-wrap">
-            <div class="hero-search-glow-border" aria-hidden="true"></div>
             <div class="hero-search-pill" id="hero-search-pill" role="search">
+              <!-- Left Voice Search Button (زر المايك الأزرق مثل الصورة تماماً) -->
+              <div class="hero-search-voice-wrap" id="hero-search-voice-slot">
+                <button type="button" class="hero-voice-btn" id="hero-voice-trigger-btn" aria-label="البحث الصوتي الذكي" title="البحث الصوتي الذكي">
+                  <span class="voice-wave-left" aria-hidden="true">(((</span>
+                  <svg class="voice-mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                  <span class="voice-wave-right" aria-hidden="true">)))</span>
+                </button>
+              </div>
+
+              <!-- Input Divider -->
+              <div class="hero-search-divider" aria-hidden="true"></div>
+
+              <!-- Main Input -->
+              <input
+                type="search"
+                id="hero-search-input"
+                class="hero-search-pill-input"
+                placeholder="ابحث عن مكان أو خدمة في المنزلة والمطرية..."
+                autocomplete="off"
+                aria-label="ابحث في دليل المنزلة والمطرية"
+              />
+
+              <button type="button" class="hero-search-clear-btn" id="hero-search-clear" aria-label="مسح البحث" title="مسح">✕</button>
+
+              <!-- Right Circular Search Button -->
               <button class="hero-search-btn-trigger" id="hero-search-btn" aria-label="بحث في الدليل" title="بحث في الدليل">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <circle cx="11" cy="11" r="7"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
               </button>
-              <input
-                type="search"
-                id="hero-search-input"
-                class="hero-search-pill-input"
-                placeholder="ابحث: سباك، دكتور، صيدلية، مطعم في المنزلة، المطرية، القرى..."
-                autocomplete="off"
-                aria-label="ابحث في دليل المنزلة والمطرية"
-              />
-              <button type="button" class="hero-search-clear-btn" id="hero-search-clear" aria-label="مسح البحث" title="مسح">✕</button>
             </div>
 
             <!-- Hero Floating Live Results Dropdown -->
