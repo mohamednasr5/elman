@@ -51,7 +51,7 @@ async function run() {
   ];
 
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-      += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
+          xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
   xml += '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"\n';
   xml += '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n\n';
 
