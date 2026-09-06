@@ -1109,8 +1109,8 @@ function renderAdminPlacesTableRows(places) {
           <strong style="color:#FFFFFF;font-size:14px;display:block;margin-bottom:2px">${escHtml(p.name)}</strong>
           ${p.phone ? `<div style="font-size:12px;color:#38BDF8;font-weight:700">📞 ${escHtml(p.phone)}</div>` : ''}
           <div style="font-size:11.5px;margin-top:4px">
-            ${p.ownerId 
-              ? `<span style="color:#FBBF24;font-weight:800">👤 المالك: ${escHtml(p.ownerName || p.ownerEmail || p.ownerId.slice(0, 8))}</span>` 
+            ${(p.ownerId || p.owner_id) 
+              ? `<span style="color:#FBBF24;font-weight:800">👤 المالك: ${escHtml(p.ownerName || p.owner_name || p.ownerEmail || p.owner_email || (p.ownerId || p.owner_id).slice(0, 8))}</span>` 
               : `<span style="color:#94A3B8">👤 المالك: بدون مستخدم (المنصة)</span>`
             }
           </div>
