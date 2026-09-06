@@ -12705,3 +12705,19 @@ textarea,
   .search-smart-filters::-webkit-scrollbar{display:none}
   .search-smart-filter{flex:0 0 auto;padding:7px 11px}
 }
+
+
+/* ── Favorites page ─────────────────────────────────────────── */
+.favorites-hero{
+  position:relative;overflow:hidden;display:flex;align-items:center;gap:18px;
+  padding:24px;margin:18px 0 26px;border-radius:24px;
+  color:#fff;background:linear-gradient(135deg,#172b46 0%,#0f4c72 58%,#0369a1 100%);
+  box-shadow:0 18px 45px rgba(15,76,114,.18);
+}
+.favorites-hero::after{content:"";position:absolute;width:220px;height:220px;left:-90px;bottom:-145px;border:1px solid rgba(255,255,255,.18);border-radius:50%;box-shadow:0 0 0 24px rgba(255,255,255,.035),0 0 0 52px rgba(255,255,255,.025)}
+.favorites-hero__icon{width:58px;height:58px;flex:0 0 58px;display:grid;place-items:center;border-radius:18px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);font-size:31px;animation:favoriteHeartbeat 2.1s ease-in-out infinite}
+.favorites-hero__kicker{font-size:11px;font-weight:900;color:#7dd3fc}
+.favorites-hero h1{margin:2px 0 4px;font-size:28px;font-weight:900}
+.favorites-hero p{margin:0;color:rgba(255,255,255,.76);font-size:12px;line-height:1.7}
+@keyframes favoriteHeartbeat{0%,100%{transform:scale(1)}10%{transform:scale(1.08)}20%{transform:scale(1)}}
+@media(max-width:600px){.favorites-hero{padding:18px;gap:13px;border-radius:20px}.favorites-hero__icon{width:48px;height:48px;flex-basis:48px;font-size:25px}.favorites-hero h1{font-size:23px}.favorites-hero p{font-size:11px}}
