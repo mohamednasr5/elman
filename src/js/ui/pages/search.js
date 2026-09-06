@@ -16,6 +16,7 @@ import { mountVoiceSearchButton } from '../../services/voice.service.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { isPhoneSearchQuery, normalizePhoneNumber, matchPlaceByPhone, formatPhoneNumberForDisplay, extractPlacePhoneNumbers } from '../../utils/phone.js';
 import { toast } from '../components/Toast.js';
+import { getPlaceLiveStatus } from '../../services/live-hours.js';
 
 let _searchUserLocation = null;
 
@@ -114,6 +115,13 @@ export async function renderSearchPage($container, { q = '', user }) {
           <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
         </select>
       </div>
+      <div class="search-smart-filters" id="search-smart-filters" aria-label="فلاتر سريعة">
+        <button type="button" class="search-smart-filter is-active" data-smart-filter="all">✨ الكل</button>
+        <button type="button" class="search-smart-filter" data-smart-filter="open">🟢 مفتوح الآن</button>
+        <button type="button" class="search-smart-filter" data-smart-filter="verified">🛡️ موثق</button>
+        <button type="button" class="search-smart-filter" data-smart-filter="top">⭐ 4.5+</button>
+        <button type="button" class="search-smart-filter" data-smart-filter="nearby">📍 قريب مني</button>
+      </div>
 
       <div class="places-grid" id="search-results-grid">
         ${q ? Array(4).fill(renderPlaceCardSkeleton()).join('') : ''}
@@ -141,9 +149,9 @@ export async function renderSearchPage($container, { q = '', user }) {
   // Fast pre-fetch places, products, and offers in parallel
   try {
     const [pList, prList, offList] = await Promise.all([
-      getPublishedPlaces({ limit: 1000 }),
-      getAllProducts().catch(() => []),
-      getActiveOffers().catch(() => [])
+      getPublishedPlaces({ limit: 250 }),
+      Promise.resolve([]),
+      Promise.resolve([])
     ]);
     allPlaces = pList || [];
     allProductsList = prList || [];
@@ -420,6 +428,7 @@ export async function renderSearchPage($container, { q = '', user }) {
 
   let currentResults = [];
   let currentMeta = '';
+  let smartFilter = 'all';
 
   async function renderResults(places, metaText, append = false) {
     if (append) {
@@ -433,6 +442,19 @@ export async function renderSearchPage($container, { q = '', user }) {
 
     const sortBy = searchSort?.value || 'relevance';
     let sorted = [...currentResults];
+
+    if (smartFilter === 'verified') sorted = sorted.filter(p => Boolean(p.isVerified));
+    if (smartFilter === 'top') sorted = sorted.filter(p => Number(p.rating || 0) >= 4.5);
+    if (smartFilter === 'open') sorted = sorted.filter(p => {
+      const live = getPlaceLiveStatus(p.openHours || p.workingHours || p.working_hours);
+      return live.isOpen === true;
+    });
+    if (smartFilter === 'nearby') {
+      if (!_searchUserLocation) {
+        try { _searchUserLocation = await getUserLocation(); } catch (_) { _searchUserLocation = MANZALA_CENTER; }
+      }
+      sorted = sortPlacesByDistance(sorted, _searchUserLocation).slice(0, 20);
+    }
 
     if (sortBy === 'nearest') {
       if (!_searchUserLocation) {
@@ -496,6 +518,15 @@ export async function renderSearchPage($container, { q = '', user }) {
     if (currentResults.length > 0) {
       await renderResults(currentResults, null, false);
     }
+  });
+
+  document.querySelectorAll('.search-smart-filter').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      document.querySelectorAll('.search-smart-filter').forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      smartFilter = btn.dataset.smartFilter || 'all';
+      await renderResults(currentResults, null, false);
+    });
   });
 
   window.searchFor = (keyword) => {
