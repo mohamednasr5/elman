@@ -312,7 +312,7 @@ export async function initPage(activeFile = '') {
   _bindThemeToggle();
 
   /* 6. Attach M Voice Assistant FAB listener */
-  bindGlobalVoiceAssistantFab();
+try { bindGlobalVoiceAssistantFab(); } catch (err) { console.warn('[initPage] voice FAB init failed:', err); }
 
   /* 7. Scroll shadow on header & Scroll to top floating button */
   const hdr = document.getElementById('site-header');
@@ -329,7 +329,7 @@ export async function initPage(activeFile = '') {
   });
 
   /* 8. Header Luxury Expandable Search & Live Results Dropdown */
-  _setupHeaderSearch();
+try { _setupHeaderSearch(); } catch (err) { console.warn('[initPage] header search init failed:', err); }
 
   /* 9. Auth UI & Live Notification / FCM Subscriber (reactive) */
   onAuthStateChange(user => {
@@ -348,7 +348,7 @@ export async function initPage(activeFile = '') {
   } catch (_) {}
 
   /* 11. PWA Install banner */
-  _setupPwa();
+try { _setupPwa(); } catch (err) { console.warn('[initPage] PWA setup failed:', err); }
 
   /* 12. Service Worker & Realtime Web Push */
   if ('serviceWorker' in navigator) {
@@ -370,16 +370,16 @@ export async function initPage(activeFile = '') {
   } catch (_) {}
 
   /* 13. Universal Realtime PWA Sync Bus (0ms Sync) */
-  initRealtimePwaSyncBus();
+try { initRealtimePwaSyncBus(); } catch (err) { console.warn('[initPage] realtime sync bus failed:', err); }
 
   /* 14. Universal Mobile Touch Tooltips (Tap on badges/labels) */
-  initUniversalMobileTouchTooltips();
+try { initUniversalMobileTouchTooltips(); } catch (err) { console.warn('[initPage] mobile tooltips failed:', err); }
 
   /* 15. Instant Link Prefetching for 0ms page loads */
-  _setupInstantPrefetch();
+try { _setupInstantPrefetch(); } catch (err) { console.warn('[initPage] instant prefetch failed:', err); }
 
   /* 16. Content Protection & Decorative Console Security Warning */
-  _setupContentProtection();
+try { _setupContentProtection(); } catch (err) { console.warn('[initPage] content protection failed:', err); }
 }
 
 function _checkApkPwaEnvironment() {
