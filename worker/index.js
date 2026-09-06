@@ -297,11 +297,17 @@ try {
       FROM places p
       LEFT JOIN users u ON u.id = p.owner_id
     `;
-    const params = [];
+    const ownerEmailFilter = (url.searchParams.get('owner_email') || '').trim().toLowerCase();
 
-    if (ownerIdFilter) {
-      sql += ` WHERE p.owner_id = ?`;
-      params.push(ownerIdFilter);
+    if (ownerIdFilter && ownerEmailFilter) {
+      sql += ` WHERE (p.owner_id = ? OR LOWER(p.owner_email) = ?)`;
+      params.push(ownerIdFilter, ownerEmailFilter);
+    } else if (ownerIdFilter) {
+      sql += ` WHERE (p.owner_id = ? OR LOWER(p.owner_email) = ?)`;
+      params.push(ownerIdFilter, ownerIdFilter.toLowerCase());
+    } else if (ownerEmailFilter) {
+      sql += ` WHERE LOWER(p.owner_email) = ?`;
+      params.push(ownerEmailFilter);
     }
 
     sql += ` ORDER BY p.updated_at DESC, p.created_at DESC LIMIT ? OFFSET ?`;

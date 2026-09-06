@@ -231,8 +231,8 @@ function setupDashboardNavigation() {
 
 // ── 1. Overview Section ──
 async function renderOverviewSection($container, user) {
-  const places = await getPlacesByOwner(user.uid);
-  
+  const places = await getPlacesByOwner(user);
+
   let totalViews = 0;
   let totalPhoneClicks = 0;
   let totalWaClicks = 0;
@@ -298,7 +298,7 @@ async function renderOverviewSection($container, user) {
 
 // ── 2. Places Section ──
 async function renderPlacesSection($container, user) {
-  const places = await getPlacesByOwner(user.uid);
+  const places = await getPlacesByOwner(user);
 
   $container.innerHTML = `
     <div class="dashboard-header animate-fade-in" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">

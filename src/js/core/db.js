@@ -967,12 +967,19 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
 }
 
 /** Get places by owner (newest added first) - Reads from D1 / IndexedDB */
-export async function getPlacesByOwner(uid) {
-  if (!uid) return [];
-  const cacheKey = `places_owner_${uid}`;
+export async function getPlacesByOwner(userOrUid) {
+  if (!userOrUid) return [];
+  const uid = typeof userOrUid === 'object' ? userOrUid.uid : userOrUid;
+  const email = typeof userOrUid === 'object' ? (userOrUid.email || '') : '';
+
+  if (!uid && !email) return [];
+  const cacheKey = `places_owner_${uid || email}`;
 
   try {
-    const workerRes = await fetch(`${WORKER_URL}/api/places?owner_id=${encodeURIComponent(uid)}`, {
+    let url = `${WORKER_URL}/api/places?owner_id=${encodeURIComponent(uid || '')}`;
+    if (email) url += `&owner_email=${encodeURIComponent(email)}`;
+
+    const workerRes = await fetch(url, {
       signal: AbortSignal.timeout(5000)
     });
     if (workerRes.ok) {
