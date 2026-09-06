@@ -570,6 +570,26 @@ function registerRoutes() {
 }
 
 // ── Track place stats (global function for card buttons) ──
+window.togglePlaceFavorite = async (placeId, button) => {
+  try {
+    const { toggleFavorite } = await import('./services/favorites.service.js');
+    const active = toggleFavorite(placeId);
+    if (button) {
+      button.classList.toggle('is-favorite', active);
+      button.textContent = active ? '♥' : '♡';
+      button.setAttribute('aria-label', active ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة');
+      button.setAttribute('title', active ? 'إزالة من المفضلة' : 'حفظ المكان');
+      button.animate?.([
+        { transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }
+      ], { duration: 240, easing: 'ease-out' });
+    }
+    try {
+      const { toast } = await import('./ui/components/Toast.js');
+      toast.info(active ? 'تم حفظ المكان في المفضلة ❤️' : 'تمت إزالة المكان من المفضلة');
+    } catch (_) {}
+  } catch (_) {}
+};
+
 window.trackStat = async (placeId, stat) => {
   if (!placeId || !stat) return;
   try {
