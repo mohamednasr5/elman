@@ -37,7 +37,7 @@ export default {
 }
 
     // Admin API Key Guard for sensitive write/delete routes
-    const ADMIN_WRITE_PATHS = ['/api/places', '/api/categories', '/api/ads'];
+        const ADMIN_WRITE_PATHS = ['/api/categories', '/api/ads'];
     const isAdminWritePath = ADMIN_WRITE_PATHS.some(p => url.pathname === p || url.pathname.startsWith(p + '/'));
     const isMutatingMethod = ['POST', 'PUT', 'DELETE'].includes(request.method);
     if (isAdminWritePath && isMutatingMethod) {
