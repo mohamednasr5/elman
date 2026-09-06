@@ -47,7 +47,7 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v2.6.0-push-sync';
+const CACHE_VERSION = 'v2.7.0-perf-push-sync';
 const STATIC_CACHE  = `manzala-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `manzala-dynamic-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `manzala-images-${CACHE_VERSION}`;
@@ -122,8 +122,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets (CSS, JS, Fonts) -> Network First with static cache fallback
-  event.respondWith(networkFirstStrategy(request, STATIC_CACHE));
+  // Static assets (CSS, JS, fonts) -> Cache First for repeat-visit speed.
+  // HTML/API remain network-first so public content stays fresh.
+  event.respondWith(cacheFirstStrategy(request, STATIC_CACHE));
 });
 
 /**

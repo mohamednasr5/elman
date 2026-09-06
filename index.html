@@ -37,8 +37,9 @@
   <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/>
-  <link rel="stylesheet" href="./src/css/main.css?v=2.4.0"/>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
+  <link rel="stylesheet" href="./src/css/main.css?v=2.5.0"/>
 
   <!-- Schema.org WebSite & Local Coverage -->
   <script type="application/ld+json">
@@ -117,20 +118,16 @@
 </div>
 
 <!-- Firebase SDK (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=2.5.1';
-  import { renderHomePage } from './src/js/ui/pages/home.js?v=2.5.1';
-  import { waitForAuth } from './src/js/core/auth.js?v=2.5.1';
-
-      try {
+  import { initPage } from './src/js/core/page-shell.js?v=2.6.0';
+  import { renderHomePage } from './src/js/ui/pages/home.js?v=2.6.0';
+  try {
       await initPage('index.html');
-
-      // Render homepage content
-      const user = await waitForAuth();
-      await renderHomePage(document.getElementById('page-container'), { user });
+      // Public homepage must not wait for Auth before rendering.
+      void renderHomePage(document.getElementById('page-container'), { user: null });
     } catch (err) {
       console.error('[Bootstrap] Fatal error during page init:', err);
       const pc = document.getElementById('page-container');

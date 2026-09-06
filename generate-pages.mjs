@@ -56,8 +56,9 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
   <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/>
-  <link rel="stylesheet" href="./src/css/main.css?v=2.4.0"/>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
+  <link rel="stylesheet" href="./src/css/main.css?v=2.5.0"/>
 </head>
 <body class="${bodyClass}">
 <div id="app">
@@ -85,9 +86,9 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
 </div>
 
 <!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script>
   // Universal Database & ServerValue fallback
   window.firebase = window.firebase || {};

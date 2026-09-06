@@ -289,17 +289,10 @@ function _pwaBannerHTML() {
    MAIN INIT — called from every page
 ───────────────────────────────────────────────────────── */
 export async function initPage(activeFile = '') {
-  /* 1. Firebase + Auth */
-  await ensureFirebaseReady();
-  initAuth();
-
-  /* 1.1 Global IP & Account Ban Enforcement */
-  await _enforceBanGuard();
-
-  /* 2. Theme setup (Dark / Light) */
+  /* 1. Render the shared shell immediately. Auth/network checks must never block first paint. */
   _setupTheme();
 
-  /* 3. Inject shared layout blocks */
+  /* 2. Inject shared layout blocks */
   _inject('header-slot',  _headerHTML(activeFile));
   _inject('footer-slot',  _footerHTML());
   _inject('nav-slot',     _bottomNavHTML(activeFile));
@@ -308,13 +301,13 @@ export async function initPage(activeFile = '') {
   /* 4. Check standalone APK/PWA environment to hide APK download button */
   _checkApkPwaEnvironment();
 
-  /* 5. Attach theme toggle listener to header button */
+  /* 4. Attach theme toggle listener to header button */
   _bindThemeToggle();
 
-  /* 6. Attach M Voice Assistant FAB listener */
+  /* 5. Attach M Voice Assistant FAB listener */
 try { bindGlobalVoiceAssistantFab(); } catch (err) { console.warn('[initPage] voice FAB init failed:', err); }
 
-  /* 7. Scroll shadow on header & Scroll to top floating button */
+  /* 6. Scroll shadow on header & Scroll to top floating button */
   const hdr = document.getElementById('site-header');
   const scrollBtn = document.getElementById('scroll-to-top-btn');
 
@@ -328,35 +321,37 @@ try { bindGlobalVoiceAssistantFab(); } catch (err) { console.warn('[initPage] vo
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  /* 8. Header Luxury Expandable Search & Live Results Dropdown */
+  /* 7. Header Luxury Expandable Search & Live Results Dropdown */
 try { _setupHeaderSearch(); } catch (err) { console.warn('[initPage] header search init failed:', err); }
 
-  /* 9. Auth UI & Live Notification / FCM Subscriber (reactive) */
-  onAuthStateChange(user => {
-    _renderUser(user);
-    initLiveNotificationSubscriber(user?.uid);
-    initFcmMessaging(user);
+  /* 8. Non-critical account, settings and notification work runs after first paint. */
+  const runDeferred = (fn) => {
+    if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 2500 });
+    else setTimeout(fn, 0);
+  };
+  runDeferred(async () => {
+    try { await ensureFirebaseReady(2500); initAuth(); } catch (_) {}
+    try { await _enforceBanGuard(); } catch (_) {}
+    try {
+      onAuthStateChange(user => {
+        _renderUser(user);
+        initLiveNotificationSubscriber(user?.uid);
+        initFcmMessaging(user);
+      });
+    } catch (_) {}
+    try {
+      const s = await getSettings();
+      const waLink = s?.contact?.whatsappLink;
+      if (waLink) document.querySelectorAll('[data-wa]').forEach(a => { a.href = waLink; });
+    } catch (_) {}
   });
 
-  /* 10. Dynamic settings (WhatsApp link) */
-  try {
-    const s = await getSettings();
-    const waLink = s?.contact?.whatsappLink;
-    if (waLink) {
-      document.querySelectorAll('[data-wa]').forEach(a => { a.href = waLink; });
-    }
-  } catch (_) {}
-
-  /* 11. PWA Install banner */
+  /* 9. PWA Install banner */
 try { _setupPwa(); } catch (err) { console.warn('[initPage] PWA setup failed:', err); }
 
-  /* 12. Service Worker & Realtime Web Push */
+  /* 10. Service Worker registration is non-blocking. FCM starts only after Auth is ready. */
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => {
-        initFcmMessaging(getCurrentUser());
-      })
-      .catch(() => {});
+    runDeferred(() => navigator.serviceWorker.register('./sw.js').catch(() => {}));
   }
 
   // Automatically purge legacy stale data caches (Keep only Auth & Theme)
@@ -369,17 +364,13 @@ try { _setupPwa(); } catch (err) { console.warn('[initPage] PWA setup failed:', 
     staleKeys.forEach(k => localStorage.removeItem(k));
   } catch (_) {}
 
-  /* 13. Universal Realtime PWA Sync Bus (0ms Sync) */
-try { initRealtimePwaSyncBus(); } catch (err) { console.warn('[initPage] realtime sync bus failed:', err); }
-
-  /* 14. Universal Mobile Touch Tooltips (Tap on badges/labels) */
-try { initUniversalMobileTouchTooltips(); } catch (err) { console.warn('[initPage] mobile tooltips failed:', err); }
-
-  /* 15. Instant Link Prefetching for 0ms page loads */
-try { _setupInstantPrefetch(); } catch (err) { console.warn('[initPage] instant prefetch failed:', err); }
-
-  /* 16. Content Protection & Decorative Console Security Warning */
-try { _setupContentProtection(); } catch (err) { console.warn('[initPage] content protection failed:', err); }
+  /* 11. Non-critical enhancement work */
+  runDeferred(() => {
+    try { initRealtimePwaSyncBus(); } catch (_) {}
+    try { initUniversalMobileTouchTooltips(); } catch (_) {}
+    try { _setupInstantPrefetch(); } catch (_) {}
+    try { _setupContentProtection(); } catch (_) {}
+  });
 }
 
 function _checkApkPwaEnvironment() {
