@@ -2026,7 +2026,8 @@ const html = `<!DOCTYPE html>
   <h1>${escapeHtml(rawPlaceName)}</h1>
 
   <p>
-    جاري تحويلك إلى صفحة المكان...
+    <script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"LocalBusiness","name":rawPlaceName,"description":placeDesc,"image":placeImg,"url":shareUrl,"telephone":place.phone||undefined,"address":{"@type":"PostalAddress","streetAddress":place.address||undefined,"addressLocality":place.area||'المنزلة والمطرية',"addressRegion":'الدقهلية',"addressCountry":'EG'},"geo":(place.latitude&&place.longitude)?{"@type":"GeoCoordinates","latitude":place.latitude,"longitude":place.longitude}:undefined,"aggregateRating":(place.review_count>0)?{"@type":"AggregateRating","ratingValue":place.rating||0,"reviewCount":place.review_count||0}:undefined})}</script>
+جاري تحويلك إلى صفحة المكان...
   </p>
 
   <p>
