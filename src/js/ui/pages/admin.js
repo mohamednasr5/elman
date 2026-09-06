@@ -178,7 +178,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         </div>
       </main>
 
-      <!-- Admin Mobile Bottom Bar (5 Primary Clean Tabs) -->
+      <!-- Admin Mobile Bottom Bar (Direct access to Verification, Ads, Integrity, Places) -->
       <nav class="admin-mobile-bottom-bar" id="admin-mobile-bottom-nav" aria-label="شريط إدارة الهاتف">
         <button type="button" class="admin-bottom-tab ${section === 'overview' ? 'active' : ''}" data-admin-sec="overview">
           <span class="admin-bottom-tab__icon">${ICONS.chart}</span>
@@ -188,15 +188,19 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           <span class="admin-bottom-tab__icon">${ICONS.pin}</span>
           <span class="admin-bottom-tab__label">الأماكن</span>
         </button>
-        <button type="button" class="admin-bottom-tab ${section === 'reviews' ? 'active' : ''}" data-admin-sec="reviews">
-          <span class="admin-bottom-tab__icon">${ICONS.star}</span>
-          <span class="admin-bottom-tab__label">التقييمات</span>
-        </button>
         <button type="button" class="admin-bottom-tab ${section === 'verification' ? 'active' : ''}" data-admin-sec="verification">
           <span class="admin-bottom-tab__icon">${ICONS.shield}</span>
           <span class="admin-bottom-tab__label">التوثيق</span>
         </button>
-        <button type="button" class="admin-bottom-tab ${['products', 'categories', 'users', 'offers', 'ads', 'settings'].includes(section) ? 'active' : ''}" id="btn-admin-open-more-sheet" data-admin-action="open-more" aria-label="المزيد من الأقسام">
+        <button type="button" class="admin-bottom-tab ${section === 'ads' ? 'active' : ''}" data-admin-sec="ads">
+          <span class="admin-bottom-tab__icon">${ICONS.megaphone}</span>
+          <span class="admin-bottom-tab__label">الإعلانات</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${section === 'integrity' ? 'active' : ''}" data-admin-sec="integrity">
+          <span class="admin-bottom-tab__icon">${ICONS.shield}</span>
+          <span class="admin-bottom-tab__label">سلامة D1</span>
+        </button>
+        <button type="button" class="admin-bottom-tab ${['products', 'reviews', 'categories', 'users', 'offers', 'settings', 'live-news'].includes(section) ? 'active' : ''}" id="btn-admin-open-more-sheet" data-admin-action="open-more" aria-label="المزيد من الأقسام">
           <span class="admin-bottom-tab__icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
           </span>
@@ -217,9 +221,29 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           </div>
 
           <div class="admin-sheet-grid">
-            <button type="button" class="admin-sheet-item" data-admin-sec="live-news" style="border-color:rgba(245,166,35,0.4)">
+            <button type="button" class="admin-sheet-item" data-admin-sec="verification" style="background:rgba(16,185,129,0.15);border-color:#10B981">
+              <span>🛡️</span>
+              <span style="color:#10B981;font-weight:800">طلبات التوثيق</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="ads" style="background:rgba(245,166,35,0.15);border-color:#F5A623">
+              <span>📢</span>
+              <span style="color:#F5A623;font-weight:800">الإعلانات والترويج</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="integrity" style="background:rgba(2,132,199,0.15);border-color:#0284C7">
+              <span>🛡️</span>
+              <span style="color:#0284C7;font-weight:800">سلامة وتناسق D1</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="places">
+              <span>📍</span>
+              <span>الأماكن والأنشطة</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="live-news">
               <span>🔥</span>
-              <span style="color:#F5A623;font-weight:800">يحدث الآن</span>
+              <span>يحدث الآن</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="reviews">
+              <span>⭐</span>
+              <span>التقييمات</span>
             </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="products">
               <span>🛍️</span>
@@ -237,26 +261,18 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
               <span>🏷️</span>
               <span>العروض</span>
             </button>
-            <button type="button" class="admin-sheet-item" data-admin-sec="ads">
-              <span>📢</span>
-              <span>الإعلانات</span>
-            </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="settings">
               <span>⚙️</span>
               <span>الإعدادات</span>
             </button>
-            <a href="../dashboard.html" class="admin-sheet-item" style="background:rgba(2,132,199,0.15);border-color:#0284C7">
+            <a href="../dashboard.html" class="admin-sheet-item" style="background:rgba(2,132,199,0.1);border-color:rgba(2,132,199,0.4)">
               <span>👤</span>
               <span>لوحة حسابي</span>
             </a>
-            <a href="../index.html" class="admin-sheet-item" style="background:rgba(16,185,129,0.15);border-color:#10B981">
+            <a href="../index.html" class="admin-sheet-item" style="background:rgba(255,255,255,0.05)">
               <span>🌐</span>
               <span>الرئيسية</span>
             </a>
-            <button type="button" class="admin-sheet-item" id="btn-admin-pwa-install-app" style="background:rgba(245,166,35,0.15);border-color:#F5A623">
-              <span>📲</span>
-              <span>تثبيت PWA</span>
-            </button>
           </div>
         </div>
       </div>
@@ -6411,7 +6427,7 @@ async function renderAdminIntegrity($container) {
 
     try {
       const user = getCurrentUser();
-      const token = user ? await user.getIdToken().catch(() => '') : '';
+      const token = (user && typeof user.getIdToken === 'function') ? await user.getIdToken().catch(() => '') : '';
       const report = await getD1IntegrityReport(token);
 
       const statusColor = report.status === 'PASS' ? '#10B981' : '#EF4444';
@@ -6522,7 +6538,7 @@ async function renderAdminIntegrity($container) {
     try {
       toast.info('جاري تنفيذ الإصلاح التلقائي لقاعدة البيانات... ⚙️');
       const user = getCurrentUser();
-      const token = user ? await user.getIdToken().catch(() => '') : '';
+      const token = (user && typeof user.getIdToken === 'function') ? await user.getIdToken().catch(() => '') : '';
       const repairRes = await runD1SafeRepair(token);
 
       toast.success(repairRes.message || 'تم تنفيذ الإصلاحات الحتمية بنجاح! 🎉');
