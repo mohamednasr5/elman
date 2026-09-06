@@ -36,6 +36,17 @@ export default {
   return new Response(null, { headers: corsHeaders });
 }
 
+    // Admin API Key Guard for sensitive write/delete routes
+    const ADMIN_WRITE_PATHS = ['/api/places', '/api/categories', '/api/ads'];
+    const isAdminWritePath = ADMIN_WRITE_PATHS.some(p => url.pathname === p || url.pathname.startsWith(p + '/'));
+    const isMutatingMethod = ['POST', 'PUT', 'DELETE'].includes(request.method);
+    if (isAdminWritePath && isMutatingMethod) {
+      const providedKey = request.headers.get('X-Admin-Key') || '';
+      if (!env.ADMIN_API_KEY || providedKey !== env.ADMIN_API_KEY) {
+        return jsonResponse({ error: 'Unauthorized: admin key missing or invalid' }, 401, corsHeaders);
+      }
+    }
+
 // ── Static AI/SEO Discovery Files ────────────────────────────────
 // GET /llms.txt — AI Agentic Discovery (required for 3/3 score)
 if (url.pathname === '/llms.txt' && request.method === 'GET') {
