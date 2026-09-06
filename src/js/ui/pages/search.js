@@ -185,7 +185,15 @@ export async function renderSearchPage($container, { q = '', user }) {
       if (paginationContainer) paginationContainer.style.display = 'none';
       const qPhone = normalizePhoneNumber(query);
       const displayPhone = formatPhoneNumberForDisplay(qPhone);
-      const matched = allPlaces.filter(p => matchPlaceByPhone(p, qPhone) && (!isAtmPlace(p) || isAtmReadyAndOperational(p, 15)));
+      let matched = [];
+      try {
+        const d1Phone = await searchPlacesD1(query, { limit: 20, offset: 0 });
+        matched = (d1Phone?.places || []).filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
+      } catch (_) {}
+      if (!matched.length) {
+        await ensureLocalPlaces();
+        matched = allPlaces.filter(p => matchPlaceByPhone(p, qPhone) && (!isAtmPlace(p) || isAtmReadyAndOperational(p, 15)));
+      }
 
       if (matched.length > 0) {
         toast.success(`تم العثور على (${matched.length}) نشاط مرتبط برقم الهاتف 📞`);
