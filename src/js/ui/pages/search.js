@@ -146,18 +146,14 @@ export async function renderSearchPage($container, { q = '', user }) {
   let allProductsList = [];
   let allOffersList = [];
 
-  // Fast pre-fetch places, products, and offers in parallel
-  try {
-    const [pList, prList, offList] = await Promise.all([
-      getPublishedPlaces({ limit: 250 }),
-      Promise.resolve([]),
-      Promise.resolve([])
-    ]);
-    allPlaces = pList || [];
-    allProductsList = prList || [];
-    allOffersList = offList || [];
-  } catch (err) {
-    console.warn('Failed to pre-fetch places for search:', err);
+  // D1 Edge Search is the primary path. Keep the page lightweight and hydrate
+  // the full local index only when AI/local fallback actually needs it.
+  async function ensureLocalPlaces() {
+    if (allPlaces.length) return allPlaces;
+    try {
+      allPlaces = await getPublishedPlaces({ limit: 250 });
+    } catch (_) { allPlaces = []; }
+    return allPlaces;
   }
 
   const currentUser = getCurrentUser() || user;
@@ -243,6 +239,7 @@ export async function renderSearchPage($container, { q = '', user }) {
     }
 
     if (isAi) {
+      await ensureLocalPlaces();
       if (metaEl) metaEl.innerHTML = `✨ جاري التحليل الذكي للبحث عن "<strong>${escHtml(query)}</strong>"...`;
       if (paginationContainer) paginationContainer.style.display = 'none';
       aiSmartSearch(query, allPlaces).then(async (aiRes) => {
@@ -291,6 +288,7 @@ export async function renderSearchPage($container, { q = '', user }) {
   }
 
   async function localSearch(query) {
+    await ensureLocalPlaces();
     // Local fallback is rare; hydrate products/offers only when D1 search is unavailable.
     if (!allProductsList.length) allProductsList = await getAllProducts().catch(() => []);
     if (!allOffersList.length) allOffersList = await getActiveOffers().catch(() => []);
