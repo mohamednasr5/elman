@@ -10,7 +10,7 @@ import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, getAtmLiveStatus, formatAtmTimeAgo } from '../../utils/atm.js';
 import { getPlaceLiveStatus } from '../../utils/live-hours.js';
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
-import { isFavorite } from '../../services/favorites.service.js';
+import { isFavorite, toggleFavorite } from '../../services/favorites.service.js';
 
 /**
  * Render a place card HTML string
@@ -324,3 +324,17 @@ export function getCategoryBadge(place) {
   `;
 }
 
+
+
+if (typeof window !== 'undefined' && !window.togglePlaceFavorite) {
+  window.togglePlaceFavorite = (placeId, button) => {
+    const active = toggleFavorite(placeId);
+    if (button) {
+      button.classList.toggle('is-favorite', active);
+      button.textContent = active ? '♥' : '♡';
+      button.setAttribute('aria-label', active ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة');
+      button.setAttribute('title', active ? 'إزالة من المفضلة' : 'حفظ المكان');
+      button.animate?.([{transform:'scale(1)'},{transform:'scale(1.25)'},{transform:'scale(1)'}], {duration:240,easing:'ease-out'});
+    }
+  };
+}
