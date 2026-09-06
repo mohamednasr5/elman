@@ -19,11 +19,13 @@ export default {
 
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const origin = request.headers.get('Origin') || '*';
+        const origin = request.headers.get('Origin') || '';
+    const allowedOrigins = ['https://dalilmanzala.com', 'http://localhost:8788', 'http://127.0.0.1:8788'];
+    const isAllowedOrigin = allowedOrigins.includes(origin);
 
     // CORS Headers
     const corsHeaders = {
-      'Access-Control-Allow-Origin': origin,
+            'Access-Control-Allow-Origin': isAllowedOrigin ? origin : allowedOrigins[0],
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
       'Access-Control-Max-Age': '86400',
