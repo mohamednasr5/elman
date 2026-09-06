@@ -1308,32 +1308,34 @@ export async function adminDeleteProduct(placeId, productId) {
   }
 }
 
-/** Get active ads by placement (reads sponsored places) */
 export async function getAds(placement = 'homepage') {
   const cacheKey = `ads_${placement}`;
   const cached = getCached(cacheKey, 600000);
-  if (cached) return cached;
+  if (cached && Array.isArray(cached) && cached.length > 0) return cached;
 
   try {
     const places = await getPublishedPlaces({ limit: 100 });
     const now = Date.now();
     const sponsored = (places || [])
-      .filter(p => p && p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > now))
+      .filter(p => p && (p.isSponsored || p.isFeatured || p.isVerified) && (!p.sponsoredUntil || p.sponsoredUntil > now))
       .map(p => ({
         _key: p.id,
         id: p.id,
-        title: p.name,
-        imageUrl: p.coverImageUrl || p.logoUrl,
+        title: p.name || 'إعلان مميز',
+        imageUrl: p.coverImageUrl || p.logoUrl || './icons/icon-192x192.png',
         linkUrl: `place.html?slug=${encodeURIComponent(p.slug || p.id)}`,
+        link: `place.html?slug=${encodeURIComponent(p.slug || p.id)}`,
         placement: 'all',
         isActive: true,
         priority: 10
       }));
 
-    return setCache(cacheKey, sponsored);
-  } catch (_) {
-    return [];
-  }
+    if (sponsored.length > 0) {
+      return setCache(cacheKey, sponsored);
+    }
+  } catch (_) {}
+
+  return [];
 }
 
 /** Get site settings (reads from Cloudflare Worker R2 / Cache) */
