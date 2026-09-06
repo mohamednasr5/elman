@@ -970,18 +970,36 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
 export async function getPlacesByOwner(uid) {
   if (!uid) return [];
   const cacheKey = `places_owner_${uid}`;
-  const cached = getCached(cacheKey, 600000);
-  if (cached) return cached;
 
   try {
-    const all = await getPublishedPlaces({ limit: 500 });
+    const workerRes = await fetch(`${WORKER_URL}/api/places?owner_id=${encodeURIComponent(uid)}`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (workerRes.ok) {
+      const data = await workerRes.json();
+      if (data && data.success && Array.isArray(data.data)) {
+        const places = data.data.map(normalizeD1Place).filter(Boolean);
+        places.sort((a, b) => {
+          const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
+          const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
+          if (timeA && timeB && timeA !== timeB) return timeB - timeA;
+          return String(b.id || '').localeCompare(String(a.id || ''));
+        });
+        return setCache(cacheKey, places);
+      }
+    }
+  } catch (workerErr) {
+    console.debug('[getPlacesByOwner] Worker D1 query error, falling back to local list:', workerErr.message);
+  }
+
+  try {
+    const all = await getPublishedPlaces({ limit: 1000 });
     const places = (all || []).filter(p => {
       if (!p) return false;
       const owner = p.ownerId || p.owner_id || p.owner;
       return owner === uid;
     });
 
-    // Sort newest places at the top
     places.sort((a, b) => {
       const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
       const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
