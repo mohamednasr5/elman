@@ -187,12 +187,22 @@ export async function createPlace(placeData, currentUser) {
   clearDbCache();
 
   // Sync new place to Cloudflare D1
-  await syncPlaceToWorkerD1(placeId, newPlace);
+      let d1SyncFailed = false;
+    try {
+      await syncPlaceToWorkerD1(placeId, newPlace);
+    } catch (syncErr) {
+      d1SyncFailed = true;
+      console.error('[createPlace] D1 sync failed, place saved locally only:', syncErr);
+    }
 
   // Broadcast realtime event across all open tabs, windows and PWA
   broadcastRealtimeChange('NEW_PLACE', { place: { id: placeId, ...newPlace } });
 
-  return placeId;
+      if (d1SyncFailed) {
+      throw new Error('تم حفظ المكان محليًا لكن فشلت مزامنته مع قاعدة البيانات الرئيسية، لذلك لن يظهر في نتائج البحث حاليًا. حاول مجددًا أو تواصل مع الدعم.');
+    }
+
+    return placeId;
 }
 
 /**
