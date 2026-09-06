@@ -1,25 +1,18 @@
 # robots.txt for https://dalilmanzala.com
+
 User-agent: *
 Allow: /
+
+# Private / administrative pages
 Disallow: /admin.html
 Disallow: /dashboard.html
 Disallow: /login.html
 
-# Google Search
-User-agent: Googlebot
-Allow: /
-Allow: /now.html
-Allow: /around-me.html
-Allow: /places.html
-Allow: /categories.html
-Allow: /category.html
-Allow: /place.html
-
-# AI Search Crawlers (SearchGPT, ChatGPT, Perplexity, Gemini, Claude)
-User-agent: ChatGPT-User
-Allow: /
-
+# AI crawlers
 User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
 Allow: /
 
 User-agent: ClaudeBot
@@ -37,9 +30,5 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-# AI Discovery Files
-User-agent: *
-Allow: /llms.txt
-
+# Sitemap
 Sitemap: https://dalilmanzala.com/sitemap.xml
-LLMs: https://dalilmanzala.com/llms.txt
