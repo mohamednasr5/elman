@@ -2976,7 +2976,7 @@ export function subscribeToOwnerPresence(ownerId, callback) {
 
 
 function getDeterministicReviewerPoints(name = '', id = '') {
-  const str = (name + id).trim() || 'مستخدم';
+  const str = (name + id).trim() || 'مستخدم';ج 
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = (hash << 5) - hash + str.charCodeAt(i);
