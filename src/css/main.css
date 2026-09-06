@@ -12653,3 +12653,29 @@ textarea,
   .trust-item strong { font-size:11px; }
   .trust-item small { font-size:9px; }
 }
+
+
+/* ── Trust + Favorites micro UI ─────────────────────────────── */
+.place-card__meta-top{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  min-height:28px;margin-bottom:4px;
+}
+.place-trust-mini{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 8px;border-radius:999px;
+  font-size:10px;font-weight:900;
+  color:#64748b;background:rgba(100,116,139,.08);
+  border:1px solid rgba(100,116,139,.16);
+}
+.place-trust-mini--good{color:#0369a1;background:rgba(14,165,233,.08);border-color:rgba(14,165,233,.18)}
+.place-trust-mini--high{color:#047857;background:rgba(16,185,129,.09);border-color:rgba(16,185,129,.2)}
+.place-favorite-btn{
+  width:32px;height:32px;display:grid;place-items:center;
+  border:1px solid var(--border,#e2e8f0);border-radius:50%;
+  background:var(--surface,#fff);color:#64748b;
+  cursor:pointer;font-size:19px;line-height:1;
+  transition:transform .22s ease,color .22s ease,background .22s ease,border-color .22s ease,box-shadow .22s ease;
+}
+.place-favorite-btn:hover{transform:translateY(-2px) scale(1.04);color:#e11d48;border-color:rgba(225,29,72,.25);box-shadow:0 8px 20px rgba(225,29,72,.12)}
+.place-favorite-btn.is-favorite{color:#e11d48;background:rgba(225,29,72,.08);border-color:rgba(225,29,72,.22)}
+[data-theme="dark"] .place-favorite-btn{background:#172235;border-color:#334155}
