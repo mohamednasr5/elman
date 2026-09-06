@@ -42,11 +42,16 @@ async function run() {
     { loc: 'https://dalilmanzala.com/about.html', priority: '0.5', changefreq: 'monthly' },
     { loc: 'https://dalilmanzala.com/contact.html', priority: '0.5', changefreq: 'monthly' },
     { loc: 'https://dalilmanzala.com/privacy.html', priority: '0.3', changefreq: 'yearly' },
-    { loc: 'https://dalilmanzala.com/terms.html', priority: '0.3', changefreq: 'yearly' }
+    { loc: 'https://dalilmanzala.com/terms.html', priority: '0.3', changefreq: 'yearly' },
+      { loc: 'https://dalilmanzala.com/manzala.html', priority: '0.9', changefreq: 'weekly' },
+      { loc: 'https://dalilmanzala.com/matariya.html', priority: '0.9', changefreq: 'weekly' },
+      { loc: 'https://dalilmanzala.com/now.html', priority: '0.7', changefreq: 'hourly' },
+      { loc: 'https://dalilmanzala.com/around-me.html', priority: '0.7', changefreq: 'weekly' },
+      { loc: 'https://dalilmanzala.com/products.html', priority: '0.7', changefreq: 'daily' }
   ];
 
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-  xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
+      += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
   xml += '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"\n';
   xml += '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n\n';
 
