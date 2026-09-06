@@ -87,6 +87,18 @@ export function setPlaceSchema(place, category) {
       addressRegion: 'الدقهلية (Dakahlia)',
       addressCountry: 'EG'
     },
+      containedInPlace: {
+        '@type': 'Place',
+        name: place.area || 'المنزلة والمطرية',
+        containedInPlace: {
+          '@type': 'AdministrativeArea',
+          name: 'محافظة الدقهلية',
+          containedInPlace: {
+            '@type': 'Country',
+            name: 'مصر'
+          }
+        }
+      },
     geo: place.location?.lat ? {
       '@type': 'GeoCoordinates',
       latitude: Number(place.location.lat),
