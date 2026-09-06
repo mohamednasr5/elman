@@ -173,7 +173,8 @@ try {
         address, area, phone, whatsapp, maps_link, latitude, longitude,
         description, logo_url, cover_image_url, status, is_verified,
         verification_status, offer_count, product_count, services_json,
-        social_json, stats_json, working_hours_json, created_at, updated_at
+        social_json, stats_json, working_hours_json, created_at, updated_at,
+        is_sponsored, is_featured, sponsored_until, priority
       FROM places
       WHERE status = 'published'
     `;
@@ -195,7 +196,7 @@ try {
       params.push(rawArea);
     }
 
-    sql += ` ORDER BY is_verified DESC, updated_at DESC LIMIT ? OFFSET ?`;
+    sql += ` ORDER BY is_sponsored DESC, is_featured DESC, is_verified DESC, updated_at DESC LIMIT ? OFFSET ?`;
     params.push(limit + 1, offset);
 
     const result = await env.DB.prepare(sql).bind(...params).all();
@@ -209,7 +210,13 @@ try {
       social: parseJson(place.social_json, {}),
       stats: parseJson(place.stats_json, {}),
       working_hours: parseJson(place.working_hours_json, {}),
-      is_verified: Boolean(place.is_verified)
+      is_verified: Boolean(place.is_verified),
+      is_sponsored: Boolean(place.is_sponsored || place.is_featured),
+      is_featured: Boolean(place.is_featured),
+      isSponsored: Boolean(place.is_sponsored || place.is_featured),
+      isFeatured: Boolean(place.is_featured),
+      sponsoredUntil: place.sponsored_until,
+      sponsored_until: place.sponsored_until
     }));
 
     const responseData = {
@@ -265,7 +272,13 @@ try {
           social: parseJson(result.social_json, {}),
           stats: parseJson(result.stats_json, {}),
           working_hours: parseJson(result.working_hours_json, {}),
-          is_verified: Boolean(result.is_verified)
+          is_verified: Boolean(result.is_verified),
+          is_sponsored: Boolean(result.is_sponsored || result.is_featured),
+          is_featured: Boolean(result.is_featured),
+          isSponsored: Boolean(result.is_sponsored || result.is_featured),
+          isFeatured: Boolean(result.is_featured),
+          sponsoredUntil: result.sponsored_until,
+          sponsored_until: result.sponsored_until
         };
         const res = jsonResponse({ success: true, data: place }, 200, {
           ...corsHeaders,
@@ -292,7 +305,7 @@ try {
         p.description, p.logo_url, p.cover_image_url, p.owner_id, p.owner_email,
         p.status, p.is_verified, p.verification_status, p.offer_count, p.product_count,
         p.services_json, p.social_json, p.stats_json, p.working_hours_json,
-        p.created_at, p.updated_at,
+        p.created_at, p.updated_at, p.is_sponsored, p.is_featured, p.sponsored_until, p.priority,
         u.name AS owner_name, u.email AS owner_email_d1, u.photo_url AS owner_photo
       FROM places p
       LEFT JOIN users u ON u.id = p.owner_id
@@ -310,7 +323,7 @@ try {
       params.push(ownerEmailFilter);
     }
 
-    sql += ` ORDER BY p.updated_at DESC, p.created_at DESC LIMIT ? OFFSET ?`;
+    sql += ` ORDER BY p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
     const result = await env.DB.prepare(sql).bind(...params).all();
@@ -322,6 +335,12 @@ try {
       stats: parseJson(place.stats_json, {}),
       working_hours: parseJson(place.working_hours_json, {}),
       is_verified: Boolean(place.is_verified),
+      is_sponsored: Boolean(place.is_sponsored || place.is_featured),
+      is_featured: Boolean(place.is_featured),
+      isSponsored: Boolean(place.is_sponsored || place.is_featured),
+      isFeatured: Boolean(place.is_featured),
+      sponsoredUntil: place.sponsored_until,
+      sponsored_until: place.sponsored_until,
       // Normalize owner name from D1 join
       owner_name: place.owner_name || place.owner_email || null,
     }));
@@ -335,7 +354,6 @@ try {
         returned: places.length
       }
     }, 200, {
-
       ...corsHeaders,
       'Cache-Control': 'public, max-age=60, s-maxage=60'
     });
@@ -371,6 +389,7 @@ try {
     const isSponsored = body.isSponsored !== undefined ? (body.isSponsored ? 1 : 0) : (body.is_sponsored ? 1 : 0);
     const isFeatured = body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : (body.is_featured ? 1 : 0);
     const sponsoredUntil = body.sponsoredUntil || body.sponsored_until || null;
+    const priorityVal = Number(body.priority) || 0;
     const servicesJson = typeof body.services === 'object' ? JSON.stringify(body.services) : (body.services_json || '[]');
     const socialJson = typeof body.social === 'object' ? JSON.stringify(body.social) : (body.social_json || '{}');
     const workingHoursJson = typeof body.workingHours === 'object' ? JSON.stringify(body.workingHours) : (body.working_hours_json || '{}');
@@ -385,13 +404,13 @@ try {
         address, area, phone, whatsapp, maps_link, latitude, longitude,
         description, logo_url, cover_image_url, owner_id, owner_email,
         status, is_verified, verification_status, services_json, social_json,
-        stats_json, working_hours_json, updated_at
+        stats_json, working_hours_json, updated_at, is_sponsored, is_featured, sponsored_until, priority
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
-        ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?
       )
       ON CONFLICT(id) DO UPDATE SET
         name = CASE WHEN excluded.name != '' THEN excluded.name ELSE places.name END,
@@ -415,6 +434,10 @@ try {
         status = excluded.status,
         is_verified = excluded.is_verified,
         verification_status = excluded.verification_status,
+        is_sponsored = excluded.is_sponsored,
+        is_featured = excluded.is_featured,
+        sponsored_until = COALESCE(excluded.sponsored_until, places.sponsored_until),
+        priority = excluded.priority,
         services_json = CASE WHEN excluded.services_json != '[]' THEN excluded.services_json ELSE places.services_json END,
         social_json = CASE WHEN excluded.social_json != '{}' THEN excluded.social_json ELSE places.social_json END,
         working_hours_json = CASE WHEN excluded.working_hours_json != '{}' THEN excluded.working_hours_json ELSE places.working_hours_json END,
@@ -424,7 +447,7 @@ try {
       address, area, phone, whatsapp, mapsLink, lat, lng,
       description, logoUrl, coverImageUrl, ownerId, ownerEmail,
       status, isVerified, verificationStatus, servicesJson, socialJson,
-      statsJson, workingHoursJson, now
+      statsJson, workingHoursJson, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
     ).run();
 
     // Cache Invalidation for this place
@@ -563,6 +586,81 @@ try {
       ctx.waitUntil(cache.delete(cacheKey));
 
       return jsonResponse({ success: true, message: 'تم حذف التصنيف من D1 ومسح الكاش' }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  // ── D1: Ads API (GET, POST, DELETE /api/ads) ───────────────────
+  if (url.pathname === '/api/ads' && request.method === 'GET') {
+    try {
+      const result = await env.DB.prepare(`
+        SELECT * FROM ads ORDER BY priority DESC, created_at DESC
+      `).all();
+      const ads = (result.results || []).map(a => ({
+        ...a,
+        _id: a.id,
+        imageUrl: a.image_url,
+        placeId: a.place_id,
+        isActive: Boolean(a.is_active),
+        startDate: a.start_date,
+        endDate: a.end_date,
+        createdAt: a.created_at,
+        createdBy: a.created_by
+      }));
+      return jsonResponse({ success: true, data: ads }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message, data: [] }, 500, corsHeaders);
+    }
+  }
+
+  if (url.pathname === '/api/ads' && (request.method === 'POST' || request.method === 'PUT')) {
+    const body = await request.json().catch(() => ({}));
+    const id = (body.id || body._id || `ad_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`).trim();
+    const title = (body.title || '').trim();
+    const placeId = body.placeId || body.place_id || null;
+    const link = body.link || '';
+    const imageUrl = body.imageUrl || body.image_url || '';
+    const placement = body.placement || 'all';
+    const priority = Number(body.priority) || 10;
+    const isActive = body.isActive !== undefined ? (body.isActive ? 1 : 0) : (body.is_active !== undefined ? (body.is_active ? 1 : 0) : 1);
+    const startDate = body.startDate || body.start_date || Date.now();
+    const endDate = body.endDate || body.end_date || null;
+    const clicks = Number(body.clicks) || 0;
+    const createdAt = body.createdAt || body.created_at || Date.now();
+    const createdBy = body.createdBy || body.created_by || '';
+
+    try {
+      await env.DB.prepare(`
+        INSERT INTO ads (id, title, place_id, link, image_url, placement, priority, is_active, start_date, end_date, clicks, created_at, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title,
+          place_id = excluded.place_id,
+          link = excluded.link,
+          image_url = excluded.image_url,
+          placement = excluded.placement,
+          priority = excluded.priority,
+          is_active = excluded.is_active,
+          start_date = excluded.start_date,
+          end_date = excluded.end_date,
+          clicks = excluded.clicks
+      `).bind(id, title, placeId, link, imageUrl, placement, priority, isActive, startDate, endDate, clicks, createdAt, createdBy).run();
+
+      return jsonResponse({ success: true, message: 'تم حفظ الإعلان بنجاح في D1', id }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  if ((url.pathname.startsWith('/api/ads/') || url.pathname === '/api/ads') && request.method === 'DELETE') {
+    const idFromPath = url.pathname.startsWith('/api/ads/') ? url.pathname.replace('/api/ads/', '') : '';
+    const id = (idFromPath || url.searchParams.get('id') || '').trim();
+    if (!id) return jsonResponse({ error: 'ID مطلوب' }, 400, corsHeaders);
+
+    try {
+      await env.DB.prepare('DELETE FROM ads WHERE id = ?').bind(id).run();
+      return jsonResponse({ success: true, message: 'تم حذف الإعلان من D1' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }

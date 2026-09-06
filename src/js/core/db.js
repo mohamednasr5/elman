@@ -79,7 +79,7 @@ export function clearDbCache(prefix = '') {
 
 function isBusinessDataPath(path = '') {
   const p = String(path || '').replace(/^\/+/, '');
-  return /^(places|categories|offers|products)(?:\/|$)/i.test(p);
+  return /^(places|categories|offers|products|ads)(?:\/|$)/i.test(p);
 }
 
 function parseBusinessPath(path = '') {
@@ -93,8 +93,7 @@ async function d1Fetch(path, options = {}) {
     ...options,
     signal: options.signal || AbortSignal.timeout(7000),
     headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(options.headers || {})
+      ...(options.body ? { 'Content-Type': 'application/json' } : {})
     }
   });
   const data = await res.json().catch(() => ({}));
@@ -127,6 +126,14 @@ function normalizeReviewFromD1(r, placeId = '') {
 async function d1GetBusiness(path) {
   const { parts, root } = parseBusinessPath(path);
 
+  if (root === 'ads') {
+    const data = await d1Fetch('/api/ads');
+    const list = Array.isArray(data.data) ? data.data : [];
+    if (parts.length === 1) return Object.fromEntries(list.map(a => [a.id || a._id, a]));
+    const id = parts[1];
+    return list.find(a => String(a.id || a._id) === String(id)) || null;
+  }
+
   if (root === 'categories') {
     const data = await d1Fetch('/api/categories');
     const list = Array.isArray(data.data) ? data.data : [];
@@ -147,7 +154,7 @@ async function d1GetBusiness(path) {
     }
 
     if (parts.length === 1) {
-      const data = await d1Fetch('/api/places?limit=100');
+      const data = await d1Fetch('/api/places?limit=1000');
       return Object.fromEntries((Array.isArray(data.data) ? data.data : []).map(x => [x.id, x]));
     }
 
@@ -158,7 +165,7 @@ async function d1GetBusiness(path) {
 
   // offers/products are represented by the place payload. There is no Firebase fallback.
   if (root === 'offers' || root === 'products') {
-    const data = await d1Fetch('/api/places?limit=100');
+    const data = await d1Fetch('/api/places?limit=1000');
     const places = Array.isArray(data.data) ? data.data : [];
     if (root === 'offers') {
       const all = [];
@@ -177,6 +184,17 @@ async function d1GetBusiness(path) {
 
 async function d1WriteBusiness(path, method, data = null) {
   const { parts, root } = parseBusinessPath(path);
+
+  if (root === 'ads') {
+    if (method === 'POST' || method === 'PUT') {
+      const adId = parts[1] || data?.id || data?._id;
+      return d1Fetch('/api/ads', { method: 'POST', body: JSON.stringify({ ...(data || {}), id: adId }) });
+    }
+    if (method === 'DELETE' && parts[1]) {
+      return d1Fetch(`/api/ads?id=${encodeURIComponent(parts[1])}`, { method: 'DELETE' });
+    }
+    throw new Error(`Unsupported ads write path: ${path}`);
+  }
 
   if (root === 'places') {
     if (parts.length >= 3 && parts[2] === 'reviews') {
@@ -810,7 +828,9 @@ export function normalizeD1Place(p) {
     coverImageUrl: p.coverImageUrl || p.cover_image_url || null,
     isVerified: Boolean(p.isVerified || p.is_verified || p.verified),
     verified: Boolean(p.isVerified || p.is_verified || p.verified),
-    isSponsored: Boolean(p.isSponsored || p.is_sponsored),
+    isSponsored: Boolean(p.isSponsored || p.is_sponsored || p.isFeatured || p.is_featured),
+    isFeatured: Boolean(p.isFeatured || p.is_featured),
+    sponsoredUntil: p.sponsoredUntil || p.sponsored_until || null,
     createdAt: Number(p.createdAt || p.created_at || 0),
     updatedAt: Number(p.updatedAt || p.updated_at || 0),
     ownerId: p.ownerId || p.owner_id || '',

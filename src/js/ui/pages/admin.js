@@ -4047,16 +4047,17 @@ function renderAdminOffersTableRows(offers) {
 //  7. Ads & Place Promotion (إدارة الإعلانات والترويج)
 // ─────────────────────────────────────────────
 async function renderAdminAds($container) {
-  if (!adminCache.ads || !adminCache.places) {
-    const [adsMap, placesMap] = await Promise.all([dbGet('ads'), dbGet('places')]);
-    adminCache.ads = adsMap || {};
-    adminCache.places = placesMap || {};
-  }
+  const [adsMap, placesMap] = await Promise.all([
+    dbGet('ads', false),
+    dbGet('places', false)
+  ]);
+  adminCache.ads = adsMap || {};
+  adminCache.places = placesMap || {};
 
   const ads = Object.entries(adminCache.ads || {}).map(([id, a]) => ({ ...a, _id: id }));
   const sponsoredPlaces = Object.entries(adminCache.places || {})
     .map(([id, p]) => ({ ...p, _id: id }))
-    .filter(p => p.isSponsored || p.isFeatured || p.isPromoted);
+    .filter(p => p.isSponsored || p.isFeatured || p.is_sponsored || p.is_featured || p.isPromoted);
 
   $container.innerHTML = `
     <div class="admin-fade-in">
