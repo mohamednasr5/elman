@@ -8,13 +8,14 @@
 
 // Firebase configuration
 export const firebaseConfig = {
-  apiKey: "AIzaSyBK0c6d7sCOqdj3ZikvVqz7qKy_lzJP3p0",
-  authDomain: "elmanzla.firebaseapp.com",
-  projectId: "elmanzla",
-  storageBucket: "elmanzla.firebasestorage.app",
-  messagingSenderId: "230168369208",
-  appId: "1:230168369208:web:84175973e7838d07ddeecd",
-  measurementId: "G-JD2LSTR2G1"
+  apiKey: "AIzaSyCUGCecmvBdf6b38UVIM9zcxhbbux7VSzM",
+  authDomain: "elmanzla-7402a.firebaseapp.com",
+  databaseURL: "https://elmanzla-7402a-default-rtdb.firebaseio.com",
+  projectId: "elmanzla-7402a",
+  storageBucket: "elmanzla-7402a.firebasestorage.app",
+  messagingSenderId: "252271215500",
+  appId: "1:252271215500:web:adc234e58f4ba455fdcca9",
+  measurementId: "G-EY6TEPLGSK"
 };
 
 // Cloudflare Worker base URL
@@ -24,7 +25,7 @@ export const WORKER_URL = 'https://elmanzala.nonm1724.workers.dev';
 export const R2_PUBLIC_URL = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev';
 
 // Web Push VAPID Key Pair
-export const FCM_VAPID_KEY = 'BGysPV54ekHXamWK9ZZ_dkoW2PgeGjQbniLME3oEY277KzX4KlgjPWVwdvz_e5eZosozZjk9GjdvhzWRE1R4yxQ';
+export const FCM_VAPID_KEY = 'BEm1Vn_Ol2QKgHvU91MMprcgs3uMjp36fJrO591d0PCzn_lZ0ITSwSwYVzDSgEed5V2HFvN8fiy8DMOTLR8BuE8';
 
 let _app = null;
 let _auth = null;

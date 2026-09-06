@@ -10,13 +10,14 @@ try {
   importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
   firebase.initializeApp({
-    apiKey: "AIzaSyBK0c6d7sCOqdj3ZikvVqz7qKy_lzJP3p0",
-    authDomain: "elmanzla.firebaseapp.com",
-    databaseURL: "https://elmanzla-default-rtdb.firebaseio.com",
-    projectId: "elmanzla",
-    storageBucket: "elmanzla.firebasestorage.app",
-    messagingSenderId: "230168369208",
-    appId: "1:230168369208:web:84175973e7838d07ddeecd"
+    apiKey: "AIzaSyCUGCecmvBdf6b38UVIM9zcxhbbux7VSzM",
+    authDomain: "elmanzla-7402a.firebaseapp.com",
+    databaseURL: "https://elmanzla-7402a-default-rtdb.firebaseio.com",
+    projectId: "elmanzla-7402a",
+    storageBucket: "elmanzla-7402a.firebasestorage.app",
+    messagingSenderId: "252271215500",
+    appId: "1:252271215500:web:adc234e58f4ba455fdcca9",
+    measurementId: "G-EY6TEPLGSK"
   });
 
   const messaging = firebase.messaging();
