@@ -819,7 +819,6 @@ try {
         WHERE id = ?
       `).bind(role, status, name, email, phone, now, id).run();
 
-      // Return updated profile
       const updated = await env.DB.prepare(
         `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
       ).bind(id).first();
@@ -829,6 +828,20 @@ try {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
   }
+
+  // ── D1: Delete User (DELETE /api/users/:id) ──
+  if (url.pathname.startsWith('/api/users/') && request.method === 'DELETE') {
+    const id = url.pathname.replace('/api/users/', '').trim();
+    if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
+    try {
+      await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(id).run();
+      return jsonResponse({ success: true, message: 'User deleted from D1' }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+
 
 
   // ── D1: Category Requests (GET, POST, PUT, DELETE /api/category-requests) ──
