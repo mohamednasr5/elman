@@ -261,9 +261,9 @@ try {
       const result = await env.DB.prepare(`
         SELECT *
         FROM places
-        WHERE slug = ? OR id = ?
+        WHERE LOWER(slug) = LOWER(?) OR id = ? OR slug = ?
         LIMIT 1
-      `).bind(slugParam, slugParam).first();
+      `).bind(slugParam, slugParam, slugParam).first();
 
       if (result) {
         const place = {
@@ -386,10 +386,10 @@ try {
     const logoUrl = body.logoUrl || body.logo_url || '';
     const coverImageUrl = body.coverImageUrl || body.cover_image_url || '';
     const status = body.status || 'published';
-    const isVerified = body.isVerified !== undefined ? (body.isVerified ? 1 : 0) : (body.is_verified ? 1 : 0);
-    const verificationStatus = body.verificationStatus || body.verification_status || (isVerified ? 'verified' : 'unverified');
-    const isSponsored = body.isSponsored !== undefined ? (body.isSponsored ? 1 : 0) : (body.is_sponsored ? 1 : 0);
-    const isFeatured = body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : (body.is_featured ? 1 : 0);
+    const isVerified = body.isVerified !== undefined ? (body.isVerified ? 1 : 0) : (body.is_verified !== undefined ? (body.is_verified ? 1 : 0) : null);
+    const verificationStatus = body.verificationStatus || body.verification_status || (isVerified === 1 ? 'verified' : (isVerified === 0 ? 'unverified' : ''));
+    const isSponsored = body.isSponsored !== undefined ? (body.isSponsored ? 1 : 0) : (body.is_sponsored !== undefined ? (body.is_sponsored ? 1 : 0) : null);
+    const isFeatured = body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : (body.is_featured !== undefined ? (body.is_featured ? 1 : 0) : null);
     const sponsoredUntil = body.sponsoredUntil || body.sponsored_until || null;
     const priorityVal = Number(body.priority) || 0;
     const servicesJson = typeof body.services === 'object' ? JSON.stringify(body.services) : (body.services_json || '[]');
@@ -434,10 +434,10 @@ try {
         owner_id = CASE WHEN excluded.owner_id != '' THEN excluded.owner_id ELSE places.owner_id END,
         owner_email = CASE WHEN excluded.owner_email != '' THEN excluded.owner_email ELSE places.owner_email END,
         status = excluded.status,
-        is_verified = excluded.is_verified,
-        verification_status = excluded.verification_status,
-        is_sponsored = excluded.is_sponsored,
-        is_featured = excluded.is_featured,
+        is_verified = COALESCE(excluded.is_verified, places.is_verified),
+        verification_status = CASE WHEN excluded.verification_status != '' THEN excluded.verification_status ELSE places.verification_status END,
+        is_sponsored = COALESCE(excluded.is_sponsored, places.is_sponsored),
+        is_featured = COALESCE(excluded.is_featured, places.is_featured),
         sponsored_until = COALESCE(excluded.sponsored_until, places.sponsored_until),
         priority = excluded.priority,
         services_json = CASE WHEN excluded.services_json != '[]' THEN excluded.services_json ELSE places.services_json END,
