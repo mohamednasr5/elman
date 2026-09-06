@@ -291,6 +291,9 @@ export async function renderSearchPage($container, { q = '', user }) {
   }
 
   async function localSearch(query) {
+    // Local fallback is rare; hydrate products/offers only when D1 search is unavailable.
+    if (!allProductsList.length) allProductsList = await getAllProducts().catch(() => []);
+    if (!allOffersList.length) allOffersList = await getActiveOffers().catch(() => []);
     const rawClean = extractSearchKeywords(query);
     const normalQ = normalizeArabic(rawClean);
     const queryIntents = expandArabicSearchIntent(query);
