@@ -149,6 +149,9 @@ export async function renderContactPage($container, { user } = {}) {
         <!-- Pillar 1: Top Sponsored Ads -->
         <div class="pillar-card pillar-card--sponsor">
           <div class="pillar-icon-box" style="color:#F5A623">📢</div>
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,166,35,.14);border:1px solid rgba(245,166,35,.38);color:#FCD34D;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:900;margin:2px 0 10px">
+            💰 100 جنيه مصري / شهرياً
+          </div>
           <div style="font-size:11.5px;font-weight:900;color:#FCD34D;letter-spacing:0.5px;margin-bottom:6px;text-transform:uppercase">
             الإعلان المدفوع — 100 جنيه مصري / شهري ⭐
           </div>
@@ -170,6 +173,9 @@ export async function renderContactPage($container, { user } = {}) {
         <!-- Pillar 2: Account Verification -->
         <div class="pillar-card pillar-card--verify">
           <div class="pillar-icon-box" style="color:#38BDF8">🛡️</div>
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35);color:#7DD3FC;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:900;margin:2px 0 10px">
+            💎 1000 جنيه مصري / مدى الحياة
+          </div>
           <div style="font-size:11.5px;font-weight:900;color:#38BDF8;letter-spacing:0.5px;margin-bottom:6px;text-transform:uppercase">
             التوثيق الرسمي — 1000 جنيه مصري / مدى الحياة ✓
           </div>
