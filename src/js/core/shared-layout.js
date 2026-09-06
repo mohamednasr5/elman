@@ -369,6 +369,7 @@ export function getSharedHeaderHTML(activePage = '') {
     { href: 'places.html',     label: 'الأماكن' },
     { href: 'categories.html', label: 'التصنيفات' },
     { href: 'offers.html',     label: 'العروض' },
+    { href: 'favorites.html',  label: '❤️ المفضلة' },
   ];
   return `
   <header class="header" id="site-header" role="banner">
