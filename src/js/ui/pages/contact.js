@@ -15,8 +15,8 @@ const TOPICS = {
   verification: {
     icon: '🛡️',
     title: 'توثيق حساب أو مكان',
-    desc: 'الشارة الرسمية المعتمدة لحماية اسمك ونشاطك',
-    hint: 'سنعطي طلبك أولوية مراجعة خاصة للتوثيق 🛡️',
+    desc: 'شارة توثيق رسمية تعزز الثقة وتحمي هوية نشاطك',
+    hint: 'التوثيق يميز نشاطك ويمنح العميل سبباً إضافياً للثقة 🛡️',
     emailLabel: 'طلب توثيق حساب أو مكان بالعلامة المعتمدة',
     msgLabel: 'بيانات التوثيق وإثبات ملكية النشاط',
     placeholder: 'اكتب اسم المحل أو النشاط أو العيادة بالضبط، وصفحات التواصل التي ترغب في ربطها بالتوثيق...'
@@ -24,8 +24,8 @@ const TOPICS = {
   ads: {
     icon: '📢',
     title: 'إعلان على الدليل',
-    desc: 'ظهور مميز في قمة الموقع والتطبيق لكل أهل المنطقة',
-    hint: 'أعلى معدل ظهور ونقرات لأهل المنزلة والمطرية 📢',
+    desc: 'ظهور إعلاني بارز أمام جمهور المنزلة والمطرية طوال الشهر',
+    hint: 'اجعل نشاطك من أوائل الخيارات التي يراها العميل 📢',
     emailLabel: 'إعلان على الدليل وترويج مدفوع',
     msgLabel: 'تفاصيل الإعلان والميزانية أو المدة المقترحة',
     placeholder: 'أخبرنا عن نوع الإعلان الذي تريده (إعلان قمة الموقع، شريط إعلاني، ترويج صفحة مكانك) والمدة المقترحة...'
@@ -150,20 +150,20 @@ export async function renderContactPage($container, { user } = {}) {
         <div class="pillar-card pillar-card--sponsor">
           <div class="pillar-icon-box" style="color:#F5A623">📢</div>
           <div style="font-size:11.5px;font-weight:900;color:#FCD34D;letter-spacing:0.5px;margin-bottom:6px;text-transform:uppercase">
-            الأكثر تأثيراً ومبيعات ⭐
+            الإعلان المدفوع — 100 جنيه مصري / شهري ⭐
           </div>
           <h2 class="pillar-title">الإعلان والترويج المدفوع</h2>
           <p class="pillar-desc">
-            اجعل نشاطك أول ما يراه الزائر فور فتح الموقع أو التطبيق في صدارة شريط الإعلانات الذهبي، لزيادة مبيعاتك واتصالات عملائك.
+            بـ100 جنيه مصري فقط شهرياً، اجعل نشاطك في الواجهة أمام العملاء المحليين. الإعلان المميز لا ينتظر أن يبحث العميل عنك؛ بل يضع اسمك أمامه في الأماكن الأكثر لفتاً للانتباه.
           </p>
           <ul class="pillar-list">
-            <li><span class="bullet-icon">✦</span><span>ظهور دائم ومثبت في قمة كل الصفحات ونتائج البحث.</span></li>
-            <li><span class="bullet-icon">✦</span><span>شارة إعلان ذهبية مميزة تجذب انتباه الزبائن فوراً.</span></li>
-            <li><span class="bullet-icon">✦</span><span>توجيه مباشر وسريع لرقم هاتفك ومحادثة الواتساب.</span></li>
-            <li><span class="bullet-icon">✦</span><span>معدل نقرات وظهور يفوق الأماكن العادية بأكثر من 4 أضعاف.</span></li>
+            <li><span class="bullet-icon">✦</span><span>ظهور بارز ومميز في مواضع الإعلانات المخصصة بالمنصة.</span></li>
+            <li><span class="bullet-icon">✦</span><span>شارة إعلانية ذهبية تلفت الانتباه وتفصل نشاطك عن النتائج العادية.</span></li>
+            <li><span class="bullet-icon">✦</span><span>وصول مباشر إلى الاتصال الهاتفي والواتساب لسهولة اتخاذ قرار الشراء.</span></li>
+            <li><span class="bullet-icon">✦</span><span>استهداف محلي لجمهور المنزلة والمطرية والقرى والمناطق المحيطة.</span></li>
           </ul>
           <button type="button" class="btn btn-primary btn-block btn-select-topic" data-topic="ads" style="background:#F5A623;border-color:#F5A623;color:#0B1E30;font-weight:900;border-radius:10px;padding:12px">
-            طلب إعلان مميز 📢
+            ابدأ إعلانك بـ100 جنيه / شهرياً 📢
           </button>
         </div>
 
@@ -171,20 +171,21 @@ export async function renderContactPage($container, { user } = {}) {
         <div class="pillar-card pillar-card--verify">
           <div class="pillar-icon-box" style="color:#38BDF8">🛡️</div>
           <div style="font-size:11.5px;font-weight:900;color:#38BDF8;letter-spacing:0.5px;margin-bottom:6px;text-transform:uppercase">
-            الثقة وحماية الهوية ✓
+            التوثيق الرسمي — 1000 جنيه مصري / مدى الحياة ✓
           </div>
           <h2 class="pillar-title">توثيق حسابك ومكانك</h2>
           <p class="pillar-desc">
-            احصل على العلامة المعتمدة الرسمية لاسم نشاطك التجاري أو المهني، واحمِ علامتك واسمك من أي انتحال أو تزييف بالمنطقة.
+            ادفع 1000 جنيه مصري مرة واحدة فقط، واحصل على توثيق مدى الحياة. التوثيق ليس مجرد علامة بجوار الاسم؛ إنه إشارة واضحة للعميل بأن هذا هو الحساب/المكان الرسمي الذي يستحق الثقة.
           </p>
           <ul class="pillar-list">
-            <li><span class="bullet-icon">✦</span><span>شارة التحقق الزرقاء/الذهبية الرسمية بجوار اسمك.</span></li>
-            <li><span class="bullet-icon">✦</span><span>صلاحية حصرية لإضافة المنتجات والخدمات وقوائم الأسعار.</span></li>
-            <li><span class="bullet-icon">✦</span><span>أولوية الترتيب في البحث والظهور للأماكن الموثقة.</span></li>
-            <li><span class="bullet-icon">✦</span><span>حماية ملكية كاملة برقم هاتفك وحسابك المسجل.</span></li>
+            <li><span class="bullet-icon">✦</span><span>شارة توثيق رسمية مميزة بجوار اسم نشاطك لرفع الثقة والمصداقية.</span></li>
+            <li><span class="bullet-icon">✦</span><span>تمييز واضح لنشاطك الرسمي عن الأسماء والحسابات غير الموثقة.</span></li>
+            <li><span class="bullet-icon">✦</span><span>مزايا أصحاب الأماكن الموثقة لإدارة المنتجات والخدمات وقوائم الأسعار.</span></li>
+            <li><span class="bullet-icon">✦</span><span>أولوية في المراجعة والظهور وفق نظام ترتيب المنصة، مع حماية أفضل لهوية الحساب.</span></li>
+            <li><span class="bullet-icon">✦</span><span>مرة واحدة فقط — التوثيق ساري مدى الحياة دون اشتراك شهري.</span></li>
           </ul>
           <button type="button" class="btn btn-primary btn-block btn-select-topic" data-topic="verification" style="background:#0284C7;border-color:#0284C7;color:#fff;font-weight:900;border-radius:10px;padding:12px">
-            طلب توثيق المكان 🛡️
+            وثّق مكانك بـ1000 جنيه / مدى الحياة 🛡️
           </button>
         </div>
 
@@ -192,17 +193,17 @@ export async function renderContactPage($container, { user } = {}) {
         <div class="pillar-card pillar-card--showcase">
           <div class="pillar-icon-box" style="color:#10B981">🔥</div>
           <div style="font-size:11.5px;font-weight:900;color:#34D399;letter-spacing:0.5px;margin-bottom:6px;text-transform:uppercase">
-            تنشيط المبيعات الحصرية 🛍️
+            إبراز المنتجات والعروض 🛍️
           </div>
           <h2 class="pillar-title">ظهور منتجاتك وعروضك</h2>
           <p class="pillar-desc">
-            انشر خصوماتك وتخفيضاتك لتظهر أولاً في قسم العروض والمنتجات الحصرية لكل سكان المنزلة والمطرية والمراكز المجاورة.
+            حوّل منتجاتك وعروضك إلى سبب مباشر لزيارة نشاطك. اعرض ما تبيعه وما تقدمه أمام جمهور محلي يبحث عن احتياجاته داخل المنزلة والمطرية والمناطق المحيطة.
           </p>
           <ul class="pillar-list">
-            <li><span class="bullet-icon">✦</span><span>ظهور بارز في شاشات العروض اليومية وصفحة عروض الدليل.</span></li>
-            <li><span class="bullet-icon">✦</span><span>إشعارات تنبيهية للمتابعين والمهتمين فور إضافة أي عرض.</span></li>
-            <li><span class="bullet-icon">✦</span><span>كتالوج منتجات احترافي بأسعارك وصورك بضغطة زر.</span></li>
-            <li><span class="bullet-icon">✦</span><span>وصول سريع ومباشر للزبائن الجاهزين للشراء فوراً.</span></li>
+            <li><span class="bullet-icon">✦</span><span>إبراز العروض والمنتجات في المساحات المخصصة لها داخل الدليل.</span></li>
+            <li><span class="bullet-icon">✦</span><span>تحديث عروضك ومنتجاتك لتبقى معلومات نشاطك جذابة وحديثة.</span></li>
+            <li><span class="bullet-icon">✦</span><span>عرض الصور والأسعار والتفاصيل بطريقة تساعد العميل على المقارنة والاختيار.</span></li>
+            <li><span class="bullet-icon">✦</span><span>دعوة العميل للتواصل والاتصال والشراء بسهولة أكبر.</span></li>
           </ul>
           <button type="button" class="btn btn-primary btn-block btn-select-topic" data-topic="showcase" style="background:#10B981;border-color:#10B981;color:#fff;font-weight:900;border-radius:10px;padding:12px">
             إبراز المنتجات والعروض 🔥
