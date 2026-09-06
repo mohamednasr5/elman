@@ -8,6 +8,20 @@ import { renderPlaceCard } from './PlaceCard.js';
 
 const _rotationTimers = new Map();
 
+export function isPlaceSponsored(place) {
+  if (!place) return false;
+  const isFlagged = Boolean(
+    place.isSponsored || place.is_sponsored ||
+    place.isFeatured || place.is_featured ||
+    place.isPromoted || place.is_promoted
+  );
+  if (!isFlagged) return false;
+
+  const until = place.sponsoredUntil || place.sponsored_until || null;
+  if (!until) return true;
+  return Number(until) > Date.now();
+}
+
 /**
  * Render and mount the Sponsored Ads Showcase in a container
  * @param {HTMLElement|string} target - Container element or ID
@@ -19,11 +33,7 @@ export function mountSponsoredShowcase(target, places = [], options = {}) {
   if (!container) return;
 
   // Filter only active unexpired sponsored places
-  const now = Date.now();
-  const sponsored = (places || []).filter(p => 
-    (p.isSponsored || p.isFeatured || p.isPromoted) && 
-    (!p.sponsoredUntil || p.sponsoredUntil > now)
-  );
+  const sponsored = (places || []).filter(isPlaceSponsored);
 
   if (sponsored.length === 0) {
     container.innerHTML = '';

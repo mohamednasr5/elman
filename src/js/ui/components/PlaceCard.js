@@ -4,6 +4,7 @@ import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js'
  */
 
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from './VerifiedBadge.js';
+import { isPlaceSponsored } from './SponsoredShowcase.js';
 import { resolveDoctorSpecialty } from '../../utils/specialty.js';
 import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, getAtmLiveStatus, formatAtmTimeAgo } from '../../utils/atm.js';
@@ -16,7 +17,7 @@ import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.serv
 export function renderPlaceCard(place) {
   const isAtm = isAtmPlace(place);
   const defaultAssets = getDefaultPlaceAssets(place);
-  const isSponsored = !isAtm && Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
+  const isSponsored = !isAtm && isPlaceSponsored(place);
   const catStyle = getCategoryCardCover(place);
   
   const rawCover = isAtm ? ATM_UNIFIED_COVER : (place.coverImageUrl || defaultAssets.coverImageUrl);

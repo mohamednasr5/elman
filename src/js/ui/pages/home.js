@@ -7,7 +7,7 @@ import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings
 import { appState } from '../../core/state.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { isAtmPlace } from '../../utils/atm.js';
-import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
+import { mountSponsoredShowcase, isPlaceSponsored } from '../components/SponsoredShowcase.js';
 import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
@@ -105,16 +105,7 @@ export async function renderHomePage($main, { user } = {}) {
     checkAndShowFirstVisitVideo();
 
   } catch (err) {
-    console.error('[Home] Render failed:', err);
   }
-}
-
-function isPlaceSponsored(place) {
-  if (!place) return false;
-  return Boolean(
-    (place.isSponsored || place.isFeatured || place.isPromoted) &&
-    (!place.sponsoredUntil || place.sponsoredUntil > Date.now())
-  );
 }
 
 function sortLatestPlaces(places, currentUid = null, shuffleSponsored = false) {

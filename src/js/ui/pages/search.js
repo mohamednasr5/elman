@@ -8,6 +8,7 @@ import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers, sea
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
+import { mountSponsoredShowcase, isPlaceSponsored } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent, arabicMatch } from '../../utils/arabic.js';
 import { isAtmPlace, isAtmReadyAndOperational } from '../../utils/atm.js';
 import { aiSearch, aiSmartSearch } from '../../services/ai.service.js';
@@ -140,7 +141,7 @@ export async function renderSearchPage($container, { q = '', user }) {
   // Fast pre-fetch places, products, and offers in parallel
   try {
     const [pList, prList, offList] = await Promise.all([
-      getPublishedPlaces({ limit: 200 }),
+      getPublishedPlaces({ limit: 1000 }),
       getAllProducts().catch(() => []),
       getActiveOffers().catch(() => [])
     ]);
@@ -562,7 +563,7 @@ function sortSearchPlaces(places, currentUid = null) {
     if (!key || seen.has(key)) return;
     seen.add(key);
 
-    const isSpons = Boolean((place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now()));
+    const isSpons = isPlaceSponsored(place);
     if (isSpons) {
       sponsored.push(place);
     } else if (place.isVerified) {

@@ -2,7 +2,7 @@ import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { isAtmPlace, filterAtmPlaces, isAtmReadyAndOperational } from '../../utils/atm.js';
-import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
+import { mountSponsoredShowcase, isPlaceSponsored } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
@@ -348,14 +348,6 @@ export async function renderPlacesPage($container, { query = {}, user }) {
   } catch (err) {
     console.error('[PlacesPage] Load error:', err);
   }
-}
-
-function isPlaceSponsored(place) {
-  if (!place) return false;
-  return Boolean(
-    (place.isSponsored || place.isFeatured || place.isPromoted) &&
-    (!place.sponsoredUntil || place.sponsoredUntil > Date.now())
-  );
 }
 
 function shuffleArray(array) {
