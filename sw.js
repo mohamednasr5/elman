@@ -131,7 +131,10 @@ self.addEventListener('fetch', (event) => {
  */
 async function networkFirstStrategy(request, fallbackCacheName = DYNAMIC_CACHE) {
   try {
-    const networkResponse = await fetch(request);
+    const networkResponse = await Promise.race([
+      fetch(request),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('SW fetch timeout')), 8000))
+    ]);
     if (networkResponse && networkResponse.status === 200) {
       const cache = await caches.open(fallbackCacheName);
       cache.put(request, networkResponse.clone());
