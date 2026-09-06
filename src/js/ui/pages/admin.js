@@ -4682,29 +4682,37 @@ window.togglePlaceSponsored = async (placeId, newStatus) => {
 window.togglePlaceVerification = async (placeId, status) => {
   try {
     const updates = {
-      isVerified: status,
+      isVerified: Boolean(status),
       verificationStatus: status ? 'verified' : 'unverified',
-      verifiedAt: status ? serverTimestamp() : null
+      verifiedAt: status ? Date.now() : null
     };
-    await dbUpdate(`places/${placeId}`, updates);
 
-    let placeData = adminCache.places ? adminCache.places[placeId] : (await getPlace(placeId));
+    let placeData = adminCache.places ? adminCache.places[placeId] : null;
     if (placeData) {
       Object.assign(placeData, updates);
-      await syncPlaceToWorkerD1(placeId, placeData);
-      await invalidateLocalPlaceCache(placeId, placeData.slug);
+    } else {
+      placeData = { id: placeId, ...updates };
     }
+
+    await syncPlaceToWorkerD1(placeId, placeData);
+    await dbUpdate(`places/${placeId}`, updates).catch(() => {});
+    await invalidateLocalPlaceCache(placeId, placeData?.slug);
 
     if (adminCache.places && adminCache.places[placeId]) {
       Object.assign(adminCache.places[placeId], updates);
     }
+
     if (status && placeData) {
       broadcastPlaceVerifiedNotification(placeData).catch(() => {});
     }
+
     toast.success(status ? 'تم توثيق المكان وتفعيل العلامة المعتمدة وإرسال إشعار لكافة المستخدمين ✓' : 'تم إلغاء التوثيق');
-    switchAdminSection(_currentSection, false);
+    if (typeof switchAdminSection === 'function' && typeof _currentSection !== 'undefined') {
+      switchAdminSection(_currentSection, false);
+    }
   } catch (err) {
-    toast.error('فشلت العملية: ' + err.message);
+    console.error('[Admin] Verification toggle error:', err);
+    toast.error('فشلت العملية: ' + (err?.message || 'حدث خطأ غير متوقع في الخادم'));
   }
 };
 
