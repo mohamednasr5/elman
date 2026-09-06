@@ -638,7 +638,7 @@ export async function invalidateLocalPlaceCache(placeId, slug = '') {
 }
 
 /** Fast search against Cloudflare D1 with pagination and edge caching */
-export async function searchPlacesD1(query = '', { category = '', area = '', limit = 20, offset = 0 } = {}) {
+export async function searchPlacesD1(query = '', { category = '', area = '', limit = 20, offset = 0, verified = false, minRating = 0 } = {}) {
   try {
     const url = new URL(`${WORKER_URL}/api/search`);
     if (query) url.searchParams.set('q', query);
@@ -646,6 +646,8 @@ export async function searchPlacesD1(query = '', { category = '', area = '', lim
     if (area) url.searchParams.set('area', area);
     url.searchParams.set('limit', String(limit));
     url.searchParams.set('offset', String(offset));
+    if (verified) url.searchParams.set('verified', '1');
+    if (Number(minRating) > 0) url.searchParams.set('min_rating', String(minRating));
 
     const res = await fetch(url.toString(), {
       signal: AbortSignal.timeout(6000)
@@ -663,6 +665,19 @@ export async function searchPlacesD1(query = '', { category = '', area = '', lim
     console.warn('[SearchD1] Worker search failed:', err);
   }
   return null;
+}
+
+/** Submit a public report about incorrect/stale place information. */
+export async function reportPlaceData({ placeId, reason = 'معلومة غير صحيحة', details = '', reporterName = 'زائر' } = {}) {
+  if (!placeId || !reason) throw new Error('بيانات البلاغ غير مكتملة');
+  const res = await fetch(`${WORKER_URL}/api/place-reports`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ placeId, reason, details, reporterName })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) throw new Error(data.error || 'تعذر إرسال البلاغ');
+  return data;
 }
 
 /** Get place by slug (with multi-tier resilient lookup) */
