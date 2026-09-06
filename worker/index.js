@@ -168,9 +168,18 @@ try {
       if (!placeId || !reason) return jsonResponse({ success:false, error:'بيانات البلاغ غير مكتملة' }, 400, corsHeaders);
       const exists = await env.DB.prepare('SELECT id FROM places WHERE id = ? LIMIT 1').bind(placeId).first();
       if (!exists) return jsonResponse({ success:false, error:'المكان غير موجود' }, 404, corsHeaders);
+
+      // Small abuse guard: one report per IP/place within 10 minutes.
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const rateKey = new Request('https://report-rate.local/' + encodeURIComponent(ip + ':' + placeId));
+      const rateCache = caches.default;
+      if (await rateCache.match(rateKey)) {
+        return jsonResponse({ success:false, error:'تم استلام بلاغ مشابه مؤخرًا، شكرًا لك' }, 429, { ...corsHeaders, 'Retry-After':'600' });
+      }
       const id = crypto.randomUUID();
       await env.DB.prepare('INSERT INTO place_reports (id, place_id, reason, details, reporter_name, status, created_at) VALUES (?, ?, ?, ?, ?, \'new\', ?)')
         .bind(id, placeId, reason, details, reporterName, Date.now()).run();
+      ctx.waitUntil(rateCache.put(rateKey, new Response('1', { headers:{'Cache-Control':'max-age=600'} })));
       return jsonResponse({ success:true, message:'تم استلام البلاغ' }, 201, { ...corsHeaders, 'Cache-Control':'no-store' });
     } catch (err) {
       return jsonResponse({ success:false, error:'تعذر استلام البلاغ' }, 500, corsHeaders);
