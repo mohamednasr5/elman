@@ -621,8 +621,8 @@ export async function syncPlaceToWorkerD1(placeId, updates = {}) {
     } catch (err) {
       console.error('[D1Sync] Failed to sync place to D1:', err);
       throw err;
-        }
-  }
+    }
+}
 
 /** Invalidate local caches (IndexedDB and in-memory SWR) for a place */
 export async function invalidateLocalPlaceCache(placeId, slug = '') {
