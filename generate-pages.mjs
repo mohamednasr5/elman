@@ -58,7 +58,7 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=2.5.0"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=2.6.0"/>
 </head>
 <body class="${bodyClass}">
 <div id="app">
