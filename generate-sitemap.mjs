@@ -47,7 +47,6 @@ async function run() {
       { loc: 'https://dalilmanzala.com/matariya.html', priority: '0.9', changefreq: 'weekly' },
       { loc: 'https://dalilmanzala.com/now.html', priority: '0.7', changefreq: 'hourly' },
       { loc: 'https://dalilmanzala.com/around-me.html', priority: '0.7', changefreq: 'weekly' },
-      { loc: 'https://dalilmanzala.com/favorites.html', priority: '0.3', changefreq: 'monthly' },
       { loc: 'https://dalilmanzala.com/products.html', priority: '0.7', changefreq: 'daily' }
   ];
 
