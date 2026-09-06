@@ -1859,3 +1859,17 @@ if (typeof window !== 'undefined') {
     });
   };
 }
+
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (event) => {
+    const btn = event.target.closest?.('#btn-report-place-data');
+    if (!btn || !window.openPlaceDataReport) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.openPlaceDataReport({
+      placeId: btn.getAttribute('data-place-id'),
+      placeName: btn.getAttribute('data-place-name')
+    });
+  }, { passive: false });
+}
