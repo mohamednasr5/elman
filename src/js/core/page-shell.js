@@ -26,6 +26,7 @@ function _headerHTML(active) {
     ['offers.html',     'العروض'],
     ['now.html',        'يحدث الآن 🔥'],
     ['around-me.html',  'بالقرب مني 🧭'],
+    ['favorites.html',  '❤️ المفضلة'],
   ];
 
   return `
