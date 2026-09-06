@@ -4688,6 +4688,12 @@ window.togglePlaceVerification = async (placeId, status) => {
     };
 
     let placeData = adminCache.places ? adminCache.places[placeId] : null;
+    if (!placeData) {
+      try {
+        placeData = await getPlace(placeId);
+      } catch (_) {}
+    }
+
     if (placeData) {
       Object.assign(placeData, updates);
     } else {
