@@ -125,12 +125,19 @@
   import { renderHomePage } from './src/js/ui/pages/home.js?v=2.5.0';
   import { waitForAuth } from './src/js/core/auth.js?v=2.5.0';
 
-  // Init shared layout (header, footer, nav, PWA)
-  await initPage('index.html');
+      try {
+      await initPage('index.html');
 
-  // Render homepage content
-  const user = await waitForAuth();
-  await renderHomePage(document.getElementById('page-container'), { user });
+      // Render homepage content
+      const user = await waitForAuth();
+      await renderHomePage(document.getElementById('page-container'), { user });
+    } catch (err) {
+      console.error('[Bootstrap] Fatal error during page init:', err);
+      const pc = document.getElementById('page-container');
+      if (pc) {
+        pc.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1rem;text-align:center;padding:2rem;"><p style="font-size:1.1rem;color:var(--text-muted,#888);">حدث خطأ أثناء تحميل الصفحة، يرجى إعادة المحاولة</p><button onclick="location.reload()" style="padding:.6rem 1.5rem;border-radius:8px;background:#1B4F72;color:#fff;border:none;cursor:pointer;">إعادة التحميل</button></div>';
+      }
+    }
 </script>
 </body>
 </html>
