@@ -239,9 +239,9 @@ try {
     const params = [];
 
     if (rawQuery) {
-      sql += ` AND (p.name LIKE ? OR p.description LIKE ? OR p.custom_category LIKE ? OR p.address LIKE ? OR p.area LIKE ?)`;
+      sql += ` AND (p.name LIKE ? OR p.description LIKE ? OR p.custom_category LIKE ? OR p.address LIKE ? OR p.area LIKE ? OR p.phone LIKE ? OR p.whatsapp LIKE ?)`;
       const searchPattern = `%${rawQuery}%`;
-      params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+      params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
     }
 
     if (normCat) {
