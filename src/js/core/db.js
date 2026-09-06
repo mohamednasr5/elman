@@ -612,10 +612,16 @@ export async function syncPlaceToWorkerD1(placeId, updates = {}) {
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(6000)
     });
-    return res.ok;
-  } catch (err) {
-    console.warn('[D1Sync] Failed to sync place to D1:', err);
-    return false;
+          if (!res.ok) {
+        let errMsg = `Worker HTTP ${res.status}`;
+        try { const errData = await res.json(); errMsg = errData?.error || errData?.message || errMsg; } catch (_) {}
+        throw new Error(errMsg);
+      }
+      return true;
+    } catch (err) {
+      console.error('[D1Sync] Failed to sync place to D1:', err);
+      throw err;
+        }
   }
 }
 
