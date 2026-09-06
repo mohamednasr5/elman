@@ -278,11 +278,11 @@ try {
       return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
     }
 
-    const limitParam = parseInt(url.searchParams.get('limit') || '50', 10);
+    const limitParam = parseInt(url.searchParams.get('limit') || '500', 10);
     const offsetParam = parseInt(url.searchParams.get('offset') || '0', 10);
     const ownerIdFilter = (url.searchParams.get('owner_id') || '').trim();
 
-    const limit = Math.min(Math.max(limitParam, 1), 100);
+    const limit = Math.min(Math.max(limitParam, 1), 1000);
     const offset = Math.max(offsetParam, 0);
 
     let sql = `
