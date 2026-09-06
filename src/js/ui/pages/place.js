@@ -5,7 +5,7 @@ import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js'
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, HAMMAD_PLACE_SLUG, dbUpdate, subscribeToOwnerPresence } from '../../core/db.js';
+import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, HAMMAD_PLACE_SLUG, dbUpdate, subscribeToOwnerPresence } from '../../core/db.js';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
@@ -289,6 +289,10 @@ export async function renderPlacePage($container, { slug, user }) {
                   <span>إدارة وتعديل المكان</span>
                 </a>
               ` : ''}
+              <button type="button" class="btn btn-outline btn--full-mobile" id="btn-report-place-data" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name || '')}">
+                <span>🚩</span>
+                <span>الإبلاغ عن معلومة غير صحيحة</span>
+              </button>
             </div>
           </div>
 
@@ -1824,4 +1828,34 @@ function getDeterministicReviewerPoints(name = '', id = '') {
   } else {
     return 5100 + (abs % 2200); // 👑 نخبة المنزلة VIP (5100 - 7299)
   }
+}
+
+
+if (typeof window !== 'undefined') {
+  window.openPlaceDataReport = ({ placeId, placeName }) => {
+    const modal = showModal({
+      title: '🚩 الإبلاغ عن بيانات المكان',
+      size: 'sm',
+      content: '<div style="display:flex;flex-direction:column;gap:14px">' +
+        '<div style="padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-size:13px;line-height:1.7">ساعدنا في إبقاء دليل المنزلة والمطرية دقيقًا ومحدثًا.<br><strong>' + escHtml(placeName || 'هذا المكان') + '</strong></div>' +
+        '<label class="form-label" style="font-weight:800">ما المشكلة؟</label>' +
+        '<select id="place-data-report-reason" class="form-select">' +
+        '<option value="رقم الهاتف غير صحيح">رقم الهاتف غير صحيح</option><option value="المكان مغلق أو انتقل">المكان مغلق أو انتقل</option><option value="العنوان غير صحيح">العنوان غير صحيح</option><option value="التصنيف غير صحيح">التصنيف غير صحيح</option><option value="المعلومات قديمة">المعلومات قديمة</option><option value="المكان مكرر">المكان مكرر</option><option value="المكان غير موجود">المكان غير موجود</option><option value="أخرى">أخرى</option></select>' +
+        '<label class="form-label" style="font-weight:800">تفاصيل إضافية <span style="font-weight:500;color:var(--text-muted)">(اختياري)</span></label>' +
+        '<textarea id="place-data-report-details" class="form-textarea" rows="4" maxlength="1000" placeholder="اكتب التصحيح أو المعلومة التي تعرفها..."></textarea></div>',
+      buttons: [
+        { label:'🚩 إرسال البلاغ', type:'danger', closeOnClick:false, onClick:async () => {
+          const reason=document.getElementById('place-data-report-reason')?.value || 'أخرى';
+          const details=document.getElementById('place-data-report-details')?.value || '';
+          try {
+            const u=getCurrentUser();
+            await reportPlaceData({placeId,reason,details,reporterName:u?.name||u?.displayName||'زائر'});
+            toast.success('تم استلام البلاغ. شكرًا لمساعدتنا في تحديث الدليل! 🚩');
+            modal.close();
+          } catch(err) { toast.error(err.message || 'تعذر إرسال البلاغ'); }
+        }},
+        { label:'إلغاء', type:'ghost', closeOnClick:true }
+      ]
+    });
+  };
 }
