@@ -10,6 +10,7 @@ import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, getAtmLiveStatus, formatAtmTimeAgo } from '../../utils/atm.js';
 import { getPlaceLiveStatus } from '../../utils/live-hours.js';
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
+import { isFavorite } from '../../services/favorites.service.js';
 
 /**
  * Render a place card HTML string
@@ -41,6 +42,19 @@ export function renderPlaceCard(place) {
   const verifiedBadge = place.isVerified ? renderVerifiedBadge() : '';
   const deliveryBadge = (!isAtm && place.deliveryType) ? renderDeliveryBadge(place.deliveryType) : '';
   const placeUrl = `place.html?slug=${encodeURIComponent(place.slug || place.id || place._key)}`;
+  const placeId = place._key || place.id || place.slug || '';
+  const trustScore = Math.min(100,
+    (place.isVerified ? 35 : 0) +
+    (place.phone || place.whatsapp ? 15 : 0) +
+    ((place.lat || place.latitude) && (place.lng || place.longitude) ? 15 : 0) +
+    (place.address ? 10 : 0) +
+    ((place.coverImageUrl || place.logoUrl || place.cover_image_url || place.logo_url) ? 10 : 0) +
+    (place.openHours || place.workingHours || place.working_hours ? 5 : 0) +
+    (place.description ? 5 : 0) +
+    ((Number(place.reviewCount || place.reviewsCount || 0) > 0) ? 5 : 0)
+  );
+  const trustLabel = trustScore >= 85 ? 'بيانات موثوقة' : trustScore >= 65 ? 'بيانات جيدة' : 'بيانات تحتاج تحديث';
+  const favorite = isFavorite(placeId);
 
   let atmCashBadge = '';
   if (isAtm) {
@@ -108,6 +122,14 @@ export function renderPlaceCard(place) {
         <div class="place-card__logo">${logoImg}</div>
       </div>
       <div class="place-card__body">
+        <div class="place-card__meta-top">
+          <span class="place-trust-mini ${trustScore >= 85 ? 'place-trust-mini--high' : trustScore >= 65 ? 'place-trust-mini--good' : ''}" title="${escAttr(trustLabel)}">
+            🛡️ ${trustScore}/100
+          </span>
+          <button type="button" class="place-favorite-btn ${favorite ? 'is-favorite' : ''}" aria-label="${favorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}" title="${favorite ? 'إزالة من المفضلة' : 'حفظ المكان'}" data-favorite-place="${escAttr(placeId)}" onclick="event.stopPropagation();window.togglePlaceFavorite&&window.togglePlaceFavorite('${escAttr(placeId)}',this)">
+            ${favorite ? '♥' : '♡'}
+          </button>
+        </div>
         <h3 class="place-card__name">
           <span class="truncate">${escHtml(place.name)}</span>
           ${verifiedBadge}
@@ -120,9 +142,8 @@ export function renderPlaceCard(place) {
             ${deliveryBadge}
           </div>
           ${(() => {
-            const isHammad = (place.slug && (place.slug.includes('mhmd-hmad') || place.slug.includes('5lQJ1o'))) || (place.name && place.name.includes('محمد حماد'));
             const rCount = Number(place.reviewCount != null ? place.reviewCount : (place.reviews ? Object.keys(place.reviews).length : (place.stats?.reviewsCount || 0)));
-            const rScore = rCount > 0 ? (isHammad ? '5.0' : Number(place.rating || 5.0).toFixed(1)) : '0.0';
+            const rScore = rCount > 0 ? Number(place.rating || 0).toFixed(1) : '0.0';
             return `
               <div style="display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:#F59E0B;font-weight:700;background:rgba(245,158,11,0.08);padding:2px 7px;border-radius:var(--radius-sm)">
                 <span>★</span>
