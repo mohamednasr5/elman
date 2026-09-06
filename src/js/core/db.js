@@ -235,6 +235,14 @@ async function d1WriteBusiness(path, method, data = null) {
   throw new Error(`No D1 write endpoint configured for ${root}`);
 }
 
+export async function getD1IntegrityReport() {
+  return d1Fetch('/api/admin/integrity-check');
+}
+
+export async function runD1SafeRepair() {
+  return d1Fetch('/api/admin/integrity-repair', { method: 'POST' });
+}
+
 /**
  * dbRef is retained only for legacy Firebase-only features (notifications/presence).
  * Never use it for places/categories/offers/products/reviews.
@@ -2945,3 +2953,39 @@ function getDeterministicReviewerPoints(name = '', id = '') {
     return 5100 + (abs % 2200); // 👑 نخبة المنزلة VIP (5100 - 7299)
   }
 }
+
+/**
+ * Fetch D1 Continuous Data Integrity & Consistency Audit Report
+ */
+export async function getD1IntegrityReport(idToken = '') {
+  const headers = {};
+  if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+  const res = await fetch(`${WORKER_URL}/api/admin/integrity-check`, {
+    headers,
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'فشل جلب تقرير سلامة وتناسق D1');
+  }
+  return await res.json();
+}
+
+/**
+ * Execute Safe Deterministic Auto-Repair for D1 Database
+ */
+export async function runD1SafeRepair(idToken = '') {
+  const headers = {};
+  if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+  const res = await fetch(`${WORKER_URL}/api/admin/integrity-repair`, {
+    method: 'POST',
+    headers,
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'فشل تنفيذ الإصلاح الآمن لقاعدة البيانات');
+  }
+  return await res.json();
+}
+

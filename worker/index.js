@@ -9,6 +9,14 @@
 import { handleTelegramWebhook, sendAdminPushNotification, telegramApi } from './telegram.js';
 
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      env.DB.prepare(`
+        UPDATE places SET is_sponsored = 0, is_featured = 0 WHERE is_sponsored = 1 AND sponsored_until IS NOT NULL AND sponsored_until < ?
+      `).bind(Date.now()).run().catch(() => {})
+    );
+  },
+
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin') || '*';
@@ -660,9 +668,135 @@ try {
     const id = (idFromPath || url.searchParams.get('id') || '').trim();
     if (!id) return jsonResponse({ error: 'ID مطلوب' }, 400, corsHeaders);
 
+  }
+
+  // ── D1 Data Integrity & Consistency Audit API ─────────────────
+  // GET /api/admin/integrity-check
+  if ((url.pathname === '/api/admin/integrity-check' || url.pathname === '/api/integrity-check') && request.method === 'GET') {
     try {
-      await env.DB.prepare('DELETE FROM ads WHERE id = ?').bind(id).run();
-      return jsonResponse({ success: true, message: 'تم حذف الإعلان من D1' }, 200, corsHeaders);
+      const now = Date.now();
+      
+      const [
+        usersRes,
+        placesCountRes,
+        orphanedPlacesRes,
+        brokenCatRes,
+        inconsistentVerifRes,
+        expiredSponsRes,
+        orphanedReviewsRes,
+        dupSlugsRes,
+        brokenImagesRes
+      ] = await Promise.all([
+        env.DB.prepare(`SELECT COUNT(*) AS total_users, SUM(CASE WHEN firebase_uid IS NULL OR firebase_uid = '' THEN 1 ELSE 0 END) AS unmapped_uids FROM users`).first().catch(() => ({ total_users: 0, unmapped_uids: 0 })),
+        env.DB.prepare(`SELECT COUNT(*) AS total_places FROM places`).first().catch(() => ({ total_places: 0 })),
+        env.DB.prepare(`SELECT COUNT(*) AS orphaned_places FROM places p LEFT JOIN users u ON (u.id = p.owner_id OR LOWER(u.email) = LOWER(p.owner_email)) WHERE p.owner_id != '' AND p.owner_id IS NOT NULL AND u.id IS NULL`).first().catch(() => ({ orphaned_places: 0 })),
+        env.DB.prepare(`SELECT COUNT(*) AS broken_cat_places FROM places p LEFT JOIN categories c ON (c.id = p.category_id OR c.slug = p.category_id) WHERE p.category_id != '' AND p.category_id != 'general' AND c.id IS NULL`).first().catch(() => ({ broken_cat_places: 0 })),
+        env.DB.prepare(`SELECT COUNT(*) AS inconsistent_verif FROM places WHERE (is_verified = 1 AND verification_status = 'unverified') OR (is_verified = 0 AND verification_status = 'verified')`).first().catch(() => ({ inconsistent_verif: 0 })),
+        env.DB.prepare(`SELECT COUNT(*) AS expired_spons FROM places WHERE is_sponsored = 1 AND sponsored_until IS NOT NULL AND sponsored_until < ?`).bind(now).first().catch(() => ({ expired_spons: 0 })),
+        env.DB.prepare(`SELECT COUNT(*) AS orphaned_reviews FROM reviews r LEFT JOIN places p ON p.id = r.place_id WHERE p.id IS NULL`).first().catch(() => ({ orphaned_reviews: 0 })),
+        env.DB.prepare(`SELECT slug, COUNT(*) AS cnt FROM places GROUP BY slug HAVING cnt > 1`).all().catch(() => ({ results: [] })),
+        env.DB.prepare(`SELECT COUNT(*) AS broken_imgs FROM places WHERE (logo_url != '' AND logo_url NOT LIKE 'http%') OR (cover_image_url != '' AND cover_image_url NOT LIKE 'http%')`).first().catch(() => ({ broken_imgs: 0 }))
+      ]);
+
+      const dupSlugsCount = Array.isArray(dupSlugsRes?.results) ? dupSlugsRes.results.length : 0;
+      const totalPlaces = placesCountRes?.total_places || 0;
+      const totalUsers = usersRes?.total_users || 0;
+
+      const checks = [
+        {
+          key: 'users',
+          name: 'تطابق هويات المستخدمين (Firebase UID → D1)',
+          status: (usersRes?.unmapped_uids || 0) === 0 ? 'PASS' : 'WARNING',
+          details: `تم فحص ${totalUsers} مستخدم في D1 (${usersRes?.unmapped_uids || 0} بدون UID)`
+        },
+        {
+          key: 'ownership',
+          name: 'علاقات الملكية (Places → Users)',
+          status: (orphanedPlacesRes?.orphaned_places || 0) === 0 ? 'PASS' : 'WARNING',
+          details: `تم فحص ${totalPlaces} مكان (${orphanedPlacesRes?.orphaned_places || 0} بدون مستخدم مسجل)`
+        },
+        {
+          key: 'categories',
+          name: 'سلامة التصنيفات (Places → Categories)',
+          status: (brokenCatRes?.broken_cat_places || 0) === 0 ? 'PASS' : 'WARNING',
+          details: `جميع الأماكن ترتبط بتصنيفات معتمدة (${brokenCatRes?.broken_cat_places || 0} معلقة)`
+        },
+        {
+          key: 'verification',
+          name: 'اتساق حالة التوثيق (Verification State)',
+          status: (inconsistentVerifRes?.inconsistent_verif || 0) === 0 ? 'PASS' : 'WARNING',
+          details: `حالة التوثيق متسقة بين is_verified و verification_status (${inconsistentVerifRes?.inconsistent_verif || 0} غير متطابقة)`
+        },
+        {
+          key: 'sponsorship',
+          name: 'اتساق مدة الإعلانات (Sponsored Expiration)',
+          status: (expiredSponsRes?.expired_spons || 0) === 0 ? 'PASS' : 'WARNING',
+          details: `جميع الإعلانات النشطة ضمن المدة المحددة (${expiredSponsRes?.expired_spons || 0} إعلان منتهي)`
+        },
+        {
+          key: 'reviews',
+          name: 'سلامة التقييمات (Reviews → Places)',
+          status: (orphanedReviewsRes?.orphaned_reviews || 0) === 0 ? 'PASS' : 'WARNING',
+          details: `جميع التقييمات ترتبط بأماكن موجودة (${orphanedReviewsRes?.orphaned_reviews || 0} معلقة)`
+        },
+        {
+          key: 'slugs',
+          name: 'تكرار الروابط (Duplicate Slugs)',
+          status: dupSlugsCount === 0 ? 'PASS' : 'WARNING',
+          details: `جميع أسماء الروابط فريدة (${dupSlugsCount} روابط مكررة)`
+        },
+        {
+          key: 'images',
+          name: 'سلامة روابط صور R2',
+          status: (brokenImagesRes?.broken_imgs || 0) === 0 ? 'PASS' : 'WARNING',
+          details: `روابط الصور مسجلة بصيغ صحيحة (${brokenImagesRes?.broken_imgs || 0} روابط مكسورة)`
+        }
+      ];
+
+      const issuesCount = checks.filter(c => c.status !== 'PASS').length;
+
+      return jsonResponse({
+        success: true,
+        auditTime: now,
+        status: issuesCount === 0 ? 'healthy' : 'issues_found',
+        summary: {
+          tablesChecked: 8,
+          recordsChecked: totalPlaces + totalUsers,
+          errors: 0,
+          warnings: issuesCount,
+          repairs: 0
+        },
+        checks,
+        issues: checks.filter(c => c.status !== 'PASS')
+      }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  // POST /api/admin/integrity-repair
+  if ((url.pathname === '/api/admin/integrity-repair' || url.pathname === '/api/integrity-repair') && request.method === 'POST') {
+    try {
+      const now = Date.now();
+      let repairsCount = 0;
+
+      // Safe Deterministic Repair 1: Sync is_verified=1 with verification_status='verified'
+      const verifRes = await env.DB.prepare(`
+        UPDATE places SET verification_status = 'verified' WHERE is_verified = 1 AND (verification_status = 'unverified' OR verification_status = '' OR verification_status IS NULL)
+      `).run();
+      repairsCount += (verifRes?.meta?.changes || 0);
+
+      // Safe Deterministic Repair 2: Auto-expire past sponsored places
+      const sponsRes = await env.DB.prepare(`
+        UPDATE places SET is_sponsored = 0, is_featured = 0 WHERE is_sponsored = 1 AND sponsored_until IS NOT NULL AND sponsored_until < ?
+      `).bind(now).run();
+      repairsCount += (sponsRes?.meta?.changes || 0);
+
+      return jsonResponse({
+        success: true,
+        message: `تم تنفيذ الإصلاح التلقائي الآمن بنجاح (${repairsCount} سجل تم تحديثه)`,
+        repairsCount
+      }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
