@@ -851,7 +851,10 @@ export function normalizeD1Place(p) {
     mapsLink: p.mapsLink || p.maps_link || '',
     workingHours: p.workingHours || p.working_hours || {},
     services: Array.isArray(p.services) ? p.services : (typeof p.services_json === 'string' ? JSON.parse(p.services_json || '[]') : []),
-    social: typeof p.social === 'object' ? p.social : (typeof p.social_json === 'string' ? JSON.parse(p.social_json || '{}') : {})
+    social: typeof p.social === 'object' ? p.social : (typeof p.social_json === 'string' ? JSON.parse(p.social_json || '{}') : {}),
+    reviewCount: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
+    review_count: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
+    rating: Number(p.rating != null ? p.rating : 0.0)
   };
 }
 
@@ -2492,14 +2495,16 @@ export async function adminBulkAddReviews(placeId, items = []) {
       return;
     }
 
-    // Strict duplicate check: In existing database or earlier in this same batch
+    // If name already exists for this place, naturally diversify with a patronymic variation
+    // so the admin always gets the EXACT count requested without arbitrary drops
+    let finalName = cleanName;
     if (existingNames.has(normName)) {
-      skippedCount++;
-      skippedNames.push(cleanName);
-      return;
+      const suffixes = ['محمد', 'أحمد', 'محمود', 'علي', 'حسن', 'السيد', 'إبراهيم', 'عادل', 'سامح', 'خالد'];
+      const randomSuffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+      finalName = `${cleanName} ${randomSuffix}`;
     }
 
-    existingNames.add(normName);
+    existingNames.add(finalName.toLowerCase());
     const reviewId = `bulk_${now}_${index}_${Math.random().toString(36).substring(2, 6)}`;
     
     // Distribute timestamps naturally across months and days of the year (past 1-360 days)
@@ -2516,7 +2521,7 @@ export async function adminBulkAddReviews(placeId, items = []) {
       placeName: place.name || 'المكان',
       placeSlug: place.slug || '',
       userId: `bulk_${now}_${index}`,
-      userName: cleanName,
+      userName: finalName,
       userPhoto: '',
       rating: numRating,
       comment: cleanComment,
@@ -2530,22 +2535,34 @@ export async function adminBulkAddReviews(placeId, items = []) {
   });
 
   if (addedCount > 0) {
-    for (const reviewData of Object.values(updates)) {
-      await d1WriteBusiness(`places/${placeId}/reviews`, 'POST', {
-        id: reviewData.id,
-        place_id: placeId,
-        place_name: reviewData.placeName || place.name || '',
-        place_slug: reviewData.placeSlug || place.slug || '',
-        user_id: reviewData.userId,
-        user_name: reviewData.userName,
-        user_photo: reviewData.userPhoto || '',
-        rating: reviewData.rating,
-        comment: reviewData.comment,
-        is_admin_generated: 1,
-        edit_count: 0,
-        created_at: reviewData.createdAt,
-        updated_at: reviewData.updatedAt
-      });
+    const reviewsArray = Object.values(updates).map(reviewData => ({
+      id: reviewData.id,
+      place_id: placeId,
+      place_name: reviewData.placeName || place.name || '',
+      place_slug: reviewData.placeSlug || place.slug || '',
+      user_id: reviewData.userId,
+      user_name: reviewData.userName,
+      user_photo: reviewData.userPhoto || '',
+      rating: reviewData.rating,
+      comment: reviewData.comment,
+      is_admin_generated: 1,
+      edit_count: 0,
+      created_at: reviewData.createdAt,
+      updated_at: reviewData.updatedAt
+    }));
+
+    // Send in chunks of 50 to Worker batch API
+    for (let i = 0; i < reviewsArray.length; i += 50) {
+      const chunk = reviewsArray.slice(i, i + 50);
+      try {
+        await fetch(`${WORKER_URL}/api/reviews`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reviews: chunk })
+        });
+      } catch (err) {
+        console.warn('[adminBulkAddReviews] Batch chunk error:', err.message);
+      }
     }
     await recalculatePlaceRating(placeId);
   }
@@ -2681,36 +2698,52 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', specia
     return 1;
   }
 
+  const MIDDLE_NAMES_AR = [
+    'محمد', 'أحمد', 'محمود', 'علي', 'حسن', 'إبراهيم', 'مصطفى', 'عبد الله', 'السيد', 'عمر',
+    'طارق', 'حسام', 'عادل', 'سامح', 'خالد', 'كمال', 'نبيل', 'صلاح', 'ماهر', 'مجدي'
+  ];
+
   const usedNames = new Set();
   const results = [];
   let safetyLoop = 0;
 
-  while (results.length < targetCount && safetyLoop < targetCount * 10) {
+  while (results.length < targetCount && safetyLoop < targetCount * 25) {
     safetyLoop++;
     let name = '';
     const typeRoll = Math.random();
+    const useMiddle = Math.random() < 0.65; // 65% triple names for massive natural Egyptian uniqueness
 
     if (gender === 'male') {
       // Male only: Arabic male or English male names
-      if (typeRoll < 0.75) {
-        name = `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
+      if (typeRoll < 0.85) {
+        name = useMiddle
+          ? `${pick(FIRST_NAMES_AR_M)} ${pick(MIDDLE_NAMES_AR)} ${pick(LAST_NAMES_AR)}`
+          : `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
       } else {
-        name = `${pick(FIRST_NAMES_EN.filter(n => !['Sarah','Mariam','Nourhan','Dina','Aya','Rania','Mona','Reem','Hadeer','Salma','Farida','Nada','Nour'].includes(n)))} ${pick(LAST_NAMES_EN)}`;
+        const enFirst = pick(FIRST_NAMES_EN.filter(n => !['Sarah','Mariam','Nourhan','Dina','Aya','Rania','Mona','Reem','Hadeer','Salma','Farida','Nada','Nour'].includes(n)));
+        name = useMiddle ? `${enFirst} M. ${pick(LAST_NAMES_EN)}` : `${enFirst} ${pick(LAST_NAMES_EN)}`;
       }
     } else if (gender === 'female') {
       // Female only: Arabic female or English female names
       const FIRST_NAMES_EN_F = ['Sara','Mariam','Nourhan','Dina','Aya','Rania','Mona','Reem','Hadeer','Salma','Farida','Nada','Nour','Yasmine','Hana','Laila','Rana'];
-      if (typeRoll < 0.75) {
-        name = `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
+      if (typeRoll < 0.85) {
+        name = useMiddle
+          ? `${pick(FIRST_NAMES_AR_F)} ${pick(MIDDLE_NAMES_AR)} ${pick(LAST_NAMES_AR)}`
+          : `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
       } else {
-        name = `${pick(FIRST_NAMES_EN_F)} ${pick(LAST_NAMES_EN)}`;
+        const enFirst = pick(FIRST_NAMES_EN_F);
+        name = useMiddle ? `${enFirst} A. ${pick(LAST_NAMES_EN)}` : `${enFirst} ${pick(LAST_NAMES_EN)}`;
       }
     } else {
-      // Mixed (default): male 50%, female 25%, English 25%
+      // Mixed (default): male 50%, female 30%, English 20%
       if (typeRoll < 0.5) {
-        name = `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
-      } else if (typeRoll < 0.75) {
-        name = `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
+        name = useMiddle
+          ? `${pick(FIRST_NAMES_AR_M)} ${pick(MIDDLE_NAMES_AR)} ${pick(LAST_NAMES_AR)}`
+          : `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
+      } else if (typeRoll < 0.8) {
+        name = useMiddle
+          ? `${pick(FIRST_NAMES_AR_F)} ${pick(MIDDLE_NAMES_AR)} ${pick(LAST_NAMES_AR)}`
+          : `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
       } else {
         name = `${pick(FIRST_NAMES_EN)} ${pick(LAST_NAMES_EN)}`;
       }
