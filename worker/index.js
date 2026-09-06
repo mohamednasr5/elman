@@ -156,6 +156,27 @@ if (url.pathname === '/index.html') {
 
 try {
 
+  // ── Public Data Quality Reports ─────────────────────────────────
+  // POST /api/place-reports — visitors can flag stale/incorrect place data.
+  if (url.pathname === '/api/place-reports' && request.method === 'POST') {
+    try {
+      const body = await request.json();
+      const placeId = String(body.placeId || body.place_id || '').trim();
+      const reason = String(body.reason || '').trim().slice(0, 120);
+      const details = String(body.details || '').trim().slice(0, 1000);
+      const reporterName = String(body.reporterName || 'زائر').trim().slice(0, 80);
+      if (!placeId || !reason) return jsonResponse({ success:false, error:'بيانات البلاغ غير مكتملة' }, 400, corsHeaders);
+      const exists = await env.DB.prepare('SELECT id FROM places WHERE id = ? LIMIT 1').bind(placeId).first();
+      if (!exists) return jsonResponse({ success:false, error:'المكان غير موجود' }, 404, corsHeaders);
+      const id = crypto.randomUUID();
+      await env.DB.prepare('INSERT INTO place_reports (id, place_id, reason, details, reporter_name, status, created_at) VALUES (?, ?, ?, ?, ?, \'new\', ?)')
+        .bind(id, placeId, reason, details, reporterName, Date.now()).run();
+      return jsonResponse({ success:true, message:'تم استلام البلاغ' }, 201, { ...corsHeaders, 'Cache-Control':'no-store' });
+    } catch (err) {
+      return jsonResponse({ success:false, error:'تعذر استلام البلاغ' }, 500, corsHeaders);
+    }
+  }
+
   // ── D1: Search Places with Two-Tier Caching ────────────────────
   // GET /api/search?q=...&category=...&area=...&limit=20&offset=0
 
@@ -165,6 +186,9 @@ try {
     const rawArea = (url.searchParams.get('area') || '').trim();
     const limitParam = parseInt(url.searchParams.get('limit') || '20', 10);
     const offsetParam = parseInt(url.searchParams.get('offset') || '0', 10);
+    const verifiedOnly = url.searchParams.get('verified') === '1';
+    const minRatingParam = parseFloat(url.searchParams.get('min_rating') || '0');
+    const minRating = Number.isFinite(minRatingParam) ? Math.min(Math.max(minRatingParam, 0), 5) : 0;
 
     const limit = Math.min(Math.max(limitParam, 1), 50);
     const offset = Math.max(offsetParam, 0);
@@ -181,6 +205,8 @@ try {
     if (normArea) cacheUrl.searchParams.set('area', normArea);
     cacheUrl.searchParams.set('limit', String(limit));
     cacheUrl.searchParams.set('offset', String(offset));
+    if (verifiedOnly) cacheUrl.searchParams.set('verified', '1');
+    if (minRating > 0) cacheUrl.searchParams.set('min_rating', String(minRating));
 
     const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
     const cachedResponse = await cache.match(cacheKey);
@@ -227,9 +253,20 @@ try {
       sql += ` AND p.area = ?`;
       params.push(rawArea);
     }
+    if (verifiedOnly) sql += ` AND p.is_verified = 1`;
+    if (minRating > 0) {
+      sql += ` AND COALESCE(rc.avg_rating, 0) >= ?`;
+      params.push(minRating);
+    }
 
-    sql += ` ORDER BY p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
-    params.push(limit + 1, offset);
+    if (rawQuery) {
+      sql += ` ORDER BY CASE WHEN LOWER(p.name) = LOWER(?) THEN 1000 WHEN LOWER(p.name) LIKE LOWER(?) THEN 800 ELSE 0 END DESC,
+        p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, COALESCE(rc.avg_rating,0) DESC, COALESCE(rc.review_count,0) DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
+      params.push(rawQuery, rawQuery + '%', limit + 1, offset);
+    } else {
+      sql += ` ORDER BY p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, COALESCE(rc.avg_rating,0) DESC, COALESCE(rc.review_count,0) DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
+      params.push(limit + 1, offset);
+    }
 
     const result = await env.DB.prepare(sql).bind(...params).all();
     const rows = result.results || [];
