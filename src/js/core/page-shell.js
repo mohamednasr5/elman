@@ -293,8 +293,6 @@ export async function initPage(activeFile = '') {
   _setupTheme();
 
   /* 2. Inject shared layout blocks */
-  _setupTheme();
-
   _inject('header-slot',  _headerHTML(activeFile));
   _inject('footer-slot',  _footerHTML());
   _inject('nav-slot',     _bottomNavHTML(activeFile));
