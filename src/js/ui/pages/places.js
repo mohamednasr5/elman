@@ -124,7 +124,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     let places = [];
     let categories = [];
     [places, categories] = await Promise.all([
-      getPublishedPlaces({ limit: 100 }),
+      getPublishedPlaces({ limit: 1000 }),
       getCategories()
     ]);
 

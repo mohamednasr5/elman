@@ -59,7 +59,7 @@ export async function renderHomePage($main, { user } = {}) {
   try {
     const [categories, places, offers, ads] = await Promise.all([
       getCategories(),
-      getPublishedPlaces({ limit: 100 }),
+      getPublishedPlaces({ limit: 1000 }),
       getActiveOffers(8),
       getAds('homepage')
     ]);

@@ -298,6 +298,8 @@ try {
     const limit = Math.min(Math.max(limitParam, 1), 1000);
     const offset = Math.max(offsetParam, 0);
 
+    const params = [];
+
     let sql = `
       SELECT
         p.id, p.name, p.name_en, p.slug, p.category_id, p.subcategory_id, p.custom_category,
