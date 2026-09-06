@@ -378,14 +378,14 @@ try {
         id, name, name_en, slug, category_id, subcategory_id, custom_category,
         address, area, phone, whatsapp, maps_link, latitude, longitude,
         description, logo_url, cover_image_url, owner_id, owner_email,
-        status, is_verified, verification_status, is_sponsored, is_featured, sponsored_until,
-        services_json, social_json, stats_json, working_hours_json, updated_at
+        status, is_verified, verification_status, services_json, social_json,
+        stats_json, working_hours_json, updated_at
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?,
+        ?, ?, ?
       )
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
@@ -407,9 +407,6 @@ try {
         status = excluded.status,
         is_verified = excluded.is_verified,
         verification_status = excluded.verification_status,
-        is_sponsored = excluded.is_sponsored,
-        is_featured = excluded.is_featured,
-        sponsored_until = excluded.sponsored_until,
         services_json = excluded.services_json,
         social_json = excluded.social_json,
         working_hours_json = excluded.working_hours_json,
@@ -418,8 +415,8 @@ try {
       placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
       address, area, phone, whatsapp, mapsLink, lat, lng,
       description, logoUrl, coverImageUrl, ownerId, ownerEmail,
-      status, isVerified, verificationStatus, isSponsored, isFeatured, sponsoredUntil,
-      servicesJson, socialJson, statsJson, workingHoursJson, now
+      status, isVerified, verificationStatus, servicesJson, socialJson,
+      statsJson, workingHoursJson, now
     ).run();
 
     // Cache Invalidation for this place
