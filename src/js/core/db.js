@@ -303,13 +303,15 @@ export async function dbPush(path, data) {
     if (String(path).match(/^places\/[^/]+\/reviews$/)) {
       const placeId = String(path).split('/')[1];
       const result = await d1WriteBusiness(path, 'POST', { ...(data || {}), place_id: data?.place_id || placeId });
-      return result?.id || data?.id || null;
+      const newId = result?.id || data?.id || `d1_${Date.now()}`;
+      return { key: newId, id: newId };
     }
     throw new Error(`Firebase push blocked for business data path: ${path}`);
   }
   const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
   const pushed = await ref.push(data);
-  return pushed.key;
+  const key = (pushed && pushed.key) ? pushed.key : `d1_${Date.now()}`;
+  return { key, id: key };
 }
 
 export async function dbRemove(path) {

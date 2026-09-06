@@ -362,6 +362,9 @@ try {
     const status = body.status || 'published';
     const isVerified = body.isVerified !== undefined ? (body.isVerified ? 1 : 0) : (body.is_verified ? 1 : 0);
     const verificationStatus = body.verificationStatus || body.verification_status || (isVerified ? 'verified' : 'unverified');
+    const isSponsored = body.isSponsored !== undefined ? (body.isSponsored ? 1 : 0) : (body.is_sponsored ? 1 : 0);
+    const isFeatured = body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : (body.is_featured ? 1 : 0);
+    const sponsoredUntil = body.sponsoredUntil || body.sponsored_until || null;
     const servicesJson = typeof body.services === 'object' ? JSON.stringify(body.services) : (body.services_json || '[]');
     const socialJson = typeof body.social === 'object' ? JSON.stringify(body.social) : (body.social_json || '{}');
     const workingHoursJson = typeof body.workingHours === 'object' ? JSON.stringify(body.workingHours) : (body.working_hours_json || '{}');
@@ -375,14 +378,14 @@ try {
         id, name, name_en, slug, category_id, subcategory_id, custom_category,
         address, area, phone, whatsapp, maps_link, latitude, longitude,
         description, logo_url, cover_image_url, owner_id, owner_email,
-        status, is_verified, verification_status, services_json, social_json,
-        stats_json, working_hours_json, updated_at
+        status, is_verified, verification_status, is_sponsored, is_featured, sponsored_until,
+        services_json, social_json, stats_json, working_hours_json, updated_at
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?,
-        ?, ?, ?
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?
       )
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
@@ -404,6 +407,9 @@ try {
         status = excluded.status,
         is_verified = excluded.is_verified,
         verification_status = excluded.verification_status,
+        is_sponsored = excluded.is_sponsored,
+        is_featured = excluded.is_featured,
+        sponsored_until = excluded.sponsored_until,
         services_json = excluded.services_json,
         social_json = excluded.social_json,
         working_hours_json = excluded.working_hours_json,
@@ -412,8 +418,8 @@ try {
       placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
       address, area, phone, whatsapp, mapsLink, lat, lng,
       description, logoUrl, coverImageUrl, ownerId, ownerEmail,
-      status, isVerified, verificationStatus, servicesJson, socialJson,
-      statsJson, workingHoursJson, now
+      status, isVerified, verificationStatus, isSponsored, isFeatured, sponsoredUntil,
+      servicesJson, socialJson, statsJson, workingHoursJson, now
     ).run();
 
     // Cache Invalidation for this place
