@@ -989,6 +989,56 @@ function getHomeHTML() {
     <!-- Stats Bar -->
     <div class="stats-bar" id="stats-bar"></div>
 
+    <!-- Local Command Center: high-frequency actions -->
+    <section class="local-command-center" aria-labelledby="local-command-title">
+      <div class="container">
+        <div class="command-heading">
+          <div>
+            <span class="command-kicker"><span class="command-kicker__dot"></span> دليلك المحلي في خطوة</span>
+            <h2 id="local-command-title">محتاج إيه دلوقتي؟</h2>
+            <p>اختصر الطريق ووصل للمكان أو الخدمة التي تبحث عنها في المنزلة والمطرية.</p>
+          </div>
+          <a href="search.html" class="command-search-link" aria-label="فتح البحث المتقدم">البحث المتقدم <span>←</span></a>
+        </div>
+        <div class="command-grid">
+          <a class="command-card command-card--search" href="search.html">
+            <span class="command-card__orb"></span><span class="command-card__icon">🔎</span>
+            <span class="command-card__body"><strong>ابحث عن أي شيء</strong><small>مكان، طبيب، محل أو صنايعي</small></span><span class="command-card__arrow">←</span>
+          </a>
+          <a class="command-card command-card--nearby" href="around-me.html">
+            <span class="command-card__orb"></span><span class="command-card__icon">📍</span>
+            <span class="command-card__body"><strong>الأقرب إليك</strong><small>اكتشف ما حولك الآن</small></span><span class="command-card__arrow">←</span>
+          </a>
+          <a class="command-card command-card--open" href="places.html?filter=open">
+            <span class="command-card__orb"></span><span class="command-card__icon">🟢</span>
+            <span class="command-card__body"><strong>مفتوح الآن</strong><small>خدمات وأماكن متاحة</small></span><span class="command-card__arrow">←</span>
+          </a>
+          <a class="command-card command-card--live" href="now.html">
+            <span class="command-card__orb"></span><span class="command-card__icon">⚡</span>
+            <span class="command-card__body"><strong>يحدث الآن</strong><small>آخر المستجدات المحلية</small></span><span class="command-card__arrow">←</span>
+          </a>
+          <a class="command-card command-card--offers" href="offers.html">
+            <span class="command-card__orb"></span><span class="command-card__icon">🏷️</span>
+            <span class="command-card__body"><strong>عروض اليوم</strong><small>خصومات ومنتجات مميزة</small></span><span class="command-card__arrow">←</span>
+          </a>
+          <a class="command-card command-card--emergency" href="emergency.html">
+            <span class="command-card__orb"></span><span class="command-card__icon">🚨</span>
+            <span class="command-card__body"><strong>دليل الطوارئ</strong><small>أرقام وخدمات مهمة</small></span><span class="command-card__arrow">←</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trust Strip -->
+    <section class="trust-strip" aria-label="لماذا دليل المنزلة والمطرية؟">
+      <div class="container trust-strip__inner">
+        <div class="trust-item"><span>🛡️</span><div><strong>بيانات محلية</strong><small>معلومات مصممة للمنطقة</small></div></div>
+        <div class="trust-item"><span>📍</span><div><strong>قريب منك</strong><small>اكتشف الخدمات حولك</small></div></div>
+        <div class="trust-item"><span>⚡</span><div><strong>بحث سريع</strong><small>الوصول للمعلومة بأقل خطوات</small></div></div>
+        <div class="trust-item"><span>🔄</span><div><strong>دليل متجدد</strong><small>أماكن وعروض ومعلومات جديدة</small></div></div>
+      </div>
+    </section>
+
     <!-- Towns & Villages Directory Section -->
     <section class="section" style="background:var(--surface);padding-block:var(--space-8);border-bottom:1px solid var(--border)">
       <div class="container">
