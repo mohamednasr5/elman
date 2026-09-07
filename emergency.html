@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>دليل الطوارئ والخدمات | دليل المنزلة والمطرية</title>
+<meta name="description" content="أرقام الطوارئ والجهات والخدمات المهمة في مصر — اتصال مباشر من دليل المنزلة والمطرية.">
+<link rel="stylesheet" href="./src/css/main.css?v=2.6.0">
+<style>
+.emg{max-width:1100px;margin:auto;padding:18px 16px 70px}
+.emg-hero{position:relative;overflow:hidden;border-radius:30px;padding:34px 24px;margin:10px 0 26px;color:#fff;background:radial-gradient(circle at 10% 20%,rgba(255,255,255,.18),transparent 28%),linear-gradient(135deg,#071a2b,#8b1020 58%,#c21f34);box-shadow:0 24px 70px rgba(112,18,32,.25)}
+.emg-hero:after{content:"";position:absolute;width:360px;height:360px;left:-130px;bottom:-240px;border:1px solid rgba(255,255,255,.18);border-radius:50%;box-shadow:0 0 0 35px rgba(255,255,255,.04),0 0 0 75px rgba(255,255,255,.025)}
+.emg-badge{display:inline-flex;padding:6px 11px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);border-radius:999px;font-size:11px;font-weight:800}
+.emg-title{font-size:clamp(28px,5vw,48px);font-weight:900;margin:14px 0 8px}.emg-sub{max-width:680px;color:rgba(255,255,255,.82);line-height:1.9;font-size:13px}
+.emg-siren{position:absolute;left:35px;top:28px;width:90px;height:90px;display:grid;place-items:center;font-size:48px;filter:drop-shadow(0 8px 15px rgba(0,0,0,.25));animation:emgPulse 1.4s ease-in-out infinite}
+@keyframes emgPulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.12);opacity:1}}
+.emg-tools{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.emg-search{flex:1;min-width:240px;padding:13px 16px;border-radius:16px;border:1px solid var(--border);background:var(--surface);font:inherit}
+.emg-section{margin-top:30px}.emg-section h2{font-size:20px;font-weight:900;margin:0 0 13px;display:flex;align-items:center;gap:9px}
+.emg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.emg-card{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:16px;box-shadow:0 8px 25px rgba(15,23,42,.05);transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.emg-card:hover{transform:translateY(-4px);box-shadow:0 18px 38px rgba(15,23,42,.1);border-color:rgba(194,31,52,.25)}
+.emg-icon{width:52px;height:52px;border-radius:17px;display:grid;place-items:center;font-size:27px;background:linear-gradient(145deg,#fff1f2,#fee2e2);border:1px solid #fecdd3;animation:emgFloat 3s ease-in-out infinite}
+@keyframes emgFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.emg-name{font-weight:900;font-size:14px;margin:12px 0 7px}.emg-num{font-size:24px;font-weight:900;letter-spacing:.5px;direction:ltr;text-align:right}
+.emg-call{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;padding:11px;border-radius:14px;background:linear-gradient(135deg,#b91c1c,#dc2626);color:#fff;text-decoration:none;font-weight:900;box-shadow:0 8px 18px rgba(185,28,28,.18)}
+.emg-call:hover{filter:brightness(1.06)}.emg-note{font-size:10px;color:var(--text-muted);margin-top:8px}
+.emg-empty{padding:35px;text-align:center;color:var(--text-muted)}
+@media(max-width:650px){.emg{padding:8px 11px 50px}.emg-hero{padding:25px 18px;border-radius:23px}.emg-siren{position:static;width:auto;height:auto;justify-content:flex-start;font-size:38px}.emg-title{font-size:29px}.emg-grid{grid-template-columns:1fr 1fr}.emg-card{padding:12px}.emg-num{font-size:19px}.emg-name{font-size:12px}.emg-call{font-size:11px;padding:9px}}
+@media(max-width:420px){.emg-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app"><div id="header-slot"></div><main id="page-container"></main><div id="nav-slot"></div><div id="footer-slot"></div></div>
+<script type="module">
+import { initPage } from './src/js/core/page-shell.js?v=2.6.0';
+await initPage('emergency.html');
+
+const groups=[
+['🚨','أرقام الطوارئ الأساسية',[
+['الأمن العام','115'],['وزارة الداخلية','138'],['دار الإفتاء المصرية','107'],['الاسم الرقمي','122'],['الإسعاف','123']]],
+['🏛️','الهيئات والوزارات والخدمات',[
+['الهيئة العامة للتأمين الصحي','106'],['وزارة التربية والتعليم','19151'],['الهيئة العامة لتعليم الكبار','19556'],['وزارة السياحة','19654'],['وزارة الدفاع','19136'],['وزارة البيئة','19808'],['الهيئة العامة للتأمين الصحي','19806'],['وزارة التربية والتعليم','19126'],['جامعة القاهرة - مركز التعليم المفتوح','19545'],['الهيئة العامة للخدمات البيطرية','19561'],['وزارة التجارة والصناعة','19805'],['هيئة الرقابة الإدارية','16100'],['هيئة سوق المال','16916'],['البريد المصري','16789'],['الهيئة القومية للتأمينات الاجتماعية','16217'],['الهيئة العامة للاستثمار','16035'],['هيئة تنمية صناعة تكنولوجيا المعلومات','16248'],['الصندوق الاجتماعي للتنمية','19733'],['الهيئة العامة للرقابة على الصادرات','19591'],['مبيعات كبار العملاء','19526'],['الهيئة المصرية للرقابة على التأمين','19053'],['مجلس التدريب الصناعي','16456'],['تكنولوجيا تشغيل المنشآت المالية والمرافق والخدمات','19680']]],
+['👮','المباحث والخدمات الأمنية',[
+['سرقات المتاجر','4243479'],['سرقات السيارات','4268822'],['جرائم النشل','4268822'],['قسم مكافحة المخدرات','4269966'],['جرائم الأموال العامة','4203208'],['جرائم الآداب','4269955'],['جرائم المصنفات الفنية','4268305'],['مباحث المرور','4949547'],['شرطة المرافق','4244322'],['مباحث التهرب الضريبي','4843222'],['الإسعاف','3925810'],['عمليات المرور','01200103633'],['شرطة التموين','4204669']]],
+['💻','مباحث الإنترنت',[
+['مباحث الإنترنت','0227921487'],['مباحث الإنترنت','0227921490'],['مباحث الإنترنت','0227921490']]],
+['🛡️','الأمن الوطني',[
+['الأمن الوطني','022645000'],['الأمن الوطني','022646000'],['الأمن الوطني','022647000']]]
+];
+
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const normalize=s=>String(s).replace(/\s/g,'').replace(/[()\-]/g,'');
+document.getElementById('page-container').innerHTML=`
+<div class="emg">
+<div class="page-back-bar"><button class="btn-page-back" onclick="history.length>1?history.back():location.href='index.html'">← رجوع</button></div>
+<section class="emg-hero"><div class="emg-siren">🚨</div><span class="emg-badge">🇪🇬 دليل الطوارئ والخدمات في مصر</span><h1 class="emg-title">حين تحتاج الرقم الصحيح… تجده فورًا.</h1><p class="emg-sub">واجهة سريعة ومباشرة لأرقام الطوارئ والجهات والخدمات المهمة. اضغط على أي رقم لإجراء الاتصال مباشرة من هاتفك.</p></section>
+<div class="emg-tools"><input id="emg-search" class="emg-search" placeholder="🔎 ابحث عن هيئة أو خدمة أو رقم..." autocomplete="off"><button id="emg-reset" class="btn btn-secondary">إظهار الكل</button></div>
+<div id="emg-content"></div>
+<div class="emg-note">تنبيه: الأرقام المعروضة أُدرجت وفق البيانات المقدمة للدليل. في الحالات الخطرة، استخدم أرقام الطوارئ الرسمية المعروفة وتحقق من الرقم عند الحاجة.</div>
+</div>`;
+function render(q=''){
+ const needle=normalize(q.toLowerCase());
+ let total=0; const html=groups.map(([icon,title,items])=>{
+   const filtered=items.filter(([n,num])=>!needle||normalize((n+' '+num).toLowerCase()).includes(needle));
+   if(!filtered.length)return '';
+   total+=filtered.length;
+   return `<section class="emg-section"><h2><span>${icon}</span>${esc(title)} <small style="font-size:11px;color:var(--text-muted)">(${filtered.length})</small></h2><div class="emg-grid">${filtered.map(([name,num],i)=>`<article class="emg-card"><div class="emg-icon">${icon==='🚨'?'🚨':icon==='🏛️'?'🏛️':icon==='👮'?'👮':icon==='💻'?'💻':'🛡️'}</div><div class="emg-name">${esc(name)}</div><div class="emg-num">${esc(num)}</div><a class="emg-call" href="tel:${esc(num)}">📞 اتصال مباشر</a><div class="emg-note">خدمة اتصال سريع من الهاتف</div></article>`).join('')}</div></section>`;
+ }).join('');
+ document.getElementById('emg-content').innerHTML=html||'<div class="emg-empty">لا توجد نتيجة مطابقة لبحثك.</div>';
+}
+render();
+document.getElementById('emg-search').addEventListener('input',e=>render(e.target.value));
+document.getElementById('emg-reset').addEventListener('click',()=>{document.getElementById('emg-search').value='';render()});
+</script>
+</body></html>
