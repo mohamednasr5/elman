@@ -2061,7 +2061,8 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     place_slug: placeSlug || ''
   });
 
-  // Notify Place Owner directly (يظهر لصاحب المكان فقط)
+  // Notifications are best-effort: a notification failure must NEVER
+  // make a successfully saved review appear as a failed submission.
   try {
     const place = await getPlace(placeId);
     const ownerId = place?.ownerId;
@@ -2097,15 +2098,19 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     console.warn('[addReview] Owner notification failed:', err);
   }
 
-  // Send Instant Dual-Channel Notification to Admin Telegram Bot
-  sendTelegramAdminNotification('new_review', {
-    placeId,
-    placeName: placeName || 'المكان',
-    placeSlug: placeSlug || '',
-    userName: userName,
-    rating: numRating,
-    comment: cleanComment
-  });
+  // Admin notification is also best-effort and must not block review publishing.
+  try {
+    await sendTelegramAdminNotification('new_review', {
+      placeId,
+      placeName: placeName || 'المكان',
+      placeSlug: placeSlug || '',
+      userName,
+      rating: numRating,
+      comment: cleanComment
+    });
+  } catch (err) {
+    console.warn('[addReview] Admin notification failed:', err);
+  }
 
   return reviewData;
 }
