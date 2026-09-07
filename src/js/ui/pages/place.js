@@ -24,6 +24,7 @@ import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, ATM_POLL_QUESTIONS, formatAtmTimeAgo, submitAtmPollVote } from '../../utils/atm.js';
 import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service.js';
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
+import { resolvePlaceProfession, getCategorySvg } from '../../utils/professions-data.js';
 
 export async function renderPlacePage($container, { slug, user }) {
   // Show skeleton
@@ -155,6 +156,8 @@ export async function renderPlacePage($container, { slug, user }) {
     // Resolve Smart Google Map info (supports coords, short links, Plus codes, and addresses)
     const mapInfo = resolveMapEmbedInfo(place);
     const docInfo = resolveDoctorSpecialty(place, category);
+    const profInfo = resolvePlaceProfession(place);
+    const craftCatSvg = getCategorySvg(catInfo.slug, 18);
 
     // Render Full Page
     $container.innerHTML = `
@@ -238,8 +241,14 @@ export async function renderPlacePage($container, { slug, user }) {
                 
                 <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin-top:4px">
                   <a href="category.html?slug=${catInfo.slug}" class="place-category-tag">
-                    ${catInfo.icon} ${escHtml(catInfo.name)}
+                    ${craftCatSvg || catInfo.icon} ${escHtml(catInfo.name)}
                   </a>
+                  ${profInfo ? `
+                    <a href="category.html?slug=${profInfo.category.slug}&prof=${encodeURIComponent(profInfo.profession.id)}" class="place-profession-badge" style="text-decoration:none;padding:4px 12px;font-size:13px" title="تصفح جميع فنيي ${escHtml(profInfo.profession.name)}">
+                      ${profInfo.svg}
+                      <span>${escHtml(profInfo.profession.name)}</span>
+                    </a>
+                  ` : ''}
                   ${place.nameEn ? `<span style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
                   ${place.medicalSpecialty ? `
                     <span class="badge" style="background:#E0F2FE;color:#0369A1;font-weight:700;font-size:12.5px;padding:3px 10px;border-radius:9999px;border:1px solid #BAE6FD">

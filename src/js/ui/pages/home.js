@@ -15,6 +15,7 @@ import { mountVoiceSearchButton, openManzalaVoiceAssistantModal } from '../../se
 import { mountLivePulseSection } from '../components/LivePulseSection.js';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
+import { getCategorySvg } from '../../utils/professions-data.js';
 
 const CATEGORY_EMOJIS = {
   'pharmacy':      { emoji: '💊', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
@@ -143,14 +144,15 @@ function renderCategories(categories) {
   const grid = document.getElementById('categories-grid');
   if (!grid || !categories) return;
 
-  grid.innerHTML = categories.slice(0, 12).map(cat => {
+  grid.innerHTML = categories.map(cat => {
+    const craftSvg = getCategorySvg(cat.slug, 32);
     const style = CATEGORY_EMOJIS[cat.slug] || DEFAULT_CAT;
     return `
       <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}"
          class="category-card animate-fade-in"
          style="--cat-color-border:${style.border}"
          aria-label="${cat.name}">
-        <div class="category-card__icon">${cat.icon || style.emoji}</div>
+        <div class="category-card__icon">${craftSvg || cat.icon || style.emoji}</div>
         <div class="category-card__name">${escHtml(cat.name)}</div>
       </a>
     `;

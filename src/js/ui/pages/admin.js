@@ -17,6 +17,7 @@ import { arabicMatch, normalizeArabic } from '../../utils/arabic.js';
 import { normalizePhoneNumber } from '../../utils/phone.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
+import { ALL_PROFESSIONS } from '../../utils/professions-data.js';
 
 // ── In-Memory Cache Store for 0ms Tab Switching ──
 const adminCache = {
@@ -4988,7 +4989,7 @@ window.editPlaceAdmin = async (placeId) => {
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
           <div class="form-group">
             <label class="form-label">التصنيف الرئيسي <span class="required">*</span></label>
             <select id="aep-categoryId" class="form-select" required>
@@ -4998,6 +4999,17 @@ window.editPlaceAdmin = async (placeId) => {
                 </option>
               `).join('')}
               <option value="other" ${place.customCategory ? 'selected' : ''}>✨ أخرى (تصنيف مخصص)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">المهنة أو التخصص الدقيق</label>
+            <select id="aep-subcategoryId" class="form-select">
+              <option value="">-- بدون مهنة فرعية (عام) --</option>
+              ${ALL_PROFESSIONS.map(p => `
+                <option value="${p.id}" ${(place.subcategoryId === p.id || place.subcategory_id === p.id) ? 'selected' : ''}>
+                  ${p.categoryIcon || '📁'} ${p.name} (${p.categoryName})
+                </option>
+              `).join('')}
             </select>
           </div>
           <div class="form-group">
@@ -5144,6 +5156,8 @@ window.editPlaceAdmin = async (placeId) => {
             name,
             nameEn: document.getElementById('aep-nameEn')?.value.trim() || '',
             categoryId: document.getElementById('aep-categoryId')?.value || 'general',
+            subcategoryId: document.getElementById('aep-subcategoryId')?.value || '',
+            subcategory_id: document.getElementById('aep-subcategoryId')?.value || '',
             customCategory: document.getElementById('aep-customCategory')?.value.trim() || '',
             phone: document.getElementById('aep-phone')?.value.trim() || '',
             whatsapp: document.getElementById('aep-whatsapp')?.value.trim() || '',

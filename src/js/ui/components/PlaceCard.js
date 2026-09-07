@@ -11,6 +11,7 @@ import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, getAtmLiveStatus, form
 import { getPlaceLiveStatus } from '../../utils/live-hours.js';
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
 import { isFavorite, toggleFavorite } from '../../services/favorites.service.js';
+import { resolvePlaceProfession, getProfessionSvg } from '../../utils/professions-data.js';
 
 /**
  * Render a place card HTML string
@@ -104,6 +105,16 @@ export function renderPlaceCard(place) {
     </div>
   ` : '';
 
+  const profInfo = resolvePlaceProfession(place);
+  const professionBadge = (!docInfo.isDoctor && profInfo) ? `
+    <div style="margin:4px 0 2px 0">
+      <span class="place-profession-badge" style="--prof-color:${profInfo.categoryColor};color:${profInfo.categoryColor};border-color:color-mix(in srgb, ${profInfo.categoryColor} 25%, transparent);background:color-mix(in srgb, ${profInfo.categoryColor} 10%, transparent)">
+        ${getProfessionSvg(profInfo.id, { size: 14, color: profInfo.categoryColor })}
+        <span>${escHtml(profInfo.name)}</span>
+      </span>
+    </div>
+  ` : '';
+
   const waBtn = place.whatsapp
     ? `<a href="${buildContextualWhatsAppLink(place.whatsapp, { source: 'place_card', placeName: place.name, placeSlug: place.slug })}" target="_blank" rel="noopener" class="place-card__action-btn place-card__action-btn--whatsapp" title="محادثة واتساب" aria-label="محادثة واتساب مع ${escAttr(place.name)}" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','whatsappClicks')"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.09-1.1l-.29-.17-3.04.8 1.05-2.96-.19-.3a8.21 8.21 0 0 1-1.26-4.43c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.14-.25-.01-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.45-.06-.13-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43l-.48-.01c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.17-.48-.29z"/></svg></a>`
     : '';
@@ -137,6 +148,7 @@ export function renderPlaceCard(place) {
           <span class="truncate">${escHtml(place.name)}</span>
           ${verifiedBadge}
         </h3>
+        ${doctorSpecialtyBadge || professionBadge}
         <div class="place-card__category" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap">
           ${liveHoursBadge}
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">

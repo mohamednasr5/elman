@@ -7,6 +7,13 @@ import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../uti
 import { isAtmPlace, filterAtmPlaces, isAtmReadyAndOperational } from '../../utils/atm.js';
 import { toast } from '../components/Toast.js';
 import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
+import { 
+  PROFESSION_CATEGORIES, 
+  getCategoryBySlug, 
+  getProfessionById, 
+  getCategorySvg, 
+  getProfessionSvg 
+} from '../../utils/professions-data.js';
 
 let _catUserLocation = null;
 
@@ -64,10 +71,24 @@ export async function renderCategoriesPage($container) {
     }
   });
 
-  const [categories, places] = await Promise.all([
+  const [rawCategories, places] = await Promise.all([
     getCategories(),
     getPublishedPlaces()
   ]);
+
+  const catMap = new Map();
+  // Ensure the 15 craft categories are present first with rich metadata
+  PROFESSION_CATEGORIES.forEach(pc => {
+    catMap.set(pc.slug, { ...pc, _key: pc.slug, isCraft: true });
+  });
+  // Merge remote categories
+  (rawCategories || []).forEach(rc => {
+    const slug = rc.slug || rc._key || rc.id;
+    if (!catMap.has(slug)) {
+      catMap.set(slug, rc);
+    }
+  });
+  const categories = Array.from(catMap.values());
 
   // Mount Sponsored Showcase
   mountSponsoredShowcase('categories-sponsored-showcase', places || [], {
@@ -92,9 +113,17 @@ export async function renderCategoriesPage($container) {
 
   grid.innerHTML = categories.map(cat => {
     const count = countMap[cat.slug] || countMap[cat._key] || countMap[cat.id] || 0;
+    const craftCat = getCategoryBySlug(cat.slug || cat._key || cat.id);
+    const svgIcon = craftCat ? getCategorySvg(craftCat.slug, { size: 38, color: craftCat.color }) : null;
+    const catColor = craftCat ? craftCat.color : (getDefaultPlaceAssets({}, cat).categoryColor || '#0284c7');
+    const iconInner = svgIcon || `<span class="category-icon-orb" aria-hidden="true">${cat.icon || getDefaultPlaceAssets({}, cat).categoryIcon || '📁'}</span>`;
+
     return `
-      <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}" class="category-card animate-fade-in">
-        <div class="category-card__icon category-card__icon--premium" style="--cat-color:${getDefaultPlaceAssets({}, cat).categoryColor || '#0284c7'}"><span class="category-icon-orb" aria-hidden="true">${cat.icon || getDefaultPlaceAssets({}, cat).categoryIcon || '📁'}</span><span class="category-icon-ring" aria-hidden="true"></span></div>
+      <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}" class="category-card animate-fade-in" style="--cat-color:${catColor}">
+        <div class="category-card__icon category-card__icon--premium" style="--cat-color:${catColor}">
+          ${iconInner}
+          <span class="category-icon-ring" aria-hidden="true"></span>
+        </div>
         <div class="category-card__name">${escHtml(cat.name)}</div>
         <div class="category-card__count">${count > 0 ? `${count} مكان` : 'استكشف الأماكن'}</div>
       </a>
@@ -104,7 +133,19 @@ export async function renderCategoriesPage($container) {
 
 export async function renderCategoryPage($container, { slug, query, user }) {
   const decodedSlug = slug ? decodeURIComponent(slug) : '';
-  const categories = await getCategories();
+  const rawCategories = (await getCategories()) || [];
+  const catMap = new Map();
+  // Ensure the 15 craft categories are present first
+  PROFESSION_CATEGORIES.forEach(pc => {
+    catMap.set(pc.slug, { ...pc, _key: pc.slug, isCraft: true });
+  });
+  rawCategories.forEach(rc => {
+    const s = rc.slug || rc._key || rc.id;
+    if (!catMap.has(s)) {
+      catMap.set(s, rc);
+    }
+  });
+  const categories = Array.from(catMap.values());
   const cat = categories?.find(c => 
     c.slug === slug || 
     c._key === slug || 
@@ -141,6 +182,11 @@ export async function renderCategoryPage($container, { slug, query, user }) {
     });
     return;
   }
+
+  const craftCat = getCategoryBySlug(cat.slug || cat._key || cat.id);
+  const craftSvgIcon = craftCat ? getCategorySvg(craftCat.slug, { size: 54, color: craftCat.color }) : null;
+  const initialProfFilter = (query && query.prof) || (new URLSearchParams(window.location.search).get('prof')) || 'all';
+  let currentProfessionFilter = initialProfFilter;
 
   const isAtmCategory = Boolean(
     cat.slug === 'atm' || 
@@ -183,20 +229,44 @@ export async function renderCategoryPage($container, { slug, query, user }) {
 
     <div class="category-page-header">
       <div class="container text-center">
-        <div class="category-page-icon" style="margin:0 auto var(--space-4);background:var(--primary-alpha)">
-          ${cat.icon || '📁'}
+        <div class="category-page-icon" style="margin:0 auto var(--space-4);background:${craftCat ? 'transparent' : 'var(--primary-alpha)'};display:flex;align-items:center;justify-content:center">
+          ${craftSvgIcon || cat.icon || '📁'}
         </div>
         <h1 style="font-size:var(--font-size-3xl);font-weight:800;color:var(--primary);margin-bottom:var(--space-2)">
           ${escHtml(cat.name)} في المنزلة والمطرية
         </h1>
         <p style="color:var(--text-secondary);max-width:540px;margin:0 auto">
-          أفضل وأشهر الأماكن والأنشطة في قسم ${escHtml(cat.name)} بالمنزلة، المطرية، والقرى المجاورة
+          أفضل وأشهر الأماكن والأنشطة والمهن في قسم ${escHtml(cat.name)} بالمنزلة، المطرية، والقرى المجاورة
         </p>
       </div>
     </div>
 
     <div class="container section">
       
+      ${craftCat && craftCat.professions && craftCat.professions.length > 0 ? `
+        <!-- Interactive Profession Selection Bar -->
+        <div class="category-professions-bar animate-fade-in">
+          <div class="category-professions-bar__head">
+            <div class="category-professions-bar__title">
+              ${getCategorySvg(craftCat.slug, { size: 20, color: craftCat.color })}
+              <span>تصفح حسب المهنة والتخصص:</span>
+            </div>
+            <span style="font-size:12px;color:var(--text-muted)">انقر على أي مهنة لتصفية الأماكن والأنشطة فورياً</span>
+          </div>
+          <div class="category-professions-pills" id="craft-profession-pills-bar">
+            <button type="button" class="profession-pill ${currentProfessionFilter === 'all' ? 'active' : ''}" data-prof-id="all">
+              <span>✨ الكل (${escHtml(cat.name)})</span>
+            </button>
+            ${craftCat.professions.map(prof => `
+              <button type="button" class="profession-pill ${currentProfessionFilter === prof.id ? 'active' : ''}" data-prof-id="${escAttr(prof.id)}" data-prof-name="${escAttr(prof.name)}">
+                ${getProfessionSvg(prof.id, { size: 16, color: prof.categoryColor || craftCat.color })}
+                <span>${escHtml(prof.name)}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
       ${isAtmCategory ? `
         <!-- ATM 15-Minute Live Filter Bar -->
         <div class="atm-filters-bar animate-fade-in" style="background:linear-gradient(135deg, #0F2B48 0%, #1B4F72 100%);color:#fff;padding:16px 20px;border-radius:var(--radius-lg);margin-bottom:var(--space-5);border:1px solid rgba(255,255,255,0.15);box-shadow:0 6px 20px rgba(27,79,114,0.25)">
@@ -305,6 +375,24 @@ export async function renderCategoryPage($container, { slug, query, user }) {
       }
     }
 
+    // Filter by Specific Profession / Craft
+    if (currentProfessionFilter && currentProfessionFilter !== 'all') {
+      const profObj = getProfessionById(currentProfessionFilter);
+      const profName = profObj?.name || '';
+      places = places.filter(p => {
+        if (p.subcategoryId === currentProfessionFilter || p.subcategory_id === currentProfessionFilter) return true;
+        if (profName && (
+          (p.name && p.name.includes(profName)) ||
+          (p.customCategory && p.customCategory.includes(profName)) ||
+          (Array.isArray(p.services) && p.services.some(s => s.includes(profName))) ||
+          (p.description && p.description.includes(profName))
+        )) {
+          return true;
+        }
+        return false;
+      });
+    }
+
     if (isAtmCategory && currentAtmFilter !== 'all') {
       places = filterAtmPlaces(places, currentAtmFilter, 15);
     }
@@ -313,8 +401,8 @@ export async function renderCategoryPage($container, { slug, query, user }) {
       grid.innerHTML = `
         <div class="empty-state" style="grid-column:1/-1">
           <div class="empty-state__icon">🔍</div>
-          <h3 class="empty-state__title">لا توجد أماكن مطابقة في ${escHtml(selectedArea === 'all' ? 'هذا التصنيف' : selectedArea)}</h3>
-          <p class="empty-state__text">يمكنك تجربة اختيار "المنزلة والمطرية (الكل)" أو إضافة نشاط جديد</p>
+          <h3 class="empty-state__title">لا توجد أماكن مطابقة في ${escHtml(selectedArea === 'all' ? 'هذا التصنيف والمهنة' : selectedArea)}</h3>
+          <p class="empty-state__text">يمكنك تجربة اختيار "الكل" أو إضافة نشاط ومهنة جديدة</p>
           <a href="dashboard.html?section=add" class="btn btn-primary btn-sm" style="margin-top:var(--space-3)">➕ إضافة مكان جديد</a>
         </div>
       `;
@@ -388,7 +476,18 @@ export async function renderCategoryPage($container, { slug, query, user }) {
         renderSortedPlaces();
       });
     });
+  // Craft Profession Filter Pills Handlers
+  if (craftCat) {
+    document.querySelectorAll('#craft-profession-pills-bar .profession-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#craft-profession-pills-bar .profession-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentProfessionFilter = btn.getAttribute('data-prof-id') || 'all';
+        renderSortedPlaces();
+      });
+    });
   }
+
   renderSortedPlaces();
 }
 

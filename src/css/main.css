@@ -12763,3 +12763,66 @@ textarea,
 .command-card--islamic .command-card__body strong{color:#fff}
 .command-card--islamic .command-card__body small{color:#bfd2ca}
 @keyframes islamicCardGlow{50%{transform:translate(7%,5%) scale(1.08);opacity:.7}}
+
+/* === src/css/components/professions.css === */
+@keyframes svgFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes svgPulse{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.08);opacity:1;filter:drop-shadow(0 0 6px currentColor)}}
+@keyframes svgSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes svgSwing{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+@keyframes svgWrench{0%,100%{transform:rotate(0deg)}30%{transform:rotate(-14deg)}70%{transform:rotate(14deg)}}
+@keyframes svgBlink{0%,90%,100%{opacity:1}95%{opacity:.2}}
+.svg-anim-float{animation:svgFloat 3.2s ease-in-out infinite;transform-origin:center}
+.svg-anim-pulse{animation:svgPulse 2.4s ease-in-out infinite;transform-origin:center}
+.svg-anim-spin{animation:svgSpin 8s linear infinite;transform-origin:center}
+.svg-anim-swing{animation:svgSwing 3s ease-in-out infinite;transform-origin:bottom center}
+.svg-anim-wrench{animation:svgWrench 2.2s ease-in-out infinite;transform-origin:30% 70%}
+.svg-anim-blink{animation:svgBlink 3.5s infinite}
+
+.craft-svg-icon{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;flex-shrink:0;transition:transform .25s cubic-bezier(.34,1.56,.64,1),filter .25s ease}
+.craft-svg-icon svg{width:100%;height:100%;display:block;overflow:visible}
+.category-card:hover .craft-svg-icon,.profession-pill:hover .craft-svg-icon,.craft-select-item:hover .craft-svg-icon{transform:scale(1.15);filter:drop-shadow(0 4px 10px rgba(0,0,0,.18))}
+.category-card:hover .svg-anim-spin{animation-duration:3s}
+.category-card:hover .svg-anim-wrench,.profession-pill:hover .svg-anim-wrench{animation-duration:1s}
+
+.place-profession-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(2,132,199,.1) 0%,rgba(14,165,233,.05) 100%);border:1px solid rgba(2,132,199,.25);color:#0284c7;padding:3px 9px;border-radius:9999px;font-size:11.5px;font-weight:800;line-height:1.3;margin-top:4px;transition:all .2s ease;cursor:pointer;text-decoration:none;max-width:fit-content}
+.place-profession-badge:hover{background:linear-gradient(135deg,#0284c7 0%,#0369a1 100%);color:#fff;border-color:#0284c7;transform:translateY(-1px);box-shadow:0 4px 12px rgba(2,132,199,.25)}
+.place-profession-badge .craft-svg-icon{width:14px;height:14px}
+
+.category-professions-bar{margin:18px 0 24px 0;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl,16px);box-shadow:0 4px 20px rgba(0,0,0,.03)}
+.category-professions-bar__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.category-professions-bar__title{font-size:13.5px;font-weight:800;color:var(--text-primary);display:flex;align-items:center;gap:8px}
+.category-professions-pills{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.profession-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;background:var(--surface-2);border:1px solid var(--border);border-radius:9999px;font-size:12.5px;font-weight:700;color:var(--text-secondary);cursor:pointer;transition:all .2s cubic-bezier(.34,1.56,.64,1);user-select:none;text-decoration:none}
+.profession-pill:hover{background:var(--surface);border-color:var(--primary);color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.profession-pill.active{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;border-color:var(--primary);box-shadow:0 4px 14px var(--primary-alpha);transform:scale(1.03)}
+.profession-pill .craft-svg-icon{width:16px;height:16px}
+
+.craft-form-section{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-xl,16px);padding:18px;margin-top:14px;box-shadow:0 4px 20px rgba(0,0,0,.02);transition:border-color .2s ease}
+.craft-form-section:focus-within{border-color:var(--primary)}
+.craft-form-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.craft-selected-banner{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(27,79,114,.08) 0%,rgba(2,132,199,.08) 100%);border:1px solid rgba(2,132,199,.25);border-radius:var(--radius-lg,12px);padding:10px 14px;margin-bottom:12px}
+.craft-selected-banner__text{font-size:13px;font-weight:800;color:var(--primary);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.craft-cat-scroller{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.craft-cat-scroller::-webkit-scrollbar{height:5px}
+.craft-cat-scroller::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.craft-cat-tab{flex-shrink:0;scroll-snap-align:start;display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-lg,12px);font-size:12.5px;font-weight:700;color:var(--text-primary);cursor:pointer;transition:all .2s cubic-bezier(.34,1.56,.64,1);white-space:nowrap}
+.craft-cat-tab:hover{background:var(--surface);border-color:var(--primary-light);transform:translateY(-2px)}
+.craft-cat-tab.active{background:linear-gradient(135deg,var(--primary) 0%,#0F2B48 100%);color:#fff;border-color:var(--primary);box-shadow:0 4px 14px rgba(27,79,114,.3)}
+.craft-cat-tab .craft-svg-icon{width:18px;height:18px}
+.craft-subprofessions-box{margin-top:12px;background:var(--surface-2);border:1px dashed var(--border);border-radius:var(--radius-lg,12px);padding:12px;max-height:220px;overflow-y:auto}
+.craft-subprofessions-grid{display:flex;flex-wrap:wrap;gap:7px}
+.craft-subprof-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:9999px;font-size:12px;font-weight:700;color:var(--text-secondary);cursor:pointer;transition:all .18s ease}
+.craft-subprof-pill:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.craft-subprof-pill.active{background:linear-gradient(135deg,#0284c7 0%,#0369a1 100%);color:#fff;border-color:#0284c7;font-weight:800;box-shadow:0 3px 10px rgba(2,132,199,.3)}
+.craft-subprof-pill .craft-svg-icon{width:15px;height:15px}
+.craft-search-results{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg,12px);box-shadow:0 10px 30px rgba(0,0,0,.12);max-height:280px;overflow-y:auto;position:absolute;width:100%;z-index:50;top:100%;right:0;margin-top:6px}
+.craft-search-item{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s ease}
+.craft-search-item:last-child{border-bottom:none}
+.craft-search-item:hover{background:var(--surface-2)}
+.craft-search-item__main{display:flex;align-items:center;gap:10px}
+.craft-search-item__name{font-size:13.5px;font-weight:800;color:var(--text-primary)}
+.craft-search-item__cat{font-size:11.5px;color:var(--text-muted);background:var(--surface-3);padding:2px 8px;border-radius:9999px}
+.category-card__icon--animated-svg{display:flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:50%;margin:0 auto 10px auto;background:radial-gradient(circle,var(--cat-bg,rgba(2,132,199,.12)) 0%,transparent 70%);position:relative;transition:transform .28s cubic-bezier(.34,1.56,.64,1)}
+.category-card:hover .category-card__icon--animated-svg{transform:translateY(-4px) scale(1.1)}
+.category-card__icon--animated-svg .craft-svg-icon{width:38px;height:38px}
+

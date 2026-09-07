@@ -13,6 +13,16 @@ import {
   isNotificationSoundEnabled 
 } from '../../services/notification.service.js';
 import { getCategoryTaxonomy, SPECIALIZED_CATEGORIES_TAXONOMY } from '../../utils/specialized-taxonomy.js';
+import { 
+  PROFESSION_CATEGORIES, 
+  ALL_PROFESSIONS, 
+  getCategoryBySlug, 
+  getProfessionById, 
+  getProfessionSvg, 
+  getCategorySvg, 
+  searchProfessionsAndCategories, 
+  createSvgIcon 
+} from '../../utils/professions-data.js';
 /**
  * المنزلة وناسها — User Place Owner Dashboard
  * Mobile-first dashboard for managing places, daily offers, products, photos,
@@ -422,10 +432,28 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     }
   }
 
-  const categories = (await getCategories()) || [];
-  if (!categories.some(c => c.slug === 'atm' || c._key === 'atm' || (c.name && c.name.includes('صراف')))) {
-    categories.unshift({ _key: 'atm', slug: 'atm', name: 'ماكينة صراف آلي (ATM)', icon: '🏧' });
+  const remoteCategories = (await getCategories()) || [];
+  const catMap = new Map();
+  // Ensure the 15 craft categories are present first with rich metadata
+  PROFESSION_CATEGORIES.forEach(pc => {
+    catMap.set(pc.slug, {
+      ...pc,
+      _key: pc.slug,
+      isCraft: true
+    });
+  });
+  // Add ATM if missing
+  if (!catMap.has('atm')) {
+    catMap.set('atm', { _key: 'atm', slug: 'atm', name: 'ماكينة صراف آلي (ATM)', icon: '🏧' });
   }
+  // Merge any other categories from remote D1
+  remoteCategories.forEach(rc => {
+    const slug = rc.slug || rc._key || rc.id;
+    if (!catMap.has(slug)) {
+      catMap.set(slug, rc);
+    }
+  });
+  const categories = Array.from(catMap.values());
 
   // Robust Category Resolution (handles slug, key, id, or legacy category names)
   const rawCatId = place?.categoryId || place?.category || place?.categorySlug || '';
@@ -438,7 +466,14 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   const isCustomCat = Boolean(place?.customCategory || (rawCatId && !matchedCat && rawCatId !== 'atm'));
   const currentCatVal = matchedCat ? (matchedCat.slug || matchedCat._key || matchedCat.id) : (isCustomCat ? 'other' : rawCatId);
   const currentCustomCatName = place?.customCategory || (!matchedCat && isCustomCat ? rawCatId : '');
-  const selectedCatDisplayName = matchedCat ? matchedCat.name : (currentCustomCatName || rawCatId);
+  
+  // Robust Subcategory / Profession Resolution
+  const currentSubcatVal = place?.subcategoryId || place?.subcategory_id || '';
+  const matchedSubcat = getProfessionById(currentSubcatVal) || null;
+  const currentSubcatName = matchedSubcat ? matchedSubcat.name : '';
+  const selectedCatDisplayName = matchedSubcat 
+    ? `${matchedCat ? matchedCat.name : ''} › ${matchedSubcat.name}`
+    : (matchedCat ? matchedCat.name : (currentCustomCatName || rawCatId));
 
   // Robust Area Resolution
   const currentArea = (place?.area || '').trim() || 'المنزلة';
@@ -524,42 +559,57 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           </div>
         </div>
 
-        <!-- Searchable Category Selector -->
-        <div class="form-group" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-2)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
-            <label class="form-label" style="margin-bottom:0;font-weight:var(--font-weight-bold)">التصنيف الرئيسي والمهنة <span class="required">*</span></label>
-            <div id="p-selected-cat-badge" style="font-size:12px;color:var(--primary);display:${currentCatVal ? 'flex' : 'none'};align-items:center;gap:6px">
-              <span>المختار:</span>
-              <span id="p-selected-cat-name" class="chip chip--primary" style="font-weight:700">${escHtml(selectedCatDisplayName)}</span>
+        <!-- Searchable Category & Profession Selector with Animated SVGs -->
+        <div class="craft-form-section" id="craft-form-section">
+          <div class="craft-form-header">
+            <div>
+              <label class="form-label" style="margin-bottom:2px;font-weight:var(--font-weight-bold);font-size:14.5px">
+                <span>📂</span> التصنيف والمهنة التخصصية <span class="required">*</span>
+              </label>
+              <p style="font-size:12px;color:var(--text-muted);margin:0">
+                ابحث عن مهنتك مباشرة أو اختر التصنيف ثم المهنة الدقيقة بأيقونات الـ SVG الأنيميشن الاحترافية
+              </p>
+            </div>
+            
+            <div id="p-selected-cat-badge" style="display:${currentCatVal ? 'flex' : 'none'};align-items:center;gap:6px">
+              <span id="p-selected-cat-pill" class="chip chip--primary" style="font-weight:800;display:inline-flex;align-items:center;gap:6px">
+                <span id="p-selected-cat-name">${escHtml(selectedCatDisplayName || '')}</span>
+              </span>
             </div>
           </div>
 
           <!-- Live Search Input -->
-          <div style="position:relative;margin-bottom:10px">
+          <div style="position:relative;margin-bottom:12px">
             <input 
               type="search" 
               id="p-category-search-input" 
               class="form-input" 
-              placeholder="🔍 ابحث في التصنيفات (اكتب أول حرفين، مثال: دكتور، سباك، صيدلية، مطعم...)" 
+              placeholder="🔍 ابحث في المهن والتصنيفات (مثال: سباك، نقاش، تكييف، كهربائي، معلم جبس بورد، خياط...)" 
               autocomplete="off"
               style="padding-right:38px;background:var(--surface);border-color:var(--primary)"
             />
             <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🔎</span>
+            
+            <!-- Live Search Autocomplete Dropdown -->
+            <div id="p-craft-search-results" class="craft-search-results" style="display:none"></div>
           </div>
 
           <!-- Category Quick Selection Pills Box -->
-          <div id="p-category-picker-box" style="max-height:170px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;padding:6px;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:6px">التصنيفات الرئيسية:</div>
+          <div id="p-category-picker-box" class="craft-cat-scroller">
             ${categories.map(c => {
               const cKey = c.slug || c._key || c.id;
               const isActive = (currentCatVal === cKey);
+              const craftCat = getCategoryBySlug(cKey);
+              const svgIcon = craftCat ? getCategorySvg(craftCat.slug, { size: 18, color: craftCat.color }) : '';
               return `
-                <button type="button" class="category-select-pill ${isActive ? 'active' : ''}" data-cat-id="${escAttr(cKey)}" data-cat-name="${escAttr(c.name)}">
-                  <span>${c.icon || '📁'}</span>
+                <button type="button" class="craft-cat-tab ${isActive ? 'active' : ''}" data-cat-id="${escAttr(cKey)}" data-cat-name="${escAttr(c.name)}">
+                  ${svgIcon || `<span style="font-size:16px">${c.icon || '📁'}</span>`}
                   <span>${escHtml(c.name)}</span>
                 </button>
               `;
             }).join('')}
-            <button type="button" class="category-select-pill ${isCustomCat ? 'active' : ''}" data-cat-id="other" data-cat-name="أخرى (اكتب تصنيفاً جديداً)">
+            <button type="button" class="craft-cat-tab ${isCustomCat ? 'active' : ''}" data-cat-id="other" data-cat-name="أخرى (اكتب تصنيفاً جديداً)">
               <span>✨</span>
               <span>أخرى (اكتب تصنيفاً جديداً)</span>
             </button>
@@ -568,7 +618,18 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             لم نجد تصنيفاً مطابقاً. يمكنك اختيار <strong style="color:var(--secondary,#F5A623);cursor:pointer" onclick="document.querySelector('[data-cat-id=other]')?.click()">✨ أخرى (اكتب تصنيفاً جديداً)</strong>
           </div>
 
-          <!-- Hidden Synchronized Select for Form Validation & Submission -->
+          <!-- Sub-professions Container (Appears when a category with trades is selected) -->
+          <div id="p-subprofessions-box" class="craft-subprofessions-box" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:800;color:var(--text-primary)">
+                اختر المهنة والتخصص الدقيق (أيقونات SVG أنيميشن):
+              </span>
+              <span id="p-subprof-hint" style="font-size:11px;color:var(--text-muted)">اختياري لظهور أفضل بالبحث</span>
+            </div>
+            <div id="p-subprofessions-grid" class="craft-subprofessions-grid"></div>
+          </div>
+
+          <!-- Hidden Synchronized Select & Subcategory inputs for Form Validation & Submission -->
           <select id="p-category" class="form-select" style="display:none" required>
             <option value="">اختر التصنيف...</option>
             ${categories.map(c => {
@@ -577,6 +638,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             }).join('')}
             <option value="other" ${isCustomCat ? 'selected' : ''}>✨ أخرى (اكتب تصنيفاً جديداً)</option>
           </select>
+          <input type="hidden" id="p-subcategory" value="${escAttr(currentSubcatVal || '')}" />
         </div>
 
         <!-- Custom Category Input Box (shows when 'other' is selected) -->
@@ -1064,11 +1126,70 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   // Live Category Search Filter & Pill Selection
   const catSearchInput = document.getElementById('p-category-search-input');
   const catPickerBox = document.getElementById('p-category-picker-box');
-  const catPills = catPickerBox ? catPickerBox.querySelectorAll('.category-select-pill') : [];
+  const catPills = catPickerBox ? catPickerBox.querySelectorAll('.craft-cat-tab, .category-select-pill') : [];
   const catNoMatch = document.getElementById('p-cat-no-match');
   const hiddenSelect = document.getElementById('p-category');
+  const subprofInput = document.getElementById('p-subcategory');
+  const subprofBox = document.getElementById('p-subprofessions-box');
+  const subprofGrid = document.getElementById('p-subprofessions-grid');
+  const searchResults = document.getElementById('p-craft-search-results');
   const selectedBadge = document.getElementById('p-selected-cat-badge');
   const selectedBadgeName = document.getElementById('p-selected-cat-name');
+
+  // Render Sub-professions grid for selected category
+  function renderSubprofessions(catId, selectedProfId = '') {
+    if (!subprofBox || !subprofGrid) return;
+    const craftCat = getCategoryBySlug(catId);
+    if (!craftCat || !craftCat.professions || craftCat.professions.length === 0) {
+      subprofBox.style.display = 'none';
+      return;
+    }
+
+    const currentSub = selectedProfId || subprofInput?.value || '';
+
+    subprofGrid.innerHTML = craftCat.professions.map(prof => {
+      const isActive = (currentSub === prof.id);
+      return `
+        <button type="button" class="craft-subprof-pill ${isActive ? 'active' : ''}" data-prof-id="${escAttr(prof.id)}" data-prof-name="${escAttr(prof.name)}" data-cat-name="${escAttr(craftCat.name)}">
+          ${getProfessionSvg(prof.id, { size: 15, color: prof.categoryColor || craftCat.color })}
+          <span>${escHtml(prof.name)}</span>
+        </button>
+      `;
+    }).join('');
+
+    subprofBox.style.display = 'block';
+
+    // Click listener for sub-professions
+    subprofGrid.querySelectorAll('.craft-subprof-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pId = btn.getAttribute('data-prof-id');
+        const pName = btn.getAttribute('data-prof-name');
+        const isCurrentlyActive = btn.classList.contains('active');
+
+        subprofGrid.querySelectorAll('.craft-subprof-pill').forEach(b => b.classList.remove('active'));
+
+        if (isCurrentlyActive) {
+          if (subprofInput) subprofInput.value = '';
+          if (selectedBadgeName) selectedBadgeName.textContent = craftCat.name;
+        } else {
+          btn.classList.add('active');
+          if (subprofInput) subprofInput.value = pId;
+          if (selectedBadgeName) selectedBadgeName.textContent = `${craftCat.name} › ${pName}`;
+          toast.success(`تم اختيار المهنة: ${pName} ✨`);
+          // Auto-add to service tags
+          if (_currentTagsList && !_currentTagsList.includes(pName)) {
+            _currentTagsList.unshift(pName);
+            renderTagsList();
+          }
+        }
+      });
+    });
+  }
+
+  // Initial render of subprofessions if editing place
+  if (currentCatVal) {
+    renderSubprofessions(currentCatVal, currentSubcatVal);
+  }
 
   // Doctor Specialty Visibility Controller
   function updateDoctorSpecialtyVisibility(catVal = '', customCatVal = '', catNameVal = '') {
@@ -1104,18 +1225,99 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     });
   });
 
-  // Category Search Input Filtering
+  // Category Search Input Filtering & Autocomplete Dropdown
   catSearchInput?.addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
+    const q = e.target.value.trim();
+    if (!q) {
+      if (searchResults) searchResults.style.display = 'none';
+      catPills.forEach(pill => pill.style.display = 'inline-flex');
+      if (catNoMatch) catNoMatch.style.display = 'none';
+      return;
+    }
+
+    const { categories: matchedCats, professions: matchedProfs } = searchProfessionsAndCategories(q);
+
     let visibleCount = 0;
     catPills.forEach(pill => {
-      const name = (pill.getAttribute('data-cat-name') || '').toLowerCase();
       const id = (pill.getAttribute('data-cat-id') || '').toLowerCase();
-      const match = !q || name.includes(q) || id.includes(q);
-      pill.style.display = match ? 'inline-flex' : 'none';
-      if (match) visibleCount++;
+      const name = (pill.getAttribute('data-cat-name') || '').toLowerCase();
+      const isMatched = matchedCats.some(c => (c.slug || c.id || '').toLowerCase() === id) || name.includes(q.toLowerCase());
+      pill.style.display = isMatched ? 'inline-flex' : 'none';
+      if (isMatched) visibleCount++;
     });
-    if (catNoMatch) catNoMatch.style.display = visibleCount === 0 ? 'block' : 'none';
+    if (catNoMatch) catNoMatch.style.display = visibleCount === 0 && matchedProfs.length === 0 ? 'block' : 'none';
+
+    // Render Search Dropdown with professions & categories
+    if (searchResults) {
+      if (matchedProfs.length > 0 || matchedCats.length > 0) {
+        const itemsHtml = [
+          ...matchedProfs.slice(0, 10).map(p => `
+            <div class="craft-search-item" data-cat-id="${escAttr(p.categorySlug)}" data-prof-id="${escAttr(p.id)}" data-prof-name="${escAttr(p.name)}" data-cat-name="${escAttr(p.categoryName)}">
+              <div class="craft-search-item__main">
+                ${getProfessionSvg(p.id, { size: 18, color: p.categoryColor })}
+                <span class="craft-search-item__name">${escHtml(p.name)}</span>
+              </div>
+              <span class="craft-search-item__cat">${p.categoryIcon || '📁'} ${escHtml(p.categoryName)}</span>
+            </div>
+          `),
+          ...matchedCats.slice(0, 4).map(c => `
+            <div class="craft-search-item" data-cat-id="${escAttr(c.slug || c.id)}" data-prof-id="" data-prof-name="" data-cat-name="${escAttr(c.name)}">
+              <div class="craft-search-item__main">
+                ${getCategorySvg(c.slug, { size: 18, color: c.color })}
+                <span class="craft-search-item__name">قسم: ${escHtml(c.name)}</span>
+              </div>
+              <span class="craft-search-item__cat">تصنيف رئيسي</span>
+            </div>
+          `)
+        ].join('');
+
+        searchResults.innerHTML = itemsHtml;
+        searchResults.style.display = 'block';
+
+        // Attach search item clicks
+        searchResults.querySelectorAll('.craft-search-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const cId = item.getAttribute('data-cat-id');
+            const cName = item.getAttribute('data-cat-name');
+            const pId = item.getAttribute('data-prof-id');
+            const pName = item.getAttribute('data-prof-name');
+
+            // Select Category Tab
+            const targetTab = Array.from(catPills).find(p => p.getAttribute('data-cat-id') === cId);
+            if (targetTab) {
+              targetTab.click();
+            } else if (hiddenSelect) {
+              hiddenSelect.value = cId;
+              hiddenSelect.dispatchEvent(new Event('change'));
+            }
+
+            // Select Sub-profession if applicable
+            if (pId) {
+              renderSubprofessions(cId, pId);
+              if (subprofInput) subprofInput.value = pId;
+              if (selectedBadgeName) selectedBadgeName.textContent = `${cName} › ${pName}`;
+              if (_currentTagsList && !_currentTagsList.includes(pName)) {
+                _currentTagsList.unshift(pName);
+                renderTagsList();
+              }
+              toast.success(`تم اختيار: ${pName} (${cName}) ✨`);
+            }
+
+            searchResults.style.display = 'none';
+            catSearchInput.value = '';
+          });
+        });
+      } else {
+        searchResults.style.display = 'none';
+      }
+    }
+  });
+
+  // Close search results on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#craft-form-section') && searchResults) {
+      searchResults.style.display = 'none';
+    }
   });
 
   // Category Pill Selection Click Handlers
@@ -1137,6 +1339,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         selectedBadgeName.textContent = catName;
         selectedBadge.style.display = 'flex';
       }
+
+      // Render subprofessions for this category
+      renderSubprofessions(catId);
 
       const customCatGroup = document.getElementById('custom-category-group');
       updateDoctorSpecialtyVisibility(catId, customCatGroup?.querySelector('input')?.value, catName);
@@ -1758,6 +1963,15 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
       const categoryVal = document.getElementById('p-category').value;
       const customCategory = categoryVal === 'other' ? (document.getElementById('p-custom-category')?.value.trim() || '') : null;
+      const subcategoryVal = document.getElementById('p-subcategory')?.value.trim() || null;
+
+      // If a craft profession is selected, ensure it is added to services for SEO & instant search
+      if (subcategoryVal) {
+        const profObj = getProfessionById(subcategoryVal);
+        if (profObj && !services.includes(profObj.name)) {
+          services.unshift(profObj.name);
+        }
+      }
 
       if (categoryVal === 'other' && !customCategory) {
         toast.warning('يرجى كتابة اسم التصنيف الجديد');
@@ -1795,6 +2009,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         name: document.getElementById('p-name').value,
         nameEn: document.getElementById('p-name-en').value,
         categoryId: categoryVal === 'other' ? 'other' : categoryVal,
+        subcategoryId: subcategoryVal,
         customCategory: customCategory,
         medicalSpecialty: document.getElementById('p-medical-specialty')?.value.trim() || null,
         deliveryType: document.getElementById('p-delivery-type')?.value || null,
