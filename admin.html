@@ -96,9 +96,9 @@
 <!-- Page Module -->
 <script type="module">
 
-  import { initPage } from './src/js/core/page-shell.js';
-  import { renderAdmin } from './src/js/ui/pages/admin.js?v=2.5.0';
-  import { waitForAuth, isAdmin, signOut } from './src/js/core/auth.js?v=2.5.0';
+  import { initPage } from './src/js/core/page-shell.js?v=2.7.1';
+  import { renderAdmin } from './src/js/ui/pages/admin.js?v=2.7.1';
+  import { waitForAuth, isAdmin, signOut } from './src/js/core/auth.js?v=2.7.1';
   await initPage('');
   const user = await waitForAuth();
   if (!user) {
