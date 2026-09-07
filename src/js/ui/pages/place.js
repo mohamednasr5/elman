@@ -92,8 +92,13 @@ export async function renderPlacePage($container, { slug, user }) {
       ratingSum += rating;
     });
 
-    const isHammad = place.slug === HAMMAD_PLACE_SLUG || placeId === HAMMAD_PLACE_SLUG || String(placeId).includes('mhmd-hmad') || String(place.name || '').includes('محمد حماد') || String(place.slug || '').includes('5lQJ1o');
-    const avgRating = isHammad ? 5.0 : (totalReviews > 0 ? Math.round((ratingSum / totalReviews) * 10) / 10 : 0.0);
+    const avgRating = totalReviews > 0 ? Math.round((ratingSum / totalReviews) * 10) / 10 : 0.0;
+    const trustScore = Math.min(100,
+      (place.isVerified ? 35 : 0) + (place.phone || place.whatsapp ? 15 : 0) +
+      ((place.lat || place.latitude) && (place.lng || place.longitude) ? 15 : 0) + (place.address ? 10 : 0) +
+      ((place.coverImageUrl || place.logoUrl || place.cover_image_url || place.logo_url) ? 10 : 0) +
+      ((place.workingHours || place.openHours) ? 5 : 0) + (place.description ? 5 : 0) + (totalReviews > 0 ? 5 : 0)
+    );
     const userReview = currentUser ? safeReviews.find(review => review.userId === currentUser.uid) : null;
 
     // Track View Count & Profile Visitor safely
@@ -245,7 +250,7 @@ export async function renderPlacePage($container, { slug, user }) {
                   ` : ''}
                 </div>
 
-                <div class="place-address">
+                <span class="place-trust-mini">🛡️ ثقة البيانات ${trustScore}/100</span>\n                <div class="place-address">
                   <span>📍</span>
                   <span>${escHtml(place.address || place.area || 'مدينة المنزلة')}</span>
                 </div>
