@@ -201,3 +201,104 @@
     min-height:46px;
   }
 }
+
+
+/* Surah navigator: previous arrow + dropdown + next arrow */
+.qr-surah-picker{
+  position:relative;
+  top:auto;
+  left:auto;
+  width:100%;
+  margin:18px 0 0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  direction:ltr;
+}
+.qr-surah-select-wrap{
+  flex:1 1 auto;
+  min-width:0;
+  max-width:620px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  direction:rtl;
+}
+.qr-surah-select-wrap label{
+  flex:0 0 auto;
+  color:#CBD5E1;
+  font-weight:800;
+  white-space:nowrap;
+}
+.qr-surah-select-wrap .qr-select{
+  flex:1;
+  min-width:0;
+  width:100%;
+  min-height:46px;
+  cursor:pointer;
+  text-align:center;
+  border-color:rgba(56,189,248,.28);
+  background:rgba(7,20,34,.96);
+}
+.qr-surah-arrow{
+  flex:0 0 48px;
+  width:48px;
+  height:48px;
+  display:grid;
+  place-items:center;
+  border-radius:14px;
+  border:1px solid rgba(56,189,248,.28);
+  background:linear-gradient(145deg,rgba(27,79,114,.8),rgba(7,20,34,.96));
+  color:#F5B041;
+  font:700 2rem/1 Arial,sans-serif;
+  cursor:pointer;
+  transition:transform .18s,border-color .18s,background .18s,opacity .18s;
+}
+.qr-surah-arrow:hover:not(:disabled){
+  transform:scale(1.06);
+  border-color:rgba(245,176,65,.7);
+  background:rgba(243,156,18,.12);
+}
+.qr-surah-arrow:disabled{
+  opacity:.3;
+  cursor:not-allowed;
+}
+@media(max-width:700px){
+  .qr-surah-picker{
+    gap:6px;
+    margin-top:15px;
+  }
+  .qr-surah-select-wrap{
+    gap:0;
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .qr-surah-select-wrap label{
+    font-size:.82rem;
+    margin-bottom:5px;
+    text-align:center;
+  }
+  .qr-surah-select-wrap .qr-select{
+    min-height:46px;
+    font-size:.92rem;
+    padding-inline:8px;
+  }
+  .qr-surah-arrow{
+    flex:0 0 44px;
+    width:44px;
+    height:44px;
+    border-radius:12px;
+    font-size:1.8rem;
+  }
+}
+@media(max-width:380px){
+  .qr-surah-arrow{
+    flex-basis:40px;
+    width:40px;
+    height:42px;
+  }
+  .qr-surah-select-wrap .qr-select{
+    font-size:.84rem;
+  }
+}
