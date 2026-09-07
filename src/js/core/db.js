@@ -2045,7 +2045,8 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     userPhoto: user.photoURL || '',
     rating: numRating,
     comment: cleanComment,
-    userPoints: getDeterministicReviewerPoints(userName, reviewId),
+    // Keep review creation self-contained: do not call an optional helper that may be absent from a cached bundle.
+    userPoints: 0,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     editCount: 0
