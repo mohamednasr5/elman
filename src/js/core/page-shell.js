@@ -331,7 +331,7 @@ try { _setupHeaderSearch(); } catch (err) { console.warn('[initPage] header sear
     else setTimeout(fn, 0);
   };
   runDeferred(async () => {
-    try { await ensureFirebaseReady(2500); initAuth(); } catch (_) {}
+    try { const firebaseReady = await ensureFirebaseReady(2500); if (firebaseReady?.auth) initAuth(); } catch (_) {}
     try { await _enforceBanGuard(); } catch (_) {}
     try {
       onAuthStateChange(user => {
