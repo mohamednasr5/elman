@@ -112,6 +112,42 @@
           "sizes": "96x96"
         }
       ]
+    },
+    {
+      "name": "القرآن الكريم",
+      "short_name": "القرآن",
+      "description": "قراءة القرآن الكريم",
+      "url": "./quran.html",
+      "icons": [
+        {
+          "src": "./icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "الأحاديث الشريفة",
+      "short_name": "الأحاديث",
+      "description": "قراءة والبحث في الأحاديث",
+      "url": "./hadith.html",
+      "icons": [
+        {
+          "src": "./icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "الباحث في القرآن",
+      "short_name": "الباحث",
+      "description": "بحث ذكي في آيات القرآن",
+      "url": "./quran-search.html",
+      "icons": [
+        {
+          "src": "./icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   "prefer_related_applications": false
