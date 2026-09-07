@@ -49,7 +49,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=2.8.0"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=2.8.1"/>
 </head>
 <body class="">
 <div id="app">
@@ -88,9 +88,9 @@
 <!-- Page Module -->
 <script type="module">
 
-  import { initPage } from './src/js/core/page-shell.js?v=2.8.0';
-  import { renderPlacePage } from './src/js/ui/pages/place.js?v=2.8.0';
-  import { waitForAuth } from './src/js/core/auth.js?v=2.8.0';
+  import { initPage } from './src/js/core/page-shell.js?v=2.8.1';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=2.8.1';
+  import { waitForAuth } from './src/js/core/auth.js?v=2.8.1';
   await initPage('');
   const user = await waitForAuth();
   const params = new URLSearchParams(location.search);

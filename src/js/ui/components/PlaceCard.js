@@ -22,8 +22,8 @@ export function renderPlaceCard(place) {
   const isSponsored = !isAtm && isPlaceSponsored(place);
   const catStyle = getCategoryCardCover(place);
   
-  const rawCover = isAtm ? ATM_UNIFIED_COVER : (place.coverImageUrl || defaultAssets.coverImageUrl);
-  const rawLogo = isAtm ? ATM_UNIFIED_LOGO : (place.logoUrl || defaultAssets.logoUrl);
+  const rawCover = place.coverImageUrl || (isAtm ? ATM_UNIFIED_COVER : defaultAssets.coverImageUrl);
+  const rawLogo = place.logoUrl || (isAtm ? ATM_UNIFIED_LOGO : defaultAssets.logoUrl);
 
   const finalCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.THUMB);
   const finalLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.THUMB);

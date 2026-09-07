@@ -76,31 +76,42 @@ export const ATM_POLL_QUESTIONS = [
  */
 export function isAtmPlace(place, category = null) {
   if (!place) return false;
-  const cId = (place.categoryId || '').toLowerCase();
+
+  const cId = (place.categoryId || place.category_id || '').toLowerCase().trim();
+  const subId = (place.subcategoryId || place.subcategory_id || '').toLowerCase().trim();
   const cName = normalizeArabic(category?.name || '').toLowerCase();
   const pName = normalizeArabic(place.name || '').toLowerCase();
-  const customCat = normalizeArabic(place.customCategory || '').toLowerCase();
-  const catName = normalizeArabic(place.categoryName || '').toLowerCase();
+  const customCat = normalizeArabic(place.customCategory || place.custom_category || '').toLowerCase();
+  const catName = normalizeArabic(place.categoryName || place.category_name || '').toLowerCase();
 
-  return (
-    cId === 'atm' ||
-    cId === 'atm-machines' ||
-    cId.includes('atm') ||
-    cId.includes('صراف') ||
-    cId.includes('صرف') ||
-    cName.includes('صراف') ||
-    cName.includes('صرف') ||
-    cName.includes('atm') ||
-    pName.includes('صراف') ||
-    pName.includes('صرف') ||
-    pName.includes('atm') ||
-    customCat.includes('صراف') ||
-    customCat.includes('صرف') ||
-    customCat.includes('atm') ||
-    catName.includes('صراف') ||
-    catName.includes('صرف') ||
-    catName.includes('atm')
-  );
+  // 1. HARD EXCLUSION: If place is in ANY craft or non-banking profession, it is NEVER an ATM!
+  const CRAFT_CATEGORY_IDS = [
+    'plumbing-drainage', 'decor-finishing', 'electrical', 'hvac-refrigeration',
+    'carpentry-furniture', 'building-construction', 'automotive-vehicles',
+    'blacksmith-alumital', 'cleaning-home-services', 'agriculture-gardening',
+    'home-appliances-maintenance', 'tailoring-clothing', 'barber-beauty',
+    'transportation-logistics', 'misc-services', 'home-food-kitchen', 'holy-quran-reciter'
+  ];
+
+  if (CRAFT_CATEGORY_IDS.includes(cId) || subId || place.isCraft) {
+    return false;
+  }
+
+  // If text refers to plumbing, sanitary, drainage, or any crafts/professions
+  const fullText = `${pName} ${customCat} ${catName} ${cName}`;
+  if (/(سباك|سباكة|سباكه|صرف.*صح|مواسير|صحي|تسليك|نقاش|نجار|حداد|كهربا|تكييف|ميكانيك|خياط|حلاق|كوافير|طباخ|جزار|سمك|صيدل|دكتور|طبيب|معمل|عياد|مهن|حرف)/.test(fullText)) {
+    return false;
+  }
+
+  // 2. Strict ATM identification (Only real Automated Teller Machines and Bank Cash Points)
+  const isAtmCatId = cId === 'atm' || cId === 'atm-machines' || cId === 'ماكينة صراف آلي' || cId === 'صراف آلي';
+  const hasAtmKeywordInCat = /(ماكينة.*صراف|صراف.*آل|صراف.*ال|صرافة|\batm\b)/.test(catName) ||
+                             /(ماكينة.*صراف|صراف.*آل|صراف.*ال|صرافة|\batm\b)/.test(cName) ||
+                             /(ماكينة.*صراف|صراف.*آل|صراف.*ال|صرافة|\batm\b)/.test(customCat);
+
+  const hasAtmInName = /(ماكينة.*صراف|صراف.*آل|صراف.*ال|ماكينة.*atm|\batm\b)/.test(pName);
+
+  return Boolean(isAtmCatId || hasAtmKeywordInCat || hasAtmInName);
 }
 
 export function formatAtmTimeAgo(timestamp) {

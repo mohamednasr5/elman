@@ -2045,7 +2045,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         placeData.coverImageUrl = placeData.coverImageUrl || ATM_UNIFIED_COVER;
         placeData.logoUrl = placeData.logoUrl || ATM_UNIFIED_LOGO;
         placeData.alwaysOpen = true;
-        placeData.services = ['سحب نقدي', 'إيداع نقدي', 'خدمات فيزا', 'تحويل أموال'];
+        if (!placeData.services || placeData.services.length === 0) {
+          placeData.services = ['سحب نقدي', 'إيداع نقدي', 'خدمات فيزا', 'تحويل أموال'];
+        }
         if (!placeData.phone) placeData.phone = '19666';
       }
 

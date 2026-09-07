@@ -58,7 +58,7 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=2.8.0"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=2.8.1"/>
 </head>
 <body class="${bodyClass}">
 <div id="app">
@@ -124,8 +124,8 @@ const pages = [
     desc: 'استكشف جميع تصنيفات الأماكن، المحلات، العيادات، والمهن الحرفية في دليل المنزلة والمطرية الرقمي',
     activeNav: 'categories.html',
     moduleScript: `
-  import { initPage } from './src/js/core/page-shell.js?v=2.8.0';
-  import { renderCategoriesPage } from './src/js/ui/pages/categories.js?v=2.8.0';
+  import { initPage } from './src/js/core/page-shell.js?v=2.8.1';
+  import { renderCategoriesPage } from './src/js/ui/pages/categories.js?v=2.8.1';
   await initPage('categories.html');
   await renderCategoriesPage(document.getElementById('page-container'));`
   },
@@ -135,8 +135,8 @@ const pages = [
     desc: 'تصفح الأماكن ومقدمي الخدمات في هذا التصنيف بالمنزلة، المطرية، والقرى المجاورة',
     activeNav: 'categories.html',
     moduleScript: `
-  import { initPage } from './src/js/core/page-shell.js?v=2.8.0';
-  import { renderCategoryPage } from './src/js/ui/pages/categories.js?v=2.8.0';
+  import { initPage } from './src/js/core/page-shell.js?v=2.8.1';
+  import { renderCategoryPage } from './src/js/ui/pages/categories.js?v=2.8.1';
   await initPage('categories.html');
   const slug = new URLSearchParams(location.search).get('slug') || '';
   await renderCategoryPage(document.getElementById('page-container'), { slug });`
@@ -147,9 +147,9 @@ const pages = [
     desc: 'دليل المنزلة والمطرية — تصفح أرقام الهاتف والواتساب، مواعيد وساعات العمل، العنوان بالتفصيل على الخريطة، العروض الحصرية، والتقييمات للأنشطة والمحلات والأطباء والحرفيين بالمنزلة والمطرية',
     activeNav: '',
     moduleScript: `
-  import { initPage } from './src/js/core/page-shell.js?v=2.8.0';
-  import { renderPlacePage } from './src/js/ui/pages/place.js?v=2.8.0';
-  import { waitForAuth } from './src/js/core/auth.js?v=2.8.0';
+  import { initPage } from './src/js/core/page-shell.js?v=2.8.1';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=2.8.1';
+  import { waitForAuth } from './src/js/core/auth.js?v=2.8.1';
   await initPage('');
   const user = await waitForAuth();
   const params = new URLSearchParams(location.search);

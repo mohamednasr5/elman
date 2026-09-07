@@ -148,8 +148,8 @@ export async function renderPlacePage($container, { slug, user }) {
 
     const isAtm = isAtmPlace(place, category);
     const defaultAssets = getDefaultPlaceAssets(place, category);
-    const rawCover = isAtm ? ATM_UNIFIED_COVER : (place.coverImageUrl || defaultAssets.coverImageUrl);
-    const rawLogo = isAtm ? ATM_UNIFIED_LOGO : (place.logoUrl || defaultAssets.logoUrl);
+    const rawCover = place.coverImageUrl || (isAtm ? ATM_UNIFIED_COVER : defaultAssets.coverImageUrl);
+    const rawLogo = place.logoUrl || (isAtm ? ATM_UNIFIED_LOGO : defaultAssets.logoUrl);
     const placeCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.MEDIUM);
     const placeLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.MEDIUM);
 
