@@ -1058,11 +1058,9 @@ export function searchProfessionsAndCategories(query) {
 /**
  * Render Category SVG
  */
+import { getCategorySvg as _getCategorySvg } from "./category-svg.js";
 export function getCategorySvg(slug, options = {}) {
-  const cat = getCategoryBySlug(slug);
-  const type = cat?.svgType || 'decor-main';
-  const color = options.color || cat?.color || '#0284C7';
-  return createSvgIcon(type, { ...options, color });
+  return _getCategorySvg(slug, options);
 }
 
 /**
