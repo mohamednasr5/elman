@@ -200,7 +200,7 @@ async function renderQuranSurah(container){
   box.querySelector('#qr-reciter').onchange=()=>{audios.forEach(a=>{a.pause();a.currentTime=0});playingAll=false;clearActive();activeIndex=-1};
   const applyLanguage=()=>{const mode=box.querySelector('#qr-lang').value;cards.forEach(card=>{const ar=card.querySelector('.qr-text'),en=card.querySelector('.qr-translation');if(!en)return;ar.style.display=mode==='en'?'none':'block';en.style.display=mode==='ar'?'none':'block'})};
   box.querySelector('#qr-lang').onchange=applyLanguage;applyLanguage();
-  const renderTw=()=>{texts.forEach((el,i)=>{const a=s.ayahs[i];el.innerHTML=twOn?'<span class="qr-tajweed">'+tajweedHtml(a.text,rules['verse_'+a.n])+'</span> <span class="qr-num">'+a.n+'</span>':esc(a.text)+' <span class="qr-num">'+a.n+'</span>'});box.querySelector('#qr-legend').hidden=!twOn;};
+  const renderTw=()=>{texts.forEach((el,i)=>{const a=s.ayahs[i];el.innerHTML=twOn?'<span class="qr-tajweed">'+tajweedHtml(a.text,rules['verse_'+a.n])+'</span>':esc(a.text)});box.querySelector('#qr-legend').hidden=!twOn;};
   box.querySelector('#qr-tw').onclick=()=>{twOn=!twOn;box.querySelector('#qr-tw').textContent=twOn?'إيقاف التجويد':'تفعيل التجويد';renderTw()};
   box.querySelector('#qr-font').onchange=e=>texts.forEach(el=>el.style.fontSize=(1.65*Number(e.target.value))+'rem');
  }catch(e){box.innerHTML='<div class="ih-empty">تعذر فتح السورة. تأكد من رقم السورة والملفات المحلية.</div>';console.error('[IslamicHub] Surah',e)}
