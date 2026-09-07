@@ -28,7 +28,7 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v2.9.0-islamic-local';
+const CACHE_VERSION = 'v3.0.0-islamic-local';
 const STATIC_CACHE = 'manzala-static-' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'manzala-dynamic-' + CACHE_VERSION;
 const IMAGE_CACHE = 'manzala-images-' + CACHE_VERSION;
@@ -94,7 +94,9 @@ self.addEventListener('fetch', event => {
     (url.pathname.endsWith('/quran.json') ||
      url.pathname.endsWith('/hadith.json') ||
      url.pathname.endsWith('/data/quran.json') ||
-     url.pathname.endsWith('/data/hadith.json'))
+     url.pathname.endsWith('/data/hadith.json') ||
+     url.pathname.startsWith('/quran/source/') ||
+     url.pathname.startsWith('/hadith/db/'))
   ) {
     event.respondWith(cacheFirstStrategy(request, STATIC_CACHE));
     return;
