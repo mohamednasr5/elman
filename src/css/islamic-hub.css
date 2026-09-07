@@ -45,3 +45,6 @@
 .qr-legend{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px;color:#CBD5E1;font-size:.78rem}.qr-legend span{padding:5px 9px;border-radius:9px;background:rgba(255,255,255,.04)}
 .qr-nav{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
 @media(max-width:700px){.qr-head{padding:18px}.qr-title{font-size:1.55rem}.qr-text{font-size:1.3rem;line-height:2.1}.qr-ayah{padding:18px 12px 14px}.qr-actions>*{flex:1 1 140px}}
+
+.qr-translation{margin-top:14px;padding:14px 18px;border-radius:14px;border:1px solid rgba(56,189,248,.12);background:rgba(255,255,255,.035);color:#CBD5E1;direction:ltr;text-align:left;font-family:Inter,Arial,sans-serif;font-size:1rem;line-height:1.75;animation:qrTranslateIn .3s ease both}
+@keyframes qrTranslateIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
