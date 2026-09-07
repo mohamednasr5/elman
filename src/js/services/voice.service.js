@@ -8,7 +8,6 @@ import { buildContextualWhatsAppLink } from './whatsapp.service.js';
 import { normalizeArabic, arabicScore, arabicMatch, expandArabicSearchIntent, extractSearchKeywords, stripAl } from '../utils/arabic.js';
 import { toast } from '../ui/components/Toast.js';
 import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers } from '../core/db.js';
-import { ensureFirebaseReady } from '../core/firebase.js';
 import { isAtmPlace, isAtmReadyAndOperational, getAtmLiveStatus, formatAtmTimeAgo, ATM_UNIFIED_LOGO } from '../utils/atm.js';
 import { getUserLocation, calculateDistanceKm, formatDistance, getPlaceCoords, MANZALA_CENTER } from '../utils/maps.js';
 import { isPlaceOpen } from '../utils/date.js';
@@ -75,13 +74,12 @@ export async function warmUpVoiceAssistantCache() {
   } catch (_) {}
 }
 
-// Auto warm up on module load safely when Firebase is ready
+// Public search cache does not depend on Firebase.
+// Firebase is reserved for authentication and push notifications.
 if (typeof window !== 'undefined') {
   setTimeout(() => {
-    ensureFirebaseReady().then(() => {
-      warmUpVoiceAssistantCache();
-    }).catch(() => {});
-  }, 1000);
+    warmUpVoiceAssistantCache().catch(() => {});
+  }, 700);
 }
 
 export class VoiceSearch {
@@ -590,8 +588,43 @@ export async function openManzalaVoiceAssistantModal() {
     }
   });
 
-      async function executeVoiceAssistantSearch(query, isInterim = false) {
+      const EMERGENCY_NUMBERS = [
+  {number:'122', names:['شرطة النجدة','النجدة','نجدة','النجده','شرطة','طوارئ الشرطة']},
+  {number:'123', names:['الإسعاف المصرية','الإسعاف','الاسعاف','اسعاف','اسعاف مصر','الإسعاف المصري']},
+  {number:'115', names:['الأمن العام','الأمن','الامن العام','امن عام']}
+];
+const normalizeEmergencyText = (text='') => String(text).toLowerCase()
+  .normalize('NFKD')
+  .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g,'')
+  .replace(/[أإآٱ]/g,'ا').replace(/[ؤ]/g,'و').replace(/[ئ]/g,'ي').replace(/[ى]/g,'ي').replace(/[ة]/g,'ه')
+  .replace(/ال/g,'').replace(/[\s\u2000-\u206F\u2E00-\u2E7F\\!\\"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/g,'');
+function getEmergencyAnswer(query=''){
+  const q=normalizeEmergencyText(query);
+  if(!q)return null;
+  return EMERGENCY_NUMBERS.find(item=>item.names.some(name=>normalizeEmergencyText(name)===q || q.includes(normalizeEmergencyText(name)) || normalizeEmergencyText(name).includes(q))) || null;
+}
+
+async function executeVoiceAssistantSearch(query, isInterim = false) {
     if (!query || !query.trim()) return;
+
+    const emergency = getEmergencyAnswer(query);
+    if (emergency) {
+      const resultsTitle = document.getElementById('mvm-results-title');
+      const resultsList = document.getElementById('mvm-results-list');
+      const resultsBox = document.getElementById('mvm-results-container');
+      if (resultsBox) resultsBox.style.display = 'block';
+      if (resultsTitle) resultsTitle.innerHTML = '🚨 رقم الطوارئ المطلوب';
+      if (resultsList) resultsList.innerHTML = `
+        <div class="mvm-result-card animate-fade-in" style="background:var(--surface);border:1px solid #25c6d5;border-radius:16px;padding:18px;text-align:center;box-shadow:0 8px 24px rgba(37,198,213,.14)">
+          <div style="font-size:13px;font-weight:800;color:var(--text-secondary);margin-bottom:6px">${escapeHtml(emergency.names[0])}</div>
+          <a href="tel:${emergency.number}" style="display:inline-block;font:900 34px/1 var(--e-mono,monospace);color:#0284C7;text-decoration:none;letter-spacing:2px">${emergency.number}</a>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px">اضغط على الرقم للاتصال فوراً</div>
+        </div>`;
+      if (!isInterim) {
+        speakEmergencyNumber(emergency);
+      }
+      return;
+    }
 
     const resultsTitle = document.getElementById('mvm-results-title');
     const resultsList = document.getElementById('mvm-results-list');
@@ -679,7 +712,16 @@ export async function openManzalaVoiceAssistantModal() {
     }
   }
 
-  function speakAssistantVoiceResponse(topResult, totalCount, query) {
+  function speakEmergencyNumber(item){
+  if(typeof window==='undefined'||!('speechSynthesis' in window))return;
+  try{
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(`رقم ${item.names[0]} هو ${item.number}`);
+    u.lang='ar-EG';u.rate=.95;u.pitch=1;
+    window.speechSynthesis.speak(u);
+  }catch(_){}
+}
+function speakAssistantVoiceResponse(topResult, totalCount, query) {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
       window.speechSynthesis.cancel();
