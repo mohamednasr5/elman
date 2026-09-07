@@ -4,26 +4,98 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>دليل الطوارئ والخدمات | دليل المنزلة والمطرية</title>
 <meta name="description" content="أرقام الطوارئ والجهات والخدمات المهمة في مصر — اتصال مباشر من دليل المنزلة والمطرية.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
 <link rel="stylesheet" href="./src/css/main.css?v=2.6.0">
 <style>
-:root{--emg-navy:#102a43;--emg-blue:#1479b8;--emg-cyan:#19b5c5;--emg-muted:#64748b;--emg-line:rgba(16,42,67,.09)}
-.emg{max-width:1180px;margin:auto;padding:20px 18px 90px}
-.emg-hero{position:relative;isolation:isolate;overflow:hidden;min-height:270px;border-radius:32px;margin:10px 0 28px;padding:42px;color:#fff;background:linear-gradient(135deg,#0d253d,#123e62 48%,#087f9b);box-shadow:0 25px 80px rgba(16,42,67,.18)}
-.emg-hero:before{content:"";position:absolute;inset:-45%;z-index:-1;background:conic-gradient(from 180deg,transparent 0 55%,rgba(25,181,197,.16),transparent 72%);animation:emgOrbit 14s linear infinite}
-.emg-hero:after{content:"";position:absolute;width:420px;height:420px;left:-190px;bottom:-300px;border:1px solid rgba(255,255,255,.18);border-radius:50%;box-shadow:0 0 0 42px rgba(255,255,255,.035),0 0 0 88px rgba(255,255,255,.025)}
-@keyframes emgOrbit{to{transform:rotate(360deg)}} 
-.emg-badge{display:inline-flex;padding:7px 12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);backdrop-filter:blur(12px);border-radius:999px;font-size:11px;font-weight:800}
-.emg-title{font-size:clamp(30px,5vw,54px);line-height:1.15;font-weight:950;margin:18px 0 10px;letter-spacing:-1.2px}.emg-title span{color:#7de7ef}.emg-sub{max-width:690px;color:rgba(255,255,255,.76);line-height:1.95;font-size:13px;margin:0}
-.emg-siren{position:absolute;left:48px;top:38px;width:145px;height:145px;display:grid;place-items:center;border-radius:42px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.13);backdrop-filter:blur(14px);font-size:62px;box-shadow:inset 0 1px rgba(255,255,255,.15);animation:emgFloat 4s ease-in-out infinite}
-.emg-siren:after{content:"";position:absolute;inset:14px;border:1px solid rgba(125,231,239,.3);border-radius:32px;animation:emgPulse 2.6s ease-out infinite}
-@keyframes emgFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-7px) rotate(2deg)}}@keyframes emgPulse{0%{transform:scale(.82);opacity:.8}80%,100%{transform:scale(1.15);opacity:0}}
-.emg-tools{display:flex;gap:10px;align-items:center;margin:0 0 24px;padding:10px;border:1px solid var(--emg-line);background:rgba(255,255,255,.55);border-radius:22px;box-shadow:0 10px 35px rgba(16,42,67,.06);backdrop-filter:blur(16px)}
-.emg-search{flex:1;min-width:220px;padding:14px 17px;border-radius:15px;border:1px solid var(--emg-line);background:rgba(255,255,255,.8);color:var(--emg-navy);font:inherit;font-size:12px;outline:none;transition:.25s}.emg-search:focus{border-color:rgba(20,121,184,.4);box-shadow:0 0 0 4px rgba(20,121,184,.08)}
-.emg-section{margin-top:32px}.emg-section h2{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:950;color:var(--emg-navy);margin:0 0 14px}.emg-section h2>span{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(145deg,rgba(20,121,184,.11),rgba(25,181,197,.13));border:1px solid rgba(20,121,184,.12);font-size:20px}
-.emg-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}.emg-card{position:relative;overflow:hidden;min-height:185px;padding:17px;border-radius:21px;background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(248,251,253,.78));border:1px solid var(--emg-line);box-shadow:0 8px 30px rgba(16,42,67,.055);transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s,border-color .3s}.emg-card:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,var(--emg-cyan),transparent);transform:translateX(-100%);transition:transform .55s}.emg-card:hover{transform:translateY(-7px);box-shadow:0 20px 45px rgba(16,42,67,.12);border-color:rgba(20,121,184,.2)}.emg-card:hover:before{transform:translateX(100%)}
-.emg-icon{width:53px;height:53px;display:grid;place-items:center;border-radius:17px;background:linear-gradient(145deg,#eef8fb,#f5fbfd);border:1px solid rgba(20,121,184,.11);font-size:25px;box-shadow:inset 0 1px rgba(255,255,255,.9);animation:emgFloat 4s ease-in-out infinite}.emg-name{font-weight:900;font-size:12.5px;color:var(--emg-navy);margin:12px 0 5px;line-height:1.55}.emg-num{font-size:22px;font-weight:950;letter-spacing:.6px;color:var(--emg-blue);direction:ltr;text-align:right}
-.emg-call{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:11px;padding:10px;border-radius:13px;background:linear-gradient(135deg,#0e7490,#1479b8);color:#fff;text-decoration:none;font-size:11px;font-weight:900;box-shadow:0 8px 20px rgba(20,121,184,.16);transition:.25s}.emg-call:hover{transform:translateY(-2px);box-shadow:0 11px 24px rgba(20,121,184,.25)}.emg-note{font-size:9px;color:var(--emg-muted);margin-top:7px}.emg-empty{padding:50px;text-align:center;color:var(--emg-muted);border:1px dashed var(--emg-line);border-radius:22px}
-@media(max-width:1000px){.emg-grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){.emg{padding:8px 11px 60px}.emg-hero{min-height:auto;padding:25px 20px;border-radius:24px}.emg-siren{position:relative;left:auto;top:auto;width:76px;height:76px;border-radius:22px;font-size:35px;margin-bottom:15px}.emg-siren:after{inset:8px;border-radius:17px}.emg-title{font-size:31px}.emg-sub{font-size:11px}.emg-tools{padding:8px;border-radius:17px}.emg-grid{grid-template-columns:repeat(2,1fr);gap:9px}.emg-card{min-height:171px;padding:12px}.emg-num{font-size:18px}.emg-section h2{font-size:16px}}@media(max-width:420px){.emg-grid{grid-template-columns:1fr}.emg-title{font-size:28px}.emg-tools{flex-direction:column;align-items:stretch}.emg-search{min-width:0}}@media(prefers-reduced-motion:reduce){.emg-hero:before,.emg-siren,.emg-siren:after,.emg-icon{animation:none}.emg-card,.emg-call{transition:none}}[data-theme="dark"] .emg-tools{background:rgba(15,35,55,.72)}[data-theme="dark"] .emg-card{background:linear-gradient(145deg,#12263a,#102235);border-color:rgba(148,163,184,.12)}[data-theme="dark"] .emg-section h2,[data-theme="dark"] .emg-name{color:#e2e8f0}[data-theme="dark"] .emg-search{background:#0f2235;color:#e2e8f0}
+:root{
+  --ec-ink:#0a1929;
+  --ec-panel:#0d2338;
+  --ec-panel-2:#123252;
+  --ec-brand:#163b5c;
+  --ec-brand-2:#1f6c96;
+  --ec-amber:#d99a2b;
+  --ec-amber-soft:rgba(217,154,43,.13);
+  --ec-danger:#bf3b3b;
+  --ec-line:rgba(10,26,43,.09);
+  --ec-line-dark:rgba(255,255,255,.09);
+  --ec-muted:#5b6b7a;
+  --ec-mono:'JetBrains Mono',ui-monospace,monospace;
+}
+[data-theme="dark"]{--ec-line:rgba(255,255,255,.08)}
+.ec{max-width:960px;margin:0 auto;padding:18px 16px 130px;font-family:'Cairo',sans-serif}
+.ec-back{margin-bottom:14px}
+
+/* ---------- console header ---------- */
+.ec-console{position:relative;overflow:hidden;border-radius:26px;background:linear-gradient(175deg,var(--ec-panel),var(--ec-ink) 78%);color:#eaf1f7;padding:30px 26px 26px;box-shadow:0 22px 60px rgba(6,16,28,.28)}
+.ec-radar{position:absolute;inset-inline-end:-70px;top:50%;transform:translateY(-50%);width:280px;height:280px;opacity:.55;pointer-events:none}
+.ec-radar circle.ring{fill:none;stroke:rgba(217,154,43,.35);stroke-width:1}
+.ec-radar .sweep{transform-origin:140px 140px;animation:ecSweep 5s linear infinite}
+.ec-radar .ping{animation:ecPing 3.2s ease-out infinite}
+.ec-radar .ping.d2{animation-delay:1.05s}
+.ec-radar .ping.d3{animation-delay:2.1s}
+@keyframes ecSweep{to{transform:rotate(360deg)}}
+@keyframes ecPing{0%{r:3;opacity:.9}75%{r:34;opacity:0}100%{r:34;opacity:0}}
+.ec-eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--ec-amber);background:var(--ec-amber-soft);border:1px solid rgba(217,154,43,.3);padding:6px 12px;border-radius:999px}
+.ec-eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--ec-amber);box-shadow:0 0 0 0 rgba(217,154,43,.6);animation:ecDot 1.8s ease-in-out infinite}
+@keyframes ecDot{0%,100%{box-shadow:0 0 0 0 rgba(217,154,43,.45)}50%{box-shadow:0 0 0 6px rgba(217,154,43,0)}}
+.ec-h1{position:relative;z-index:1;font-size:clamp(24px,4.4vw,36px);font-weight:800;line-height:1.35;margin:16px 0 8px;max-width:520px}
+.ec-sub{position:relative;z-index:1;color:#a9bacb;font-size:13px;line-height:1.9;max-width:460px;margin:0}
+.ec-search-row{position:relative;z-index:1;display:flex;gap:9px;margin-top:22px;max-width:480px}
+.ec-search{flex:1;padding:13px 16px;border-radius:13px;border:1px solid var(--ec-line-dark);background:rgba(255,255,255,.06);color:#fff;font:inherit;font-size:13px;outline:none;transition:border-color .2s,background .2s}
+.ec-search::placeholder{color:#8296a9}
+.ec-search:focus{border-color:var(--ec-amber);background:rgba(255,255,255,.09)}
+.ec-reset{padding:13px 16px;border-radius:13px;border:1px solid var(--ec-line-dark);background:transparent;color:#cfe0ef;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s}
+.ec-reset:hover{background:rgba(255,255,255,.08)}
+
+/* ---------- channel tabs ---------- */
+.ec-tabs{display:flex;gap:8px;overflow-x:auto;padding:16px 2px 4px;margin-bottom:6px;scrollbar-width:none}
+.ec-tabs::-webkit-scrollbar{display:none}
+.ec-tab{flex:none;display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:12px;border:1px solid var(--ec-line);background:var(--panel,#fff);color:var(--ec-ink);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:border-color .2s,background .2s,color .2s}
+.ec-tab svg{width:16px;height:16px;stroke:currentColor}
+.ec-tab[aria-pressed="true"]{background:var(--ec-brand);border-color:var(--ec-brand);color:#fff}
+[data-theme="dark"] .ec-tab{background:#0f2235;color:#dbe6f0}
+
+/* ---------- directory ---------- */
+.ec-section{margin-top:22px}
+.ec-section-head{display:flex;align-items:baseline;gap:9px;margin:0 4px 10px;font-weight:800;font-size:14.5px;color:var(--ec-ink)}
+[data-theme="dark"] .ec-section-head{color:#e7eef5}
+.ec-section-head .cnt{font-weight:600;font-size:11.5px;color:var(--ec-muted)}
+.ec-list{border:1px solid var(--ec-line);border-radius:18px;overflow:hidden;background:var(--panel,#fff)}
+[data-theme="dark"] .ec-list{background:#0f2235}
+.ec-row{display:flex;align-items:center;gap:13px;padding:13px 15px;border-bottom:1px solid var(--ec-line);transition:background .18s}
+.ec-row:last-child{border-bottom:none}
+.ec-row:hover{background:var(--ec-amber-soft)}
+.ec-row-icon{flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--ec-brand);color:#fff}
+.ec-row-icon svg{width:18px;height:18px;stroke:currentColor;fill:none}
+.ec-row-body{flex:1;min-width:0}
+.ec-row-name{font-weight:700;font-size:13px;color:var(--ec-ink);line-height:1.5}
+[data-theme="dark"] .ec-row-name{color:#eef3f8}
+.ec-row-num{font-family:var(--ec-mono);font-size:15px;font-weight:700;letter-spacing:.4px;color:var(--ec-brand-2);direction:ltr;text-align:end;margin-top:2px}
+.ec-call{flex:none;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:11px;background:var(--ec-brand);color:#fff;text-decoration:none;font-size:11.5px;font-weight:700;transition:background .18s}
+.ec-call:hover{background:var(--ec-brand-2)}
+.ec-call svg{width:14px;height:14px;stroke:currentColor;fill:none}
+.ec-empty{padding:46px 20px;text-align:center;color:var(--ec-muted);border:1px dashed var(--ec-line);border-radius:18px}
+.ec-foot-note{margin-top:24px;font-size:10.5px;color:var(--ec-muted);line-height:1.8;padding:0 4px}
+
+/* ---------- quick dial bar ---------- */
+.ec-quickbar{position:fixed;inset-inline:0;bottom:0;z-index:40;background:var(--ec-ink);border-top:1px solid rgba(255,255,255,.08);padding:10px 12px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -12px 30px rgba(6,16,28,.22)}
+.ec-quickbar-inner{max-width:960px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ec-qd{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:12px;text-decoration:none;color:#dfe9f2;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);transition:background .15s,transform .1s}
+.ec-qd:active{transform:scale(.96);background:var(--ec-amber-soft)}
+.ec-qd b{font-family:var(--ec-mono);font-size:14px;color:#fff;direction:ltr}
+.ec-qd span{font-size:9.5px;font-weight:600;color:#9fb2c4;text-align:center;line-height:1.3}
+
+@media(max-width:640px){
+  .ec-console{padding:24px 18px 22px;border-radius:20px}
+  .ec-radar{width:190px;height:190px;inset-inline-end:-90px}
+  .ec-row-num{font-size:13.5px}
+}
+@media(prefers-reduced-motion:reduce){
+  .ec-radar .sweep,.ec-radar .ping,.ec-eyebrow .dot{animation:none}
+  .ec-row,.ec-call,.ec-qd,.ec-tab{transition:none}
+}
 </style>
 </head>
 <body>
@@ -33,40 +105,105 @@ import { initPage } from './src/js/core/page-shell.js?v=2.6.0';
 await initPage('emergency.html');
 
 const groups=[
-['🚨','أرقام الطوارئ الأساسية',[
+['core','أرقام الطوارئ الأساسية',[
 ['الأمن العام','115'],['وزارة الداخلية','138'],['دار الإفتاء المصرية','107'],['الاسم الرقمي','122'],['الإسعاف','123']]],
-['🏛️','الهيئات والوزارات والخدمات',[
+['gov','الهيئات والوزارات والخدمات',[
 ['الهيئة العامة للتأمين الصحي','106'],['وزارة التربية والتعليم','19151'],['الهيئة العامة لتعليم الكبار','19556'],['وزارة السياحة','19654'],['وزارة الدفاع','19136'],['وزارة البيئة','19808'],['الهيئة العامة للتأمين الصحي','19806'],['وزارة التربية والتعليم','19126'],['جامعة القاهرة - مركز التعليم المفتوح','19545'],['الهيئة العامة للخدمات البيطرية','19561'],['وزارة التجارة والصناعة','19805'],['هيئة الرقابة الإدارية','16100'],['هيئة سوق المال','16916'],['البريد المصري','16789'],['الهيئة القومية للتأمينات الاجتماعية','16217'],['الهيئة العامة للاستثمار','16035'],['هيئة تنمية صناعة تكنولوجيا المعلومات','16248'],['الصندوق الاجتماعي للتنمية','19733'],['الهيئة العامة للرقابة على الصادرات','19591'],['مبيعات كبار العملاء','19526'],['الهيئة المصرية للرقابة على التأمين','19053'],['مجلس التدريب الصناعي','16456'],['تكنولوجيا تشغيل المنشآت المالية والمرافق والخدمات','19680']]],
-['👮','المباحث والخدمات الأمنية',[
+['police','المباحث والخدمات الأمنية',[
 ['سرقات المتاجر','4243479'],['سرقات السيارات','4268822'],['جرائم النشل','4268822'],['قسم مكافحة المخدرات','4269966'],['جرائم الأموال العامة','4203208'],['جرائم الآداب','4269955'],['جرائم المصنفات الفنية','4268305'],['مباحث المرور','4949547'],['شرطة المرافق','4244322'],['مباحث التهرب الضريبي','4843222'],['الإسعاف','3925810'],['عمليات المرور','01200103633'],['شرطة التموين','4204669']]],
-['💻','مباحث الإنترنت',[
+['net','مباحث الإنترنت',[
 ['مباحث الإنترنت','0227921487'],['مباحث الإنترنت','0227921490'],['مباحث الإنترنت','0227921490']]],
-['🛡️','الأمن الوطني',[
+['nat','الأمن الوطني',[
 ['الأمن الوطني','022645000'],['الأمن الوطني','022646000'],['الأمن الوطني','022647000']]]
 ];
 
+const icons={
+ core:'<path d="M12 3 3 7v5c0 5 3.8 8.4 9 9 5.2-.6 9-4 9-9V7l-9-4Z"/><path d="M12 8v5"/><circle cx="12" cy="16.2" r=".6" fill="currentColor" stroke="none"/>',
+ gov:'<path d="M4 21h16"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/>',
+ police:'<path d="M12 3 5 6v5c0 4.6 3 8 7 9 4-1 7-4.4 7-9V6l-7-3Z"/>',
+ net:'<rect x="4" y="4" width="16" height="11" rx="2"/><path d="M8 20h8M12 15v5"/>',
+ nat:'<path d="M12 3 5 6v5c0 4.6 3 8 7 9 4-1 7-4.4 7-9V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>'
+};
+const callIcon='<path d="M4.5 4h3.6l1.5 4.2-2 1.6a11 11 0 0 0 5.6 5.6l1.6-2 4.2 1.5v3.6c0 1-.9 1.8-1.9 1.6C9.9 18.9 5.1 14.1 3.9 6.9 3.7 5.9 4.5 5 5.5 4Z"/>';
+const svg=(paths,cls='')=>`<svg class="${cls}" viewBox="0 0 24 24">${paths}</svg>`;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalize=s=>String(s).replace(/\s/g,'').replace(/[()\-]/g,'');
+const titles={core:'أساسية',gov:'هيئات',police:'أمنية',net:'إنترنت',nat:'وطني'};
+
 document.getElementById('page-container').innerHTML=`
-<div class="emg">
-<div class="page-back-bar"><button class="btn-page-back" onclick="history.length>1?history.back():location.href='index.html'">← رجوع</button></div>
-<section class="emg-hero"><div class="emg-siren" aria-hidden="true">◉</div><span class="emg-badge">✦ دليل الطوارئ والخدمات · مصر</span><h1 class="emg-title">حين تحتاج الرقم الصحيح… <span>تجده فورًا.</span></h1><p class="emg-sub">واجهة سريعة ومباشرة لأرقام الطوارئ والجهات والخدمات المهمة. اضغط على أي رقم لإجراء الاتصال مباشرة من هاتفك.</p></section>
-<div class="emg-tools"><input id="emg-search" class="emg-search" placeholder="🔎 ابحث عن هيئة أو خدمة أو رقم..." autocomplete="off"><button id="emg-reset" class="btn btn-secondary">إظهار الكل</button></div>
-<div id="emg-content"></div>
-<div class="emg-note">تنبيه: الأرقام المعروضة أُدرجت وفق البيانات المقدمة للدليل. في الحالات الخطرة، استخدم أرقام الطوارئ الرسمية المعروفة وتحقق من الرقم عند الحاجة.</div>
-</div>`;
+<div class="ec">
+<div class="page-back-bar ec-back"><button class="btn-page-back" onclick="history.length>1?history.back():location.href='index.html'">← رجوع</button></div>
+
+<section class="ec-console">
+<svg class="ec-radar" viewBox="0 0 280 280" aria-hidden="true">
+  <circle class="ring" cx="140" cy="140" r="60"/>
+  <circle class="ring" cx="140" cy="140" r="95"/>
+  <circle class="ring" cx="140" cy="140" r="130"/>
+  <g class="sweep"><path d="M140 140 L140 20 A120 120 0 0 1 220 60 Z" fill="rgba(217,154,43,.16)"/></g>
+  <circle class="ping" cx="176" cy="96" r="3" fill="#d99a2b"/>
+  <circle class="ping d2" cx="100" cy="176" r="3" fill="#d99a2b"/>
+  <circle class="ping d3" cx="190" cy="180" r="3" fill="#d99a2b"/>
+</svg>
+<span class="ec-eyebrow"><span class="dot"></span> متاح للاتصال الآن</span>
+<h1 class="ec-h1">حين تحتاج الرقم الصحيح، تجده هنا فورًا</h1>
+<p class="ec-sub">فهرس مباشر لأرقام الطوارئ والجهات والخدمات المهمة. اضغط على أي رقم للاتصال من هاتفك في ثانية واحدة.</p>
+<div class="ec-search-row">
+<input id="ec-search" class="ec-search" placeholder="ابحث عن جهة أو خدمة أو رقم…" autocomplete="off">
+<button id="ec-reset" class="ec-reset">إظهار الكل</button>
+</div>
+</section>
+
+<div class="ec-tabs" id="ec-tabs" role="tablist"></div>
+<div id="ec-content"></div>
+<p class="ec-foot-note">الأرقام المعروضة أُدرجت وفق البيانات المقدمة للدليل. في الحالات الخطرة استخدم أرقام الطوارئ الرسمية المعروفة وتحقق من الرقم عند الحاجة.</p>
+</div>
+
+<div class="ec-quickbar" id="ec-quickbar"></div>
+`;
+
+const tabsEl=document.getElementById('ec-tabs');
+tabsEl.innerHTML=['all',...groups.map(g=>g[0])].map(key=>{
+ const label=key==='all'?'الكل':titles[key];
+ const icon=key==='all'?'<path d="M4 6h16M4 12h16M4 18h10"/>':icons[key];
+ return `<button class="ec-tab" data-key="${key}" aria-pressed="${key==='all'}">${svg(icon)}${label}</button>`;
+}).join('');
+
+let activeTab='all';
+
+function renderQuickbar(){
+ const core=groups.find(g=>g[0]==='core')[2].slice(0,4);
+ document.getElementById('ec-quickbar').innerHTML=`<div class="ec-quickbar-inner">${core.map(([n,num])=>`<a class="ec-qd" href="tel:${esc(num)}"><b>${esc(num)}</b><span>${esc(n)}</span></a>`).join('')}</div>`;
+}
+
 function render(q=''){
  const needle=normalize(q.toLowerCase());
- let total=0; const html=groups.map(([icon,title,items])=>{
+ const html=groups.filter(([key])=>activeTab==='all'||activeTab===key).map(([key,title,items])=>{
    const filtered=items.filter(([n,num])=>!needle||normalize((n+' '+num).toLowerCase()).includes(needle));
    if(!filtered.length)return '';
-   total+=filtered.length;
-   return `<section class="emg-section"><h2><span>${icon}</span>${esc(title)} <small style="font-size:11px;color:var(--text-muted)">(${filtered.length})</small></h2><div class="emg-grid">${filtered.map(([name,num],i)=>`<article class="emg-card"><div class="emg-icon">${icon==='🚨'?'◉':icon==='🏛️'?'▣':icon==='👮'?'♙':icon==='💻'?'⌁':'⬡'}</div><div class="emg-name">${esc(name)}</div><div class="emg-num">${esc(num)}</div><a class="emg-call" href="tel:${esc(num)}">اتصال مباشر  ↗</a><div class="emg-note">خدمة اتصال سريع من الهاتف</div></article>`).join('')}</div></section>`;
+   return `<section class="ec-section">
+     <div class="ec-section-head">${svg(icons[key])} ${esc(title)} <span class="cnt">(${filtered.length})</span></div>
+     <div class="ec-list">${filtered.map(([name,num])=>`
+       <div class="ec-row">
+         <div class="ec-row-icon">${svg(icons[key])}</div>
+         <div class="ec-row-body"><div class="ec-row-name">${esc(name)}</div><div class="ec-row-num">${esc(num)}</div></div>
+         <a class="ec-call" href="tel:${esc(num)}">${svg(callIcon)} اتصال</a>
+       </div>`).join('')}</div>
+   </section>`;
  }).join('');
- document.getElementById('emg-content').innerHTML=html||'<div class="emg-empty">لا توجد نتيجة مطابقة لبحثك.</div>';
+ document.getElementById('ec-content').innerHTML=html||'<div class="ec-empty">لا توجد نتيجة مطابقة لبحثك.</div>';
 }
+
+tabsEl.addEventListener('click',e=>{
+ const btn=e.target.closest('.ec-tab');
+ if(!btn)return;
+ activeTab=btn.dataset.key;
+ tabsEl.querySelectorAll('.ec-tab').forEach(b=>b.setAttribute('aria-pressed',b===btn));
+ render(document.getElementById('ec-search').value);
+});
+document.getElementById('ec-search').addEventListener('input',e=>render(e.target.value));
+document.getElementById('ec-reset').addEventListener('click',()=>{document.getElementById('ec-search').value='';activeTab='all';tabsEl.querySelectorAll('.ec-tab').forEach(b=>b.setAttribute('aria-pressed',b.dataset.key==='all'));render()});
+
+renderQuickbar();
 render();
-document.getElementById('emg-search').addEventListener('input',e=>render(e.target.value));
-document.getElementById('emg-reset').addEventListener('click',()=>{document.getElementById('emg-search').value='';render()});
 </script>
 </body></html>
