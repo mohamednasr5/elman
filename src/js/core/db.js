@@ -118,6 +118,15 @@ function normalizeReviewFromD1(r, placeId = '') {
     likes: Number(r.likes) || 0,
     isAdminGenerated: Boolean(r.is_admin_generated),
     editCount: Number(r.edit_count) || 0,
+    isReported: Boolean(r.is_reported),
+    reportCount: Number(r.report_count) || 0,
+    lastReportReason: r.last_report_reason || '',
+    reportedAt: Number(r.reported_at) || 0,
+    lastReporterName: r.last_reporter_name || '',
+    isReviewedByAdmin: Boolean(r.is_reviewed_by_admin),
+    adminReviewStatus: r.admin_review_status || '',
+    adminReviewNote: r.admin_review_note || '',
+    reviewedAt: Number(r.reviewed_at) || 0,
     createdAt: Number(r.created_at) || Date.now(),
     updatedAt: Number(r.updated_at) || Date.now()
   };
@@ -1905,6 +1914,17 @@ export async function getAllReviews() {
           rating: Number(r.rating) || 5,
           comment: r.comment || '',
           likes: Number(r.likes) || 0,
+          isAdminGenerated: Boolean(r.is_admin_generated),
+          editCount: Number(r.edit_count) || 0,
+          isReported: Boolean(r.is_reported),
+          reportCount: Number(r.report_count) || 0,
+          lastReportReason: r.last_report_reason || '',
+          reportedAt: Number(r.reported_at) || 0,
+          lastReporterName: r.last_reporter_name || '',
+          isReviewedByAdmin: Boolean(r.is_reviewed_by_admin),
+          adminReviewStatus: r.admin_review_status || '',
+          adminReviewNote: r.admin_review_note || '',
+          reviewedAt: Number(r.reviewed_at) || 0,
           createdAt: Number(r.created_at) || Date.now(),
           updatedAt: Number(r.updated_at) || Date.now()
         })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -2018,29 +2038,15 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     editCount: 0
   };
 
-  // 1. Sync review to Cloudflare D1 via Worker
-  try {
-    await fetch(`${WORKER_URL}/api/reviews`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: reviewId,
-        place_id: placeId,
-        user_id: user.uid,
-        user_name: userName,
-        user_photo: user.photoURL || '',
-        rating: numRating,
-        comment: cleanComment
-      }),
-      signal: AbortSignal.timeout(5000)
-    });
-  } catch (d1SyncErr) {
-    console.debug('[addPlaceReview] D1 sync error:', d1SyncErr.message);
-  }
-
-  // Write inside places/${placeId}/reviews/${reviewId}
-  await dbSet(`places/${placeId}/reviews/${reviewId}`, reviewData);
-  await recalculatePlaceRating(placeId);
+  // Single authoritative write: Frontend → Worker → D1.
+  // Do not silently ignore a D1 failure; the user only sees "published"
+  // after the review has actually been persisted.
+  await dbSet(`places/${placeId}/reviews/${reviewId}`, {
+    ...reviewData,
+    place_id: placeId,
+    place_name: placeName || 'المكان',
+    place_slug: placeSlug || ''
+  });
 
   // Notify Place Owner directly (يظهر لصاحب المكان فقط)
   try {
