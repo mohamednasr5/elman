@@ -184,12 +184,13 @@ async function renderQuranSurah(container){
   const rules=tw?.verse||{}, av=audio?.verse||{};
   box.innerHTML='<div class="ih-reader"><div class="qr-head"><h2 class="qr-title">سورة '+esc(info.name||s.name)+'</h2><p class="qr-sub">'+s.ayahs.length+' آية · '+esc(info.type||'القرآن الكريم')+'</p>'+
   '<div class="qr-actions"><select id="qr-font" class="qr-select"><option value="1">حجم الخط: متوسط</option><option value="1.15">حجم الخط: كبير</option><option value=".9">حجم الخط: صغير</option></select>'+
-  '<button id="qr-tw" class="qr-btn" type="button">تفعيل التجويد</button><a class="qr-btn" href="quran.html">السور</a><a class="qr-btn" href="quran-search.html">الباحث</a></div>'+
+  '<select id="qr-reciter" class="qr-select" aria-label="اختيار القارئ"><option value="local">التلاوة المحلية المتاحة</option></select><button id="qr-tw" class="qr-btn" type="button">تفعيل التجويد</button><a class="qr-btn" href="quran.html">السور</a><a class="qr-btn" href="quran-search.html">الباحث</a></div>'+
   '<div class="qr-legend" id="qr-legend" hidden><span>الأزرق: همزة وصل</span><span>الذهبي: لام شمسية</span><span>البنفسجي: مد</span></div></div>'+
   '<div id="qr-list">'+s.ayahs.map(a=>{const f=av['verse_'+a.n]?.file;return '<article class="qr-ayah"><div class="qr-text" data-base="'+esc(a.text)+'">'+esc(a.text)+' <span class="qr-num">'+a.n+'</span></div><div class="qr-tools">'+(f?'<audio class="qr-audio" controls preload="none" src="./quran/source/audio/'+String(n).padStart(3,'0')+'/'+encodeURIComponent(f)+'"></audio>':'')+'</div></article>'}).join('')+'</div>'+
   '<div class="qr-nav">'+(n>1?'<a class="qr-btn" href="quran-surah.html?surah='+(n-1)+'">السورة السابقة</a>':'<span></span>')+(n<114?'<a class="qr-btn" href="quran-surah.html?surah='+(n+1)+'">السورة التالية</a>':'<span></span>')+'</div></div>';
   let twOn=false;
   const renderTw=()=>{box.querySelectorAll('.qr-text').forEach((el,i)=>{const a=s.ayahs[i];el.innerHTML=twOn?tajweedHtml(a.text,rules['verse_'+a.n])+' <span class="qr-num">'+a.n+'</span>':esc(a.text)+' <span class="qr-num">'+a.n+'</span>';});box.querySelector('#qr-legend').hidden=!twOn;};
+  box.querySelector('#qr-reciter').onchange=e=>{box.querySelectorAll('.qr-audio').forEach(a=>{a.currentTime=0;});};
   box.querySelector('#qr-tw').onclick=()=>{twOn=!twOn;box.querySelector('#qr-tw').textContent=twOn?'إيقاف التجويد':'تفعيل التجويد';renderTw()};
   box.querySelector('#qr-font').onchange=e=>box.querySelectorAll('.qr-text').forEach(el=>el.style.fontSize=(1.65*Number(e.target.value))+'rem');
  }catch(e){box.innerHTML='<div class="ih-empty">تعذر فتح السورة. تأكد من رقم السورة والملفات المحلية.</div>';console.error('[IslamicHub] Surah',e)}
