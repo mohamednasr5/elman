@@ -1025,6 +1025,18 @@ function getHomeHTML() {
             <span class="command-card__orb"></span><span class="command-card__icon">🚨</span>
             <span class="command-card__body"><strong>دليل الطوارئ</strong><small>أرقام وخدمات مهمة</small></span><span class="command-card__arrow">←</span>
           </a>
+          <a class="command-card command-card--islamic" href="quran.html" aria-label="القرآن الكريم">
+            <span class="command-card__orb"></span><span class="command-card__icon" aria-hidden="true">✦</span>
+            <span class="command-card__body"><strong>القرآن الكريم</strong><small>تلاوة وقراءة بواجهة إسلامية</small></span><span class="command-card__arrow">←</span>
+          </a>
+          <a class="command-card command-card--islamic" href="hadith.html" aria-label="الأحاديث الشريفة">
+            <span class="command-card__orb"></span><span class="command-card__icon" aria-hidden="true">۞</span>
+            <span class="command-card__body"><strong>الأحاديث الشريفة</strong><small>اقرأ وابحث بسرعة</small></span><span class="command-card__arrow">←</span>
+          </a>
+          <a class="command-card command-card--islamic" href="quran-search.html" aria-label="الباحث في القرآن الكريم">
+            <span class="command-card__orb"></span><span class="command-card__icon" aria-hidden="true">⌕</span>
+            <span class="command-card__body"><strong>الباحث في القرآن الكريم</strong><small>ابحث بأي كلمة بذكاء</small></span><span class="command-card__arrow">←</span>
+          </a>
         </div>
       </div>
     </section>
