@@ -302,3 +302,43 @@
     font-size:.84rem;
   }
 }
+
+
+/* Quran emblem replacing the hero star */
+.ih-quran-emblem{
+  position:relative;
+  width:180px;
+  height:180px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border-radius:50%;
+}
+.ih-quran-emblem-img{
+  width:145px;
+  height:145px;
+  object-fit:contain;
+  display:block;
+  mix-blend-mode:screen;
+  filter:drop-shadow(0 0 8px rgba(245,176,65,.28)) drop-shadow(0 0 22px rgba(245,176,65,.12));
+  user-select:none;
+  -webkit-user-drag:none;
+}
+.ih-quran-shine{
+  position:absolute;
+  inset:-35%;
+  pointer-events:none;
+  background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,0) 44%,rgba(255,248,210,.9) 50%,rgba(255,255,255,0) 56%,transparent 60%);
+  transform:translateX(-85%) rotate(12deg);
+  animation:ih-quran-shine 3.8s ease-in-out infinite;
+  mix-blend-mode:screen;
+}
+@keyframes ih-quran-shine{
+  0%,55%{transform:translateX(-85%) rotate(12deg);opacity:0}
+  65%{opacity:1}
+  88%,100%{transform:translateX(85%) rotate(12deg);opacity:0}
+}
+@media(max-width:700px){
+  .ih-quran-emblem{width:150px;height:150px}
+  .ih-quran-emblem-img{width:122px;height:122px}
+}
