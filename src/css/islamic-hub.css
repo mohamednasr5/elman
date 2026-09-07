@@ -362,3 +362,29 @@
   .ih-quran-emblem::after{width:128px;height:128px}
   .ih-quran-emblem-img{width:132px;height:132px}
 }
+
+
+/* Quran search result audio control */
+.ih-result-content{display:flex;align-items:center;gap:12px}
+.ih-result-content .ih-ayah{flex:1;min-width:0}
+.ih-result-play{
+  flex:0 0 46px;
+  width:46px;
+  height:46px;
+  border-radius:13px;
+  border:1px solid rgba(56,189,248,.3);
+  background:rgba(56,189,248,.08);
+  color:#38BDF8;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  font-size:1rem;
+  transition:.2s;
+}
+.ih-result-play:hover{transform:scale(1.06);border-color:rgba(243,156,18,.6);color:#F5B041;background:rgba(243,156,18,.1)}
+.ih-result.is-playing{border-color:rgba(243,156,18,.65);box-shadow:0 0 0 1px rgba(243,156,18,.12),0 0 24px rgba(243,156,18,.08)}
+.ih-result.is-playing .ih-result-play{color:#F5B041;border-color:rgba(243,156,18,.55);background:rgba(243,156,18,.12)}
+@media(max-width:600px){
+  .ih-result-content{gap:8px}
+  .ih-result-play{flex-basis:42px;width:42px;height:42px;border-radius:12px}
+}
