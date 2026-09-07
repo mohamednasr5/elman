@@ -96,9 +96,9 @@
 <!-- Page Module -->
 <script type="module">
 
-  import { initPage } from './src/js/core/page-shell.js';
-  import { renderPlacePage } from './src/js/ui/pages/place.js';
-  import { waitForAuth } from './src/js/core/auth.js';
+  import { initPage } from './src/js/core/page-shell.js?v=2.7.1';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=2.7.1';
+  import { waitForAuth } from './src/js/core/auth.js?v=2.7.1';
   await initPage('');
   const user = await waitForAuth();
   const params = new URLSearchParams(location.search);
