@@ -1146,7 +1146,15 @@ function renderAdminPlacesTableRows(places) {
         </td>
         <td style="padding:10px 14px;min-width:145px">
           ${(() => {
-            const trust = Math.max(0, Math.min(100, Number(p.trustScore ?? p.trust_score ?? 0) || 0));
+            const calculatedTrust = Math.min(100,
+              (p.isVerified ? 35 : 0) + (p.phone || p.whatsapp ? 15 : 0) +
+              (((p.lat || p.latitude) && (p.lng || p.longitude)) ? 15 : 0) + (p.address ? 10 : 0) +
+              ((p.coverImageUrl || p.logoUrl || p.cover_image_url || p.logo_url) ? 10 : 0) +
+              ((p.workingHours || p.openHours || p.working_hours) ? 5 : 0) + (p.description ? 5 : 0) +
+              ((Number(p.reviewCount || p.reviewsCount || 0) > 0) ? 5 : 0)
+            );
+            const hasManualTrust = p.trustScore != null || p.trust_score != null;
+            const trust = hasManualTrust ? Math.max(0, Math.min(100, Number(p.trustScore ?? p.trust_score) || 0)) : calculatedTrust;
             const c = trust < 50 ? '#EF4444' : trust < 70 ? '#F59E0B' : '#10B981';
             return `<div style="display:flex;align-items:center;gap:6px">
               <input type="number" min="0" max="100" step="1" value="${trust}" data-trust-input="${escAttr(p._id)}" aria-label="نسبة الثقة" style="width:72px;padding:6px 7px;border-radius:7px;border:1px solid ${c};background:#102A43;color:#fff;font-weight:900;text-align:center">
