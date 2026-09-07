@@ -707,15 +707,18 @@ try {
   // ── D1: Categories (GET, POST, PUT, DELETE /api/categories) ──────────
   if (url.pathname === '/api/categories' && request.method === 'GET') {
     const cache = caches.default;
+    const forceFresh = url.searchParams.has('_ts');
     const cacheUrl = new URL('https://cache.local/api/categories');
     const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
-    const cached = await cache.match(cacheKey);
-    if (cached) {
-      const response = new Response(cached.body, cached);
-      response.headers.set('X-Cache', 'HIT');
-      Object.entries(corsHeaders).forEach(([k, v]) => response.headers.set(k, v));
-      return response;
+    if (!forceFresh) {
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        const response = new Response(cached.body, cached);
+        response.headers.set('X-Cache', 'HIT');
+        Object.entries(corsHeaders).forEach(([k, v]) => response.headers.set(k, v));
+        return response;
+      }
     }
 
     try {
@@ -732,7 +735,7 @@ try {
         'X-Cache': 'MISS'
       });
 
-      if (categories.length > 0) {
+      if (categories.length > 0 && !forceFresh) {
         ctx.waitUntil(cache.put(cacheKey, res.clone()));
       }
       return res;
