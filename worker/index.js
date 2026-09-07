@@ -339,21 +339,27 @@ try {
         return response;
       }
 
+      // Fetch the place first. Do NOT GROUP BY the entire reviews table here:
+      // that pattern scans every review whenever any place profile is opened.
       const result = await env.DB.prepare(`
-        SELECT p.*,
-          COALESCE(rc.review_count, 0) AS review_count,
-          COALESCE(rc.avg_rating, 0.0) AS rating
+        SELECT p.*
         FROM places p
-        LEFT JOIN (
-          SELECT place_id, COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
-          FROM reviews
-          GROUP BY place_id
-        ) rc ON p.id = rc.place_id
         WHERE LOWER(p.slug) = LOWER(?) OR p.id = ? OR p.slug = ?
         LIMIT 1
       `).bind(slugParam, slugParam, slugParam).first();
 
       if (result) {
+        // The reviews table has an index on (place_id, created_at), so this
+        // reads only reviews belonging to the requested place.
+        const reviewStats = await env.DB.prepare(`
+          SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
+          FROM reviews
+          WHERE place_id = ?
+        `).bind(result.id).first().catch(() => ({ review_count: 0, avg_rating: 0 }));
+
+        result.review_count = Number(reviewStats?.review_count || 0);
+        result.rating = Number(reviewStats?.avg_rating || 0);
+
         const place = {
           ...result,
           services: parseJson(result.services_json, []),
