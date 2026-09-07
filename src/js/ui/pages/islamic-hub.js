@@ -90,7 +90,7 @@ async function renderQuran(container){
  }
 }
 async function renderQuranSearch(container){
- container.innerHTML=shell('الباحث في القرآن الكريم','اكتب بأي طريقة: الإسعاف/الاسعاف، الرحمن/الرحمٰن، أو بدون همزات وتشكيل. الفهرسة محلية بالكامل ولا تستخدم D1 أو Firebase.','⌕');
+ container.innerHTML=shell('الباحث في القرآن الكريم','','⌕');
  const box=container.querySelector('#ih-content');
  box.innerHTML='<div class="ih-search-head"><input id="quran-q" class="ih-input" autofocus placeholder="ابحث بكلمة أو آية…" autocomplete="off" inputmode="search"><span id="quran-count" class="ih-count">جاهز</span></div><div id="quran-results" class="ih-results"><div class="ih-empty">ابدأ البحث وستظهر النتائج هنا.</div></div>';
  const input=box.querySelector('#quran-q'),out=box.querySelector('#quran-results'),count=box.querySelector('#quran-count');
