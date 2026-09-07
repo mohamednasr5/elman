@@ -145,10 +145,11 @@ function renderCategories(categories) {
   if (!grid || !categories) return;
 
   grid.innerHTML = categories.map(cat => {
-    const craftSvg = getCategorySvg(cat.slug, 32);
-    const style = CATEGORY_EMOJIS[cat.slug] || DEFAULT_CAT;
+    const slug = cat.slug || cat._key || cat.id || '';
+    const craftSvg = getCategorySvg(slug || cat.name, 36);
+    const style = CATEGORY_EMOJIS[slug] || DEFAULT_CAT;
     return `
-      <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}"
+      <a href="category.html?slug=${encodeURIComponent(slug)}"
          class="category-card animate-fade-in"
          style="--cat-color-border:${style.border}"
          aria-label="${cat.name}">
@@ -559,10 +560,11 @@ function setupHeroSearch(categories) {
   const quickCats = document.getElementById('hero-quick-cats');
   if (quickCats && categories) {
     quickCats.innerHTML = categories.slice(0, 10).map(cat => {
-      const style = CATEGORY_EMOJIS[cat.slug] || DEFAULT_CAT;
+      const slug = cat.slug || cat._key || cat.id || '';
+      const svgIcon = getCategorySvg(slug || cat.name, 18);
       return `
-        <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}" class="hero__quick-cat">
-          ${cat.icon || style.emoji} ${escHtml(cat.name)}
+        <a href="category.html?slug=${encodeURIComponent(slug)}" class="hero__quick-cat">
+          ${svgIcon || cat.icon || '🏪'} ${escHtml(cat.name)}
         </a>
       `;
     }).join('');

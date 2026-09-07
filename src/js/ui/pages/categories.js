@@ -113,10 +113,11 @@ export async function renderCategoriesPage($container) {
 
   grid.innerHTML = categories.map(cat => {
     const count = countMap[cat.slug] || countMap[cat._key] || countMap[cat.id] || 0;
-    const craftCat = getCategoryBySlug(cat.slug || cat._key || cat.id);
-    const svgIcon = craftCat ? getCategorySvg(craftCat.slug, { size: 38, color: craftCat.color }) : null;
+    const catSlug = cat.slug || cat._key || cat.id || '';
+    const craftCat = getCategoryBySlug(catSlug);
     const catColor = craftCat ? craftCat.color : (getDefaultPlaceAssets({}, cat).categoryColor || '#0284c7');
-    const iconInner = svgIcon || `<span class="category-icon-orb" aria-hidden="true">${cat.icon || getDefaultPlaceAssets({}, cat).categoryIcon || '📁'}</span>`;
+    const svgIcon = getCategorySvg(catSlug || cat.name, { size: 40, color: catColor });
+    const iconInner = svgIcon || `<span class="category-icon-orb" aria-hidden="true">${cat.icon || '📁'}</span>`;
 
     return `
       <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}" class="category-card animate-fade-in" style="--cat-color:${catColor}">
@@ -229,8 +230,8 @@ export async function renderCategoryPage($container, { slug, query, user }) {
 
     <div class="category-page-header">
       <div class="container text-center">
-        <div class="category-page-icon" style="margin:0 auto var(--space-4);background:${craftCat ? 'transparent' : 'var(--primary-alpha)'};display:flex;align-items:center;justify-content:center">
-          ${craftSvgIcon || cat.icon || '📁'}
+        <div class="category-page-icon" style="margin:0 auto var(--space-4);background:transparent;display:flex;align-items:center;justify-content:center">
+          ${getCategorySvg(cat.slug || cat._key || cat.id || cat.name, { size: 56, color: craftCat?.color || '#0284c7' })}
         </div>
         <h1 style="font-size:var(--font-size-3xl);font-weight:800;color:var(--primary);margin-bottom:var(--space-2)">
           ${escHtml(cat.name)} في المنزلة والمطرية
@@ -495,8 +496,6 @@ function escHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
-export { escHtml };
 
 
 

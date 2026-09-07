@@ -58,7 +58,7 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=2.6.0"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=2.7.0"/>
 </head>
 <body class="${bodyClass}">
 <div id="app">
@@ -90,17 +90,8 @@ function page({ file, title, desc, activeNav, canonical, bodyClass = '', moduleS
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script>
-  // Universal Database & ServerValue fallback
-  window.firebase = window.firebase || {};
-  if (!window.firebase.database) {
-    var _dummyDb = { ref: function() { return { once: function() { return Promise.resolve({ exists: function() { return false; }, val: function() { return null; } }); }, on: function(){}, off: function(){}, set: function() { return Promise.resolve(); }, update: function() { return Promise.resolve(); }, remove: function() { return Promise.resolve(); }, push: function() { return { key: 'd1_' + Date.now(), then: function(f){ return Promise.resolve(f?f():null); } }; } }; } };
-    var _dbFn = function() { return _dummyDb; };
-    _dbFn.ServerValue = { TIMESTAMP: Date.now() };
-    window.firebase.database = _dbFn;
-  } else if (!window.firebase.database.ServerValue) {
-    window.firebase.database.ServerValue = { TIMESTAMP: Date.now() };
-  }
-  window.ServerValue = window.firebase.database.ServerValue;
+  // Safe ServerValue fallback for legacy scripts
+  window.ServerValue = window.ServerValue || { TIMESTAMP: Date.now() };
 </script>
 
 <!-- Page Module -->
@@ -133,8 +124,8 @@ const pages = [
     desc: 'استكشف جميع تصنيفات الأماكن، المحلات، العيادات، والمهن الحرفية في دليل المنزلة والمطرية الرقمي',
     activeNav: 'categories.html',
     moduleScript: `
-  import { initPage } from './src/js/core/page-shell.js';
-  import { renderCategoriesPage } from './src/js/ui/pages/categories.js';
+  import { initPage } from './src/js/core/page-shell.js?v=2.7.0';
+  import { renderCategoriesPage } from './src/js/ui/pages/categories.js?v=2.7.0';
   await initPage('categories.html');
   await renderCategoriesPage(document.getElementById('page-container'));`
   },
@@ -144,8 +135,8 @@ const pages = [
     desc: 'تصفح الأماكن ومقدمي الخدمات في هذا التصنيف بالمنزلة، المطرية، والقرى المجاورة',
     activeNav: 'categories.html',
     moduleScript: `
-  import { initPage } from './src/js/core/page-shell.js';
-  import { renderCategoryPage } from './src/js/ui/pages/categories.js';
+  import { initPage } from './src/js/core/page-shell.js?v=2.7.0';
+  import { renderCategoryPage } from './src/js/ui/pages/categories.js?v=2.7.0';
   await initPage('categories.html');
   const slug = new URLSearchParams(location.search).get('slug') || '';
   await renderCategoryPage(document.getElementById('page-container'), { slug });`

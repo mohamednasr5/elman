@@ -24,7 +24,7 @@ import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, ATM_POLL_QUESTIONS, formatAtmTimeAgo, submitAtmPollVote } from '../../utils/atm.js';
 import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service.js';
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
-import { resolvePlaceProfession, getCategorySvg } from '../../utils/professions-data.js';
+import { resolvePlaceProfession, getCategorySvg, getProfessionSvg } from '../../utils/professions-data.js';
 
 export async function renderPlacePage($container, { slug, user }) {
   // Show skeleton
@@ -244,9 +244,9 @@ export async function renderPlacePage($container, { slug, user }) {
                     ${craftCatSvg || catInfo.icon} ${escHtml(catInfo.name)}
                   </a>
                   ${profInfo ? `
-                    <a href="category.html?slug=${profInfo.category.slug}&prof=${encodeURIComponent(profInfo.profession.id)}" class="place-profession-badge" style="text-decoration:none;padding:4px 12px;font-size:13px" title="تصفح جميع فنيي ${escHtml(profInfo.profession.name)}">
-                      ${profInfo.svg}
-                      <span>${escHtml(profInfo.profession.name)}</span>
+                    <a href="category.html?slug=${profInfo.categorySlug || 'crafts'}&prof=${encodeURIComponent(profInfo.id)}" class="place-profession-badge" style="text-decoration:none;padding:4px 12px;font-size:13px;display:inline-flex;align-items:center;gap:6px" title="تصفح جميع فنيي ${escHtml(profInfo.name)}">
+                      ${getProfessionSvg(profInfo.id, { size: 16, color: profInfo.categoryColor || 'currentColor' })}
+                      <span>${escHtml(profInfo.name)}</span>
                     </a>
                   ` : ''}
                   ${place.nameEn ? `<span style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
