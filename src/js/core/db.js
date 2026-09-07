@@ -235,18 +235,6 @@ async function d1WriteBusiness(path, method, data = null) {
   throw new Error(`No D1 write endpoint configured for ${root}`);
 }
 
-export async function getD1IntegrityReport(idToken = '') {
-  const options = {};
-  if (idToken) options.headers = { 'Authorization': `Bearer ${idToken}` };
-  return d1Fetch('/api/admin/integrity-check', options);
-}
-
-export async function runD1SafeRepair(idToken = '') {
-  const options = { method: 'POST' };
-  if (idToken) options.headers = { 'Authorization': `Bearer ${idToken}` };
-  return d1Fetch('/api/admin/integrity-repair', options);
-}
-
 /**
  * dbRef is retained only for legacy Firebase-only features (notifications/presence).
  * Never use it for places/categories/offers/products/reviews.
