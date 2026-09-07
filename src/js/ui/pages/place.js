@@ -5,7 +5,7 @@ import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js'
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, HAMMAD_PLACE_SLUG, dbUpdate, subscribeToOwnerPresence } from '../../core/db.js';
+import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence } from '../../core/db.js';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
