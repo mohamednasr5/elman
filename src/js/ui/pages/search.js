@@ -187,12 +187,14 @@ export async function renderSearchPage($container, { q = '', user }) {
       const displayPhone = formatPhoneNumberForDisplay(qPhone);
       let matched = [];
       try {
-        const d1Phone = await searchPlacesD1(query, { limit: 20, offset: 0 });
-        matched = (d1Phone?.places || []).filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
-      } catch (_) {}
-      if (!matched.length) {
         await ensureLocalPlaces();
         matched = allPlaces.filter(p => matchPlaceByPhone(p, qPhone) && (!isAtmPlace(p) || isAtmReadyAndOperational(p, 15)));
+      } catch (_) {}
+      if (!matched.length && allPlaces.length === 0) {
+        try {
+          const d1Phone = await searchPlacesD1(query, { limit: 20, offset: 0 });
+          matched = (d1Phone?.places || []).filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
+        } catch (_) {}
       }
 
       if (matched.length > 0) {
@@ -269,7 +271,18 @@ export async function renderSearchPage($container, { q = '', user }) {
       gridEl.innerHTML = Array(4).fill(renderPlaceCardSkeleton()).join('');
     }
 
-    // 1. Try high-performance Cloudflare D1 Edge Search (20 items per page, cached)
+    // Local-first: after IndexedDB hydration, live typing/search stays entirely
+    // in the browser instead of issuing a D1 scan for every query.
+    try {
+      await ensureLocalPlaces();
+      if (allPlaces.length > 0) {
+        await localSearch(query);
+        if (paginationContainer) paginationContainer.style.display = 'none';
+        return;
+      }
+    } catch (_) {}
+
+    // Cold-cache fallback only.
     try {
       const offset = (page - 1) * 20;
       const d1Res = await searchPlacesD1(query, { limit: 20, offset });
@@ -277,20 +290,15 @@ export async function renderSearchPage($container, { q = '', user }) {
         hasMoreResults = Boolean(d1Res.pagination && d1Res.pagination.hasMore);
         const places = d1Res.places.filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
         const finalResults = sortSearchPlaces(places, currentUser?.uid);
-        
         const countText = hasMoreResults ? `أول ${finalResults.length} مكان (صفحة ${page})` : `${finalResults.length} مكان`;
         await renderResults(finalResults, `تم العثور على <strong>${countText}</strong> لـ "<strong>${escHtml(query)}</strong>"`, page > 1);
-
-        if (paginationContainer) {
-          paginationContainer.style.display = hasMoreResults ? 'block' : 'none';
-        }
+        if (paginationContainer) paginationContainer.style.display = hasMoreResults ? 'block' : 'none';
         return;
       }
     } catch (d1Err) {
-      console.warn('[Search] D1 search fallback to local search:', d1Err);
+      console.warn('[Search] D1 search unavailable; using local fallback:', d1Err);
     }
 
-    // 2. Resilient fallback to local in-memory search
     await localSearch(query);
     if (paginationContainer) paginationContainer.style.display = 'none';
   }
