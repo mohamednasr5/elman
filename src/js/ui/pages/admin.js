@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryD1, deleteCategoryD1, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerD1, invalidateLocalPlaceCache, getAllUsersD1, getCategoryRequestsD1, updateCategoryRequestD1, getVerificationRequestsD1, updateVerificationRequestD1, updateUserD1, getD1IntegrityReport, runD1SafeRepair } from '../../core/db.js';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryD1, deleteCategoryD1, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerD1, invalidateLocalPlaceCache, getAllUsersD1, getCategoryRequestsD1, updateCategoryRequestD1, getVerificationRequestsD1, updateVerificationRequestD1, updateUserD1 } from '../../core/db.js';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
@@ -88,7 +88,7 @@ export function getPlaceUrl(slugOrId) {
 export async function renderAdmin($container, { user, section = 'overview' }) {
   if (!user || !isAdmin(user)) return;
   _currentUser = user;
-  _currentSection = section;
+  _currentSection = section === 'integrity' ? 'overview' : section;
   // Explicitly remove public bottom nav in admin
   document.getElementById('nav-slot')?.remove();
   document.querySelector('.bottom-nav')?.remove();
@@ -108,7 +108,6 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
 
         <nav class="dashboard-sidebar__nav" id="admin-sidebar-nav">
           ${navLink('overview',      '#', ICONS.chart,     'الإحصائيات',     section === 'overview')}
-          ${navLink('integrity',     '#', ICONS.shield,    'سلامة وتناسق D1 🛡️', section === 'integrity')}
           ${navLink('places',        '#', ICONS.pin,       'الأماكن',         section === 'places')}
           ${navLink('live-news',     '#', svgIcon('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'), 'المنزلة والمطرية الآن 🔥', section === 'live-news')}
           ${navLink('products',      '#', ICONS.tag,       'المنتجات والمراجعة 🛍️', section === 'products')}
@@ -341,7 +340,6 @@ async function switchAdminSection(sectionName, pushState = true) {
 
   try {
     if      (sectionName === 'overview')      await renderAdminOverview($main);
-    else if (sectionName === 'integrity')     await renderAdminIntegrity($main);
     else if (sectionName === 'places')        await renderAdminPlaces($main);
     else if (sectionName === 'products')      await renderAdminProducts($main);
     else if (sectionName === 'live-news')     await renderAdminLiveNews($main);
@@ -591,8 +589,7 @@ async function renderAdminOverview($container) {
       adminCache.users = users || {};
       adminCache.products = products || [];
       adminCache.offers = offers || {};
-      adminCache.reviews = reviews || [];
-      adminCache.categories = cats || [];
+        adminCache.categories = cats || [];
       adminCache.liveNews = news || [];
     }
 
@@ -814,11 +811,10 @@ async function preloadAdminData() {
   if (adminCache.isPreloaded) return;
   adminCache.isPreloaded = true;
   try {
-    const [places, categories, settings, reviews] = await Promise.all([
+    const [places, categories, settings] = await Promise.all([
       loadAdminPlacesMap(),
       getCategories(),
-      getSettings(),
-      getAllReviews().catch(() => [])
+      getSettings()
     ]);
     adminCache.places = places || {};
     adminCache.categories = categories || [];
@@ -6377,177 +6373,5 @@ function openEditLiveNewsModal(item, onSaveCallback) {
       { label: 'إلغاء', type: 'ghost', closeOnClick: true }
     ]
   });
-}
-
-/**
- * D1 Data Integrity & Consistency Audit UI Section
- */
-async function renderAdminIntegrity($container) {
-  $container.innerHTML = `
-    <div class="admin-fade-in" style="padding:16px 0">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px">
-        <div>
-          <h2 style="font-size:22px;font-weight:800;color:var(--text-primary,#0F273D);margin:0 0 6px 0;display:flex;align-items:center;gap:10px">
-            <span>🛡️</span>
-            <span>فحص سلامة وتناسق قاعدة البيانات D1</span>
-          </h2>
-          <p style="color:var(--text-secondary,#64748B);font-size:13.5px;margin:0">
-            نظام التدقيق المستمر لقاعدة البيانات: كشف الأخطاء والتناقضات، السجلات الأيتام، وحالة التوثيق دون مسح غير ضروري.
-          </p>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <button type="button" id="btn-run-d1-audit" class="btn btn-primary" style="display:flex;align-items:center;gap:8px;font-weight:700">
-            <span>🔍</span>
-            <span>تشغيل الفحص الفوري</span>
-          </button>
-          <button type="button" id="btn-run-d1-repair" class="btn" style="background:#10B981;color:#fff;display:flex;align-items:center;gap:8px;font-weight:700">
-            <span>🛠️</span>
-            <span>تشغيل الإصلاح التلقائي الآمن</span>
-          </button>
-        </div>
-      </div>
-
-      <div id="d1-audit-report-mount">
-        <div style="display:flex;align-items:center;justify-content:center;min-height:300px">
-          <div class="spinner spinner-lg"></div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  const $mount = document.getElementById('d1-audit-report-mount');
-
-  async function loadReport() {
-    if (!$mount) return;
-    $mount.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:center;padding:60px 0">
-        <div class="spinner spinner-lg"></div>
-      </div>
-    `;
-
-    try {
-      const user = getCurrentUser();
-      const token = (user && typeof user.getIdToken === 'function') ? await user.getIdToken().catch(() => '') : '';
-      const report = await getD1IntegrityReport(token);
-
-      const statusColor = report.status === 'PASS' ? '#10B981' : '#EF4444';
-      const statusIcon = report.status === 'PASS' ? '✅' : '⚠️';
-      const statusText = report.status === 'PASS' ? 'جميع البيانات متناسقة وسليمة 100%' : 'تم اكتشاف بعض التناقضات التي تتطلب إصلاحاً';
-
-      const checkLabels = {
-        users_firebase_mapping: { label: 'ربط الحسابات وتعيين الهويات', desc: 'التحقق من تعيين Firebase UID وتكامل حسابات الزوار' },
-        orphaned_places: { label: 'الأماكن المعلقة وبدون ميكة', desc: 'الأماكن المرتبطة بحسابات غير موجودة' },
-        category_fk_consistency: { label: 'ربط الأماكن بالتصنيفات', desc: 'الأماكن المرتبطة بتصنيفات مفقودة أو غير معروفة' },
-        verification_consistency: { label: 'حالة التوثيق وصلاحيته', desc: 'التوافق بين شارة التوثيق وتاريخ انتهاء التوثيق' },
-        sponsored_places_active: { label: 'الأماكن المميزة والإعلانات النشطة', desc: 'متابعة الأماكن ذات الأولوية وتاريخ انتهائها' },
-        orphaned_reviews: { label: 'التقييمات والتعليقات اليتيمة', desc: 'التقييمات المرتبطة بأماكن أو مستخدمين محذوفين' },
-        duplicate_slugs: { label: 'تكرار الروابط (Slugs)', desc: 'التحقق من عدم وجود روابط مكررة للأماكن' },
-        r2_image_references: { label: 'روابط الصور على Cloudflare R2', desc: 'التحقق من صيغ واستضافة صور الأماكن على R2' }
-      };
-
-      $mount.innerHTML = `
-        <!-- Health Overview Card -->
-        <div style="background:linear-gradient(135deg, ${statusColor}15, ${statusColor}05);border:1px solid ${statusColor}40;border-radius:16px;padding:20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:14px">
-            <span style="font-size:36px">${statusIcon}</span>
-            <div>
-              <div style="font-size:18px;font-weight:800;color:var(--text-primary,#0F273D)">${statusText}</div>
-              <div style="font-size:12.5px;color:var(--text-secondary,#64748B);margin-top:2px">
-                آخر فحص: ${new Date(report.timestamp).toLocaleString('ar-EG')} | مدة التنفيذ: ${report.executionTimeMs}ms
-              </div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="text-align:center;padding:8px 16px;background:rgba(255,255,255,0.7);border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
-              <div style="font-size:20px;font-weight:900;color:${statusColor}">${report.summary?.issuesCount || 0}</div>
-              <div style="font-size:11px;color:#64748B">ملاحظات/تناقضات</div>
-            </div>
-            <div style="text-align:center;padding:8px 16px;background:rgba(255,255,255,0.7);border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
-              <div style="font-size:20px;font-weight:900;color:#0284C7">${report.summary?.passedChecks || 0} / ${report.summary?.totalChecks || 8}</div>
-              <div style="font-size:11px;color:#64748B">الفحوصات الناجحة</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Check Categories Grid -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:16px">
-          ${Object.entries(report.checks || {}).map(([key, check]) => {
-            const info = checkLabels[key] || { label: key, desc: '' };
-            const isOk = check.status === 'PASS';
-            const badgeBg = isOk ? '#DEF7EC' : '#FDE8E8';
-            const badgeColor = isOk ? '#03543F' : '#9B1C1C';
-            const badgeText = isOk ? 'سليم ✅' : 'يحتاج مراجعة ⚠️';
-
-            return `
-              <div style="background:#fff;border:1px solid var(--border-color,#E2E8F0);border-radius:14px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,0.03);display:flex;flex-direction:column;justify-content:space-between">
-                <div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-                    <span style="font-weight:800;font-size:14.5px;color:var(--text-primary,#0F273D)">${info.label}</span>
-                    <span style="padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:800;background:${badgeBg};color:${badgeColor}">
-                      ${badgeText}
-                    </span>
-                  </div>
-                  <div style="font-size:12px;color:var(--text-secondary,#64748B);margin-bottom:12px">${info.desc}</div>
-                </div>
-
-                ${check.issueCount > 0 ? `
-                  <div style="background:#FFF5F5;border-radius:8px;padding:10px;border:1px dashed #FEB2B2;font-size:12px;color:#C53030">
-                    <strong>عدد الحالات المكتشفة: ${check.issueCount}</strong>
-                    ${check.sample ? `<div style="margin-top:4px;font-family:monospace;font-size:11px;opacity:0.9">${escHtml(JSON.stringify(check.sample))}</div>` : ''}
-                  </div>
-                ` : `
-                  <div style="font-size:12px;color:#10B981;display:flex;align-items:center;gap:6px">
-                    <span>✨</span>
-                    <span>لا توجد أي مشكلات في هذا الفحص</span>
-                  </div>
-                `}
-              </div>
-            `;
-          }).join('')}
-        </div>
-      `;
-    } catch (err) {
-      $mount.innerHTML = `
-        <div class="empty-state" style="padding:40px 0">
-          <span class="empty-state__icon">⚠️</span>
-          <h3>تعذر جلب تقرير السلامة والتناسق</h3>
-          <p style="color:var(--danger);max-width:400px;margin:.5rem auto">${escHtml(err.message)}</p>
-          <button class="btn btn-primary" id="btn-retry-d1-audit" style="margin-top:12px">إعادة المحاولة</button>
-        </div>
-      `;
-      document.getElementById('btn-retry-d1-audit')?.addEventListener('click', loadReport);
-    }
-  }
-
-  // Event Listeners
-  document.getElementById('btn-run-d1-audit')?.addEventListener('click', () => {
-    toast.info('جاري تشغيل فحص سلامة D1... 🔍');
-    loadReport();
-  });
-
-  document.getElementById('btn-run-d1-repair')?.addEventListener('click', async () => {
-    const confirm = await showConfirm({
-      title: '🛠️ تشغيل الإصلاح التلقائي الآمن',
-      message: 'هل تريد تشغيل نظام الإصلاح الآمن المباشر؟ ستقوم العملية بتطبييق التعديلات الحتمية فقط (تعديل التواريخ وتوحيد حالات التوثيق المنتهية) دون أي حذف للبيانات.',
-      confirmText: 'نعم، ابدأ الإصلاح',
-      cancelText: 'إلغاء'
-    });
-
-    if (!confirm) return;
-
-    try {
-      toast.info('جاري تنفيذ الإصلاح التلقائي لقاعدة البيانات... ⚙️');
-      const user = getCurrentUser();
-      const token = (user && typeof user.getIdToken === 'function') ? await user.getIdToken().catch(() => '') : '';
-      const repairRes = await runD1SafeRepair(token);
-
-      toast.success(repairRes.message || 'تم تنفيذ الإصلاحات الحتمية بنجاح! 🎉');
-      await loadReport();
-    } catch (err) {
-      toast.error(err.message || 'فشل تنفيذ الإصلاح التلقائي');
-    }
-  });
-
-  await loadReport();
 }
 
