@@ -16,9 +16,6 @@ const REGIONAL_COVERAGE_AREAS = [
   'النسايمة', 'ميت خضير', 'ميت شريف', 'الشبول', 'ميت مرجا سلسيل', 'محافظة الدقهلية'
 ];
 
-/**
- * Update page meta tags dynamically
- */
 export function setMeta({ title, description, keywords, image, url, type = 'website', noindex = false } = {}) {
   let t = DEFAULT_TITLE;
   if (title) {
@@ -29,44 +26,42 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
   const img = image || DEFAULT_IMAGE;
   const u = url ? (url.startsWith('http') ? url : `${SITE_URL}/${url.replace(/^\//, '')}`) : window.location.href;
 
-  // Title
   document.title = t;
   setTag('meta[property="og:title"]', 'property', 'og:title', 'content', t);
   setTag('meta[name="twitter:title"]', 'name', 'twitter:title', 'content', t);
 
-  // Description
   setOrCreateMeta('name', 'description', d);
   setTag('meta[property="og:description"]', 'property', 'og:description', 'content', d);
   setTag('meta[name="twitter:description"]', 'name', 'twitter:description', 'content', d);
 
-  // Keywords
   setOrCreateMeta('name', 'keywords', k);
 
-  // Image
   setTag('meta[property="og:image"]', 'property', 'og:image', 'content', img);
   setTag('meta[name="twitter:image"]', 'name', 'twitter:image', 'content', img);
   setTag('meta[property="og:image:width"]', 'property', 'og:image:width', 'content', '1200');
   setTag('meta[property="og:image:height"]', 'property', 'og:image:height', 'content', '630');
 
-  // URL / Canonical
-  setTag('meta[property="og:url"]', 'property', 'og:url', 'content', u);
-  setCanonical(u);
+  // URL / Canonical — always normalize to an absolute HTTPS URL.
+  // This prevents malformed values such as "/https://dalilmanzala.com".
+  let absoluteUrl = u;
+  try {
+    absoluteUrl = new URL(u, SITE_URL).href;
+  } catch (_) {
+    absoluteUrl = SITE_URL + '/';
+  }
+  if (absoluteUrl.startsWith('/')) absoluteUrl = SITE_URL + '/' + absoluteUrl.replace(/^\/+/, '');
 
-  // Type & Site Name
+  setTag('meta[property="og:url"]', 'property', 'og:url', 'content', absoluteUrl);
+  setCanonical(absoluteUrl);
+
   setTag('meta[property="og:type"]', 'property', 'og:type', 'content', type);
   setTag('meta[property="og:site_name"]', 'property', 'og:site_name', 'content', 'دليل المنزلة والمطرية الرقمي');
   setTag('meta[property="og:locale"]', 'property', 'og:locale', 'content', 'ar_EG');
 
-  // Twitter card
   setOrCreateMeta('name', 'twitter:card', 'summary_large_image');
-
-  // Robots
   setOrCreateMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
 }
 
-/**
- * Inject LocalBusiness / Store / Medical / Restaurant schema for a place
- */
 export function setPlaceSchema(place, category) {
   const rawSlug = place.slug || place.id || '';
   const placeSlug = String(rawSlug).replace(/-[a-z0-9_]{5,7}$/i, '') || rawSlug;
@@ -87,18 +82,18 @@ export function setPlaceSchema(place, category) {
       addressRegion: 'الدقهلية (Dakahlia)',
       addressCountry: 'EG'
     },
+    containedInPlace: {
+      '@type': 'Place',
+      name: place.area || 'المنزلة والمطرية',
       containedInPlace: {
-        '@type': 'Place',
-        name: place.area || 'المنزلة والمطرية',
+        '@type': 'AdministrativeArea',
+        name: 'محافظة الدقهلية',
         containedInPlace: {
-          '@type': 'AdministrativeArea',
-          name: 'محافظة الدقهلية',
-          containedInPlace: {
-            '@type': 'Country',
-            name: 'مصر'
-          }
+          '@type': 'Country',
+          name: 'مصر'
         }
-      },
+      }
+    },
     geo: place.location?.lat ? {
       '@type': 'GeoCoordinates',
       latitude: Number(place.location.lat),
@@ -128,9 +123,6 @@ export function setPlaceSchema(place, category) {
   injectSchema('place-schema', schema);
 }
 
-/**
- * Inject BreadcrumbList Schema
- */
 export function setBreadcrumbSchema(items) {
   const schema = {
     '@context': 'https://schema.org',
@@ -146,9 +138,6 @@ export function setBreadcrumbSchema(items) {
   injectSchema('breadcrumb-schema', schema);
 }
 
-/**
- * Inject Website & Google Sitelinks Searchbox Schema
- */
 export function setWebsiteSearchSchema() {
   const schema = {
     '@context': 'https://schema.org',
@@ -179,12 +168,8 @@ export function setWebsiteSearchSchema() {
   injectSchema('organization-brand-schema', orgSchema);
 }
 
-/**
- * Helper: Inject JSON-LD Schema
- */
 function injectSchema(id, schemaObj) {
   if (typeof document === 'undefined') return;
-  // Clean undefined
   const cleaned = JSON.parse(JSON.stringify(schemaObj));
   let el = document.getElementById(id);
   if (!el) {
@@ -264,9 +249,6 @@ function buildOpeningHours(workingHours) {
   return specs.length ? specs : undefined;
 }
 
-/**
- * Inject Article / Encyclopedic Schema for Google Top Rankings
- */
 export function injectArticleSchema({ headline, description, url, keywords }) {
   const schema = {
     '@context': 'https://schema.org',
@@ -303,4 +285,3 @@ export function injectArticleSchema({ headline, description, url, keywords }) {
   }
   el.textContent = JSON.stringify(schema, null, 2);
 }
-
