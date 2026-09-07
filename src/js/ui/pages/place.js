@@ -1285,9 +1285,18 @@ function openReviewModal(place, user, existingReview, onDone) {
               toast.success('شكراً لمشاركتك! تم نشر تقييمك بنجاح ⭐');
             }
             modal.close();
-            if (onDone) onDone();
+
+            // Refresh the page after the modal is closed, but keep a refresh
+            // failure completely separate from the already successful review.
+            if (onDone) {
+              Promise.resolve().then(() => onDone()).catch(refreshErr => {
+                console.error('[Review] refresh after successful submit failed:', refreshErr);
+              });
+            }
           } catch (err) {
-            toast.error(err.message || 'فشل حفظ التقييم');
+            console.error('[Review] submit failed:', err);
+            const message = err?.message || String(err) || 'تعذر حفظ التقييم';
+            toast.error(message === 'is not defined' ? 'تعذر إتمام العملية. يرجى تحديث الصفحة والمحاولة مرة أخرى.' : message);
           }
         }
       },
