@@ -423,6 +423,24 @@ try {
     sql += ` ORDER BY p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
+    // Public list requests are identical for most visitors. Cache the response at the
+    // Worker edge so repeated homepage/search loads do not hit D1.
+    const usePublicListCache = !ownerIdFilter && !ownerEmailFilter;
+    const listCache = caches.default;
+    const listCacheUrl = new URL(request.url);
+    listCacheUrl.searchParams.set('limit', String(limit));
+    listCacheUrl.searchParams.set('offset', String(offset));
+    const listCacheKey = new Request(listCacheUrl.toString(), { method: 'GET' });
+
+    if (usePublicListCache) {
+      const cachedList = await listCache.match(listCacheKey);
+      if (cachedList) {
+        const cached = new Response(cachedList.body, cachedList);
+        cached.headers.set('X-Cache', 'HIT');
+        return cached;
+      }
+    }
+
     const result = await env.DB.prepare(sql).bind(...params).all();
 
     const places = (result.results || []).map(place => ({
@@ -447,7 +465,7 @@ try {
       owner_name: place.owner_name || place.owner_email || null,
     }));
 
-    return jsonResponse({
+    const response = jsonResponse({
       success: true,
       data: places,
       pagination: {
@@ -457,8 +475,14 @@ try {
       }
     }, 200, {
       ...corsHeaders,
-      'Cache-Control': 'public, max-age=60, s-maxage=60'
+      'Cache-Control': 'public, max-age=300, s-maxage=300',
+      'X-Cache': 'MISS'
     });
+
+    if (usePublicListCache) {
+      ctx.waitUntil(listCache.put(listCacheKey, response.clone()));
+    }
+    return response;
   }
 
   // ── D1: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
