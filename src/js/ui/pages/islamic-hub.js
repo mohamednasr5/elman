@@ -1,240 +1,167 @@
-/* Premium Islamic Knowledge Hub — local-first, offline-first, zero D1/Firebase data usage */
-const LOCAL_SOURCES = {
-  quran: ['./quran.json', './data/quran.json'],
-  hadith: ['./hadith.json', './data/hadith.json']
-};
+/* Premium Islamic Hub — local-first, zero D1/Firebase for Islamic data */
+const QURAN_META_URL = './quran/source/surah.json';
+const QURAN_SURAH_URL = n => './quran/source/surah/surah_' + n + '.json';
 
-const memoryCache = new Map();
+const HADITH_BOOKS = [
+  {id:1,title:'صحيح البخاري',path:['the_9_books','bukhari'],chapters:97},
+  {id:2,title:'صحيح مسلم',path:['the_9_books','muslim'],chapters:57},
+  {id:3,title:'سنن النسائي',path:['the_9_books','nasai'],chapters:52},
+  {id:4,title:'سنن أبي داود',path:['the_9_books','abudawud'],chapters:43},
+  {id:5,title:'جامع الترمذي',path:['the_9_books','tirmidhi'],chapters:49},
+  {id:6,title:'سنن ابن ماجه',path:['the_9_books','ibnmajah'],chapters:38},
+  {id:7,title:'موطأ مالك',path:['the_9_books','malik'],chapters:61},
+  {id:8,title:'مسند الإمام أحمد بن حنبل',path:['the_9_books','ahmed'],chapters:8},
+  {id:9,title:'سنن الدارمي',path:['the_9_books','darimi'],chapters:24},
+  {id:10,title:'الأربعون النووية',path:['forties','nawawi40'],chapters:1},
+  {id:11,title:'الأربعون القدسية',path:['forties','qudsi40'],chapters:1},
+  {id:12,title:'أربعون ولي الله الدهلوي',path:['forties','shahwaliullah40'],chapters:1},
+  {id:13,title:'رياض الصالحين',path:['other_books','riyad_assalihin'],chapters:20},
+  {id:14,title:'مشكاة المصابيح',path:['other_books','mishkat_almasabih'],chapters:25},
+  {id:15,title:'الأدب المفرد',path:['other_books','aladab_almufrad'],chapters:57},
+  {id:16,title:'الشمائل المحمدية',path:['other_books','shamail_muhammadiyah'],chapters:57},
+  {id:17,title:'بلوغ المرام',path:['other_books','bulugh_almaram'],chapters:16}
+];
 
-const stripArabic = (value) => String(value ?? '')
-  .normalize('NFKD')
-  .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g, '')
-  .replace(/[إأآٱ]/g, 'ا')
-  .replace(/[ؤئ]/g, 'و')
-  .replace(/ى/g, 'ي')
-  .replace(/ة/g, 'ه')
-  .replace(/ء/g, '')
-  .replace(/ـ/g, '')
-  .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-  .replace(/[^\u0621-\u063A\u0641-\u064A0-9a-zA-Z\s]/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim()
-  .toLowerCase();
+const cache = new Map();
+const esc = s => String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-const tokenize = (value) => stripArabic(value).split(' ').filter(Boolean);
-
-const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({
-  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-}[m]));
-
-const verseText = (a) => a?.text ?? a?.text_uthmani ?? a?.aya_text ?? a?.content ?? a?.arabic ?? a?.ar ?? '';
-
-const normalizeQuran = (raw) => {
-  const root = raw?.data ?? raw?.quran ?? raw;
-  if (Array.isArray(root) && root.length && (root[0]?.ayahs || root[0]?.verses || root[0]?.ayah)) {
-    return root.map((s, i) => ({
-      number: s.number ?? s.id ?? i + 1,
-      name: s.name ?? s.englishName ?? s.arabicName ?? ('سورة ' + (i + 1)),
-      ayahs: (s.ayahs ?? s.verses ?? s.ayah).map((a, j) => ({
-        n: a.numberInSurah ?? a.verseNumber ?? a.number ?? j + 1,
-        text: verseText(a)
-      })).filter(a => a.text)
-    })).filter(s => s.ayahs.length);
-  }
-  if (Array.isArray(root)) {
-    const groups = new Map();
-    root.forEach((a, i) => {
-      const sn = a?.surah?.number ?? a?.surah_number ?? a?.chapter ?? a?.surahId ?? a?.surah ?? 1;
-      if (!groups.has(sn)) {
-        groups.set(sn, {
-          number: sn,
-          name: a?.surah?.name ?? a?.surah_name ?? a?.chapter_name ?? ('سورة ' + sn),
-          ayahs: []
-        });
-      }
-      groups.get(sn).ayahs.push({
-        n: a?.ayah_number ?? a?.numberInSurah ?? a?.verseNumber ?? a?.number ?? groups.get(sn).ayahs.length + 1,
-        text: verseText(a)
-      });
-    });
-    return [...groups.values()].filter(s => s.ayahs.length);
-  }
-  if (root && typeof root === 'object') {
-    const entries = Object.values(root);
-    if (entries.some(Array.isArray)) return normalizeQuran(entries.flat());
-  }
-  return [];
-};
-
-const normalizeHadith = (raw) => {
-  const root = raw?.data?.hadiths ?? raw?.hadiths ?? raw?.data ?? raw;
-  const arr = Array.isArray(root)
-    ? root
-    : Object.values(root || {}).flatMap(v => Array.isArray(v) ? v : [v]);
-  return arr.map((h, i) => ({
-    id: h?.id ?? h?.hadith_id ?? h?.number ?? i + 1,
-    text: verseText(h) || h?.hadith || h?.body || h?.textArabic || '',
-    book: h?.book?.name ?? h?.book ?? h?.source ?? h?.collection ?? 'حديث',
-    chapter: h?.chapter?.name ?? h?.chapter ?? ''
-  })).filter(h => h.text);
-};
-
-async function loadLocal(kind) {
-  if (memoryCache.has(kind)) return memoryCache.get(kind);
-
-  let lastError = null;
-  for (const src of LOCAL_SOURCES[kind]) {
-    try {
-      const response = await fetch(src, { cache: 'force-cache' });
-      if (!response.ok) throw new Error('HTTP ' + response.status + ' for ' + src);
-      const raw = await response.json();
-      const data = kind === 'quran' ? normalizeQuran(raw) : normalizeHadith(raw);
-      if (!data.length) throw new Error('Empty or unsupported ' + kind + ' dataset');
-      memoryCache.set(kind, data);
-      return data;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  console.error('[IslamicHub] Local dataset unavailable:', kind, lastError);
-  return [];
+function norm(v){
+  return String(v??'').normalize('NFKD')
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g,'')
+    .replace(/[إأآٱ]/g,'ا').replace(/[ؤئ]/g,'و').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ء/g,'')
+    .replace(/[ٱ]/g,'ا').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    .replace(/[^\u0621-\u063A\u0641-\u064A0-9a-zA-Z\s]/g,' ')
+    .replace(/\s+/g,' ').trim().toLowerCase();
 }
 
-function shell(title, subtitle) {
-  return '<div class="islamic-hub"><div class="ih-wrap">' +
-    '<div class="ih-hero"><div class="ih-hero-copy">' +
-    '<span class="ih-kicker">✦ المعرفة الإسلامية في دليل المنزلة والمطرية</span>' +
-    '<h1 class="ih-title">' + title + '</h1>' +
-    '<p class="ih-sub">' + subtitle + '</p>' +
-    '<div class="ih-tools"><a class="ih-btn" href="index.html">الرئيسية</a><a class="ih-btn" href="quran-search.html">الباحث في القرآن</a></div>' +
-    '</div><div class="ih-ornament"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 8 61 31 86 35 68 53 72 79 50 67 28 79 32 53 14 35 39 31Z"/><circle cx="50" cy="50" r="11"/></svg></div></div>' +
-    '<div id="ih-content" class="ih-card"><div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تجهيز المحتوى محلياً...</p></div></div></div>' +
-    '</div></div>';
+async function getJson(url){
+  if(cache.has(url)) return cache.get(url);
+  const p=fetch(url,{cache:'force-cache'}).then(r=>{if(!r.ok)throw Error('HTTP '+r.status+' '+url);return r.json()});
+  cache.set(url,p);
+  try{return await p}catch(e){cache.delete(url);throw e}
 }
 
-function searchScore(text, query) {
-  const normalized = stripArabic(text);
-  if (!query) return 0;
-  if (normalized === query) return 1000;
-  if (normalized.includes(query)) return 700;
-  const words = tokenize(query);
-  if (!words.length) return 0;
-  const matched = words.reduce((n, word) => n + (normalized.includes(word) ? 1 : 0), 0);
-  return matched ? matched * 100 + (matched === words.length ? 50 : 0) : 0;
+function shell(title,sub,icon){
+ return '<div class="islamic-hub"><div class="ih-wrap">'+
+ '<section class="ih-hero"><div class="ih-hero-copy">'+
+ '<span class="ih-kicker">✦ القسم الإسلامي · دليل المنزلة والمطرية</span>'+
+ '<h1 class="ih-title">'+icon+' '+title+'</h1><p class="ih-sub">'+sub+'</p>'+
+ '<div class="ih-tools"><a class="ih-btn" href="index.html">الرئيسية</a><a class="ih-btn" href="quran-search.html">الباحث القرآني</a><a class="ih-btn" href="hadith.html">الأحاديث</a></div>'+
+ '</div><div class="ih-ornament"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 7l10 20 22 3-16 16 4 23-20-11-20 11 4-23-16-16 22-3z"/><circle cx="50" cy="50" r="12"/></svg></div></section>'+
+ '<section id="ih-content" class="ih-card"><div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تجهيز المحتوى محلياً…</p></div></div></section></div></div>';
 }
 
-function makeQuranIndex(surahs) {
-  return surahs.flatMap(s => s.ayahs.map(a => ({
-    s: s.name, sn: s.number, n: a.n, text: a.text, key: stripArabic(a.text)
-  })));
+async function loadQuranMeta(){
+ const raw=await getJson(QURAN_META_URL);
+ return (raw||[]).map((s,i)=>({number:Number(s.index)||i+1,name:s.titleAr||s.title||('سورة '+(i+1)),count:Number(s.count)||0,type:s.type||'',place:s.place||''}));
+}
+async function loadSurah(n){
+ const raw=await getJson(QURAN_SURAH_URL(n));
+ const verses=Object.entries(raw?.verse||{}).map(([k,text],i)=>({n:Number(k.replace(/\D/g,''))||i+1,text:String(text||'').replace(/^\uFEFF/, '')})).filter(x=>x.text);
+ return {number:Number(raw.index)||n,name:raw.name||'',ayahs:verses};
+}
+async function loadAllQuran(){
+ if(cache.has('__all_quran__')) return cache.get('__all_quran__');
+ const promise=(async()=>{
+   const meta=await loadQuranMeta();
+   const chunks=await Promise.all(meta.map(s=>loadSurah(s.number)));
+   return chunks;
+ })();
+ cache.set('__all_quran__',promise);
+ return promise;
 }
 
-async function renderQuran(container) {
-  container.innerHTML = shell('القرآن الكريم', 'قراءة محلية سريعة للقرآن الكريم، تعمل مع PWA حتى دون اتصال بعد أول زيارة.');
-  const box = container.querySelector('#ih-content');
-  const surahs = await loadLocal('quran');
-  if (!surahs.length) {
-    box.innerHTML = '<div class="ih-empty">لم يتم العثور على quran.json. يجب أن يكون الملف في جذر المشروع أو داخل data/.</div>';
-    return;
-  }
-
-  box.innerHTML =
-    '<div class="ih-meta"><span>سور القرآن الكريم</span><span>' + surahs.length + ' سورة</span></div>' +
-    '<div class="ih-surah-list">' +
-    surahs.map((s, i) => '<button class="ih-surah" data-i="' + i + '">' + escapeHtml(s.name) + '<br><small>' + s.ayahs.length + ' آية</small></button>').join('') +
-    '</div><div id="quran-reader" class="ih-results" style="margin-top:22px"></div>';
-
-  const reader = box.querySelector('#quran-reader');
-  const render = (i) => {
-    const s = surahs[i];
-    reader.innerHTML =
-      '<div class="ih-meta"><span>سورة ' + escapeHtml(s.name) + '</span><button class="ih-btn" id="back-surahs">السور</button></div>' +
-      s.ayahs.map(a => '<div class="ih-ayah">' + escapeHtml(a.text) + ' <span class="ih-ayah-num">' + escapeHtml(a.n) + '</span></div>').join('');
-    reader.querySelector('#back-surahs')?.addEventListener('click', () => box.querySelector('.ih-surah-list')?.scrollIntoView({behavior:'smooth', block:'start'}));
-    reader.scrollIntoView({behavior:'smooth', block:'start'});
-  };
-  box.querySelectorAll('.ih-surah').forEach(button => {
-    button.addEventListener('click', () => render(Number(button.dataset.i)));
-  });
+function score(text,q){
+ const t=norm(text); if(!q)return 0;
+ if(t===q)return 1000;if(t.includes(q))return 700;
+ const ws=q.split(' ').filter(Boolean); const hit=ws.filter(w=>t.includes(w)).length;
+ return hit?(hit*100+(hit===ws.length?50:0)):0;
 }
 
-async function renderHadith(container) {
-  container.innerHTML = shell('الأحاديث الشريفة', 'قاعدة أحاديث محلية سريعة مع بحث عربي ذكي يتجاهل التشكيل والهمزات والاختلافات الإملائية.');
-  const box = container.querySelector('#ih-content');
-  const hadith = await loadLocal('hadith');
-  if (!hadith.length) {
-    box.innerHTML = '<div class="ih-empty">لم يتم العثور على hadith.json. يجب أن يكون الملف في جذر المشروع أو داخل data/.</div>';
-    return;
-  }
-
-  box.innerHTML = '<div class="ih-tools"><input id="hadith-q" class="ih-input" placeholder="ابحث في الأحاديث بدون تشكيل أو همزات..." autocomplete="off" inputmode="search"><button class="ih-btn" id="hadith-clear">مسح</button></div><div class="ih-meta"><span>قاعدة محلية</span><span>' + hadith.length.toLocaleString('ar-EG') + ' حديث</span></div><div id="hadith-results" class="ih-results"></div>';
-  const input = box.querySelector('#hadith-q');
-  const out = box.querySelector('#hadith-results');
-
-  const draw = () => {
-    const q = stripArabic(input.value);
-    const rows = q
-      ? hadith.map(h => ({h, score: searchScore(h.text + ' ' + h.book + ' ' + h.chapter, q)})).filter(x => x.score > 0).sort((a,b) => b.score-a.score).slice(0, 100).map(x => x.h)
-      : hadith.slice(0, 30);
-
-    out.innerHTML = rows.length
-      ? rows.map(h => '<article class="ih-result"><div class="ih-meta"><b>' + escapeHtml(h.book) + '</b><span>#' + escapeHtml(h.id) + '</span></div><div>' + escapeHtml(h.text) + '</div>' + (h.chapter ? '<small style="color:var(--ih-muted)">' + escapeHtml(h.chapter) + '</small>' : '') + '</article>').join('')
-      : '<div class="ih-empty">لا توجد نتائج مطابقة.</div>';
-  };
-
-  let timer;
-  input.addEventListener('input', () => {
-    clearTimeout(timer);
-    timer = setTimeout(draw, 30);
-  });
-  box.querySelector('#hadith-clear').addEventListener('click', () => {
-    input.value = '';
-    input.focus();
-    draw();
-  });
-  draw();
+async function renderQuran(container){
+ container.innerHTML=shell('القرآن الكريم','تلاوة القرآن الكريم محلياً بسرعة عالية، مع تحميل السورة عند اختيارها ودعم PWA.','✦');
+ const box=container.querySelector('#ih-content');
+ try{
+   const meta=await loadQuranMeta();
+   box.innerHTML='<div class="ih-meta"><b>سور القرآن الكريم</b><span>'+meta.length+' سورة</span></div>'+
+   '<div class="ih-surah-list">'+meta.map(s=>'<button class="ih-surah" data-surah="'+s.number+'"><strong>'+esc(s.name)+'</strong><small>'+s.count+' آية · '+esc(s.type)+'</small></button>').join('')+'</div>'+
+   '<div id="quran-reader" class="ih-results"></div>';
+   const reader=box.querySelector('#quran-reader');
+   box.querySelectorAll('.ih-surah').forEach(btn=>btn.addEventListener('click',async()=>{
+     reader.innerHTML='<div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري فتح السورة…</p></div></div>';
+     try{
+       const s=await loadSurah(Number(btn.dataset.surah));
+       reader.innerHTML='<div class="ih-meta"><b>سورة '+esc(meta.find(x=>x.number===s.number)?.name||s.name)+'</b><button class="ih-btn" id="back-surahs">السور</button></div>'+
+       s.ayahs.map(a=>'<div class="ih-ayah">'+esc(a.text)+' <span class="ih-ayah-num">'+a.n+'</span></div>').join('');
+       reader.querySelector('#back-surahs').onclick=()=>box.querySelector('.ih-surah-list').scrollIntoView({behavior:'smooth'});
+       reader.scrollIntoView({behavior:'smooth',block:'start'});
+     }catch(e){reader.innerHTML='<div class="ih-empty">تعذر تحميل السورة محلياً.</div>'}
+   }));
+ }catch(e){box.innerHTML='<div class="ih-empty">تعذر قراءة ملفات القرآن المحلية.</div>';console.error('[IslamicHub] Quran',e)}
 }
 
-async function renderQuranSearch(container) {
-  container.innerHTML = shell('الباحث في القرآن الكريم', 'ابحث بأي كلمة أو عبارة؛ البحث يتجاهل التشكيل والهمزات والاختلافات الإملائية ويعمل محلياً بلا D1 أو Firebase.');
-  const box = container.querySelector('#ih-content');
-  const surahs = await loadLocal('quran');
-  if (!surahs.length) {
-    box.innerHTML = '<div class="ih-empty">لم يتم العثور على quran.json. يجب أن يكون الملف في جذر المشروع أو داخل data/.</div>';
-    return;
-  }
-
-  const index = makeQuranIndex(surahs);
-  box.innerHTML = '<div class="ih-tools"><input id="quran-q" class="ih-input" autofocus placeholder="مثال: الحمد لله أو الرحمن أو الصلاة..." autocomplete="off" inputmode="search"><span class="ih-btn" style="cursor:default">بحث فوري</span></div><div id="quran-results" class="ih-results"></div>';
-  const input = box.querySelector('#quran-q');
-  const out = box.querySelector('#quran-results');
-
-  const draw = () => {
-    const q = stripArabic(input.value);
-    if (!q) {
-      out.innerHTML = '<div class="ih-empty">ابدأ بكتابة كلمة للبحث في القرآن الكريم.</div>';
-      return;
-    }
-
-    const rows = index
-      .map(v => ({v, score: searchScore(v.text, q)}))
-      .filter(x => x.score > 0)
-      .sort((a,b) => b.score-a.score)
-      .slice(0, 80)
-      .map(x => x.v);
-
-    out.innerHTML = rows.length
-      ? rows.map(v => '<article class="ih-result"><div class="ih-meta"><b>سورة ' + escapeHtml(v.s) + '</b><span>آية ' + escapeHtml(v.n) + '</span></div><div class="ih-ayah" style="border:0;padding:4px 0">' + escapeHtml(v.text) + '</div></article>').join('')
-      : '<div class="ih-empty">لم نجد آية مطابقة. جرّب الكلمة بدون تشكيل أو همزات.</div>';
-  };
-
-  let timer;
-  input.addEventListener('input', () => {
-    clearTimeout(timer);
-    timer = setTimeout(draw, 20);
-  });
-  draw();
+async function renderQuranSearch(container){
+ container.innerHTML=shell('الباحث في القرآن الكريم','اكتب بأي طريقة: الإسعاف/الاسعاف، الرحمن/الرحمٰن، أو بدون همزات وتشكيل. الفهرسة محلية بالكامل ولا تستخدم D1 أو Firebase.','⌕');
+ const box=container.querySelector('#ih-content');
+ box.innerHTML='<div class="ih-search-head"><input id="quran-q" class="ih-input" autofocus placeholder="ابحث بكلمة أو آية…" autocomplete="off" inputmode="search"><span id="quran-count" class="ih-count">جاهز</span></div><div id="quran-results" class="ih-results"><div class="ih-empty">ابدأ البحث وستظهر النتائج هنا.</div></div>';
+ const input=box.querySelector('#quran-q'),out=box.querySelector('#quran-results'),count=box.querySelector('#quran-count');
+ let index=null,timer=null;
+ const ensure=async()=>{if(index)return index;count.textContent='جاري تجهيز الفهرس…';const surahs=await loadAllQuran();index=surahs.flatMap(s=>s.ayahs.map(a=>({sn:s.number,snName:s.name,n:a.n,text:a.text,key:norm(a.text)})));return index};
+ const draw=async()=>{
+   const q=norm(input.value);if(!q){out.innerHTML='<div class="ih-empty">اكتب كلمة للبحث في القرآن الكريم.</div>';count.textContent='جاهز';return}
+   const data=await ensure();
+   const rows=data.map(v=>({v,s:score(v.text,q)})).filter(x=>x.s).sort((a,b)=>b.s-a.s).slice(0,80).map(x=>x.v);
+   count.textContent=rows.length+' نتيجة';
+   out.innerHTML=rows.length?rows.map(v=>'<article class="ih-result"><div class="ih-meta"><b>سورة '+esc(v.snName)+'</b><span>آية '+v.n+'</span></div><div class="ih-ayah">'+highlight(v.text,q)+'</div></article>').join(''):'<div class="ih-empty">لا توجد نتائج مطابقة.</div>';
+ };
+ input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>draw(),20)});
 }
 
-export { renderQuran, renderHadith, renderQuranSearch };
+function highlight(text,q){
+ const safe=esc(text); const nq=norm(q); if(!nq)return safe;
+ const parts=safe.split(/(\s+)/); return parts.map(p=>norm(p).includes(nq)?'<mark>'+p+'</mark>':p).join('');
+}
+
+async function loadHadithBook(book){
+ const key='hadith:'+book.id;if(cache.has(key))return cache.get(key);
+ const p=(async()=>{
+   const files=Array.from({length:book.chapters},(_,i)=>String(i+1));
+   if(book.id===2)files.unshift('introduction');
+   if(book.id===6)files.unshift('introduction');
+   if(book.id===9)files.unshift('introduction');
+   if(book.chapters===1)files[0]='';
+   const results=await Promise.all(files.map(async ch=>{
+     const file=ch?ch+'.json':'all.json';
+     const url='./hadith/db/by_chapter/'+book.path[0]+'/'+book.path[1]+'/'+file;
+     try{return await getJson(url)}catch(_){return null}
+   }));
+   return results.flatMap(x=>Array.isArray(x?.hadiths)?x.hadiths:[]);
+ })();
+ cache.set(key,p);return p;
+}
+
+async function renderHadith(container){
+ container.innerHTML=shell('الأحاديث الشريفة','تصفح كتب الحديث المحلية، وحمّل الكتاب عند الحاجة فقط للحفاظ على السرعة واستهلاك أقل للبيانات.','۞');
+ const box=container.querySelector('#ih-content');
+ box.innerHTML='<div class="ih-meta"><b>كتب الحديث</b><span>17 كتاباً</span></div><div class="ih-book-grid">'+
+ HADITH_BOOKS.map(b=>'<button class="ih-book" data-id="'+b.id+'"><span class="ih-book-icon">۞</span><strong>'+esc(b.title)+'</strong><small>'+b.chapters+' فصول تقريباً</small></button>').join('')+'</div><div id="hadith-panel" class="ih-results"></div>';
+ const panel=box.querySelector('#hadith-panel');
+ box.querySelectorAll('.ih-book').forEach(btn=>btn.addEventListener('click',async()=>{
+   const book=HADITH_BOOKS.find(b=>b.id===Number(btn.dataset.id));
+   panel.innerHTML='<div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تحميل '+esc(book.title)+' محلياً…</p></div></div>';
+   try{
+     const hadith=await loadHadithBook(book);
+     panel.innerHTML='<div class="ih-search-head"><input class="ih-input" id="hadith-q" placeholder="ابحث داخل '+esc(book.title)+'…" autocomplete="off"><span id="hadith-count" class="ih-count">'+hadith.length+' حديث</span></div><div id="hadith-list" class="ih-results"></div>';
+     const input=panel.querySelector('#hadith-q'),list=panel.querySelector('#hadith-list'),count=panel.querySelector('#hadith-count');
+     const draw=()=>{
+       const q=norm(input.value);const rows=(q?hadith.map(h=>({h,s:score((h.arabic||'')+' '+(h.english?.text||''),q)})).filter(x=>x.s).sort((a,b)=>b.s-a.s).slice(0,100).map(x=>x.h):hadith.slice(0,30));
+       count.textContent=(q?rows.length:Math.min(30,hadith.length))+' حديث';
+       list.innerHTML=rows.length?rows.map(h=>'<article class="ih-result"><div class="ih-meta"><b>'+esc(book.title)+'</b><span>#'+esc(h.idInBook||h.id)+'</span></div><div class="ih-hadith">'+esc(h.arabic||'')+'</div></article>').join(''):'<div class="ih-empty">لا توجد نتائج.</div>';
+     };
+     input.addEventListener('input',draw);draw();
+     panel.scrollIntoView({behavior:'smooth',block:'start'});
+   }catch(e){panel.innerHTML='<div class="ih-empty">تعذر تحميل هذا الكتاب من الملفات المحلية.</div>';console.error('[IslamicHub] Hadith',e)}
+ }));
+}
+
+export {renderQuran,renderHadith,renderQuranSearch};
