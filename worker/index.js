@@ -8,13 +8,99 @@
 
 import { handleTelegramWebhook, sendAdminPushNotification, telegramApi } from './telegram.js';
 
+
+async function sendDailyQuranReminder(env) {
+  const cairoHour = Number(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Cairo', hour: '2-digit', hourCycle: 'h23'
+  }).format(new Date()));
+  if (cairoHour !== 10) return;
+
+  const result = await env.DB.prepare(
+    'SELECT token FROM fcm_tokens WHERE token IS NOT NULL AND token <> ""'
+  ).all();
+  const rows = result?.results || [];
+  if (!rows.length) return;
+
+  const accessToken = await getFcmAccessToken(env);
+  const endpoint = 'https://fcm.googleapis.com/v1/projects/' +
+    encodeURIComponent(env.FCM_PROJECT_ID) + '/messages:send';
+
+  for (let i = 0; i < rows.length; i += 50) {
+    await Promise.all(rows.slice(i, i + 50).map(async row => {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: {
+            token: row.token,
+            data: {
+              title: 'هل قرأت القرآن اليوم؟',
+              body: 'الله يريد أن يكلمك 🤍',
+              url: './quran.html',
+              icon: './quran/00.jpg',
+              tag: 'daily-quran-reminder'
+            }
+          }
+        })
+      });
+      if (response.status === 404 || response.status === 410) {
+        await env.DB.prepare('DELETE FROM fcm_tokens WHERE token = ?').bind(row.token).run().catch(() => {});
+      } else if (!response.ok) {
+        console.error('[Daily Quran Push] FCM:', response.status, await response.text());
+      }
+    }));
+  }
+}
+
+function b64url(bytes) {
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let binary = '';
+  for (let i = 0; i < arr.length; i += 0x8000) binary += String.fromCharCode(...arr.subarray(i, i + 0x8000));
+  return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+function b64text(value) { return b64url(new TextEncoder().encode(value)); }
+
+async function getFcmAccessToken(env) {
+  if (!env.FCM_CLIENT_EMAIL || !env.FCM_PRIVATE_KEY || !env.FCM_PROJECT_ID) {
+    throw new Error('FCM service-account secrets are not configured');
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const unsigned = b64text(JSON.stringify({alg:'RS256',typ:'JWT'})) + '.' +
+    b64text(JSON.stringify({
+      iss: env.FCM_CLIENT_EMAIL,
+      scope: 'https://www.googleapis.com/auth/firebase.messaging',
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now, exp: now + 3600
+    }));
+  const pem = env.FCM_PRIVATE_KEY.replace(/\\n/g, '\n');
+  const raw = atob(pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s+/g, ''));
+  const keyBytes = Uint8Array.from(raw, ch => ch.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', keyBytes,
+    {name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'}, false, ['sign']);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(unsigned));
+  const assertion = unsigned + '.' + b64url(sig);
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + encodeURIComponent(assertion)
+  });
+  if (!response.ok) throw new Error('FCM OAuth token error: ' + await response.text());
+  const data = await response.json();
+  if (!data.access_token) throw new Error('FCM OAuth response missing access_token');
+  return data.access_token;
+}
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
-      env.DB.prepare(`
-        UPDATE places SET is_sponsored = 0, is_featured = 0 WHERE is_sponsored = 1 AND sponsored_until IS NOT NULL AND sponsored_until < ?
-      `).bind(Date.now()).run().catch(() => {})
+      env.DB.prepare('UPDATE places SET is_sponsored = 0, is_featured = 0 WHERE is_sponsored = 1 AND sponsored_until IS NOT NULL AND sponsored_until < ?')
+        .bind(Date.now()).run().catch(() => {})
     );
+    ctx.waitUntil(sendDailyQuranReminder(env).catch(err => console.error('[Daily Quran Push]', err)));
   },
 
   async fetch(request, env, ctx) {
