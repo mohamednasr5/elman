@@ -161,8 +161,12 @@ async function renderHadith(container){
  container.innerHTML=shell('الأحاديث الشريفة','','۞');
  await mountDailyAyah(container);
  const box=container.querySelector('#ih-content');
- box.innerHTML='<div class="ih-meta"><b>كتب الحديث</b><span>17 كتاباً</span></div><div class="ih-book-grid">'+HADITH_BOOKS.map(b=>'<button class="ih-book" data-id="'+b.id+'"><span class="ih-book-icon">۞</span><strong>'+esc(b.title)+'</strong><small>'+b.chapters+' فصول تقريباً</small></button>').join('')+'</div><div id="hadith-panel" class="ih-results"></div>';
+ let removeTashkeel=false;
+ const stripTashkeel=(s)=>String(s||'').replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g,'');
+ box.innerHTML='<div class="ih-meta ih-hadith-toolbar"><b>كتب الحديث</b><span>17 كتاباً</span><button id="hadith-tashkeel" class="ih-btn ih-tashkeel-btn" type="button" aria-pressed="false">إزالة التشكيل</button></div><div class="ih-book-grid">'+HADITH_BOOKS.map(b=>'<button class="ih-book" data-id="'+b.id+'"><span class="ih-book-icon">۞</span><strong>'+esc(b.title)+'</strong><small>'+b.chapters+' فصول تقريباً</small></button>').join('')+'</div><div id="hadith-panel" class="ih-results"></div>';
  const panel=box.querySelector('#hadith-panel');
+ const tashkeelBtn=box.querySelector('#hadith-tashkeel');
+ tashkeelBtn.onclick=()=>{removeTashkeel=!removeTashkeel;tashkeelBtn.textContent=removeTashkeel?'إظهار التشكيل':'إزالة التشكيل';tashkeelBtn.setAttribute('aria-pressed',String(removeTashkeel));};
  box.querySelectorAll('.ih-book').forEach(btn=>btn.addEventListener('click',async()=>{
   const book=HADITH_BOOKS.find(b=>b.id===Number(btn.dataset.id));
   panel.innerHTML='<div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تحميل '+esc(book.title)+' محلياً…</p></div></div>';
@@ -173,9 +177,10 @@ async function renderHadith(container){
    const draw=()=>{
     const h=hadith[index]||{};
     const number=h.idInBook||h.id||index+1;
+    const arabicText=removeTashkeel?stripTashkeel(h.arabic||''):(h.arabic||'');
     panel.innerHTML='<article class="ih-result ih-hadith-single">'+
       '<div class="ih-meta"><b>'+esc(book.title)+'</b><span>حديث '+esc(number)+' من '+hadith.length+'</span></div>'+
-      '<div class="ih-hadith">'+esc(h.arabic||'')+'</div>'+
+      '<div class="ih-hadith">'+esc(arabicText)+'</div>'+
       (h.english?.text?'<details class="ih-hadith-en"><summary>English</summary><p>'+esc(h.english.text)+'</p></details>':'')+
       '<div class="ih-hadith-nav">'+
         '<button class="ih-btn" id="hadith-prev" type="button" '+(index===0?'disabled':'')+'>← السابق</button>'+
