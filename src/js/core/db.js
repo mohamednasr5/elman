@@ -339,14 +339,27 @@ export async function dbUpdate(path, updates) {
 
 export async function dbPush(path, data) {
   if (isBusinessDataPath(path)) {
-    if (String(path).match(/^places\/[^/]+\/reviews$/)) {
-      const placeId = String(path).split('/')[1];
-      const result = await d1WriteBusiness(path, 'POST', { ...(data || {}), place_id: data?.place_id || placeId });
-      const newId = result?.id || data?.id || `d1_${Date.now()}`;
+    const cleanPath = String(path || '').replace(/^\/+/, '');
+
+    // Ads are authoritative in Cloudflare D1. Never attempt Firebase push.
+    if (/^ads(?:\/|$)/i.test(cleanPath)) {
+      const parts = cleanPath.split('/').filter(Boolean);
+      const result = await d1WriteBusiness(cleanPath, 'POST', data || {});
+      const newId = result?.id || result?.data?.id || data?.id || data?._id || `d1_${Date.now()}`;
       return { key: newId, id: newId };
     }
-    throw new Error(`Firebase push blocked for business data path: ${path}`);
+
+    // Reviews are authoritative in Cloudflare D1.
+    if (/^places\/[^/]+\/reviews$/i.test(cleanPath)) {
+      const placeId = cleanPath.split('/')[1];
+      const result = await d1WriteBusiness(cleanPath, 'POST', { ...(data || {}), place_id: data?.place_id || placeId });
+      const newId = result?.id || result?.data?.id || data?.id || `d1_${Date.now()}`;
+      return { key: newId, id: newId };
+    }
+
+    throw new Error(`D1 write path is not supported for business data: ${cleanPath}`);
   }
+
   const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
   const pushed = await ref.push(data);
   const key = (pushed && pushed.key) ? pushed.key : `d1_${Date.now()}`;
