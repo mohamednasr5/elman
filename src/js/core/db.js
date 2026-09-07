@@ -969,11 +969,11 @@ let _isSyncingPlaces = false;
 async function _triggerBackgroundSyncPlaces() {
   if (_isSyncingPlaces) return;
   const lastSync = await idbGetMeta('lastPlacesSync', 0);
-  if (Date.now() - lastSync < 900000) return;
+  if (Date.now() - lastSync < 21600000) return;
 
   _isSyncingPlaces = true;
   try {
-    const res = await fetch(`${WORKER_URL}/api/places?limit=1000`, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(`${WORKER_URL}/api/places?limit=250`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
