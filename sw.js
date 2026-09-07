@@ -47,7 +47,7 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v2.7.0-perf-push-sync';
+const CACHE_VERSION = 'v2.8.0-local-platform';
 const STATIC_CACHE  = `manzala-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `manzala-dynamic-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `manzala-images-${CACHE_VERSION}`;
