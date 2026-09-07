@@ -689,7 +689,7 @@ async function executeVoiceAssistantSearch(query, isInterim = false) {
       if (resultsList) resultsList.innerHTML = `
         <div class="mvm-result-card animate-fade-in" style="background:var(--surface);border:1px solid #25c6d5;border-radius:16px;padding:18px;text-align:center;box-shadow:0 8px 24px rgba(37,198,213,.14)">
           <div style="font-size:13px;font-weight:800;color:var(--text-secondary);margin-bottom:6px">${escapeHtml(emergency.names[0])}</div>
-          <a href="tel:${emergency.number}" style="display:inline-block;font:900 34px/1 var(--e-mono,monospace);color:#0284C7;text-decoration:none;letter-spacing:2px">${emergency.number}</a>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px">${String(emergency.number).split('/').map(phone=>phone.trim()).filter(Boolean).map(phone=>{const clean=phone.replace(/[^0-9+]/g,'');return `<a href="tel:${clean}" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:145px;padding:10px 14px;border-radius:12px;background:linear-gradient(135deg,#0d668f,#1785ad);color:#fff;text-decoration:none;font:800 18px/1 var(--e-mono,monospace);direction:ltr">${clean}<span style="font:800 11px/1 Cairo,sans-serif">☎ اتصال</span></a>`}).join('')}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:8px">اضغط على الرقم للاتصال فوراً</div>
         </div>`;
       if (!isInterim) {
