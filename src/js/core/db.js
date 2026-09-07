@@ -1123,6 +1123,7 @@ export async function saveCategoryD1(category) {
   try {
     await idbPut(STORES.CATEGORIES, payload);
     clearDbCache('categories');
+    clearDbCache('categories_all');
   } catch (_) {}
 
   // 2. Persist to Cloudflare Worker D1
@@ -1172,7 +1173,8 @@ export async function getCategories() {
 
   // 1. Fetch from Cloudflare D1 via Worker
   try {
-    const workerRes = await fetch(`${WORKER_URL}/api/categories`, {
+    const workerRes = await fetch(`${WORKER_URL}/api/categories?_ts=${Date.now()}`, {
+      cache: 'no-store',
       signal: AbortSignal.timeout(5000)
     });
     if (workerRes.ok) {
