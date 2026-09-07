@@ -41,13 +41,16 @@ async function getJson(url){
   try{return await p}catch(e){cache.delete(url);throw e}
 }
 
-function shell(title,sub,icon){
+function shell(title,sub,icon,showAyah=false){
+ const heroSlot=showAyah
+  ? '<div class="ih-ayah-today" id="ih-ayah-today"><div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text"><div class="ih-pulse"></div></div><div class="ih-ayah-today-meta">جاري اختيار آية عشوائية من المصحف الشريف…</div></div>'
+  : '<div class="ih-quran-emblem"><img src="./quran/00.jpg" alt="القرآن الكريم" class="ih-quran-emblem-img"><span class="ih-quran-shine" aria-hidden="true"></span></div>';
  return '<div class="islamic-hub"><div class="ih-wrap">'+
  '<section class="ih-hero"><div class="ih-hero-copy">'+
  '<span class="ih-kicker">✦ القسم الإسلامي · دليل المنزلة والمطرية</span>'+
  '<h1 class="ih-title">'+icon+' '+title+'</h1><p class="ih-sub">'+sub+'</p>'+
  '<div class="ih-tools"><a class="ih-btn" href="index.html">الرئيسية</a><a class="ih-btn" href="quran-search.html">الباحث القرآني</a><a class="ih-btn" href="hadith.html">الأحاديث</a></div>'+
- '</div><div class="ih-ornament"><div class="ih-quran-emblem"><img src="./quran/00.jpg" alt="القرآن الكريم" class="ih-quran-emblem-img"><span class="ih-quran-shine" aria-hidden="true"></span></div></div></section>'+
+ '</div><div class="ih-ornament ih-hero-slot">'+heroSlot+'</div></section>'+
  '<section id="ih-content" class="ih-card"><div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تجهيز المحتوى محلياً…</p></div></div></section></div></div>';
 }
 
@@ -66,7 +69,26 @@ async function loadAllQuran(){
  cache.set('__all_quran__',promise); return promise;
 }
 function score(text,q){ const t=norm(text); if(!q)return 0; if(t===q)return 1000;if(t.includes(q))return 700; const ws=q.split(' ').filter(Boolean); const hit=ws.filter(w=>t.includes(w)).length; return hit?(hit*100+(hit===ws.length?50:0)):0; }
-async function renderQuran(container){ container.innerHTML=shell('القرآن الكريم','تلاوة القرآن الكريم محلياً بسرعة عالية، مع تحميل السورة عند اختيارها ودعم PWA.','✦'); const box=container.querySelector('#ih-content'); try{ const meta=await loadQuranMeta(); box.innerHTML='<div class="ih-meta"><b>سور القرآن الكريم</b><span>'+meta.length+' سورة · اختر السورة لفتح صفحة مستقلة</span></div><div class="ih-surah-list">'+meta.map(s=>'<a class="ih-surah" href="quran-surah.html?surah='+s.number+'"><strong>'+esc(s.name)+'</strong><small>'+s.count+' آية · '+esc(s.type)+'</small></a>').join('')+'</div>'; }catch(e){box.innerHTML='<div class="ih-empty">تعذر قراءة ملفات القرآن المحلية.</div>';console.error('[IslamicHub] Quran',e)} }
+async function renderQuran(container){
+ container.innerHTML=shell('القرآن الكريم','تلاوة القرآن الكريم محلياً بسرعة عالية، مع تحميل السورة عند اختيارها ودعم PWA.','✦',true);
+ const box=container.querySelector('#ih-content'),today=container.querySelector('#ih-ayah-today');
+ try{
+  const meta=await loadQuranMeta();
+  const total=meta.reduce((sum,s)=>sum+(s.count||0),0);
+  let target=Math.floor(Math.random()*Math.max(total,1));
+  let chosen=meta[meta.length-1];
+  for(const s of meta){if(target<s.count){chosen=s;break}target-=s.count}
+  const surah=await loadSurah(chosen.number);
+  const ayah=surah.ayahs[target]||surah.ayahs[Math.floor(Math.random()*surah.ayahs.length)];
+  if(today){
+   today.innerHTML='<div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text">'+esc(ayah?.text||'')+'</div><div class="ih-ayah-today-meta"><a href="quran-surah.html?surah='+chosen.number+'">سورة '+esc(chosen.name)+'</a> · آية '+(ayah?.n||'')+'</div>';
+  }
+  box.innerHTML='<div class="ih-meta"><b>سور القرآن الكريم</b><span>'+meta.length+' سورة · اختر السورة لفتح صفحة مستقلة</span></div><div class="ih-surah-list">'+meta.map(s=>'<a class="ih-surah" href="quran-surah.html?surah='+s.number+'"><strong>'+esc(s.name)+'</strong><small>'+s.count+' آية · '+esc(s.type)+'</small></a>').join('')+'</div>';
+ }catch(e){
+  if(today)today.innerHTML='<div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text">تعذر تحميل الآية الآن.</div>';
+  box.innerHTML='<div class="ih-empty">تعذر قراءة ملفات القرآن المحلية.</div>';console.error('[IslamicHub] Quran',e)
+ }
+}
 async function renderQuranSearch(container){
  container.innerHTML=shell('الباحث في القرآن الكريم','اكتب بأي طريقة: الإسعاف/الاسعاف، الرحمن/الرحمٰن، أو بدون همزات وتشكيل. الفهرسة محلية بالكامل ولا تستخدم D1 أو Firebase.','⌕');
  const box=container.querySelector('#ih-content');
