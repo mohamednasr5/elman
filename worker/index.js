@@ -227,6 +227,11 @@ try {
     }
 
     // 2. Query D1 with targeted filters and LIMIT
+    // Search must never aggregate the entire reviews table. Search can run many
+    // times while a user types, so a global GROUP BY reviews query multiplies
+    // D1 row reads dramatically. Ratings/review counts are loaded from
+    // denormalized place stats when available; full reviews are only fetched
+    // on the place profile.
     let sql = `
       SELECT
         p.id, p.name, p.name_en, p.slug, p.category_id, p.subcategory_id, p.custom_category,
@@ -234,15 +239,8 @@ try {
         p.description, p.logo_url, p.cover_image_url, p.status, p.is_verified,
         p.verification_status, p.offer_count, p.product_count, p.services_json,
         p.social_json, p.stats_json, p.working_hours_json, p.created_at, p.updated_at,
-        p.is_sponsored, p.is_featured, p.sponsored_until, p.priority,
-        COALESCE(rc.review_count, 0) AS review_count,
-        COALESCE(rc.avg_rating, 0.0) AS rating
+        p.is_sponsored, p.is_featured, p.sponsored_until, p.priority
       FROM places p
-      LEFT JOIN (
-        SELECT place_id, COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
-        FROM reviews
-        GROUP BY place_id
-      ) rc ON p.id = rc.place_id
       WHERE p.status = 'published'
     `;
     const params = [];
@@ -263,17 +261,15 @@ try {
       params.push(rawArea);
     }
     if (verifiedOnly) sql += ` AND p.is_verified = 1`;
-    if (minRating > 0) {
-      sql += ` AND COALESCE(rc.avg_rating, 0) >= ?`;
-      params.push(minRating);
-    }
-
+    // minRating is intentionally not pushed into a reviews-table scan.
+    // If denormalized rating stats exist in stats_json, filter them after the
+    // lightweight place query below.
     if (rawQuery) {
       sql += ` ORDER BY CASE WHEN LOWER(p.name) = LOWER(?) THEN 1000 WHEN LOWER(p.name) LIKE LOWER(?) THEN 800 ELSE 0 END DESC,
-        p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, COALESCE(rc.avg_rating,0) DESC, COALESCE(rc.review_count,0) DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
+        p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
       params.push(rawQuery, rawQuery + '%', limit + 1, offset);
     } else {
-      sql += ` ORDER BY p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, COALESCE(rc.avg_rating,0) DESC, COALESCE(rc.review_count,0) DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
+      sql += ` ORDER BY p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
       params.push(limit + 1, offset);
     }
 
@@ -295,9 +291,9 @@ try {
       isFeatured: Boolean(place.is_featured),
       sponsoredUntil: place.sponsored_until,
       sponsored_until: place.sponsored_until,
-      reviewCount: Number(place.review_count || 0),
-      review_count: Number(place.review_count || 0),
-      rating: Number(place.rating || 0.0)
+      reviewCount: Number(place.review_count ?? place.reviewCount ?? place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0),
+      review_count: Number(place.review_count ?? place.reviewCount ?? place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0),
+      rating: Number(place.rating ?? place.stats?.rating ?? 0.0)
     }));
 
     const responseData = {
