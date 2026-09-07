@@ -83,20 +83,8 @@ async function renderQuran(container){
  const box=container.querySelector('#ih-content');
  try{
    const meta=await loadQuranMeta();
-   box.innerHTML='<div class="ih-meta"><b>سور القرآن الكريم</b><span>'+meta.length+' سورة</span></div>'+
-   '<div class="ih-surah-list">'+meta.map(s=>'<button class="ih-surah" data-surah="'+s.number+'"><strong>'+esc(s.name)+'</strong><small>'+s.count+' آية · '+esc(s.type)+'</small></button>').join('')+'</div>'+
-   '<div id="quran-reader" class="ih-results"></div>';
-   const reader=box.querySelector('#quran-reader');
-   box.querySelectorAll('.ih-surah').forEach(btn=>btn.addEventListener('click',async()=>{
-     reader.innerHTML='<div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري فتح السورة…</p></div></div>';
-     try{
-       const s=await loadSurah(Number(btn.dataset.surah));
-       reader.innerHTML='<div class="ih-meta"><b>سورة '+esc(meta.find(x=>x.number===s.number)?.name||s.name)+'</b><button class="ih-btn" id="back-surahs">السور</button></div>'+
-       s.ayahs.map(a=>'<div class="ih-ayah">'+esc(a.text)+' <span class="ih-ayah-num">'+a.n+'</span></div>').join('');
-       reader.querySelector('#back-surahs').onclick=()=>box.querySelector('.ih-surah-list').scrollIntoView({behavior:'smooth'});
-       reader.scrollIntoView({behavior:'smooth',block:'start'});
-     }catch(e){reader.innerHTML='<div class="ih-empty">تعذر تحميل السورة محلياً.</div>'}
-   }));
+   box.innerHTML='<div class="ih-meta"><b>سور القرآن الكريم</b><span>'+meta.length+' سورة · اختر السورة لفتح صفحة مستقلة</span></div>'+
+   '<div class="ih-surah-list">'+meta.map(s=>'<a class="ih-surah" href="quran-surah.html?surah='+s.number+'"><strong>'+esc(s.name)+'</strong><small>'+s.count+' آية · '+esc(s.type)+'</small></a>').join('')+'</div>';
  }catch(e){box.innerHTML='<div class="ih-empty">تعذر قراءة ملفات القرآن المحلية.</div>';console.error('[IslamicHub] Quran',e)}
 }
 
@@ -165,3 +153,45 @@ async function renderHadith(container){
 }
 
 export {renderQuran,renderHadith,renderQuranSearch};
+
+function tajweedHtml(text,rules){
+  const arr=Array.isArray(rules)?rules.slice().sort((a,b)=>a.start-b.start):[];
+  if(!arr.length)return esc(text);
+  let out='',pos=0;
+  for(const r of arr){
+    const st=Math.max(0,Number(r.start)||0),en=Math.min(text.length,Number(r.end)||0);
+    if(st<pos||en<=st)continue;
+    out+=esc(text.slice(pos,st));
+    out+='<span class="tw-'+esc(r.rule)+'">'+esc(text.slice(st,en))+'</span>';
+    pos=en;
+  }
+  return out+esc(text.slice(pos));
+}
+async function loadTajweed(n){
+  try{return await getJson('./quran/source/tajweed/surah_'+n+'.json')}catch(_){return null}
+}
+async function loadAudioIndex(n){
+  try{return await getJson('./quran/source/audio/'+String(n).padStart(3,'0')+'/index.json')}catch(_){return null}
+}
+async function renderQuranSurah(container){
+ const p=new URLSearchParams(location.search), n=Number(p.get('surah')||1);
+ container.innerHTML=shell('القرآن الكريم','صفحة مستقلة للسورة · قراءة محلية · تجويد · تلاوة صوتية · تعمل مع PWA.','✦');
+ const box=container.querySelector('#ih-content');
+ try{
+  const meta=await loadQuranMeta(), info=meta.find(x=>x.number===n)||{name:'السورة',count:0};
+  const s=await loadSurah(n);
+  const [tw,audio]=await Promise.all([loadTajweed(n),loadAudioIndex(n)]);
+  const rules=tw?.verse||{}, av=audio?.verse||{};
+  box.innerHTML='<div class="ih-reader"><div class="qr-head"><h2 class="qr-title">سورة '+esc(info.name||s.name)+'</h2><p class="qr-sub">'+s.ayahs.length+' آية · '+esc(info.type||'القرآن الكريم')+'</p>'+
+  '<div class="qr-actions"><select id="qr-font" class="qr-select"><option value="1">حجم الخط: متوسط</option><option value="1.15">حجم الخط: كبير</option><option value=".9">حجم الخط: صغير</option></select>'+
+  '<button id="qr-tw" class="qr-btn" type="button">تفعيل التجويد</button><a class="qr-btn" href="quran.html">السور</a><a class="qr-btn" href="quran-search.html">الباحث</a></div>'+
+  '<div class="qr-legend" id="qr-legend" hidden><span>الأزرق: همزة وصل</span><span>الذهبي: لام شمسية</span><span>البنفسجي: مد</span></div></div>'+
+  '<div id="qr-list">'+s.ayahs.map(a=>{const f=av['verse_'+a.n]?.file;return '<article class="qr-ayah"><div class="qr-text" data-base="'+esc(a.text)+'">'+esc(a.text)+' <span class="qr-num">'+a.n+'</span></div><div class="qr-tools">'+(f?'<audio class="qr-audio" controls preload="none" src="./quran/source/audio/'+String(n).padStart(3,'0')+'/'+encodeURIComponent(f)+'"></audio>':'')+'</div></article>'}).join('')+'</div>'+
+  '<div class="qr-nav">'+(n>1?'<a class="qr-btn" href="quran-surah.html?surah='+(n-1)+'">السورة السابقة</a>':'<span></span>')+(n<114?'<a class="qr-btn" href="quran-surah.html?surah='+(n+1)+'">السورة التالية</a>':'<span></span>')+'</div></div>';
+  let twOn=false;
+  const renderTw=()=>{box.querySelectorAll('.qr-text').forEach((el,i)=>{const a=s.ayahs[i];el.innerHTML=twOn?tajweedHtml(a.text,rules['verse_'+a.n])+' <span class="qr-num">'+a.n+'</span>':esc(a.text)+' <span class="qr-num">'+a.n+'</span>';});box.querySelector('#qr-legend').hidden=!twOn;};
+  box.querySelector('#qr-tw').onclick=()=>{twOn=!twOn;box.querySelector('#qr-tw').textContent=twOn?'إيقاف التجويد':'تفعيل التجويد';renderTw()};
+  box.querySelector('#qr-font').onchange=e=>box.querySelectorAll('.qr-text').forEach(el=>el.style.fontSize=(1.65*Number(e.target.value))+'rem');
+ }catch(e){box.innerHTML='<div class="ih-empty">تعذر فتح السورة. تأكد من رقم السورة والملفات المحلية.</div>';console.error('[IslamicHub] Surah',e)}
+}
+export {renderQuranSurah};
