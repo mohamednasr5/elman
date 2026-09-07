@@ -647,6 +647,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             <option value="motorcycle" ${place?.deliveryType === 'motorcycle' ? 'selected' : ''}>🏍️ موتوسيكل</option>
             <option value="tuktuk" ${place?.deliveryType === 'tuktuk' ? 'selected' : ''}>🛺 توكتوك</option>
             <option value="car" ${place?.deliveryType === 'car' ? 'selected' : ''}>🚗 سيارة</option>
+            <option value="taxi" ${place?.deliveryType === 'taxi' ? 'selected' : ''}>🚕 تاكسي</option>
           </select>
         </div>
       </div>
