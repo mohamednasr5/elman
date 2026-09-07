@@ -39,15 +39,15 @@ export function mountAroundMeRadar(containerId) {
   if (!container) return;
 
   container.innerHTML = `
-    <section class="around-me-section" style="margin-bottom:var(--space-8, 2.5rem)">
+    <section class="around-me-section premium-feature-section" style="margin-bottom:var(--space-8, 2.5rem)">
       <div class="container" style="max-width:1240px;margin:0 auto;padding:0 12px">
         
-        <div style="background:linear-gradient(135deg,#0B1E30,#1B4F72);border-radius:20px;padding:24px;color:#fff;box-shadow:0 10px 30px rgba(11,30,48,0.25);border:1.5px solid rgba(245,166,35,0.3);position:relative;overflow:hidden">
+        <div class="premium-feature-hero premium-around-hero" style="background:linear-gradient(135deg,#0B1E30,#1B4F72);border-radius:20px;padding:24px;color:#fff;box-shadow:0 10px 30px rgba(11,30,48,0.25);border:1.5px solid rgba(245,166,35,0.3);position:relative;overflow:hidden">
           
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:16px">
             <div>
               <h2 style="font-size:1.4rem;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;margin:0 0 4px 0">
-                <span>🗺️</span>
+                <span class="premium-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/><path d="M5.6 5.6 4 4m14.4 1.6L20 4M5.6 18.4 4 20m14.4-1.6L20 20"/></svg></span>
                 <span>اكتشف ما حولك (الأقرب إليك الآن)</span>
                 <span class="badge" style="background:#10B981;color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:9999px">GPS</span>
               </h2>
@@ -56,8 +56,8 @@ export function mountAroundMeRadar(containerId) {
               </p>
             </div>
 
-            <button type="button" id="btn-detect-user-gps" class="btn" style="background:#F5A623;color:#0B1E30;font-weight:800;border:none;border-radius:12px;padding:10px 20px;font-size:13px;box-shadow:0 4px 15px rgba(245,166,35,0.3);gap:6px">
-              <span>📍</span>
+            <button type="button" id="btn-detect-user-gps" class="btn premium-feature-cta" style="background:#F5A623;color:#0B1E30;font-weight:800;border:none;border-radius:12px;padding:10px 20px;font-size:13px;box-shadow:0 4px 15px rgba(245,166,35,0.3);gap:6px">
+              <span class="premium-cta-icon" aria-hidden="true">+</span>
               <span id="btn-detect-gps-label">تحديد موقعي والأقرب إليّ</span>
             </button>
           </div>
@@ -65,13 +65,13 @@ export function mountAroundMeRadar(containerId) {
           <!-- Quick Category Filters (No overlap, smooth horizontal scroll) -->
           <div class="around-me-cats-scroll">
             <button type="button" class="around-cat-btn active" data-cat="all">الكل</button>
-            <button type="button" class="around-cat-btn" data-cat="atm">🏧 ATM</button>
-            <button type="button" class="around-cat-btn" data-cat="pharmacy">💊 صيدليات</button>
-            <button type="button" class="around-cat-btn" data-cat="doctor">🩺 أطباء</button>
-            <button type="button" class="around-cat-btn" data-cat="restaurant">🍔 مطاعم</button>
-            <button type="button" class="around-cat-btn" data-cat="supermarket">🛒 سوبر ماركت</button>
-            <button type="button" class="around-cat-btn" data-cat="cafe">☕ كافيهات</button>
-            <button type="button" class="around-cat-btn" data-cat="service">🔧 صنايعية وخدمات</button>
+            <button type="button" class="around-cat-btn" data-cat="atm">ATM</button>
+            <button type="button" class="around-cat-btn" data-cat="pharmacy">صيدليات</button>
+            <button type="button" class="around-cat-btn" data-cat="doctor">أطباء</button>
+            <button type="button" class="around-cat-btn" data-cat="restaurant">مطاعم</button>
+            <button type="button" class="around-cat-btn" data-cat="supermarket">سوبر ماركت</button>
+            <button type="button" class="around-cat-btn" data-cat="cafe">كافيهات</button>
+            <button type="button" class="around-cat-btn" data-cat="service">صنايعية وخدمات</button>
           </div>
 
           <!-- Radar Places Grid -->
