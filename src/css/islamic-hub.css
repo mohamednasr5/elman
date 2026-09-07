@@ -149,3 +149,55 @@
   .qr-text{font-size:1.38rem;line-height:2.05}
   .qr-play{flex-basis:40px;width:40px;height:40px}
 }
+
+
+/* Responsive surah selector */
+.qr-surah-picker{
+  position:absolute;
+  top:24px;
+  left:24px;
+  width:min(46%,560px);
+  z-index:3;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  direction:rtl;
+}
+.qr-surah-picker label{
+  flex:0 0 auto;
+  color:#CBD5E1;
+  font-weight:800;
+  white-space:nowrap;
+}
+.qr-surah-picker .qr-select{
+  flex:1;
+  min-width:0;
+  width:100%;
+  cursor:pointer;
+  border-color:rgba(56,189,248,.28);
+  background:rgba(7,20,34,.94);
+}
+.qr-surah-picker .qr-select:hover,
+.qr-surah-picker .qr-select:focus{
+  border-color:rgba(245,176,65,.55);
+  outline:none;
+  box-shadow:0 0 0 3px rgba(56,189,248,.07);
+}
+@media(max-width:700px){
+  .qr-surah-picker{
+    position:relative;
+    top:auto;
+    left:auto;
+    width:100%;
+    margin-top:16px;
+    flex-direction:column;
+    align-items:stretch;
+    gap:7px;
+  }
+  .qr-surah-picker label{
+    font-size:.9rem;
+  }
+  .qr-surah-picker .qr-select{
+    min-height:46px;
+  }
+}
