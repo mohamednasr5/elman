@@ -391,6 +391,10 @@ try {
 
     const params = [];
 
+    // IMPORTANT: list endpoint must never aggregate the entire reviews table.
+    // A global GROUP BY on reviews turns every homepage/search request into a
+    // full reviews scan and can consume millions of D1 rows. Review details
+    // are loaded only when a single place is opened.
     let sql = `
       SELECT
         p.id, p.name, p.name_en, p.slug, p.category_id, p.subcategory_id, p.custom_category,
@@ -399,16 +403,9 @@ try {
         p.status, p.is_verified, p.verification_status, p.offer_count, p.product_count,
         p.services_json, p.social_json, p.stats_json, p.working_hours_json,
         p.created_at, p.updated_at, p.is_sponsored, p.is_featured, p.sponsored_until, p.priority,
-        COALESCE(rc.review_count, 0) AS review_count,
-        COALESCE(rc.avg_rating, 0.0) AS rating,
         u.name AS owner_name, u.email AS owner_email_d1, u.photo_url AS owner_photo
       FROM places p
       LEFT JOIN users u ON u.id = p.owner_id
-      LEFT JOIN (
-        SELECT place_id, COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
-        FROM reviews
-        GROUP BY place_id
-      ) rc ON p.id = rc.place_id
     `;
     const ownerEmailFilter = (url.searchParams.get('owner_email') || '').trim().toLowerCase();
 
@@ -441,9 +438,11 @@ try {
       isFeatured: Boolean(place.is_featured),
       sponsoredUntil: place.sponsored_until,
       sponsored_until: place.sponsored_until,
-      reviewCount: Number(place.review_count || 0),
-      review_count: Number(place.review_count || 0),
-      rating: Number(place.rating || 0.0),
+      // List responses intentionally do not query the reviews table.
+      // Keep any denormalized stats if present; detailed ratings are fetched on place page.
+      reviewCount: Number(place.review_count ?? place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0),
+      review_count: Number(place.review_count ?? place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0),
+      rating: Number(place.rating ?? place.stats?.rating ?? 0.0),
       // Normalize owner name from D1 join
       owner_name: place.owner_name || place.owner_email || null,
     }));
