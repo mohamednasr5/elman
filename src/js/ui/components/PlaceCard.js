@@ -43,7 +43,7 @@ export function renderPlaceCard(place) {
   const deliveryBadge = (!isAtm && place.deliveryType) ? renderDeliveryBadge(place.deliveryType) : '';
   const placeUrl = `place.html?slug=${encodeURIComponent(place.slug || place.id || place._key)}`;
   const placeId = place._key || place.id || place.slug || '';
-  const trustScore = Math.min(100,
+  const calculatedTrustScore = Math.min(100,
     (place.isVerified ? 35 : 0) +
     (place.phone || place.whatsapp ? 15 : 0) +
     ((place.lat || place.latitude) && (place.lng || place.longitude) ? 15 : 0) +
@@ -53,6 +53,9 @@ export function renderPlaceCard(place) {
     (place.description ? 5 : 0) +
     ((Number(place.reviewCount || place.reviewsCount || 0) > 0) ? 5 : 0)
   );
+  const hasManualTrustScore = place.trustScore !== undefined || place.trust_score !== undefined;
+  const trustScore = hasManualTrustScore ? Math.max(0, Math.min(100, Number(place.trustScore ?? place.trust_score) || 0)) : calculatedTrustScore;
+  const trustClass = trustScore < 50 ? 'place-trust-mini--low' : trustScore < 70 ? 'place-trust-mini--medium' : 'place-trust-mini--high';
   const trustLabel = trustScore >= 85 ? 'بيانات موثوقة' : trustScore >= 65 ? 'بيانات جيدة' : 'بيانات تحتاج تحديث';
   const favorite = isFavorite(placeId);
 
@@ -123,7 +126,7 @@ export function renderPlaceCard(place) {
       </div>
       <div class="place-card__body">
         <div class="place-card__meta-top">
-          <span class="place-trust-mini ${trustScore >= 85 ? 'place-trust-mini--high' : trustScore >= 65 ? 'place-trust-mini--good' : ''}" title="${escAttr(trustLabel)}">
+          <span class="place-trust-mini ${trustClass}" title="${escAttr(trustLabel)}">
             🛡️ ${trustScore}/100
           </span>
           <button type="button" class="place-favorite-btn ${favorite ? 'is-favorite' : ''}" aria-label="${favorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}" title="${favorite ? 'إزالة من المفضلة' : 'حفظ المكان'}" data-favorite-place="${escAttr(placeId)}" onclick="event.stopPropagation();window.togglePlaceFavorite&&window.togglePlaceFavorite('${escAttr(placeId)}',this)">
