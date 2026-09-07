@@ -147,9 +147,9 @@ const pages = [
     desc: 'دليل المنزلة والمطرية — تصفح أرقام الهاتف والواتساب، مواعيد وساعات العمل، العنوان بالتفصيل على الخريطة، العروض الحصرية، والتقييمات للأنشطة والمحلات والأطباء والحرفيين بالمنزلة والمطرية',
     activeNav: '',
     moduleScript: `
-  import { initPage } from './src/js/core/page-shell.js';
-  import { renderPlacePage } from './src/js/ui/pages/place.js';
-  import { waitForAuth } from './src/js/core/auth.js';
+  import { initPage } from './src/js/core/page-shell.js?v=2.7.0';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=2.7.0';
+  import { waitForAuth } from './src/js/core/auth.js?v=2.7.0';
   await initPage('');
   const user = await waitForAuth();
   const params = new URLSearchParams(location.search);

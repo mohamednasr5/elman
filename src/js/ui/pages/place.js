@@ -157,7 +157,7 @@ export async function renderPlacePage($container, { slug, user }) {
     const mapInfo = resolveMapEmbedInfo(place);
     const docInfo = resolveDoctorSpecialty(place, category);
     const profInfo = resolvePlaceProfession(place);
-    const craftCatSvg = getCategorySvg(catInfo.slug, 18);
+    const craftCatSvg = getCategorySvg(catInfo?.slug || place.categoryId || '', 18);
 
     // Render Full Page
     $container.innerHTML = `
@@ -176,7 +176,7 @@ export async function renderPlacePage($container, { slug, user }) {
             <span class="breadcrumb-sep">/</span>
             <a href="categories.html">التصنيفات</a>
             <span class="breadcrumb-sep">/</span>
-            <a href="category.html?slug=${catInfo.slug}">${escHtml(catInfo.name)}</a>
+            <a href="category.html?slug=${encodeURIComponent(catInfo?.slug || place.categoryId || 'other')}">${escHtml(catInfo?.name || 'التصنيف')}</a>
             <span class="breadcrumb-sep">/</span>
             <span class="breadcrumb-current">${escHtml(place.name)}</span>
           </nav>
@@ -240,13 +240,13 @@ export async function renderPlacePage($container, { slug, user }) {
                 </div>
                 
                 <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin-top:4px">
-                  <a href="category.html?slug=${catInfo.slug}" class="place-category-tag">
-                    ${craftCatSvg || catInfo.icon} ${escHtml(catInfo.name)}
+                  <a href="category.html?slug=${encodeURIComponent(catInfo?.slug || place.categoryId || 'other')}" class="place-category-tag">
+                    ${craftCatSvg || catInfo?.icon || '🏪'} ${escHtml(catInfo?.name || 'تصنيف')}
                   </a>
                   ${profInfo ? `
-                    <a href="category.html?slug=${profInfo.categorySlug || 'crafts'}&prof=${encodeURIComponent(profInfo.id)}" class="place-profession-badge" style="text-decoration:none;padding:4px 12px;font-size:13px;display:inline-flex;align-items:center;gap:6px" title="تصفح جميع فنيي ${escHtml(profInfo.name)}">
+                    <a href="category.html?slug=${encodeURIComponent(profInfo.categorySlug || catInfo?.slug || 'crafts')}&prof=${encodeURIComponent(profInfo.id || '')}" class="place-profession-badge" style="text-decoration:none;padding:4px 12px;font-size:13px;display:inline-flex;align-items:center;gap:6px" title="تصفح جميع فنيي ${escHtml(profInfo.name || '')}">
                       ${getProfessionSvg(profInfo.id, { size: 16, color: profInfo.categoryColor || 'currentColor' })}
-                      <span>${escHtml(profInfo.name)}</span>
+                      <span>${escHtml(profInfo.name || '')}</span>
                     </a>
                   ` : ''}
                   ${place.nameEn ? `<span style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
