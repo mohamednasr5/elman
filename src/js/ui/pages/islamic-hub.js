@@ -42,18 +42,18 @@ async function getJson(url){
 }
 
 function shell(title,sub,icon,showAyah=true){
- // Unified hero for the three Islamic landing pages. Surah reader pages
- // can opt out and keep the Quran emblem.
- const heroSlot=showAyah
-  ? '<div class="ih-ayah-today" id="ih-ayah-today"><div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text"><div class="ih-pulse"></div></div><div class="ih-ayah-today-meta">جاري اختيار آية عشوائية من المصحف الشريف…</div></div>'
-  : '<div class="ih-quran-emblem"><img src="./quran/00.jpg" alt="القرآن الكريم" class="ih-quran-emblem-img"><span class="ih-quran-shine" aria-hidden="true"></span></div>';
- return '<div class="islamic-hub"><div class="ih-wrap">'+
- '<section class="ih-hero"><div class="ih-hero-copy">'+
- '<span class="ih-kicker">✦ القسم الإسلامي · دليل المنزلة والمطرية</span>'+
- '<h1 class="ih-title">'+icon+' '+title+'</h1>'+(sub?'<p class="ih-sub">'+sub+'</p>':'')+
- '<div class="ih-tools"><a class="ih-btn" href="index.html">الرئيسية</a><a class="ih-btn" href="quran-search.html">الباحث القرآني</a><a class="ih-btn" href="hadith.html">الأحاديث</a></div>'+
- '</div><div class="ih-ornament ih-hero-slot">'+heroSlot+'</div></section>'+
- '<section id="ih-content" class="ih-card"><div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تجهيز المحتوى محلياً…</p></div></div></section></div></div>';
+ const heroSlot = showAyah
+  ? `<div class="ih-ayah-today" id="ih-ayah-today"><div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text"><div class="ih-pulse"></div></div><div class="ih-ayah-today-meta">جاري اختيار آية عشوائية من المصحف الشريف…</div></div>`
+  : `<div class="ih-quran-emblem"><img src="./quran/00.jpg" alt="القرآن الكريم" class="ih-quran-emblem-img"><span class="ih-quran-shine" aria-hidden="true"></span></div>`;
+ const subtitle = sub ? `<p class="ih-sub">${esc(sub)}</p>` : '';
+ return `<div class="islamic-hub"><div class="ih-wrap">
+ <section class="ih-hero"><div class="ih-hero-copy">
+ <span class="ih-kicker">✦ القسم الإسلامي · دليل المنزلة والمطرية</span>
+ <h1 class="ih-title">${esc(icon)} ${esc(title)}</h1>
+ ${subtitle}
+ <div class="ih-tools"><a class="ih-btn" href="index.html">الرئيسية</a><a class="ih-btn" href="quran-search.html">الباحث القرآني</a><a class="ih-btn" href="hadith.html">الأحاديث</a></div>
+ </div><div class="ih-ornament ih-hero-slot">${heroSlot}</div></section>
+ <section id="ih-content" class="ih-card"><div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تجهيز المحتوى محلياً…</p></div></div></section></div></div>`;
 }
 
 async function mountDailyAyah(container){
