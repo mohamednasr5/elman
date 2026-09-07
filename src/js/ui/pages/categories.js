@@ -6,6 +6,7 @@ import { setMeta, setBreadcrumbSchema } from '../../utils/seo.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../utils/maps.js';
 import { isAtmPlace, filterAtmPlaces, isAtmReadyAndOperational } from '../../utils/atm.js';
 import { toast } from '../components/Toast.js';
+import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 
 let _catUserLocation = null;
 
@@ -93,7 +94,7 @@ export async function renderCategoriesPage($container) {
     const count = countMap[cat.slug] || countMap[cat._key] || countMap[cat.id] || 0;
     return `
       <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}" class="category-card animate-fade-in">
-        <div class="category-card__icon">${cat.icon || '📁'}</div>
+        <div class="category-card__icon category-card__icon--premium" style="--cat-color:${getDefaultPlaceAssets({}, cat).categoryColor || '#0284c7'}"><span class="category-icon-orb" aria-hidden="true">${cat.icon || getDefaultPlaceAssets({}, cat).categoryIcon || '📁'}</span><span class="category-icon-ring" aria-hidden="true"></span></div>
         <div class="category-card__name">${escHtml(cat.name)}</div>
         <div class="category-card__count">${count > 0 ? `${count} مكان` : 'استكشف الأماكن'}</div>
       </a>
