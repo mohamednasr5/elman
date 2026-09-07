@@ -97,12 +97,15 @@ export async function renderPlacePage($container, { slug, user }) {
     });
 
     const avgRating = totalReviews > 0 ? Math.round((ratingSum / totalReviews) * 10) / 10 : 0.0;
-    const trustScore = Math.min(100,
+    const calculatedTrustScore = Math.min(100,
       (place.isVerified ? 35 : 0) + (place.phone || place.whatsapp ? 15 : 0) +
       ((place.lat || place.latitude) && (place.lng || place.longitude) ? 15 : 0) + (place.address ? 10 : 0) +
       ((place.coverImageUrl || place.logoUrl || place.cover_image_url || place.logo_url) ? 10 : 0) +
       ((place.workingHours || place.openHours) ? 5 : 0) + (place.description ? 5 : 0) + (totalReviews > 0 ? 5 : 0)
     );
+    const hasManualTrustScore = place.trustScore !== undefined || place.trust_score !== undefined;
+    const trustScore = hasManualTrustScore ? Math.max(0, Math.min(100, Number(place.trustScore ?? place.trust_score) || 0)) : calculatedTrustScore;
+    const trustClass = trustScore < 50 ? 'place-trust-mini--low' : trustScore < 70 ? 'place-trust-mini--medium' : 'place-trust-mini--high';
     const userReview = currentUser ? safeReviews.find(review => review.userId === currentUser.uid) : null;
 
     // Track View Count & Profile Visitor safely
@@ -254,7 +257,7 @@ export async function renderPlacePage($container, { slug, user }) {
                   ` : ''}
                 </div>
 
-                <span class="place-trust-mini">🛡️ ثقة البيانات ${trustScore}/100</span>\n                <div class="place-address">
+                <span class="place-trust-mini ${trustClass}" title="نسبة الثقة التي تحددها إدارة الدليل">🛡️ ثقة البيانات ${trustScore}/100</span>\n                <div class="place-address">
                   <span>📍</span>
                   <span>${escHtml(place.address || place.area || 'مدينة المنزلة')}</span>
                 </div>
