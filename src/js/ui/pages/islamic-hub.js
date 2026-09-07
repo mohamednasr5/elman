@@ -47,7 +47,7 @@ function shell(title,sub,icon){
  '<span class="ih-kicker">✦ القسم الإسلامي · دليل المنزلة والمطرية</span>'+
  '<h1 class="ih-title">'+icon+' '+title+'</h1><p class="ih-sub">'+sub+'</p>'+
  '<div class="ih-tools"><a class="ih-btn" href="index.html">الرئيسية</a><a class="ih-btn" href="quran-search.html">الباحث القرآني</a><a class="ih-btn" href="hadith.html">الأحاديث</a></div>'+
- '</div><div class="ih-ornament"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 7l10 20 22 3-16 16 4 23-20-11-20 11 4-23-16-16 22-3z"/><circle cx="50" cy="50" r="12"/></svg></div></section>'+
+ '</div><div class="ih-ornament"><div class="ih-quran-emblem"><img src="./quran/00.jpg" alt="القرآن الكريم" class="ih-quran-emblem-img"><span class="ih-quran-shine" aria-hidden="true"></span></div></div></section>'+
  '<section id="ih-content" class="ih-card"><div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تجهيز المحتوى محلياً…</p></div></div></section></div></div>';
 }
 
