@@ -1,7 +1,8 @@
 /* Premium Islamic Knowledge Hub — local-first, fast, smart Arabic search */
 const SOURCES = {
-  quran: ['./quran.json','./data/quran.json','./quran.js','./data/quran.js'],
-  hadith: ['./hadith.json','./data/hadith.json','./hadith.js','./data/hadith.js']
+  // Local files are always preferred for PWA/offline speed.
+  quran: ['./quran.json','./data/quran.json','./quran.js','./data/quran.js','https://raw.githubusercontent.com/azvox/quran.json/master/quran.json'],
+  hadith: ['./hadith.json','./data/hadith.json','./hadith.js','./data/hadith.js','https://raw.githubusercontent.com/AhmedBaset/hadith-json/v1.2.0/db/by_book/the_9_books/bukhari.json']
 };
 const stripArabic = s => String(s??'').normalize('NFKD').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[إأآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي').replace(/ء/g,'').replace(/[^\u0621-\u063A\u0641-\u064A0-9a-zA-Z\s]/g,' ').replace(/\s+/g,' ').trim().toLowerCase();
 const escapeHtml = s => String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
