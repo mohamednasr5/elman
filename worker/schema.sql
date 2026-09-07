@@ -86,7 +86,16 @@ CREATE TABLE IF NOT EXISTS fcm_tokens (
   platform TEXT,
   user_agent TEXT,
   created_at INTEGER,
-  updated_at INTEGER
+  updated_at INTEGER,
+  is_reported INTEGER DEFAULT 0,
+  report_count INTEGER DEFAULT 0,
+  last_report_reason TEXT,
+  reported_at INTEGER,
+  last_reporter_name TEXT,
+  is_reviewed_by_admin INTEGER DEFAULT 0,
+  admin_review_status TEXT,
+  admin_review_note TEXT,
+  reviewed_at INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_fcm_user ON fcm_tokens(user_id);
