@@ -41,10 +41,12 @@ async function getJson(url){
   try{return await p}catch(e){cache.delete(url);throw e}
 }
 
-function shell(title,sub,icon){
- // Unified hero: the same-sized "آية اليوم" panel appears on Quran,
- // Quran Search, and Hadith pages.
- const heroSlot='<div class="ih-ayah-today" id="ih-ayah-today"><div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text"><div class="ih-pulse"></div></div><div class="ih-ayah-today-meta">جاري اختيار آية عشوائية من المصحف الشريف…</div></div>';
+function shell(title,sub,icon,showAyah=true){
+ // Unified hero for the three Islamic landing pages. Surah reader pages
+ // can opt out and keep the Quran emblem.
+ const heroSlot=showAyah
+  ? '<div class="ih-ayah-today" id="ih-ayah-today"><div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text"><div class="ih-pulse"></div></div><div class="ih-ayah-today-meta">جاري اختيار آية عشوائية من المصحف الشريف…</div></div>'
+  : '<div class="ih-quran-emblem"><img src="./quran/00.jpg" alt="القرآن الكريم" class="ih-quran-emblem-img"><span class="ih-quran-shine" aria-hidden="true"></span></div>';
  return '<div class="islamic-hub"><div class="ih-wrap">'+
  '<section class="ih-hero"><div class="ih-hero-copy">'+
  '<span class="ih-kicker">✦ القسم الإسلامي · دليل المنزلة والمطرية</span>'+
@@ -162,7 +164,7 @@ async function loadAudioIndex(n){try{return await getJson('./quran/source/audio/
 async function loadEnglishTranslation(n){try{return await getJson('./quran/source/translation/en/en_translation_'+n+'.json')}catch(_){return null}}
 async function renderQuranSurah(container){
  const p=new URLSearchParams(location.search),n=Math.min(114,Math.max(1,Number(p.get('surah')||1)||1));
- container.innerHTML=shell('القرآن الكريم','صفحة مستقلة للسورة · قراءة محلية · تجويد · تلاوة صوتية · تعمل مع PWA.','✦');
+ container.innerHTML=shell('القرآن الكريم','صفحة مستقلة للسورة · قراءة محلية · تجويد · تلاوة صوتية · تعمل مع PWA.','✦',false);
  const box=container.querySelector('#ih-content');
  try{
   const meta=await loadQuranMeta(),info=meta.find(x=>x.number===n)||{name:'السورة',count:0};
