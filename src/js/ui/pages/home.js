@@ -409,8 +409,10 @@ function renderStatsBar(placesCount, categoriesCount) {
   if (!bar) return;
 
   const targetPlaces = Math.max(15000, Number(placesCount) || 0);
-  const targetCategories = Math.max(72, Number(categoriesCount) || 0);
+  const targetCategories = Math.max(94, Number(categoriesCount) || 0);
   const targetVillages = 55;
+  const targetMonthlyVisits = 50000;
+  const targetDailySearches = 1700;
 
   bar.innerHTML = `
     <div class="stats-bar__inner container">
@@ -427,6 +429,16 @@ function renderStatsBar(placesCount, categoriesCount) {
       <div class="stats-bar__item stats-interactive-item" title="انقر لإعادة تشغيل الحركة والصوت">
         <div class="stats-bar__value" data-target="${targetVillages}" data-prefix="+" data-suffix="">+0</div>
         <div class="stats-bar__label">مدينة وقرية مغطاة بالكامل</div>
+      </div>
+      <div class="stats-bar__divider" aria-hidden="true"></div>
+      <div class="stats-bar__item stats-interactive-item" title="إحصائية الزيارات الشهرية">
+        <div class="stats-bar__value" data-target="${targetMonthlyVisits}" data-prefix="+" data-suffix="">+0</div>
+        <div class="stats-bar__label">زيارة شهرية</div>
+      </div>
+      <div class="stats-bar__divider" aria-hidden="true"></div>
+      <div class="stats-bar__item stats-interactive-item" title="إحصائية البحث اليومي">
+        <div class="stats-bar__value" data-target="${targetDailySearches}" data-prefix="+" data-suffix="">+0</div>
+        <div class="stats-bar__label">بحث يومي</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
       <div class="stats-bar__item stats-interactive-item" title="دليل المنزلة والمطرية الرقمي">
@@ -475,7 +487,7 @@ function setupStatsBarCounter(bar) {
         const suffix = el.getAttribute('data-suffix') || '';
         const currentNum = Math.floor(ease * target);
 
-        el.textContent = `${prefix}${currentNum}${suffix}`;
+        el.textContent = `${prefix}${currentNum.toLocaleString('en-US')}${suffix}`;
 
         if (currentNum !== lastNum) {
           lastNum = currentNum;
@@ -493,7 +505,7 @@ function setupStatsBarCounter(bar) {
           const target = parseInt(el.getAttribute('data-target'), 10) || 0;
           const prefix = el.getAttribute('data-prefix') || '';
           const suffix = el.getAttribute('data-suffix') || '';
-          el.textContent = `${prefix}${target}${suffix}`;
+          el.textContent = `${prefix}${target.toLocaleString('en-US')}${suffix}`;
           el.classList.remove('stats-counting');
           el.classList.add('stats-done');
         });
