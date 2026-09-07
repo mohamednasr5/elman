@@ -800,7 +800,8 @@ try {
 
     try {
       let query = `
-        SELECT r.id, r.place_id, r.user_id, r.user_name, r.user_photo, r.rating, r.comment, r.created_at, r.updated_at,
+        SELECT r.id, r.place_id, r.user_id, r.user_name, r.user_photo, r.rating, r.comment,
+               r.is_admin_generated, r.edit_count, r.created_at, r.updated_at,
                p.name as place_name, p.slug as place_slug
         FROM reviews r
         LEFT JOIN places p ON r.place_id = p.id
@@ -810,14 +811,16 @@ try {
         query += ` WHERE r.place_id = ? `;
         params.push(placeId);
       }
-      query += ` ORDER BY r.created_at DESC LIMIT 200 `;
+      query += ` ORDER BY r.created_at DESC LIMIT 500 `;
 
       const stmt = env.DB.prepare(query);
       const result = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all();
 
+      // Reviews are user-submitted content and must be immediately visible after
+      // publishing. Do not let browser/CDN caching hide a newly submitted review.
       return jsonResponse({ success: true, data: result.results || [] }, 200, {
         ...corsHeaders,
-        'Cache-Control': 'public, max-age=60, s-maxage=60'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
       });
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
@@ -881,11 +884,15 @@ try {
     const reviewId = body.id || `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const userName = body.user_name || body.userName || 'مستخدم';
     const userPhoto = body.user_photo || body.userPhoto || '';
-    const comment = body.comment || '';
+    const comment = String(body.comment || '').trim().slice(0, 500);
     const now = Date.now();
     const placeName = body.place_name || body.placeName || '';
     const placeSlug = body.place_slug || body.placeSlug || '';
     const isAdminGen = body.is_admin_generated ? 1 : 0;
+
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      return jsonResponse({ error: 'التقييم يجب أن يكون بين 1 و5 نجوم' }, 400, corsHeaders);
+    }
 
     try {
       await env.DB.prepare(`
@@ -897,7 +904,93 @@ try {
           updated_at = excluded.updated_at
       `).bind(reviewId, placeId, userId, userName, userPhoto, placeName, placeSlug, rating, comment, isAdminGen, now, now).run();
 
-      return jsonResponse({ success: true, message: 'تم حفظ التقييم بنجاح', id: reviewId }, 200, corsHeaders);
+      // Keep the denormalized place rating in sync in the same request so the
+      // public place card and the submitted review become consistent immediately.
+      const stats = await env.DB.prepare(`
+        SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
+        FROM reviews
+        WHERE place_id = ?
+      `).bind(placeId).first();
+      await env.DB.prepare(`
+        UPDATE places
+        SET updated_at = ?, stats_json = json_set(
+          COALESCE(stats_json, '{}'),
+          '$.reviewCount', ?,
+          '$.reviewsCount', ?,
+          '$.rating', ?
+        )
+        WHERE id = ?
+      `).bind(
+        now,
+        Number(stats?.review_count || 0),
+        Number(stats?.review_count || 0),
+        Number(stats?.avg_rating || 0),
+        placeId
+      ).run();
+
+      return jsonResponse({
+        success: true,
+        message: 'تم حفظ التقييم بنجاح',
+        id: reviewId,
+        data: {
+          reviewCount: Number(stats?.review_count || 0),
+          rating: Number(stats?.avg_rating || 0)
+        }
+      }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  // ── D1: Update Review (PUT /api/reviews?id=...) ───────────────
+  if (url.pathname === '/api/reviews' && request.method === 'PUT') {
+    const body = await request.json().catch(() => ({}));
+    const reviewId = (url.searchParams.get('id') || body.id || '').trim();
+    if (!reviewId) return jsonResponse({ error: 'معرف التقييم مطلوب' }, 400, corsHeaders);
+
+    try {
+      const existing = await env.DB.prepare(`SELECT * FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
+      if (!existing) return jsonResponse({ error: 'التقييم غير موجود' }, 404, corsHeaders);
+
+      const ratingValue = body.rating !== undefined ? Number(body.rating) : Number(existing.rating);
+      const commentValue = body.comment !== undefined ? String(body.comment).trim().slice(0, 500) : (existing.comment || '');
+      const editCount = body.editCount !== undefined ? Number(body.editCount) : Number(existing.edit_count || 0);
+      const isReported = body.isReported !== undefined ? (body.isReported ? 1 : 0) : Number(existing.is_reported || 0);
+      const reportCount = body.reportCount !== undefined ? Number(body.reportCount) : Number(existing.report_count || 0);
+      const reportReason = body.lastReportReason !== undefined ? String(body.lastReportReason || '') : (existing.last_report_reason || '');
+      const reporterName = body.lastReporterName !== undefined ? String(body.lastReporterName || '') : (existing.last_reporter_name || '');
+      const nowPut = Date.now();
+
+      if (!Number.isFinite(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+        return jsonResponse({ error: 'التقييم يجب أن يكون بين 1 و5 نجوم' }, 400, corsHeaders);
+      }
+
+      await env.DB.prepare(`
+        UPDATE reviews
+        SET rating = ?, comment = ?, edit_count = ?, is_reported = ?, report_count = ?,
+            last_report_reason = ?, last_reporter_name = ?, updated_at = ?
+        WHERE id = ?
+      `).bind(
+        ratingValue, commentValue, Math.max(0, editCount), isReported, Math.max(0, reportCount),
+        reportReason, reporterName, nowPut, reviewId
+      ).run();
+
+      const placeIdForRating = existing.place_id;
+      const stats = await env.DB.prepare(`
+        SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
+        FROM reviews WHERE place_id = ?
+      `).bind(placeIdForRating).first();
+      await env.DB.prepare(`
+        UPDATE places SET updated_at = ?, stats_json = json_set(
+          COALESCE(stats_json, '{}'),
+          '$.reviewCount', ?, '$.reviewsCount', ?, '$.rating', ?
+        ) WHERE id = ?
+      `).bind(
+        nowPut, Number(stats?.review_count || 0), Number(stats?.review_count || 0),
+        Number(stats?.avg_rating || 0), placeIdForRating
+      ).run();
+
+      return jsonResponse({ success: true, message: 'تم تحديث التقييم بنجاح', id: reviewId }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
@@ -909,13 +1002,33 @@ try {
     const reviewId = (url.searchParams.get('id') || url.searchParams.get('review_id') || '').trim();
 
     try {
+      let affectedPlaceId = placeId;
       if (reviewId) {
+        const existing = await env.DB.prepare(`SELECT place_id FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
+        affectedPlaceId = existing?.place_id || affectedPlaceId;
         await env.DB.prepare(`DELETE FROM reviews WHERE id = ?`).bind(reviewId).run();
       } else if (placeId) {
         await env.DB.prepare(`DELETE FROM reviews WHERE place_id = ?`).bind(placeId).run();
       } else {
         return jsonResponse({ error: 'مطلوب id أو place_id لحذف المراجعات' }, 400, corsHeaders);
       }
+
+      if (affectedPlaceId) {
+        const stats = await env.DB.prepare(`
+          SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
+          FROM reviews WHERE place_id = ?
+        `).bind(affectedPlaceId).first();
+        await env.DB.prepare(`
+          UPDATE places SET updated_at = ?, stats_json = json_set(
+            COALESCE(stats_json, '{}'),
+            '$.reviewCount', ?, '$.reviewsCount', ?, '$.rating', ?
+          ) WHERE id = ?
+        `).bind(
+          Date.now(), Number(stats?.review_count || 0), Number(stats?.review_count || 0),
+          Number(stats?.avg_rating || 0), affectedPlaceId
+        ).run();
+      }
+
       return jsonResponse({ success: true, message: 'تم حذف التقييمات بنجاح' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
