@@ -13,3 +13,5 @@ database_id = "9e98b9d3-619f-4ef4-9af5-6458c2382251"
 
 [vars]
 OPENROUTER_API_KEY = "sk-or-v1-openrouter-free"
+[triggers]
+crons = ["0 * * * *"]
