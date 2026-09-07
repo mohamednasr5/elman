@@ -34,11 +34,11 @@ export function mountLivePulseSection(containerId) {
   if (!container) return;
 
   container.innerHTML = `
-    <section class="live-pulse-section" style="margin-bottom:var(--space-8, 2.5rem)">
+    <section class="live-pulse-section premium-feature-section" style="margin-bottom:var(--space-8, 2.5rem)">
       <div class="container" style="max-width:1240px;margin:0 auto;padding:0 12px">
         
         <!-- Luxury Gradient Header Banner -->
-        <div style="background:linear-gradient(135deg,#0B1E30 0%,#1B4F72 60%,#0369A1 100%);border-radius:22px;padding:22px 24px;color:#fff;margin-bottom:18px;box-shadow:0 10px 30px rgba(11,30,48,0.2);border:1.5px solid rgba(245,166,35,0.35);position:relative;overflow:hidden">
+        <div class="premium-feature-hero premium-live-hero" style="background:linear-gradient(135deg,#0B1E30 0%,#1B4F72 60%,#0369A1 100%);border-radius:22px;padding:22px 24px;color:#fff;margin-bottom:18px;box-shadow:0 10px 30px rgba(11,30,48,0.2);border:1.5px solid rgba(245,166,35,0.35);position:relative;overflow:hidden">
           
           <div style="position:absolute;top:-40px;left:-40px;width:160px;height:160px;background:rgba(245,166,35,0.12);border-radius:50%;filter:blur(30px);pointer-events:none"></div>
           
@@ -52,9 +52,9 @@ export function mountLivePulseSection(containerId) {
                 </div>
                 <h2 style="font-size:1.45rem;font-weight:900;color:#fff;margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                   <span>المنزلة والمطرية الآن</span>
-                  <span class="badge-live-pulse-vibrant"><span class="live-beacon-dot"></span><span>يحدث الآن</span></span>
-                  <span style="font-size:11px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:20px;padding:3px 10px;color:#38BDF8;font-weight:700;display:inline-flex;align-items:center;gap:4px">
-                    <span>🔄 يتجدد تلقائياً كل 15 دقيقة</span>
+                  <span class="premium-status-pill"><span class="premium-status-dot"></span><span>يحدث الآن</span></span>
+                  <span class="premium-refresh-pill" style="font-size:11px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:20px;padding:3px 10px;color:#38BDF8;font-weight:700;display:inline-flex;align-items:center;gap:4px">
+                    <span>↻ يتجدد تلقائياً كل 15 دقيقة</span>
                   </span>
                 </h2>
               </div>
@@ -63,8 +63,8 @@ export function mountLivePulseSection(containerId) {
               </p>
             </div>
 
-            <button type="button" id="btn-open-live-report-modal" class="btn btn-shimmer-live" style="border-radius:14px;font-weight:800;padding:10px 22px;color:#fff;font-size:13.5px;display:inline-flex;align-items:center;gap:8px;cursor:pointer">
-              <span style="font-size:16px">➕</span>
+            <button type="button" id="btn-open-live-report-modal" class="btn btn-shimmer-live premium-feature-cta" style="border-radius:14px;font-weight:800;padding:10px 22px;color:#fff;font-size:13.5px;display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+              <span class="premium-cta-icon" aria-hidden="true">+</span>
               <span>شارك خبراً أو فرصة عمل الآن</span>
             </button>
           </div>
@@ -75,25 +75,25 @@ export function mountLivePulseSection(containerId) {
               الكل 🌐
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="all" data-cat="jobs_vacant,jobs_seeker" style="border-radius:9999px;font-weight:800;font-size:12px;padding:6px 16px;color:#34D399;border-color:#34D399;flex-shrink:0;background:rgba(16,185,129,0.15)">
-              💼 وظائف وفرص عمل
+              وظائف وفرص عمل
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="all" data-cat="official_manzala,official_matariya" style="border-radius:9999px;font-weight:800;font-size:12px;padding:6px 16px;color:#38BDF8;border-color:#38BDF8;flex-shrink:0;background:rgba(56,189,248,0.15)">
-              🏛️ الأخبار الرسمية
+              الأخبار الرسمية
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="المنزلة" data-cat="all" style="border-radius:9999px;font-weight:700;font-size:12px;padding:6px 16px;color:#fff;border-color:rgba(255,255,255,0.3);flex-shrink:0">
-              📍 المنزلة
+              المنزلة
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="المطرية" data-cat="all" style="border-radius:9999px;font-weight:700;font-size:12px;padding:6px 16px;color:#fff;border-color:rgba(255,255,255,0.3);flex-shrink:0">
-              🌊 المطرية
+              المطرية
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="all" data-cat="atm" style="border-radius:9999px;font-weight:700;font-size:12px;padding:6px 16px;color:#fff;border-color:rgba(255,255,255,0.3);flex-shrink:0">
-              🏧 ماكينات ATM
+              ماكينات ATM
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="all" data-cat="traffic" style="border-radius:9999px;font-weight:700;font-size:12px;padding:6px 16px;color:#fff;border-color:rgba(255,255,255,0.3);flex-shrink:0">
-              🚧 الطرق والمرور
+              الطرق والمرور
             </button>
             <button type="button" class="btn btn-sm btn-outline live-filter-btn" data-city="all" data-cat="offers" style="border-radius:9999px;font-weight:700;font-size:12px;padding:6px 16px;color:#fff;border-color:rgba(255,255,255,0.3);flex-shrink:0">
-              🛒 عروض وتخفيضات
+              عروض وتخفيضات
             </button>
           </div>
 
