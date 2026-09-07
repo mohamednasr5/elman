@@ -215,7 +215,19 @@ async function d1WriteBusiness(path, method, data = null) {
 
     // Only the place row itself is writable through the current Worker API.
     if (parts.length === 2 && (method === 'POST' || method === 'PUT')) {
-      return d1Fetch('/api/places/sync', { method: 'POST', body: JSON.stringify({ id: parts[1], ...(data || {}) }) });
+      // Worker sync accepts a full place payload. For partial admin updates
+      // (e.g. sponsored/verified flags), merge the existing D1 row first so
+      // older deployments that validate name/slug cannot reject the update.
+      let payload = { id: parts[1], ...(data || {}) };
+      if (!String(payload.name || '').trim() || !String(payload.slug || '').trim()) {
+        try {
+          const existing = await d1GetBusiness(`places/${parts[1]}`);
+          if (existing && typeof existing === 'object') {
+            payload = { ...existing, ...payload, id: parts[1] };
+          }
+        } catch (_) {}
+      }
+      return d1Fetch('/api/places/sync', { method: 'POST', body: JSON.stringify(payload) });
     }
 
     if (parts.length === 2 && method === 'DELETE') {
