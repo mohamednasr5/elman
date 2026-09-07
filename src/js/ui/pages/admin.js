@@ -307,7 +307,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
     }
   });
   
-  await switchAdminSection(section, false);
+  await switchAdminSection(_currentSection, false);
   preloadAdminData();
 }
 
