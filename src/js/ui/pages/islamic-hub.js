@@ -41,10 +41,10 @@ async function getJson(url){
   try{return await p}catch(e){cache.delete(url);throw e}
 }
 
-function shell(title,sub,icon,showAyah=false){
- const heroSlot=showAyah
-  ? '<div class="ih-ayah-today" id="ih-ayah-today"><div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text"><div class="ih-pulse"></div></div><div class="ih-ayah-today-meta">جاري اختيار آية عشوائية من المصحف الشريف…</div></div>'
-  : '<div class="ih-quran-emblem"><img src="./quran/00.jpg" alt="القرآن الكريم" class="ih-quran-emblem-img"><span class="ih-quran-shine" aria-hidden="true"></span></div>';
+function shell(title,sub,icon){
+ // Unified hero: the same-sized "آية اليوم" panel appears on Quran,
+ // Quran Search, and Hadith pages.
+ const heroSlot='<div class="ih-ayah-today" id="ih-ayah-today"><div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text"><div class="ih-pulse"></div></div><div class="ih-ayah-today-meta">جاري اختيار آية عشوائية من المصحف الشريف…</div></div>';
  return '<div class="islamic-hub"><div class="ih-wrap">'+
  '<section class="ih-hero"><div class="ih-hero-copy">'+
  '<span class="ih-kicker">✦ القسم الإسلامي · دليل المنزلة والمطرية</span>'+
@@ -52,6 +52,23 @@ function shell(title,sub,icon,showAyah=false){
  '<div class="ih-tools"><a class="ih-btn" href="index.html">الرئيسية</a><a class="ih-btn" href="quran-search.html">الباحث القرآني</a><a class="ih-btn" href="hadith.html">الأحاديث</a></div>'+
  '</div><div class="ih-ornament ih-hero-slot">'+heroSlot+'</div></section>'+
  '<section id="ih-content" class="ih-card"><div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تجهيز المحتوى محلياً…</p></div></div></section></div></div>';
+}
+
+async function mountDailyAyah(container){
+ const today=container?.querySelector('#ih-ayah-today');
+ if(!today)return;
+ try{
+  const meta=await loadQuranMeta();
+  if(!meta.length)throw new Error('Quran metadata is empty');
+  const chosen=meta[Math.floor(Math.random()*meta.length)];
+  const surah=await loadSurah(chosen.number);
+  if(!surah.ayahs.length)throw new Error('Selected surah has no ayahs');
+  const ayah=surah.ayahs[Math.floor(Math.random()*surah.ayahs.length)];
+  today.innerHTML='<div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text">'+esc(ayah.text)+'</div><div class="ih-ayah-today-meta"><a href="quran-surah.html?surah='+chosen.number+'">سورة '+esc(chosen.name||surah.name)+'</a> · آية '+ayah.n+'</div>';
+ }catch(e){
+  today.innerHTML='<div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text">تعذر تحميل الآية الآن.</div>';
+  console.error('[IslamicHub] Daily Ayah',e);
+ }
 }
 
 async function loadQuranMeta(){
@@ -70,19 +87,11 @@ async function loadAllQuran(){
 }
 function score(text,q){ const t=norm(text); if(!q)return 0; if(t===q)return 1000;if(t.includes(q))return 700; const ws=q.split(' ').filter(Boolean); const hit=ws.filter(w=>t.includes(w)).length; return hit?(hit*100+(hit===ws.length?50:0)):0; }
 async function renderQuran(container){
- container.innerHTML=shell('القرآن الكريم','تلاوة القرآن الكريم محلياً بسرعة عالية، مع تحميل السورة عند اختيارها ودعم PWA.','✦',true);
+ container.innerHTML=shell('القرآن الكريم','تلاوة القرآن الكريم محلياً بسرعة عالية، مع تحميل السورة عند اختيارها ودعم PWA.','✦');
  const box=container.querySelector('#ih-content'),today=container.querySelector('#ih-ayah-today');
  try{
   const meta=await loadQuranMeta();
-  const total=meta.reduce((sum,s)=>sum+(s.count||0),0);
-  let target=Math.floor(Math.random()*Math.max(total,1));
-  let chosen=meta[meta.length-1];
-  for(const s of meta){if(target<s.count){chosen=s;break}target-=s.count}
-  const surah=await loadSurah(chosen.number);
-  const ayah=surah.ayahs[target]||surah.ayahs[Math.floor(Math.random()*surah.ayahs.length)];
-  if(today){
-   today.innerHTML='<div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text">'+esc(ayah?.text||'')+'</div><div class="ih-ayah-today-meta"><a href="quran-surah.html?surah='+chosen.number+'">سورة '+esc(chosen.name)+'</a> · آية '+(ayah?.n||'')+'</div>';
-  }
+  await mountDailyAyah(container);
   box.innerHTML='<div class="ih-meta"><b>سور القرآن الكريم</b><span>'+meta.length+' سورة · اختر السورة لفتح صفحة مستقلة</span></div><div class="ih-surah-list">'+meta.map(s=>'<a class="ih-surah" href="quran-surah.html?surah='+s.number+'"><strong>'+esc(s.name)+'</strong><small>'+s.count+' آية · '+esc(s.type)+'</small></a>').join('')+'</div>';
  }catch(e){
   if(today)today.innerHTML='<div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text">تعذر تحميل الآية الآن.</div>';
@@ -91,6 +100,7 @@ async function renderQuran(container){
 }
 async function renderQuranSearch(container){
  container.innerHTML=shell('الباحث في القرآن الكريم','','⌕');
+ await mountDailyAyah(container);
  const box=container.querySelector('#ih-content');
  box.innerHTML='<div class="ih-search-head"><input id="quran-q" class="ih-input" autofocus placeholder="ابحث بكلمة أو آية…" autocomplete="off" inputmode="search"><span id="quran-count" class="ih-count">جاهز</span></div><div id="quran-results" class="ih-results"><div class="ih-empty">ابدأ البحث وستظهر النتائج هنا.</div></div>';
  const input=box.querySelector('#quran-q'),out=box.querySelector('#quran-results'),count=box.querySelector('#quran-count');
@@ -145,7 +155,7 @@ async function renderQuranSearch(container){
  input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>draw(),20)});
 }
 async function loadHadithBook(book){ const key='hadith:'+book.id;if(cache.has(key))return cache.get(key);const p=(async()=>{const files=Array.from({length:book.chapters},(_,i)=>String(i+1));if(book.id===2)files.unshift('introduction');if(book.id===6)files.unshift('introduction');if(book.id===9)files.unshift('introduction');if(book.chapters===1)files[0]='';const results=await Promise.all(files.map(async ch=>{const file=ch?ch+'.json':'all.json';const url='./hadith/db/by_chapter/'+book.path[0]+'/'+book.path[1]+'/'+file;try{return await getJson(url)}catch(_){return null}}));return results.flatMap(x=>Array.isArray(x?.hadiths)?x.hadiths:[])})();cache.set(key,p);return p; }
-async function renderHadith(container){ container.innerHTML=shell('الأحاديث الشريفة','تصفح كتب الحديث المحلية، وحمّل الكتاب عند الحاجة فقط للحفاظ على السرعة واستهلاك أقل للبيانات.','۞'); const box=container.querySelector('#ih-content');box.innerHTML='<div class="ih-meta"><b>كتب الحديث</b><span>17 كتاباً</span></div><div class="ih-book-grid">'+HADITH_BOOKS.map(b=>'<button class="ih-book" data-id="'+b.id+'"><span class="ih-book-icon">۞</span><strong>'+esc(b.title)+'</strong><small>'+b.chapters+' فصول تقريباً</small></button>').join('')+'</div><div id="hadith-panel" class="ih-results"></div>';const panel=box.querySelector('#hadith-panel');box.querySelectorAll('.ih-book').forEach(btn=>btn.addEventListener('click',async()=>{const book=HADITH_BOOKS.find(b=>b.id===Number(btn.dataset.id));panel.innerHTML='<div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تحميل '+esc(book.title)+' محلياً…</p></div></div>';try{const hadith=await loadHadithBook(book);panel.innerHTML='<div class="ih-search-head"><input class="ih-input" id="hadith-q" placeholder="ابحث داخل '+esc(book.title)+'…" autocomplete="off"><span id="hadith-count" class="ih-count">'+hadith.length+' حديث</span></div><div id="hadith-list" class="ih-results"></div>';const input=panel.querySelector('#hadith-q'),list=panel.querySelector('#hadith-list'),count=panel.querySelector('#hadith-count');const draw=()=>{const q=norm(input.value);const rows=(q?hadith.map(h=>({h,s:score((h.arabic||'')+' '+(h.english?.text||''),q)})).filter(x=>x.s).sort((a,b)=>b.s-a.s).slice(0,100).map(x=>x.h):hadith.slice(0,30));count.textContent=(q?rows.length:Math.min(30,hadith.length))+' حديث';list.innerHTML=rows.length?rows.map(h=>'<article class="ih-result"><div class="ih-meta"><b>'+esc(book.title)+'</b><span>#'+esc(h.idInBook||h.id)+'</span></div><div class="ih-hadith">'+esc(h.arabic||'')+'</div></article>').join(''):'<div class="ih-empty">لا توجد نتائج.</div>';};input.addEventListener('input',draw);draw();panel.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){panel.innerHTML='<div class="ih-empty">تعذر تحميل هذا الكتاب من الملفات المحلية.</div>';console.error('[IslamicHub] Hadith',e)}})); }
+async function renderHadith(container){ container.innerHTML=shell('الأحاديث الشريفة','تصفح كتب الحديث المحلية، وحمّل الكتاب عند الحاجة فقط للحفاظ على السرعة واستهلاك أقل للبيانات.','۞'); await mountDailyAyah(container); const box=container.querySelector('#ih-content');box.innerHTML='<div class="ih-meta"><b>كتب الحديث</b><span>17 كتاباً</span></div><div class="ih-book-grid">'+HADITH_BOOKS.map(b=>'<button class="ih-book" data-id="'+b.id+'"><span class="ih-book-icon">۞</span><strong>'+esc(b.title)+'</strong><small>'+b.chapters+' فصول تقريباً</small></button>').join('')+'</div><div id="hadith-panel" class="ih-results"></div>';const panel=box.querySelector('#hadith-panel');box.querySelectorAll('.ih-book').forEach(btn=>btn.addEventListener('click',async()=>{const book=HADITH_BOOKS.find(b=>b.id===Number(btn.dataset.id));panel.innerHTML='<div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تحميل '+esc(book.title)+' محلياً…</p></div></div>';try{const hadith=await loadHadithBook(book);panel.innerHTML='<div class="ih-search-head"><input class="ih-input" id="hadith-q" placeholder="ابحث داخل '+esc(book.title)+'…" autocomplete="off"><span id="hadith-count" class="ih-count">'+hadith.length+' حديث</span></div><div id="hadith-list" class="ih-results"></div>';const input=panel.querySelector('#hadith-q'),list=panel.querySelector('#hadith-list'),count=panel.querySelector('#hadith-count');const draw=()=>{const q=norm(input.value);const rows=(q?hadith.map(h=>({h,s:score((h.arabic||'')+' '+(h.english?.text||''),q)})).filter(x=>x.s).sort((a,b)=>b.s-a.s).slice(0,100).map(x=>x.h):hadith.slice(0,30));count.textContent=(q?rows.length:Math.min(30,hadith.length))+' حديث';list.innerHTML=rows.length?rows.map(h=>'<article class="ih-result"><div class="ih-meta"><b>'+esc(book.title)+'</b><span>#'+esc(h.idInBook||h.id)+'</span></div><div class="ih-hadith">'+esc(h.arabic||'')+'</div></article>').join(''):'<div class="ih-empty">لا توجد نتائج.</div>';};input.addEventListener('input',draw);draw();panel.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){panel.innerHTML='<div class="ih-empty">تعذر تحميل هذا الكتاب من الملفات المحلية.</div>';console.error('[IslamicHub] Hadith',e)}})); }
 function tajweedHtml(text,rules){const arr=Array.isArray(rules)?rules.slice().sort((a,b)=>a.start-b.start):[];if(!arr.length)return esc(text);let out='',pos=0;for(const r of arr){const st=Math.max(0,Number(r.start)||0),en=Math.min(text.length,Number(r.end)||0);if(st<pos||en<=st)continue;out+=esc(text.slice(pos,st));out+='<span class="tw-'+esc(r.rule)+'">'+esc(text.slice(st,en))+'</span>';pos=en}return out+esc(text.slice(pos));}
 async function loadTajweed(n){try{return await getJson('./quran/source/tajweed/surah_'+n+'.json')}catch(_){return null}}
 async function loadAudioIndex(n){try{return await getJson('./quran/source/audio/'+String(n).padStart(3,'0')+'/index.json')}catch(_){return null}}
