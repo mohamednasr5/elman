@@ -50,7 +50,7 @@ function shell(title,sub,icon,showAyah=true){
  return '<div class="islamic-hub"><div class="ih-wrap">'+
  '<section class="ih-hero"><div class="ih-hero-copy">'+
  '<span class="ih-kicker">✦ القسم الإسلامي · دليل المنزلة والمطرية</span>'+
- '<h1 class="ih-title">'+icon+' '+title+'</h1>'+(sub?'<p class="ih-sub">'+sub+'</p>':'')'+
+ '<h1 class="ih-title">'+icon+' '+title+'</h1>'+(sub?'<p class="ih-sub">'+sub+'</p>':'')+
  '<div class="ih-tools"><a class="ih-btn" href="index.html">الرئيسية</a><a class="ih-btn" href="quran-search.html">الباحث القرآني</a><a class="ih-btn" href="hadith.html">الأحاديث</a></div>'+
  '</div><div class="ih-ornament ih-hero-slot">'+heroSlot+'</div></section>'+
  '<section id="ih-content" class="ih-card"><div class="ih-loading"><div><div class="ih-pulse"></div><p>جاري تجهيز المحتوى محلياً…</p></div></div></section></div></div>';
