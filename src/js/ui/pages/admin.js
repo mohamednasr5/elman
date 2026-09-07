@@ -884,6 +884,7 @@ async function renderAdminPlaces($container) {
               <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">المنطقة</th>
               <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">إعلان مدفوع ⭐</th>
               <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">التوثيق</th>
+              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">نسبة الثقة</th>
               <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">الحالة</th>
               <th style="color:#F8FAFC;font-weight:800;padding:12px 14px;min-width:180px">إجراءات</th>
             </tr>
@@ -1066,6 +1067,10 @@ async function renderAdminPlaces($container) {
     } else if (action === 'toggle-verify') {
       const status = actionBtn.getAttribute('data-status') === 'true';
       if (typeof window.togglePlaceVerification === 'function') window.togglePlaceVerification(id, status);
+    } else if (action === 'save-trust') {
+      const input = actionBtn.closest('td')?.querySelector('[data-trust-input]');
+      const score = input ? Number(input.value) : NaN;
+      if (typeof window.savePlaceTrustScore === 'function') window.savePlaceTrustScore(id, score);
     }
   });
 
@@ -1077,7 +1082,7 @@ async function renderAdminPlaces($container) {
 
 function renderAdminPlacesTableRows(places) {
   if (!places.length) {
-    return '<tr><td colspan="7" class="text-center" style="color:#94A3B8;padding:2.5rem;font-weight:700">لا توجد أماكن مطابقة للبحث</td></tr>';
+    return '<tr><td colspan="8" class="text-center" style="color:#94A3B8;padding:2.5rem;font-weight:700">لا توجد أماكن مطابقة للبحث</td></tr>';
   }
 
   return places.map(p => {
@@ -1138,6 +1143,16 @@ function renderAdminPlacesTableRows(places) {
             <span style="pointer-events:none;display:inline-flex">${p.isVerified ? ICONS.x : ICONS.shield}</span>
             <span>${p.isVerified ? 'إلغاء التوثيق' : 'توثيق'}</span>
           </button>
+        </td>
+        <td style="padding:10px 14px;min-width:145px">
+          ${(() => {
+            const trust = Math.max(0, Math.min(100, Number(p.trustScore ?? p.trust_score ?? 0) || 0));
+            const c = trust < 50 ? '#EF4444' : trust < 70 ? '#F59E0B' : '#10B981';
+            return `<div style="display:flex;align-items:center;gap:6px">
+              <input type="number" min="0" max="100" step="1" value="${trust}" data-trust-input="${escAttr(p._id)}" aria-label="نسبة الثقة" style="width:72px;padding:6px 7px;border-radius:7px;border:1px solid ${c};background:#102A43;color:#fff;font-weight:900;text-align:center">
+              <button type="button" class="btn btn-xs" data-action="save-trust" data-id="${escAttr(p._id)}" style="background:${c};color:#fff;border:none;border-radius:7px;padding:6px 8px;font-weight:900;cursor:pointer" title="حفظ نسبة الثقة">حفظ</button>
+            </div><div style="margin-top:4px;color:${c};font-size:10.5px;font-weight:800">${trust}/100</div>`;
+          })()}
         </td>
         <td style="padding:12px 14px">${statusBadgeHtml}</td>
         <td style="padding:12px 14px">
@@ -4695,6 +4710,24 @@ window.togglePlaceSponsored = async (placeId, newStatus) => {
   }
 };
 
+window.savePlaceTrustScore = async (placeId, score) => {
+  const value = Number(score);
+  if (!Number.isFinite(value) || value < 0 || value > 100) { toast.warning('نسبة الثقة يجب أن تكون بين 0 و100'); return; }
+  const trustScore = Math.round(value);
+  try {
+    let placeData = adminCache.places ? adminCache.places[placeId] : null;
+    if (!placeData) placeData = await getPlace(placeId).catch(() => null);
+    const updates = { trustScore, trust_score: trustScore, updatedAt: Date.now() };
+    await syncPlaceToWorkerD1(placeId, { ...(placeData || { id: placeId }), ...updates });
+    await invalidateLocalPlaceCache(placeId, placeData?.slug);
+    if (adminCache.places?.[placeId]) Object.assign(adminCache.places[placeId], updates);
+    toast.success('تم حفظ نسبة الثقة: ' + trustScore + '/100 ✓');
+    if (typeof switchAdminSection === 'function') switchAdminSection(_currentSection, false);
+  } catch (err) {
+    console.error('[Admin] Trust score update error:', err);
+    toast.error('فشل حفظ نسبة الثقة: ' + (err?.message || 'خطأ غير متوقع'));
+  }
+};
 window.togglePlaceVerification = async (placeId, status) => {
   try {
     const updates = {
