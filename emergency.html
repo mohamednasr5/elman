@@ -19,7 +19,7 @@
 .e-grid-hero{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(240px,.8fr);gap:28px;align-items:center}
 .e-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);font-size:11px;font-weight:800;color:#bfeff3}
 .e-live-dot{width:7px;height:7px;border-radius:50%;background:var(--e-cyan);box-shadow:0 0 0 5px rgba(37,198,213,.10);animation:ePulse 1.6s ease-in-out infinite}
-.e-h1{margin:17px 0 8px;font-size:clamp(30px,4.5vw,52px);font-weight:900;line-height:1.12;letter-spacing:-1.3px}.e-h1 span{color:#7be6ee}.e-desc{max-width:690px;margin:0;color:rgba(255,255,255,.76);font-size:13px;line-height:1.9}
+.e-h1{margin:17px 0 8px;font-size:clamp(30px,4.5vw,52px);font-weight:900;line-height:1.12;letter-spacing:-1.3px}.e-h1 span{color:#fff}.e-desc{max-width:690px;margin:0;color:rgba(255,255,255,.76);font-size:13px;line-height:1.9}
 .e-hero-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}.e-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:14px;color:#0a2234;background:linear-gradient(135deg,#f5a623,#ffc75e);font-weight:900;text-decoration:none;box-shadow:0 10px 24px rgba(245,166,35,.16);transition:transform .25s ease,box-shadow .25s ease}.e-primary:hover{transform:translateY(-3px);box-shadow:0 15px 30px rgba(245,166,35,.24)}
 .e-secondary{display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:14px;color:#dff6f8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);font-size:12px;font-weight:800;text-decoration:none;transition:.25s}.e-secondary:hover{background:rgba(255,255,255,.11);transform:translateY(-2px)}
 .e-emblem{justify-self:end;width:240px;height:240px;border-radius:50%;position:relative;display:grid;place-items:center;background:radial-gradient(circle at center,rgba(37,198,213,.10) 0 8%,rgba(9,40,61,.78) 38%,rgba(6,27,43,.96) 72%);border:1px solid rgba(123,230,238,.24);box-shadow:inset 0 0 55px rgba(37,198,213,.10),0 18px 55px rgba(0,0,0,.20);animation:eFloat 4.5s ease-in-out infinite;overflow:visible}
@@ -57,17 +57,25 @@ await initPage('emergency.html');
 
 const groups=[
 ['core','أرقام الطوارئ الأساسية',[
-['الأمن العام','115'],['وزارة الداخلية','138'],['دار الإفتاء المصرية','107'],['طوارئ الشرطة والنجدة','122'],['الإسعاف','123']]],
-['gov','الهيئات والوزارات والخدمات',[
-['الهيئة العامة للتأمين الصحي','106'],['وزارة التربية والتعليم','19151'],['الهيئة العامة لتعليم الكبار','19556'],['وزارة السياحة','19654'],['وزارة الدفاع','19136'],['وزارة البيئة','19808'],['الهيئة العامة للتأمين الصحي','19806'],['وزارة التربية والتعليم','19126'],['جامعة القاهرة - مركز التعليم المفتوح','19545'],['الهيئة العامة للخدمات البيطرية','19561'],['وزارة التجارة والصناعة','19805'],['هيئة الرقابة الإدارية','16100'],['هيئة سوق المال','16916'],['البريد المصري','16789'],['الهيئة القومية للتأمينات الاجتماعية','16217'],['الهيئة العامة للاستثمار','16035'],['هيئة تنمية صناعة تكنولوجيا المعلومات','16248'],['الصندوق الاجتماعي للتنمية','19733'],['الهيئة العامة للرقابة على الصادرات','19591'],['مبيعات كبار العملاء','19526'],['الهيئة المصرية للرقابة على التأمين','19053'],['مجلس التدريب الصناعي','16456'],['تكنولوجيا تشغيل المنشآت المالية والمرافق والخدمات','19680']]],
-['police','المباحث والخدمات الأمنية',[
-['سرقات المتاجر','4243479'],['سرقات السيارات','4268822'],['جرائم النشل','4268822'],['قسم مكافحة المخدرات','4269966'],['جرائم الأموال العامة','4203208'],['جرائم الآداب','4269955'],['جرائم المصنفات الفنية','4268305'],['مباحث المرور','4949547'],['شرطة المرافق','4244322'],['مباحث التهرب الضريبي','4843222'],['الإسعاف','3925810'],['عمليات المرور','01200103633'],['شرطة التموين','4204669']]],
-['net','مباحث الإنترنت',[
+['شرطة النجدة','122'],['الإسعاف المصرية','123'],['الأمن العام','115'],['حوادث المرور','121110000'],['المطافئ المصرية','180'],['الرعاية الحرجة والعاجلة','16474']]],
+['gov','الأرقام الهامة لمؤسسات الدولة',[
+['وزارة الداخلية','138'],['دار الإفتاء المصرية','107'],['الهيئة العامة للتأمين الصحي','106'],['التربية والتعليم','19151'],['الهيئة العامة لتعليم الكبار','19556'],['وزارة السياحة','19654'],['وزارة الدفاع','19136'],['وزارة البيئة','19808'],['الهيئة العامة للتأمين الصحي','19806'],['وزارة التربية والتعليم','19126'],['جامعة القاهرة - مركز التعليم المفتوح','19545'],['الهيئة العامة للخدمات البيطرية','19561'],['وزارة التجارة والصناعة','19805'],['هيئة الرقابة الإدارية','16100'],['هيئة سوق المال','16916'],['البريد المصري','16789'],['الهيئة القومية للتأمينات الاجتماعية','16217'],['الهيئة العامة للاستثمار','16035'],['هيئة تنمية صناعة تكنولوجيا المعلومات','16248'],['الصندوق الاجتماعي للتنمية','19733'],['الهيئة العامة للرقابة على الصادرات','19591'],['مبيعات كبار العملاء','19526'],['الهيئة المصرية للرقابة على التأمين','19053'],['مجلس التدريب الصناعي','19654'],['تكنولوجيا تشغيل المنشآت المالية','19680']]],
+['services','المرافق والخدمات',[
+['شكاوى المياه','125'],['شكاوى الكهرباء','121'],['شكاوى الغاز','129'],['الهيئة العامة لنظافة وتجميل القاهرة','152'],['الهيئة العامة للصرف الصحي','175'],['مرفق الاتصالات','155'],['المجلس القومي للأمومة والطفولة','16000'],['المجلس القومي لحقوق الإنسان','16021'],['مركز اتصال المصرية والاتصالات','19932'],['مركز معلومات شبكات المرافق','111'],['مشروع حساب لكل بيت','19895'],['مرفق الاتصالات','19246']]],
+['aviation','خدمات الطيران',[
+['شركة مطار القاهرة','199970'],['شرطة طيران الإمارات','19899'],['الخطوط الجوية السعودية','19898'],['ميناء القاهرة الجوي','16707']]],
+['health','خدمات الصحة',[
+['إنفلونزا الطيور','105'],['الرعاية الحرجة والعاجلة','1647'],['الرعاية الحرجة والعاجلة','1647']]],
+['police','خدمات الشرطة والمباحث',[
+['سرقات المتاجر','4243479'],['سرقات السيارات','4268822'],['جرائم النشل','4268822'],['قسم مكافحة المخدرات','4269966'],['جرائم الأموال العامة','4203208'],['جرائم الآداب','4269955'],['جرائم المصنفات الفنية','4268305'],['مباحث المرور','4949547'],['شرطة المرافق','4244322'],['جرائم المصنفات الفنية','4268305']]],
+['reports','للإبلاغ عن أي مخالفات',[
+['مباحث التليفونات','484222'],['مباحث التهرب الضريبي','4863754'],['الإسعاف','3925810'],['عمليات المرور','01200003633']]],
+['net','أرقام مباحث الإنترنت',[
 ['مباحث الإنترنت','0227921487'],['مباحث الإنترنت','0227921490'],['مباحث الإنترنت','0227921490']]],
-['nat','الأمن الوطني',[
+['nat','أرقام الأمن الوطني',[
 ['الأمن الوطني','022645000'],['الأمن الوطني','022646000'],['الأمن الوطني','022647000']]]
 ];
-const iconFor={core:'<path d="M12 3 4 7v5c0 4.8 3.1 8 8 9 4.9-1 8-4.2 8-9V7l-8-4Z"/><path d="M12 8v5"/><circle cx="12" cy="16.3" r=".7" fill="currentColor" stroke="none"/>',gov:'<path d="M3.5 21h17"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/><path d="M8 11h0M12 11h0M16 11h0" stroke-linecap="round"/>',police:'<path d="M12 3 5 6v5c0 4.5 3 8 7 9 4-1 7-4.5 7-9V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>',net:'<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M8 20h8M12 16v4"/>',nat:'<path d="M12 3 5 6v5c0 4.5 3 8 7 9 4-1 7-4.5 7-9V6l-7-3Z"/><circle cx="12" cy="12" r="2.8"/><path d="M12 9v1m0 4v1m-3-3h1m4 0h1"/>'};
+const iconFor={core:'<path d="M12 3 4 7v5c0 4.8 3.1 8 8 9 4.9-1 8-4.2 8-9V7l-8-4Z"/><path d="M12 8v5"/><circle cx="12" cy="16.3" r=".7" fill="currentColor" stroke="none"/>',gov:'<path d="M3.5 21h17"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/><path d="M8 11h0M12 11h0M16 11h0" stroke-linecap="round"/>',services:'<path d="M4 20h16"/><path d="M6 20v-7h12v7M8 13V7h8v6"/><path d="M9 7V4h6v3M10 16h0M14 16h0" stroke-linecap="round"/>',aviation:'<path d="m3 13 18-6-7 8-1 6-2-5-5-1 3-2-6 0Z"/><path d="m14 15 4 4"/>',health:'<path d="M12 21s-7-4.3-9-9.1C1.6 8.4 3.5 5 7 5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.5 0 5.4 3.4 4 6.9C19 16.7 12 21 12 21Z"/><path d="M12 9v6M9 12h6"/>',police:'<path d="M12 3 5 6v5c0 4.5 3 8 7 9 4-1 7-4.5 7-9V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>',reports:'<path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/>',net:'<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M8 20h8M12 16v4"/>',nat:'<path d="M12 3 5 6v5c0 4.5 3 8 7 9 4-1 7-4.5 7-9V6l-7-3Z"/><circle cx="12" cy="12" r="2.8"/><path d="M12 9v1m0 4v1m-3-3h1m4 0h1"/>'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s??'').toLowerCase().replace(/\s+/g,'').replace(/[()\-]/g,'');
 const callSvg='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 4.3h3.1l1.4 4-1.9 1.5a10.8 10.8 0 0 0 5.2 5.2l1.5-1.9 4 1.4v3.1c0 .9-.7 1.6-1.6 1.6A14.1 14.1 0 0 1 4.8 5.9c0-.9.7-1.6 1.6-1.6Z"/></svg>';
@@ -87,7 +95,7 @@ document.getElementById('page-container').innerHTML=`
   </section>
   <div class="e-tools"><input id="e-search" class="e-search" placeholder="ابحث باسم الهيئة أو الخدمة أو الرقم…" autocomplete="off"><button id="e-reset" class="e-secondary" style="color:var(--e-ink);background:var(--e-surface)">إظهار الكل</button></div>
   <div class="e-tabs" role="tablist">${groups.map(([key,title])=>`<button class="e-tab${key==='core'?' active':''}" data-group="${key}" role="tab" aria-selected="${key==='core'}"><svg viewBox="0 0 24 24">${iconFor[key]}</svg>${esc(title)}</button>`).join('')}</div>
-  <div class="e-quick"><a class="e-q" href="tel:115"><span class="e-q-label"><strong>الأمن العام</strong><small>اتصال مباشر</small></span><span class="e-q-num">115</span></a><a class="e-q" href="tel:122"><span class="e-q-label"><strong>النجدة</strong><small>الاسم الرقمي</small></span><span class="e-q-num">122</span></a><a class="e-q" href="tel:123"><span class="e-q-label"><strong>الإسعاف</strong><small>حالة طارئة</small></span><span class="e-q-num">123</span></a></div>
+  <div class="e-quick"><a class="e-q" href="tel:115"><span class="e-q-label"><strong>الأمن العام</strong><small>اتصال مباشر</small></span><span class="e-q-num">115</span></a><a class="e-q" href="tel:122"><span class="e-q-label"><strong>طوارئ الشرطة والنجدة</strong><small>اتصال مباشر</small></span><span class="e-q-num">122</span></a><a class="e-q" href="tel:123"><span class="e-q-label"><strong>الإسعاف</strong><small>حالة طارئة</small></span><span class="e-q-num">123</span></a></div>
   <div id="directory"></div>
   <div class="e-foot">تنبيه: الأرقام المعروضة مبنية على البيانات المدرجة في دليل المنزلة والمطرية. في الحالات الحرجة، استخدم رقم الطوارئ الرسمي المناسب وتحقق من الرقم عند الحاجة.</div>
 </div>`;
