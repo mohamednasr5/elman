@@ -14,6 +14,7 @@ import {
   getCategorySvg, 
   getProfessionSvg 
 } from '../../utils/professions-data.js';
+import { getCategoryVisualMeta, renderCategoryCardIcon } from '../../utils/category-visual.js';
 
 let _catUserLocation = null;
 
@@ -115,15 +116,13 @@ export async function renderCategoriesPage($container) {
     const count = countMap[cat.slug] || countMap[cat._key] || countMap[cat.id] || 0;
     const catSlug = cat.slug || cat._key || cat.id || '';
     const craftCat = getCategoryBySlug(catSlug);
-    const catColor = craftCat ? craftCat.color : (getDefaultPlaceAssets({}, cat).categoryColor || '#0284c7');
-    const svgIcon = getCategorySvg(catSlug || cat.name, { size: 40, color: catColor });
-    const iconInner = svgIcon || `<span class="category-icon-orb" aria-hidden="true">${cat.icon || '📁'}</span>`;
+    const visual = getCategoryVisualMeta(craftCat || cat);
+    const iconHtml = renderCategoryCardIcon(craftCat || cat, { size: 42 });
 
     return `
-      <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}" class="category-card animate-fade-in" style="--cat-color:${catColor}">
-        <div class="category-card__icon category-card__icon--premium" style="--cat-color:${catColor}">
-          ${iconInner}
-          <span class="category-icon-ring" aria-hidden="true"></span>
+      <a href="category.html?slug=${encodeURIComponent(cat.slug || cat._key)}" class="category-card animate-fade-in" style="--cat-color:${visual.color};--cat-bg:${visual.bgColor};--cat-border:${visual.borderColor}">
+        <div class="category-card__icon" style="background:${visual.bgColor};border-color:${visual.borderColor};--cat-color:${visual.color};">
+          ${iconHtml}
         </div>
         <div class="category-card__name">${escHtml(cat.name)}</div>
         <div class="category-card__count">${count > 0 ? `${count} مكان` : 'استكشف الأماكن'}</div>
@@ -185,6 +184,7 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   }
 
   const craftCat = getCategoryBySlug(cat.slug || cat._key || cat.id);
+  const catVisual = getCategoryVisualMeta(craftCat || cat);
   const craftSvgIcon = craftCat ? getCategorySvg(craftCat.slug, { size: 54, color: craftCat.color }) : null;
   const initialProfFilter = (query && query.prof) || (new URLSearchParams(window.location.search).get('prof')) || 'all';
   let currentProfessionFilter = initialProfFilter;
@@ -230,8 +230,8 @@ export async function renderCategoryPage($container, { slug, query, user }) {
 
     <div class="category-page-header">
       <div class="container text-center">
-        <div class="category-page-icon" style="margin:0 auto var(--space-4);background:transparent;display:flex;align-items:center;justify-content:center">
-          ${getCategorySvg(cat.slug || cat._key || cat.id || cat.name, { size: 56, color: craftCat?.color || '#0284c7' })}
+        <div class="category-page-icon" style="margin:0 auto var(--space-4);width:76px;height:76px;background:${catVisual.bgColor};border:2px solid ${catVisual.borderColor};border-radius:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px color-mix(in srgb, ${catVisual.color} 20%, transparent)">
+          ${renderCategoryCardIcon(craftCat || cat, { size: 52 })}
         </div>
         <h1 style="font-size:var(--font-size-3xl);font-weight:800;color:var(--primary);margin-bottom:var(--space-2)">
           ${escHtml(cat.name)} في المنزلة والمطرية

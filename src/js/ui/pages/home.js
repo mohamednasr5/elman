@@ -16,6 +16,7 @@ import { mountLivePulseSection } from '../components/LivePulseSection.js';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';
+import { getCategoryVisualMeta, renderCategoryCardIcon } from '../../utils/category-visual.js';
 
 const CATEGORY_EMOJIS = {
   'pharmacy':      { emoji: '💊', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
@@ -146,14 +147,16 @@ function renderCategories(categories) {
 
   grid.innerHTML = categories.map(cat => {
     const slug = cat.slug || cat._key || cat.id || '';
-    const craftSvg = getCategorySvg(slug || cat.name, 36);
-    const style = CATEGORY_EMOJIS[slug] || DEFAULT_CAT;
+    const visual = getCategoryVisualMeta(cat);
+    const iconHtml = renderCategoryCardIcon(cat, { size: 40 });
     return `
       <a href="category.html?slug=${encodeURIComponent(slug)}"
          class="category-card animate-fade-in"
-         style="--cat-color-border:${style.border}"
+         style="--cat-color:${visual.color};--cat-bg:${visual.bgColor};--cat-border:${visual.borderColor}"
          aria-label="${cat.name}">
-        <div class="category-card__icon">${craftSvg || cat.icon || style.emoji}</div>
+        <div class="category-card__icon" style="background:${visual.bgColor};border-color:${visual.borderColor};--cat-color:${visual.color};">
+          ${iconHtml}
+        </div>
         <div class="category-card__name">${escHtml(cat.name)}</div>
       </a>
     `;

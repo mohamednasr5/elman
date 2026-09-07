@@ -1056,9 +1056,10 @@ export function searchProfessionsAndCategories(query) {
 }
 
 /**
- * Render Category SVG
+ * Render Category SVG & Visual Metadata
  */
-import { getCategorySvg as _getCategorySvg } from "./category-svg.js";
+import { getCategorySvg as _getCategorySvg, getDressSvg, getCategoryVisualMeta, renderCategoryCardIcon } from "./category-svg.js";
+export { getDressSvg, getCategoryVisualMeta, renderCategoryCardIcon };
 export function getCategorySvg(slug, options = {}) {
   return _getCategorySvg(slug, options);
 }

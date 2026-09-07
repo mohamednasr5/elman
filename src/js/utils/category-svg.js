@@ -6,6 +6,8 @@
  */
 
 import { createSvgIcon } from "./professions-data.js";
+import { getDressSvg, getCategoryVisualMeta, renderCategoryCardIcon } from "./category-visual.js";
+export { getDressSvg, getCategoryVisualMeta, renderCategoryCardIcon };
 
 // Animation utility classes
 const ANIM_CLASSES = [
@@ -43,21 +45,7 @@ export function getDirectSvg(type, color = '#E11D48', size = 36) {
     case 'dress':
     case 'wedding-dress':
     case 'atelier':
-      anim = 'svg-anim-swing';
-      inner = `
-        <!-- Hanger hook -->
-        <path d="M12 2a2 2 0 0 0-2 2c0 1.2 1.2 1.6 2 2" stroke="${color}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
-        <!-- Dress silhouette -->
-        <path d="M9 6h6l2 4-1 2-2-1v3l5 8H5l5-8v-3L8 12 7 10z" fill="${color}" opacity="0.25"/>
-        <path d="M9 6h6l2 4-1 2-2-1v3l5 8H5l5-8v-3L8 12 7 10z" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" fill="none"/>
-        <!-- Bow / Ribbon at waist -->
-        <circle cx="12" cy="14" r="1.5" fill="${color}"/>
-        <path d="M10 14c-1 1-1.5 2-1 2.5s2-.5 3-2.5M14 14c1 1 1.5 2 1 2.5s-2-.5-3-2.5" stroke="${color}" stroke-width="1.2" fill="none"/>
-        <!-- Sparkling stars -->
-        <circle cx="17" cy="5" r="1" fill="${color}"/>
-        <circle cx="7" cy="18" r="0.8" fill="${color}"/>
-      `;
-      break;
+      return getDressSvg(color, size);
 
     // 👔 محل ملابس، بدلات، أزياء
     case 'clothing':

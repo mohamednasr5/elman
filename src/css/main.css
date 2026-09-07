@@ -110,18 +110,6 @@
 
   --line-height-tight: 1.3;
   --line-height-base:  1.6;
-.cat-auto-0 { animation: svgFloat 3s ease-in-out infinite; }
-.cat-auto-1 { animation: svgFloat 3.2s ease-in-out infinite; }
-.cat-auto-2 { animation: svgFloat 3.4s ease-in-out infinite; }
-.cat-auto-3 { animation: svgFloat 3.6s ease-in-out infinite; }
-.cat-auto-4 { animation: svgFloat 3.8s ease-in-out infinite; }
-.cat-auto-5 { animation: svgFloat 4s ease-in-out infinite; }
-.cat-auto-6 { animation: svgFloat 4.2s ease-in-out infinite; }
-.cat-auto-7 { animation: svgFloat 4.4s ease-in-out infinite; }
-.cat-auto-8 { animation: svgFloat 4.6s ease-in-out infinite; }
-.cat-auto-9 { animation: svgFloat 4.8s ease-in-out infinite; }
-.cat-auto-10 { animation: svgFloat 5s ease-in-out infinite; }
-.cat-auto-11 { animation: svgFloat 5.2s ease-in-out infinite; }
   --line-height-loose: 1.8;
 
   /* ── Z-Index ── */
@@ -12737,17 +12725,186 @@ textarea,
 @media(max-width:600px){.favorites-hero{padding:18px;gap:13px;border-radius:20px}.favorites-hero__icon{width:48px;height:48px;flex-basis:48px;font-size:25px}.favorites-hero h1{font-size:23px}.favorites-hero p{font-size:11px}}
 
 
-/* ── Premium animated category icon system ───────────────────── */
-.category-card__icon--premium{position:relative;isolation:isolate;overflow:visible;background:linear-gradient(145deg,color-mix(in srgb,var(--cat-color) 12%,transparent),var(--surface));border:1px solid color-mix(in srgb,var(--cat-color) 24%,var(--border));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 24px color-mix(in srgb,var(--cat-color) 10%,transparent);transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s ease}
-.category-card:hover .category-card__icon--premium{transform:translateY(-5px) rotate(-2deg) scale(1.04);box-shadow:0 16px 35px color-mix(in srgb,var(--cat-color) 20%,transparent)}
-.category-icon-orb{position:relative;z-index:2;display:grid;place-items:center;width:100%;height:100%;font-size:2.1rem;filter:drop-shadow(0 5px 8px rgba(15,23,42,.14));animation:categoryIconFloat 3.6s ease-in-out infinite}
-.category-icon-ring{position:absolute;inset:9%;z-index:1;border-radius:50%;border:1px solid color-mix(in srgb,var(--cat-color) 35%,transparent);opacity:.7;animation:categoryRing 3s linear infinite}
-.category-icon-ring:after{content:"";position:absolute;inset:14%;border-radius:50%;border:1px dashed color-mix(in srgb,var(--cat-color) 22%,transparent)}
-@keyframes categoryIconFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-@keyframes categoryRing{to{transform:rotate(360deg)}}
-.category-page-icon{position:relative;display:grid;place-items:center;width:76px;height:76px;border-radius:24px;overflow:visible!important}
-.category-icon-orb--hero{font-size:2.6rem}
-@media(prefers-reduced-motion:reduce){.category-icon-orb,.category-icon-ring{animation:none}}
+/* ── Premium Luxury Category Icon System ───────────────────── */
+.category-card__icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.85rem;
+  background: var(--cat-bg, color-mix(in srgb, var(--cat-color, var(--primary)) 12%, #ffffff));
+  border: 1.5px solid var(--cat-border, color-mix(in srgb, var(--cat-color, var(--primary)) 22%, transparent));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--cat-color, var(--primary)) 12%, transparent);
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+.category-card:hover .category-card__icon {
+  transform: translateY(-4px) scale(1.1);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--cat-color, var(--primary)) 24%, transparent);
+  border-color: var(--cat-color, var(--primary));
+}
+
+.category-icon-orb {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,0.08));
+}
+
+/* Remove clunky spinning ring */
+.category-icon-ring {
+  display: none !important;
+}
+
+/* 👗 Atelier Animated Luxury Wedding Dress */
+.cat-dress-animated-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.cat-dress-svg {
+  display: block;
+  overflow: visible;
+}
+
+.cat-dress-sway-group {
+  transform-origin: 24px 7px;
+  animation: dressSwayLuxury 2.8s ease-in-out infinite;
+}
+
+@keyframes dressSwayLuxury {
+  0%, 100% {
+    transform: rotate(-4.5deg);
+  }
+  50% {
+    transform: rotate(4.5deg);
+  }
+}
+
+.cat-dress-star-1 {
+  transform-origin: 37px 16px;
+  animation: starTwinkleLuxury 2.2s ease-in-out infinite;
+}
+
+.cat-dress-star-2 {
+  transform-origin: 10px 30px;
+  animation: starTwinkleLuxury 2.2s ease-in-out 1.1s infinite;
+}
+
+@keyframes starTwinkleLuxury {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3);
+    filter: drop-shadow(0 0 4px #fbbf24);
+  }
+}
+
+/* ── Tailored Universal Category Animations ── */
+.cat-anim-swing {
+  transform-origin: center bottom;
+  animation: catAnimSwing 3s ease-in-out infinite;
+}
+@keyframes catAnimSwing {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
+}
+
+.cat-anim-pulse {
+  animation: catAnimPulse 2.4s ease-in-out infinite;
+}
+@keyframes catAnimPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+.cat-anim-bounce {
+  animation: catAnimBounce 2.5s ease-in-out infinite;
+}
+@keyframes catAnimBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.cat-anim-float {
+  animation: catAnimFloat 3.2s ease-in-out infinite;
+}
+@keyframes catAnimFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.04); }
+}
+
+.cat-anim-snap {
+  animation: catAnimSnap 3.5s ease-in-out infinite;
+}
+@keyframes catAnimSnap {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.15) rotate(-6deg); }
+  50% { transform: scale(1.05) rotate(4deg); }
+  75% { transform: scale(1) rotate(0deg); }
+}
+
+.cat-anim-vibrate {
+  animation: catAnimVibrate 3.5s ease-in-out infinite;
+}
+@keyframes catAnimVibrate {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  75% { transform: rotate(-5deg); }
+  80% { transform: rotate(5deg); }
+  85% { transform: rotate(-4deg); }
+  90% { transform: rotate(4deg); }
+}
+
+.cat-anim-spin-slow {
+  animation: catAnimSpinSlow 16s linear infinite;
+}
+@keyframes catAnimSpinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.category-page-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 24px;
+  overflow: visible !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-dress-sway-group,
+  .cat-dress-star-1,
+  .cat-dress-star-2,
+  .cat-anim-swing,
+  .cat-anim-pulse,
+  .cat-anim-bounce,
+  .cat-anim-float,
+  .cat-anim-snap,
+  .cat-anim-vibrate,
+  .cat-anim-spin-slow {
+    animation: none !important;
+  }
+}
 
 
 /* Premium shared feature UI — Now / Around Me */
