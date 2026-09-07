@@ -8,13 +8,44 @@ const DEFAULT_TITLE = 'دليل المنزلة والمطرية الرقمي ا�
 const DEFAULT_DESC  = 'دليل المنزلة والمطرية الرقمي الشامل (dalilmanzala.com) — دليلك الأكبر لجميع المحلات، الأطباء، العيادات، الصيدليات، ماكينات ATM، الحرفيين، الوظائف، والخدمات في المنزلة، المطرية، العصافرة، والقرى المجاورة بمحافظة الدقهلية.';
 const DEFAULT_KEYWORDS = 'دليل المنزلة والمطرية, دليل المنزلة, دليل المطرية دقهلية, dalilmanzala, دكتور في المنزلة, صيدلية في المنزلة, صيدلية في المطرية, ماكينات ATM المنزلة, وظائف المنزلة والمطرية, سباك المنزلة, كهربائي المطرية, خدمات الدقهلية, بحيرة المنزلة';
 const DEFAULT_IMAGE = 'https://dalilmanzala.com/og-image.png';
-const SITE_URL      = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.includes('dalilmanzala')) ? window.location.origin : 'https://dalilmanzala.com';
+const SITE_URL = 'https://dalilmanzala.com';
 
 const REGIONAL_COVERAGE_AREAS = [
   'المنزلة', 'المطرية', 'العصافرة', 'الجمالية', 'ميت سلسيل',
   'البصراط', 'العزيزة', 'الأحمدية', 'الروضة', 'الحوتة',
   'النسايمة', 'ميت خضير', 'ميت شريف', 'الشبول', 'ميت مرجا سلسيل', 'محافظة الدقهلية'
 ];
+
+/**
+ * Normalize any URL into an absolute canonical HTTPS URL on the production domain.
+ * This deliberately rejects malformed values such as "/https://dalilmanzala.com".
+ */
+function normalizeSiteUrl(value) {
+  if (!value) return SITE_URL + '/';
+  const raw = String(value).trim();
+
+  // Absolute HTTP(S) URL: normalize to production host for same-site URLs.
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      if (parsed.hostname === 'dalilmanzala.com' || parsed.hostname === 'www.dalilmanzala.com') {
+        parsed.protocol = 'https:';
+        parsed.hostname = 'dalilmanzala.com';
+        return parsed.href;
+      }
+      return parsed.href;
+    } catch (_) {
+      return SITE_URL + '/';
+    }
+  }
+
+  // Strip accidental leading slash before an embedded absolute URL.
+  const repaired = raw.replace(/^\/+/, '');
+  if (/^https?:\/\//i.test(repaired)) return normalizeSiteUrl(repaired);
+
+  // Site-relative path.
+  return `${SITE_URL}/${repaired.replace(/^\/+/, '')}`;
+}
 
 export function setMeta({ title, description, keywords, image, url, type = 'website', noindex = false } = {}) {
   let t = DEFAULT_TITLE;
@@ -24,7 +55,8 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
   const d = description || DEFAULT_DESC;
   const k = keywords || DEFAULT_KEYWORDS;
   const img = image || DEFAULT_IMAGE;
-  const u = url ? (url.startsWith('http') ? url : `${SITE_URL}/${url.replace(/^\//, '')}`) : window.location.href;
+  const currentUrl = typeof window !== 'undefined' && window.location ? window.location.href : SITE_URL + '/';
+  const u = normalizeSiteUrl(url || currentUrl);
 
   document.title = t;
   setTag('meta[property="og:title"]', 'property', 'og:title', 'content', t);
@@ -41,18 +73,9 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
   setTag('meta[property="og:image:width"]', 'property', 'og:image:width', 'content', '1200');
   setTag('meta[property="og:image:height"]', 'property', 'og:image:height', 'content', '630');
 
-  // URL / Canonical — always normalize to an absolute HTTPS URL.
-  // This prevents malformed values such as "/https://dalilmanzala.com".
-  let absoluteUrl = u;
-  try {
-    absoluteUrl = new URL(u, SITE_URL).href;
-  } catch (_) {
-    absoluteUrl = SITE_URL + '/';
-  }
-  if (absoluteUrl.startsWith('/')) absoluteUrl = SITE_URL + '/' + absoluteUrl.replace(/^\/+/, '');
-
-  setTag('meta[property="og:url"]', 'property', 'og:url', 'content', absoluteUrl);
-  setCanonical(absoluteUrl);
+  // URL / Canonical — always emit a valid absolute HTTPS URL.
+  setTag('meta[property="og:url"]', 'property', 'og:url', 'content', u);
+  setCanonical(u);
 
   setTag('meta[property="og:type"]', 'property', 'og:type', 'content', type);
   setTag('meta[property="og:site_name"]', 'property', 'og:site_name', 'content', 'دليل المنزلة والمطرية الرقمي');
@@ -131,7 +154,7 @@ export function setBreadcrumbSchema(items) {
       '@type': 'ListItem',
       position: index + 1,
       name: item.name,
-      item: item.url ? (item.url.startsWith('http') ? item.url : `${SITE_URL}/${item.url.replace(/^\//, '')}`) : SITE_URL
+      item: item.url ? normalizeSiteUrl(item.url) : SITE_URL + '/'
     }))
   };
 
@@ -144,7 +167,7 @@ export function setWebsiteSearchSchema() {
     '@type': 'WebSite',
     name: 'دليل المنزلة والمطرية الرقمي',
     alternateName: ['Dalil Manzala', 'دليل المنزلة', 'دليل المطرية'],
-    url: SITE_URL,
+    url: SITE_URL + '/',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
@@ -161,7 +184,7 @@ export function setWebsiteSearchSchema() {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'دليل المنزلة والمطرية الرقمي',
-    url: SITE_URL,
+    url: SITE_URL + '/',
     logo: `${SITE_URL}/icons/icon-512x512.png`,
     image: `${SITE_URL}/icons/icon-512x512.png`
   };
@@ -211,7 +234,7 @@ function setCanonical(url) {
     el.rel = 'canonical';
     document.head.appendChild(el);
   }
-  el.href = url;
+  el.href = normalizeSiteUrl(url);
 }
 
 function mapCategoryToSchema(nameEn = '') {
@@ -255,7 +278,7 @@ export function injectArticleSchema({ headline, description, url, keywords }) {
     '@type': 'Article',
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': url.startsWith('http') ? url : `https://dalilmanzala.com/${url.replace(/^\//, '')}`
+      '@id': normalizeSiteUrl(url)
     },
     headline,
     description,
@@ -263,7 +286,7 @@ export function injectArticleSchema({ headline, description, url, keywords }) {
     author: {
       '@type': 'Organization',
       name: 'دليل المنزلة والمطرية الرقمي',
-      url: 'https://dalilmanzala.com'
+      url: 'https://dalilmanzala.com/'
     },
     publisher: {
       '@type': 'Organization',
