@@ -2061,56 +2061,10 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     place_slug: placeSlug || ''
   });
 
-  // Notifications are best-effort: a notification failure must NEVER
-  // make a successfully saved review appear as a failed submission.
-  try {
-    const place = await getPlace(placeId);
-    const ownerId = place?.ownerId;
-    if (ownerId && ownerId !== user.uid) {
-      const isPositive = numRating >= 4;
-      const evalType = isPositive ? 'إيجابي' : 'سلبي';
-      const evalBadge = isPositive ? '⭐ تقييم إيجابي' : '⚠️ تقييم سلبي';
-      const starText = '⭐'.repeat(numRating);
-      
-      const ownerNotification = {
-        type: 'place_review',
-        placeId,
-        placeName: placeName || place?.name || 'المكان',
-        placeSlug: placeSlug || place?.slug || placeId,
-        reviewerUid: user.uid,
-        reviewerName: userName,
-        reviewerPhoto: user.photoURL || '',
-        rating: numRating,
-        isPositive,
-        evalType,
-        title: `${evalBadge}: ${userName} قيّم (${placeName || place?.name || 'مكانك'})`,
-        message: `قام ${userName} بتقييم (${placeName || place?.name || 'مكانك'}) بعدد (${numRating}) نجوم ${starText} بتقييم ${evalType}.`,
-        comment: cleanComment,
-        actionText: 'عرض التقييم في المكان ↗',
-        actionUrl: `place.html?slug=${encodeURIComponent(placeSlug || place?.slug || placeId)}#reviews`,
-        createdAt: Date.now(),
-        isRead: false
-      };
-
-      await dbPush(`userNotifications/${ownerId}`, ownerNotification);
-    }
-  } catch (err) {
-    console.warn('[addReview] Owner notification failed:', err);
-  }
-
-  // Admin notification is also best-effort and must not block review publishing.
-  try {
-    await sendTelegramAdminNotification('new_review', {
-      placeId,
-      placeName: placeName || 'المكان',
-      placeSlug: placeSlug || '',
-      userName,
-      rating: numRating,
-      comment: cleanComment
-    });
-  } catch (err) {
-    console.warn('[addReview] Admin notification failed:', err);
-  }
+  // Review persistence is intentionally isolated from notifications.
+  // The review is considered successful as soon as D1 confirms the write.
+  // Notifications are handled by separate server-side flows and must never
+  // participate in the user's submit transaction.
 
   return reviewData;
 }
