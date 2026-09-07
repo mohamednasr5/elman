@@ -323,7 +323,7 @@ try {
         p.id, p.name, p.name_en, p.slug, p.category_id, p.subcategory_id, p.custom_category,
         p.address, p.area, p.phone, p.whatsapp, p.maps_link, p.latitude, p.longitude,
         p.description, p.logo_url, p.cover_image_url, p.status, p.is_verified,
-        p.verification_status, p.offer_count, p.product_count, p.services_json,
+        p.trust_score, p.verification_status, p.offer_count, p.product_count, p.services_json,
         p.social_json, p.stats_json, p.working_hours_json, p.created_at, p.updated_at,
         p.is_sponsored, p.is_featured, p.sponsored_until, p.priority
       FROM places p
@@ -371,6 +371,8 @@ try {
       stats: parseJson(place.stats_json, {}),
       working_hours: parseJson(place.working_hours_json, {}),
       is_verified: Boolean(place.is_verified),
+      trustScore: Number(place.trust_score ?? 0),
+      trust_score: Number(place.trust_score ?? 0),
       is_sponsored: Boolean(place.is_sponsored || place.is_featured),
       is_featured: Boolean(place.is_featured),
       isSponsored: Boolean(place.is_sponsored || place.is_featured),
@@ -600,6 +602,8 @@ try {
     const status = body.status || 'published';
     const isVerified = body.isVerified !== undefined ? (body.isVerified ? 1 : 0) : (body.is_verified !== undefined ? (body.is_verified ? 1 : 0) : null);
     const verificationStatus = body.verificationStatus || body.verification_status || (isVerified === 1 ? 'verified' : (isVerified === 0 ? 'unverified' : ''));
+    const trustScoreRaw = body.trustScore !== undefined ? body.trustScore : body.trust_score;
+    const trustScore = trustScoreRaw !== undefined && trustScoreRaw !== null && trustScoreRaw !== '' ? Math.max(0, Math.min(100, Math.round(Number(trustScoreRaw) || 0))) : null;
     const isSponsored = body.isSponsored !== undefined ? (body.isSponsored ? 1 : 0) : (body.is_sponsored !== undefined ? (body.is_sponsored ? 1 : 0) : null);
     const isFeatured = body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : (body.is_featured !== undefined ? (body.is_featured ? 1 : 0) : null);
     const sponsoredUntil = body.sponsoredUntil || body.sponsored_until || null;
@@ -617,7 +621,7 @@ try {
         id, name, name_en, slug, category_id, subcategory_id, custom_category,
         address, area, phone, whatsapp, maps_link, latitude, longitude,
         description, logo_url, cover_image_url, owner_id, owner_email,
-        status, is_verified, verification_status, services_json, social_json,
+        status, is_verified, trust_score, verification_status, services_json, social_json,
         stats_json, working_hours_json, updated_at, is_sponsored, is_featured, sponsored_until, priority
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?,
@@ -647,6 +651,7 @@ try {
         owner_email = CASE WHEN excluded.owner_email != '' THEN excluded.owner_email ELSE places.owner_email END,
         status = excluded.status,
         is_verified = COALESCE(excluded.is_verified, places.is_verified),
+        trust_score = COALESCE(excluded.trust_score, places.trust_score),
         verification_status = CASE WHEN excluded.verification_status != '' THEN excluded.verification_status ELSE places.verification_status END,
         is_sponsored = COALESCE(excluded.is_sponsored, places.is_sponsored),
         is_featured = COALESCE(excluded.is_featured, places.is_featured),
@@ -660,7 +665,7 @@ try {
       placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
       address, area, phone, whatsapp, mapsLink, lat, lng,
       description, logoUrl, coverImageUrl, ownerId, ownerEmail,
-      status, isVerified, verificationStatus, servicesJson, socialJson,
+      status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
       statsJson, workingHoursJson, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
     ).run();
 
