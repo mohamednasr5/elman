@@ -6,7 +6,7 @@
 </head><body><div id="app"><div id="header-slot"></div><main class="page-main" id="page-container"><div class="ih-loading"><div class="ih-pulse"></div></div></main><div id="nav-slot"></div><div id="pwa-slot"></div><div id="footer-slot"></div></div>
 <script type="module">
 import {initPage} from './src/js/core/page-shell.js?v=2.7.2';
-import {renderQuran} from './src/js/ui/pages/islamic-hub.js?v=3.0.0';
+import {renderQuran} from './src/js/ui/pages/islamic-hub.js?v=3.2.0';
 await initPage('quran.html'); await renderQuran(document.getElementById('page-container'));
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script></body></html>
