@@ -55,3 +55,97 @@
 
 .qr-translation{margin-top:14px;padding:14px 18px;border-radius:14px;border:1px solid rgba(56,189,248,.12);background:rgba(255,255,255,.035);color:#CBD5E1;direction:ltr;text-align:left;font-family:Inter,Arial,sans-serif;font-size:1rem;line-height:1.75;animation:qrTranslateIn .3s ease both}
 @keyframes qrTranslateIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+
+/* Quran reader — compact card presentation */
+.qr-ayah{
+  position:relative;
+  min-height:138px;
+  margin:12px 0;
+  padding:48px 22px 22px;
+  border:1px solid rgba(56,189,248,.14);
+  border-radius:20px;
+  background:linear-gradient(145deg,rgba(18,42,64,.72),rgba(8,22,37,.9));
+  transition:transform .2s,border-color .2s,box-shadow .2s,background .2s;
+}
+.qr-ayah:hover{
+  transform:none;
+  border-color:rgba(56,189,248,.28);
+  box-shadow:0 12px 30px rgba(0,0,0,.16);
+}
+.qr-ayah > .qr-num{
+  position:absolute;
+  top:18px;
+  right:18px;
+  width:38px;
+  height:38px;
+  margin:0;
+  border:1px solid rgba(56,189,248,.28);
+  border-radius:50%;
+  color:#F5B041;
+  background:rgba(56,189,248,.06);
+  font-family:Cairo,sans-serif;
+  font-size:.78rem;
+  display:grid;
+  place-items:center;
+  z-index:2;
+}
+.qr-main{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  direction:ltr;
+  width:100%;
+}
+.qr-text{
+  flex:1;
+  direction:rtl;
+  text-align:right;
+  font-family:"Amiri","Noto Naskh Arabic",serif;
+  font-size:1.72rem;
+  line-height:2.2;
+  color:#F8FAFC;
+  transition:color .25s,text-shadow .25s,background .25s;
+}
+.qr-play{
+  order:2;
+  flex:0 0 44px;
+  width:44px;
+  height:44px;
+  border-radius:12px;
+  border:1px solid rgba(56,189,248,.22);
+  background:rgba(56,189,248,.06);
+  color:#38BDF8;
+  font:700 1rem system-ui;
+  cursor:pointer;
+  transition:.2s;
+  direction:ltr;
+}
+.qr-play:hover{
+  transform:scale(1.04);
+  border-color:rgba(56,189,248,.5);
+  background:rgba(56,189,248,.12);
+}
+.qr-ayah.is-playing{
+  border-color:rgba(243,156,18,.72);
+  box-shadow:0 0 0 2px rgba(243,156,18,.1),0 16px 38px rgba(0,0,0,.22);
+  background:linear-gradient(145deg,rgba(31,51,65,.92),rgba(10,26,39,.97));
+}
+.qr-ayah.is-playing .qr-play{
+  color:#F5B041;
+  border-color:rgba(243,156,18,.7);
+  background:rgba(243,156,18,.12);
+}
+.qr-text.is-reading{
+  color:#FFD166;
+  text-shadow:0 0 18px rgba(243,156,18,.18);
+}
+.qr-audio{display:none!important}
+.qr-tools{display:none!important}
+@media(max-width:700px){
+  .qr-ayah{min-height:125px;padding:44px 14px 18px}
+  .qr-ayah > .qr-num{top:14px;right:14px;width:34px;height:34px}
+  .qr-main{gap:9px}
+  .qr-text{font-size:1.38rem;line-height:2.05}
+  .qr-play{flex-basis:40px;width:40px;height:40px}
+}
