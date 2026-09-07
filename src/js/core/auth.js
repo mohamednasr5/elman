@@ -52,6 +52,11 @@ export const ADMIN_EMAILS = [
  */
 export function initAuth() {
   const auth = getAuth();
+  if (!auth) {
+    // Firebase is optional for public pages; Auth is used only for login/notifications.
+    appState.set('authLoading', false);
+    return null;
+  }
 
   // Set local persistence
   try {
