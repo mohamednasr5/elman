@@ -477,6 +477,8 @@ export async function renderCategoryPage($container, { slug, query, user }) {
         renderSortedPlaces();
       });
     });
+  }
+
   // Craft Profession Filter Pills Handlers
   if (craftCat) {
     document.querySelectorAll('#craft-profession-pills-bar .profession-pill').forEach(btn => {
@@ -496,6 +498,3 @@ function escHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
-
-
