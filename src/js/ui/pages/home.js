@@ -412,28 +412,18 @@ function renderStatsBar(placesCount, categoriesCount) {
   const targetCategories = Math.max(94, Number(categoriesCount) || 0);
   const targetVillages = 55;
   const targetMonthlyVisits = 50000;
-  const targetDailySearches = 1700;
+  const targetDailySearches = 12000;
 
   bar.innerHTML = `
     <div class="stats-bar__inner container">
-      <div class="stats-bar__item stats-interactive-item" title="انقر لإعادة تشغيل الحركة والصوت">
-        <div class="stats-bar__value" data-target="${targetPlaces}" data-prefix="+" data-suffix="">+0</div>
-        <div class="stats-bar__label">مكان ومحل ومهنة مسجلة</div>
-      </div>
-      <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item stats-interactive-item" title="انقر لإعادة تشغيل الحركة والصوت">
-        <div class="stats-bar__value" data-target="${targetCategories}" data-prefix="" data-suffix="">0</div>
-        <div class="stats-bar__label">تصنيف ومهنة وحرفة</div>
-      </div>
-      <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item stats-interactive-item" title="انقر لإعادة تشغيل الحركة والصوت">
-        <div class="stats-bar__value" data-target="${targetVillages}" data-prefix="+" data-suffix="">+0</div>
-        <div class="stats-bar__label">مدينة وقرية مغطاة بالكامل</div>
-      </div>
-      <div class="stats-bar__divider" aria-hidden="true"></div>
       <div class="stats-bar__item stats-interactive-item" title="إحصائية الزيارات الشهرية">
         <div class="stats-bar__value" data-target="${targetMonthlyVisits}" data-prefix="+" data-suffix="">+0</div>
         <div class="stats-bar__label">زيارة شهرية</div>
+      </div>
+      <div class="stats-bar__divider" aria-hidden="true"></div>
+      <div class="stats-bar__item stats-interactive-item" title="عدد الأماكن والمحلات والمهن المسجلة">
+        <div class="stats-bar__value" data-target="${targetPlaces}" data-prefix="+" data-suffix="">+0</div>
+        <div class="stats-bar__label">مكان ومحل ومهنة مسجلة</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
       <div class="stats-bar__item stats-interactive-item" title="إحصائية البحث اليومي">
@@ -441,12 +431,23 @@ function renderStatsBar(placesCount, categoriesCount) {
         <div class="stats-bar__label">بحث يومي</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item stats-interactive-item" title="دليل المنزلة والمطرية الرقمي">
-        <div class="stats-bar__value stats-text-badge">المنزلة والمطرية</div>
+      <div class="stats-bar__item stats-interactive-item" title="عدد التصنيفات والمهن والحرف">
+        <div class="stats-bar__value" data-target="${targetCategories}" data-prefix="+" data-suffix="">+0</div>
+        <div class="stats-bar__label">تصنيف ومهنة وحرفة</div>
+      </div>
+      <div class="stats-bar__divider" aria-hidden="true"></div>
+      <div class="stats-bar__item stats-interactive-item" title="المدن والقرى المغطاة بالكامل">
+        <div class="stats-bar__value" data-target="${targetVillages}" data-prefix="+" data-suffix="">+0</div>
+        <div class="stats-bar__label">مدينة وقرية معطاة بالكامل</div>
+      </div>
+      <div class="stats-bar__divider" aria-hidden="true"></div>
+      <div class="stats-bar__item stats-interactive-item" title="دليل المنزلة والمطرية والجمالية الرقمي">
+        <div class="stats-bar__value stats-text-badge">المنزلة والمطرية والجمالية</div>
         <div class="stats-bar__label">محافظة الدقهلية</div>
       </div>
     </div>
   `;
+
 
   setupStatsBarCounter(bar);
 }
