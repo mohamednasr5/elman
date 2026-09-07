@@ -313,32 +313,52 @@
   place-items:center;
   overflow:hidden;
   border-radius:50%;
+  isolation:isolate;
+}
+.ih-quran-emblem::after{
+  content:"";
+  position:absolute;
+  width:150px;
+  height:150px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(245,176,65,.13) 0%,rgba(245,176,65,.04) 48%,transparent 72%);
+  z-index:0;
+  pointer-events:none;
 }
 .ih-quran-emblem-img{
-  width:145px;
-  height:145px;
+  position:relative;
+  z-index:1;
+  width:158px;
+  height:158px;
   object-fit:contain;
   display:block;
   mix-blend-mode:screen;
-  filter:drop-shadow(0 0 8px rgba(245,176,65,.28)) drop-shadow(0 0 22px rgba(245,176,65,.12));
+  opacity:.98;
+  filter:drop-shadow(0 0 7px rgba(245,176,65,.42)) drop-shadow(0 0 20px rgba(245,176,65,.18));
   user-select:none;
   -webkit-user-drag:none;
 }
 .ih-quran-shine{
   position:absolute;
-  inset:-35%;
+  z-index:3;
+  top:-35%;
+  left:-65%;
+  width:38%;
+  height:170%;
   pointer-events:none;
-  background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,0) 44%,rgba(255,248,210,.9) 50%,rgba(255,255,255,0) 56%,transparent 60%);
-  transform:translateX(-85%) rotate(12deg);
-  animation:ih-quran-shine 3.8s ease-in-out infinite;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.05) 25%,rgba(255,248,210,.95) 50%,rgba(255,255,255,.05) 75%,transparent 100%);
+  transform:rotate(18deg) translateX(-20%);
+  animation:ih-quran-shine 4.2s ease-in-out infinite;
   mix-blend-mode:screen;
+  filter:blur(.3px);
 }
 @keyframes ih-quran-shine{
-  0%,55%{transform:translateX(-85%) rotate(12deg);opacity:0}
-  65%{opacity:1}
-  88%,100%{transform:translateX(85%) rotate(12deg);opacity:0}
+  0%,52%{transform:rotate(18deg) translateX(-20%);opacity:0}
+  60%{opacity:1}
+  82%,100%{transform:rotate(18deg) translateX(390%);opacity:0}
 }
 @media(max-width:700px){
   .ih-quran-emblem{width:150px;height:150px}
-  .ih-quran-emblem-img{width:122px;height:122px}
+  .ih-quran-emblem::after{width:128px;height:128px}
+  .ih-quran-emblem-img{width:132px;height:132px}
 }
