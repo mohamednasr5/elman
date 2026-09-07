@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS places (
   owner_email TEXT,
   status TEXT DEFAULT 'published',
   is_verified INTEGER DEFAULT 0,
+  trust_score INTEGER DEFAULT 0,
   verification_status TEXT DEFAULT 'unverified',
   offer_count INTEGER DEFAULT 0,
   product_count INTEGER DEFAULT 0,
