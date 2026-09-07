@@ -152,60 +152,53 @@ async function renderHadith(container){
  }));
 }
 
-export {renderQuran,renderHadith,renderQuranSearch};
-
 function tajweedHtml(text,rules){
-  const arr=Array.isArray(rules)?rules.slice().sort((a,b)=>a.start-b.start):[];
-  if(!arr.length)return esc(text);
-  let out='',pos=0;
-  for(const r of arr){
-    const st=Math.max(0,Number(r.start)||0),en=Math.min(text.length,Number(r.end)||0);
-    if(st<pos||en<=st)continue;
-    out+=esc(text.slice(pos,st));
-    out+='<span class="tw-'+esc(r.rule)+'">'+esc(text.slice(st,en))+'</span>';
-    pos=en;
-  }
-  return out+esc(text.slice(pos));
+ const arr=Array.isArray(rules)?rules.slice().sort((a,b)=>a.start-b.start):[];
+ if(!arr.length)return esc(text);
+ let out='',pos=0;
+ for(const r of arr){
+   const st=Math.max(0,Number(r.start)||0),en=Math.min(text.length,Number(r.end)||0);
+   if(st<pos||en<=st)continue;
+   out+=esc(text.slice(pos,st));
+   out+='<span class="tw-'+esc(r.rule)+'">'+esc(text.slice(st,en))+'</span>';
+   pos=en;
+ }
+ return out+esc(text.slice(pos));
 }
-async function loadTajweed(n){
-  try{return await getJson('./quran/source/tajweed/surah_'+n+'.json')}catch(_){return null}
-}
-async function loadAudioIndex(n){
-  try{return await getJson('./quran/source/audio/'+String(n).padStart(3,'0')+'/index.json')}catch(_){return null}
-}
-async function loadEnglishTranslation(n){
-  try{return await getJson('./quran/source/translation/en/en_translation_'+n+'.json')}catch(_){return null}
-}
+async function loadTajweed(n){try{return await getJson('./quran/source/tajweed/surah_'+n+'.json')}catch(_){return null}}
+async function loadAudioIndex(n){try{return await getJson('./quran/source/audio/'+String(n).padStart(3,'0')+'/index.json')}catch(_){return null}}
+async function loadEnglishTranslation(n){try{return await getJson('./quran/source/translation/en/en_translation_'+n+'.json')}catch(_){return null}}
+
 async function renderQuranSurah(container){
- const p=new URLSearchParams(location.search), n=Number(p.get('surah')||1);
+ const p=new URLSearchParams(location.search),n=Math.min(114,Math.max(1,Number(p.get('surah')||1)||1));
  container.innerHTML=shell('القرآن الكريم','صفحة مستقلة للسورة · قراءة محلية · تجويد · تلاوة صوتية · تعمل مع PWA.','✦');
  const box=container.querySelector('#ih-content');
  try{
-  const meta=await loadQuranMeta(), info=meta.find(x=>x.number===n)||{name:'السورة',count:0};
-  const s=await loadSurah(n);
-  const [tw,audio,en]=await Promise.all([loadTajweed(n),loadAudioIndex(n),loadEnglishTranslation(n)]);
-  const rules=tw?.verse||{}, av=audio?.verse||{}, ev=en?.verse||{};
-  box.innerHTML='<div class="ih-reader"><div class="qr-head"><h2 class="qr-title">سورة '+esc(info.name||s.name)+'</h2><p class="qr-sub">'+s.ayahs.length+' آية · '+esc(info.type||'القرآن الكريم')+'</p>'+
-  '<div class="qr-actions"><select id="qr-font" class="qr-select"><option value="1">حجم الخط: متوسط</option><option value="1.15">حجم الخط: كبير</option><option value=".9">حجم الخط: صغير</option></select>'+
-  '<select id="qr-reciter" class="qr-select" aria-label="اختيار القارئ"><option value="local">التلاوة المحلية المتاحة</option></select><select id="qr-lang" class="qr-select" aria-label="عرض الترجمة"><option value="ar">العربية</option><option value="en">English · الترجمة الإنجليزية</option><option value="both">العربية + English</option></select><button id="qr-tw" class="qr-btn" type="button">تفعيل التجويد</button><a class="qr-btn" href="quran.html">السور</a><a class="qr-btn" href="quran-search.html">الباحث</a></div>'+
-  '<div class="qr-legend" id="qr-legend" hidden><span>الأزرق: همزة وصل</span><span>الذهبي: لام شمسية</span><span>البنفسجي: مد</span></div></div>'+
-  '<div id="qr-list">'+s.ayahs.map(a=>{const f=av['verse_'+a.n]?.file;const et=ev['verse_'+a.n]||ev['verse_'+(a.n-1)]||'';return '<article class="qr-ayah"><div class="qr-text" data-base="'+esc(a.text)+'">'+esc(a.text)+' <span class="qr-num">'+a.n+'</span></div>'+(et?'<div class="qr-translation" data-en="'+esc(et)+'">'+esc(et)+'</div>':'')+'<div class="qr-tools">'+(f?'<audio class="qr-audio" controls preload="none" src="./quran/source/audio/'+String(n).padStart(3,'0')+'/'+encodeURIComponent(f)+'"></audio>':'')+'</div></article>'}).join('')+'</div>'+
+  const meta=await loadQuranMeta(),info=meta.find(x=>x.number===n)||{name:'السورة',count:0};
+  const s=await loadSurah(n),[tw,audio,en]=await Promise.all([loadTajweed(n),loadAudioIndex(n),loadEnglishTranslation(n)]);
+  const rules=tw?.verse||{},av=audio?.verse||{},ev=en?.verse||{};
+  box.innerHTML='<div class="ih-reader"><div class="qr-head"><h2 class="qr-title">سورة '+esc(info.name||s.name)+'</h2><p class="qr-sub">'+s.ayahs.length+' آية · '+esc(info.type||'القرآن الكريم')+'</p>'+ 
+  '<div class="qr-actions"><select id="qr-font" class="qr-select"><option value="1">حجم الخط: متوسط</option><option value="1.15">حجم الخط: كبير</option><option value=".9">حجم الخط: صغير</option></select>'+ 
+  '<select id="qr-reciter" class="qr-select" aria-label="اختيار القارئ"><option value="local">التلاوة المحلية المتاحة</option></select><select id="qr-lang" class="qr-select" aria-label="عرض الترجمة"><option value="ar">العربية</option><option value="en">English · الترجمة الإنجليزية</option><option value="both">العربية + English</option></select><button id="qr-play-all" class="qr-btn" type="button">▶ تشغيل السورة</button><button id="qr-tw" class="qr-btn" type="button">تفعيل التجويد</button><a class="qr-btn" href="quran.html">السور</a><a class="qr-btn" href="quran-search.html">الباحث</a></div>'+ 
+  '<div class="qr-legend" id="qr-legend" hidden><span>الأزرق: همزة وصل</span><span>الذهبي: لام شمسية</span><span>البنفسجي: مد</span></div></div>'+ 
+  '<div id="qr-list">'+s.ayahs.map(a=>{const f=av['verse_'+a.n]?.file||av['verse_'+(a.n-1)]?.file,et=ev['verse_'+a.n]||ev['verse_'+(a.n-1)]||'';return '<article class="qr-ayah" id="ayah-'+a.n+'"><div class="qr-main"><button class="qr-play" type="button" aria-label="تشغيل الآية '+a.n+'">▶</button><div class="qr-text" data-base="'+esc(a.text)+'">'+esc(a.text)+' <span class="qr-num">'+a.n+'</span></div></div>'+(et?'<div class="qr-translation" data-en="'+esc(et)+'">'+esc(et)+'</div>':'')+(f?'<audio class="qr-audio" preload="metadata" src="./quran/source/audio/'+String(n).padStart(3,'0')+'/'+encodeURIComponent(f)+'"></audio>':'<audio class="qr-audio" preload="none"></audio>')+'</article>'}).join('')+'</div>'+ 
   '<div class="qr-nav">'+(n>1?'<a class="qr-btn" href="quran-surah.html?surah='+(n-1)+'">السورة السابقة</a>':'<span></span>')+(n<114?'<a class="qr-btn" href="quran-surah.html?surah='+(n+1)+'">السورة التالية</a>':'<span></span>')+'</div></div>';
-  let twOn=false;
-  const renderTw=()=>{box.querySelectorAll('.qr-text').forEach((el,i)=>{const a=s.ayahs[i];el.innerHTML=twOn?tajweedHtml(a.text,rules['verse_'+a.n])+' <span class="qr-num">'+a.n+'</span>':esc(a.text)+' <span class="qr-num">'+a.n+'</span>';});box.querySelector('#qr-legend').hidden=!twOn;};
-  box.querySelector('#qr-reciter').onchange=e=>{box.querySelectorAll('.qr-audio').forEach(a=>{a.currentTime=0;});};
-  const applyLanguage=()=>{
-    const mode=box.querySelector('#qr-lang').value;
-    box.querySelectorAll('.qr-ayah').forEach(card=>{
-      const ar=card.querySelector('.qr-text'), en=card.querySelector('.qr-translation');
-      if(!en)return;
-      ar.style.display=mode==='en'?'none':'block';
-      en.style.display=mode==='ar'?'none':'block';
-    });
-  };
+  let twOn=false,activeIndex=-1,playingAll=false;
+  const cards=[...box.querySelectorAll('.qr-ayah')],texts=[...box.querySelectorAll('.qr-text')],audios=[...box.querySelectorAll('.qr-audio')],plays=[...box.querySelectorAll('.qr-play')];
+  const clearActive=()=>{cards.forEach(c=>c.classList.remove('is-playing'));texts.forEach(t=>t.classList.remove('is-reading'));plays.forEach(b=>b.textContent='▶');};
+  const scrollTo=i=>cards[i]?.scrollIntoView({behavior:'smooth',block:'center'});
+  const start=async i=>{if(i<0||i>=audios.length)return;audios.forEach((a,j)=>{if(j!==i){a.pause();a.currentTime=0}});clearActive();activeIndex=i;cards[i].classList.add('is-playing');texts[i].classList.add('is-reading');plays[i].textContent='❚❚';scrollTo(i);if(!audios[i].src){clearActive();activeIndex=-1;return}try{audios[i].currentTime=0;await audios[i].play()}catch(_){clearActive();activeIndex=-1;playingAll=false}};
+  const next=async()=>{const ni=activeIndex+1;if(playingAll&&ni<audios.length){await start(ni);return}playingAll=false;box.querySelector('#qr-play-all').textContent='▶ تشغيل السورة';clearActive();activeIndex=-1};
+  audios.forEach((a,i)=>{a.addEventListener('ended',()=>{if(activeIndex===i)next()});a.addEventListener('play',()=>{clearActive();activeIndex=i;cards[i].classList.add('is-playing');texts[i].classList.add('is-reading');plays[i].textContent='❚❚'});});
+  plays.forEach((b,i)=>b.addEventListener('click',async()=>{if(activeIndex===i&&!audios[i].paused){playingAll=false;audios[i].pause();clearActive();activeIndex=-1;return}playingAll=false;await start(i)}));
+  box.querySelector('#qr-play-all').onclick=async()=>{if(playingAll){playingAll=false;audios[activeIndex]?.pause();box.querySelector('#qr-play-all').textContent='▶ تشغيل السورة';clearActive();activeIndex=-1;return}const first=audios.findIndex(a=>!!a.src);if(first<0)return;playingAll=true;box.querySelector('#qr-play-all').textContent='❚❚ إيقاف السورة';await start(first)};
+  box.querySelector('#qr-reciter').onchange=()=>{audios.forEach(a=>{a.pause();a.currentTime=0});playingAll=false;clearActive();activeIndex=-1};
+  const applyLanguage=()=>{const mode=box.querySelector('#qr-lang').value;cards.forEach(card=>{const ar=card.querySelector('.qr-text'),en=card.querySelector('.qr-translation');if(!en)return;ar.style.display=mode==='en'?'none':'block';en.style.display=mode==='ar'?'none':'block'})};
   box.querySelector('#qr-lang').onchange=applyLanguage;applyLanguage();
+  const renderTw=()=>{texts.forEach((el,i)=>{const a=s.ayahs[i];el.innerHTML=twOn?'<span class="qr-tajweed">'+tajweedHtml(a.text,rules['verse_'+a.n])+'</span> <span class="qr-num">'+a.n+'</span>':esc(a.text)+' <span class="qr-num">'+a.n+'</span>'});box.querySelector('#qr-legend').hidden=!twOn;};
   box.querySelector('#qr-tw').onclick=()=>{twOn=!twOn;box.querySelector('#qr-tw').textContent=twOn?'إيقاف التجويد':'تفعيل التجويد';renderTw()};
-  box.querySelector('#qr-font').onchange=e=>box.querySelectorAll('.qr-text').forEach(el=>el.style.fontSize=(1.65*Number(e.target.value))+'rem');
+  box.querySelector('#qr-font').onchange=e=>texts.forEach(el=>el.style.fontSize=(1.65*Number(e.target.value))+'rem');
  }catch(e){box.innerHTML='<div class="ih-empty">تعذر فتح السورة. تأكد من رقم السورة والملفات المحلية.</div>';console.error('[IslamicHub] Surah',e)}
 }
-export {renderQuranSurah};
+
+export {renderQuran,renderHadith,renderQuranSearch,renderQuranSurah};
