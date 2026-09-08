@@ -1269,7 +1269,7 @@ export async function broadcastNewPlaceNotification(place) {
   saveToLocalBroadcastCache(notification);
   triggerNativePwaNotification(notification);
 
-  try {
+  // Firebase RTDB broadcast path removed; FCM is handled by notification.service.js.
 }
 
 export async function broadcastPlaceVerifiedNotification(place) {
@@ -1297,7 +1297,7 @@ export async function broadcastPlaceVerifiedNotification(place) {
   saveToLocalBroadcastCache(notification);
   triggerNativePwaNotification(notification);
 
-  try {
+  // Firebase RTDB broadcast path removed; FCM is handled by notification.service.js.
 }
 
 function triggerNativePwaNotification(notification) {
