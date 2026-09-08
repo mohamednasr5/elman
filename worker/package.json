@@ -1,0 +1,8 @@
+{
+  "name": "elmanzala-worker",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@tursodatabase/serverless": "^1.4.0"
+  }
+}
