@@ -55,7 +55,7 @@ Firestore MUST NOT be introduced as a secondary database.
 ### Notification Strategy
 FCM is a notification delivery service, NOT the directory database.
 Do not store places, reviews, comments, categories, images, or directory records in Firebase merely to support notifications.
-If notification/device tokens need persistence, store only the minimum required token/device metadata in D1 unless a specific Firebase service requirement makes another approach necessary.
+If notification/device tokens need persistence, store only the minimum required token/device metadata in Turso unless a specific Firebase service requirement makes another approach necessary.
 The Worker may communicate with FCM to trigger push notifications.
 
 ### Performance / Cost Principles
@@ -87,7 +87,7 @@ Distinguish Auth/FCM code from obsolete Realtime Database code. Remove/replace o
 
 ### Forbidden Changes
 Unless explicitly requested by the project owner, do NOT:
-- move D1 data to Firebase
+- move Turso data to Firebase
 - add Firestore
 - restore Firebase Realtime Database
 - store places/reviews/comments/images in Firebase
@@ -105,7 +105,7 @@ Before every modification:
 6. Verify after changes that Turso remains the source of truth, R2 remains storage, Firebase Auth works, FCM works, no Firebase Realtime Database dependency was introduced, and `/p/{slug}` social sharing still works.
 
 ### Architectural Constraint
-Treat this document as an architectural constraint. If a feature appears to require Firebase database storage, first evaluate whether it belongs in D1. Only use Firebase database services if the project owner explicitly requests that architecture change.
+Treat this document as an architectural constraint. If a feature appears to require Firebase database storage, first evaluate whether it belongs in Turso. Only use Firebase database services if the project owner explicitly requests that architecture change.
 
 Default architecture:
 
