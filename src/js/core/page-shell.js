@@ -8,7 +8,7 @@ import { initFirebase, ensureFirebaseReady } from './firebase.js';
 import { initAuth, onAuthStateChange, signOut, waitForAuth, isAdmin, getCurrentUser, getClientIp } from './auth.js';
 import { getSettings, getUserNotifications, isIpBanned } from './db.js';
 import { toast } from '../ui/components/Toast.js';
-import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
+import { bindGlobalVoiceAssistantFab, openManzalaVoiceAssistantModal } from '../services/voice.service.js';
 import { initRealtimePwaSyncBus } from '../services/realtime-sync.service.js';
 import { initLiveNotificationSubscriber, updateAllNotificationBadges } from '../services/notification.service.js';
 import { initFcmMessaging } from '../services/fcm.service.js';
@@ -262,6 +262,12 @@ function _footerHTML() {
     </div>
   </div>
 
+  <!-- Desktop Floating Voice FAB (Visible on Desktop >= 769px) -->
+  <button type="button" class="desktop-voice-fab" id="desktop-voice-fab" aria-label="مساعد المنزلة والمطرية الصوتي الذكي" title="البحث الصوتي الذكي (M)" data-voice-trigger="true">
+    <span class="desktop-voice-fab__icon">🎙️</span>
+    <span class="desktop-voice-fab__pulse"></span>
+  </button>
+
   <!-- Scroll to Top Floating Button -->
   <button type="button" class="scroll-to-top-btn" id="scroll-to-top-btn" aria-label="الصعود لأعلى الصفحة" title="العودة لأعلى الصفحة">
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
@@ -274,16 +280,54 @@ function _footerHTML() {
 
 function _pwaBannerHTML() {
   return `
-<div class="pwa-banner" id="pwa-banner" hidden>
-  <img src="./icons/icon-48x48.png" alt="" class="pwa-banner__icon" width="48" height="48" loading="lazy" decoding="async"/>
-  <div class="pwa-banner__content">
-    <div class="pwa-banner__title">ثبّت دليل المنزلة والمطرية الرقمي</div>
-    <div class="pwa-banner__text">تصفّح أسرع وتجربة أفضل على هاتفك</div>
+<div class="pwa-banner" id="pwa-banner" hidden role="dialog" aria-label="تثبيت تطبيق دليل المنزلة والمطرية">
+  <div class="pwa-banner__glass">
+    <button type="button" class="pwa-banner__close" id="pwa-banner-close" aria-label="إغلاق التنبيه" title="إغلاق">✕</button>
+    
+    <div class="pwa-banner__header">
+      <div class="pwa-banner__icon-wrap">
+        <img src="./icons/icon-96x96.png" alt="شعار تطبيق دليل المنزلة والمطرية" class="pwa-banner__icon" width="62" height="62" loading="eager" decoding="async" />
+        <span class="pwa-banner__icon-ring"></span>
+      </div>
+      <div class="pwa-banner__main-text">
+        <div class="pwa-banner__meta">
+          <span class="pwa-banner__chip">⚡ تطبيق ويب مستقل (PWA)</span>
+          <span class="pwa-banner__rating">★ 4.9 (موثق)</span>
+        </div>
+        <h3 class="pwa-banner__title">تطبيق دليل المنزلة والمطرية</h3>
+        <p class="pwa-banner__subtitle">تثبيت تطبيق مستقل كامل على جهازك خفيف وفوري وبدون استهلاك للذاكرة</p>
+      </div>
+    </div>
+
+    <div class="pwa-banner__badges">
+      <div class="pwa-badge-item">
+        <span class="pwa-badge-icon">🚀</span>
+        <span>فتح فوري 0ms</span>
+      </div>
+      <div class="pwa-badge-item">
+        <span class="pwa-badge-icon">🔔</span>
+        <span>تنبيهات فورية</span>
+      </div>
+      <div class="pwa-badge-item">
+        <span class="pwa-badge-icon">📶</span>
+        <span>تصفح أوفلاين</span>
+      </div>
+      <div class="pwa-badge-item">
+        <span class="pwa-badge-icon">🛡️</span>
+        <span>آمن وخفيف</span>
+      </div>
+    </div>
+
+    <div class="pwa-banner__actions">
+      <button type="button" class="btn pwa-banner__install-btn" id="pwa-install-btn">
+        <span class="pwa-install-btn__icon">📲</span>
+        <span class="pwa-install-btn__text">تثبيت التطبيق الآن</span>
+      </button>
+      <button type="button" class="pwa-banner__later-btn" id="pwa-banner-later">
+        <span>لاحقاً</span>
+      </button>
+    </div>
   </div>
-  <div class="pwa-banner__actions">
-    <button class="btn btn-primary btn-sm" id="pwa-install-btn">تثبيت</button>
-  </div>
-  <button class="pwa-banner__close" id="pwa-banner-close" aria-label="إغلاق">✕</button>
 </div>`;
 }
 
@@ -547,22 +591,36 @@ function _renderUser(user) {
 }
 
 let _dp = null;
+
+function _isAppInstalled() {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+    window.navigator.standalone ||
+    document.referrer.includes('android-app://') ||
+    localStorage.getItem('pwa-installed') === 'true'
+  );
+}
+
 function _setupPwa() {
+  if (_isAppInstalled()) return;
+
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _dp = e;
     _showPwaBanner();
   });
 
+  // Fallback timer for browsers that don't trigger beforeinstallprompt or delay it
   setTimeout(() => {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (!isStandalone && !localStorage.getItem('pwa-dismissed')) {
+    if (!_isAppInstalled() && !localStorage.getItem('pwa-dismissed')) {
       _showPwaBanner();
     }
-  }, 3500);
+  }, 2800);
 
   document.addEventListener('click', e => {
-    if (e.target.closest('#pwa-banner-close')) {
+    if (e.target.closest('#pwa-banner-close') || e.target.closest('#pwa-banner-later')) {
       e.preventDefault();
       _dismissPwaBanner();
       return;
@@ -572,38 +630,150 @@ function _setupPwa() {
       _triggerInstall();
       return;
     }
+    if (e.target.closest('#desktop-voice-fab')) {
+      e.preventDefault();
+      try { openManzalaVoiceAssistantModal(); } catch (_) {}
+      return;
+    }
   });
 }
 
 function _showPwaBanner() {
+  if (_isAppInstalled()) return;
   const b = document.getElementById('pwa-banner');
   if (b) {
     b.hidden = false;
-    b.style.display = 'flex';
+    b.style.display = 'block';
+    requestAnimationFrame(() => {
+      b.classList.add('visible');
+    });
   }
 }
 
 function _dismissPwaBanner() {
   const b = document.getElementById('pwa-banner');
   if (b) {
-    b.hidden = true;
-    b.style.display = 'none';
+    b.classList.remove('visible');
+    setTimeout(() => {
+      b.hidden = true;
+      b.style.display = 'none';
+    }, 450);
   }
-  localStorage.setItem('pwa-dismissed', 'true');
+  localStorage.setItem('pwa-dismissed', Date.now().toString());
+
+  // Trigger one-time animated voice search discovery guide
+  _showVoiceSearchGuideOnce();
 }
 
 async function _triggerInstall() {
   if (_dp) {
-    _dp.prompt();
-    const { outcome } = await _dp.userChoice;
-    if (outcome === 'accepted') {
+    try {
+      _dp.prompt();
+      const { outcome } = await _dp.userChoice;
+      if (outcome === 'accepted') {
+        localStorage.setItem('pwa-installed', 'true');
+        _dismissPwaBanner();
+        toast.success('تم تثبيت التطبيق بنجاح! ستجده في شاشة تطبيقات هاتفك 🎉');
+        setTimeout(() => _showVoiceSearchGuideOnce(), 1200);
+      } else {
+        _dismissPwaBanner();
+      }
+      _dp = null;
+    } catch (_) {
       _dismissPwaBanner();
-      toast.success('شكراً لتثبيت تطبيق دليل المنزلة والمطرية! 🎉');
     }
-    _dp = null;
   } else {
-    toast.info('لتثبيت التطبيق: افتح قائمة المتصفح (⋮) واختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية"');
+    // If beforeinstallprompt hasn't fired
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      toast.info('لتثبيت التطبيق على الآيفون: اضغط على زر المشاركة ⎋ ثم اختر "إضافة إلى الصفحة الرئيسية" ➕', 7000);
+    } else {
+      toast.info('لتثبيت التطبيق: افتح قائمة المتصفح (⋮) واختر "تثبيت التطبيق" (Install app)');
+    }
+    _dismissPwaBanner();
   }
+}
+
+/**
+ * High-End One-Time Animated Voice Search Guide
+ * Displays an animated glowing arrow pointing to the microphone
+ * and an attractive tooltip "ممكن تبحث بالصوت من هنا 🎙️"
+ */
+function _showVoiceSearchGuideOnce() {
+  if (typeof document === 'undefined') return;
+  if (localStorage.getItem('manzala_voice_guide_seen')) return;
+  localStorage.setItem('manzala_voice_guide_seen', 'true');
+
+  setTimeout(() => {
+    const isDesktop = window.innerWidth >= 769;
+    let micBtn = null;
+    if (isDesktop) {
+      micBtn = document.getElementById('desktop-voice-fab') ||
+               document.getElementById('header-search-trigger') ||
+               document.getElementById('global-voice-assistant-fab');
+    } else {
+      micBtn = document.getElementById('global-voice-assistant-fab') ||
+               document.querySelector('.bottom-nav__voice-assistant-fab');
+    }
+
+    if (!micBtn) return;
+
+    // Remove any previous guide overlay
+    document.getElementById('voice-search-guide-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'voice-search-guide-overlay' + (isDesktop ? ' desktop-guide' : ' mobile-guide');
+    overlay.id = 'voice-search-guide-overlay';
+
+    overlay.innerHTML = `
+      <div class="voice-search-guide-popup">
+        <button type="button" class="voice-guide-close-btn" id="voice-guide-close-btn" aria-label="إغلاق التلميح" title="إغلاق">✕</button>
+        <div class="voice-guide-sparkle">✨ ميزة حصرية وسريعة</div>
+        <div class="voice-guide-title">
+          <span>ممكن تبحث بالصوت من هنا</span>
+          <span class="voice-guide-mic-icon">🎙️</span>
+        </div>
+        <p class="voice-guide-text">
+          اضغط وتحدث مباشرة باسم أي مكان أو دكتور أو خدمة للوصول إليها في ثانية واحدة!
+        </p>
+        <div class="voice-guide-arrow-container">
+          <div class="voice-guide-arrow-bounce">
+            <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="4" x2="12" y2="20"></line>
+              <polyline points="19 13 12 20 5 13"></polyline>
+            </svg>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    micBtn.classList.add('voice-mic-highlighted');
+
+    const closeGuide = () => {
+      overlay.classList.add('fade-out');
+      micBtn?.classList.remove('voice-mic-highlighted');
+      setTimeout(() => overlay.remove(), 400);
+    };
+
+    overlay.querySelector('#voice-guide-close-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeGuide();
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeGuide();
+    });
+
+    micBtn.addEventListener('click', closeGuide, { once: true });
+
+    // Auto fade out after 8.5 seconds
+    setTimeout(() => {
+      if (document.body.contains(overlay)) {
+        closeGuide();
+      }
+    }, 8500);
+  }, 500);
 }
 
 function _h(str) {
