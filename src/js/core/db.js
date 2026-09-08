@@ -97,7 +97,7 @@ async function workerFetch(path, options = {}) {
     ...(options.headers || {}),
     ...(token ? { Authorization: 'Bearer ' + token } : {})
   };
-  return workerFetch(`${path}`, { ...options, headers });
+  return fetch(`${WORKER_URL}${path}`, { ...options, headers });
 }
 
 async function d1Fetch(path, options = {}) {
