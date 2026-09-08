@@ -1,10 +1,10 @@
-/**
+﻿/**
  * المنزلة وناسها — Admin Control Panel (Instant SPA + Sponsored Ads Edition)
  * Zero-latency navigation, in-memory caching, responsive mobile bottom-bar,
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=9f0aa9f8';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=e7c9ad77';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
