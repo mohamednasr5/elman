@@ -869,7 +869,7 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
     });
     if (workerRes.ok) {
       const data = await workerRes.json();
-      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+      if (data && data.success && Array.isArray(data.data)) {
         const places = [];
         const allForIdb = [];
 
