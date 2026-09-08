@@ -1729,32 +1729,86 @@ try {
     }
   }
 
-  // ── R2: Settings API (GET, POST, PUT /api/settings) ──
+  // ── Turso: Settings API (GET, POST, PUT /api/settings) ──
   if (url.pathname === '/api/settings' && request.method === 'GET') {
     try {
-      const obj = await env.elmanzala.get('config/settings.json');
-      if (obj) {
-        const text = await obj.text();
-        return jsonResponse({ success: true, data: JSON.parse(text) }, 200, corsHeaders);
-      }
-      return jsonResponse({ success: true, data: {} }, 200, corsHeaders);
-    } catch (_) {
-      return jsonResponse({ success: true, data: {} }, 200, corsHeaders);
+      const rows = (await createTursoDB(env).prepare('SELECT key,value_json,updated_at FROM app_settings ORDER BY key').all()).results || [];
+      const data = {};
+      for (const row of rows) { try { data[row.key] = JSON.parse(row.value_json); } catch (_) { data[row.key] = row.value_json; } }
+      return jsonResponse({ success: true, data }, 200, {...corsHeaders,'Cache-Control':'no-store'});
+    } catch (err) {
+      return jsonResponse({ success:false,error:err.message },500,corsHeaders);
     }
   }
 
   if (url.pathname === '/api/settings' && (request.method === 'POST' || request.method === 'PUT')) {
     const auth = await requireAdmin(request, env);
-    if (auth.response) return auth.response
+    if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
+    const db = createTursoDB(env), now = Date.now();
     try {
-      await env.elmanzala.put('config/settings.json', JSON.stringify(body), {
-        httpMetadata: { contentType: 'application/json' }
-      });
-      return jsonResponse({ success: true, message: 'تم حفظ الإعدادات بنجاح', data: body }, 200, corsHeaders);
-    } catch (err) {
-      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+      const entries = Object.entries(body || {});
+      if (!entries.length) return jsonResponse({success:false,error:'لا توجد إعدادات للحفظ'},400,corsHeaders);
+      for (const [key,value] of entries) {
+        await db.prepare('INSERT INTO app_settings(key,value_json,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at')
+          .bind(String(key).slice(0,120), JSON.stringify(value), now).run();
+      }
+      return jsonResponse({ success:true,message:'تم حفظ الإعدادات بنجاح',data:body },200,corsHeaders);
+    } catch(err) {
+      return jsonResponse({success:false,error:err.message},500,corsHeaders);
     }
+  }
+
+  // ── Turso: Live News API ─────────────────────────────────────
+  if (url.pathname === '/api/live-news' && request.method === 'GET') {
+    const status = (url.searchParams.get('status') || 'published').trim();
+    const city = (url.searchParams.get('city') || '').trim();
+    const category = (url.searchParams.get('category') || '').trim();
+    const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 40)));
+    const auth = status === 'pending' || status === 'all' ? await requireAdmin(request, env) : {user:null};
+    if (auth.response) return auth.response;
+    const where = [], args = [];
+    if (status !== 'all') { where.push('status=?'); args.push(status); }
+    else where.push("status <> 'deleted'");
+    if (city) { where.push('city=?'); args.push(city); }
+    if (category) { where.push('category=?'); args.push(category); }
+    const sql = 'SELECT * FROM live_news WHERE ' + where.join(' AND ') + ' ORDER BY created_at DESC LIMIT ?';
+    args.push(limit);
+    const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
+    const data = rows.map(r => ({...r,id:r.id,statusTagKey:r.status_tag_key,imageUrl:r.image_url, inquiryLink:r.inquiry_link,userId:r.user_id,userName:r.user_name,userPhoto:r.user_photo,userPoints:Number(r.user_points||0),reactions:JSON.parse(r.reactions_json||'{}'),reactedUsers:JSON.parse(r.reacted_users_json||'{}'),createdAt:Number(r.created_at||0),publishedAt:r.published_at?Number(r.published_at):null,expiresAt:r.expires_at?Number(r.expires_at):null,updatedAt:r.updated_at?Number(r.updated_at):null}));
+    return jsonResponse({success:true,data},200,{...corsHeaders,'Cache-Control':'no-store'});
+  }
+
+  if (url.pathname === '/api/live-news' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const id = String(body.id || ('news_'+Date.now()+'_'+crypto.randomUUID().slice(0,6)));
+    const now = Date.now();
+    const isAdmin = !!auth.user.isAdmin;
+    const status = isAdmin ? 'published' : 'pending';
+    const expiresAt = isAdmin ? now + 86400000 : null;
+    await createTursoDB(env).prepare(`INSERT INTO live_news(id,title,location,category,status_tag_key,details,city,image_url,phone,inquiry_link,salary,user_id,user_name,user_photo,user_points,status,reactions_json,reacted_users_json,created_at,published_at,expires_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .bind(id,String(body.title||'').trim(),String(body.location||'').trim(),String(body.category||'general'),String(body.statusTagKey||'active_green'),String(body.details||'').trim(),String(body.city||'المنزلة'),String(body.imageUrl||''),String(body.phone||''),String(body.inquiryLink||''),String(body.salary||''),auth.user.uid,auth.user.name||auth.user.email||'مستخدم',auth.user.photoURL||'',Number(body.userPoints||0),status,JSON.stringify(body.reactions||{confirm:1,love:0,doubt:0}),JSON.stringify(body.reactedUsers||{}),now,status==='published'?now:null,expiresAt,now).run();
+    return jsonResponse({success:true,id,status},201,corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/live-news/') && ['PUT','PATCH','DELETE'].includes(request.method)) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
+    const id = decodeURIComponent(url.pathname.slice('/api/live-news/'.length));
+    const db = createTursoDB(env);
+    if (request.method === 'DELETE') {
+      await db.prepare("UPDATE live_news SET status='deleted',deleted_at=?,updated_at=? WHERE id=?").bind(Date.now(),Date.now(),id).run();
+      return jsonResponse({success:true,id},200,corsHeaders);
+    }
+    const body = await request.json().catch(() => ({})), fields=[], args=[];
+    const allowed={title:'title',location:'location',category:'category',statusTagKey:'status_tag_key',details:'details',city:'city',imageUrl:'image_url',phone:'phone',inquiryLink:'inquiry_link',salary:'salary',status:'status'};
+    for(const [k,col] of Object.entries(allowed)) if(body[k]!==undefined){fields.push(col+'=?');args.push(body[k]);}
+    if(body.status==='published'){fields.push('published_at=COALESCE(published_at,?)');args.push(Date.now());fields.push('expires_at=COALESCE(expires_at,?)');args.push(Date.now()+86400000);}
+    fields.push('updated_at=?');args.push(Date.now(),id);
+    await db.prepare('UPDATE live_news SET '+fields.join(',')+' WHERE id=?').bind(...args).run();
+    return jsonResponse({success:true,id},200,corsHeaders);
   }
 
   // ── Turso: User Profile Sync (POST /api/users/sync) ──
