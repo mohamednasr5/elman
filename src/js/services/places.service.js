@@ -4,7 +4,7 @@
  */
 
 import { getDB } from '../core/firebase.js';
-import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerD1, invalidateLocalPlaceCache, getPlace, getPublishedPlaces, idbGet, idbPut, idbDelete, STORES } from '../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getPlace, getPublishedPlaces, idbGet, idbPut, idbDelete, STORES } from '../core/db.js';
 import { broadcastRealtimeChange } from './realtime-sync.service.js';
 import { generatePlaceSlug, generateCleanSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';
@@ -186,13 +186,13 @@ export async function createPlace(placeData, currentUser) {
   // Invalidate local and persistent database cache immediately
   clearDbCache();
 
-  // Sync new place to Cloudflare D1
-      let d1SyncFailed = false;
+  // Sync new place to Turso
+      let tursoSyncFailed = false;
     try {
-      await syncPlaceToWorkerD1(placeId, newPlace);
+      await syncPlaceToWorkerTurso(placeId, newPlace);
     } catch (syncErr) {
-      d1SyncFailed = true;
-      console.error('[createPlace] D1 sync failed, place saved locally only:', syncErr);
+      tursoSyncFailed = true;
+      console.error('[createPlace] Turso sync failed, place saved locally only:', syncErr);
     }
 
   // Broadcast realtime event across all open tabs, windows and PWA
@@ -258,7 +258,7 @@ export async function updatePlace(placeId, placeData) {
   await idbPut(STORES.PLACES, updatedPlace).catch(() => {});
 
   // Sync to Cloudflare D1 and invalidate Worker and Local caches
-  await syncPlaceToWorkerD1(placeId, updatedPlace);
+  await syncPlaceToWorkerTurso(placeId, updatedPlace);
   await invalidateLocalPlaceCache(placeId, current.slug);
 
   clearDbCache();
@@ -321,7 +321,7 @@ export async function submitVerificationRequest(placeId, user, notes = '') {
   } catch (_) {}
 
   place.verificationStatus = 'verification_requested';
-  await syncPlaceToWorkerD1(placeId, { verificationStatus: 'verification_requested' });
+  await syncPlaceToWorkerTurso(placeId, { verificationStatus: 'verification_requested' });
   await idbPut(STORES.PLACES, place).catch(() => {});
 
   // Push instant notification to Telegram Admin (async)
