@@ -231,48 +231,34 @@ async function _syncUserToD1(firebaseUser) {
   const photoURL = firebaseUser.photoURL || '';
   const isSuper = ADMIN_EMAILS.includes(email);
 
-  // 1. Upsert user in D1 (creates if new, updates name/photo if existing)
-  //    Role is preserved in D1 if already set (server-side logic)
+  const token = await firebaseUser.getIdToken(true);
   const syncRes = await fetch(`${WORKER_URL}/api/users/sync`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
+      'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify({
-      uid,
-      name,
-      email,
-      photoURL,
-      role: isSuper ? 'superadmin' : 'user',
-      status: 'active'
-    }),
-    signal: AbortSignal.timeout(6000)
+    body: JSON.stringify({ uid, name, email, photoURL, role: isSuper ? 'superadmin' : 'user', status: 'active' }),
+    signal: AbortSignal.timeout(8000)
   });
 
   const syncData = await syncRes.json().catch(() => ({}));
-
- 
-  if (profileRes.ok) {
-    const profileData = await profileRes.json().catch(() => ({}));
-    d1Profile = profileData.data || profileData.user || null;
+  if (!syncRes.ok || !syncData?.success) {
+    throw new Error(syncData?.error || `User sync HTTP ${syncRes.status}`);
   }
 
-  // 3. Build final profile object
-  const profile = {
+  const d1Profile = syncData.data || syncData.user || {};
+  return {
     uid,
-    name: d1Profile?.name || name,
-    email: d1Profile?.email || firebaseUser.email || '',
-    photoURL: d1Profile?.photo_url || photoURL,
-    role: d1Profile?.role || (isSuper ? 'superadmin' : 'user'),
-    status: d1Profile?.status || 'active',
-    phone: d1Profile?.phone || null,
-    createdAt: d1Profile?.created_at || Date.now(),
-    lastLoginAt: Date.now(),
-    // placeIds: will be fetched lazily when needed
+    name: d1Profile.name || name,
+    email: d1Profile.email || firebaseUser.email || '',
+    photoURL: d1Profile.photo_url || d1Profile.photoURL || photoURL,
+    role: d1Profile.role || (isSuper ? 'superadmin' : 'user'),
+    status: d1Profile.status || 'active',
+    phone: d1Profile.phone || null,
+    createdAt: d1Profile.created_at || Date.now(),
+    lastLoginAt: Date.now()
   };
-
-  return profile;
 }
 
 /**
