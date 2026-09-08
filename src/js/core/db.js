@@ -251,3 +251,88 @@ export async function reportPlaceData({placeId,reason='معلومة غير صح�
 
 export async function sendTelegramAdminNotification(type,data={}){ try{await workerFetch('/api/telegram/test',{method:'POST',body:JSON.stringify({type,data}),signal:AbortSignal.timeout(5000)});}catch(_){ } }
 export async function broadcastNewPlaceNotification(place){ return place; }
+
+function normalizeUserD1(u = {}) {
+  return {
+    ...u,
+    uid: u.uid || u.id || '',
+    id: u.id || u.uid || '',
+    photoURL: u.photoURL || u.photo_url || '',
+    points: Number(u.points || 0),
+    createdAt: Number(u.createdAt || u.created_at || 0),
+    updatedAt: Number(u.updatedAt || u.updated_at || 0),
+    placesCount: Number(u.placesCount || u.places_count || 0)
+  };
+}
+
+function normalizeCategoryRequestD1(r = {}) {
+  return {
+    ...r,
+    id: r.id || '',
+    categoryName: r.categoryName || r.category_name || '',
+    placeName: r.placeName || r.place_name || '',
+    ownerName: r.ownerName || r.owner_name || '',
+    userId: r.userId || r.user_id || '',
+    status: r.status || 'pending',
+    requestedAt: Number(r.requestedAt || r.createdAt || r.created_at || 0),
+    reviewedAt: Number(r.reviewedAt || r.reviewed_at || 0)
+  };
+}
+
+function normalizeVerificationRequestD1(r = {}) {
+  return {
+    ...r,
+    id: r.id || '',
+    placeId: r.placeId || r.place_id || '',
+    placeName: r.placeName || r.place_name || '',
+    ownerId: r.ownerId || r.owner_id || '',
+    ownerName: r.ownerName || r.owner_name || '',
+    ownerEmail: r.ownerEmail || r.owner_email || '',
+    verifiedUntil: r.verifiedUntil ?? r.verified_until ?? null,
+    requestedAt: Number(r.requestedAt || r.createdAt || r.created_at || 0),
+    reviewedAt: Number(r.reviewedAt || r.reviewed_at || 0)
+  };
+}
+
+export async function getAllUsersD1() {
+  const data = await d1Fetch('/api/users');
+  const list = Array.isArray(data?.data) ? data.data.map(normalizeUserD1) : [];
+  return Object.fromEntries(list.filter(u => u.uid).map(u => [u.uid, u]));
+}
+
+export async function updateUserD1(uid, updates = {}) {
+  if (!uid) throw new Error('User ID required');
+  const data = await d1Fetch(`/api/users/${encodeURIComponent(uid)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates)
+  });
+  return data?.data ? normalizeUserD1(data.data) : data;
+}
+
+export async function getCategoryRequestsD1() {
+  const data = await d1Fetch('/api/category-requests');
+  const list = Array.isArray(data?.data) ? data.data.map(normalizeCategoryRequestD1) : [];
+  return Object.fromEntries(list.filter(r => r.id).map(r => [r.id, r]));
+}
+
+export async function updateCategoryRequestD1(reqId, status = 'approved') {
+  if (!reqId) throw new Error('Request ID required');
+  return d1Fetch(`/api/category-requests/${encodeURIComponent(reqId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ id: reqId, status })
+  });
+}
+
+export async function getVerificationRequestsD1() {
+  const data = await d1Fetch('/api/verification-requests');
+  const list = Array.isArray(data?.data) ? data.data.map(normalizeVerificationRequestD1) : [];
+  return Object.fromEntries(list.filter(r => r.id).map(r => [r.id, r]));
+}
+
+export async function updateVerificationRequestD1(reqId, status = 'approved', verifiedUntil = null) {
+  if (!reqId) throw new Error('Request ID required');
+  return d1Fetch(`/api/verification-requests/${encodeURIComponent(reqId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ id: reqId, status, verified_until: verifiedUntil })
+  });
+}
