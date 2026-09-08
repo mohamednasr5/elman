@@ -250,28 +250,16 @@ export function dbRef(path) {
 }
 
 export async function dbGet(path, useCache = true) {
-  if (useCache) {
-    const cached = getCached('path:' + path);
-    if (cached !== null) return cached;
-  }
-
+  const key='path:'+path;
+  if(useCache){const cached=getCached(key);if(cached!==null)return cached;}
   try {
-    if (isBusinessDataPath(path)) {
-      const val = await tursoGetBusiness(path);
-      if (useCache) setCache('path:' + path, val);
-      return val;
+    if(isBusinessDataPath(path)){
+      const val=await tursoGetBusiness(path); if(useCache)setCache(key,val); return val;
     }
-
-    const db = getDB();
-    if (!db || typeof db.ref !== 'function') return null;
-    const snap = await db.ref(path).once('value');
-    const val = (snap && typeof snap.exists === 'function' && snap.exists()) ? snap.val() : null;
-    if (useCache) setCache('path:' + path, val);
-    return val;
-  } catch (err) {
-    console.warn(`[dbGet] Handled error on path "${path}":`, err?.message || err);
+    // No Firebase Realtime Database fallback. Non-business legacy paths must
+    // be migrated to a dedicated Turso endpoint instead of silently reading RTDB.
     return null;
-  }
+  } catch(err){ console.warn('[dbGet] Turso read failed for '+path+':',err?.message||err); return null; }
 }
 
 export async function dbSet(path, data) {
@@ -287,8 +275,7 @@ export async function dbSet(path, data) {
     await tursoWriteBusiness(path, 'PUT', data);
     return;
   }
-  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
-  await ref.set(data);
+  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
 }
 
 export async function dbUpdate(path, updates) {
