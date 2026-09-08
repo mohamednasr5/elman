@@ -248,7 +248,6 @@ export async function syncPlaceToWorkerD1(placeId,updates={}){
   await d1Fetch('/api/places/sync',{method:'POST',body:JSON.stringify({id:placeId,...updates}),signal:AbortSignal.timeout(10000)});
   return true;
 }
-export const syncPlaceToWorkerTurso = syncPlaceToWorkerD1;
 
 export async function searchPlacesD1(query='',{category='',area='',limit=20,offset=0,verified=false,minRating=0}={}){
   try{
