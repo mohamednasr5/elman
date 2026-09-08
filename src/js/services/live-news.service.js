@@ -4,7 +4,7 @@
  * Guaranteed Permanent Deletion, Multi-tier Sync, and Zero-Permission Errors.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbPush } from '../core/db.js';
+import { tursoFetch } from '../core/db.js';
 import { awardPoints } from './loyalty.service.js';
 import { playNotificationSound, broadcastLiveNewsPushNotification } from './notification.service.js';
 import { getLiveCommunityFeedItems } from './social-news-sync.service.js';
@@ -106,434 +106,56 @@ const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000; // 24 Hours
  * Fetch published live news reports strictly from Cloud Firebase & user contributions (24-Hour Active Window)
  */
 export async function getPublishedLiveNews({ city = '', category = '', limit = 40 } = {}) {
-  const deletedIds = getDeletedLiveNewsIds();
-  const allMap = new Map();
-  const now = Date.now();
-
-  // 1. Load from Cloud Firebase Realtime Database
-  try {
-    const db = getDB();
-    const snap = await db.ref('liveNews').once('value');
-    if (snap && snap.exists()) {
-      snap.forEach(child => {
-        const val = child.val();
-        const id = String(child.key);
-        // Exclude deleted items and exclude legacy mock templates
-        if (val && !deletedIds.has(id) && val.status !== 'deleted' && !id.startsWith('init_')) {
-          allMap.set(id, { id, ...val });
-        }
-      });
-    }
-  } catch (err) {
-    console.debug('[LiveNews] Cloud read handled gracefully:', err.message);
-  }
-
-  // 2. Merge with LocalStorage store (only real user posts)
-  const localItems = getLocalStore();
-  if (localItems && Array.isArray(localItems)) {
-    localItems.forEach(localItem => {
-      const id = String(localItem.id);
-      if (!deletedIds.has(id) && localItem.status !== 'deleted' && !id.startsWith('init_')) {
-        allMap.set(id, { ...(allMap.get(id) || {}), ...localItem });
-      }
-    });
-  }
-
-  // 3. Ingest Live Community Pulse Feed (Social News without external branding)
-  try {
-    const communityFeed = getLiveCommunityFeedItems();
-    communityFeed.forEach(feedItem => {
-      const id = String(feedItem.id);
-      if (!deletedIds.has(id) && !allMap.has(id)) {
-        allMap.set(id, feedItem);
-      }
-    });
-
-    // Merge cached official Facebook posts from Worker if present
-    if (typeof localStorage !== 'undefined') {
-      const rawFb = localStorage.getItem('manzala_cached_official_fb_posts');
-      if (rawFb) {
-        const fbPosts = JSON.parse(rawFb);
-        if (Array.isArray(fbPosts)) {
-          fbPosts.forEach(fp => {
-            const id = String(fp.id);
-            if (!deletedIds.has(id) && !allMap.has(id)) {
-              allMap.set(id, {
-                ...fp,
-                status: 'published',
-                statusTagKey: 'official_post',
-                authorBadge: '🏛️ صفحة رسمية موثقة',
-                confirmsCount: 75,
-                lovesCount: 120,
-                doubtsCount: 0
-              });
-            }
-          });
-        }
-      }
-    }
-  } catch (_) {}
-
-  let published = Array.from(allMap.values()).filter(i => {
-    if (i.status !== 'published' && i.status) return false;
-
-    // Strict Mandatory Rule: Jobs MUST have an inquiry link or phone number
-    const isJob = i.category === 'jobs_vacant' || i.category === 'jobs_seeker';
-    if (isJob) {
-      const hasLink = (i.inquiryLink && String(i.inquiryLink).trim().length > 5) || (i.link && String(i.link).trim().length > 5);
-      const hasPhone = (i.phone && String(i.phone).replace(/\D/g, '').length >= 7);
-      const hasTextLink = (i.details && /(https?:\/\/|wa\.me\/|01[0125][0-9]{8})/i.test(i.details)) ||
-                          (i.content && /(https?:\/\/|wa\.me\/|01[0125][0-9]{8})/i.test(i.content));
-      if (!hasLink && !hasPhone && !hasTextLink) {
-        return false; // Strictly discard jobs without inquiry link or contact
-      }
-    }
-    
-    // Active Window: 7 days for official municipal posts, 24 hours for normal community pulse
-    const isOfficial = i.isOfficial || i.category === 'official_manzala' || i.category === 'official_matariya';
-    const publishTime = Number(i.publishedAt || i.createdAt || 0);
-    const expireTime = Number(i.expiresAt || 0);
-
-    if (expireTime > 0) {
-      return expireTime > now;
-    }
-
-    if (publishTime > 0) {
-      const maxWindow = isOfficial ? (7 * 24 * 60 * 60 * 1000) : TWENTY_FOUR_HOURS_MS;
-      return (now - publishTime) <= maxWindow;
-    }
-
-    return true;
-  });
-
-  // If published list is completely empty (e.g. legacy static ID blacklists or empty storage),
-  // immediately regenerate fresh items with current dynamic timestamp slots to keep section lively!
-  if (published.length === 0) {
-    try {
-      const freshFeed = getLiveCommunityFeedItems();
-      freshFeed.forEach(feedItem => {
-        published.push(feedItem);
-      });
-      if (city && city !== 'all') {
-        published = published.filter(i => (i.city || '').includes(city));
-      }
-      if (category && category !== 'all') {
-        const cats = category.split(',');
-        published = published.filter(i => cats.includes(i.category));
-      }
-    } catch (_) {}
-  }
-
-  published.sort((a, b) => (Number(b.publishedAt || b.createdAt) || 0) - (Number(a.publishedAt || a.createdAt) || 0));
-  return published.slice(0, limit);
+  const params = new URLSearchParams({status:'published',limit:String(Math.min(100,Math.max(1,limit)))});
+  if(city) params.set('city',city); if(category) params.set('category',category);
+  try { const data=await tursoFetch('/api/live-news?'+params); return Array.isArray(data?.data)?data.data:[]; }
+  catch(err){ console.debug('[LiveNews] Turso read handled:',err.message); return []; }
 }
 
 export async function getPendingLiveNews() {
-  const deletedIds = getDeletedLiveNewsIds();
-  const allMap = new Map();
-
-  try {
-    const db = getDB();
-    const snap = await db.ref('liveNews').once('value');
-    if (snap && snap.exists()) {
-      snap.forEach(child => {
-        const val = child.val();
-        const id = String(child.key);
-        if (val && !deletedIds.has(id) && val.status !== 'deleted') {
-          allMap.set(id, { id, ...val });
-        }
-      });
-    }
-  } catch (err) {
-    console.debug('[LiveNews] Pending cloud read handled:', err.message);
-  }
-
-  const localItems = getLocalStore();
-  if (localItems && Array.isArray(localItems)) {
-    localItems.forEach(localItem => {
-      const id = String(localItem.id);
-      if (!deletedIds.has(id) && localItem.status !== 'deleted') {
-        allMap.set(id, { ...(allMap.get(id) || {}), ...localItem });
-      }
-    });
-  }
-
-  return Array.from(allMap.values())
-    .filter(i => i.status === 'pending')
-    .sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
+  try { const data=await tursoFetch('/api/live-news?status=pending&limit=100'); return Array.isArray(data?.data)?data.data:[]; }
+  catch(err){ console.debug('[LiveNews] Turso pending read handled:',err.message); return []; }
 }
 
-/**
- * Submit a community live report (pending approval for users, instant for admin)
- */
-export async function submitLiveReport({
-  title,
-  location,
-  category = 'general',
-  statusTagKey = 'active_green',
-  details = '',
-  city = 'المنزلة',
-  imageUrl = '',
-  phone = '',
-  inquiryLink = '',
-  salary = '',
-  user = null,
-  isAdminUser = false
-}) {
-  if (!title || !location) {
-    throw new Error('يرجى كتابة عنوان الخبر وتحديد المكان أو الشارع');
-  }
-
-  const isJob = category === 'jobs_vacant' || category === 'jobs_seeker';
-  const cleanPhone = phone ? phone.trim() : '';
-  const cleanInquiryLink = inquiryLink ? inquiryLink.trim() : '';
-
-  if (isJob && !cleanPhone && !cleanInquiryLink) {
-    throw new Error('تنبيه إلزامي: لإضافة فرصة عمل، يجب توفير رابط للاستعلام أو رقم هاتف/واتساب للتواصل');
-  }
-
-  const isPublished = Boolean(isAdminUser);
-  const id = 'news_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
-  const now = Date.now();
-
-  const newPost = {
-    id,
-    title: title.trim(),
-    location: location.trim(),
-    category,
-    statusTagKey,
-    details: details.trim(),
-    city: city || 'المنزلة',
-    imageUrl: imageUrl || '',
-    phone: cleanPhone,
-    inquiryLink: cleanInquiryLink || (cleanPhone ? `https://wa.me/${cleanPhone.replace(/\D/g, '')}` : ''),
-    salary: salary ? salary.trim() : '',
-    userId: user?.uid || null,
-    userName: user?.name || user?.displayName || (isAdminUser ? 'إدارة المنصة' : 'مواطن من المنزلة والمطرية'),
-    userPhoto: user?.photoURL || null,
-    userPoints: user?.points || 0,
-    status: isPublished ? 'published' : 'pending',
-    reactions: { confirm: 1, love: 0, doubt: 0 },
-    reactedUsers: user?.uid ? { [user.uid]: 'confirm' } : {},
-    createdAt: now,
-    publishedAt: isPublished ? now : null,
-    expiresAt: isPublished ? (now + (24 * 60 * 60 * 1000)) : null
-  };
-
-  // 1. Save locally first
-  const currentStore = getLocalStore() || [];
-  currentStore.unshift(newPost);
-  saveLocalStore(currentStore);
-
-  // 2. Sync to Cloud Firebase gracefully
-  try {
-    const db = getDB();
-    await db.ref('liveNews/' + id).set(newPost);
-  } catch (err) {
-    console.debug('[LiveNews] Cloud write synced locally:', err.message);
-  }
-
-  // 3. If published, reward points and broadcast notifications
-  if (isPublished) {
-    if (user?.uid) {
-      awardPoints(user.uid, 'ADD_REVIEW', { label: 'مكافأة نشر خبر وتحديث في (يحدث الآن)' });
-    }
-    broadcastLiveNewsPushNotification(newPost);
-  } else {
-    // Dispatch Telegram Bot Alert for Admin Review
-    sendTelegramPendingAlert(newPost);
-  }
-
+export async function submitLiveReport({title,location,category='general',statusTagKey='active_green',details='',city='المنزلة',imageUrl='',phone='',inquiryLink='',salary='',user=null,isAdminUser=false}) {
+  if(!title||!location) throw new Error('يرجى كتابة عنوان الخبر وتحديد المكان أو الشارع');
+  const isJob=category==='jobs_vacant'||category==='jobs_seeker';
+  const cleanPhone=String(phone||'').trim(), cleanInquiryLink=String(inquiryLink||'').trim();
+  if(isJob&&!cleanPhone&&!cleanInquiryLink) throw new Error('تنبيه إلزامي: لإضافة فرصة عمل، يجب توفير رابط للاستعلام أو رقم هاتف/واتساب للتواصل');
+  const payload={title:title.trim(),location:location.trim(),category,statusTagKey,details:String(details||'').trim(),city:city||'المنزلة',imageUrl:imageUrl||'',phone:cleanPhone,inquiryLink:cleanInquiryLink||(cleanPhone?'https://wa.me/'+cleanPhone.replace(/\D/g,''):''),salary:String(salary||'').trim()};
+  const data=await tursoFetch('/api/live-news',{method:'POST',body:JSON.stringify(payload)});
+  if(!data?.success) throw new Error(data?.error||'تعذر حفظ الخبر');
+  const post={...payload,id:data.id,status:data.status,createdAt:Date.now()};
+  if(data.status==='published') broadcastLiveNewsPushNotification(post); else sendTelegramPendingAlert(post);
   playNotificationSound();
-  return { success: true, id, isPublished, post: newPost };
-}
-
-function sendTelegramPendingAlert(report) {
-  try {
-    const rawConfig = typeof localStorage !== 'undefined' ? localStorage.getItem('manzala_telegram_bot_config') : null;
-    let botToken = '';
-    let chatId = '';
-
-    if (rawConfig) {
-      try {
-        const parsed = JSON.parse(rawConfig);
-        botToken = parsed.botToken;
-        chatId = parsed.chatId;
-      } catch (_) {}
-    }
-
-    if (!botToken || !chatId) return;
-
-    const text = `
-🚨 <b>طلب نشر خبر / تحديث جديد في (يحدث الآن)</b>
-━━━━━━━━━━━━━━━━━━━━
-📌 <b>العنوان:</b> ${String(report.title || '').replace(/</g, '&lt;')}
-📍 <b>المكان:</b> ${String(report.location || '').replace(/</g, '&lt;')} (${report.city || 'المنزلة والمطرية'})
-👤 <b>المرسل:</b> ${String(report.userName || 'مواطن').replace(/</g, '&lt;')}
-${report.phone ? `📞 <b>الهاتف:</b> <code>${report.phone}</code>\n` : ''}
-${report.details ? `📝 <b>التفاصيل:</b> <i>${String(report.details).replace(/</g, '&lt;')}</i>\n` : ''}
-━━━━━━━━━━━━━━━━━━━━
-⏳ <i>يرجى اتخاذ إجراء بالموافقة أو الرفض:</i>
-    `.trim();
-
-    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '✅ موافقة ونشر فوري', callback_data: `approve_${report.id}` },
-              { text: '❌ رفض وحذف', callback_data: `reject_${report.id}` }
-            ],
-            [
-              { text: '🌐 فتح قسم يحدث الآن', url: 'https://dalilmanzala.com/now.html' },
-              { text: '👑 لوحة الإدارة', url: 'https://dalilmanzala.com/admin.html?section=live-news' }
-            ]
-          ]
-        }
-      })
-    }).catch(() => {});
-  } catch (_) {}
-}
-
-/**
- * React to a live news item (👍 تأكيد / ❤️ إعجاب / 👎 غير دقيق)
- */
-export async function reactToLiveNews(newsId, reactionType, user) {
-  if (!newsId) throw new Error('رقم الخبر غير صالح');
-
-  const userId = user?.uid || 'anon_user';
-  const myReactionKey = 'manzala_my_react_' + newsId;
-  const localReactionsKey = 'manzala_live_reactions_' + newsId;
-
-  let localReactions = { confirm: 12, love: 8, doubt: 0 };
-  try {
-    const raw = localStorage.getItem(localReactionsKey);
-    if (raw) localReactions = JSON.parse(raw);
-  } catch (_) {}
-
-  const previousReaction = localStorage.getItem(myReactionKey);
-
-  let newReaction = reactionType;
-  if (previousReaction === reactionType) {
-    localReactions[reactionType] = Math.max(0, (localReactions[reactionType] || 1) - 1);
-    newReaction = null;
-    localStorage.removeItem(myReactionKey);
-  } else {
-    if (previousReaction) {
-      localReactions[previousReaction] = Math.max(0, (localReactions[previousReaction] || 1) - 1);
-    }
-    localReactions[reactionType] = (localReactions[reactionType] || 0) + 1;
-    localStorage.setItem(myReactionKey, reactionType);
-  }
-
-  localStorage.setItem(localReactionsKey, JSON.stringify(localReactions));
-
-  // Sync to local store
-  const store = getLocalStore();
-  if (store) {
-    const item = store.find(i => i.id === newsId);
-    if (item) {
-      item.reactions = localReactions;
-      saveLocalStore(store);
-    }
-  }
-
-  // Sync to Firebase gracefully
-  try {
-    const db = getDB();
-    const newsRef = db.ref('liveNews/' + newsId);
-    await newsRef.child('reactions').set(localReactions);
-  } catch (err) {
-    console.debug('[LiveNews] Cloud reaction sync handled:', err.message);
-  }
-
-  playNotificationSound();
-  return { success: true, reactions: localReactions, userReaction: newReaction };
+  return {success:true,id:data.id,isPublished:data.status==='published',post};
 }
 
 /**
  * Admin: Approve and publish pending report
  */
 export async function adminApproveLiveNews(newsId) {
-  const now = Date.now();
-  const expiresAt = now + (24 * 60 * 60 * 1000); // 24 Hours
-  const store = getLocalStore() || [];
-  const item = store.find(i => i.id === newsId);
-  if (item) {
-    item.status = 'published';
-    item.publishedAt = now;
-    item.expiresAt = expiresAt;
-    saveLocalStore(store);
-    broadcastLiveNewsPushNotification(item);
-  }
-
-  try {
-    const db = getDB();
-    await db.ref('liveNews/' + newsId).update({
-      status: 'published',
-      publishedAt: Date.now()
-    });
-  } catch (err) {
-    console.debug('[LiveNews] Cloud approve synced locally:', err.message);
-  }
-
-  return { success: true };
+  const now=Date.now();
+  const data=await tursoFetch('/api/live-news/'+encodeURIComponent(newsId),{method:'PUT',body:JSON.stringify({status:'published'})});
+  if(!data?.success) throw new Error(data?.error||'تعذر اعتماد الخبر');
+  broadcastLiveNewsPushNotification({id:newsId,publishedAt:now});
+  return {success:true};
 }
 
-/**
- * Admin: Update existing live news report
- */
-export async function adminUpdateLiveNews(newsId, updates) {
-  const store = getLocalStore() || [];
-  const idx = store.findIndex(i => i.id === newsId);
-  if (idx !== -1) {
-    store[idx] = { ...store[idx], ...updates, updatedAt: Date.now() };
-    saveLocalStore(store);
-  }
-
-  if (!String(newsId).startsWith('init_')) {
-    try {
-      const db = getDB();
-      await db.ref('liveNews/' + newsId).update({
-        ...updates,
-        updatedAt: Date.now()
-      });
-    } catch (err) {
-      console.debug('[LiveNews] Cloud update synced locally:', err.message);
-    }
-  }
-
-  return { success: true };
+/** Admin: Update existing live news report */
+export async function adminUpdateLiveNews(newsId,updates) {
+  const data=await tursoFetch('/api/live-news/'+encodeURIComponent(newsId),{method:'PUT',body:JSON.stringify(updates||{})});
+  if(!data?.success) throw new Error(data?.error||'تعذر تحديث الخبر');
+  return {success:true};
 }
 
-/**
- * Admin: Permanently Delete report (Never resurfaces)
- */
+/** Admin: Permanently Delete report */
 export async function adminDeleteLiveNews(newsId) {
-  if (!newsId) return { success: true };
-
-  // 1. Add to Permanent Deleted IDs Registry locally
+  if(!newsId) return {success:true};
+  const data=await tursoFetch('/api/live-news/'+encodeURIComponent(newsId),{method:'DELETE'});
+  if(!data?.success) throw new Error(data?.error||'تعذر حذف الخبر');
   markLiveNewsAsDeletedPermanently(newsId);
-
-  // 2. Sync to Firebase Cloud if it's a real cloud item
-  if (!String(newsId).startsWith('init_')) {
-    try {
-      const db = getDB();
-      await Promise.all([
-        db.ref('liveNews/' + newsId).update({ status: 'deleted', deletedAt: Date.now() }).catch(() => {}),
-        db.ref('liveNews/' + newsId).remove().catch(() => {})
-      ]);
-    } catch (err) {
-      console.debug('[LiveNews] Cloud delete handled:', err.message);
-    }
-  }
-
-  return { success: true };
+  return {success:true};
 }
 
 /**
