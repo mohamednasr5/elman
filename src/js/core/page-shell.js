@@ -14,6 +14,7 @@ import { initLiveNotificationSubscriber, updateAllNotificationBadges } from '../
 import { initFcmMessaging } from '../services/fcm.service.js';
 import { initUniversalMobileTouchTooltips } from '../utils/mobile-tooltip.js';
 import { executeFastSearch } from '../services/search-engine.service.js';
+import { mountWideAdsBanner } from '../ui/components/WideAdsBanner.js';
 
 /* ─────────────────────────────────────────────────────────
    HTML BUILDERS
@@ -295,6 +296,16 @@ export async function initPage(activeFile = '') {
 
   /* 2. Inject shared layout blocks */
   _inject('header-slot',  _headerHTML(activeFile));
+  if (!activeFile.includes('admin/') && activeFile !== 'dashboard.html') {
+    const headerSlot = document.getElementById('header-slot');
+    if (headerSlot) {
+      const banner = document.createElement('div');
+      banner.id = 'wide-ads-banner';
+      banner.className = 'container';
+      headerSlot.insertAdjacentElement('afterend', banner);
+      runDeferred(() => mountWideAdsBanner(banner));
+    }
+  }
   _inject('footer-slot',  _footerHTML());
   _inject('nav-slot',     _bottomNavHTML(activeFile));
   _inject('pwa-slot',     _pwaBannerHTML());
