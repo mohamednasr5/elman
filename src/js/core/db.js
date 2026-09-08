@@ -244,8 +244,7 @@ async function tursoWriteBusiness(path, method, data = null) {
 }
 
 export function dbRef(path) {
-  if (isBusinessDataPath(path)) throw new Error(`Firebase RTDB access blocked for business data path: ${path}`);
-  return getDB().ref(path);
+  throw new Error('Firebase Realtime Database is disabled. Use Turso APIs: '+path);
 }
 
 export async function dbGet(path, useCache = true) {
