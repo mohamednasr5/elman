@@ -6,7 +6,7 @@
 
 import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=a9cfb953';
 import { WORKER_URL } from '../../core/firebase.js';
-import { isAdmin, getCurrentUser } from '../../core/auth.js';
+import { isAdmin, getCurrentUser, getIdToken } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
@@ -2985,12 +2985,18 @@ function showAddCategoryModal(onDone) {
         <input type="text" id="cat-name-ar" class="form-input" required placeholder="مثال: ورشة نجارة، ستوديو تصوير" />
       </div>
       <div class="form-group">
-        <label class="form-label">الاسم بالإنجليزية (Slug) <span class="required">*</span></label>
-        <input type="text" id="cat-name-en" class="form-input" required placeholder="carpentry" style="direction:ltr" />
+        <label class="form-label">الاسم بالإنجليزية <span class="required">*</span></label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="cat-name-en" class="form-input" required placeholder="Carpentry Services" style="direction:ltr;flex:1" />
+          <button type="button" class="btn btn-secondary" id="btn-ai-cat-translate">✨ AI ترجمة</button>
+        </div>
       </div>
       <div class="form-group">
-        <label class="form-label">الأيقونة (Emoji أو رمز) <span class="required">*</span></label>
-        <input type="text" id="cat-icon" class="form-input" required placeholder="🪑" />
+        <label class="form-label">الأيقونة <span class="required">*</span></label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="cat-icon" class="form-input" required placeholder="🪚" style="flex:1" />
+          <button type="button" class="btn btn-secondary" id="btn-ai-cat-icon">✨ AI أيقونة</button>
+        </div>
       </div>
     `,
     buttons: [
@@ -3036,6 +3042,44 @@ function showAddCategoryModal(onDone) {
       },
       { label: 'إلغاء', type: 'ghost', closeOnClick: true }
     ]
+  });
+
+  document.getElementById('btn-ai-cat-translate')?.addEventListener('click', async () => {
+    const name = document.getElementById('cat-name-ar')?.value.trim();
+    const btn = document.getElementById('btn-ai-cat-translate');
+    if (!name) { toast.warning('اكتب اسم التصنيف بالعربية أولاً'); return; }
+    const old = btn.textContent; btn.disabled = true; btn.textContent = '⏳ جاري الترجمة...';
+    try {
+      const res = await fetch(WORKER_URL + '/api/ai/translate', {
+        method:'POST', headers:{'Content-Type':'application/json', ...(await getIdToken() ? {Authorization:'Bearer '+await getIdToken()} : {})},
+        body:JSON.stringify({name, category:'business-directory-category'})
+      });
+      const data = await res.json().catch(()=>({}));
+      if (!res.ok || !data.success || !data.translatedName) throw new Error(data.error || 'تعذر الترجمة');
+      document.getElementById('cat-name-en').value = String(data.translatedName).trim();
+      toast.success('تمت الترجمة السياقية بنجاح ✨');
+    } catch(e) { toast.error(e.message || 'فشل الترجمة'); }
+    finally { btn.disabled=false; btn.textContent=old; }
+  });
+
+  document.getElementById('btn-ai-cat-icon')?.addEventListener('click', async () => {
+    const name = document.getElementById('cat-name-ar')?.value.trim();
+    const btn = document.getElementById('btn-ai-cat-icon');
+    if (!name) { toast.warning('اكتب اسم التصنيف بالعربية أولاً'); return; }
+    const old = btn.textContent; btn.disabled=true; btn.textContent='⏳ جاري التوليد...';
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error('يجب تسجيل الدخول كمسؤول');
+      const res = await fetch(WORKER_URL + '/api/ai/category-icon', {
+        method:'POST', headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+        body:JSON.stringify({name})
+      });
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok || !data.success || !data.icon) throw new Error(data.error || 'تعذر توليد الأيقونة');
+      document.getElementById('cat-icon').value=data.icon;
+      toast.success('تم توليد أيقونة مناسبة للنشاط ✨');
+    } catch(e) { toast.error(e.message || 'فشل توليد الأيقونة'); }
+    finally { btn.disabled=false; btn.textContent=old; }
   });
 }
 
