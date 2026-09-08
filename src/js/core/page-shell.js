@@ -303,7 +303,7 @@ export async function initPage(activeFile = '') {
       banner.id = 'wide-ads-banner';
       banner.className = 'container';
       headerSlot.insertAdjacentElement('afterend', banner);
-      runDeferred(() => mountWideAdsBanner(banner));
+      setTimeout(() => mountWideAdsBanner(banner), 0);
     }
   }
   _inject('footer-slot',  _footerHTML());
