@@ -3432,31 +3432,6 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
 
           try {
             await updateUserTurso(uid, { points: newPts });
-            try {
-              const db = getDB();
-              if (db && typeof db.ref === 'function') {
-                const logId = db.ref('users/' + uid + '/loyalty/history').push().key;
-                const delta = newPts - currentPts;
-                await Promise.all([
-                  db.ref('users/' + uid).update({ points: newPts }),
-                  db.ref('users/' + uid + '/loyalty').update({
-                    points: newPts,
-                    totalEarned: Math.max(newPts, currentPts),
-                    lastAdminUpdate: Date.now()
-                  }),
-                  db.ref('users/' + uid + '/loyalty/history/' + logId).set({
-                    id: logId,
-                    type: delta >= 0 ? 'earn' : 'deduct',
-                    amount: delta >= 0 ? '+' + delta : String(delta),
-                    pointsDelta: delta,
-                    label: note,
-                    createdAt: Date.now(),
-                    byAdmin: true
-                  })
-                ]);
-              }
-            } catch (_) {}
-
             // 2. Refresh local in-memory cache directly
             if (adminCache.users && adminCache.users[uid]) {
               adminCache.users[uid].points = newPts;
