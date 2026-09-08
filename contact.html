@@ -49,7 +49,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=61d65a4e"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=d3b987e0"/>
 </head>
 <body class="">
 <div id="app">
@@ -87,13 +87,27 @@
 
 <!-- Page Module -->
 <script type="module">
+  import { initPage } from './src/js/core/page-shell.js?v=d3b987e0';
+  import { renderContactPage } from './src/js/ui/pages/contact.js?v=d3b987e0';
+  import { getCurrentUser } from './src/js/core/auth.js?v=d3b987e0';
 
-  import { initPage } from './src/js/core/page-shell.js';
-  import { renderContactPage } from './src/js/ui/pages/contact.js';
-  import { waitForAuth } from './src/js/core/auth.js';
-  await initPage('');
-  const user = await waitForAuth();
-  await renderContactPage(document.getElementById('page-container'), { user });
+  (async () => {
+    try {
+      await initPage('contact.html');
+      await renderContactPage(document.getElementById('page-container'), { user: getCurrentUser() });
+    } catch (err) {
+      console.error('[ContactBootstrap] Fatal error during page init:', err);
+      const pc = document.getElementById('page-container');
+      if (pc) {
+        pc.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1rem;text-align:center;padding:2rem;">
+            <p style="font-size:1.1rem;color:var(--text-muted,#888);">حدث خطأ أثناء تحميل الصفحة، يرجى إعادة المحاولة</p>
+            <button onclick="location.reload()" style="padding:.6rem 1.5rem;border-radius:8px;background:#1B4F72;color:#fff;border:none;cursor:pointer;">إعادة التحميل</button>
+          </div>
+        `;
+      }
+    }
+  })();
 </script>
 </body>
 </html>

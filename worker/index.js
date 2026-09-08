@@ -86,20 +86,36 @@ async function requireAdmin(request, env, superadminOnly = false) {
 
 
 
+let _cachedDataVersion = '0';
+let _lastDataVersionFetch = 0;
+
 async function getDataVersion(env) {
+  const now = Date.now();
+  if (now - _lastDataVersionFetch < 60000) return _cachedDataVersion;
   try {
-    const obj = await env.elmanzala.get('config/data-version');
-    return obj ? await obj.text() : '0';
-  } catch (_) {
-    return '0';
-  }
+    if (env?.elmanzala?.get) {
+      const obj = await Promise.race([
+        env.elmanzala.get('config/data-version'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 500))
+      ]);
+      if (obj) {
+        _cachedDataVersion = await obj.text();
+        _lastDataVersionFetch = now;
+      }
+    }
+  } catch (_) {}
+  return _cachedDataVersion;
 }
 
 function bumpDataVersion(env, ctx) {
-  ctx.waitUntil(
-    env.elmanzala.put('config/data-version', String(Date.now()))
-      .catch(err => console.warn('[Cache] data-version update failed:', err?.message || err))
-  );
+  _cachedDataVersion = String(Date.now());
+  _lastDataVersionFetch = Date.now();
+  if (ctx?.waitUntil && env?.elmanzala?.put) {
+    ctx.waitUntil(
+      env.elmanzala.put('config/data-version', _cachedDataVersion)
+        .catch(err => console.warn('[Cache] data-version update failed:', err?.message || err))
+    );
+  }
 }
 
 async function sendDailyQuranReminder(env) {
@@ -667,20 +683,22 @@ try {
     // Public list requests are identical for most visitors. Cache the response at the
     // Worker edge so repeated homepage/search loads do not hit Turso.
     const usePublicListCache = !adminList && !ownerIdFilter && !ownerEmailFilter;
-    const listCache = caches.default;
-    const listCacheUrl = new URL(request.url);
-    listCacheUrl.searchParams.set('limit', String(limit));
-    listCacheUrl.searchParams.set('offset', String(offset));
-    listCacheUrl.searchParams.set('v', await getDataVersion(env));
-    const listCacheKey = new Request(listCacheUrl.toString(), { method: 'GET' });
+    let listCacheKey = null;
+    let listCache = null;
 
     if (usePublicListCache) {
-      const cachedList = await listCache.match(listCacheKey);
-      if (cachedList) {
-        const cached = new Response(cachedList.body, cachedList);
-        cached.headers.set('X-Cache', 'HIT');
-        return cached;
-      }
+      try {
+        listCache = caches.default;
+        const v = await getDataVersion(env);
+        listCacheKey = new Request(`https://cache.local/api/places/list?limit=${limit}&offset=${offset}&v=${v}`, { method: 'GET' });
+        const cachedList = await listCache.match(listCacheKey);
+        if (cachedList) {
+          const cached = new Response(cachedList.body, cachedList);
+          cached.headers.set('X-Cache', 'HIT');
+          Object.entries(corsHeaders).forEach(([k, val]) => cached.headers.set(k, val));
+          return cached;
+        }
+      } catch (_) {}
     }
 
     const result = await createTursoDB(env).prepare(sql).bind(...params).all();
@@ -721,8 +739,10 @@ try {
       'X-Cache': 'MISS'
     });
 
-    if (usePublicListCache) {
-      ctx.waitUntil(listCache.put(listCacheKey, response.clone()));
+    if (usePublicListCache && listCache && listCacheKey && ctx?.waitUntil) {
+      try {
+        ctx.waitUntil(listCache.put(listCacheKey, response.clone()).catch(() => {}));
+      } catch (_) {}
     }
     return response;
   }
@@ -824,7 +844,7 @@ try {
           ?, ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?,
-          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?, ?, ?, ?
         )
         ON CONFLICT(id) DO UPDATE SET
