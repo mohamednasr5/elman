@@ -2968,4 +2968,30 @@ function parseJson(value, fallback) {
     return fallback;
   }
 }
+  // ── Turso: ATM Poll API ─────────────────────────────────────
+  if (url.pathname.startsWith('/api/places/') && url.pathname.endsWith('/atm-poll') && (request.method === 'GET' || request.method === 'POST')) {
+    const placeId = decodeURIComponent(url.pathname.slice('/api/places/'.length, -'/atm-poll'.length));
+    if (!placeId) return jsonResponse({success:false,error:'معرف المكان مطلوب'},400,corsHeaders);
+    const db = createTursoDB(env);
+    if (request.method === 'GET') {
+      const row = await db.prepare('SELECT atm_poll_json FROM places WHERE id=? LIMIT 1').bind(placeId).first();
+      let poll={}; try { poll=JSON.parse(row?.atm_poll_json||'{}'); } catch (_) {}
+      return jsonResponse({success:true,data:poll},200,{...corsHeaders,'Cache-Control':'no-store'});
+    }
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(()=>({}));
+    const questionKey=String(body.questionKey||'').trim(), voteType=body.voteType==='yes'?'yes':'no';
+    if (!questionKey) return jsonResponse({success:false,error:'questionKey مطلوب'},400,corsHeaders);
+    const row = await db.prepare('SELECT atm_poll_json FROM places WHERE id=? LIMIT 1').bind(placeId).first();
+    let poll={}; try { poll=JSON.parse(row?.atm_poll_json||'{}'); } catch (_) {}
+    const q={...(poll[questionKey]||{})}, now=Date.now();
+    q.yesCount=Number(q.yesCount||0)+(voteType==='yes'?1:0); q.noCount=Number(q.noCount||0)+(voteType==='no'?1:0);
+    q.totalVotes=q.yesCount+q.noCount; q.lastAnswerTime=now; q.lastAnswerChoice=voteType; q.updatedAt=now;
+    poll[questionKey]=q; poll.updatedAt=now;
+    if(questionKey==='cash'){poll.yesCount=q.yesCount;poll.noCount=q.noCount;poll.totalVotes=q.totalVotes;poll.lastAnswerTime=now;poll.lastAnswerChoice=voteType;}
+    await db.prepare('UPDATE places SET atm_poll_json=? WHERE id=?').bind(JSON.stringify(poll),placeId).run();
+    return jsonResponse({success:true,data:poll},200,corsHeaders);
+  }
+
 
