@@ -87,14 +87,14 @@ function handleIncomingRealtimeEvent(type, payload, isRemote = false) {
       showPwaNativeSystemNotification(
         '🎉 انضمام نشاط جديد: ' + p.name,
         p.name + ' من ' + (p.area || 'المنزلة والمطرية') + ' انضم حديثاً للدليل',
-        'place.html?slug=' + encodeURIComponent(p.slug || p.id)
+        '/place.html?slug=' + encodeURIComponent(p.slug || p.id)
       );
     } else if (type === 'PLACE_UPDATED' && payload?.place?.isVerified) {
       const p = payload.place;
       showPwaNativeSystemNotification(
         '👑 تم توثيق رسمي جديد: ' + p.name,
         'تم توثيق ' + p.name + ' رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية',
-        'place.html?slug=' + encodeURIComponent(p.slug || p.id)
+        '/place.html?slug=' + encodeURIComponent(p.slug || p.id)
       );
     } else if (type === 'NEW_LIVE_NEWS' && payload?.news) {
       const n = payload.news;

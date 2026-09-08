@@ -3,42 +3,98 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <!-- Smart Route Resolver for Clean Place URLs (e.g. /mhnds-mhmd-hmad) -->
+  <!-- Smart Universal Route Resolver for GitHub Pages & Cloudflare Pages -->
   <script>
     (function() {
       try {
         var pathname = window.location.pathname || '';
-        // Extract the path segment
-        var parts = pathname.replace(/^\/+|\/+$/g, '').split('/');
-        var candidateSlug = parts[parts.length - 1];
-        
-        // Excluded system pages and static files
-        var systemFiles = [
-          'index.html', '404.html', 'places.html', 'place.html', 'categories.html', 'category.html',
-          'search.html', 'offers.html', 'emergency.html', 'about.html', 'contact.html',
-          'privacy.html', 'terms.html', 'legal.html', 'now.html', 'login.html', 'register.html', 'dashboard.html',
-          'admin.html', 'profile.html', 'products.html', 'manzala.html', 'matariya.html',
-          'around-me.html', 'favorites.html', 'sitemap.xml', 'sw.js', 'manifest.webmanifest'
-        ];
+        var cleanPath = pathname.replace(/^\/+|\/+$/g, '');
+        if (!cleanPath) return;
 
-        // If candidate is a valid slug and not a static file or asset path
+        var parts = cleanPath.split('/');
+        var firstSeg = (parts[0] || '').toLowerCase();
+        var search = window.location.search || '';
+        var hash = window.location.hash || '';
+
+        // 1. Direct Page Mapping (e.g. /admin -> /admin.html, /places -> /places.html)
+        var pageMap = {
+          'admin': 'admin.html',
+          'places': 'places.html',
+          'categories': 'categories.html',
+          'category': 'category.html',
+          'dashboard': 'dashboard.html',
+          'login': 'login.html',
+          'offers': 'offers.html',
+          'now': 'now.html',
+          'emergency': 'emergency.html',
+          'contact': 'contact.html',
+          'about': 'manzala.html',
+          'privacy': 'privacy.html',
+          'terms': 'terms.html',
+          'legal': 'legal.html',
+          'products': 'products.html',
+          'search': 'search.html',
+          'favorites': 'favorites.html',
+          'around-me': 'around-me.html',
+          'hadith': 'hadith.html',
+          'quran': 'quran.html',
+          'quran-search': 'quran-search.html',
+          'quran-surah': 'quran-surah.html',
+          'manzala': 'manzala.html',
+          'matariya': 'matariya.html'
+        };
+
+        // If path is single segment matching a known page name (e.g. /admin or /places)
+        if (parts.length === 1 && pageMap[firstSeg]) {
+          window.location.replace('/' + pageMap[firstSeg] + search + hash);
+          return;
+        }
+
+        // 2. Subpath routing:
+        // Case A: /place/:slug or /places/:slug
+        if ((firstSeg === 'place' || firstSeg === 'places') && parts[1]) {
+          var slug = parts.slice(1).join('/');
+          var prefix = search ? (search + '&') : '?';
+          window.location.replace('/place.html' + prefix + 'slug=' + encodeURIComponent(slug) + hash);
+          return;
+        }
+
+        // Case B: /place (with query like ?slug=...)
+        if (firstSeg === 'place' && parts.length === 1) {
+          window.location.replace('/place.html' + search + hash);
+          return;
+        }
+
+        // Case C: /category/:slug or /categories/:slug
+        if ((firstSeg === 'category' || firstSeg === 'categories') && parts[1]) {
+          var catSlug = parts.slice(1).join('/');
+          var prefixCat = search ? (search + '&') : '?';
+          window.location.replace('/category.html' + prefixCat + 'slug=' + encodeURIComponent(catSlug) + hash);
+          return;
+        }
+
+        // Case D: Clean Place Slug (e.g. /mhnds-mhmd-hmad or /p_1788904946234_ggxkgg)
+        var candidateSlug = parts[parts.length - 1];
+        var staticBypass = [
+          'src', 'icons', 'assets', 'docs', 'worker', 'admin', 'database'
+        ];
+        var isStaticDir = staticBypass.some(function(dir) { return firstSeg === dir; });
+
         if (candidateSlug && 
             !candidateSlug.includes('.') && 
-            !candidateSlug.startsWith('src') && 
-            !candidateSlug.startsWith('icons') && 
-            !candidateSlug.startsWith('assets') && 
-            !candidateSlug.startsWith('docs') && 
-            !candidateSlug.startsWith('admin') &&
-            systemFiles.indexOf(candidateSlug.toLowerCase()) === -1) {
-          
-          // Instantly redirect to place.html with slug
-          var targetUrl = 'place.html?slug=' + encodeURIComponent(candidateSlug);
-          if (window.location.search) {
-            targetUrl += '&' + window.location.search.replace(/^\?/, '');
+            !isStaticDir && 
+            !pageMap[candidateSlug.toLowerCase()]) {
+          var targetUrl = '/place.html?slug=' + encodeURIComponent(candidateSlug);
+          if (search) {
+            targetUrl += '&' + search.replace(/^\?/, '');
           }
+          targetUrl += hash;
           window.location.replace(targetUrl);
+          return;
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[404Router] Resolver non-fatal exception:', e);
+      }
     })();
   </script>
   <title>404 — الصفحة غير موجودة | دليل المنزلة والمطرية الرقمي</title>

@@ -1068,7 +1068,7 @@ function _setupHeaderSearch() {
           const letter = (name.trim()[0] || 'م').toUpperCase();
 
           return `
-            <a href="place.html?slug=${encodeURIComponent(slug)}" class="header-live-dropdown__item" role="option">
+            <a href="/place.html?slug=${encodeURIComponent(slug)}" class="header-live-dropdown__item" role="option">
               <div class="header-live-avatar">
                 ${photo
                   ? `<img src="${photo}" alt="${_esc(name)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'header-live-avatar-fallback\\'>${letter}</div>'"/>`

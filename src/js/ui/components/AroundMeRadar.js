@@ -147,7 +147,7 @@ export function mountAroundMeRadar(containerId) {
           </div>
 
           <h3 style="margin:0 0 4px 0;font-size:14px;font-weight:800;color:#fff">
-            <a href="place.html?slug=${p.slug || p.id}" style="color:inherit;text-decoration:none">
+            <a href="/place.html?slug=${p.slug || p.id}" style="color:inherit;text-decoration:none">
               ${p.name}
             </a>
           </h3>
@@ -157,7 +157,7 @@ export function mountAroundMeRadar(containerId) {
         </div>
 
         <div style="display:flex;align-items:center;gap:6px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px">
-          <a href="place.html?slug=${p.slug || p.id}" class="btn btn-xs" style="flex:1;background:rgba(255,255,255,0.15);color:#fff;border-radius:6px;font-weight:700;text-align:center;text-decoration:none;padding:5px">
+          <a href="/place.html?slug=${p.slug || p.id}" class="btn btn-xs" style="flex:1;background:rgba(255,255,255,0.15);color:#fff;border-radius:6px;font-weight:700;text-align:center;text-decoration:none;padding:5px">
             التفاصيل ↗
           </a>
           <a href="https://www.google.com/maps/dir/?api=1&destination=${p.resolvedLat},${p.resolvedLng}" target="_blank" rel="noopener" class="btn btn-xs btn-atm-dir" style="background:#047857;color:#ffffff;border-radius:6px;font-weight:800;text-decoration:none;padding:5px 8px">

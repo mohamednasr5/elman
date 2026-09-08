@@ -31,7 +31,7 @@ if (typeof window !== 'undefined') {
         sessionStorage.setItem('instant_place_latest', JSON.stringify(p));
       } catch (_) {}
     }
-    window.location.href = `place.html?slug=${encodeURIComponent(slug)}`;
+    window.location.href = `/place.html?slug=${encodeURIComponent(slug)}`;
   };
 
   window.__prefetchPlaceCard = function(slug) {
@@ -47,7 +47,7 @@ if (typeof window !== 'undefined') {
     if (!document.querySelector(`link[rel="prefetch"][href*="${encodeURIComponent(slug)}"]`)) {
       const link = document.createElement('link');
       link.rel = 'prefetch';
-      link.href = `place.html?slug=${encodeURIComponent(slug)}`;
+      link.href = `/place.html?slug=${encodeURIComponent(slug)}`;
       document.head.appendChild(link);
     }
   };
@@ -92,7 +92,7 @@ export function renderPlaceCard(place) {
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';
   const verifiedBadge = place.isVerified ? renderVerifiedBadge() : '';
   const deliveryBadge = (!isAtm && place.deliveryType) ? renderDeliveryBadge(place.deliveryType) : '';
-  const placeUrl = `place.html?slug=${encodeURIComponent(place.slug || place.id || place._key)}`;
+  const placeUrl = `/place.html?slug=${encodeURIComponent(place.slug || place.id || place._key)}`;
   const placeId = place._key || place.id || place.slug || '';
   const calculatedTrustScore = Math.min(100,
     (place.isVerified ? 35 : 0) +

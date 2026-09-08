@@ -1480,7 +1480,7 @@ export async function broadcastNewPlaceNotification(place) {
   const placeId = place.id || place._key || place._id || place.slug;
   const notifId = 'notif_new_place_' + placeId;
   const address = [place.area, place.address].filter(Boolean).join(' — ') || 'مدينة المنزلة والمطرية';
-  const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || place._key || placeId);
+  const targetUrl = '/place.html?slug=' + encodeURIComponent(place.slug || place._key || placeId);
   
   const notification = {
     id: notifId,
@@ -1509,7 +1509,7 @@ export async function broadcastPlaceVerifiedNotification(place) {
   if (!place) return;
   const placeId = place.id || place._key || place._id || place.slug;
   const notifId = 'notif_verified_' + placeId;
-  const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || place._key || placeId);
+  const targetUrl = '/place.html?slug=' + encodeURIComponent(place.slug || place._key || placeId);
 
   const notification = {
     id: notifId,
@@ -2124,7 +2124,7 @@ export async function adminAddReview({ placeId, placeName, placeSlug, userId, us
         message: `قام ${cleanName} بتقييم (${placeName || place?.name || 'مكانك'}) بعدد (${numRating}) نجوم ${starText} بتقييم ${evalType}.`,
         comment: cleanComment,
         actionText: 'عرض التقييم في المكان ↗',
-        actionUrl: `place.html?slug=${encodeURIComponent(placeSlug || place?.slug || placeId)}#reviews`,
+        actionUrl: `/place.html?slug=${encodeURIComponent(placeSlug || place?.slug || placeId)}#reviews`,
         createdAt: Date.now(),
         isRead: false
       };

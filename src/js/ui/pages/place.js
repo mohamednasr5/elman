@@ -1,4 +1,4 @@
-﻿import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
+import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 /**
  * المنزلة وناسها — Place Detail Page
  * Full production place view with cover, logo, verified badge, working hours,
@@ -69,7 +69,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     }
 
     if (!place) {
-      window.location.replace('404.html?type=place&reason=deleted');
+      window.location.replace('/404.html?type=place&reason=deleted');
       return;
     }
 
@@ -897,7 +897,7 @@ function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUr
       </div>
 
       <div class="spotlight-body animate-fade-in" id="spotlight-body-content">
-        <a href="place.html?slug=${encodeURIComponent(pSlug)}" class="spotlight-profile-link" title="عرض ملف ${escAttr(pName)}">
+        <a href="/place.html?slug=${encodeURIComponent(pSlug)}" class="spotlight-profile-link" title="عرض ملف ${escAttr(pName)}">
           <div class="spotlight-avatar-box">
             <img src="${escAttr(pImg)}" alt="${escAttr(pName)}" class="spotlight-avatar-img" onerror="this.src='./icons/icon-72x72.png'" />
           </div>

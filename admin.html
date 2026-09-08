@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"/>
@@ -103,7 +103,7 @@
 
   const user = await waitForAuth();
   if (!user) {
-    location.href = 'login.html';
+    location.href = '/login.html';
   } else if (!isAdmin(user)) {
     document.getElementById('page-container').innerHTML = `
       <div class="empty-state" style="margin-top:100px;">
@@ -115,7 +115,7 @@
     `;
     document.getElementById('btn-switch-account').addEventListener('click', async () => {
       await signOut();
-      location.href = 'login.html';
+      location.href = '/login.html';
     });
   } else {
     // If Firebase Auth session restoration is still in flight, wait briefly for currentUser

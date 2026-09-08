@@ -1,4 +1,4 @@
-﻿/**
+/**
  * المنزلة وناسها — Home Page
  * Full homepage with hero, search, categories, places, offers, delivery
  */
@@ -282,7 +282,7 @@ function initHomeVerifiedShowcase(allPlaces = null) {
       const targetSlug = p.slug || p.id || '';
       return `
       <article class="fair-place-card" data-card-index="${index}"
-               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')"
                onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
                onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
                style="cursor:pointer">
@@ -300,7 +300,7 @@ function initHomeVerifiedShowcase(allPlaces = null) {
             <span>📍 ${escHtml(p.area)}</span>
             <span>🏷️ ${escHtml(p.category)}</span>
           </div>
-          <a href="place.html?slug=${encodeURIComponent(targetSlug)}" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')">عرض بطاقة المكان ↗</a>
+          <a href="/place.html?slug=${encodeURIComponent(targetSlug)}" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')">عرض بطاقة المكان ↗</a>
         </div>
       </article>
     `;
@@ -389,7 +389,7 @@ function renderOffers(offers) {
 
     return `
       <article class="offer-card"
-               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(offer.placeSlug || '')}', event) : (window.location.href='place.html?slug=${encodeURIComponent(offer.placeSlug || '')}')"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(offer.placeSlug || '')}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(offer.placeSlug || '')}')"
                onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(offer.placeSlug || '')}')"
                onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(offer.placeSlug || '')}')"
                style="cursor:pointer">
@@ -433,8 +433,8 @@ function renderDeliveryServices(places) {
   grid.innerHTML = places.slice(0, 6).map(place => {
     const targetSlug = place.slug || place._key || place.id || '';
     return `
-    <a href="place.html?slug=${encodeURIComponent(targetSlug)}" class="delivery-card"
-       onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')"
+    <a href="/place.html?slug=${encodeURIComponent(targetSlug)}" class="delivery-card"
+       onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')"
        onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
        onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')">
       <div class="delivery-card__icon">${deliveryIcons[place.deliveryType] || '🚀'}</div>
@@ -787,7 +787,7 @@ function setupHeroSearch(categories) {
           const letter = (name.trim()[0] || 'م').toUpperCase();
 
           return `
-            <a href="place.html?slug=${encodeURIComponent(slug)}" class="hero-live-dropdown__item" role="option">
+            <a href="/place.html?slug=${encodeURIComponent(slug)}" class="hero-live-dropdown__item" role="option">
               <div class="hero-live-avatar">
                 ${photo
                   ? `<img src="${escAttr(photo)}" alt="${escAttr(name)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'hero-live-avatar-fallback\\'>${letter}</div>'"/>`

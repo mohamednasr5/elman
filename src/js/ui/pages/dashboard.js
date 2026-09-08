@@ -361,7 +361,7 @@ function renderPlacesListHTML(places) {
                 </div>
                 <div class="my-place-item__meta">
                   <span class="chip chip--primary">📍 ${escHtml(place.area || 'المنزلة')}</span>
-                  <a href="place.html?slug=${escAttr(place.slug)}" target="_blank" style="font-size:var(--font-size-xs)">🔗 الصفحة العامة</a>
+                  <a href="/place.html?slug=${escAttr(place.slug)}" target="_blank" style="font-size:var(--font-size-xs)">🔗 الصفحة العامة</a>
                 </div>
               </div>
 
@@ -1895,7 +1895,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
               </div>
 
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <a href="place.html?slug=${encodeURIComponent(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#0284C7;color:#fff;border:none;border-radius:8px;font-weight:800;padding:6px 12px;display:inline-flex;align-items:center;gap:4px" title="فتح صفحة المكان في نافذة جديدة للتأكد منه">
+                <a href="/place.html?slug=${encodeURIComponent(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#0284C7;color:#fff;border:none;border-radius:8px;font-weight:800;padding:6px 12px;display:inline-flex;align-items:center;gap:4px" title="فتح صفحة المكان في نافذة جديدة للتأكد منه">
                   <span>👁️</span>
                   <span>عرض المكان للتأكد</span>
                 </a>
@@ -2524,7 +2524,7 @@ async function renderPlaceProductsSection($container, user, placeId) {
         <div class="empty-state__icon">🔒</div>
         <h2>المنتجات متاحة حصرياً للأماكن الموثقة</h2>
         <p class="empty-state__text">وثّق مكانك الآن لتتمكن من إضافة حتى 350 منتجاً في دليلك الرقمي مع الأسعار والصور والوصف</p>
-        <a href="place.html?slug=${place.slug || place.id}" class="btn btn-primary" style="margin-top:1rem">طلب التوثيق الآن</a>
+        <a href="/place.html?slug=${place.slug || place.id}" class="btn btn-primary" style="margin-top:1rem">طلب التوثيق الآن</a>
       </div>
     `;
     return;
@@ -3311,7 +3311,7 @@ function renderNotificationsMarkup($container, user, allNotifs) {
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <a href="${escAttr(n.actionUrl || `place.html?slug=${n.placeSlug}`)}" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
+                  <a href="${escAttr(n.actionUrl || `/place.html?slug=${n.placeSlug}`)}" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
                     <span>👁️</span> مشاهدة المكان
                   </a>
                   ${isUnread ? `
@@ -3403,7 +3403,7 @@ function renderNotificationsMarkup($container, user, allNotifs) {
                 </div>
 
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;align-self:center">
-                  <a href="${escAttr(n.actionUrl || `place.html?slug=${n.placeSlug}#reviews`)}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
+                  <a href="${escAttr(n.actionUrl || `/place.html?slug=${n.placeSlug}#reviews`)}" target="_blank" rel="noopener" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
                     <span>💬</span> مشاهدة والرد
                   </a>
                   ${isUnread ? `
@@ -3762,7 +3762,7 @@ async function renderFollowingSection($container, user) {
                     <span class="offer-card__price-new" style="font-weight:700;color:var(--primary);font-size:16px">${formatPrice(offer.newPrice)}</span>
                     ${offer.oldPrice ? `<span class="offer-card__price-old" style="text-decoration:line-through;color:var(--text-muted);font-size:13px;margin-right:8px">${formatPrice(offer.oldPrice)}</span>` : ''}
                   </div>
-                  <a href="place.html?slug=${escAttr(offer.placeSlug || offer.placeId)}" class="btn btn-sm btn-outline" style="width:100%;justify-content:center;font-size:12.5px;border-radius:var(--radius-md)">
+                  <a href="/place.html?slug=${escAttr(offer.placeSlug || offer.placeId)}" class="btn btn-sm btn-outline" style="width:100%;justify-content:center;font-size:12.5px;border-radius:var(--radius-md)">
                     عرض المكان والتواصل
                   </a>
                 </div>
@@ -3798,7 +3798,7 @@ async function renderFollowingSection($container, user) {
             </div>
 
             <div style="display:flex;gap:8px;margin-top:auto">
-              <a href="place.html?slug=${escAttr(p.slug || p.id)}" class="btn btn-sm btn-primary" style="flex:1;justify-content:center;font-size:12px;border-radius:var(--radius-md)">
+              <a href="/place.html?slug=${escAttr(p.slug || p.id)}" class="btn btn-sm btn-primary" style="flex:1;justify-content:center;font-size:12px;border-radius:var(--radius-md)">
                 عرض الصفحة
               </a>
               <button type="button" class="btn btn-sm btn-outline btn-dash-unfollow" data-pid="${escAttr(p.id)}" style="font-size:12px;border-radius:var(--radius-md);color:var(--danger);border-color:var(--border)" title="إلغاء المتابعة">

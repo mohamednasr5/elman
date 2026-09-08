@@ -1,4 +1,4 @@
-﻿/**
+/**
  * المنزلة وناسها — Admin Control Panel (Instant SPA + Sponsored Ads Edition)
  * Zero-latency navigation, in-memory caching, responsive mobile bottom-bar,
  * and complete Sponsored Place / Paid Ad priority controls.
@@ -71,15 +71,16 @@ function navLink(sectionKey, href, icon, label, active) {
   </a>`;
 }
 
+function resolvePublicPlaceUrl(slug) {
+  return `/place.html?slug=${slug}`;
+}
+
 export function getPlaceUrl(slugOrId) {
   if (!slugOrId) return '#';
   if (typeof slugOrId === 'string' && (slugOrId.startsWith('http://') || slugOrId.startsWith('https://'))) {
     return slugOrId;
   }
-  const slug = encodeURIComponent(slugOrId);
-  const isInsideAdminSubdir = typeof window !== 'undefined' && window.location.pathname.includes('/admin/');
-  const prefix = isInsideAdminSubdir ? '../' : './';
-  return `${prefix}place.html?slug=${slug}`;
+  return resolvePublicPlaceUrl(encodeURIComponent(slugOrId));
 }
 
 
@@ -4379,7 +4380,7 @@ function showAddAdModal(user, onDone) {
               const newAd = {
                 title: `إعلان: ${placeName}`,
                 placeId,
-                link: `place.html?slug=${placeSlug}`,
+                link: `/place.html?slug=${placeSlug}`,
                 imageUrl: placeImg,
                 placement,
                 priority: 10,

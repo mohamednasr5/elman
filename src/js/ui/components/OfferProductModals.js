@@ -110,7 +110,7 @@ export function openOfferFullDetailsModal(offer, place = {}) {
           <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--text-muted);padding-top:12px;border-top:1px dashed var(--border);flex-wrap:wrap;gap:8px">
             <div>
               🏪 مقدم من: <strong>${escHtml(placeName)}</strong>
-              ${placeSlug ? `<a href="place.html?slug=${escAttr(placeSlug)}" style="color:var(--primary);margin-right:6px;font-weight:600">زيارة المكان ↗</a>` : ''}
+              ${placeSlug ? `<a href="/place.html?slug=${escAttr(placeSlug)}" style="color:var(--primary);margin-right:6px;font-weight:600">زيارة المكان ↗</a>` : ''}
             </div>
             <div>
               ⏰ صلاحية العرض: <strong>${formatDateRange(offer.startDate, offer.endDate)}</strong>
@@ -234,7 +234,7 @@ export function openProductFullDetailsModal(product, place = {}) {
           <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--text-muted);padding-top:12px;border-top:1px dashed var(--border);flex-wrap:wrap;gap:8px">
             <div>
               🏪 متوفر لدى: <strong>${escHtml(placeName)}</strong>
-              ${placeSlug ? `<a href="place.html?slug=${escAttr(placeSlug)}" style="color:var(--primary);margin-right:6px;font-weight:600">زيارة المكان ↗</a>` : ''}
+              ${placeSlug ? `<a href="/place.html?slug=${escAttr(placeSlug)}" style="color:var(--primary);margin-right:6px;font-weight:600">زيارة المكان ↗</a>` : ''}
             </div>
             ${product.createdAt ? `<div>📅 تاريخ الإضافة: <strong>${formatDate(product.createdAt)}</strong></div>` : ''}
           </div>

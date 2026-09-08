@@ -889,7 +889,7 @@ async function initFairRotationShowcase() {
       const targetSlug = p.slug || p.id || '';
       return `
       <article class="fair-place-card" data-card-index="${index}"
-               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')"
                onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
                onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
                style="cursor:pointer">
@@ -907,7 +907,7 @@ async function initFairRotationShowcase() {
             <span>📍 ${escHtml(p.area)}</span>
             <span>🏷️ ${escHtml(p.category)}</span>
           </div>
-          <a href="place.html?slug=${encodeURIComponent(targetSlug)}" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')">عرض بطاقة المكان ↗</a>
+          <a href="/place.html?slug=${encodeURIComponent(targetSlug)}" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')">عرض بطاقة المكان ↗</a>
         </div>
       </article>
     `;
