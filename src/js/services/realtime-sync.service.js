@@ -6,7 +6,6 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-import { getDB } from '../core/db.js';
 import { playNotificationSound } from './notification.service.js';
 
 let _syncChannel = null;

@@ -29,85 +29,18 @@ export const FCM_VAPID_KEY = 'BEm1Vn_Ol2QKgHvU91MMprcgs3uMjp36fJrO591d0PCzn_lZ0I
 let _app = null;
 let _auth = null;
 
-// Safe dummy DB stub to prevent legacy references from crashing
-const _dummySnap = {
-  exists: () => false,
-  val: () => null,
-  forEach: () => {},
-  numChildren: () => 0,
-  key: null
-};
-
-const _dummyRef = {
-  once: async () => _dummySnap,
-  on: () => {},
-  off: () => {},
-  set: async () => {},
-  update: async () => {},
-  remove: async () => {},
-  push: (data) => ({ key: 'local_' + Date.now(), then: (fn) => Promise.resolve(fn ? fn() : null) }),
-  transaction: async (fn) => ({ committed: true, snapshot: _dummySnap }),
-  orderByChild: function() { return this; },
-  equalTo: function() { return this; },
-  limitToLast: function() { return this; },
-  limitToFirst: function() { return this; },
-  startAt: function() { return this; },
-  endAt: function() { return this; }
-};
-
-const _dummyDb = {
-  ref: (path) => _dummyRef
-};
-
-// Global polyfill so NO legacy script or cached file ever throws on database or ServerValue
-function _applyServerValuePolyfill() {
-  if (typeof window === 'undefined') return;
-  const dummyServerValue = { TIMESTAMP: Date.now() };
-  
-  window.firebase = window.firebase || {};
-  if (!window.firebase.database) {
-    const _dbFn = function() { return _dummyDb; };
-    _dbFn.ServerValue = dummyServerValue;
-    window.firebase.database = _dbFn;
-  } else {
-    try {
-      window.firebase.database.ServerValue = window.firebase.database.ServerValue || dummyServerValue;
-    } catch (_) {}
-  }
-
-  // Also bind to window.ServerValue directly if a legacy script references it naked
-  window.ServerValue = window.ServerValue || dummyServerValue;
-
-  // Also guard globalThis
-  if (typeof globalThis !== 'undefined') {
-    globalThis.ServerValue = globalThis.ServerValue || dummyServerValue;
-    if (globalThis.firebase) {
-      if (!globalThis.firebase.database) {
-        globalThis.firebase.database = window.firebase.database;
-      } else {
-        try {
-          globalThis.firebase.database.ServerValue = globalThis.firebase.database.ServerValue || dummyServerValue;
-        } catch (_) {}
-      }
-    }
-  }
-}
-
-_applyServerValuePolyfill();
-
+/** Firebase Auth/FCM only. No Firebase database client is initialized. */
 /**
  * Initialize Firebase Auth and Analytics (No RTDB)
  */
 export function initFirebase() {
-  if (_app && _auth) return { app: _app, auth: _auth, db: _dummyDb };
+  if (_app && _auth) return { app: _app, auth: _auth, db: null };
 
   const fb = (typeof window !== 'undefined' && window.firebase) 
     ? window.firebase 
     : (typeof firebase !== 'undefined' ? firebase : null);
 
-  _applyServerValuePolyfill();
-
-  if (!fb || typeof fb.initializeApp !== 'function') {
+    if (!fb || typeof fb.initializeApp !== 'function') {
     return null;
   }
 
