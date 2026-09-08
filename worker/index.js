@@ -261,7 +261,7 @@ try {
         success: false,
         status: 'error',
         database: 'turso',
-        error: 'Database connection failed'
+        error: err?.message || String(err)
       }, 503, {
         ...corsHeaders,
         'Cache-Control': 'no-store'

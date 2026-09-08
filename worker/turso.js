@@ -35,18 +35,18 @@ class TursoD1Statement {
   }
 
   async all() {
-    const stmt = this.client.prepare(this.sql);
+    const stmt = await this.client.prepare(this.sql);
     const rows = await stmt.all(this.args);
     return { results: rows };
   }
 
   async first() {
-    const stmt = this.client.prepare(this.sql);
+    const stmt = await this.client.prepare(this.sql);
     return await stmt.get(this.args) ?? null;
   }
 
   async run() {
-    const stmt = this.client.prepare(this.sql);
+    const stmt = await this.client.prepare(this.sql);
     const result = await stmt.run(this.args);
     return {
       success: true,
