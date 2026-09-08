@@ -192,8 +192,8 @@ export async function renderSearchPage($container, { q = '', user }) {
       } catch (_) {}
       if (!matched.length && allPlaces.length === 0) {
         try {
-          const d1Phone = await searchPlacesTurso(query, { limit: 20, offset: 0 });
-          matched = (d1Phone?.places || []).filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
+          const phoneSearchResult = await searchPlacesTurso(query, { limit: 20, offset: 0 });
+          matched = (phoneSearchResult?.places || []).filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
         } catch (_) {}
       }
 
