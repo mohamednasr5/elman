@@ -1799,7 +1799,7 @@ try {
   }
 
   // ── Turso: Update User (PATCH/PUT /api/users/:id) ──
-  // Allows updating: role, status, name, email, phone
+  // Allows updating profile fields plus administrator-controlled points
   if ((url.pathname.startsWith('/api/users/') || url.pathname === '/api/users') &&
       (request.method === 'PUT' || request.method === 'PATCH') &&
       !url.pathname.endsWith('/sync') && !url.pathname.endsWith('/seed')) {
@@ -1830,15 +1830,20 @@ try {
       const name   = body.name   !== undefined ? body.name   : existing.name;
       const email  = body.email  !== undefined ? body.email  : existing.email;
       const phone  = body.phone  !== undefined ? body.phone  : existing.phone;
+      const pointsRaw = body.points !== undefined ? Number(body.points) : Number(existing.points || 0);
+      if (!Number.isFinite(pointsRaw) || pointsRaw < 0 || pointsRaw > 1000000000) {
+        return jsonResponse({success:false,error:'رصيد النقاط غير صالح'},400,corsHeaders);
+      }
+      const points = Math.floor(pointsRaw);
       const now    = Date.now();
 
       await createTursoDB(env).prepare(`
-        UPDATE users SET role = ?, status = ?, name = ?, email = ?, phone = ?, updated_at = ?
+        UPDATE users SET role = ?, status = ?, name = ?, email = ?, phone = ?, points = ?, updated_at = ?
         WHERE id = ?
-      `).bind(role, status, name, email, phone, now, id).run();
+      `).bind(role, status, name, email, phone, points, now, id).run();
 
       const updated = await createTursoDB(env).prepare(
-        `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
+        `SELECT id, name, email, photo_url, phone, role, status, points, total_earned, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
       ).bind(id).first();
 
       return jsonResponse({ success: true, data: updated }, 200, corsHeaders);
