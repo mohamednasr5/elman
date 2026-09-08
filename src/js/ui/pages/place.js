@@ -5,14 +5,14 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG } from '../../core/db.js?v=ca2defce';
+import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG } from '../../core/db.js?v=f5f35de2';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
-import { submitVerificationRequest } from '../../services/places.service.js?v=ca2defce';
+import { submitVerificationRequest } from '../../services/places.service.js?v=f5f35de2';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
@@ -26,18 +26,47 @@ import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
 import { resolvePlaceProfession, getCategorySvg, getProfessionSvg } from '../../utils/professions-data.js';
 
-export async function renderPlacePage($container, { slug, user }) {
-  // Show skeleton
-  $container.innerHTML = `
-    <div class="place-hero skeleton"></div>
-    <div class="container" style="max-width:var(--container-xl);margin:0 auto;padding:1rem">
-      <div class="skeleton" style="height:120px;border-radius:16px;margin-top:-50px;margin-bottom:2rem"></div>
-      <div class="skeleton" style="height:200px;border-radius:16px"></div>
-    </div>
-  `;
+export async function renderPlacePage($container, { slug, user, initialPlace = null }) {
+  // ── Instant 0ms Place Detection ──
+  let place = initialPlace;
+  const cleanSlug = String(slug || '').toLowerCase().trim();
+
+  if (!place && typeof window !== 'undefined') {
+    if (window._placesRegistry) {
+      place = window._placesRegistry.get(cleanSlug) || window._placesRegistry.get(String(slug || '').trim());
+    }
+    if (!place) {
+      try {
+        const raw = sessionStorage.getItem('instant_place_' + cleanSlug) || sessionStorage.getItem('instant_place_latest');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && (
+            String(parsed.slug || '').toLowerCase() === cleanSlug ||
+            String(parsed.id || '').toLowerCase() === cleanSlug ||
+            !cleanSlug
+          )) {
+            place = parsed;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  // If no cached place in memory or session, display smooth skeleton while fetching
+  if (!place) {
+    $container.innerHTML = `
+      <div class="place-hero skeleton"></div>
+      <div class="container" style="max-width:var(--container-xl);margin:0 auto;padding:1rem">
+        <div class="skeleton" style="height:120px;border-radius:16px;margin-top:-50px;margin-bottom:2rem"></div>
+        <div class="skeleton" style="height:200px;border-radius:16px"></div>
+      </div>
+    `;
+  }
 
   try {
-    const place = await getPlaceBySlug(slug);
+    if (!place) {
+      place = await getPlaceBySlug(slug);
+    }
 
     if (!place) {
       window.location.replace('404.html?type=place&reason=deleted');
@@ -66,38 +95,24 @@ export async function renderPlacePage($container, { slug, user }) {
     }
 
     const placeId = place.id || place._key;
-
-    // Keep the special review-management rules deterministic and local.
-    // This was previously referenced without a declaration and crashed every place page.
     const isHammad = (place.slug === HAMMAD_PLACE_SLUG || place.name?.includes('محمد حماد'));
 
-    // Parallel load with safe fallbacks
-    const [categories, offers, products, settings, reviews, allPublishedPlaces] = await Promise.all([
-      getCategories().catch(() => []),
-      getPlaceOffers(placeId).catch(() => []),
-      getPlaceProducts(placeId).catch(() => []),
-      getSettings().catch(() => ({})),
-      getPlaceReviews(placeId, place.slug).catch(() => []),
-      getPublishedPlaces({ limit: 40 }).catch(() => [])
-    ]);
-
+    // Fast categories retrieval (cached in IDB / memory)
+    const categories = await getCategories().catch(() => []);
     const category = categories?.find(c => c._key === place.categoryId || c.slug === place.categoryId);
     const catInfo = resolvePlaceCategoryInfo(place, category);
-    const isFollowing = currentUser ? await isFollowingPlace(placeId, currentUser.uid).catch(() => false) : false;
+    const isFollowing = false; // Resolved asynchronously
 
-    // ── Reviews / Ratings Summary ──
-    const safeReviews = Array.isArray(reviews) ? reviews : [];
-    const totalReviews = safeReviews.length;
-    const starCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    let ratingSum = 0;
+    // ── Initial Reviews / Ratings Summary (0ms) ──
+    let safeReviews = Array.isArray(place.reviews) ? place.reviews : [];
+    let totalReviews = safeReviews.length || Number(place.ratingCount) || Number(place.reviewsCount) || 0;
+    let avgRating = totalReviews > 0 ? (Number(place.rating) || 5.0) : 0.0;
+    if (safeReviews.length > 0) {
+      let rSum = 0;
+      safeReviews.forEach(r => { rSum += (Number(r.rating) || 5); });
+      avgRating = Math.round((rSum / safeReviews.length) * 10) / 10;
+    }
 
-    safeReviews.forEach(review => {
-      const rating = Math.min(5, Math.max(1, parseInt(review.rating, 10) || 5));
-      starCounts[rating]++;
-      ratingSum += rating;
-    });
-
-    const avgRating = totalReviews > 0 ? Math.round((ratingSum / totalReviews) * 10) / 10 : 0.0;
     const calculatedTrustScore = Math.min(100,
       (place.isVerified ? 35 : 0) + (place.phone || place.whatsapp ? 15 : 0) +
       ((place.lat || place.latitude) && (place.lng || place.longitude) ? 15 : 0) + (place.address ? 10 : 0) +
@@ -107,7 +122,7 @@ export async function renderPlacePage($container, { slug, user }) {
     const hasManualTrustScore = place.trustScore !== undefined || place.trust_score !== undefined;
     const trustScore = hasManualTrustScore ? Math.max(0, Math.min(100, Number(place.trustScore ?? place.trust_score) || 0)) : calculatedTrustScore;
     const trustClass = trustScore < 50 ? 'place-trust-mini--low' : trustScore < 70 ? 'place-trust-mini--medium' : 'place-trust-mini--high';
-    const userReview = currentUser ? safeReviews.find(review => review.userId === currentUser.uid) : null;
+    let userReview = currentUser ? safeReviews.find(review => review.userId === currentUser.uid) : null;
 
     // Track View Count & Profile Visitor safely
     try { trackPlaceView(place, currentUser); } catch (_) {}
@@ -258,7 +273,7 @@ export async function renderPlacePage($container, { slug, user }) {
 
                   
                   ${!isAtm ? `
-                    <div style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
+                    <div id="place-header-rating-badge" style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
                       <span>★</span>
                       <span>${avgRating.toFixed(1)}</span>
                       <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : '0.0'})</span>
@@ -371,96 +386,16 @@ export async function renderPlacePage($container, { slug, user }) {
             </section>
           ` : ''}
 
-          <!-- Active Offers Section -->
-          ${!isAtm && offers && offers.length > 0 ? `
-            <section class="info-card" id="place-offers-card">
-              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:var(--space-4)">
-                <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:6px">
-                  <span>🏷️</span> العروض والتخفيضات الحالية (${offers.length})
-                </h2>
-                <a href="offers.html?place=${escAttr(place.slug || place.id)}" class="btn btn-sm btn-outline" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);gap:4px">
-                  🔍 تصفح كافة عروض المكان ↗
-                </a>
-              </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-4)">
-                ${offers.map(offer => {
-                  const discount = offer.discountPercent || calcDiscount(offer.oldPrice, offer.newPrice);
-                  const days = daysUntil(offer.endDate);
-                  return `
-                    <div class="offer-card place-interactive-offer-card" data-offer-id="${escAttr(offer.id || offer._id)}" title="انقر لمشاهدة تفاصيل وطلب العرض">
-                      <div class="offer-card__image">
-                        ${offer.imageUrl 
-                          ? `<img src="${escAttr(offer.imageUrl)}" alt="${escAttr(offer.title)}" loading="lazy" />` 
-                          : `<div style="padding:2rem;text-align:center;font-size:2.5rem;color:var(--text-muted)">🏷️</div>`}
-                        ${discount > 0 ? `<span class="offer-card__discount-badge">خصم -${discount}%</span>` : ''}
-                      </div>
-                      <div class="offer-card__body">
-                        <h3 class="offer-card__title">${escHtml(offer.title)}</h3>
-                        ${offer.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-2);line-height:1.5">${escHtml(offer.description)}</p>` : ''}
-                        <div class="offer-card__price">
-                          <span class="offer-card__price-new">${formatPrice(offer.newPrice)}</span>
-                          ${offer.oldPrice ? `<span class="offer-card__price-old">${formatPrice(offer.oldPrice)}</span>` : ''}
-                        </div>
-                        <div class="offer-card__expiry">⏰ ينتهي: ${formatDateRange(offer.startDate, offer.endDate)}</div>
-                        <div class="offer-card__cta-btn">
-                          <span>👁️ اضغط لمشاهدة تفاصيل وطلب العرض</span>
-                          <span>↗</span>
-                        </div>
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            </section>
-          ` : ''}
+          <!-- Active Offers Slot -->
+          <div id="place-offers-slot"></div>
 
-          <!-- Products Section (Only for verified places) -->
-          ${!isAtm && place.isVerified && products && products.length > 0 ? `
-            <section class="info-card" id="place-products-card">
-              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:var(--space-4)">
-                <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:6px">
-                  <span>🛍️</span> قائمة المنتجات والأسعار (${products.length})
-                </h2>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span class="chip chip--success" style="font-size:11px">موثق ✓</span>
-                  <a href="products.html?place=${escAttr(place.slug || place.id)}" class="btn btn-sm btn-outline" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);gap:4px">
-                    🔍 تصفح كافة منتجات المكان ↗
-                  </a>
-                </div>
-              </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-4)">
-                ${products.map(p => `
-                  <div class="product-card place-interactive-product-card" data-product-id="${escAttr(p.id)}" title="انقر لمشاهدة تفاصيل وطلب المنتج">
-                    <div class="product-card__image">
-                      ${p.imageUrl ? `<img src="${escAttr(p.imageUrl)}" alt="${escAttr(p.name)}" loading="lazy" />` : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:var(--text-muted)">📦</div>`}
-                      ${p.isFeatured ? `<span class="product-card__featured">مميز ⭐</span>` : ''}
-                    </div>
-                    <div class="product-card__body">
-                      <h3 class="product-card__name" style="font-size:1.05rem;font-weight:700">${escHtml(p.name)}</h3>
-                      ${p.category ? `<div style="font-size:11px;color:var(--primary);margin-bottom:4px;font-weight:600">🏷️ ${escHtml(p.category)}</div>` : ''}
-                      ${p.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:var(--space-2);line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escHtml(p.description)}</p>` : ''}
-                      <div class="product-card__price" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                        <span class="product-card__price-current">${formatPrice(p.price)}</span>
-                        ${p.oldPrice ? `<span class="product-card__price-old">${formatPrice(p.oldPrice)}</span>` : ''}
-                        ${p.oldPrice && Number(p.oldPrice) > Number(p.price) ? `
-                          <span class="badge" style="background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:4px;margin-right:auto">
-                            وفرت ${formatPrice(Number(p.oldPrice) - Number(p.price))}
-                          </span>
-                        ` : ''}
-                      </div>
-                      <div class="product-card__cta-btn">
-                        <span>🛍️ اضغط لتفاصيل وطلب المنتج</span>
-                        <span>↗</span>
-                      </div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            </section>
-          ` : ''}
+          <!-- Products Slot (Verified Places) -->
+          <div id="place-products-slot"></div>
 
-          <!-- Google-Style 5-Star Reviews & Ratings Section (Hidden for ATMs) -->
-          ${!isAtm ? renderReviewsSectionHTML({ placeId, placeName: place.name, safeReviews, totalReviews, currentUser, userReview, isHammad }) : ''}
+          <!-- Google-Style 5-Star Reviews Slot -->
+          <div id="place-reviews-slot">
+            ${!isAtm ? renderReviewsSectionHTML({ placeId, placeName: place.name, safeReviews, totalReviews, currentUser, userReview, isHammad }) : ''}
+          </div>
 
           <!-- Photo Gallery -->
           ${place.imageUrls && place.imageUrls.length > 0 ? `
@@ -633,27 +568,6 @@ export async function renderPlacePage($container, { slug, user }) {
       document.getElementById('working-hours-list')?.classList.toggle('expanded');
     });
 
-    // ── Interactive Offers & Products Full Details Modal Triggers ──
-    document.querySelectorAll('.place-interactive-offer-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const oId = card.getAttribute('data-offer-id');
-        const targetOffer = (offers || []).find(o => (o.id || o._id) === oId);
-        if (targetOffer) {
-          openOfferFullDetailsModal(targetOffer, place);
-        }
-      });
-    });
-
-    document.querySelectorAll('.place-interactive-product-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const pId = card.getAttribute('data-product-id');
-        const targetProduct = (products || []).find(p => p.id === pId);
-        if (targetProduct) {
-          openProductFullDetailsModal(targetProduct, place);
-        }
-      });
-    });
-
     // Smart Page Back Button
     document.getElementById('btn-place-back')?.addEventListener('click', () => {
       if (window.history.length > 1 && document.referrer && !document.referrer.includes('login')) {
@@ -664,7 +578,7 @@ export async function renderPlacePage($container, { slug, user }) {
     });
 
     // Verification Request Button
-    const waUrl = settings?.contact?.whatsappLink || 'https://wa.me/wasendernew';
+    let waUrl = 'https://wa.me/wasendernew';
 
     document.getElementById('btn-request-verification')?.addEventListener('click', () => {
       showVerificationModal(place, user, waUrl);
@@ -674,59 +588,8 @@ export async function renderPlacePage($container, { slug, user }) {
       showClaimModal(place, waUrl);
     });
 
-    // Login to review
-    document.getElementById('btn-login-to-review')?.addEventListener('click', async () => {
-      try {
-        const loggedUser = await signInWithGoogle();
-        if (loggedUser) {
-          renderPlacePage($container, { slug, user: loggedUser });
-        }
-      } catch (err) {
-        toast.error('تعذر تسجيل الدخول: ' + err.message);
-      }
-    });
-
-    // Open Add / Edit Review Modal
-    document.getElementById('btn-open-review-modal')?.addEventListener('click', () => {
-      openReviewModal(place, currentUser, userReview, () => {
-        renderPlacePage($container, { slug, user: currentUser });
-      });
-    });
-
-    // Edit specific review button
-    document.querySelectorAll('.btn-edit-review').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const rId = btn.getAttribute('data-rid');
-        const targetReview = safeReviews.find(r => r.id === rId);
-        if (targetReview) {
-          openReviewModal(place, currentUser, targetReview, () => {
-            renderPlacePage($container, { slug, user: currentUser });
-          });
-        }
-      });
-    });
-
-    // Delete review button
-    document.querySelectorAll('.btn-delete-review').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const rId = btn.getAttribute('data-rid');
-        const ok = await showConfirm({
-          title: 'حذف التقييم',
-          message: 'هل أنت متأكد من رغبتك في حذف تقييمك لهذا المكان؟',
-          confirmText: 'نعم، حذف',
-          cancelText: 'إلغاء'
-        });
-        if (ok) {
-          try {
-            await deletePlaceReview(place.id || place._key, rId, currentUser);
-            toast.success('تم حذف التقييم');
-            renderPlacePage($container, { slug, user: currentUser });
-          } catch (err) {
-            toast.error(err.message || 'فشل حذف التقييم');
-          }
-        }
-      });
-    });
+    // Initial Reviews Event Binding
+    bindReviewsEvents(place, currentUser, safeReviews, userReview, $container, slug);
 
     // Setup Place Sharing Handlers (Web Share + Modal)
     setupPlaceSharing(place);
@@ -747,18 +610,96 @@ export async function renderPlacePage($container, { slug, user }) {
       });
     });
 
-    // Mount Spotlight of Today Widget (شخصية / مكان اليوم الموثق)
-    mountSpotlightPlaceWidget(allPublishedPlaces, placeId, settings?.contact?.whatsappLink || 'https://wa.me/wasendernew');
-
     // Setup Place Following System
     setupPlaceFollowing(placeId, currentUser);
-
-    // Setup Reviews Sentiment Filter Tabs
-    setupReviewsSentimentFilter();
 
     // Setup ATM Cash Availability Live Poll Interactivity
     if (isAtm) {
       setupAtmPollInteractivity(placeId, place.atmPoll);
+    }
+
+    // ── Non-Blocking Background Hydration ──
+
+    // 1. Hydrate Offers in background
+    if (!isAtm) {
+      getPlaceOffers(placeId).then(offers => {
+        if (Array.isArray(offers) && offers.length > 0) {
+          const slot = document.getElementById('place-offers-slot');
+          if (slot) {
+            slot.innerHTML = renderOffersSectionHTML(offers, place);
+            bindOffersEvents(offers, place);
+          }
+        }
+      }).catch(() => {});
+    }
+
+    // 2. Hydrate Products in background (Verified Places)
+    if (!isAtm && place.isVerified) {
+      getPlaceProducts(placeId).then(products => {
+        if (Array.isArray(products) && products.length > 0) {
+          const slot = document.getElementById('place-products-slot');
+          if (slot) {
+            slot.innerHTML = renderProductsSectionHTML(products, place);
+            bindProductsEvents(products, place);
+          }
+        }
+      }).catch(() => {});
+    }
+
+    // 3. Hydrate Live Reviews in background
+    if (!isAtm) {
+      getPlaceReviews(placeId, place.slug).then(liveReviews => {
+        if (Array.isArray(liveReviews) && liveReviews.length > 0) {
+          safeReviews = liveReviews;
+          totalReviews = safeReviews.length;
+          let rSum = 0;
+          safeReviews.forEach(r => { rSum += (Number(r.rating) || 5); });
+          avgRating = totalReviews > 0 ? Math.round((rSum / totalReviews) * 10) / 10 : 0.0;
+          userReview = currentUser ? safeReviews.find(r => r.userId === currentUser.uid) : null;
+
+          const slot = document.getElementById('place-reviews-slot');
+          if (slot) {
+            slot.innerHTML = renderReviewsSectionHTML({ placeId, placeName: place.name, safeReviews, totalReviews, currentUser, userReview, isHammad });
+            bindReviewsEvents(place, currentUser, safeReviews, userReview, $container, slug);
+          }
+
+          const ratingBadge = document.getElementById('place-header-rating-badge');
+          if (ratingBadge) {
+            ratingBadge.innerHTML = `
+              <span>★</span>
+              <span>${avgRating.toFixed(1)}</span>
+              <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : '0.0'})</span>
+            `;
+          }
+        }
+      }).catch(() => {});
+    }
+
+    // 4. Hydrate Spotlight Widget & Settings in background idle
+    const loadSpotlight = () => {
+      Promise.all([
+        getPublishedPlaces({ limit: 40 }).catch(() => []),
+        getSettings().catch(() => ({}))
+      ]).then(([allPublished, settings]) => {
+        if (settings?.contact?.whatsappLink) {
+          waUrl = settings.contact.whatsappLink;
+        }
+        mountSpotlightPlaceWidget(allPublished, placeId, waUrl);
+      }).catch(() => {});
+    };
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(loadSpotlight, { timeout: 2500 });
+    } else {
+      setTimeout(loadSpotlight, 120);
+    }
+
+    // 5. Silent Revalidation for Instant Place Cache
+    if (initialPlace) {
+      getPlaceBySlug(slug).then(freshPlace => {
+        if (freshPlace && isPlaceBanned(freshPlace) && !isUserAdmin && !isOwner) {
+          location.reload();
+        }
+      }).catch(() => {});
     }
 
   } catch (err) {
@@ -1902,4 +1843,178 @@ if (typeof document !== 'undefined') {
       placeName: btn.getAttribute('data-place-name')
     });
   }, { passive: false });
+}
+
+function renderOffersSectionHTML(offers, place) {
+  if (!offers || offers.length === 0) return '';
+  return `
+    <section class="info-card" id="place-offers-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:var(--space-4)">
+        <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:6px">
+          <span>🏷️</span> العروض والتخفيضات الحالية (${offers.length})
+        </h2>
+        <a href="offers.html?place=${escAttr(place.slug || place.id)}" class="btn btn-sm btn-outline" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);gap:4px">
+          🔍 تصفح كافة عروض المكان ↗
+        </a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-4)">
+        ${offers.map(offer => {
+          const discount = offer.discountPercent || calcDiscount(offer.oldPrice, offer.newPrice);
+          return `
+            <div class="offer-card place-interactive-offer-card" data-offer-id="${escAttr(offer.id || offer._id)}" title="انقر لمشاهدة تفاصيل وطلب العرض">
+              <div class="offer-card__image">
+                ${offer.imageUrl 
+                  ? `<img src="${escAttr(offer.imageUrl)}" alt="${escAttr(offer.title)}" loading="lazy" />` 
+                  : `<div style="padding:2rem;text-align:center;font-size:2.5rem;color:var(--text-muted)">🏷️</div>`}
+                ${discount > 0 ? `<span class="offer-card__discount-badge">خصم -${discount}%</span>` : ''}
+              </div>
+              <div class="offer-card__body">
+                <h3 class="offer-card__title">${escHtml(offer.title)}</h3>
+                ${offer.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-muted);margin-bottom:var(--space-2);line-height:1.5">${escHtml(offer.description)}</p>` : ''}
+                <div class="offer-card__price">
+                  <span class="offer-card__price-new">${formatPrice(offer.newPrice)}</span>
+                  ${offer.oldPrice ? `<span class="offer-card__price-old">${formatPrice(offer.oldPrice)}</span>` : ''}
+                </div>
+                <div class="offer-card__expiry">⏰ ينتهي: ${formatDateRange(offer.startDate, offer.endDate)}</div>
+                <div class="offer-card__cta-btn">
+                  <span>👁️ اضغط لمشاهدة تفاصيل وطلب العرض</span>
+                  <span>↗</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderProductsSectionHTML(products, place) {
+  if (!products || products.length === 0) return '';
+  return `
+    <section class="info-card" id="place-products-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:var(--space-4)">
+        <h2 class="info-card__title" style="margin:0;display:flex;align-items:center;gap:6px">
+          <span>🛍️</span> قائمة المنتجات والأسعار (${products.length})
+        </h2>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="chip chip--success" style="font-size:11px">موثق ✓</span>
+          <a href="products.html?place=${escAttr(place.slug || place.id)}" class="btn btn-sm btn-outline" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);gap:4px">
+            🔍 تصفح كافة منتجات المكان ↗
+          </a>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-4)">
+        ${products.map(p => `
+          <div class="product-card place-interactive-product-card" data-product-id="${escAttr(p.id)}" title="انقر لمشاهدة تفاصيل وطلب المنتج">
+            <div class="product-card__image">
+              ${p.imageUrl ? `<img src="${escAttr(p.imageUrl)}" alt="${escAttr(p.name)}" loading="lazy" />` : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:var(--text-muted)">📦</div>`}
+              ${p.isFeatured ? `<span class="product-card__featured">مميز ⭐</span>` : ''}
+            </div>
+            <div class="product-card__body">
+              <h3 class="product-card__name" style="font-size:1.05rem;font-weight:700">${escHtml(p.name)}</h3>
+              ${p.category ? `<div style="font-size:11px;color:var(--primary);margin-bottom:4px;font-weight:600">🏷️ ${escHtml(p.category)}</div>` : ''}
+              ${p.description ? `<p style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-bottom:var(--space-2);line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escHtml(p.description)}</p>` : ''}
+              <div class="product-card__price" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span class="product-card__price-current">${formatPrice(p.price)}</span>
+                ${p.oldPrice ? `<span class="product-card__price-old">${formatPrice(p.oldPrice)}</span>` : ''}
+                ${p.oldPrice && Number(p.oldPrice) > Number(p.price) ? `
+                  <span class="badge" style="background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:4px;margin-right:auto">
+                    وفرت ${formatPrice(Number(p.oldPrice) - Number(p.price))}
+                  </span>
+                ` : ''}
+              </div>
+              <div class="product-card__cta-btn">
+                <span>🛍️ اضغط لتفاصيل وطلب المنتج</span>
+                <span>↗</span>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function bindOffersEvents(offers, place) {
+  document.querySelectorAll('.place-interactive-offer-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const oId = card.getAttribute('data-offer-id');
+      const targetOffer = (offers || []).find(o => (o.id || o._id) === oId);
+      if (targetOffer) {
+        openOfferFullDetailsModal(targetOffer, place);
+      }
+    });
+  });
+}
+
+function bindProductsEvents(products, place) {
+  document.querySelectorAll('.place-interactive-product-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const pId = card.getAttribute('data-product-id');
+      const targetProduct = (products || []).find(p => p.id === pId);
+      if (targetProduct) {
+        openProductFullDetailsModal(targetProduct, place);
+      }
+    });
+  });
+}
+
+function bindReviewsEvents(place, currentUser, safeReviews, userReview, $container, slug) {
+  // Login to review
+  document.getElementById('btn-login-to-review')?.addEventListener('click', async () => {
+    try {
+      const loggedUser = await signInWithGoogle();
+      if (loggedUser) {
+        renderPlacePage($container, { slug, user: loggedUser, initialPlace: place });
+      }
+    } catch (err) {
+      toast.error('تعذر تسجيل الدخول: ' + err.message);
+    }
+  });
+
+  // Open Add / Edit Review Modal
+  document.getElementById('btn-open-review-modal')?.addEventListener('click', () => {
+    openReviewModal(place, currentUser, userReview, () => {
+      renderPlacePage($container, { slug, user: currentUser, initialPlace: place });
+    });
+  });
+
+  // Edit specific review button
+  document.querySelectorAll('.btn-edit-review').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rId = btn.getAttribute('data-rid');
+      const targetReview = safeReviews.find(r => r.id === rId);
+      if (targetReview) {
+        openReviewModal(place, currentUser, targetReview, () => {
+          renderPlacePage($container, { slug, user: currentUser, initialPlace: place });
+        });
+      }
+    });
+  });
+
+  // Delete review button
+  document.querySelectorAll('.btn-delete-review').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const rId = btn.getAttribute('data-rid');
+      const ok = await showConfirm({
+        title: 'حذف التقييم',
+        message: 'هل أنت متأكد من رغبتك في حذف تقييمك لهذا المكان؟',
+        confirmText: 'نعم، حذف',
+        cancelText: 'إلغاء'
+      });
+      if (ok) {
+        try {
+          await deletePlaceReview(place.id || place._key, rId, currentUser);
+          toast.success('تم حذف التقييم');
+          renderPlacePage($container, { slug, user: currentUser, initialPlace: place });
+        } catch (err) {
+          toast.error(err.message || 'فشل حذف التقييم');
+        }
+      }
+    });
+  });
+
+  // Setup Reviews Sentiment Filter Tabs
+  setupReviewsSentimentFilter();
 }

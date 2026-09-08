@@ -12,7 +12,7 @@ import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } 
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { mountVoiceSearchButton, openManzalaVoiceAssistantModal } from '../../services/voice.service.js';
-import { mountLivePulseSection } from '../components/LivePulseSection.js?v=ca2defce';
+import { mountLivePulseSection } from '../components/LivePulseSection.js?v=f5f35de2';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';
@@ -71,6 +71,20 @@ export async function renderHomePage($main, { user } = {}) {
 
     const currentUser = getCurrentUser() || user;
     const allPlaces = places || [];
+
+    // Register all places in instant memory cache for 0ms transitions
+    if (typeof window !== 'undefined' && Array.isArray(allPlaces)) {
+      window._placesRegistry = window._placesRegistry || new Map();
+      for (const p of allPlaces) {
+        if (!p) continue;
+        const s = String(p.slug || p.id || p._key || '').toLowerCase().trim();
+        if (s) {
+          window._placesRegistry.set(s, p);
+          if (p.id) window._placesRegistry.set(String(p.id).toLowerCase().trim(), p);
+          if (p.slug) window._placesRegistry.set(String(p.slug).toLowerCase().trim(), p);
+        }
+      }
+    }
 
     // Render sections
     mountLivePulseSection('home-live-pulse-container');
@@ -263,8 +277,14 @@ function initHomeVerifiedShowcase(allPlaces = null) {
   ];
 
   function renderCards(slice) {
-    grid.innerHTML = slice.map((p, index) => `
-      <article class="fair-place-card" data-card-index="${index}">
+    grid.innerHTML = slice.map((p, index) => {
+      const targetSlug = p.slug || p.id || '';
+      return `
+      <article class="fair-place-card" data-card-index="${index}"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')"
+               onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
+               onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
+               style="cursor:pointer">
         <span class="fair-place-card__rank">${rankLabels[index] || `🎖️ الصدارة #${index + 1}`}</span>
         <div class="fair-place-card__cover">
           <img src="${escAttr(p.cover)}" alt="${escAttr(p.name)}" loading="lazy" onerror="this.src='/assets/images/og-whatsapp.jpg'">
@@ -279,10 +299,11 @@ function initHomeVerifiedShowcase(allPlaces = null) {
             <span>📍 ${escHtml(p.area)}</span>
             <span>🏷️ ${escHtml(p.category)}</span>
           </div>
-          <a href="place.html?slug=${encodeURIComponent(p.slug || p.id)}" class="fair-place-card__link">عرض بطاقة المكان ↗</a>
+          <a href="place.html?slug=${encodeURIComponent(targetSlug)}" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')">عرض بطاقة المكان ↗</a>
         </div>
       </article>
-    `).join('');
+    `;
+    }).join('');
   }
 
   // Render initial 4 cards immediately (0ms)
@@ -366,7 +387,11 @@ function renderOffers(offers) {
     const days = daysUntil(offer.endDate);
 
     return `
-      <article class="offer-card" onclick="window.location.href='place.html?slug=${encodeURIComponent(offer.placeSlug || '')}'" style="cursor:pointer">
+      <article class="offer-card"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(offer.placeSlug || '')}', event) : (window.location.href='place.html?slug=${encodeURIComponent(offer.placeSlug || '')}')"
+               onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(offer.placeSlug || '')}')"
+               onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(offer.placeSlug || '')}')"
+               style="cursor:pointer">
         <div class="offer-card__image">
           ${offer.imageUrl
             ? `<img src="${escAttr(offer.imageUrl)}" alt="${escAttr(offer.title)}" loading="lazy" />`
@@ -404,15 +429,21 @@ function renderDeliveryServices(places) {
 
   const deliveryIcons = { motorcycle: '🏍️', tuktuk: '🛺', car: '🚗' };
 
-  grid.innerHTML = places.slice(0, 6).map(place => `
-    <a href="place.html?slug=${encodeURIComponent(place.slug || place._key)}" class="delivery-card">
+  grid.innerHTML = places.slice(0, 6).map(place => {
+    const targetSlug = place.slug || place._key || place.id || '';
+    return `
+    <a href="place.html?slug=${encodeURIComponent(targetSlug)}" class="delivery-card"
+       onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')"
+       onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
+       onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')">
       <div class="delivery-card__icon">${deliveryIcons[place.deliveryType] || '🚀'}</div>
       <div class="delivery-card__info">
         <div class="delivery-card__name">${escHtml(place.name)}</div>
         <div class="delivery-card__type">خدمة توصيل بالمنزلة</div>
       </div>
     </a>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderAds(ads) {

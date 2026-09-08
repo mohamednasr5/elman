@@ -885,8 +885,14 @@ async function initFairRotationShowcase() {
   ];
 
   function renderCards(placesList) {
-    grid.innerHTML = placesList.map((p, index) => `
-      <article class="fair-place-card" data-card-index="${index}">
+    grid.innerHTML = placesList.map((p, index) => {
+      const targetSlug = p.slug || p.id || '';
+      return `
+      <article class="fair-place-card" data-card-index="${index}"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')"
+               onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
+               onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
+               style="cursor:pointer">
         <span class="fair-place-card__rank">${rankLabels[index]}</span>
         <div class="fair-place-card__cover">
           <img src="${escAttr(p.cover)}" alt="${escAttr(p.name)}" loading="lazy" onerror="this.src='${escAttr(fallbackPlaces[index % 4].cover)}'">
@@ -901,10 +907,11 @@ async function initFairRotationShowcase() {
             <span>📍 ${escHtml(p.area)}</span>
             <span>🏷️ ${escHtml(p.category)}</span>
           </div>
-          <a href="place.html?slug=${encodeURIComponent(p.slug || p.id)}" class="fair-place-card__link">عرض بطاقة المكان ↗</a>
+          <a href="place.html?slug=${encodeURIComponent(targetSlug)}" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='place.html?slug=${encodeURIComponent(targetSlug)}')">عرض بطاقة المكان ↗</a>
         </div>
       </article>
-    `).join('');
+    `;
+    }).join('');
   }
 
   // Initial render
