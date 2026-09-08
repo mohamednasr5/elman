@@ -239,7 +239,9 @@ async function _syncUserToD1(firebaseUser) {
       'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({ uid, name, email, photoURL, role: isSuper ? 'superadmin' : 'user', status: 'active' }),
-    signal: AbortSignal.timeout(8000)
+    signal: AbortSignal.timeout(8000),
+    mode: 'cors',
+    cache: 'no-store'
   });
 
   const syncData = await syncRes.json().catch(() => ({}));
