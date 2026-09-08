@@ -122,5 +122,10 @@ The Worker connects to Turso through `@tursodatabase/serverless`, which is compa
 Required Worker secrets/variables:
 - `TURSO_DATABASE_URL` = Turso HTTPS database URL
 - `TURSO_AUTH_TOKEN` = database-scoped Turso auth token (secret)
+- `FIREBASE_API_KEY` = Firebase Web API key used by the Worker to validate Firebase ID tokens before reading the Turso role (store as a Worker secret or variable).
+
+Admin authorization is server-side: the Worker validates the Firebase ID token, loads the user role/status from Turso, and enforces Admin/Superadmin permissions for all privileged mutations. Business writes are not accepted from client-supplied role/owner fields.
+
+Offers and products are authoritative Turso tables. Apply `worker/migrations/0010_create_offers_products.sql` to `dalilmanzala` before deploying the Worker version that exposes `/api/offers` and `/api/products`.
 
 The Worker keeps the existing D1-style `prepare().bind().all()/first()/run()` calling convention through `worker/turso.js`, so application routes do not need to know about the transport layer.
