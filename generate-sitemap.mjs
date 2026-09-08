@@ -26,7 +26,7 @@ function escapeXml(str) {
 }
 
 async function run() {
-  console.log('Fetching places from Cloudflare D1 via Worker...');
+  console.log('Fetching places from Turso via Worker...');
   const places = await fetchPlaces();
   console.log(`Found ${places.length} published places.`);
 
