@@ -3,7 +3,7 @@
 
 ### Core Architecture
 - Cloudflare Worker = backend/API and business logic
-- Cloudflare D1 = primary relational database
+- Turso = primary remote relational database
 - Cloudflare R2 = object/file/image storage
 - Firebase Authentication = user authentication only
 - Firebase Cloud Messaging (FCM) = push notifications only
@@ -11,9 +11,9 @@
 Firebase Realtime Database is NOT the application's main database.
 
 ### Cloudflare Resources
-D1 database: `dalilmanzala-db`
-D1 database ID: `9e98b9d3-619f-4ef4-9af5-6458c2382251`
-Known tables: `places`, `categories`, `reviews`, `users`, `_cf_KV`
+Turso database: `dalilmanzala`
+Turso URL: `https://dalilmanzala-mohamednasr.aws-eu-west-1.turso.io`
+Primary tables: `places`, `categories`, `reviews`, `users`, `ads`, `fcm_tokens`, `countries`, `governorates`, `centers`, `localities`, `place_reports`, `category_requests`, `verification_requests`
 
 R2 bucket: `elmanzala`
 
@@ -21,7 +21,7 @@ Worker: `elmanzala`
 Production domain: `https://dalilmanzala.com`
 
 ### Database Responsibilities
-Use D1 as the single source of truth for:
+Use Turso as the single source of truth for:
 - places and place metadata
 - categories and subcategories
 - addresses, phones, WhatsApp and map links
@@ -60,14 +60,14 @@ The Worker may communicate with FCM to trigger push notifications.
 
 ### Performance / Cost Principles
 Do NOT load the entire `places` table on every search or page load.
-Use targeted D1 queries, pagination, appropriate indexes, and only the required columns.
+Use targeted Turso queries, pagination, appropriate indexes, and only the required columns.
 Retrieve a single place by slug/ID when opening a place.
 Retrieve reviews only when needed.
 Keep large images/files in R2.
-Avoid unnecessary repeated D1 queries.
+Avoid unnecessary repeated Turso queries.
 Keep Firebase out of the main directory data path.
 
-Goal: LOW D1 reads + LOW latency + HIGH scalability.
+Goal: LOW database reads + LOW latency + HIGH scalability.
 
 ### Public Place URLs
 Canonical sharing URLs use:
@@ -92,7 +92,7 @@ Unless explicitly requested by the project owner, do NOT:
 - restore Firebase Realtime Database
 - store places/reviews/comments/images in Firebase
 - make Firebase the source of truth
-- replace D1 or R2
+- replace Turso or R2
 - bypass the Worker for sensitive server-side operations
 
 ### Required Procedure for Antigravity
@@ -102,15 +102,25 @@ Before every modification:
 3. Reuse the existing architecture.
 4. Do not introduce a second database.
 5. Do not rewrite working infrastructure unnecessarily.
-6. Verify after changes that D1 remains the source of truth, R2 remains storage, Firebase Auth works, FCM works, no Firebase Realtime Database dependency was introduced, and `/p/{slug}` social sharing still works.
+6. Verify after changes that Turso remains the source of truth, R2 remains storage, Firebase Auth works, FCM works, no Firebase Realtime Database dependency was introduced, and `/p/{slug}` social sharing still works.
 
 ### Architectural Constraint
 Treat this document as an architectural constraint. If a feature appears to require Firebase database storage, first evaluate whether it belongs in D1. Only use Firebase database services if the project owner explicitly requests that architecture change.
 
 Default architecture:
 
-D1 = application database
+Turso = application database
 R2 = file/image storage
 Worker = backend/API
 Firebase Auth = authentication
 FCM = push notifications
+
+
+### Turso Runtime Configuration
+The Worker connects to Turso through `@tursodatabase/serverless`, which is compatible with Cloudflare Workers and uses the Fetch API.
+
+Required Worker secrets/variables:
+- `TURSO_DATABASE_URL` = Turso HTTPS database URL
+- `TURSO_AUTH_TOKEN` = database-scoped Turso auth token (secret)
+
+The Worker keeps the existing D1-style `prepare().bind().all()/first()/run()` calling convention through `worker/turso.js`, so application routes do not need to know about the transport layer.
