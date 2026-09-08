@@ -2147,6 +2147,7 @@ export async function adminBulkAddReviews(placeId, items = [], onProgress = null
   if (!placeId || !items.length) {
     throw new Error('بيانات المكان أو التقييمات فارغة');
   }
+  if (items.length > 5000) throw new Error('الحد الأقصى للإضافة الجماعية هو 5000 تقييم في العملية الواحدة');
 
   const place = await dbGet(`places/${placeId}`);
   if (!place) throw new Error('المكان غير موجود في قاعدة البيانات');
@@ -2238,12 +2239,14 @@ export async function adminBulkAddReviews(placeId, items = [], onProgress = null
         try { onProgress(chunkIdx, totalChunks, chunk.length); } catch (_) {}
       }
       try {
-        await tursoFetch('/api/reviews', {
+        const result = await tursoFetch('/api/reviews', {
           method: 'POST',
           body: JSON.stringify({ reviews: chunk })
         });
+        const persisted = Number(result?.insertedCount ?? chunk.length);
+        if (persisted !== chunk.length) throw new Error(`تم حفظ ${persisted} من ${chunk.length} فقط في الدفعة ${chunkIdx}`);
       } catch (err) {
-        console.warn('[adminBulkAddReviews] Batch chunk error:', err.message);
+        throw new Error(`فشل حفظ الدفعة ${chunkIdx}/${totalChunks}: ${err?.message || err}`);
       }
     }
     const newStats = await recalculatePlaceRating(placeId);
