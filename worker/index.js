@@ -17,7 +17,8 @@ async function authenticateRequest(request, env) {
   const header = request.headers.get('Authorization') || '';
   const match = header.match(/^Bearer\s+(.+)$/i);
   if (!match) return null;
-  const apiKey = env.FIREBASE_API_KEY || 'AIzaSyCUGcCecmvBdf6b38UVIM9zcxhbbux7VSzM';
+  const apiKey = env.FIREBASE_API_KEY || '';
+  if (!apiKey) return null;
   try {
     const res = await fetch(
       'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + encodeURIComponent(apiKey),
