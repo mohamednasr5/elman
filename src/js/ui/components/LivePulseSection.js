@@ -1,11 +1,18 @@
-import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
+﻿import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 /**
  * LivePulseSection.js
  * Distinguished & Ultra-Animated Live City Pulse Component (يحدث الآن في المنزلة والمطرية)
  * Supports Job Vacancies & Job Seekers with pulsing badges and direct WhatsApp contact.
  */
 
-import { getPublishedLiveNews, submitLiveReport, reactToLiveNews, NEWS_CATEGORIES, STATUS_TAGS } from '../../services/live-news.service.js';
+import * as liveNewsService from '../../services/live-news.service.js?v=890e0bb0';
+const { 
+  getPublishedLiveNews, 
+  submitLiveReport, 
+  NEWS_CATEGORIES, 
+  STATUS_TAGS 
+} = liveNewsService;
+const reactToLiveNews = liveNewsService.reactToLiveNews || (async () => { throw new Error('يرجى تحديث الصفحة'); });
 import { startFifteenMinuteNewsSync } from '../../services/social-news-sync.service.js';
 import { getCurrentUser, isAdmin } from '../../core/auth.js';
 import { getLoyaltyLevelInfo } from '../../services/loyalty.service.js';

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * المنزلة وناسها — Home Page
  * Full homepage with hero, search, categories, places, offers, delivery
  */
@@ -12,7 +12,7 @@ import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } 
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { mountVoiceSearchButton, openManzalaVoiceAssistantModal } from '../../services/voice.service.js';
-import { mountLivePulseSection } from '../components/LivePulseSection.js';
+import { mountLivePulseSection } from '../components/LivePulseSection.js?v=890e0bb0';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';
