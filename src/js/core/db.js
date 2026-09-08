@@ -380,7 +380,9 @@ export async function dbQuery({ path, orderBy = 'createdAt', limit = 20, startAf
     return items.slice(0, limit);
   }
 
-  throw new Error('Firebase Realtime Database queries are disabled; use Turso APIs: '+path);\n}\n\n
+  throw new Error('Firebase Realtime Database queries are disabled; use Turso APIs: '+path);
+}
+
 export async function getUserProfile(uid) {
   if (!uid) return null;
   const cached = getCached('user:' + uid);
