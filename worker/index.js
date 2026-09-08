@@ -1162,6 +1162,7 @@ try {
           comment = excluded.comment,
           updated_at = excluded.updated_at
       `).bind(reviewId, placeId, userId, userName, userPhoto, placeName, placeSlug, rating, comment, isAdminGen, now, now).run();
+      bumpDataVersion(env, ctx);
 
       // Keep the denormalized place rating in sync in the same request so the
       // public place card and the submitted review become consistent immediately.
@@ -1250,6 +1251,7 @@ try {
         nowPut, Number(stats?.review_count || 0), Number(stats?.review_count || 0),
         Number(stats?.avg_rating || 0), placeIdForRating
       ).run();
+      bumpDataVersion(env, ctx);
 
       return jsonResponse({ success: true, message: 'تم تحديث التقييم بنجاح', id: reviewId }, 200, corsHeaders);
     } catch (err) {
@@ -1290,6 +1292,7 @@ try {
           Date.now(), Number(stats?.review_count || 0), Number(stats?.review_count || 0),
           Number(stats?.avg_rating || 0), affectedPlaceId
         ).run();
+        bumpDataVersion(env, ctx);
       }
 
       return jsonResponse({ success: true, message: 'تم حذف التقييمات بنجاح' }, 200, corsHeaders);
