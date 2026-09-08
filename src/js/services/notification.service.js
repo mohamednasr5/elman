@@ -4,7 +4,7 @@
  * Guarantees zero-delay instant notifications across PC, Mobile, and PWA when places are added or verified.
  */
 
-import { dbGet, getPublishedPlaces } from '../core/db.js';
+import { getPublishedPlaces } from '../core/db.js';
 
 // ── Web Audio API Synthesized Crystal Bell Chime ──
 let _audioCtx = null;
@@ -289,24 +289,7 @@ export async function fetchManagedUserNotifications(uid) {
     });
   } catch (_) {}
 
-  // 3. Personal User Notifications
-  if (uid) {
-    try {
-      const userNotifs = (await dbGet(`userNotifications/${uid}`, false)) || {};
-      Object.entries(userNotifs).forEach(([id, val]) => {
-        if (val && !deletedIds.has(String(id))) {
-          mergedMap[id] = { 
-            id: String(id), 
-            ...val, 
-            isBroadcast: false,
-            isRead: Boolean(val.isRead || readIds.has(String(id)))
-          };
-        }
-      });
-    } catch (_) {}
-  }
-
-  const all = Object.values(mergedMap).map(n => ({
+  // 3. Personal notifications arrive through FCM/local state; no RTDB reads.\n  const all = Object.values(mergedMap).map(n => ({
     ...n,
     isRead: Boolean(n.isRead || readIds.has(String(n.id)))
   }));
