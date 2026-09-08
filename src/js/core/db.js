@@ -152,7 +152,7 @@ async function d1GetBusiness(path) {
   }
 
   if (root === 'places') {
-    // places/{id}/reviews[/reviewId] -> dedicated D1 reviews API
+    // places/{id}/reviews[/reviewId] -> dedicated Turso reviews API
     if (parts.length >= 3 && parts[2] === 'reviews') {
       const placeId = parts[1];
       const reviewId = parts[3];
@@ -459,7 +459,7 @@ export async function getUserProfile(uid) {
   return null;
 }
 
-/** Get all users - Primary Cloudflare D1 */
+/** Get all users - Primary Turso */
 export async function getAllUsersD1() {
   try {
     const res = await fetch(`${WORKER_URL}/api/users`, { signal: AbortSignal.timeout(4000) });
@@ -491,8 +491,8 @@ export async function getAllUsersD1() {
   return {};
 }
 
-/** Get all Category Requests - Primary Cloudflare D1 */
-export async function getCategoryRequestsD1() {
+/** Get all Category Requests - Primary Turso */
+export async function getCategoryRequestsTurso() {
   try {
     const res = await fetch(`${WORKER_URL}/api/category-requests`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
@@ -543,7 +543,7 @@ export async function updateCategoryRequestD1(id, status = 'approved') {
   } catch (_) {}
 }
 
-/** Get all Verification Requests - Primary Cloudflare D1 */
+/** Get all Verification Requests - Primary Turso */
 export async function getVerificationRequestsD1() {
   try {
     const res = await fetch(`${WORKER_URL}/api/verification-requests`, { signal: AbortSignal.timeout(4000) });
@@ -641,7 +641,7 @@ export async function syncPlaceToWorkerD1(placeId, updates = {}) {
       }
       return true;
     } catch (err) {
-      console.error('[D1Sync] Failed to sync place to D1:', err);
+      console.error('[TursoSync] Failed to sync place to Turso:', err);
       throw err;
     }
 }
@@ -1909,7 +1909,7 @@ export async function getPlaceReviews(placeId) {
   }
 }
 
-/** Get all reviews across all places (for Admin) - Primary Cloudflare D1 */
+/** Get all reviews across all places (for Admin) - Primary Turso */
 export async function getAllReviews() {
   try {
     const res = await fetch(`${WORKER_URL}/api/reviews`, {
