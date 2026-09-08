@@ -328,7 +328,7 @@ export async function dbPush(path, data) {
     if (/^ads(?:\/|$)/i.test(cleanPath)) {
       const parts = cleanPath.split('/').filter(Boolean);
       const result = await tursoWriteBusiness(cleanPath, 'POST', data || {});
-      const newId = result?.id || result?.data?.id || data?.id || data?._id || `d1_${Date.now()}`;
+      const newId = result?.id || result?.data?.id || data?.id || data?._id || `local_${Date.now()}`;
       return { key: newId, id: newId };
     }
 
@@ -336,7 +336,7 @@ export async function dbPush(path, data) {
     if (/^places\/[^/]+\/reviews$/i.test(cleanPath)) {
       const placeId = cleanPath.split('/')[1];
       const result = await tursoWriteBusiness(cleanPath, 'POST', { ...(data || {}), place_id: data?.place_id || placeId });
-      const newId = result?.id || result?.data?.id || data?.id || `d1_${Date.now()}`;
+      const newId = result?.id || result?.data?.id || data?.id || `local_${Date.now()}`;
       return { key: newId, id: newId };
     }
 
@@ -345,7 +345,7 @@ export async function dbPush(path, data) {
 
   const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
   const pushed = await ref.push(data);
-  const key = (pushed && pushed.key) ? pushed.key : `d1_${Date.now()}`;
+  const key = (pushed && pushed.key) ? pushed.key : `local_${Date.now()}`;
   return { key, id: key };
 }
 
