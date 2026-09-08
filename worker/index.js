@@ -1934,13 +1934,10 @@ try {
       return jsonResponse({ error: 'token مطلوب' }, 400, corsHeaders);
     }
 
-    let userId = 'anonymous';
-    let userName = '';
     const auth = await requireAuth(request, env);
-    if (!auth.response) {
-      userId = auth.user.uid;
-      userName = auth.user.name || auth.user.email || '';
-    }
+    if (auth.response) return auth.response;
+    const userId = auth.user.uid;
+    const userName = auth.user.name || auth.user.email || '';
     const platform = body.platform || 'web';
     const userAgent = request.headers.get('user-agent') || body.userAgent || '';
     const now = Date.now();
