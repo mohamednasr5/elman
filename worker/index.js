@@ -1006,6 +1006,56 @@ try {
     }
   }
 
+  // ── Turso: IP Ban API ───────────────────────────────────────────
+  if (url.pathname === '/api/ip-bans' && request.method === 'GET') {
+    const ip = String(url.searchParams.get('ip') || '').trim();
+    try {
+      if (ip) {
+        const key = ip.replace(/[.:%[\\]#$]/g, '_');
+        const row = await createTursoDB(env).prepare(
+          'SELECT ip_key, ip, reason, is_permanent, duration_days, banned_at, banned_until, banned_by, user_id, user_name FROM banned_ips WHERE ip_key = ? OR ip = ? LIMIT 1'
+        ).bind(key, ip).first();
+        if (!row) return jsonResponse({success:true,data:false},200,corsHeaders);
+        if (!row.is_permanent && row.banned_until && Number(row.banned_until) <= Date.now()) return jsonResponse({success:true,data:false},200,corsHeaders);
+        return jsonResponse({success:true,data:{...row,isPermanent:Boolean(row.is_permanent),bannedAt:row.banned_at,bannedUntil:row.banned_until}},200,corsHeaders);
+      }
+      const auth = await requireAdmin(request, env);
+      if (auth.response) return auth.response;
+      const rows = (await createTursoDB(env).prepare('SELECT * FROM banned_ips ORDER BY banned_at DESC LIMIT 5000').all()).results || [];
+      return jsonResponse({success:true,data:rows.map(r=>({...r,isPermanent:Boolean(r.is_permanent),bannedAt:r.banned_at,bannedUntil:r.banned_until}))},200,corsHeaders);
+    } catch(err) { return jsonResponse({success:false,error:err.message,data:[]},500,corsHeaders); }
+  }
+
+  if (url.pathname === '/api/ip-bans' && request.method === 'POST') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const ip = String(body.ip || '').trim();
+    if (!ip || ip.length > 64) return jsonResponse({success:false,error:'عنوان IP غير صالح'},400,corsHeaders);
+    const ipKey = ip.replace(/[.:%[\\]#$]/g, '_');
+    const permanent = Boolean(body.isPermanent);
+    const days = Number(body.durationDays);
+    if (!permanent && (!Number.isFinite(days) || days < 1 || days > 3650)) return jsonResponse({success:false,error:'مدة الحظر غير صالحة'},400,corsHeaders);
+    const now = Date.now(), until = permanent ? null : now + days * 86400000;
+    try {
+      await createTursoDB(env).prepare('INSERT INTO banned_ips (ip_key,ip,reason,is_permanent,duration_days,banned_at,banned_until,banned_by,user_id,user_name) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(ip_key) DO UPDATE SET ip=excluded.ip,reason=excluded.reason,is_permanent=excluded.is_permanent,duration_days=excluded.duration_days,banned_at=excluded.banned_at,banned_until=excluded.banned_until,banned_by=excluded.banned_by,user_id=excluded.user_id,user_name=excluded.user_name')
+        .bind(ipKey,ip,String(body.reason || '').trim(),permanent?1:0,permanent?null:Math.floor(days),now,until,String(body.bannedBy || auth.user.email || auth.user.uid),body.userId || null,body.userName || null).run();
+      return jsonResponse({success:true,data:{ip,ipKey,reason:String(body.reason || '').trim(),isPermanent:permanent,durationDays:permanent?null:Math.floor(days),bannedAt:now,bannedUntil:until}},200,corsHeaders);
+    } catch(err) { return jsonResponse({success:false,error:err.message},500,corsHeaders); }
+  }
+
+  if (url.pathname === '/api/ip-bans' && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
+    const ip = String(url.searchParams.get('ip') || '').trim();
+    if (!ip) return jsonResponse({success:false,error:'معرف IP مطلوب'},400,corsHeaders);
+    const ipKey = ip.replace(/[.:%[\\]#$]/g, '_');
+    try {
+      await createTursoDB(env).prepare('DELETE FROM banned_ips WHERE ip_key = ? OR ip = ?').bind(ipKey,ip).run();
+      return jsonResponse({success:true},200,corsHeaders);
+    } catch(err) { return jsonResponse({success:false,error:err.message},500,corsHeaders); }
+  }
+
   // ── Turso: Ads API (GET, POST, DELETE /api/ads) ───────────────────
   if (url.pathname === '/api/ads' && request.method === 'GET') {
     try {
