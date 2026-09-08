@@ -843,6 +843,7 @@ export function normalizeTursoPlace(p) {
     workingHours: p.workingHours || p.working_hours || {},
     services: Array.isArray(p.services) ? p.services : (typeof p.services_json === 'string' ? JSON.parse(p.services_json || '[]') : []),
     social: typeof p.social === 'object' ? p.social : (typeof p.social_json === 'string' ? JSON.parse(p.social_json || '{}') : {}),
+    atmPoll: typeof p.atmPoll === 'object' ? p.atmPoll : (typeof p.atm_poll_json === 'string' ? (()=>{try{return JSON.parse(p.atm_poll_json||'{}')}catch(_){return {}}})() : {}),
     reviewCount: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
     review_count: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
     rating: Number(p.rating != null ? p.rating : 0.0),
