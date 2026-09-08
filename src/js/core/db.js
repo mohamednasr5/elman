@@ -564,16 +564,9 @@ export async function getPlace(placeId) {
   if (!placeId) return null;
   const cleanId = String(placeId).trim();
 
-  // 1. Check local IndexedDB first (0ms instant)
-  try {
-    const cached = await idbGet(STORES.PLACES, cleanId);
-    if (cached) return cached;
-    const allLocal = await idbGetAll(STORES.PLACES);
-    const foundLocal = (allLocal || []).find(p => p && (p.id === cleanId || p.slug === cleanId || p._key === cleanId));
-    if (foundLocal) return foundLocal;
-  } catch (_) {}
-
-  // 2. Fetch directly from Turso Worker by ID
+  // Turso is authoritative. IndexedDB is cache-only and must never mask
+  // a deleted/updated record or make a local-only record appear to exist.
+  // 1. Fetch directly from Turso Worker by ID
   try {
     const res = await fetch(`${WORKER_URL}/api/places?id=${encodeURIComponent(cleanId)}`, {
       signal: AbortSignal.timeout(10000)
@@ -673,16 +666,9 @@ export async function getPlaceBySlug(slug) {
   if (!slug) return null;
   const clean = String(slug).trim().toLowerCase();
 
-  // 1. Check local IndexedDB first (0ms instant)
-  try {
-    const cached = await idbGet(STORES.PLACES, clean);
-    if (cached) return cached;
-    const allLocal = await idbGetAll(STORES.PLACES);
-    const foundLocal = (allLocal || []).find(p => p && (String(p.slug || '').toLowerCase() === clean || String(p.id || '').toLowerCase() === clean));
-    if (foundLocal) return foundLocal;
-  } catch (_) {}
-
-  // 2. Fetch directly from Turso Worker by slug
+  // Turso is authoritative. Read it first so a stale local cache cannot
+  // resurrect a deleted/updated place.
+  // 1. Fetch directly from Turso Worker by slug
   try {
     const data = await tursoFetch('/api/places?slug=' + encodeURIComponent(clean));
     if (data?.success && data.data) {
