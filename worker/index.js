@@ -1444,7 +1444,7 @@ try {
   // ── D1: Update Review (PUT /api/reviews?id=...) ───────────────
   if (url.pathname === '/api/reviews' && request.method === 'PUT') {
     const auth = await requireAuth(request, env);
-    if (auth.response) return auth.response
+    if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
     const reviewId = (url.searchParams.get('id') || body.id || '').trim();
     if (!reviewId) return jsonResponse({ error: 'معرف التقييم مطلوب' }, 400, corsHeaders);
@@ -1452,14 +1452,19 @@ try {
     try {
       const existing = await createTursoDB(env).prepare(`SELECT * FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
       if (!existing) return jsonResponse({ error: 'التقييم غير موجود' }, 404, corsHeaders);
+      if (!auth.user.isAdmin && String(existing.user_id || '') !== String(auth.user.uid)) {
+        return jsonResponse({ success:false, error:'لا يمكنك تعديل تقييم مستخدم آخر' },403,corsHeaders);
+      }
 
       const ratingValue = body.rating !== undefined ? Number(body.rating) : Number(existing.rating);
       const commentValue = body.comment !== undefined ? String(body.comment).trim().slice(0, 500) : (existing.comment || '');
-      const editCount = body.editCount !== undefined ? Number(body.editCount) : Number(existing.edit_count || 0);
-      const isReported = body.isReported !== undefined ? (body.isReported ? 1 : 0) : Number(existing.is_reported || 0);
-      const reportCount = body.reportCount !== undefined ? Number(body.reportCount) : Number(existing.report_count || 0);
-      const reportReason = body.lastReportReason !== undefined ? String(body.lastReportReason || '') : (existing.last_report_reason || '');
-      const reporterName = body.lastReporterName !== undefined ? String(body.lastReporterName || '') : (existing.last_reporter_name || '');
+      const editCount = auth.user.isAdmin
+        ? (body.editCount !== undefined ? Number(body.editCount) : Number(existing.edit_count || 0))
+        : Number(existing.edit_count || 0) + 1;
+      const isReported = auth.user.isAdmin && body.isReported !== undefined ? (body.isReported ? 1 : 0) : Number(existing.is_reported || 0);
+      const reportCount = auth.user.isAdmin && body.reportCount !== undefined ? Number(body.reportCount) : Number(existing.report_count || 0);
+      const reportReason = auth.user.isAdmin && body.lastReportReason !== undefined ? String(body.lastReportReason || '') : (existing.last_report_reason || '');
+      const reporterName = auth.user.isAdmin && body.lastReporterName !== undefined ? String(body.lastReporterName || '') : (existing.last_reporter_name || '');
       const nowPut = Date.now();
 
       if (!Number.isFinite(ratingValue) || ratingValue < 1 || ratingValue > 5) {
@@ -1471,10 +1476,8 @@ try {
         SET rating = ?, comment = ?, edit_count = ?, is_reported = ?, report_count = ?,
             last_report_reason = ?, last_reporter_name = ?, updated_at = ?
         WHERE id = ?
-      `).bind(
-        ratingValue, commentValue, Math.max(0, editCount), isReported, Math.max(0, reportCount),
-        reportReason, reporterName, nowPut, reviewId
-      ).run();
+      `).bind(ratingValue, commentValue, Math.max(0, editCount), isReported, Math.max(0, reportCount),
+        reportReason, reporterName, nowPut, reviewId).run();
 
       const placeIdForRating = existing.place_id;
       const stats = await createTursoDB(env).prepare(`
@@ -1486,10 +1489,8 @@ try {
           COALESCE(stats_json, '{}'),
           '$.reviewCount', ?, '$.reviewsCount', ?, '$.rating', ?
         ) WHERE id = ?
-      `).bind(
-        nowPut, Number(stats?.review_count || 0), Number(stats?.review_count || 0),
-        Number(stats?.avg_rating || 0), placeIdForRating
-      ).run();
+      `).bind(nowPut, Number(stats?.review_count || 0), Number(stats?.review_count || 0),
+        Number(stats?.avg_rating || 0), placeIdForRating).run();
       bumpDataVersion(env, ctx);
 
       return jsonResponse({ success: true, message: 'تم تحديث التقييم بنجاح', id: reviewId }, 200, corsHeaders);
@@ -1500,18 +1501,23 @@ try {
 
   // ── D1: Delete Reviews (DELETE /api/reviews) ───────────────────
   if (url.pathname === '/api/reviews' && request.method === 'DELETE') {
-    const auth = await requireAdmin(request, env);
-    if (auth.response) return auth.response
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
     const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || '').trim();
     const reviewId = (url.searchParams.get('id') || url.searchParams.get('review_id') || '').trim();
 
     try {
       let affectedPlaceId = placeId;
       if (reviewId) {
-        const existing = await createTursoDB(env).prepare(`SELECT place_id FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
-        affectedPlaceId = existing?.place_id || affectedPlaceId;
+        const existing = await createTursoDB(env).prepare(`SELECT id, place_id, user_id FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
+        if (!existing) return jsonResponse({success:false,error:'التقييم غير موجود'},404,corsHeaders);
+        if (!auth.user.isAdmin && String(existing.user_id || '') !== String(auth.user.uid)) {
+          return jsonResponse({success:false,error:'لا يمكنك حذف تقييم مستخدم آخر'},403,corsHeaders);
+        }
+        affectedPlaceId = existing.place_id || affectedPlaceId;
         await createTursoDB(env).prepare(`DELETE FROM reviews WHERE id = ?`).bind(reviewId).run();
       } else if (placeId) {
+        if (!auth.user.isAdmin) return jsonResponse({success:false,error:'حذف جميع تقييمات المكان متاح للإدارة فقط'},403,corsHeaders);
         await createTursoDB(env).prepare(`DELETE FROM reviews WHERE place_id = ?`).bind(placeId).run();
       } else {
         return jsonResponse({ error: 'مطلوب id أو place_id لحذف المراجعات' }, 400, corsHeaders);
@@ -1527,10 +1533,8 @@ try {
             COALESCE(stats_json, '{}'),
             '$.reviewCount', ?, '$.reviewsCount', ?, '$.rating', ?
           ) WHERE id = ?
-        `).bind(
-          Date.now(), Number(stats?.review_count || 0), Number(stats?.review_count || 0),
-          Number(stats?.avg_rating || 0), affectedPlaceId
-        ).run();
+        `).bind(Date.now(), Number(stats?.review_count || 0), Number(stats?.review_count || 0),
+          Number(stats?.avg_rating || 0), affectedPlaceId).run();
         bumpDataVersion(env, ctx);
       }
 
