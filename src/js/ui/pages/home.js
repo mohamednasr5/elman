@@ -12,7 +12,7 @@ import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } 
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { mountVoiceSearchButton, openManzalaVoiceAssistantModal } from '../../services/voice.service.js';
-import { mountLivePulseSection } from '../components/LivePulseSection.js?v=d3b987e0';
+import { mountLivePulseSection } from '../components/LivePulseSection.js?v=ca2defce';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';
@@ -58,6 +58,9 @@ export async function renderHomePage($main, { user } = {}) {
   // Render structure immediately
   $main.innerHTML = getHomeHTML();
 
+  // Instant 0ms cache-first render for verified places showcase
+  initHomeVerifiedShowcase();
+
   try {
     const [categories, places, offers, ads] = await Promise.all([
       getCategories(),
@@ -80,8 +83,8 @@ export async function renderHomePage($main, { user } = {}) {
 
     renderCategories(categories || []);
     
-    // Verified Places: Sponsored ALWAYS first, then dynamic 1-minute random rotation for all other places
-    startVerifiedPlacesRotation(allPlaces);
+    // Verified Places: 4-Card Horizontal Rotating Showcase with SWR Caching
+    initHomeVerifiedShowcase(allPlaces);
 
     // Latest Places (أحدث الأماكن): Sponsored first ALWAYS, then newest added places regardless of verification
     const latestPlaces = sortLatestPlaces(allPlaces, currentUser?.uid);
@@ -163,7 +166,163 @@ function renderCategories(categories) {
   }).join('');
 }
 
-let _verifiedPlacesInterval = null;
+const VERIFIED_STORAGE_KEY = 'manzala_verified_showcase_v1';
+let _homeVerifiedInterval = null;
+let _homeVerifiedPool = [];
+let _homeVerifiedRotationIndex = 0;
+
+const FALLBACK_VERIFIED_PLACES = [
+  {
+    id: 'p_1788703900620_oae8ka',
+    slug: 'mtam-basl-wbaha-llmakwlat-albhrya',
+    name: 'مطعم باسل وباهى للمأكولات البحرية',
+    area: 'المطرية دقهلية',
+    category: 'مطاعم وأسماك',
+    cover: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80',
+    isSponsored: true
+  },
+  {
+    id: '-P03LX9MledW_z7QfyHO',
+    slug: '-P03LX9MledW_z7QfyHO',
+    name: 'الحسن لصيانة الهواتف المحمولة',
+    area: 'المنزلة - شارع البحر',
+    category: 'صيانة وموبايل',
+    cover: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80',
+    isSponsored: true
+  },
+  {
+    id: 'p_1788801925745_vuxmjs',
+    slug: 'mtbkh-eyma-llaakl-albyty',
+    name: 'مطبخ إيمى للأكل البيتي',
+    area: 'المنزلة - طريق المنصورة',
+    category: 'أكل بيتي وحلويات',
+    cover: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80',
+    isSponsored: false
+  },
+  {
+    id: '-P0hEa0K6ZfAM65O27G9',
+    slug: 'kwafyr-mnh-asad',
+    name: 'كوافير منه أسعد',
+    area: 'المنزلة - حي السلام',
+    category: 'بيوتي وكوافير',
+    cover: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80',
+    isSponsored: false
+  }
+];
+
+function initHomeVerifiedShowcase(allPlaces = null) {
+  const grid = document.getElementById('home-verified-cards-grid');
+  const statusText = document.getElementById('home-verified-status-text');
+  if (!grid) return;
+
+  // 1. Instant 0ms Load from Local Storage Cache
+  let cachedPlaces = null;
+  try {
+    const raw = localStorage.getItem(VERIFIED_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedPlaces = parsed;
+      }
+    }
+  } catch (_) {}
+
+  // 2. If places provided from DB / Worker, process and update cache
+  if (Array.isArray(allPlaces) && allPlaces.length > 0) {
+    const extracted = allPlaces
+      .filter(p => p && p.isVerified && !isAtmPlace(p))
+      .map(p => ({
+        id: p.id || p._key,
+        slug: p.slug || p.id,
+        name: p.name,
+        area: p.area || 'المنزلة والمطرية',
+        category: p.categoryName || p.customCategory || p.categoryId || 'نشاط تجاري',
+        cover: p.coverImageUrl || p.logoUrl || (p.gallery && p.gallery[0]) || '/assets/images/og-whatsapp.jpg',
+        isSponsored: Boolean(p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > Date.now()))
+      }));
+
+    if (extracted.length > 0) {
+      _homeVerifiedPool = extracted;
+      try {
+        localStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(extracted));
+      } catch (_) {}
+    }
+  } else if (!_homeVerifiedPool.length) {
+    if (cachedPlaces && cachedPlaces.length > 0) {
+      _homeVerifiedPool = cachedPlaces;
+    } else {
+      _homeVerifiedPool = [...FALLBACK_VERIFIED_PLACES];
+    }
+  }
+
+  const rankLabels = [
+    '🥇 الصدارة #1',
+    '🥈 الصدارة #2',
+    '🥉 الصدارة #3',
+    '🎖️ الصدارة #4'
+  ];
+
+  function renderCards(slice) {
+    grid.innerHTML = slice.map((p, index) => `
+      <article class="fair-place-card" data-card-index="${index}">
+        <span class="fair-place-card__rank">${rankLabels[index] || `🎖️ الصدارة #${index + 1}`}</span>
+        <div class="fair-place-card__cover">
+          <img src="${escAttr(p.cover)}" alt="${escAttr(p.name)}" loading="lazy" onerror="this.src='/assets/images/og-whatsapp.jpg'">
+          <div class="fair-place-card__badges">
+            ${p.isSponsored ? '<span class="fair-badge-sponsored">⭐ إعلان مميز</span>' : ''}
+            <span class="fair-badge-verified">✓ موثق رسمياً</span>
+          </div>
+        </div>
+        <div class="fair-place-card__body">
+          <h4 class="fair-place-card__title" title="${escAttr(p.name)}">${escHtml(p.name)}</h4>
+          <div class="fair-place-card__meta">
+            <span>📍 ${escHtml(p.area)}</span>
+            <span>🏷️ ${escHtml(p.category)}</span>
+          </div>
+          <a href="place.html?slug=${encodeURIComponent(p.slug || p.id)}" class="fair-place-card__link">عرض بطاقة المكان ↗</a>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  // Render initial 4 cards immediately (0ms)
+  const total = _homeVerifiedPool.length;
+  const initialSlice = [];
+  for (let i = 0; i < Math.min(4, total); i++) {
+    initialSlice.push(_homeVerifiedPool[(_homeVerifiedRotationIndex + i) % total]);
+  }
+  renderCards(initialSlice);
+
+  // Setup periodic rotation every 4.5 seconds
+  if (_homeVerifiedInterval) {
+    clearInterval(_homeVerifiedInterval);
+    _homeVerifiedInterval = null;
+  }
+
+  if (total >= 2) {
+    let rotationRound = 1;
+    _homeVerifiedInterval = setInterval(() => {
+      const cards = grid.querySelectorAll('.fair-place-card');
+      cards.forEach(c => c.classList.add('anim-swap'));
+
+      setTimeout(() => {
+        _homeVerifiedRotationIndex = (_homeVerifiedRotationIndex + 1) % _homeVerifiedPool.length;
+        rotationRound++;
+
+        const currentSlice = [];
+        const poolSize = _homeVerifiedPool.length;
+        for (let i = 0; i < Math.min(4, poolSize); i++) {
+          currentSlice.push(_homeVerifiedPool[(_homeVerifiedRotationIndex + i) % poolSize]);
+        }
+        renderCards(currentSlice);
+
+        if (statusText) {
+          statusText.innerHTML = `🟢 <b>تم تدوير الصدارة تلقائياً (${rotationRound}):</b> تتغير المراكز دورياً لضمان تكافؤ نسب المشاهدة لكافة الأماكن الموثقة!`;
+        }
+      }, 300);
+    }, 4500);
+  }
+}
 
 function shuffleArray(array) {
   const arr = [...array];
@@ -172,68 +331,6 @@ function shuffleArray(array) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
-}
-
-function startVerifiedPlacesRotation(allPlaces) {
-  if (_verifiedPlacesInterval) {
-    clearInterval(_verifiedPlacesInterval);
-    _verifiedPlacesInterval = null;
-  }
-
-  const eligiblePlaces = allPlaces.filter(p => p.isVerified && !isAtmPlace(p));
-  if (!eligiblePlaces.length) {
-    document.getElementById('verified-places-section')?.remove();
-    return;
-  }
-
-  // Separate sponsored places from non-sponsored places
-  const sponsored = eligiblePlaces.filter(p => isPlaceSponsored(p));
-  const regular = eligiblePlaces.filter(p => !isPlaceSponsored(p));
-
-  const updateDisplay = (isInterval = false) => {
-    // Both sponsored and regular places are shuffled randomly every minute for 100% fair rotation & equal exposure
-    const shuffledSponsored = shuffleArray(sponsored);
-    const shuffledRegular = shuffleArray(regular);
-    const combined = [...shuffledSponsored, ...shuffledRegular];
-    renderVerifiedPlaces(combined.slice(0, 8), isInterval);
-
-    // Also update and re-shuffle Latest Places sponsored ads fairly
-    const latestGrid = document.getElementById('latest-places-grid');
-    if (latestGrid) {
-      const latestPlaces = sortLatestPlaces(allPlaces, null, true);
-      renderLatestPlaces(latestPlaces.slice(0, 8));
-    }
-  };
-
-  // Immediate first render
-  updateDisplay(false);
-
-  // Rotate randomly every 60 seconds (1 minute) to guarantee fair exposure for all advertisers
-  _verifiedPlacesInterval = setInterval(() => {
-    updateDisplay(true);
-  }, 60000);
-}
-
-function renderVerifiedPlaces(places, animate = false) {
-  const section = document.getElementById('verified-places-section');
-  const grid = document.getElementById('verified-places-grid');
-  if (!grid) return;
-
-  if (!places || !places.length) {
-    section?.remove();
-    return;
-  }
-
-  if (animate) {
-    grid.style.transition = 'opacity 0.3s ease';
-    grid.style.opacity = '0.3';
-    setTimeout(() => {
-      grid.innerHTML = places.map(p => renderPlaceCard(p)).join('');
-      grid.style.opacity = '1';
-    }, 300);
-  } else {
-    grid.innerHTML = places.map(p => renderPlaceCard(p)).join('');
-  }
 }
 
 function renderLatestPlaces(places) {
@@ -1120,17 +1217,266 @@ function getHomeHTML() {
       </div>
     </section>
 
-    <!-- Verified Places Section -->
-    <section class="section" id="verified-places-section" style="background:var(--surface);padding-block:var(--space-10)">
+    <!-- Verified Places Showcase Section (أماكن وثقت صفحتها معنا) -->
+    <style>
+      .home-verified-section {
+        background: var(--surface);
+        padding-block: var(--space-8);
+      }
+      .home-verified-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-4);
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .home-verified-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        color: #10B981;
+        padding: 3px 12px;
+        border-radius: 9999px;
+        font-size: 12px;
+        font-weight: 800;
+        margin-bottom: 6px;
+      }
+      .home-verified-dot {
+        width: 7px;
+        height: 7px;
+        background: #10B981;
+        border-radius: 50%;
+        box-shadow: 0 0 8px #10B981;
+        animation: fairPulse 1.6s infinite;
+        display: inline-block;
+      }
+      .home-verified-title {
+        margin: 0 0 4px 0;
+        font-size: clamp(1.3rem, 2.5vw, 1.75rem);
+        font-weight: 800;
+        color: var(--text-primary);
+      }
+      .home-verified-subtitle {
+        color: var(--text-muted);
+        font-size: 13.5px;
+        margin: 0;
+      }
+      .home-verified-box {
+        background: linear-gradient(145deg, #091E33 0%, #0F2F4E 60%, #0A2238 100%);
+        border: 1px solid rgba(245, 166, 35, 0.35);
+        border-radius: 20px;
+        padding: 18px 18px 22px 18px;
+        box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.45);
+        color: #ffffff;
+        position: relative;
+        overflow: hidden;
+      }
+      .home-verified-subbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .home-verified-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #F1F5F9;
+      }
+      .home-verified-live-tag {
+        background: rgba(245, 166, 35, 0.15);
+        border: 1px solid rgba(245, 166, 35, 0.4);
+        color: #FCD34D;
+        padding: 3px 10px;
+        border-radius: 9999px;
+        font-size: 11.5px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .fair-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        transition: opacity 0.3s ease;
+      }
+      .fair-place-card {
+        background: #0C2339;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease, border-color 0.25s;
+        box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+      .fair-place-card.anim-swap {
+        transform: scale(0.93) translateY(6px);
+        opacity: 0.45;
+      }
+      .fair-place-card:hover {
+        border-color: #F5A623;
+        transform: translateY(-3px);
+      }
+      .fair-place-card__rank {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 3;
+        padding: 2px 8px;
+        background: rgba(11, 34, 57, 0.92);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(245, 166, 35, 0.6);
+        color: #FCD34D;
+        border-radius: 9999px;
+        font-size: 10.5px;
+        font-weight: 800;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      }
+      .fair-place-card__cover {
+        height: 115px;
+        width: 100%;
+        position: relative;
+        background: #153857;
+        overflow: hidden;
+      }
+      .fair-place-card__cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s;
+      }
+      .fair-place-card:hover .fair-place-card__cover img {
+        transform: scale(1.06);
+      }
+      .fair-place-card__badges {
+        position: absolute;
+        bottom: 6px;
+        right: 6px;
+        left: 6px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .fair-badge-sponsored {
+        background: linear-gradient(135deg, #F5A623, #D97706);
+        color: #000;
+        font-size: 10px;
+        font-weight: 900;
+        padding: 2px 7px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+      }
+      .fair-badge-verified {
+        background: #0284C7;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 2px 7px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+      }
+      .fair-place-card__body {
+        padding: 12px 10px 14px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        flex: 1;
+      }
+      .fair-place-card__title {
+        font-size: 13.5px;
+        font-weight: 800;
+        color: #FFFFFF;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .fair-place-card__meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11.5px;
+        color: #94A3B8;
+        gap: 4px;
+      }
+      .fair-place-card__link {
+        margin-top: 6px;
+        padding: 5px 8px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #38BDF8;
+        text-align: center;
+        border-radius: 7px;
+        font-size: 11px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+      .fair-place-card__link:hover {
+        background: #0284C7;
+        color: #fff;
+      }
+      @media (max-width: 991px) {
+        .fair-cards-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 540px) {
+        .fair-cards-grid {
+          grid-template-columns: 1fr;
+        }
+        .home-verified-box {
+          padding: 16px 12px;
+        }
+      }
+    </style>
+
+    <section class="section home-verified-section" id="verified-places-section">
       <div class="container">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">
-          <h2 class="section-title">
-            <span class="sparkle-star-icon">⭐</span> الأكثر شهرة في المنزلة والمطرية
-          </h2>
-          <a href="places.html?filter=verified" class="section-link">عرض الكل ←</a>
+        <div class="home-verified-header">
+          <div>
+            <div class="home-verified-badge">
+              <span class="home-verified-dot"></span>
+              <span>توثيق رسمي معتمد 🛡️</span>
+            </div>
+            <h2 class="section-title home-verified-title">
+              أماكن وثقت صفحتها معنا
+            </h2>
+            <p class="home-verified-subtitle">
+              أنشطة تجارية وخدمات معتمدة بالعلامة الرسمية في المنزلة والمطرية مع تدوير عادل ومستمر في الصدارة
+            </p>
+          </div>
+          <a href="places.html?filter=verified" class="section-link">كل الأماكن الموثقة ←</a>
         </div>
-        <div class="places-grid" id="verified-places-grid">
-          ${Array(4).fill(renderPlaceCardSkeleton()).join('')}
+
+        <div class="home-verified-box">
+          <div class="home-verified-subbar">
+            <div class="home-verified-status">
+              <span class="home-verified-dot"></span>
+              <span id="home-verified-status-text">بث مباشر: تتغير مراكز الأماكن الموثقة تلقائياً كل 4.5 ثوانٍ لضمان عدالة الظهور</span>
+            </div>
+            <div class="home-verified-live-tag">
+              <span>⚡ تدوير حي مستمر</span>
+            </div>
+          </div>
+
+          <!-- 4 Horizontal Cards Grid -->
+          <div class="fair-cards-grid" id="home-verified-cards-grid">
+            <div style="grid-column: 1 / -1; text-align: center; padding: 1.5rem; color: #94A3B8;">جاري تحميل الأماكن الموثقة...</div>
+          </div>
         </div>
       </div>
     </section>

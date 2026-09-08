@@ -4,9 +4,9 @@
  */
 
 import { WORKER_URL, getAuth } from './firebase.js';
-import { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES } from '../services/idb-cache.service.js';
+import { idbGetAll, idbPutBulk, idbPut, idbGet, idbGetByIndex, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES } from '../services/idb-cache.service.js';
 
-export { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES };
+export { idbGetAll, idbPutBulk, idbPut, idbGet, idbGetByIndex, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES };
 
 // ── Ultra-Fast Multi-Tier SWR Cache (0ms Instant Navigation) ──
 const _dbMemoryCache = new Map();
@@ -640,14 +640,45 @@ export async function reportPlaceData({ placeId, reason = 'معلومة غير �
   return data;
 }
 
-/** Get place by slug (with multi-tier resilient lookup) */
+/** Get place by slug (with multi-tier resilient lookup and 0ms instant cache) */
 export async function getPlaceBySlug(slug) {
   if (!slug) return null;
   const raw = String(slug).trim();
   const clean = raw.toLowerCase();
 
-  // Turso is authoritative. Read it first so a stale local cache cannot
-  // resurrect a deleted/updated place.
+  // Tier 0: Check Local Storage / IndexedDB for 0ms sub-second transition
+  try {
+    let localPlace = await idbGet(STORES.PLACES, raw);
+    if (!localPlace && clean !== raw) localPlace = await idbGet(STORES.PLACES, clean);
+    if (!localPlace) localPlace = await idbGetByIndex(STORES.PLACES, 'slug', raw);
+    if (!localPlace && clean !== raw) localPlace = await idbGetByIndex(STORES.PLACES, 'slug', clean);
+
+    if (!localPlace) {
+      const allCached = getCached('published_1000_') || getCached('published_500_') || getCached('published_100_');
+      if (Array.isArray(allCached)) {
+        localPlace = allCached.find(item => 
+          item && (
+            String(item.slug || '').toLowerCase() === clean || 
+            String(item.id || '').toLowerCase() === clean ||
+            String(item.slug || '') === raw ||
+            String(item.id || '') === raw
+          )
+        );
+      }
+    }
+
+    if (localPlace && !isPlaceBanned(localPlace)) {
+      // Revalidate in background to keep data fresh without blocking page navigation
+      tursoFetch('/api/places?slug=' + encodeURIComponent(localPlace.slug || raw)).then(data => {
+        if (data?.success && data.data) {
+          const fresh = normalizeTursoPlace(data.data);
+          if (fresh) idbPut(STORES.PLACES, fresh).catch(() => {});
+        }
+      }).catch(() => {});
+      return localPlace;
+    }
+  } catch (_) {}
+
   // 1. Fetch directly from Turso Worker by slug (try raw then clean)
   try {
     const data = await tursoFetch('/api/places?slug=' + encodeURIComponent(raw));
@@ -841,14 +872,60 @@ export function normalizeTursoPlace(p) {
 
 export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFresh = false } = {}) {
   const cacheKey = `published_${limit}_${lastKey || ''}`;
-  
-  // Turso is the source of truth. Never return a local place list before
-  // checking the authoritative Worker; doing so can resurrect deleted places
-  // or hide newly-created/updated places on another device.
-  // 1. Primary Network Fetch from Turso via Worker
+
+  if (!forceFresh) {
+    // 1. Instant In-Memory / LocalStorage Cache (0ms instant UI)
+    const memCached = getCached(cacheKey);
+    if (Array.isArray(memCached) && memCached.length > 0) {
+      _syncPublishedPlaces(limit, cacheKey).catch(() => {});
+      return memCached;
+    }
+
+    // 2. Instant IndexedDB Cache (1ms - 5ms)
+    try {
+      const localPlaces = await idbGetAll(STORES.PLACES);
+      if (Array.isArray(localPlaces) && localPlaces.length > 0) {
+        const valid = localPlaces.filter(p => p && p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p));
+        if (valid.length > 0) {
+          valid.sort((a, b) => {
+            const aSpons = Boolean(a.isSponsored && (!a.sponsoredUntil || a.sponsoredUntil > Date.now()));
+            const bSpons = Boolean(b.isSponsored && (!b.sponsoredUntil || b.sponsoredUntil > Date.now()));
+            if (aSpons && !bSpons) return -1;
+            if (!aSpons && bSpons) return 1;
+            return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
+          });
+          const res = valid.slice(0, limit);
+          setCache(cacheKey, res);
+          _syncPublishedPlaces(limit, cacheKey).catch(() => {});
+          return res;
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 3. Fallback or cold-start: Fetch directly from authoritative Turso Worker
+  const fresh = await _syncPublishedPlaces(limit, cacheKey);
+  if (Array.isArray(fresh) && fresh.length > 0) {
+    return fresh;
+  }
+
+  // 4. Last resort: check IDB again if network failed
+  try {
+    const localPlaces = await idbGetAll(STORES.PLACES);
+    if (localPlaces && localPlaces.length > 0) {
+      const filtered = localPlaces.filter(p => p && p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p));
+      const res = filtered.slice(0, limit);
+      return setCache(cacheKey, res);
+    }
+  } catch (_) {}
+
+  return [];
+}
+
+async function _syncPublishedPlaces(limit = 100, cacheKey = '') {
   try {
     const workerRes = await fetch(`${WORKER_URL}/api/places?limit=${limit}`, {
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(6000)
     });
     if (workerRes.ok) {
       const data = await workerRes.json();
@@ -880,24 +957,14 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
         });
 
         const res = places.slice(0, limit);
-        return setCache(cacheKey, res);
+        if (cacheKey) setCache(cacheKey, res);
+        return res;
       }
     }
   } catch (workerErr) {
-    console.debug('[getPublishedPlaces] Turso fetch error, using local cache:', workerErr.message);
+    console.debug('[_syncPublishedPlaces] Handled network notice:', workerErr?.message);
   }
-
-  // 2. Offline fallback: Return cached places from IndexedDB if network is offline
-  try {
-    const localPlaces = await idbGetAll(STORES.PLACES);
-    if (localPlaces && localPlaces.length > 0) {
-      const filtered = localPlaces.filter(p => p && p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p));
-      const res = filtered.slice(0, limit);
-      return setCache(cacheKey, res);
-    }
-  } catch (_) {}
-
-  return [];
+  return null;
 }
 
 let _isSyncingPlaces = false;
@@ -1027,19 +1094,54 @@ export async function deleteCategoryTurso(categoryId) {
 }
 
 export async function getCategories() {
-  const cached=getCached('categories_all',1800000);
-  if(Array.isArray(cached)&&cached.length)return cached;
-  try{
-    const data=await tursoFetch('/api/categories');
-    const categories=(Array.isArray(data?.data)?data.data:[]).map(c=>({
-      id:c.id||c.slug,_key:c.id||c.slug,slug:c.slug||c.id,name:c.name||'',
-      nameEn:c.name_en||c.nameEn||'',icon:c.icon||'🏪',description:c.description||'',
-      color:c.color||'#1B4F72',order:Number(c.order??c.sort_order??0),
-      placeCount:Number(c.place_count??c.placeCount??0)
-    })).sort((a,b)=>(a.order||0)-(b.order||0));
-    if(categories.length){idbPutBulk(STORES.CATEGORIES,categories).catch(()=>{});return setCache('categories_all',categories);}
-  }catch(err){console.warn('[getCategories] Worker error:',err?.message||err);}
-  try{const local=await idbGetAll(STORES.CATEGORIES);return local?.length?setCache('categories_all',local):[];}catch(_){return [];}
+  const cached = getCached('categories_all', 1800000);
+  if (Array.isArray(cached) && cached.length) return cached;
+
+  // 1. Instant IDB Cache (0ms)
+  try {
+    const local = await idbGetAll(STORES.CATEGORIES);
+    if (Array.isArray(local) && local.length > 0) {
+      setCache('categories_all', local);
+      _syncCategoriesInBackground().catch(() => {});
+      return local;
+    }
+  } catch (_) {}
+
+  // 2. Network Fetch if cold start
+  try {
+    const data = await tursoFetch('/api/categories');
+    const categories = (Array.isArray(data?.data) ? data.data : []).map(c => ({
+      id: c.id || c.slug, _key: c.id || c.slug, slug: c.slug || c.id, name: c.name || '',
+      nameEn: c.name_en || c.nameEn || '', icon: c.icon || '🏪', description: c.description || '',
+      color: c.color || '#1B4F72', order: Number(c.order ?? c.sort_order ?? 0),
+      placeCount: Number(c.place_count ?? c.placeCount ?? 0)
+    })).sort((a, b) => (a.order || 0) - (b.order || 0));
+    if (categories.length) {
+      idbPutBulk(STORES.CATEGORIES, categories).catch(() => {});
+      return setCache('categories_all', categories);
+    }
+  } catch (err) {
+    console.warn('[getCategories] Worker error:', err?.message || err);
+  }
+  return [];
+}
+
+async function _syncCategoriesInBackground() {
+  try {
+    const data = await tursoFetch('/api/categories');
+    if (Array.isArray(data?.data) && data.data.length > 0) {
+      const categories = data.data.map(c => ({
+        id: c.id || c.slug, _key: c.id || c.slug, slug: c.slug || c.id, name: c.name || '',
+        nameEn: c.name_en || c.nameEn || '', icon: c.icon || '🏪', description: c.description || '',
+        color: c.color || '#1B4F72', order: Number(c.order ?? c.sort_order ?? 0),
+        placeCount: Number(c.place_count ?? c.placeCount ?? 0)
+      })).sort((a, b) => (a.order || 0) - (b.order || 0));
+      if (categories.length) {
+        idbPutBulk(STORES.CATEGORIES, categories).catch(() => {});
+        setCache('categories_all', categories);
+      }
+    }
+  } catch (_) {}
 }
 
 export async function getCategory(slug) {
@@ -1096,8 +1198,18 @@ export async function adminDeleteProduct(placeId,productId) {
   return tursoFetch('/api/products/'+encodeURIComponent(productId),{method:'DELETE'});
 }
 
-export async function getAds(placement='homepage') {
-  try{const data=await tursoFetch('/api/ads');const list=Array.isArray(data?.data)?data.data:[];return list.filter(a=>!placement||a.placement===placement||a.placement==='all');}catch(_){return [];}
+export async function getAds(placement = 'homepage') {
+  const key = 'ads_' + (placement || 'all');
+  const cached = getCached(key, 300000);
+  if (Array.isArray(cached) && cached.length) return cached;
+  try {
+    const data = await tursoFetch('/api/ads');
+    const list = Array.isArray(data?.data) ? data.data : [];
+    const filtered = list.filter(a => !placement || a.placement === placement || a.placement === 'all');
+    return setCache(key, filtered);
+  } catch (_) {
+    return [];
+  }
 }
 
 export async function getSettings({forceFresh=false}={}) {

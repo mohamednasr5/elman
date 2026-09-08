@@ -1,4 +1,4 @@
-﻿/**
+/**
  * idb-cache.service.js
  * High-Performance IndexedDB Storage & Sync Engine for Dalil El-Manzala
  * Provides 0ms local reads, version checking, and background delta sync.
@@ -137,6 +137,28 @@ export async function idbGet(storeName, key) {
       const tx = db.transaction(storeName, 'readonly');
       const store = tx.objectStore(storeName);
       const req = store.get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } catch (_) {
+      resolve(null);
+    }
+  });
+}
+
+/**
+ * Get a single item by an index
+ */
+export async function idbGetByIndex(storeName, indexName, value) {
+  if (!value) return null;
+  const db = await openIDB();
+  if (!db) return null;
+
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const idx = store.index(indexName);
+      const req = idx.get(value);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => resolve(null);
     } catch (_) {
