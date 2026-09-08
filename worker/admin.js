@@ -1001,7 +1001,7 @@ export async function handleAdminRequest(request, env, ctx, url, corsHeaders) {
     if (response) return response;
 
     const placeId = decodeURIComponent(verifDecideMatch[1]);
-    const body = await parseJsonBody(request);
+    const body = await request.json().catch(() => ({}));
     const decision = body.decision; // 'approved' or 'rejected'
     const notes = body.notes || '';
 
