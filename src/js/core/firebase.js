@@ -58,7 +58,7 @@ export function initFirebase() {
     console.warn('[initFirebase] Warning:', err);
   }
 
-  return { app: _app, auth: _auth, db: _dummyDb };
+  return { app: _app, auth: _auth, db: null };
 }
 
 /**
@@ -93,9 +93,6 @@ export function getAuth() {
   return _auth;
 }
 
-export function getDB() {
-  return _dummyDb;
-}
 
 export function getApp() {
   if (!_app) {
