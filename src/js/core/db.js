@@ -1558,12 +1558,8 @@ export async function getPlaceReviews(placeId) {
 /** Get all reviews across all places (for Admin) - Primary Turso */
 export async function getAllReviews() {
   try {
-    const res = await fetch(`${WORKER_URL}/api/reviews`, {
-      signal: AbortSignal.timeout(5000)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+    const data = await d1Fetch('/api/reviews');
+    if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
         return data.data.map(r => ({
           id: r.id,
           placeId: r.place_id,
@@ -1589,15 +1585,15 @@ export async function getAllReviews() {
           createdAt: Number(r.created_at) || Date.now(),
           updatedAt: Number(r.updated_at) || Date.now()
         })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      }
     }
   } catch (err) {
     console.debug('[getAllReviews] Worker fetch handled, fallback to cache:', err.message);
   }
 
+
   const all = [];
   try {
-    const places = (await getPublishedPlaces({ limit: 500 })) || [];
+    const places = (await getPublishedPlaces({ limit: 1000 })) || [];
     for (const placeData of places) {
       if (placeData && placeData.reviews && typeof placeData.reviews === 'object') {
         for (const [reviewId, r] of Object.entries(placeData.reviews)) {
@@ -2202,9 +2198,8 @@ export async function adminBulkAddReviews(placeId, items = []) {
     for (let i = 0; i < reviewsArray.length; i += 50) {
       const chunk = reviewsArray.slice(i, i + 50);
       try {
-        await fetch(`${WORKER_URL}/api/reviews`, {
+        await d1Fetch('/api/reviews', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reviews: chunk })
         });
       } catch (err) {
