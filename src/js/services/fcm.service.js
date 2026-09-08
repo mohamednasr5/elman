@@ -147,7 +147,7 @@ async function registerDeviceFcmToken(messaging, serviceWorkerRegistration, user
       const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
       const platform = isAndroid ? 'android' : (isIos ? 'ios' : 'desktop');
 
-      // 1. Store in Cloudflare D1 via Worker (Zero Firebase Database Storage)
+      // 1. Store in Turso via Worker (Zero Firebase Database Storage)
       try {
         await fetch(`${WORKER_URL}/api/fcm/token`, {
           method: 'POST',
@@ -162,7 +162,7 @@ async function registerDeviceFcmToken(messaging, serviceWorkerRegistration, user
           signal: AbortSignal.timeout(5000)
         });
       } catch (workerErr) {
-        console.debug('[FCM] D1 token sync fallback:', workerErr.message);
+        console.debug('[FCM] Turso token sync fallback:', workerErr.message);
       }
     }
   } catch (err) {
