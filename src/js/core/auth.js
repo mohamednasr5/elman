@@ -252,13 +252,7 @@ async function _syncUserToD1(firebaseUser) {
 
   const syncData = await syncRes.json().catch(() => ({}));
 
-  // 2. Fetch full profile from D1 (to get the actual role stored in DB)
-  const profileRes = await fetch(`${WORKER_URL}/api/users/${uid}`, {
-    headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
-    signal: AbortSignal.timeout(6000)
-  });
-
-  let d1Profile = null;
+ 
   if (profileRes.ok) {
     const profileData = await profileRes.json().catch(() => ({}));
     d1Profile = profileData.data || profileData.user || null;
