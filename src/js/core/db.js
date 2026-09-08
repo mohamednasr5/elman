@@ -78,7 +78,7 @@ export function clearDbCache(prefix = '') {
 
 function isBusinessDataPath(path = '') {
   const p = String(path || '').replace(/^\/+/, '');
-  return /^(places|categories|offers|products|ads)(?:\/|$)/i.test(p);
+  return /^(places|categories|offers|products|ads|users|verificationRequests|categoryRequests|settings)(?:\/|$)/i.test(p);
 }
 
 function parseBusinessPath(path = '') {
@@ -89,20 +89,33 @@ function parseBusinessPath(path = '') {
 
 /**
  * Primary Worker API caller - Communicates with Worker which connects directly to Turso DB.
+ * Automatically acquires and passes Firebase Auth Bearer token for all administrative or state-mutating requests.
  */
 async function tursoFetch(path, options = {}) {
   let token = null;
+  const requiresToken = Boolean(
+    options.requiresAuth ||
+    (options.method && options.method !== 'GET') ||
+    path.includes('/admin') ||
+    path.includes('admin=1') ||
+    path.startsWith('/api/users') ||
+    path.startsWith('/api/verification') ||
+    path.startsWith('/api/category-requests')
+  );
+
   try {
     let auth = getAuth();
     if (auth?.currentUser) {
       token = await auth.currentUser.getIdToken().catch(() => null);
-    } else if (options.requiresAuth || (options.method && options.method !== 'GET')) {
-      for (let i = 0; i < 10; i++) {
-        await new Promise(r => setTimeout(r, 100));
+    }
+    // If token is missing and endpoint requires authentication, wait for Firebase Auth restoration
+    if (!token && requiresToken) {
+      for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 150));
         auth = getAuth();
         if (auth?.currentUser) {
           token = await auth.currentUser.getIdToken().catch(() => null);
-          break;
+          if (token) break;
         }
       }
     }
@@ -206,6 +219,20 @@ async function tursoGetBusiness(path) {
     if (parts.length <= 2) return Object.fromEntries(list.filter(x => x.id).map(x => [x.id, x]));
     return list.find(x => String(x.id) === String(productId)) || null;
   }
+  if (root === 'users') {
+    if (parts.length === 1) return getAllUsersTurso();
+    const data = await tursoFetch(`/api/users/${encodeURIComponent(parts[1])}`, { requiresAuth: true });
+    return data?.data || data || null;
+  }
+  if (root === 'verificationRequests') {
+    return getVerificationRequestsTurso();
+  }
+  if (root === 'categoryRequests') {
+    return getCategoryRequestsTurso();
+  }
+  if (root === 'settings') {
+    return getSettings();
+  }
   return null;
 }
 
@@ -242,6 +269,29 @@ async function tursoWriteBusiness(path, method, data = null) {
     if(method==='POST') return tursoFetch('/api/categories',{method:'POST',body:JSON.stringify(data||{})});
     if(method==='PUT'&&parts[1]) return tursoFetch(`/api/categories/${encodeURIComponent(parts[1])}`,{method:'PUT',body:JSON.stringify(data||{})});
     if(method==='DELETE'&&parts[1]) return tursoFetch(`/api/categories/${encodeURIComponent(parts[1])}`,{method:'DELETE'});
+  }
+  if (root === 'users') {
+    if ((method === 'PUT' || method === 'PATCH') && parts[1]) {
+      return updateUserTurso(parts[1], data);
+    }
+    if (method === 'DELETE' && parts[1]) {
+      return tursoFetch(`/api/users/${encodeURIComponent(parts[1])}`, { method: 'DELETE', requiresAuth: true });
+    }
+  }
+  if (root === 'verificationRequests') {
+    if ((method === 'PUT' || method === 'POST' || method === 'PATCH') && parts[1]) {
+      return updateVerificationRequestTurso(parts[1], data?.status || 'approved', data?.verifiedUntil);
+    }
+  }
+  if (root === 'categoryRequests') {
+    if ((method === 'PUT' || method === 'PATCH' || method === 'POST') && parts[1]) {
+      return updateCategoryRequestTurso(parts[1], data?.status || 'approved');
+    }
+  }
+  if (root === 'settings') {
+    if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
+      return updateSettings(data);
+    }
   }
   throw new Error(`No Turso write endpoint configured for ${root}`);
 }
@@ -414,7 +464,7 @@ export async function getUserProfile(uid) {
 /** Get all users - Primary Turso */
 export async function getAllUsersTurso() {
   try {
-    const data = await tursoFetch('/api/users');
+    const data = await tursoFetch('/api/users', { requiresAuth: true });
     if (data && data.success && Array.isArray(data.data)) {
       const usersMap = {};
       data.data.forEach(u => {
@@ -533,9 +583,30 @@ export async function updateUserTurso(uid, { role, status, name, email, phone, p
 }
 
 export async function getAdminPlacesTurso({limit=1000,offset=0}={}) {
-  const data = await tursoFetch('/api/places?admin=1&limit=' + encodeURIComponent(Math.min(1000,Math.max(1,limit))) + '&offset=' + encodeURIComponent(Math.max(0,offset)));
-  const list = Array.isArray(data?.data) ? data.data : [];
-  return Object.fromEntries(list.map(p => [p.id || p._id, normalizeTursoPlace(p)]).filter(([id,p]) => id && p));
+  try {
+    const data = await tursoFetch(
+      '/api/places?admin=1&limit=' + encodeURIComponent(Math.min(1000,Math.max(1,limit))) + '&offset=' + encodeURIComponent(Math.max(0,offset)),
+      { requiresAuth: true }
+    );
+    const list = Array.isArray(data?.data) ? data.data : [];
+    if (list.length > 0) {
+      return Object.fromEntries(list.map(p => [p.id || p._id, normalizeTursoPlace(p)]).filter(([id,p]) => id && p));
+    }
+  } catch (err) {
+    console.warn('[getAdminPlacesTurso] Admin endpoint failed, attempting fallback to public places:', err.message);
+  }
+
+  // Graceful fallback to public places if admin endpoint is unauthorized or fails
+  try {
+    const pubData = await tursoFetch(
+      '/api/places?limit=' + encodeURIComponent(Math.min(1000,Math.max(1,limit))) + '&offset=' + encodeURIComponent(Math.max(0,offset))
+    );
+    const list = Array.isArray(pubData?.data) ? pubData.data : [];
+    return Object.fromEntries(list.map(p => [p.id || p._id, normalizeTursoPlace(p)]).filter(([id,p]) => id && p));
+  } catch (fallbackErr) {
+    console.error('[getAdminPlacesTurso] Fallback also failed:', fallbackErr.message);
+    return {};
+  }
 }
 
 /** Get place by ID - Reads from Turso and IndexedDB */

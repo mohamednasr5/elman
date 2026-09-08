@@ -87,7 +87,7 @@ export function getAuth() {
       _auth = fb.auth();
       return _auth;
     }
-    console.warn('[getAuth] Firebase auth not ready yet');
+    console.debug('[getAuth] Firebase auth not ready yet');
     return null;
   }
   return _auth;
