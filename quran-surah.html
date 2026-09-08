@@ -5,14 +5,14 @@
 <title>سورة القرآن الكريم | دليل المنزلة والمطرية الرقمي</title>
 <meta name="description" content="قراءة السورة مع التجويد والتلاوة الصوتية محلياً، بسرعة عالية ودعم PWA.">
 <link rel="manifest" href="./manifest.webmanifest"><meta name="theme-color" content="#0F172A">
-<link rel="stylesheet" href="./src/css/main.css"><link rel="stylesheet" href="./src/css/islamic-hub.css?v=5c845970">
+<link rel="stylesheet" href="./src/css/main.css"><link rel="stylesheet" href="./src/css/islamic-hub.css?v=c316a528">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body><div id="app"><div id="header-slot"></div><main class="page-main" id="page-container"><div class="ih-loading"><div class="ih-pulse"></div></div></main><div id="nav-slot"></div><div id="pwa-slot"></div><div id="footer-slot"></div></div>
 <script type="module">
-import {initPage} from './src/js/core/page-shell.js?v=5c845970';
-import {renderQuranSurah} from './src/js/ui/pages/islamic-hub.js?v=5c845970';
+import {initPage} from './src/js/core/page-shell.js?v=c316a528';
+import {renderQuranSurah} from './src/js/ui/pages/islamic-hub.js?v=c316a528';
 await initPage('quran-surah.html'); await renderQuranSurah(document.getElementById('page-container'));
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script></body></html>

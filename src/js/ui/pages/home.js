@@ -12,7 +12,7 @@ import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } 
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { mountVoiceSearchButton, openManzalaVoiceAssistantModal } from '../../services/voice.service.js';
-import { mountLivePulseSection } from '../components/LivePulseSection.js?v=5c845970';
+import { mountLivePulseSection } from '../components/LivePulseSection.js?v=c316a528';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';

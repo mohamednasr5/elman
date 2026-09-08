@@ -243,6 +243,10 @@ async function tursoWriteBusiness(path, method, data = null) {
   throw new Error(`No Turso write endpoint configured for ${root}`);
 }
 
+export function getDB() {
+  return null;
+}
+
 export function dbRef(path) {
   throw new Error('Firebase Realtime Database is disabled. Use Turso APIs: '+path);
 }
@@ -357,6 +361,10 @@ export async function dbIncrement(path, delta = 1) {
     throw new Error(`Firebase increment blocked for business data path: ${path}`);
   }
   throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
+}
+
+export function serverTimestamp() {
+  return Date.now();
 }
 
 export function dbListen(path, callback) {
