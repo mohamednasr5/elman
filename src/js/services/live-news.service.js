@@ -150,6 +150,21 @@ export async function adminUpdateLiveNews(newsId,updates) {
 }
 
 /** Admin: Permanently Delete report */
+export async function reactToLiveNews(newsId, type, user) {
+  const id = String(newsId || '').trim();
+  const reaction = String(type || '').trim();
+  const uid = String(user?.uid || user?.id || '').trim();
+  if (!id) throw new Error('معرّف الخبر غير صالح');
+  if (!uid) throw new Error('يجب تسجيل الدخول للتفاعل');
+  if (!['confirm','love','doubt'].includes(reaction)) throw new Error('نوع التفاعل غير صالح');
+  const data = await tursoFetch('/api/live-news/' + encodeURIComponent(id) + '/reaction', {
+    method: 'POST',
+    body: JSON.stringify({ type: reaction })
+  });
+  if (!data?.success) throw new Error(data?.error || 'فشل التفاعل');
+  return data;
+}
+
 export async function adminDeleteLiveNews(newsId) {
   if(!newsId) return {success:true};
   const data=await tursoFetch('/api/live-news/'+encodeURIComponent(newsId),{method:'DELETE'});
