@@ -289,7 +289,8 @@ export async function fetchManagedUserNotifications(uid) {
     });
   } catch (_) {}
 
-  // 3. Personal notifications arrive through FCM/local state; no RTDB reads.\n  const all = Object.values(mergedMap).map(n => ({
+  // 3. Personal notifications arrive through FCM/local state; no RTDB reads.
+  const all = Object.values(mergedMap).map(n => ({
     ...n,
     isRead: Boolean(n.isRead || readIds.has(String(n.id)))
   }));
