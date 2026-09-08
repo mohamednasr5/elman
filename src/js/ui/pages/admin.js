@@ -2796,7 +2796,10 @@ async function renderAdminVerification($container) {
             ${reqs.length === 0 ? '<tr><td colspan="6" class="text-center">لا توجد طلبات توثيق حالياً</td></tr>' : reqs.map(r => `
               <tr>
                 <td><strong>${escHtml(r.placeName)}</strong></td>
-                <td>${escHtml(r.ownerName || r.ownerEmail || '')}</td>
+                <td>
+                  <div style="font-weight:800">${escHtml(r.ownerName || r.ownerEmail || '')}</div>
+                  ${r.phone ? '<div style="margin-top:4px;direction:ltr;text-align:right;font-size:12px;color:var(--text-muted)">'+escHtml(r.phone)+'</div>' : '<div style="margin-top:4px;font-size:12px;color:var(--text-muted)">لا يوجد رقم</div>'}
+                </td>
                 <td>${formatDate(r.requestedAt)}</td>
                 <td>${r.verifiedUntil ? formatDate(r.verifiedUntil) : '<span class="text-muted">—</span>'}</td>
                 <td>
@@ -2810,6 +2813,7 @@ async function renderAdminVerification($container) {
                       <button class="btn btn-xs btn-success" onclick="approveVerification('${escAttr(r.id)}', '${escAttr(r.placeId)}')">
                         ${ICONS.check} اعتماد
                       </button>
+                      ${r.phone ? '<a class="btn btn-xs btn-outline" target="_blank" rel="noopener noreferrer" href="https://wa.me/'+String(r.phone).replace(/\D/g,'')+'">💬 WhatsApp</a>' : ''}
                       <button class="btn btn-xs btn-danger" onclick="rejectVerification('${escAttr(r.id)}', '${escAttr(r.placeId)}')">
                         ${ICONS.x} رفض
                       </button>
