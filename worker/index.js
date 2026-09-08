@@ -1078,7 +1078,7 @@ try {
   }
 
   if (url.pathname === '/api/offers' && request.method === 'POST') {
-    const auth = await requireAdmin(request, env);
+    const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
     const placeId = String(body.placeId || body.place_id || '').trim();
@@ -1122,7 +1122,7 @@ try {
   }
 
   if (url.pathname.startsWith('/api/offers/') && request.method === 'PUT') {
-    const auth = await requireAdmin(request, env);
+    const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
     const id = decodeURIComponent(url.pathname.replace('/api/offers/','')).trim();
     const existing = await createTursoDB(env).prepare('SELECT * FROM offers WHERE id = ? LIMIT 1').bind(id).first();
@@ -1152,7 +1152,7 @@ try {
   }
 
   if (url.pathname.startsWith('/api/offers/') && request.method === 'DELETE') {
-    const auth = await requireAdmin(request, env);
+    const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
     const id = decodeURIComponent(url.pathname.replace('/api/offers/','')).trim();
     const existing = await createTursoDB(env).prepare('SELECT * FROM offers WHERE id = ? LIMIT 1').bind(id).first();
@@ -1201,7 +1201,7 @@ try {
   }
 
   if (url.pathname === '/api/products' && request.method === 'POST') {
-    const auth = await requireAdmin(request, env);
+    const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
     const placeId = String(body.placeId || body.place_id || '').trim();
@@ -1233,7 +1233,7 @@ try {
   }
 
   if (url.pathname.startsWith('/api/products/') && request.method === 'PUT') {
-    const auth = await requireAdmin(request, env);
+    const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
     const id = decodeURIComponent(url.pathname.replace('/api/products/','')).trim();
     const existing = await createTursoDB(env).prepare('SELECT * FROM products WHERE id=? LIMIT 1').bind(id).first();
@@ -1266,7 +1266,7 @@ try {
   }
 
   if (url.pathname.startsWith('/api/products/') && request.method === 'DELETE') {
-    const auth = await requireAdmin(request, env);
+    const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
     const id = decodeURIComponent(url.pathname.replace('/api/products/','')).trim();
     const existing = await createTursoDB(env).prepare('SELECT * FROM products WHERE id=? LIMIT 1').bind(id).first();
