@@ -8,7 +8,6 @@
 
 import { handleTelegramWebhook, sendAdminPushNotification, telegramApi } from './telegram.js';
 import { createTursoDB, checkTursoHealth } from './turso.js';
-import { handleAdminRequest } from './admin.js';
 const SUPERADMIN_EMAILS = new Set([
   'elfannanm@gmail.com',
   'mohamednasrofficial@gmail.com'
@@ -237,11 +236,6 @@ export default {
  if (request.method === 'OPTIONS') {
   return new Response(null, { headers: corsHeaders });
 }
-
-    // ── Dedicated Admin V2 API Router ───────────────────────────────
-    if (url.pathname.startsWith('/api/admin')) {
-      return handleAdminRequest(request, env, ctx, url, corsHeaders);
-    }
 
 // ── Static AI/SEO Discovery Files ────────────────────────────────
 // GET /llms.txt — AI Agentic Discovery (required for 3/3 score)
