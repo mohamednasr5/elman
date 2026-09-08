@@ -1,0 +1,63 @@
+/* ═══════════════════════════════════════════════════════════
+   Dalil El-Manzala Admin V2 — Design Tokens & Theme Variables
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* Surface & Backgrounds */
+  --admin-bg:            #081625;
+  --admin-surface:       #0C2136;
+  --admin-surface-2:     #102A45;
+  --admin-surface-hover: #153556;
+  --admin-card:          #0E243A;
+  --admin-header:        rgba(10, 26, 43, 0.88);
+  --admin-sidebar:       #091B2E;
+
+  /* Borders & Dividers */
+  --admin-border:        rgba(255, 255, 255, 0.08);
+  --admin-border-light:  rgba(255, 255, 255, 0.14);
+  --admin-border-focus:  #F5A623;
+
+  /* Typography Colors */
+  --admin-text-primary:   #FFFFFF;
+  --admin-text-secondary: #CBD5E1;
+  --admin-text-muted:     #94A3B8;
+  --admin-text-dim:       #64748B;
+
+  /* Accent & Brand */
+  --admin-gold:           #F5A623;
+  --admin-gold-hover:     #D97706;
+  --admin-gold-alpha:     rgba(245, 166, 35, 0.14);
+
+  /* Functional Semantics */
+  --admin-primary:        #0284C7;
+  --admin-primary-hover:  #0369A1;
+  --admin-primary-alpha:  rgba(2, 132, 199, 0.14);
+
+  --admin-success:        #10B981;
+  --admin-success-alpha:  rgba(16, 185, 129, 0.14);
+
+  --admin-danger:         #EF4444;
+  --admin-danger-alpha:   rgba(239, 68, 68, 0.14);
+
+  --admin-warning:        #F59E0B;
+  --admin-warning-alpha:  rgba(245, 158, 11, 0.14);
+
+  --admin-info:           #38BDF8;
+  --admin-info-alpha:     rgba(56, 189, 248, 0.14);
+
+  /* Shadows */
+  --admin-shadow-sm:  0 2px 6px rgba(0, 0, 0, 0.35);
+  --admin-shadow-md:  0 10px 25px -8px rgba(0, 0, 0, 0.55);
+  --admin-shadow-lg:  0 24px 50px -12px rgba(0, 0, 0, 0.65);
+
+  /* Radii */
+  --admin-radius-sm:  6px;
+  --admin-radius-md:  12px;
+  --admin-radius-lg:  18px;
+  --admin-radius-xl:  24px;
+  --admin-radius-full: 9999px;
+
+  /* Transitions */
+  --admin-transition-fast: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  --admin-transition-norm: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
