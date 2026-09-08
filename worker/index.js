@@ -1306,6 +1306,15 @@ try {
       ownerEdit ? 0 : (body.isApproved !== undefined ? (body.isApproved ? 1 : 0) : existing.is_approved),
       Date.now(), id
     ).run();
+    if (!auth.user.isAdmin) {
+      await createTursoDB(env).prepare('UPDATE products SET rejection_reason = NULL WHERE id = ?').bind(id).run();
+    } else if (body.status === 'rejected') {
+      const reason = String(body.rejectionReason || body.rejection_reason || '').trim().slice(0, 1000);
+      if (!reason) return jsonResponse({success:false,error:'سبب رفض المنتج مطلوب'},400,corsHeaders);
+      await createTursoDB(env).prepare('UPDATE products SET rejection_reason = ? WHERE id = ?').bind(reason,id).run();
+    } else if (body.status === 'approved' || body.isApproved === true || body.is_approved === 1) {
+      await createTursoDB(env).prepare('UPDATE products SET rejection_reason = NULL WHERE id = ?').bind(id).run();
+    }
     bumpDataVersion(env,ctx);
     return jsonResponse({success:true,id,message:'تم تحديث المنتج'},200,corsHeaders);
   }
