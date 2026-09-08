@@ -48,7 +48,7 @@ export function mountSponsoredShowcase(target, places = [], options = {}) {
   
   const title = options.title || 'أماكن وإعلانات مميزة';
   const subtitle = options.subtitle || 'أنشطة وخدمات موصى بها في المنزلة';
-  const maxVisible = options.maxVisible || 3;
+  const maxVisible = options.maxVisible || 4;
   let currentIndex = 0;
 
   // Generate unique instance ID
