@@ -4,7 +4,7 @@
  * Guarantees zero-delay instant notifications across PC, Mobile, and PWA when places are added or verified.
  */
 
-import { getDB, dbGet, dbSet, dbRemove, dbUpdate, getPublishedPlaces } from '../core/db.js';
+import { dbGet, getPublishedPlaces } from '../core/db.js';
 
 // ── Web Audio API Synthesized Crystal Bell Chime ──
 let _audioCtx = null;
@@ -546,8 +546,5 @@ export async function broadcastLiveNewsPushNotification(newsItem) {
     createdAt: Date.now(),
     isRead: false
   };
-  try {
-    const db = getDB();
-    await db.ref('globalNotifications/' + notifId).set(notif);
-  } catch (_) {}
+  window.dispatchEvent(new CustomEvent('manzala:new_broadcast_notification',{detail:notif}));
 }
