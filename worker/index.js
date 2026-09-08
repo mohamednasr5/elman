@@ -810,6 +810,7 @@ try {
       status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
       statsJson, workingHoursJson, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
     ).run();
+    bumpDataVersion(env, ctx);
 
     // Cache Invalidation for this place
     const cache = caches.default;
@@ -860,6 +861,7 @@ try {
     const cache = caches.default;
     const forceFresh = url.searchParams.has('_ts');
     const cacheUrl = new URL('https://cache.local/api/categories');
+    cacheUrl.searchParams.set('v', await getDataVersion(env));
     const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
     if (!forceFresh) {
