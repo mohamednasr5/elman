@@ -695,146 +695,171 @@ try {
 
   // ── Turso: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
   if ((url.pathname === '/api/places/sync' || url.pathname === '/api/places') && (request.method === 'POST' || request.method === 'PUT')) {
-    const auth = await requireAuth(request, env);
-    if (auth.response) return auth.response
-    const body = await request.json().catch(() => ({}));
-    const requestedOwnerId = String(body.ownerId || body.owner_id || '').trim();
-    let existingPlaceForAuth = null;
-    if (!auth.user.isAdmin) {
-      existingPlaceForAuth = await createTursoDB(env).prepare(
-        'SELECT id, owner_id, owner_email FROM places WHERE id = ? OR slug = ? LIMIT 1'
-      ).bind(String(body.id || body._id || body.placeId || '').trim(), String(body.slug || '').trim()).first().catch(() => null);
-      if (existingPlaceForAuth && existingPlaceForAuth.owner_id !== auth.user.uid &&
-          String(existingPlaceForAuth.owner_email || '').toLowerCase() !== auth.user.email) {
-        return jsonResponse({ success:false, error:'لا يمكنك تعديل مكان لا تملكه' },403,corsHeaders);
+    try {
+      const auth = await requireAuth(request, env);
+      if (auth.response) return auth.response;
+      const body = await request.json().catch(() => ({}));
+      const requestedOwnerId = String(body.ownerId || body.owner_id || '').trim();
+      let existingPlaceForAuth = null;
+      if (!auth.user.isAdmin) {
+        existingPlaceForAuth = await createTursoDB(env).prepare(
+          'SELECT id, owner_id, owner_email FROM places WHERE id = ? OR slug = ? LIMIT 1'
+        ).bind(String(body.id || body._id || body.placeId || '').trim(), String(body.slug || '').trim()).first().catch(() => null);
+        if (existingPlaceForAuth && existingPlaceForAuth.owner_id && existingPlaceForAuth.owner_id !== auth.user.uid &&
+            String(existingPlaceForAuth.owner_email || '').toLowerCase() !== auth.user.email) {
+          return jsonResponse({ success:false, error:'لا يمكنك تعديل مكان لا تملكه' }, 403, corsHeaders);
+        }
+        if (requestedOwnerId && requestedOwnerId !== auth.user.uid) {
+          return jsonResponse({ success:false, error:'لا يمكنك نقل ملكية المكان إلى مستخدم آخر' }, 403, corsHeaders);
+        }
       }
-      if (requestedOwnerId && requestedOwnerId !== auth.user.uid) {
-        return jsonResponse({ success:false, error:'لا يمكنك نقل ملكية المكان إلى مستخدم آخر' },403,corsHeaders);
+      if (!auth.user.isAdmin) {
+        body.ownerId = auth.user.uid;
+        body.ownerEmail = auth.user.email;
+        body.status = 'published';
+        body.isVerified = undefined;
+        body.is_verified = undefined;
+        body.trustScore = undefined;
+        body.trust_score = undefined;
+        body.verificationStatus = undefined;
+        body.verification_status = undefined;
+        body.isSponsored = undefined;
+        body.is_sponsored = undefined;
+        body.isFeatured = undefined;
+        body.is_featured = undefined;
+        body.priority = undefined;
       }
+      const placeId = (body.id || body._id || body.placeId || '').trim();
+      if (!placeId) {
+        return jsonResponse({ error: 'معرف المكان (id) مطلوب' }, 400, corsHeaders);
+      }
+
+      const name = (body.name || '').trim();
+      let slug = (body.slug || '').trim();
+      if (!slug) slug = placeId;
+
+      // Prevent UNIQUE constraint collision on slug with any other place
+      try {
+        const slugOwner = await createTursoDB(env).prepare(
+          'SELECT id FROM places WHERE (LOWER(slug) = LOWER(?) OR slug = ?) AND id != ? LIMIT 1'
+        ).bind(slug, slug, placeId).first();
+        if (slugOwner && slugOwner.id) {
+          slug = `${slug}-${placeId.slice(-5)}`;
+        }
+      } catch (_) {}
+
+      const nameEn = body.nameEn || body.name_en || '';
+      const categoryId = body.categoryId || body.category_id || 'general';
+      const customCategory = body.customCategory || body.custom_category || '';
+      const subcategoryId = body.subcategoryId || body.subcategory_id || '';
+      const phone = body.phone || '';
+      const whatsapp = body.whatsapp || '';
+      const area = body.area || 'المنزلة';
+      const address = body.address || '';
+      const mapsLink = body.mapsLink || body.maps_link || '';
+      const lat = body.location?.lat || body.latitude || null;
+      const lng = body.location?.lng || body.longitude || null;
+      const description = body.description || '';
+      const logoUrl = body.logoUrl || body.logo_url || '';
+      const coverImageUrl = body.coverImageUrl || body.cover_image_url || '';
+      const status = body.status || 'published';
+      const isVerified = body.isVerified !== undefined ? (body.isVerified ? 1 : 0) : (body.is_verified !== undefined ? (body.is_verified ? 1 : 0) : null);
+      const verificationStatus = body.verificationStatus || body.verification_status || (isVerified === 1 ? 'verified' : (isVerified === 0 ? 'unverified' : ''));
+      const trustScoreRaw = body.trustScore !== undefined ? body.trustScore : body.trust_score;
+      const trustScore = trustScoreRaw !== undefined && trustScoreRaw !== null && trustScoreRaw !== '' ? Math.max(0, Math.min(100, Math.round(Number(trustScoreRaw) || 0))) : null;
+      const isSponsored = body.isSponsored !== undefined ? (body.isSponsored ? 1 : 0) : (body.is_sponsored !== undefined ? (body.is_sponsored ? 1 : 0) : null);
+      const isFeatured = body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : (body.is_featured !== undefined ? (body.is_featured ? 1 : 0) : null);
+      const sponsoredUntil = body.sponsoredUntil || body.sponsored_until || null;
+      const priorityVal = Number(body.priority) || 0;
+      const servicesJson = typeof body.services === 'object' ? JSON.stringify(body.services) : (body.services_json || '[]');
+      const socialJson = typeof body.social === 'object' ? JSON.stringify(body.social) : (body.social_json || '{}');
+      const workingHoursJson = typeof body.workingHours === 'object' ? JSON.stringify(body.workingHours) : (body.working_hours_json || '{}');
+      const statsJson = typeof body.stats === 'object' ? JSON.stringify(body.stats) : (body.stats_json || '{}');
+      const ownerId = body.ownerId || body.owner_id || '';
+      const ownerEmail = body.ownerEmail || body.owner_email || '';
+      const now = Date.now();
+
+      await createTursoDB(env).prepare(`
+        INSERT INTO places (
+          id, name, name_en, slug, category_id, subcategory_id, custom_category,
+          address, area, phone, whatsapp, maps_link, latitude, longitude,
+          description, logo_url, cover_image_url, owner_id, owner_email,
+          status, is_verified, trust_score, verification_status, services_json, social_json,
+          stats_json, working_hours_json, updated_at, is_sponsored, is_featured, sponsored_until, priority
+        ) VALUES (
+          ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?, ?
+        )
+        ON CONFLICT(id) DO UPDATE SET
+          name = CASE WHEN excluded.name != '' THEN excluded.name ELSE places.name END,
+          name_en = CASE WHEN excluded.name_en != '' THEN excluded.name_en ELSE places.name_en END,
+          slug = CASE WHEN excluded.slug != '' THEN excluded.slug ELSE places.slug END,
+          category_id = CASE WHEN excluded.category_id != '' AND excluded.category_id != 'general' THEN excluded.category_id ELSE places.category_id END,
+          subcategory_id = CASE WHEN excluded.subcategory_id != '' THEN excluded.subcategory_id ELSE places.subcategory_id END,
+          custom_category = CASE WHEN excluded.custom_category != '' THEN excluded.custom_category ELSE places.custom_category END,
+          address = CASE WHEN excluded.address != '' THEN excluded.address ELSE places.address END,
+          area = CASE WHEN excluded.area != '' AND excluded.area != 'المنزلة' THEN excluded.area ELSE places.area END,
+          phone = CASE WHEN excluded.phone != '' THEN excluded.phone ELSE places.phone END,
+          whatsapp = CASE WHEN excluded.whatsapp != '' THEN excluded.whatsapp ELSE places.whatsapp END,
+          maps_link = CASE WHEN excluded.maps_link != '' THEN excluded.maps_link ELSE places.maps_link END,
+          latitude = COALESCE(excluded.latitude, places.latitude),
+          longitude = COALESCE(excluded.longitude, places.longitude),
+          description = CASE WHEN excluded.description != '' THEN excluded.description ELSE places.description END,
+          logo_url = CASE WHEN excluded.logo_url != '' THEN excluded.logo_url ELSE places.logo_url END,
+          cover_image_url = CASE WHEN excluded.cover_image_url != '' THEN excluded.cover_image_url ELSE places.cover_image_url END,
+          owner_id = CASE WHEN excluded.owner_id != '' THEN excluded.owner_id ELSE places.owner_id END,
+          owner_email = CASE WHEN excluded.owner_email != '' THEN excluded.owner_email ELSE places.owner_email END,
+          status = excluded.status,
+          is_verified = COALESCE(excluded.is_verified, places.is_verified),
+          trust_score = COALESCE(excluded.trust_score, places.trust_score),
+          verification_status = CASE WHEN excluded.verification_status != '' THEN excluded.verification_status ELSE places.verification_status END,
+          is_sponsored = COALESCE(excluded.is_sponsored, places.is_sponsored),
+          is_featured = COALESCE(excluded.is_featured, places.is_featured),
+          sponsored_until = COALESCE(excluded.sponsored_until, places.sponsored_until),
+          priority = excluded.priority,
+          services_json = CASE WHEN excluded.services_json != '[]' THEN excluded.services_json ELSE places.services_json END,
+          social_json = CASE WHEN excluded.social_json != '{}' THEN excluded.social_json ELSE places.social_json END,
+          working_hours_json = CASE WHEN excluded.working_hours_json != '{}' THEN excluded.working_hours_json ELSE places.working_hours_json END,
+          stats_json = CASE WHEN excluded.stats_json != '{}' AND excluded.stats_json IS NOT NULL THEN excluded.stats_json ELSE places.stats_json END,
+          updated_at = excluded.updated_at
+      `).bind(
+        placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
+        address, area, phone, whatsapp, mapsLink, lat, lng,
+        description, logoUrl, coverImageUrl, ownerId, ownerEmail,
+        status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
+        statsJson, workingHoursJson, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
+      ).run();
+      bumpDataVersion(env, ctx);
+
+      // Cache Invalidation for this place
+      try {
+        const cache = caches.default;
+        if (cache) {
+          const purgeUrls = [
+            `https://cache.local/api/places?slug=${encodeURIComponent((slug || placeId).toLowerCase())}`,
+            `https://cache.local/api/places?id=${encodeURIComponent(placeId)}`
+          ];
+          ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)).catch(() => {}))));
+        }
+      } catch (_) {}
+
+      return jsonResponse({
+        success: true,
+        message: 'تم حفظ ومزامنة المكان في Turso بنجاح',
+        id: placeId,
+        slug: slug || placeId,
+        updatedAt: now
+      }, 200, corsHeaders);
+    } catch (err) {
+      console.error('[/api/places/sync Error]:', err);
+      return jsonResponse({
+        success: false,
+        error: `فشل حفظ المكان في قاعدة البيانات: ${err?.message || err}`
+      }, 500, corsHeaders);
     }
-    if (!auth.user.isAdmin) {
-      body.ownerId = auth.user.uid;
-      body.ownerEmail = auth.user.email;
-      body.status = 'published';
-      body.isVerified = undefined;
-      body.is_verified = undefined;
-      body.trustScore = undefined;
-      body.trust_score = undefined;
-      body.verificationStatus = undefined;
-      body.verification_status = undefined;
-      body.isSponsored = undefined;
-      body.is_sponsored = undefined;
-      body.isFeatured = undefined;
-      body.is_featured = undefined;
-      body.priority = undefined;
-    }
-    const placeId = (body.id || body._id || body.placeId || '').trim();
-    if (!placeId) {
-      return jsonResponse({ error: 'معرف المكان (id) مطلوب' }, 400, corsHeaders);
-    }
-
-    const name = (body.name || '').trim();
-    const slug = (body.slug || '').trim();
-    const nameEn = body.nameEn || body.name_en || '';
-    const categoryId = body.categoryId || body.category_id || 'general';
-    const customCategory = body.customCategory || body.custom_category || '';
-    const subcategoryId = body.subcategoryId || body.subcategory_id || '';
-    const phone = body.phone || '';
-    const whatsapp = body.whatsapp || '';
-    const area = body.area || 'المنزلة';
-    const address = body.address || '';
-    const mapsLink = body.mapsLink || body.maps_link || '';
-    const lat = body.location?.lat || body.latitude || null;
-    const lng = body.location?.lng || body.longitude || null;
-    const description = body.description || '';
-    const logoUrl = body.logoUrl || body.logo_url || '';
-    const coverImageUrl = body.coverImageUrl || body.cover_image_url || '';
-    const status = body.status || 'published';
-    const isVerified = body.isVerified !== undefined ? (body.isVerified ? 1 : 0) : (body.is_verified !== undefined ? (body.is_verified ? 1 : 0) : null);
-    const verificationStatus = body.verificationStatus || body.verification_status || (isVerified === 1 ? 'verified' : (isVerified === 0 ? 'unverified' : ''));
-    const trustScoreRaw = body.trustScore !== undefined ? body.trustScore : body.trust_score;
-    const trustScore = trustScoreRaw !== undefined && trustScoreRaw !== null && trustScoreRaw !== '' ? Math.max(0, Math.min(100, Math.round(Number(trustScoreRaw) || 0))) : null;
-    const isSponsored = body.isSponsored !== undefined ? (body.isSponsored ? 1 : 0) : (body.is_sponsored !== undefined ? (body.is_sponsored ? 1 : 0) : null);
-    const isFeatured = body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : (body.is_featured !== undefined ? (body.is_featured ? 1 : 0) : null);
-    const sponsoredUntil = body.sponsoredUntil || body.sponsored_until || null;
-    const priorityVal = Number(body.priority) || 0;
-    const servicesJson = typeof body.services === 'object' ? JSON.stringify(body.services) : (body.services_json || '[]');
-    const socialJson = typeof body.social === 'object' ? JSON.stringify(body.social) : (body.social_json || '{}');
-    const workingHoursJson = typeof body.workingHours === 'object' ? JSON.stringify(body.workingHours) : (body.working_hours_json || '{}');
-    const statsJson = typeof body.stats === 'object' ? JSON.stringify(body.stats) : (body.stats_json || '{}');
-    const ownerId = body.ownerId || body.owner_id || '';
-    const ownerEmail = body.ownerEmail || body.owner_email || '';
-    const now = Date.now();
-
-    await createTursoDB(env).prepare(`
-      INSERT INTO places (
-        id, name, name_en, slug, category_id, subcategory_id, custom_category,
-        address, area, phone, whatsapp, maps_link, latitude, longitude,
-        description, logo_url, cover_image_url, owner_id, owner_email,
-        status, is_verified, trust_score, verification_status, services_json, social_json,
-        stats_json, working_hours_json, updated_at, is_sponsored, is_featured, sponsored_until, priority
-      ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?
-      )
-      ON CONFLICT(id) DO UPDATE SET
-        name = CASE WHEN excluded.name != '' THEN excluded.name ELSE places.name END,
-        name_en = CASE WHEN excluded.name_en != '' THEN excluded.name_en ELSE places.name_en END,
-        slug = CASE WHEN excluded.slug != '' THEN excluded.slug ELSE places.slug END,
-        category_id = CASE WHEN excluded.category_id != '' AND excluded.category_id != 'general' THEN excluded.category_id ELSE places.category_id END,
-        subcategory_id = CASE WHEN excluded.subcategory_id != '' THEN excluded.subcategory_id ELSE places.subcategory_id END,
-        custom_category = CASE WHEN excluded.custom_category != '' THEN excluded.custom_category ELSE places.custom_category END,
-        address = CASE WHEN excluded.address != '' THEN excluded.address ELSE places.address END,
-        area = CASE WHEN excluded.area != '' AND excluded.area != 'المنزلة' THEN excluded.area ELSE places.area END,
-        phone = CASE WHEN excluded.phone != '' THEN excluded.phone ELSE places.phone END,
-        whatsapp = CASE WHEN excluded.whatsapp != '' THEN excluded.whatsapp ELSE places.whatsapp END,
-        maps_link = CASE WHEN excluded.maps_link != '' THEN excluded.maps_link ELSE places.maps_link END,
-        latitude = COALESCE(excluded.latitude, places.latitude),
-        longitude = COALESCE(excluded.longitude, places.longitude),
-        description = CASE WHEN excluded.description != '' THEN excluded.description ELSE places.description END,
-        logo_url = CASE WHEN excluded.logo_url != '' THEN excluded.logo_url ELSE places.logo_url END,
-        cover_image_url = CASE WHEN excluded.cover_image_url != '' THEN excluded.cover_image_url ELSE places.cover_image_url END,
-        owner_id = CASE WHEN excluded.owner_id != '' THEN excluded.owner_id ELSE places.owner_id END,
-        owner_email = CASE WHEN excluded.owner_email != '' THEN excluded.owner_email ELSE places.owner_email END,
-        status = excluded.status,
-        is_verified = COALESCE(excluded.is_verified, places.is_verified),
-        trust_score = COALESCE(excluded.trust_score, places.trust_score),
-        verification_status = CASE WHEN excluded.verification_status != '' THEN excluded.verification_status ELSE places.verification_status END,
-        is_sponsored = COALESCE(excluded.is_sponsored, places.is_sponsored),
-        is_featured = COALESCE(excluded.is_featured, places.is_featured),
-        sponsored_until = COALESCE(excluded.sponsored_until, places.sponsored_until),
-        priority = excluded.priority,
-        services_json = CASE WHEN excluded.services_json != '[]' THEN excluded.services_json ELSE places.services_json END,
-        social_json = CASE WHEN excluded.social_json != '{}' THEN excluded.social_json ELSE places.social_json END,
-        working_hours_json = CASE WHEN excluded.working_hours_json != '{}' THEN excluded.working_hours_json ELSE places.working_hours_json END,
-        stats_json = CASE WHEN excluded.stats_json != '{}' AND excluded.stats_json IS NOT NULL THEN excluded.stats_json ELSE places.stats_json END,
-        updated_at = excluded.updated_at
-    `).bind(
-      placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
-      address, area, phone, whatsapp, mapsLink, lat, lng,
-      description, logoUrl, coverImageUrl, ownerId, ownerEmail,
-      status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
-      statsJson, workingHoursJson, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
-    ).run();
-    bumpDataVersion(env, ctx);
-
-    // Cache Invalidation for this place
-    const cache = caches.default;
-    const purgeUrls = [
-      `https://cache.local/api/places?slug=${encodeURIComponent((slug || placeId).toLowerCase())}`,
-      `https://cache.local/api/places?id=${encodeURIComponent(placeId)}`
-    ];
-    ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)))));
-
-    return jsonResponse({
-      success: true,
-      message: 'تم تحديث المكان في Turso ومسح الكاش بنجاح',
-      id: placeId,
-      updatedAt: now
-    }, 200, corsHeaders);
   }
 
   // ── Turso: Delete Place (DELETE /api/places/:id or /api/places?id=...) ──
