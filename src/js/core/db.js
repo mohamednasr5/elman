@@ -3,10 +3,9 @@
  * Typed, promise-based wrappers around Firebase Realtime Database
  */
 
-import { getDB, WORKER_URL, getAuth } from './firebase.js';
+import { WORKER_URL, getAuth } from './firebase.js';
 import { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES } from '../services/idb-cache.service.js';
 
-export { getDB };
 export { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES };
 
 // ── Ultra-Fast Multi-Tier SWR Cache (0ms Instant Navigation) ──
@@ -304,8 +303,7 @@ export async function dbUpdate(path, updates) {
     await tursoWriteBusiness(path, 'PUT', updates);
     return;
   }
-  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
-  await ref.update(updates);
+  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
 }
 
 export async function dbPush(path, data) {
@@ -331,10 +329,7 @@ export async function dbPush(path, data) {
     throw new Error(`Turso write path is not supported for business data: ${cleanPath}`);
   }
 
-  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
-  const pushed = await ref.push(data);
-  const key = (pushed && pushed.key) ? pushed.key : `local_${Date.now()}`;
-  return { key, id: key };
+  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
 }
 
 export async function dbRemove(path) {
@@ -344,7 +339,7 @@ export async function dbRemove(path) {
     await tursoWriteBusiness(path, 'DELETE');
     return;
   }
-  await getDB().ref(path).remove();
+  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
 }
 
 export async function dbIncrement(path, delta = 1) {
@@ -362,23 +357,15 @@ export async function dbIncrement(path, delta = 1) {
     }
     throw new Error(`Firebase increment blocked for business data path: ${path}`);
   }
-  await getDB().ref(path).transaction((current) => (current || 0) + delta);
+  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
 }
 
 export function dbListen(path, callback) {
-  if (isBusinessDataPath(path)) throw new Error(`Realtime Firebase listener blocked for business data path: ${path}`);
-  const ref = getDB().ref(path);
-  ref.on('value', (snap) => callback(snap.val()));
-  return () => ref.off('value');
+  throw new Error('Firebase Realtime Database listeners are disabled: '+path);
 }
 
 export function dbListenChild(path, addedCb, changedCb, removedCb) {
-  if (isBusinessDataPath(path)) throw new Error(`Realtime Firebase listener blocked for business data path: ${path}`);
-  const ref = getDB().ref(path);
-  if (addedCb) ref.on('child_added', (s) => addedCb(s.key, s.val()));
-  if (changedCb) ref.on('child_changed', (s) => changedCb(s.key, s.val()));
-  if (removedCb) ref.on('child_removed', (s) => removedCb(s.key));
-  return () => ref.off();
+  throw new Error('Firebase Realtime Database listeners are disabled: '+path);
 }
 
 export async function dbQuery({ path, orderBy = 'createdAt', limit = 20, startAfter = null, equalTo = null, direction = 'desc' }) {
