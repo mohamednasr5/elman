@@ -615,6 +615,11 @@ try {
       return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
     }
 
+    const adminList = url.searchParams.get('admin') === '1';
+    if (adminList) {
+      const adminAuth = await requireAdmin(request, env);
+      if (adminAuth.response) return adminAuth.response;
+    }
     const limitParam = parseInt(url.searchParams.get('limit') || '500', 10);
     const offsetParam = parseInt(url.searchParams.get('offset') || '0', 10);
     const ownerIdFilter = (url.searchParams.get('owner_id') || '').trim();
@@ -658,7 +663,7 @@ try {
 
     // Public list requests are identical for most visitors. Cache the response at the
     // Worker edge so repeated homepage/search loads do not hit Turso.
-    const usePublicListCache = !ownerIdFilter && !ownerEmailFilter;
+    const usePublicListCache = !adminList && !ownerIdFilter && !ownerEmailFilter;
     const listCache = caches.default;
     const listCacheUrl = new URL(request.url);
     listCacheUrl.searchParams.set('limit', String(limit));

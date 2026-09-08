@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=a9cfb953';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=a9cfb953';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
@@ -797,7 +797,8 @@ async function renderAdminOverview($container) {
 // ─────────────────────────────────────────────
 async function loadAdminPlacesMap() {
   try {
-    const list = await getPublishedPlaces({ limit: 1000 });
+    const listMap = await getAdminPlacesTurso({ limit: 1000 });
+    const list = Object.values(listMap || {});
     const map = {};
     (list || []).forEach(p => {
       if (p) map[p.id || p._key] = p;
