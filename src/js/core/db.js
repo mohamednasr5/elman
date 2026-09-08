@@ -90,29 +90,39 @@ function parseBusinessPath(path = '') {
 
 /**
  * Primary Worker API caller - Communicates with Worker which connects directly to Turso DB.
- * (tursoFetch is the canonical name, d1Fetch kept as backward-compatible alias)
  */
 async function tursoFetch(path, options = {}) {
-  const auth = getAuth();
   let token = null;
-  try { token = auth?.currentUser ? await auth.currentUser.getIdToken() : null; } catch (_) {}
+  try {
+    let auth = getAuth();
+    if (!auth?.currentUser) {
+      for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 100));
+        auth = getAuth();
+        if (auth?.currentUser) break;
+      }
+    }
+    const user = auth?.currentUser;
+    token = user ? await user.getIdToken() : null;
+  } catch (_) {}
+
   const headers = {
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers || {}),
     ...(token ? { Authorization: 'Bearer ' + token } : {})
   };
+
   const res = await fetch(`${WORKER_URL}${path}`, {
     ...options,
     headers,
-    signal: options.signal || AbortSignal.timeout(7000)
+    signal: options.signal || AbortSignal.timeout(20000)
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || data?.message || `Worker HTTP ${res.status}`);
   return data;
 }
 
-const d1Fetch = tursoFetch;
-export { tursoFetch, d1Fetch };
+export { tursoFetch };
 
 /**
  * Sync a place to the authoritative Turso database through the Worker.
@@ -120,12 +130,12 @@ export { tursoFetch, d1Fetch };
  * the Firebase user and writes to Turso.
  */
 export async function syncPlaceToWorkerTurso(placeId, placeData = {}) {
-  if (!placeId) throw new Error('Place ID is required for Turso sync');
+  if (!placeId) throw new Error('معرف المكان مطلوب للمزامنة مع Turso');
   const payload = { ...(placeData || {}), id: placeId };
   return tursoFetch('/api/places/sync', {
     method: 'POST',
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(10000)
+    signal: AbortSignal.timeout(25000)
   });
 }
 
@@ -552,23 +562,59 @@ export async function updateUserTurso(uid, { role, status }) {
 /** Get place by ID - Reads from Turso and IndexedDB */
 export async function getPlace(placeId) {
   if (!placeId) return null;
+  const cleanId = String(placeId).trim();
+
+  // 1. Check local IndexedDB first (0ms instant)
   try {
-    const cached = await idbGet(STORES.PLACES, placeId);
+    const cached = await idbGet(STORES.PLACES, cleanId);
     if (cached) return cached;
+    const allLocal = await idbGetAll(STORES.PLACES);
+    const foundLocal = (allLocal || []).find(p => p && (p.id === cleanId || p.slug === cleanId || p._key === cleanId));
+    if (foundLocal) return foundLocal;
   } catch (_) {}
+
+  // 2. Fetch directly from Turso Worker by ID
   try {
-    const res = await fetch(`${WORKER_URL}/api/places?id=${encodeURIComponent(placeId)}`, {
-      signal: AbortSignal.timeout(4000)
+    const res = await fetch(`${WORKER_URL}/api/places?id=${encodeURIComponent(cleanId)}`, {
+      signal: AbortSignal.timeout(10000)
     });
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && data.data) {
         const place = normalizeTursoPlace(data.data);
-        idbPut(STORES.PLACES, place).catch(() => {});
-        return place;
+        if (place) {
+          idbPut(STORES.PLACES, place).catch(() => {});
+          return place;
+        }
       }
     }
   } catch (_) {}
+
+  // 3. Fallback: try by slug in Turso Worker
+  try {
+    const resSlug = await fetch(`${WORKER_URL}/api/places?slug=${encodeURIComponent(cleanId)}`, {
+      signal: AbortSignal.timeout(8000)
+    });
+    if (resSlug.ok) {
+      const dataSlug = await resSlug.json();
+      if (dataSlug && dataSlug.success && dataSlug.data) {
+        const place = normalizeTursoPlace(dataSlug.data);
+        if (place) {
+          idbPut(STORES.PLACES, place).catch(() => {});
+          return place;
+        }
+      }
+    }
+  } catch (_) {}
+
+  // 4. Fallback: search all published places list
+  try {
+    const all = await getPublishedPlaces({ limit: 1000 });
+    const s = cleanId.toLowerCase();
+    const found = all.find(p => String(p?.id || '').toLowerCase() === s || String(p?.slug || '').toLowerCase() === s);
+    if (found) return found;
+  } catch (_) {}
+
   return null;
 }
 
@@ -624,9 +670,49 @@ export async function reportPlaceData({ placeId, reason = 'معلومة غير �
 
 /** Get place by slug (with multi-tier resilient lookup) */
 export async function getPlaceBySlug(slug) {
-  if(!slug)return null;
-  try{const data=await tursoFetch('/api/places?slug='+encodeURIComponent(String(slug).trim()));if(data?.success&&data.data){const p=normalizeTursoPlace(data.data);if(p){idbPut(STORES.PLACES,p).catch(()=>{});return p;}}}catch(_){}
-  try{const all=await getPublishedPlaces({limit:1000}),s=String(slug).trim().toLowerCase();return all.find(p=>String(p?.slug||'').toLowerCase()===s||String(p?.id||'').toLowerCase()===s)||null;}catch(_){return null;}
+  if (!slug) return null;
+  const clean = String(slug).trim().toLowerCase();
+
+  // 1. Check local IndexedDB first (0ms instant)
+  try {
+    const cached = await idbGet(STORES.PLACES, clean);
+    if (cached) return cached;
+    const allLocal = await idbGetAll(STORES.PLACES);
+    const foundLocal = (allLocal || []).find(p => p && (String(p.slug || '').toLowerCase() === clean || String(p.id || '').toLowerCase() === clean));
+    if (foundLocal) return foundLocal;
+  } catch (_) {}
+
+  // 2. Fetch directly from Turso Worker by slug
+  try {
+    const data = await tursoFetch('/api/places?slug=' + encodeURIComponent(clean));
+    if (data?.success && data.data) {
+      const p = normalizeTursoPlace(data.data);
+      if (p) {
+        idbPut(STORES.PLACES, p).catch(() => {});
+        return p;
+      }
+    }
+  } catch (_) {}
+
+  // 3. Fallback: try by ID in Turso Worker
+  try {
+    const dataId = await tursoFetch('/api/places?id=' + encodeURIComponent(clean));
+    if (dataId?.success && dataId.data) {
+      const p = normalizeTursoPlace(dataId.data);
+      if (p) {
+        idbPut(STORES.PLACES, p).catch(() => {});
+        return p;
+      }
+    }
+  } catch (_) {}
+
+  // 4. Multi-tier resilient fallback: search published places list
+  try {
+    const all = await getPublishedPlaces({ limit: 1000 });
+    return (all || []).find(p => String(p?.slug || '').toLowerCase() === clean || String(p?.id || '').toLowerCase() === clean) || null;
+  } catch (_) {
+    return null;
+  }
 }
 
 export function isPlaceBanned(place) {

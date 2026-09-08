@@ -35,26 +35,45 @@ class TursoD1Statement {
   }
 
   async all() {
-    const stmt = await this.client.prepare(this.sql);
-    const rows = await stmt.all(this.args);
-    return { results: rows };
+    try {
+      const rows = typeof this.client.all === 'function'
+        ? await this.client.all(this.sql, this.args)
+        : await (await this.client.prepare(this.sql)).all(this.args);
+      return { results: rows };
+    } catch (err) {
+      console.error('[TursoDB Error] all():', err?.message || err, 'SQL:', this.sql);
+      throw err;
+    }
   }
 
   async first() {
-    const stmt = await this.client.prepare(this.sql);
-    return await stmt.get(this.args) ?? null;
+    try {
+      const row = typeof this.client.get === 'function'
+        ? await this.client.get(this.sql, this.args)
+        : await (await this.client.prepare(this.sql)).get(this.args);
+      return row ?? null;
+    } catch (err) {
+      console.error('[TursoDB Error] first():', err?.message || err, 'SQL:', this.sql);
+      throw err;
+    }
   }
 
   async run() {
-    const stmt = await this.client.prepare(this.sql);
-    const result = await stmt.run(this.args);
-    return {
-      success: true,
-      meta: {
-        changes: Number(result.rowsAffected || 0),
-        last_row_id: result.lastInsertRowid ?? null
-      }
-    };
+    try {
+      const result = typeof this.client.run === 'function'
+        ? await this.client.run(this.sql, this.args)
+        : await (await this.client.prepare(this.sql)).run(this.args);
+      return {
+        success: true,
+        meta: {
+          changes: Number(result?.rowsAffected || 0),
+          last_row_id: result?.lastInsertRowid ?? null
+        }
+      };
+    } catch (err) {
+      console.error('[TursoDB Error] run():', err?.message || err, 'SQL:', this.sql);
+      throw err;
+    }
   }
 }
 

@@ -61,29 +61,49 @@ export async function createPlace(placeData, currentUser) {
     stats:{views:0,phoneClicks:0,whatsappClicks:0,directionsClicks:0,productViews:0,offerViews:0}, offerCount:0, productCount:0
   };
 
-  await idbPut(STORES.PLACES,{id:placeId,...newPlace}).catch(()=>{});
-  if(placeData.categoryId){try{const cat=await idbGet(STORES.CATEGORIES,placeData.categoryId);if(cat){cat.placeCount=(cat.placeCount||0)+1;await idbPut(STORES.CATEGORIES,cat);}}catch(_) {}}
-  broadcastNewPlaceNotification(newPlace).catch(()=>{});
-  sendTelegramAdminNotification('new_place',{id:placeId,name:newPlace.name,categoryName:placeData.categoryName||placeData.categoryId,phone:newPlace.phone,area:newPlace.area,ownerName:currentUser.name||currentUser.displayName||currentUser.email});
+  // 1. Authoritative write to Turso directly!
+  await syncPlaceToWorkerTurso(placeId, newPlace);
+
+  // 2. Cache in IndexedDB for fast instant reads
+  await idbPut(STORES.PLACES, { id: placeId, ...newPlace }).catch(() => {});
+  if (placeData.categoryId) {
+    try {
+      const cat = await idbGet(STORES.CATEGORIES, placeData.categoryId);
+      if (cat) {
+        cat.placeCount = (cat.placeCount || 0) + 1;
+        await idbPut(STORES.CATEGORIES, cat);
+      }
+    } catch (_) {}
+  }
+  broadcastNewPlaceNotification(newPlace).catch(() => {});
+  sendTelegramAdminNotification('new_place', {
+    id: placeId,
+    name: newPlace.name,
+    categoryName: placeData.categoryName || placeData.categoryId,
+    phone: newPlace.phone,
+    area: newPlace.area,
+    ownerName: currentUser.name || currentUser.displayName || currentUser.email
+  });
   clearDbCache();
-
-  let tursoSyncFailed=false;
-  try { await syncPlaceToWorkerTurso(placeId,newPlace); }
-  catch(syncErr){ tursoSyncFailed=true; console.error('[createPlace] Turso sync failed, place saved locally only:',syncErr); }
-
-  broadcastRealtimeChange('NEW_PLACE',{place:{id:placeId,...newPlace}});
-  if(tursoSyncFailed) throw new Error('تم حفظ المكان محليًا لكن فشلت مزامنته مع قاعدة البيانات الرئيسية، لذلك لن يظهر في نتائج البحث حاليًا. حاول مجددًا أو تواصل مع الدعم.');
+  broadcastRealtimeChange('NEW_PLACE', { place: { id: placeId, ...newPlace } });
   return placeId;
 }
 
-export async function updatePlace(placeId,placeData){
-  const current=(await getPlace(placeId))||(await idbGet(STORES.PLACES,placeId)); if(!current)throw new Error('المكان غير موجود');
-  if(placeData.name||placeData.phone)await validatePlaceUniqueness({name:placeData.name||current.name,phone:placeData.phone||current.phone,excludePlaceId:placeId,categoryId:placeData.categoryId||current.categoryId,placeData:{...current,...placeData}});
-  const updates={name:placeData.name?placeData.name.trim():current.name,nameEn:placeData.nameEn!==undefined?placeData.nameEn:(current.nameEn||''),categoryId:placeData.categoryId||current.categoryId,customCategory:placeData.customCategory!==undefined?placeData.customCategory:(current.customCategory||null),medicalSpecialty:placeData.medicalSpecialty!==undefined?placeData.medicalSpecialty:(current.medicalSpecialty||null),subcategoryId:placeData.subcategoryId||'',description:placeData.description!==undefined?placeData.description:current.description,phone:placeData.phone||current.phone||'',whatsapp:placeData.whatsapp!==undefined?placeData.whatsapp:(current.whatsapp||''),address:placeData.address!==undefined?placeData.address:current.address,area:placeData.area||current.area||'المنزلة',mapsLink:placeData.mapsLink!==undefined?placeData.mapsLink:(current.mapsLink||''),location:placeData.location!==undefined?placeData.location:current.location,alwaysOpen:placeData.alwaysOpen!==undefined?Boolean(placeData.alwaysOpen):Boolean(current.alwaysOpen),alwaysOpenExcept:placeData.alwaysOpenExcept!==undefined?Boolean(placeData.alwaysOpenExcept):Boolean(current.alwaysOpenExcept),workingHours:placeData.workingHours||current.workingHours,coverImageUrl:placeData.coverImageUrl!==undefined?placeData.coverImageUrl:current.coverImageUrl,logoUrl:placeData.logoUrl!==undefined?placeData.logoUrl:current.logoUrl,imageUrls:placeData.imageUrls||current.imageUrls||[],services:placeData.services||current.services||[],social:{...(current.social||{}),...(placeData.social||{})},deliveryType:placeData.deliveryType!==undefined?placeData.deliveryType:(current.deliveryType||null),updatedAt:Date.now()};
-  const updatedPlace={...current,...updates,id:placeId,slug:current.slug||updates.slug};
-  await idbPut(STORES.PLACES,updatedPlace).catch(()=>{});
-  await syncPlaceToWorkerTurso(placeId,updatedPlace);
-  await invalidateLocalPlaceCache(placeId,current.slug); clearDbCache(); broadcastRealtimeChange('PLACE_UPDATED',{place:{id:placeId,...updates}});
+export async function updatePlace(placeId, placeData) {
+  const current = (await getPlace(placeId)) || (await idbGet(STORES.PLACES, placeId));
+  if (!current) throw new Error('المكان غير موجود');
+  if (placeData.name || placeData.phone) await validatePlaceUniqueness({ name: placeData.name || current.name, phone: placeData.phone || current.phone, excludePlaceId: placeId, categoryId: placeData.categoryId || current.categoryId, placeData: { ...current, ...placeData } });
+  const updates = { name: placeData.name ? placeData.name.trim() : current.name, nameEn: placeData.nameEn !== undefined ? placeData.nameEn : (current.nameEn || ''), categoryId: placeData.categoryId || current.categoryId, customCategory: placeData.customCategory !== undefined ? placeData.customCategory : (current.customCategory || null), medicalSpecialty: placeData.medicalSpecialty !== undefined ? placeData.medicalSpecialty : (current.medicalSpecialty || null), subcategoryId: placeData.subcategoryId || '', description: placeData.description !== undefined ? placeData.description : current.description, phone: placeData.phone || current.phone || '', whatsapp: placeData.whatsapp !== undefined ? placeData.whatsapp : (current.whatsapp || ''), address: placeData.address !== undefined ? placeData.address : current.address, area: placeData.area || current.area || 'المنزلة', mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''), location: placeData.location !== undefined ? placeData.location : current.location, alwaysOpen: placeData.alwaysOpen !== undefined ? Boolean(placeData.alwaysOpen) : Boolean(current.alwaysOpen), alwaysOpenExcept: placeData.alwaysOpenExcept !== undefined ? Boolean(placeData.alwaysOpenExcept) : Boolean(current.alwaysOpenExcept), workingHours: placeData.workingHours || current.workingHours, coverImageUrl: placeData.coverImageUrl !== undefined ? placeData.coverImageUrl : current.coverImageUrl, logoUrl: placeData.logoUrl !== undefined ? placeData.logoUrl : current.logoUrl, imageUrls: placeData.imageUrls || current.imageUrls || [], services: placeData.services || current.services || [], social: { ...(current.social || {}), ...(placeData.social || {}) }, deliveryType: placeData.deliveryType !== undefined ? placeData.deliveryType : (current.deliveryType || null), updatedAt: Date.now() };
+  const updatedPlace = { ...current, ...updates, id: placeId, slug: current.slug || updates.slug };
+
+  // 1. Authoritative write to Turso directly!
+  await syncPlaceToWorkerTurso(placeId, updatedPlace);
+
+  // 2. Cache in IndexedDB
+  await idbPut(STORES.PLACES, updatedPlace).catch(() => {});
+  await invalidateLocalPlaceCache(placeId, current.slug);
+  clearDbCache();
+  broadcastRealtimeChange('PLACE_UPDATED', { place: { id: placeId, ...updates } });
 }
 
 export async function deletePlace(placeId,ownerId){
