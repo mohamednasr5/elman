@@ -563,6 +563,12 @@ export async function updateUserTurso(uid, { role, status, name, email, phone, p
   });
 }
 
+export async function getAdminPlacesTurso({limit=1000,offset=0}={}) {
+  const data = await tursoFetch('/api/places?admin=1&limit=' + encodeURIComponent(Math.min(1000,Math.max(1,limit))) + '&offset=' + encodeURIComponent(Math.max(0,offset)));
+  const list = Array.isArray(data?.data) ? data.data : [];
+  return Object.fromEntries(list.map(p => [p.id || p._id, normalizeTursoPlace(p)]).filter(([id,p]) => id && p));
+}
+
 /** Get place by ID - Reads from Turso and IndexedDB */
 export async function getPlace(placeId) {
   if (!placeId) return null;
