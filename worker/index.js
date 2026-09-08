@@ -1796,6 +1796,33 @@ try {
     return jsonResponse({success:true,id,status},201,corsHeaders);
   }
 
+  if (url.pathname.startsWith('/api/live-news/') && url.pathname.endsWith('/reaction') && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const parts = url.pathname.split('/');
+    const id = decodeURIComponent(parts[parts.length - 2] || '');
+    const body = await request.json().catch(() => ({}));
+    const type = String(body.type || '').trim();
+    if (!id || !['confirm','love','doubt'].includes(type)) {
+      return jsonResponse({success:false,error:'بيانات التفاعل غير صالحة'},400,corsHeaders);
+    }
+    const db = createTursoDB(env);
+    const row = await db.prepare('SELECT reactions_json, reacted_users_json, status FROM live_news WHERE id=? LIMIT 1').bind(id).first();
+    if (!row || row.status === 'deleted') return jsonResponse({success:false,error:'الخبر غير متاح'},404,corsHeaders);
+    let reactions = {}; let reactedUsers = {};
+    try { reactions = JSON.parse(row.reactions_json || '{}') || {}; } catch (_) {}
+    try { reactedUsers = JSON.parse(row.reacted_users_json || '{}') || {}; } catch (_) {}
+    const uid = String(auth.user.uid);
+    const previous = reactedUsers[uid];
+    if (previous === type) return jsonResponse({success:true,id,type,reactions},200,corsHeaders);
+    if (previous && reactions[previous]) reactions[previous] = Math.max(0, Number(reactions[previous]) - 1);
+    reactions[type] = Number(reactions[type] || 0) + 1;
+    reactedUsers[uid] = type;
+    const now = Date.now();
+    await db.prepare('UPDATE live_news SET reactions_json=?, reacted_users_json=?, updated_at=? WHERE id=?').bind(JSON.stringify(reactions),JSON.stringify(reactedUsers),now,id).run();
+    return jsonResponse({success:true,id,type,reactions},200,corsHeaders);
+  }
+
   if (url.pathname.startsWith('/api/live-news/') && ['PUT','PATCH','DELETE'].includes(request.method)) {
     const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response;
