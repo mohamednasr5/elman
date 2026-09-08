@@ -668,6 +668,9 @@ export async function getPlace(placeId) {
 }
 
 /** Sync place updates to Cloudflare D1 and invalidate worker cache */
+/** Turso naming alias: keep existing callers compatible. */
+export const syncPlaceToWorkerTurso = syncPlaceToWorkerD1;
+
 export async function syncPlaceToWorkerD1(placeId, updates = {}) {
   if (!placeId) return false;
   try {
