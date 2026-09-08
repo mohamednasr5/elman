@@ -49,7 +49,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=0d6f7b4b"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=61d65a4e"/>
 </head>
 <body class="dashboard-page admin-page">
 <div id="app">
@@ -89,8 +89,8 @@
 <script type="module">
 
   import { initPage } from './src/js/core/page-shell.js';
-  import { renderAdmin } from './src/js/ui/pages/admin.js?v=0d6f7b4b';
-  import { waitForAuth, isAdmin, signOut } from './src/js/core/auth.js?v=0d6f7b4b';
+  import { renderAdmin } from './src/js/ui/pages/admin.js?v=61d65a4e';
+  import { waitForAuth, isAdmin, signOut } from './src/js/core/auth.js?v=61d65a4e';
   await initPage('');
   const user = await waitForAuth();
   if (!user) {

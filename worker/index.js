@@ -571,9 +571,9 @@ try {
       const result = await createTursoDB(env).prepare(`
         SELECT p.*
         FROM places p
-        WHERE (LOWER(p.slug) = LOWER(?) OR p.id = ? OR p.slug = ?) AND p.status = 'published'
+        WHERE (LOWER(p.slug) = LOWER(?) OR p.id = ? OR LOWER(p.id) = LOWER(?) OR p.slug = ?) AND p.status = 'published'
         LIMIT 1
-      `).bind(slugParam, slugParam, slugParam).first();
+      `).bind(slugParam, slugParam, slugParam, slugParam).first();
 
       if (result) {
         // The reviews table has an index on (place_id, created_at), so this

@@ -49,7 +49,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=0d6f7b4b"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=61d65a4e"/>
 </head>
 <body class="">
 <div id="app">
@@ -87,17 +87,36 @@
 
 <!-- Page Module -->
 <script type="module">
+  import { initPage } from './src/js/core/page-shell.js?v=61d65a4e';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=61d65a4e';
+  import { getCurrentUser } from './src/js/core/auth.js?v=61d65a4e';
 
-  import { initPage } from './src/js/core/page-shell.js?v=0d6f7b4b';
-  import { renderPlacePage } from './src/js/ui/pages/place.js?v=0d6f7b4b';
-  import { waitForAuth } from './src/js/core/auth.js?v=0d6f7b4b';
-  await initPage('');
-  const user = await waitForAuth();
-  const params = new URLSearchParams(location.search);
-  let slug = params.get('slug') || params.get('id') || '';
-  if (slug === 'undefined' || slug === 'null') slug = '';
-  if (!slug) { location.href = 'places.html'; }
-  else await renderPlacePage(document.getElementById('page-container'), { slug, user });
+  (async () => {
+    const params = new URLSearchParams(location.search);
+    let slug = params.get('slug') || params.get('id') || '';
+    if (slug === 'undefined' || slug === 'null') slug = '';
+    if (!slug) {
+      location.href = 'places.html';
+      return;
+    }
+
+    try {
+      await initPage('place.html');
+      await renderPlacePage(document.getElementById('page-container'), { slug, user: getCurrentUser() });
+    } catch (err) {
+      console.error('[PlaceBootstrap] Fatal error during render:', err);
+      const pc = document.getElementById('page-container');
+      if (pc) {
+        pc.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1rem;text-align:center;padding:2rem;">
+            <div style="font-size:3rem">⚠️</div>
+            <p style="font-size:1.1rem;color:var(--text-muted,#888);">حدث خطأ أثناء تحميل بيانات المكان، يرجى إعادة المحاولة</p>
+            <button onclick="location.reload()" style="padding:.6rem 1.5rem;border-radius:8px;background:#1B4F72;color:#fff;border:none;cursor:pointer;font-weight:700">إعادة التحميل</button>
+          </div>
+        `;
+      }
+    }
+  })();
 </script>
 </body>
 </html>
