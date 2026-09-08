@@ -103,6 +103,21 @@ async function d1Fetch(path, options = {}) {
   return data;
 }
 
+/**
+ * Sync a place to the authoritative Turso database through the Worker.
+ * The browser never connects directly to Turso; the Worker authenticates
+ * the Firebase user and writes to Turso.
+ */
+export async function syncPlaceToWorkerTurso(placeId, placeData = {}) {
+  if (!placeId) throw new Error('Place ID is required for Turso sync');
+  const payload = { ...(placeData || {}), id: placeId };
+  return d1Fetch('/api/places/sync', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(10000)
+  });
+}
+
 function normalizeReviewFromD1(r, placeId = '') {
   if (!r) return null;
   return {
