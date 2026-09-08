@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head><body><div id="app"><div id="header-slot"></div><main class="page-main" id="page-container"><div class="ih-loading"><div class="ih-pulse"></div></div></main><div id="nav-slot"></div><div id="pwa-slot"></div><div id="footer-slot"></div></div>
 <script type="module">
-import {initPage} from './src/js/core/page-shell.js?v=2.7.2';
+import {initPage} from './src/js/core/page-shell.js?v=2.7.3';
 import {renderQuranSearch} from './src/js/ui/pages/islamic-hub.js?v=3.3.0';
 await initPage('quran-search.html'); await renderQuranSearch(document.getElementById('page-container'));
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
