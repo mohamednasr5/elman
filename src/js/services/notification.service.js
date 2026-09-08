@@ -4,7 +4,7 @@
  * Guarantees zero-delay instant notifications across PC, Mobile, and PWA when places are added or verified.
  */
 
-import { getDB, dbGet, dbSet, dbRemove, dbUpdate, getPublishedPlaces } from '../core/db.js';
+import { dbGet, getPublishedPlaces } from '../core/db.js';
 
 // ── Web Audio API Synthesized Crystal Bell Chime ──
 let _audioCtx = null;
@@ -363,96 +363,57 @@ let _isLiveNotifSubscribed = false;
  */
 export function initLiveNotificationSubscriber(uid) {
   if (typeof window === 'undefined') return;
-
   updateAllNotificationBadges(uid);
-
   if (_isLiveNotifSubscribed) return;
   _isLiveNotifSubscribed = true;
 
-  // Local window listeners
-  window.addEventListener('manzala:realtime_sync', () => updateAllNotificationBadges(uid));
+  // Realtime application data is delivered by FCM/server events and the
+  // application's own Worker sync bus. Firebase Realtime Database is not used.
+  const refresh = () => updateAllNotificationBadges(uid);
+  window.addEventListener('manzala:realtime_sync', refresh);
   window.addEventListener('manzala:new_broadcast_notification', (e) => {
-    updateAllNotificationBadges(uid);
-    if (e.detail) showLiveNotificationPopup(e.detail);
+    refresh();
+    if (e.detail) showLiveNotificationPopup(e.detail, uid);
   });
-  window.addEventListener('focus', () => updateAllNotificationBadges(uid));
+  window.addEventListener('focus', refresh);
 
-  // Firebase Live Stream Listeners
-  try {
-    const db = getDB();
-    const startTime = Date.now();
-
-    // 1. When places are verified in Firebase RTDB (only fire if newly verified in this session)
-    db.ref('places').on('child_changed', (snap) => {
-      const place = snap.val();
-      if (!place) return;
-      updateAllNotificationBadges(uid);
-
-      const isPlaceVerified = Boolean(
-        place.isVerified === true ||
-        place.verified === true ||
-        place.verificationStatus === 'verified'
-      );
-
-      // Only trigger chime & live popup if this place was genuinely verified right now (not an ordinary edit)
-      const verifiedTime = Number(place.verifiedAt || 0);
-      const isNewlyVerified = isPlaceVerified && (verifiedTime > startTime - 5000);
-
-      if (isNewlyVerified) {
-        showLiveNotificationPopup({
-          id: 'notif_verified_' + snap.key,
-          type: 'place_verified',
-          title: '👑 توثيق رسمي جديد: ' + (place.name || 'مكان موثق'),
-          placeName: place.name || 'المكان',
-          message: 'تم توثيق (' + (place.name || 'المكان') + ') رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!',
-          actionUrl: 'place.html?slug=' + encodeURIComponent(place.slug || snap.key),
-          createdAt: verifiedTime || Date.now()
-        }, uid);
-      }
-    });
-
-    // 2. When new places are added to Firebase RTDB
-    db.ref('places').limitToLast(1).on('child_added', (snap) => {
-      const place = snap.val();
-      if (place && (Number(place.createdAt) || 0) > startTime - 3000) {
-        updateAllNotificationBadges(uid);
-        showLiveNotificationPopup({
-          id: 'notif_new_place_' + snap.key,
-          type: 'new_place',
-          title: '🎉 انضمام نشاط جديد: ' + (place.name || 'نشاط جديد'),
-          message: '(' + (place.name || 'مكان جديد') + ') انضم حديثاً إلى دليل المنزلة والمطرية.',
-          actionUrl: 'place.html?slug=' + encodeURIComponent(place.slug || snap.key),
-          createdAt: Date.now()
-        }, uid);
-      }
-    });
-
-    // 3. Global notifications node
-    db.ref('globalNotifications').on('child_added', (snap) => {
-      const n = snap.val();
-      updateAllNotificationBadges(uid);
-      if (n && (Number(n.createdAt) || 0) > startTime - 3000) {
-        showLiveNotificationPopup({ id: snap.key, ...n }, uid);
-      }
-    });
-
-    // 4. Personal user notifications (Reviews on owner's places, visits, etc.)
-    if (uid) {
-      db.ref(`userNotifications/${uid}`).limitToLast(1).on('child_added', (snap) => {
-        const notif = snap.val();
-        updateAllNotificationBadges(uid);
-        if (notif && (Number(notif.createdAt) || 0) > startTime - 3000) {
-          showLiveNotificationPopup({ id: snap.key, ...notif }, uid);
+  // Lightweight reconciliation for newly-published places. The Worker/Turso
+  // endpoint is authoritative; this is not a Firebase listener.
+  let previous = new Map();
+  const poll = async () => {
+    try {
+      const places = await getPublishedPlaces({limit:250,forceFresh:true});
+      const now = Date.now();
+      const current = new Map((places||[]).map(p => [String(p.id||p._key), p]));
+      if (previous.size) {
+        for (const [id,p] of current) {
+          const created = Number(p.createdAt||0);
+          const verified = Number(p.verifiedAt||0);
+          if (created > now - 45000 && !previous.has(id)) {
+            showLiveNotificationPopup({
+              id:'notif_new_place_'+id,type:'new_place',
+              title:'🎉 انضمام نشاط جديد: '+(p.name||'نشاط جديد'),
+              message:'('+(p.name||'مكان جديد')+') انضم حديثاً إلى دليل المنزلة والمطرية.',
+              actionUrl:'place.html?slug='+encodeURIComponent(p.slug||id),createdAt:created
+            },uid);
+          } else if (verified > now - 45000 && verified > Number(previous.get(id)?.verifiedAt||0)) {
+            showLiveNotificationPopup({
+              id:'notif_verified_'+id,type:'place_verified',
+              title:'👑 توثيق رسمي جديد: '+(p.name||'مكان موثق'),
+              placeName:p.name||'المكان',
+              message:'تم توثيق ('+(p.name||'المكان')+') رسمياً بالعلامة الزرقاء.',
+              actionUrl:'place.html?slug='+encodeURIComponent(p.slug||id),createdAt:verified
+            },uid);
+          }
         }
-      });
-      db.ref(`userNotifications/${uid}`).on('value', () => {
-        updateAllNotificationBadges(uid);
-      });
-    }
-
-  } catch (err) {
-    console.debug('[NotificationService] Live stream subscriber handled:', err.message);
-  }
+      }
+      previous=current;
+      refresh();
+    } catch (_) {}
+  };
+  poll();
+  const timer=setInterval(poll,60000);
+  window.addEventListener('beforeunload',()=>clearInterval(timer),{once:true});
 }
 
 // ── In-App Live Floating Notification Banner ──
@@ -585,8 +546,5 @@ export async function broadcastLiveNewsPushNotification(newsItem) {
     createdAt: Date.now(),
     isRead: false
   };
-  try {
-    const db = getDB();
-    await db.ref('globalNotifications/' + notifId).set(notif);
-  } catch (_) {}
+  window.dispatchEvent(new CustomEvent('manzala:new_broadcast_notification',{detail:notif}));
 }
