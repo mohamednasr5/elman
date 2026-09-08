@@ -8,6 +8,69 @@
 
 import { handleTelegramWebhook, sendAdminPushNotification, telegramApi } from './telegram.js';
 import { createTursoDB, checkTursoHealth } from './turso.js';
+const SUPERADMIN_EMAILS = new Set([
+  'elfannanm@gmail.com',
+  'mohamednasrofficial@gmail.com'
+]);
+
+async function authenticateRequest(request, env) {
+  const header = request.headers.get('Authorization') || '';
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match) return null;
+  const apiKey = env.FIREBASE_API_KEY || 'AIzaSyCUGcCecmvBdf6b38UVIM9zcxhbbux7VSzM';
+  try {
+    const res = await fetch(
+      'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + encodeURIComponent(apiKey),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: match[1] })
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const fb = data?.users?.[0];
+    if (!fb?.localId) return null;
+    const profile = await createTursoDB(env).prepare(
+      'SELECT id, name, email, role, status FROM users WHERE id = ? LIMIT 1'
+    ).bind(fb.localId).first();
+    const email = String(fb.email || '').trim().toLowerCase();
+    const role = String(profile?.role || 'user').trim().toLowerCase();
+    const status = String(profile?.status || 'active').trim().toLowerCase();
+    return {
+      uid: fb.localId,
+      email,
+      name: profile?.name || fb.displayName || 'مستخدم',
+      role,
+      status,
+      isSuperAdmin: SUPERADMIN_EMAILS.has(email) || role === 'superadmin',
+      isAdmin: SUPERADMIN_EMAILS.has(email) || role === 'admin' || role === 'superadmin'
+    };
+  } catch (err) {
+    console.warn('[Auth] Firebase token validation failed:', err?.message || err);
+    return null;
+  }
+}
+
+async function requireAuth(request, env) {
+  const user = await authenticateRequest(request, env);
+  if (!user) return { user: null, response: jsonResponse({ success:false, error:'Unauthorized' }, 401, { 'WWW-Authenticate':'Bearer' }) };
+  if (['banned','suspended','disabled'].includes(user.status)) {
+    return { user:null, response:jsonResponse({ success:false, error:'الحساب موقوف ولا يمكنه تنفيذ هذه العملية' },403) };
+  }
+  return { user, response:null };
+}
+
+async function requireAdmin(request, env, superadminOnly = false) {
+  const auth = await requireAuth(request, env);
+  if (auth.response) return auth;
+  if (!auth.user.isAdmin || (superadminOnly && !auth.user.isSuperAdmin)) {
+    return { user:null, response:jsonResponse({ success:false, error:'صلاحيات الإدارة مطلوبة' },403) };
+  }
+  return auth;
+}
+
+
 
 
 async function sendDailyQuranReminder(env) {
@@ -604,7 +667,29 @@ try {
 
   // ── D1: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
   if ((url.pathname === '/api/places/sync' || url.pathname === '/api/places') && (request.method === 'POST' || request.method === 'PUT')) {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
+    const requestedOwnerId = String(body.ownerId || body.owner_id || '').trim();
+    if (!auth.user.isAdmin && requestedOwnerId && requestedOwnerId !== auth.user.uid) {
+      return jsonResponse({ success:false, error:'لا يمكنك تعديل مكان لا تملكه' },403,corsHeaders);
+    }
+    if (!auth.user.isAdmin) {
+      body.ownerId = auth.user.uid;
+      body.ownerEmail = auth.user.email;
+      body.status = 'published';
+      body.isVerified = undefined;
+      body.is_verified = undefined;
+      body.trustScore = undefined;
+      body.trust_score = undefined;
+      body.verificationStatus = undefined;
+      body.verification_status = undefined;
+      body.isSponsored = undefined;
+      body.is_sponsored = undefined;
+      body.isFeatured = undefined;
+      body.is_featured = undefined;
+      body.priority = undefined;
+    }
     const placeId = (body.id || body._id || body.placeId || '').trim();
     if (!placeId) {
       return jsonResponse({ error: 'معرف المكان (id) مطلوب' }, 400, corsHeaders);
@@ -714,10 +799,18 @@ try {
 
   // ── D1: Delete Place (DELETE /api/places/:id or /api/places?id=...) ──
   if ((url.pathname.startsWith('/api/places/') || url.pathname === '/api/places') && request.method === 'DELETE') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/places/') ? url.pathname.replace('/api/places/', '') : '';
     const id = (idFromPath || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
 
     if (id) {
+      if (!auth.user.isAdmin) {
+        const owned = await createTursoDB(env).prepare('SELECT owner_id, owner_email FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(id,id).first();
+        if (!owned || (owned.owner_id && owned.owner_id !== auth.user.uid && String(owned.owner_email || '').toLowerCase() !== auth.user.email)) {
+          return jsonResponse({success:false,error:'لا يمكنك حذف مكان لا تملكه'},403,corsHeaders);
+        }
+      }
       await createTursoDB(env).prepare(`DELETE FROM places WHERE id = ? OR slug = ?`).bind(id, id).run();
 
       const cache = caches.default;
@@ -773,6 +866,8 @@ try {
 
   // Create or Update Category (POST/PUT /api/categories)
   if (url.pathname === '/api/categories' && (request.method === 'POST' || request.method === 'PUT')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const name = (body.name || '').trim();
     const slug = (body.slug || body.id || '').trim().toLowerCase().replace(/\s+/g, '-');
@@ -819,6 +914,8 @@ try {
 
   // Delete Category (DELETE /api/categories/:id or /api/categories?id=...)
   if ((url.pathname.startsWith('/api/categories/') || url.pathname === '/api/categories') && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/categories/') ? url.pathname.replace('/api/categories/', '') : '';
     const id = (idFromPath || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
 
@@ -864,6 +961,8 @@ try {
   }
 
   if (url.pathname === '/api/ads' && (request.method === 'POST' || request.method === 'PUT')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const id = (body.id || body._id || `ad_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`).trim();
     const title = (body.title || '').trim();
@@ -903,6 +1002,8 @@ try {
   }
 
   if ((url.pathname.startsWith('/api/ads/') || url.pathname === '/api/ads') && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/ads/') ? url.pathname.replace('/api/ads/', '') : '';
     const id = (idFromPath || url.searchParams.get('id') || '').trim();
     if (!id) return jsonResponse({ error: 'ID مطلوب' }, 400, corsHeaders);
@@ -949,6 +1050,8 @@ try {
   }
 
   if (url.pathname === '/api/reviews' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
 
     // Support batch insertion (e.g. bulk reviews from admin)
@@ -995,7 +1098,7 @@ try {
     }
 
     const placeId = (body.place_id || body.placeId || '').trim();
-    const userId = (body.user_id || body.userId || '').trim();
+    const userId = auth.user.isAdmin ? (body.user_id || body.userId || '').trim() : auth.user.uid;
     const rating = parseFloat(body.rating);
 
     if (!placeId || !userId || isNaN(rating)) {
@@ -1003,13 +1106,13 @@ try {
     }
 
     const reviewId = body.id || `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const userName = body.user_name || body.userName || 'مستخدم';
+    const userName = auth.user.isAdmin ? (body.user_name || body.userName || 'مستخدم') : auth.user.name;
     const userPhoto = body.user_photo || body.userPhoto || '';
     const comment = String(body.comment || '').trim().slice(0, 500);
     const now = Date.now();
     const placeName = body.place_name || body.placeName || '';
     const placeSlug = body.place_slug || body.placeSlug || '';
-    const isAdminGen = body.is_admin_generated ? 1 : 0;
+    const isAdminGen = auth.user.isAdmin && body.is_admin_generated ? 1 : 0;
 
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
       return jsonResponse({ error: 'التقييم يجب أن يكون بين 1 و5 نجوم' }, 400, corsHeaders);
@@ -1065,6 +1168,8 @@ try {
 
   // ── D1: Update Review (PUT /api/reviews?id=...) ───────────────
   if (url.pathname === '/api/reviews' && request.method === 'PUT') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const reviewId = (url.searchParams.get('id') || body.id || '').trim();
     if (!reviewId) return jsonResponse({ error: 'معرف التقييم مطلوب' }, 400, corsHeaders);
@@ -1119,6 +1224,8 @@ try {
 
   // ── D1: Delete Reviews (DELETE /api/reviews) ───────────────────
   if (url.pathname === '/api/reviews' && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || '').trim();
     const reviewId = (url.searchParams.get('id') || url.searchParams.get('review_id') || '').trim();
 
@@ -1171,6 +1278,8 @@ try {
   }
 
   if (url.pathname === '/api/settings' && (request.method === 'POST' || request.method === 'PUT')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     try {
       await env.elmanzala.put('config/settings.json', JSON.stringify(body), {
@@ -1185,8 +1294,11 @@ try {
   // ── D1: User Profile Sync (POST /api/users/sync) ──
   // Architecture: D1 is the source of truth for role/status. Firebase Auth provides uid/name/email/photo only.
   if (url.pathname === '/api/users/sync' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const id = (body.uid || body.id || '').trim();
+    if (id !== auth.user.uid) return jsonResponse({success:false,error:'لا يمكن مزامنة حساب مستخدم آخر'},403,corsHeaders);
     if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
 
     const name = (body.name || '').trim();
@@ -1227,7 +1339,10 @@ try {
   // ── D1: Get Single User by ID (GET /api/users/:id) ──
   // Used by auth.js to fetch full D1 profile after login
   if (url.pathname.startsWith('/api/users/') && request.method === 'GET') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const userId = url.pathname.replace('/api/users/', '').trim();
+    if (userId !== auth.user.uid && !auth.user.isAdmin) return jsonResponse({success:false,error:'غير مصرح'},403,corsHeaders);
     if (!userId || userId === 'sync' || userId === 'seed') {
       return jsonResponse({ error: 'Invalid user ID' }, 400, corsHeaders);
     }
@@ -1246,6 +1361,8 @@ try {
   // Recovery endpoint: inserts users who existed before D1 migration
   // Does NOT overwrite role if user already exists in D1
   if (url.pathname === '/api/users/seed' && request.method === 'POST') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const users = Array.isArray(body.users) ? body.users : (body.uid ? [body] : []);
     if (!users.length) return jsonResponse({ error: 'users array required' }, 400, corsHeaders);
@@ -1282,6 +1399,8 @@ try {
 
   // ── D1: Get Users List (GET /api/users) ──
   if (url.pathname === '/api/users' && request.method === 'GET') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     try {
       // Join with places count per user
       const result = await createTursoDB(env).prepare(`
@@ -1315,6 +1434,8 @@ try {
   if ((url.pathname.startsWith('/api/users/') || url.pathname === '/api/users') &&
       (request.method === 'PUT' || request.method === 'PATCH') &&
       !url.pathname.endsWith('/sync') && !url.pathname.endsWith('/seed')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/users/') ? url.pathname.replace('/api/users/', '').trim() : '';
     const body = await request.json().catch(() => ({}));
     const id = (idFromPath || body.id || body.uid || '').trim();
@@ -1349,6 +1470,8 @@ try {
 
   // ── D1: Delete User (DELETE /api/users/:id) ──
   if (url.pathname.startsWith('/api/users/') && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env, true);
+    if (auth.response) return auth.response
     const id = url.pathname.replace('/api/users/', '').trim();
     if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
     try {
@@ -1364,6 +1487,8 @@ try {
 
   // ── D1: Category Requests (GET, POST, PUT, DELETE /api/category-requests) ──
   if (url.pathname === '/api/category-requests' && request.method === 'GET') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     try {
       const result = await createTursoDB(env).prepare(`
         SELECT id, category_name, place_name, owner_name, user_id, status, created_at, reviewed_at
@@ -1378,12 +1503,14 @@ try {
   }
 
   if (url.pathname === '/api/category-requests' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const id = body.id || `catreq_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const categoryName = (body.category_name || body.categoryName || '').trim();
     const placeName = (body.place_name || body.placeName || '').trim();
     const ownerName = (body.owner_name || body.ownerName || 'مستخدم').trim();
-    const userId = body.user_id || body.userId || '';
+    const userId = auth.user.uid;
     const now = Date.now();
 
     if (!categoryName) return jsonResponse({ error: 'اسم التصنيف مطلوب' }, 400, corsHeaders);
@@ -1400,6 +1527,8 @@ try {
   }
 
   if ((url.pathname.startsWith('/api/category-requests/') || url.pathname === '/api/category-requests') && (request.method === 'PUT' || request.method === 'PATCH')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/category-requests/') ? url.pathname.replace('/api/category-requests/', '') : '';
     const body = await request.json().catch(() => ({}));
     const id = (idFromPath || body.id || '').trim();
@@ -1420,6 +1549,8 @@ try {
 
   // ── D1: Verification Requests (GET, POST, PUT, DELETE /api/verification-requests) ──
   if (url.pathname === '/api/verification-requests' && request.method === 'GET') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     try {
       const result = await createTursoDB(env).prepare(`
         SELECT id, place_id, place_name, owner_id, owner_name, owner_email, phone, notes, status, verified_until, created_at, reviewed_at
@@ -1434,11 +1565,13 @@ try {
   }
 
   if (url.pathname === '/api/verification-requests' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const id = body.id || `vreq_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const placeId = (body.place_id || body.placeId || '').trim();
     const placeName = (body.place_name || body.placeName || '').trim();
-    const ownerId = body.owner_id || body.ownerId || '';
+    const ownerId = auth.user.uid;
     const ownerName = body.owner_name || body.ownerName || '';
     const ownerEmail = body.owner_email || body.ownerEmail || '';
     const phone = body.phone || '';
@@ -1459,6 +1592,8 @@ try {
   }
 
   if ((url.pathname.startsWith('/api/verification-requests/') || url.pathname === '/api/verification-requests') && (request.method === 'PUT' || request.method === 'PATCH')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/verification-requests/') ? url.pathname.replace('/api/verification-requests/', '') : '';
     const body = await request.json().catch(() => ({}));
     const id = (idFromPath || body.id || '').trim();
@@ -1537,6 +1672,8 @@ try {
   // ── 1. Upload to R2 (POST /api/upload) ──
       // ── 1. Upload to R2 (POST /api/upload) ──
       if (url.pathname === '/api/upload' && request.method === 'POST') {
+        const auth = await requireAuth(request, env);
+        if (auth.response) return auth.response
         const formData = await request.formData();
         const file = formData.get('file');
         const customKey = formData.get('key');
@@ -1565,6 +1702,8 @@ try {
 
       // ── 2. Delete from R2 (DELETE /api/upload/:key) ──
       if (url.pathname.startsWith('/api/upload/') && request.method === 'DELETE') {
+        const auth = await requireAdmin(request, env);
+        if (auth.response) return auth.response
         const key = decodeURIComponent(url.pathname.replace('/api/upload/', ''));
         if (env.elmanzala && key) {
           await env.elmanzala.delete(key);
@@ -1778,6 +1917,8 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
       // ── 9. Set Telegram Webhook (GET /api/telegram/set-webhook) ──
       if (url.pathname === '/api/telegram/set-webhook' && request.method === 'GET') {
+        const auth = await requireAdmin(request, env);
+        if (auth.response) return auth.response
         const webhookUrl = url.searchParams.get('url') || `https://${url.host}/api/telegram/webhook`;
         const res = await telegramApi('setWebhook', { url: webhookUrl }, env);
         return jsonResponse({ success: true, webhookUrl, result: res }, 200, corsHeaders);
@@ -1785,6 +1926,8 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
       // ── 9b. Test Telegram Notification (POST /api/telegram/test) ──
       if (url.pathname === '/api/telegram/test' && (request.method === 'POST' || request.method === 'GET')) {
+        const auth = await requireAdmin(request, env);
+        if (auth.response) return auth.response
         const body = await request.json().catch(() => ({}));
         const testRes = await sendAdminPushNotification('contact_message', {
           name: 'مدير المنصة (اختبار الاتصال)',
@@ -1796,6 +1939,8 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
       // ── 10. Instant Push Notification (POST /api/notify) ──
       if (url.pathname === '/api/notify' && request.method === 'POST') {
+        const auth = await requireAdmin(request, env);
+        if (auth.response) return auth.response
         const body = await request.json().catch(() => ({}));
         const res = await sendAdminPushNotification(body.type, body.data || body.payload || body, env);
         return jsonResponse({ success: true, result: res }, 200, corsHeaders);
@@ -2239,5 +2384,4 @@ function parseJson(value, fallback) {
     return fallback;
   }
 }
-
 
