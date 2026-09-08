@@ -428,34 +428,32 @@ export async function getUserProfile(uid) {
 /** Get all users - Primary Turso */
 export async function getAllUsersD1() {
   try {
-    const res = await fetch(`${WORKER_URL}/api/users`, { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.success && Array.isArray(data.data)) {
-        const usersMap = {};
-        data.data.forEach(u => {
-          usersMap[u.id] = {
-            uid: u.id,
-            id: u.id,
-            name: u.name,
-            displayName: u.name,
-            email: u.email,
-            photoURL: u.photo_url,
-            phone: u.phone,
-            role: u.role,
-            status: u.status,
-            createdAt: u.created_at,
-            updatedAt: u.updated_at
-          };
-        });
-        return usersMap;
-      }
+    const data = await d1Fetch('/api/users');
+    if (data && data.success && Array.isArray(data.data)) {
+      const usersMap = {};
+      data.data.forEach(u => {
+        usersMap[u.id] = {
+          uid: u.id,
+          id: u.id,
+          name: u.name,
+          displayName: u.name,
+          email: u.email,
+          photoURL: u.photo_url,
+          phone: u.phone,
+          role: u.role,
+          status: u.status,
+          createdAt: u.created_at,
+          updatedAt: u.updated_at
+        };
+      });
+      return usersMap;
     }
   } catch (err) {
     console.debug('[getAllUsersD1] Worker fetch handled:', err.message);
   }
   return {};
 }
+
 
 /** Get all Category Requests - Primary Turso */
 export async function getCategoryRequestsTurso() {
