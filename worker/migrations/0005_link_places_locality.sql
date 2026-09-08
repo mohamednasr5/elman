@@ -81,7 +81,7 @@ ALTER TABLE places ADD COLUMN locality_id INTEGER REFERENCES localities(id) ON D
 CREATE INDEX IF NOT EXISTS idx_places_locality ON places(locality_id);
 
 -- Backfill: only exact, verified matches (Manzala City / El-Matariya City)
--- D1 is single source of truth; this only sets the FK, no data duplication.
+-- Turso is the single source of truth; this only sets the FK, no data duplication.
 UPDATE places
 SET locality_id = (SELECT id FROM localities WHERE slug = 'manzala-city')
 WHERE (area = 'المنزلة' OR area = 'منزلة' OR area LIKE '%المنزلة%')
