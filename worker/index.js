@@ -623,14 +623,12 @@ try {
     const limitParam = parseInt(url.searchParams.get('limit') || '500', 10);
     const offsetParam = parseInt(url.searchParams.get('offset') || '0', 10);
     const ownerIdFilter = (url.searchParams.get('owner_id') || '').trim();
+    const ownerEmailFilter = (url.searchParams.get('owner_email') || '').trim().toLowerCase();
 
     const limit = Math.min(Math.max(limitParam, 1), 1000);
     const offset = Math.max(offsetParam, 0);
 
     const params = [];
-
-    // Public users must only receive published places. Admin mode deliberately omits this filter.
-    if (!adminList && !ownerIdFilter && !ownerEmailFilter) sql += ` WHERE p.status = 'published'`;
 
     // IMPORTANT: list endpoint must never aggregate the entire reviews table.
     // A global GROUP BY on reviews turns every homepage/search request into a
@@ -648,7 +646,9 @@ try {
       FROM places p
       LEFT JOIN users u ON u.id = p.owner_id
     `;
-    const ownerEmailFilter = (url.searchParams.get('owner_email') || '').trim().toLowerCase();
+    if (!adminList && !ownerIdFilter && !ownerEmailFilter) {
+      sql += ` WHERE p.status = 'published'`;
+    }
 
     if (ownerIdFilter && ownerEmailFilter) {
       sql += ` WHERE (p.owner_id = ? OR LOWER(p.owner_email) = ?)`;
