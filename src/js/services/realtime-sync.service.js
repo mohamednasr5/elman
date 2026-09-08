@@ -17,30 +17,23 @@ let _isListeningToFirebase = false;
  */
 export function initRealtimePwaSyncBus() {
   if (typeof window === 'undefined') return;
-
   if ('BroadcastChannel' in window && !_syncChannel) {
     _syncChannel = new BroadcastChannel('manzala_realtime_sync_bus');
     _syncChannel.onmessage = (event) => {
-      const { type, payload } = event.data || {};
-      handleIncomingRealtimeEvent(type, payload, false);
+      const {type,payload}=event.data||{};
+      handleIncomingRealtimeEvent(type,payload,false);
     };
   }
-
-  // Remote application state is reconciled through the Worker/Turso API.
-  // Firebase Realtime Database is intentionally not used.
-  if (!_isListeningToFirebase) {
-    _isListeningToFirebase = true;
-    const reconcile = async () => {
-      try {
-        const { getPublishedPlaces } = await import('../core/db.js');
-        await getPublishedPlaces({limit:100,forceFresh:true});
-        handleIncomingRealtimeEvent('DATA_VERSION_CHANGED',{version:Date.now()},true);
-      } catch (_) {}
-    };
-    reconcile();
-    const timer=setInterval(reconcile,60000);
-    window.addEventListener('beforeunload',()=>clearInterval(timer),{once:true});
-  }
+  if (_isListeningToFirebase) return;
+  _isListeningToFirebase=true;
+  const reconcile=async()=>{ try {
+    const {getPublishedPlaces}=await import('../core/db.js');
+    await getPublishedPlaces({limit:100,forceFresh:true});
+    handleIncomingRealtimeEvent('DATA_VERSION_CHANGED',{version:Date.now()},true);
+  } catch(_){} };
+  reconcile();
+  const timer=setInterval(reconcile,60000);
+  window.addEventListener('beforeunload',()=>clearInterval(timer),{once:true});
 }
 
 /**
