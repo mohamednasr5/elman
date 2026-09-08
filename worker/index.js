@@ -785,7 +785,7 @@ try {
           address, area, phone, whatsapp, maps_link, latitude, longitude,
           description, logo_url, cover_image_url, owner_id, owner_email,
           status, is_verified, trust_score, verification_status, services_json, social_json,
-          stats_json, working_hours_json, updated_at, is_sponsored, is_featured, sponsored_until, priority
+          stats_json, working_hours_json, created_at, updated_at, is_sponsored, is_featured, sponsored_until, priority
         ) VALUES (
           ?, ?, ?, ?, ?, ?, ?,
           ?, ?, ?, ?, ?, ?, ?,
@@ -830,7 +830,7 @@ try {
         address, area, phone, whatsapp, mapsLink, lat, lng,
         description, logoUrl, coverImageUrl, ownerId, ownerEmail,
         status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
-        statsJson, workingHoursJson, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
+        statsJson, workingHoursJson, Number(body.createdAt || body.created_at) || now, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
       ).run();
       bumpDataVersion(env, ctx);
 
