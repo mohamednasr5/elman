@@ -564,16 +564,9 @@ export async function getPlace(placeId) {
   if (!placeId) return null;
   const cleanId = String(placeId).trim();
 
-  // 1. Check local IndexedDB first (0ms instant)
-  try {
-    const cached = await idbGet(STORES.PLACES, cleanId);
-    if (cached) return cached;
-    const allLocal = await idbGetAll(STORES.PLACES);
-    const foundLocal = (allLocal || []).find(p => p && (p.id === cleanId || p.slug === cleanId || p._key === cleanId));
-    if (foundLocal) return foundLocal;
-  } catch (_) {}
-
-  // 2. Fetch directly from Turso Worker by ID
+  // Turso is authoritative. IndexedDB is cache-only and must never mask
+  // a deleted/updated record or make a local-only record appear to exist.
+  // 1. Fetch directly from Turso Worker by ID
   try {
     const res = await fetch(`${WORKER_URL}/api/places?id=${encodeURIComponent(cleanId)}`, {
       signal: AbortSignal.timeout(10000)
@@ -673,16 +666,9 @@ export async function getPlaceBySlug(slug) {
   if (!slug) return null;
   const clean = String(slug).trim().toLowerCase();
 
-  // 1. Check local IndexedDB first (0ms instant)
-  try {
-    const cached = await idbGet(STORES.PLACES, clean);
-    if (cached) return cached;
-    const allLocal = await idbGetAll(STORES.PLACES);
-    const foundLocal = (allLocal || []).find(p => p && (String(p.slug || '').toLowerCase() === clean || String(p.id || '').toLowerCase() === clean));
-    if (foundLocal) return foundLocal;
-  } catch (_) {}
-
-  // 2. Fetch directly from Turso Worker by slug
+  // Turso is authoritative. Read it first so a stale local cache cannot
+  // resurrect a deleted/updated place.
+  // 1. Fetch directly from Turso Worker by slug
   try {
     const data = await tursoFetch('/api/places?slug=' + encodeURIComponent(clean));
     if (data?.success && data.data) {
@@ -873,43 +859,17 @@ export function normalizeTursoPlace(p) {
 export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFresh = false } = {}) {
   const cacheKey = `published_${limit}_${lastKey || ''}`;
   
-  if (!forceFresh) {
-    // 1. Fast in-memory SWR
-    const memCached = getCached(cacheKey, 300000);
-    if (memCached && Array.isArray(memCached) && memCached.length > 0) return memCached;
-
-    // 2. Fast IndexedDB local cache (0ms)
-    try {
-      const localPlaces = await idbGetAll(STORES.PLACES);
-      if (localPlaces && localPlaces.length > 0) {
-        const filtered = localPlaces.filter(p => p && p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p));
-        if (filtered.length > 0) {
-          filtered.sort((a, b) => {
-            const aSpons = Boolean(a.isSponsored && (!a.sponsoredUntil || a.sponsoredUntil > Date.now()));
-            const bSpons = Boolean(b.isSponsored && (!b.sponsoredUntil || b.sponsoredUntil > Date.now()));
-            if (aSpons && !bSpons) return -1;
-            if (!aSpons && bSpons) return 1;
-            return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
-          });
-          const res = filtered.slice(0, limit);
-          setCache(cacheKey, res);
-
-          // Background sync check (non-blocking)
-          _triggerBackgroundSyncPlaces().catch(() => {});
-          return res;
-        }
-      }
-    } catch (_) {}
-  }
-
-  // 3. Primary Network Fetch from Turso via Worker
+  // Turso is the source of truth. Never return a local place list before
+  // checking the authoritative Worker; doing so can resurrect deleted places
+  // or hide newly-created/updated places on another device.
+  // 1. Primary Network Fetch from Turso via Worker
   try {
     const workerRes = await fetch(`${WORKER_URL}/api/places?limit=${limit}`, {
       signal: AbortSignal.timeout(5000)
     });
     if (workerRes.ok) {
       const data = await workerRes.json();
-      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+      if (data && data.success && Array.isArray(data.data)) {
         const places = [];
         const allForIdb = [];
 
@@ -944,7 +904,7 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
     console.debug('[getPublishedPlaces] Turso fetch error, using local cache:', workerErr.message);
   }
 
-  // 4. Fallback: Return cached places from IndexedDB if network is offline
+  // 2. Offline fallback: Return cached places from IndexedDB if network is offline
   try {
     const localPlaces = await idbGetAll(STORES.PLACES);
     if (localPlaces && localPlaces.length > 0) {
