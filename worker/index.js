@@ -811,7 +811,7 @@ try {
 
     return jsonResponse({
       success: true,
-      message: 'تم تحديث المكان في Cloudflare D1 ومسح الكاش بنجاح',
+      message: 'تم تحديث المكان في Turso ومسح الكاش بنجاح',
       id: placeId,
       updatedAt: now
     }, 200, corsHeaders);
@@ -842,7 +842,7 @@ try {
       ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)))));
     }
 
-    return jsonResponse({ success: true, message: 'تم حذف المكان من D1 ومسح الكاش' }, 200, corsHeaders);
+    return jsonResponse({ success: true, message: 'تم حذف المكان من Turso ومسح الكاش' }, 200, corsHeaders);
   }
 
   // ── D1: Categories (GET, POST, PUT, DELETE /api/categories) ──────────
