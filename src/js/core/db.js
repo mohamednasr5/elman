@@ -210,7 +210,8 @@ async function tursoGetBusiness(path) {
 async function tursoWriteBusiness(path, method, data = null) {
   const { parts, root } = parseBusinessPath(path);
   if (root === 'ads') {
-    if (method === 'POST' || method === 'PUT') return tursoFetch('/api/ads', { method:'POST', body:JSON.stringify({ ...(data || {}), id:parts[1] || data?.id || data?._id }) });
+    if (method === 'POST') return tursoFetch('/api/ads', { method:'POST', body:JSON.stringify(data || {}) });
+    if (method === 'PUT') return tursoFetch('/api/ads', { method:'POST', body:JSON.stringify({ ...(data || {}), id:parts[1] || data?.id || data?._id }) });
     if (method === 'DELETE' && parts[1]) return tursoFetch(`/api/ads?id=${encodeURIComponent(parts[1])}`, { method:'DELETE' });
     throw new Error(`Unsupported ads write path: ${path}`);
   }
