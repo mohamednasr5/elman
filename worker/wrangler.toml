@@ -10,5 +10,6 @@ bucket_name = "elmanzala"
 [vars]
 TURSO_DATABASE_URL = "https://dalilmanzala-mohamednasr.aws-eu-west-1.turso.io"
 OPENROUTER_API_KEY = "sk-or-v1-openrouter-free"
+FIREBASE_API_KEY = "AIzaSyCUGCecmvBdf6b38UVIM9zcxhbbux7VSzM"
 [triggers]
 crons = ["0 * * * *"]

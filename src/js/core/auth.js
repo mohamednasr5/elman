@@ -235,7 +235,10 @@ async function _syncUserToD1(firebaseUser) {
   //    Role is preserved in D1 if already set (server-side logic)
   const syncRes = await fetch(`${WORKER_URL}/api/users/sync`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
+    },
     body: JSON.stringify({
       uid,
       name,
@@ -251,6 +254,7 @@ async function _syncUserToD1(firebaseUser) {
 
   // 2. Fetch full profile from D1 (to get the actual role stored in DB)
   const profileRes = await fetch(`${WORKER_URL}/api/users/${uid}`, {
+    headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
     signal: AbortSignal.timeout(6000)
   });
 

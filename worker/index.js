@@ -8,7 +8,87 @@
 
 import { handleTelegramWebhook, sendAdminPushNotification, telegramApi } from './telegram.js';
 import { createTursoDB, checkTursoHealth } from './turso.js';
+const SUPERADMIN_EMAILS = new Set([
+  'elfannanm@gmail.com',
+  'mohamednasrofficial@gmail.com'
+]);
 
+async function authenticateRequest(request, env) {
+  const header = request.headers.get('Authorization') || '';
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match) return null;
+  const apiKey = env.FIREBASE_API_KEY || '';
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(
+      'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + encodeURIComponent(apiKey),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: match[1] })
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const fb = data?.users?.[0];
+    if (!fb?.localId) return null;
+    const profile = await createTursoDB(env).prepare(
+      'SELECT id, name, email, role, status FROM users WHERE id = ? LIMIT 1'
+    ).bind(fb.localId).first();
+    const email = String(fb.email || '').trim().toLowerCase();
+    const role = String(profile?.role || 'user').trim().toLowerCase();
+    const status = String(profile?.status || 'active').trim().toLowerCase();
+    return {
+      uid: fb.localId,
+      email,
+      name: profile?.name || fb.displayName || 'مستخدم',
+      role,
+      status,
+      isSuperAdmin: SUPERADMIN_EMAILS.has(email) || role === 'superadmin',
+      isAdmin: SUPERADMIN_EMAILS.has(email) || role === 'admin' || role === 'superadmin'
+    };
+  } catch (err) {
+    console.warn('[Auth] Firebase token validation failed:', err?.message || err);
+    return null;
+  }
+}
+
+async function requireAuth(request, env) {
+  const user = await authenticateRequest(request, env);
+  if (!user) return { user: null, response: jsonResponse({ success:false, error:'Unauthorized' }, 401, { 'WWW-Authenticate':'Bearer' }) };
+  if (['banned','suspended','disabled'].includes(user.status)) {
+    return { user:null, response:jsonResponse({ success:false, error:'الحساب موقوف ولا يمكنه تنفيذ هذه العملية' },403) };
+  }
+  return { user, response:null };
+}
+
+async function requireAdmin(request, env, superadminOnly = false) {
+  const auth = await requireAuth(request, env);
+  if (auth.response) return auth;
+  if (!auth.user.isAdmin || (superadminOnly && !auth.user.isSuperAdmin)) {
+    return { user:null, response:jsonResponse({ success:false, error:'صلاحيات الإدارة مطلوبة' },403) };
+  }
+  return auth;
+}
+
+
+
+
+async function getDataVersion(env) {
+  try {
+    const obj = await env.elmanzala.get('config/data-version');
+    return obj ? await obj.text() : '0';
+  } catch (_) {
+    return '0';
+  }
+}
+
+function bumpDataVersion(env, ctx) {
+  ctx.waitUntil(
+    env.elmanzala.put('config/data-version', String(Date.now()))
+      .catch(err => console.warn('[Cache] data-version update failed:', err?.message || err))
+  );
+}
 
 async function sendDailyQuranReminder(env) {
   const cairoHour = Number(new Intl.DateTimeFormat('en-GB', {
@@ -126,17 +206,6 @@ export default {
  if (request.method === 'OPTIONS') {
   return new Response(null, { headers: corsHeaders });
 }
-
-    // Admin API Key Guard for sensitive write/delete routes
-        const ADMIN_WRITE_PATHS = ['/api/categories', '/api/ads'];
-    const isAdminWritePath = ADMIN_WRITE_PATHS.some(p => url.pathname === p || url.pathname.startsWith(p + '/'));
-    const isMutatingMethod = ['POST', 'PUT', 'DELETE'].includes(request.method);
-    if (isAdminWritePath && isMutatingMethod) {
-      const providedKey = request.headers.get('X-Admin-Key') || '';
-      if (!env.ADMIN_API_KEY || providedKey !== env.ADMIN_API_KEY) {
-        return jsonResponse({ error: 'Unauthorized: admin key missing or invalid' }, 401, corsHeaders);
-      }
-    }
 
 // ── Static AI/SEO Discovery Files ────────────────────────────────
 // GET /llms.txt — AI Agentic Discovery (required for 3/3 score)
@@ -327,6 +396,7 @@ try {
     if (normArea) cacheUrl.searchParams.set('area', normArea);
     cacheUrl.searchParams.set('limit', String(limit));
     cacheUrl.searchParams.set('offset', String(offset));
+    cacheUrl.searchParams.set('v', await getDataVersion(env));
     if (verifiedOnly) cacheUrl.searchParams.set('verified', '1');
     if (minRating > 0) cacheUrl.searchParams.set('min_rating', String(minRating));
 
@@ -440,6 +510,7 @@ try {
       const cleanSlug = slugParam.toLowerCase();
       const cache = caches.default;
       const cacheUrl = new URL(`https://cache.local/api/places?slug=${encodeURIComponent(cleanSlug)}`);
+      cacheUrl.searchParams.set('v', await getDataVersion(env));
       const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
       const cachedResponse = await cache.match(cacheKey);
@@ -547,6 +618,7 @@ try {
     const listCacheUrl = new URL(request.url);
     listCacheUrl.searchParams.set('limit', String(limit));
     listCacheUrl.searchParams.set('offset', String(offset));
+    listCacheUrl.searchParams.set('v', await getDataVersion(env));
     const listCacheKey = new Request(listCacheUrl.toString(), { method: 'GET' });
 
     if (usePublicListCache) {
@@ -604,7 +676,39 @@ try {
 
   // ── D1: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
   if ((url.pathname === '/api/places/sync' || url.pathname === '/api/places') && (request.method === 'POST' || request.method === 'PUT')) {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
+    const requestedOwnerId = String(body.ownerId || body.owner_id || '').trim();
+    let existingPlaceForAuth = null;
+    if (!auth.user.isAdmin) {
+      existingPlaceForAuth = await createTursoDB(env).prepare(
+        'SELECT id, owner_id, owner_email FROM places WHERE id = ? OR slug = ? LIMIT 1'
+      ).bind(String(body.id || body._id || body.placeId || '').trim(), String(body.slug || '').trim()).first().catch(() => null);
+      if (existingPlaceForAuth && existingPlaceForAuth.owner_id !== auth.user.uid &&
+          String(existingPlaceForAuth.owner_email || '').toLowerCase() !== auth.user.email) {
+        return jsonResponse({ success:false, error:'لا يمكنك تعديل مكان لا تملكه' },403,corsHeaders);
+      }
+      if (requestedOwnerId && requestedOwnerId !== auth.user.uid) {
+        return jsonResponse({ success:false, error:'لا يمكنك نقل ملكية المكان إلى مستخدم آخر' },403,corsHeaders);
+      }
+    }
+    if (!auth.user.isAdmin) {
+      body.ownerId = auth.user.uid;
+      body.ownerEmail = auth.user.email;
+      body.status = 'published';
+      body.isVerified = undefined;
+      body.is_verified = undefined;
+      body.trustScore = undefined;
+      body.trust_score = undefined;
+      body.verificationStatus = undefined;
+      body.verification_status = undefined;
+      body.isSponsored = undefined;
+      body.is_sponsored = undefined;
+      body.isFeatured = undefined;
+      body.is_featured = undefined;
+      body.priority = undefined;
+    }
     const placeId = (body.id || body._id || body.placeId || '').trim();
     if (!placeId) {
       return jsonResponse({ error: 'معرف المكان (id) مطلوب' }, 400, corsHeaders);
@@ -695,6 +799,7 @@ try {
       status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
       statsJson, workingHoursJson, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
     ).run();
+    bumpDataVersion(env, ctx);
 
     // Cache Invalidation for this place
     const cache = caches.default;
@@ -706,7 +811,7 @@ try {
 
     return jsonResponse({
       success: true,
-      message: 'تم تحديث المكان في Cloudflare D1 ومسح الكاش بنجاح',
+      message: 'تم تحديث المكان في Turso ومسح الكاش بنجاح',
       id: placeId,
       updatedAt: now
     }, 200, corsHeaders);
@@ -714,11 +819,20 @@ try {
 
   // ── D1: Delete Place (DELETE /api/places/:id or /api/places?id=...) ──
   if ((url.pathname.startsWith('/api/places/') || url.pathname === '/api/places') && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/places/') ? url.pathname.replace('/api/places/', '') : '';
     const id = (idFromPath || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
 
     if (id) {
+      if (!auth.user.isAdmin) {
+        const owned = await createTursoDB(env).prepare('SELECT owner_id, owner_email FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(id,id).first();
+        if (!owned || (owned.owner_id && owned.owner_id !== auth.user.uid && String(owned.owner_email || '').toLowerCase() !== auth.user.email)) {
+          return jsonResponse({success:false,error:'لا يمكنك حذف مكان لا تملكه'},403,corsHeaders);
+        }
+      }
       await createTursoDB(env).prepare(`DELETE FROM places WHERE id = ? OR slug = ?`).bind(id, id).run();
+      bumpDataVersion(env, ctx);
 
       const cache = caches.default;
       const purgeUrls = [
@@ -728,7 +842,7 @@ try {
       ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)))));
     }
 
-    return jsonResponse({ success: true, message: 'تم حذف المكان من D1 ومسح الكاش' }, 200, corsHeaders);
+    return jsonResponse({ success: true, message: 'تم حذف المكان من Turso ومسح الكاش' }, 200, corsHeaders);
   }
 
   // ── D1: Categories (GET, POST, PUT, DELETE /api/categories) ──────────
@@ -736,6 +850,7 @@ try {
     const cache = caches.default;
     const forceFresh = url.searchParams.has('_ts');
     const cacheUrl = new URL('https://cache.local/api/categories');
+    cacheUrl.searchParams.set('v', await getDataVersion(env));
     const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
     if (!forceFresh) {
@@ -773,6 +888,8 @@ try {
 
   // Create or Update Category (POST/PUT /api/categories)
   if (url.pathname === '/api/categories' && (request.method === 'POST' || request.method === 'PUT')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const name = (body.name || '').trim();
     const slug = (body.slug || body.id || '').trim().toLowerCase().replace(/\s+/g, '-');
@@ -801,6 +918,7 @@ try {
           sort_order = excluded.sort_order,
           updated_at = excluded.updated_at
       `).bind(id, name, nameEn, slug, icon, description, order, now, now).run();
+      bumpDataVersion(env, ctx);
 
       // Invalidate Categories Cache
       const cache = caches.default;
@@ -819,6 +937,8 @@ try {
 
   // Delete Category (DELETE /api/categories/:id or /api/categories?id=...)
   if ((url.pathname.startsWith('/api/categories/') || url.pathname === '/api/categories') && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/categories/') ? url.pathname.replace('/api/categories/', '') : '';
     const id = (idFromPath || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
 
@@ -828,6 +948,7 @@ try {
 
     try {
       await createTursoDB(env).prepare(`DELETE FROM categories WHERE id = ? OR slug = ?`).bind(id, id).run();
+      bumpDataVersion(env, ctx);
 
       // Invalidate Categories Cache
       const cache = caches.default;
@@ -864,6 +985,8 @@ try {
   }
 
   if (url.pathname === '/api/ads' && (request.method === 'POST' || request.method === 'PUT')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const id = (body.id || body._id || `ad_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`).trim();
     const title = (body.title || '').trim();
@@ -895,6 +1018,7 @@ try {
           end_date = excluded.end_date,
           clicks = excluded.clicks
       `).bind(id, title, placeId, link, imageUrl, placement, priority, isActive, startDate, endDate, clicks, createdAt, createdBy).run();
+      bumpDataVersion(env, ctx);
 
       return jsonResponse({ success: true, message: 'تم حفظ الإعلان بنجاح في D1', id }, 200, corsHeaders);
     } catch (err) {
@@ -903,16 +1027,267 @@ try {
   }
 
   if ((url.pathname.startsWith('/api/ads/') || url.pathname === '/api/ads') && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/ads/') ? url.pathname.replace('/api/ads/', '') : '';
     const id = (idFromPath || url.searchParams.get('id') || '').trim();
     if (!id) return jsonResponse({ error: 'ID مطلوب' }, 400, corsHeaders);
 
     try {
       await createTursoDB(env).prepare(`DELETE FROM ads WHERE id = ?`).bind(id).run();
+      bumpDataVersion(env, ctx);
       return jsonResponse({ success: true, message: 'تم حذف الإعلان بنجاح من D1' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
+  }
+
+
+  // ── Turso: Offers API ─────────────────────────────────────────
+  if (url.pathname === '/api/offers' && request.method === 'GET') {
+    try {
+      const placeId = (url.searchParams.get('place_id') || '').trim();
+      const id = (url.searchParams.get('id') || '').trim();
+      let sql = 'SELECT * FROM offers';
+      const params = [];
+      if (id) { sql += ' WHERE id = ?'; params.push(id); }
+      else if (placeId) { sql += ' WHERE place_id = ?'; params.push(placeId); }
+      sql += ' ORDER BY created_at DESC LIMIT 500';
+      const result = await createTursoDB(env).prepare(sql).bind(...params).all();
+      const data = (result.results || []).map(o => ({
+        ...o,
+        placeId: o.place_id,
+        placeName: o.place_name || '',
+        oldPrice: Number(o.old_price || 0),
+        newPrice: Number(o.new_price || 0),
+        discountPercent: Number(o.discount_percent || 0),
+        imageUrl: o.image_url || '',
+        startDate: o.start_date,
+        endDate: o.end_date,
+        ownerId: o.owner_id,
+        isVerifiedPlace: Boolean(o.is_verified_place),
+        views: Number(o.views || 0),
+        clicks: Number(o.clicks || 0),
+        createdAt: o.created_at,
+        updatedAt: o.updated_at
+      }));
+      return jsonResponse({ success:true, data },200,corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success:false, error:err.message, data:[] },500,corsHeaders);
+    }
+  }
+
+  if (url.pathname === '/api/offers' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const placeId = String(body.placeId || body.place_id || '').trim();
+    if (!placeId) return jsonResponse({success:false,error:'place_id مطلوب'},400,corsHeaders);
+
+    const place = await createTursoDB(env).prepare(
+      'SELECT id, name, slug, owner_id, owner_email, is_verified FROM places WHERE id = ? LIMIT 1'
+    ).bind(placeId).first();
+    if (!place) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
+    if (!auth.user.isAdmin && place.owner_id !== auth.user.uid && String(place.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية إدارة عروض هذا المكان'},403,corsHeaders);
+    }
+
+    const now = Date.now();
+    const active = await createTursoDB(env).prepare(
+      "SELECT COUNT(*) AS count FROM offers WHERE place_id = ? AND status = 'active' AND (end_date IS NULL OR end_date > ?)"
+    ).bind(placeId,now).first();
+    const maxAllowed = Number(place.is_verified) ? 3 : 1;
+    if (Number(active?.count || 0) >= maxAllowed) {
+      return jsonResponse({success:false,error:`الحد الأقصى للعروض النشطة لهذا المكان هو ${maxAllowed}`},409,corsHeaders);
+    }
+
+    const id = String(body.id || `offer_${Date.now()}_${Math.random().toString(36).slice(2,8)}`).trim();
+    const startDate = body.startDate || body.start_date || now;
+    const endDate = body.endDate || body.end_date || (now + 86400000);
+    await createTursoDB(env).prepare(`
+      INSERT INTO offers (
+        id, place_id, title, description, old_price, new_price, discount_percent, image_url,
+        start_date, end_date, status, owner_id, is_verified_place, views, clicks, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 0, 0, ?, ?)
+    `).bind(
+      id, placeId, String(body.title || '').trim(), String(body.description || ''),
+      Number(body.oldPrice ?? body.old_price ?? 0), Number(body.newPrice ?? body.new_price ?? 0),
+      Number(body.discountPercent ?? body.discount_percent ?? 0), String(body.imageUrl || body.image_url || ''),
+      startDate, endDate, auth.user.uid, Number(place.is_verified) ? 1 : 0, now, now
+    ).run();
+    await createTursoDB(env).prepare('UPDATE places SET offer_count = COALESCE(offer_count,0) + 1, updated_at = ? WHERE id = ?')
+      .bind(now,placeId).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,id,message:'تم حفظ العرض بنجاح'},201,corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/offers/') && request.method === 'PUT') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const id = decodeURIComponent(url.pathname.replace('/api/offers/','')).trim();
+    const existing = await createTursoDB(env).prepare('SELECT * FROM offers WHERE id = ? LIMIT 1').bind(id).first();
+    if (!existing) return jsonResponse({success:false,error:'العرض غير موجود'},404,corsHeaders);
+    const place = await createTursoDB(env).prepare('SELECT owner_id, owner_email FROM places WHERE id = ? LIMIT 1').bind(existing.place_id).first();
+    if (!auth.user.isAdmin && existing.owner_id !== auth.user.uid && place?.owner_id !== auth.user.uid && String(place?.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية تعديل هذا العرض'},403,corsHeaders);
+    }
+    const body = await request.json().catch(() => ({}));
+    await createTursoDB(env).prepare(`
+      UPDATE offers SET title=?, description=?, old_price=?, new_price=?, discount_percent=?, image_url=?,
+        start_date=?, end_date=?, status=?, updated_at=? WHERE id=?
+    `).bind(
+      body.title !== undefined ? String(body.title).trim() : existing.title,
+      body.description !== undefined ? String(body.description) : existing.description,
+      body.oldPrice !== undefined ? Number(body.oldPrice) : existing.old_price,
+      body.newPrice !== undefined ? Number(body.newPrice) : existing.new_price,
+      body.discountPercent !== undefined ? Number(body.discountPercent) : existing.discount_percent,
+      body.imageUrl !== undefined ? String(body.imageUrl) : existing.image_url,
+      body.startDate !== undefined ? body.startDate : existing.start_date,
+      body.endDate !== undefined ? body.endDate : existing.end_date,
+      body.status !== undefined ? String(body.status) : existing.status,
+      Date.now(), id
+    ).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,id,message:'تم تحديث العرض'},200,corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/offers/') && request.method === 'DELETE') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const id = decodeURIComponent(url.pathname.replace('/api/offers/','')).trim();
+    const existing = await createTursoDB(env).prepare('SELECT * FROM offers WHERE id = ? LIMIT 1').bind(id).first();
+    if (!existing) return jsonResponse({success:true},200,corsHeaders);
+    const place = await createTursoDB(env).prepare('SELECT owner_id, owner_email FROM places WHERE id = ? LIMIT 1').bind(existing.place_id).first();
+    if (!auth.user.isAdmin && existing.owner_id !== auth.user.uid && place?.owner_id !== auth.user.uid && String(place?.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية حذف هذا العرض'},403,corsHeaders);
+    }
+    await createTursoDB(env).prepare('DELETE FROM offers WHERE id = ?').bind(id).run();
+    await createTursoDB(env).prepare('UPDATE places SET offer_count = MAX(COALESCE(offer_count,0)-1,0), updated_at=? WHERE id=?').bind(Date.now(),existing.place_id).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,message:'تم حذف العرض'},200,corsHeaders);
+  }
+
+  if (url.pathname === '/api/offers/track-stat' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const id = String(body.id || '').trim();
+    const stat = String(body.stat || '').trim();
+    if (!id || !['views','clicks'].includes(stat)) return jsonResponse({success:false,error:'بيانات التتبع غير صالحة'},400,corsHeaders);
+    await createTursoDB(env).prepare(`UPDATE offers SET ${stat} = COALESCE(${stat},0) + 1 WHERE id = ?`).bind(id).run();
+    return jsonResponse({success:true},200,corsHeaders);
+  }
+
+  // ── Turso: Products API ───────────────────────────────────────
+  if (url.pathname === '/api/products' && request.method === 'GET') {
+    try {
+      const placeId = (url.searchParams.get('place_id') || '').trim();
+      const id = (url.searchParams.get('id') || '').trim();
+      let sql = 'SELECT * FROM products';
+      const params = [];
+      if (id) { sql += ' WHERE id = ?'; params.push(id); }
+      else if (placeId) { sql += ' WHERE place_id = ?'; params.push(placeId); }
+      sql += ' ORDER BY created_at DESC LIMIT 1000';
+      const result = await createTursoDB(env).prepare(sql).bind(...params).all();
+      const data = (result.results || []).map(p => ({
+        ...p,
+        placeId:p.place_id, placeName:p.place_name || '', placeSlug:p.place_slug || '',
+        oldPrice:Number(p.old_price || 0), price:Number(p.price || 0),
+        imageUrl:p.image_url || '', inStock:Boolean(p.in_stock), isFeatured:Boolean(p.is_featured),
+        isApproved:Boolean(p.is_approved), createdAt:p.created_at, updatedAt:p.updated_at
+      }));
+      return jsonResponse({success:true,data},200,corsHeaders);
+    } catch(err) {
+      return jsonResponse({success:false,error:err.message,data:[]},500,corsHeaders);
+    }
+  }
+
+  if (url.pathname === '/api/products' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const placeId = String(body.placeId || body.place_id || '').trim();
+    const place = await createTursoDB(env).prepare('SELECT id,name,slug,owner_id,owner_email,is_verified FROM places WHERE id=? LIMIT 1').bind(placeId).first();
+    if (!place) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
+    if (!auth.user.isAdmin && place.owner_id !== auth.user.uid && String(place.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية إدارة منتجات هذا المكان'},403,corsHeaders);
+    }
+    if (!auth.user.isAdmin && !place.is_verified) return jsonResponse({success:false,error:'إضافة المنتجات متاحة حصرياً للأماكن الموثقة'},403,corsHeaders);
+    const countRow = await createTursoDB(env).prepare('SELECT COUNT(*) AS count FROM products WHERE place_id=?').bind(placeId).first();
+    if (Number(countRow?.count || 0) >= 350) return jsonResponse({success:false,error:'تم الوصول للحد الأقصى من المنتجات (350 منتج)'},409,corsHeaders);
+    const id = String(body.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2,8)}`).trim();
+    const now = Date.now();
+    const approved = auth.user.isAdmin ? 1 : 0;
+    await createTursoDB(env).prepare(`
+      INSERT INTO products (
+        id, place_id, name, description, price, old_price, image_url, category, sku, in_stock,
+        is_featured, status, is_approved, views, clicks, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+    `).bind(
+      id,placeId,String(body.name || '').trim(),String(body.description || ''),
+      Number(body.price || 0),Number(body.oldPrice ?? body.old_price ?? 0),String(body.imageUrl || body.image_url || ''),
+      String(body.category || ''),String(body.sku || ''),body.inStock === false ? 0 : 1,
+      body.isFeatured ? 1 : 0, approved ? 'approved' : 'pending', approved, now, now
+    ).run();
+    await createTursoDB(env).prepare('UPDATE places SET product_count=COALESCE(product_count,0)+1,updated_at=? WHERE id=?').bind(now,placeId).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,id,message:approved?'تم نشر المنتج':'تم إرسال المنتج للمراجعة'},201,corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/products/') && request.method === 'PUT') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const id = decodeURIComponent(url.pathname.replace('/api/products/','')).trim();
+    const existing = await createTursoDB(env).prepare('SELECT * FROM products WHERE id=? LIMIT 1').bind(id).first();
+    if (!existing) return jsonResponse({success:false,error:'المنتج غير موجود'},404,corsHeaders);
+    const place = await createTursoDB(env).prepare('SELECT owner_id,owner_email FROM places WHERE id=? LIMIT 1').bind(existing.place_id).first();
+    if (!auth.user.isAdmin && existing.owner_id !== auth.user.uid && place?.owner_id !== auth.user.uid && String(place?.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية تعديل هذا المنتج'},403,corsHeaders);
+    }
+    const body = await request.json().catch(() => ({}));
+    const ownerEdit = !auth.user.isAdmin;
+    await createTursoDB(env).prepare(`
+      UPDATE products SET name=?,description=?,price=?,old_price=?,image_url=?,category=?,sku=?,in_stock=?,is_featured=?,
+        status=?,is_approved=?,updated_at=? WHERE id=?
+    `).bind(
+      body.name !== undefined ? String(body.name).trim() : existing.name,
+      body.description !== undefined ? String(body.description) : existing.description,
+      body.price !== undefined ? Number(body.price) : existing.price,
+      body.oldPrice !== undefined ? Number(body.oldPrice) : existing.old_price,
+      body.imageUrl !== undefined ? String(body.imageUrl) : existing.image_url,
+      body.category !== undefined ? String(body.category) : existing.category,
+      body.sku !== undefined ? String(body.sku) : existing.sku,
+      body.inStock !== undefined ? (body.inStock ? 1 : 0) : existing.in_stock,
+      body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : existing.is_featured,
+      ownerEdit ? 'pending' : (body.status !== undefined ? String(body.status) : existing.status),
+      ownerEdit ? 0 : (body.isApproved !== undefined ? (body.isApproved ? 1 : 0) : existing.is_approved),
+      Date.now(), id
+    ).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,id,message:'تم تحديث المنتج'},200,corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/products/') && request.method === 'DELETE') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const id = decodeURIComponent(url.pathname.replace('/api/products/','')).trim();
+    const existing = await createTursoDB(env).prepare('SELECT * FROM products WHERE id=? LIMIT 1').bind(id).first();
+    if (!existing) return jsonResponse({success:true},200,corsHeaders);
+    const place = await createTursoDB(env).prepare('SELECT owner_id,owner_email FROM places WHERE id=? LIMIT 1').bind(existing.place_id).first();
+    if (!auth.user.isAdmin && existing.owner_id !== auth.user.uid && place?.owner_id !== auth.user.uid && String(place?.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية حذف هذا المنتج'},403,corsHeaders);
+    }
+    await createTursoDB(env).prepare('DELETE FROM products WHERE id=?').bind(id).run();
+    await createTursoDB(env).prepare('UPDATE places SET product_count=MAX(COALESCE(product_count,0)-1,0),updated_at=? WHERE id=?').bind(Date.now(),existing.place_id).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,message:'تم حذف المنتج'},200,corsHeaders);
+  }
+
+  if (url.pathname === '/api/products/track-stat' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const id = String(body.id || '').trim();
+    const stat = String(body.stat || '').trim();
+    if (!id || !['views','clicks'].includes(stat)) return jsonResponse({success:false,error:'بيانات التتبع غير صالحة'},400,corsHeaders);
+    await createTursoDB(env).prepare(`UPDATE products SET ${stat} = COALESCE(${stat},0) + 1 WHERE id = ?`).bind(id).run();
+    return jsonResponse({success:true},200,corsHeaders);
   }
 
   // ── D1: Reviews (GET /api/reviews?place_id=... & POST /api/reviews) ──
@@ -949,10 +1324,13 @@ try {
   }
 
   if (url.pathname === '/api/reviews' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
 
-    // Support batch insertion (e.g. bulk reviews from admin)
+    // Bulk review insertion is an administrative operation.
     if (Array.isArray(body.reviews) && body.reviews.length > 0) {
+      if (!auth.user.isAdmin) return jsonResponse({success:false,error:'إضافة تقييمات جماعية متاحة للإدارة فقط'},403,corsHeaders);
       const reviewsList = body.reviews;
       const now = Date.now();
       let insertedCount = 0;
@@ -995,21 +1373,29 @@ try {
     }
 
     const placeId = (body.place_id || body.placeId || '').trim();
-    const userId = (body.user_id || body.userId || '').trim();
+    const userId = auth.user.isAdmin ? (body.user_id || body.userId || '').trim() : auth.user.uid;
     const rating = parseFloat(body.rating);
 
     if (!placeId || !userId || isNaN(rating)) {
       return jsonResponse({ error: 'place_id و user_id و rating مطلوبة' }, 400, corsHeaders);
     }
 
-    const reviewId = body.id || `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const userName = body.user_name || body.userName || 'مستخدم';
+    // Never allow a normal user to choose an existing review ID: the POST
+    // endpoint uses UPSERT semantics, so a supplied ID could otherwise overwrite
+    // another user's/admin-generated review.
+    let reviewId = body.id || `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    if (!auth.user.isAdmin && body.id) {
+      const collision = await createTursoDB(env).prepare('SELECT id FROM reviews WHERE id = ? LIMIT 1').bind(String(body.id).trim()).first();
+      if (collision) return jsonResponse({success:false,error:'معرف التقييم مستخدم بالفعل'},409,corsHeaders);
+      reviewId = String(body.id).trim();
+    }
+    const userName = auth.user.isAdmin ? (body.user_name || body.userName || 'مستخدم') : auth.user.name;
     const userPhoto = body.user_photo || body.userPhoto || '';
     const comment = String(body.comment || '').trim().slice(0, 500);
     const now = Date.now();
     const placeName = body.place_name || body.placeName || '';
     const placeSlug = body.place_slug || body.placeSlug || '';
-    const isAdminGen = body.is_admin_generated ? 1 : 0;
+    const isAdminGen = auth.user.isAdmin && body.is_admin_generated ? 1 : 0;
 
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
       return jsonResponse({ error: 'التقييم يجب أن يكون بين 1 و5 نجوم' }, 400, corsHeaders);
@@ -1024,6 +1410,7 @@ try {
           comment = excluded.comment,
           updated_at = excluded.updated_at
       `).bind(reviewId, placeId, userId, userName, userPhoto, placeName, placeSlug, rating, comment, isAdminGen, now, now).run();
+      bumpDataVersion(env, ctx);
 
       // Keep the denormalized place rating in sync in the same request so the
       // public place card and the submitted review become consistent immediately.
@@ -1065,6 +1452,8 @@ try {
 
   // ── D1: Update Review (PUT /api/reviews?id=...) ───────────────
   if (url.pathname === '/api/reviews' && request.method === 'PUT') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
     const reviewId = (url.searchParams.get('id') || body.id || '').trim();
     if (!reviewId) return jsonResponse({ error: 'معرف التقييم مطلوب' }, 400, corsHeaders);
@@ -1072,14 +1461,19 @@ try {
     try {
       const existing = await createTursoDB(env).prepare(`SELECT * FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
       if (!existing) return jsonResponse({ error: 'التقييم غير موجود' }, 404, corsHeaders);
+      if (!auth.user.isAdmin && String(existing.user_id || '') !== String(auth.user.uid)) {
+        return jsonResponse({ success:false, error:'لا يمكنك تعديل تقييم مستخدم آخر' },403,corsHeaders);
+      }
 
       const ratingValue = body.rating !== undefined ? Number(body.rating) : Number(existing.rating);
       const commentValue = body.comment !== undefined ? String(body.comment).trim().slice(0, 500) : (existing.comment || '');
-      const editCount = body.editCount !== undefined ? Number(body.editCount) : Number(existing.edit_count || 0);
-      const isReported = body.isReported !== undefined ? (body.isReported ? 1 : 0) : Number(existing.is_reported || 0);
-      const reportCount = body.reportCount !== undefined ? Number(body.reportCount) : Number(existing.report_count || 0);
-      const reportReason = body.lastReportReason !== undefined ? String(body.lastReportReason || '') : (existing.last_report_reason || '');
-      const reporterName = body.lastReporterName !== undefined ? String(body.lastReporterName || '') : (existing.last_reporter_name || '');
+      const editCount = auth.user.isAdmin
+        ? (body.editCount !== undefined ? Number(body.editCount) : Number(existing.edit_count || 0))
+        : Number(existing.edit_count || 0) + 1;
+      const isReported = auth.user.isAdmin && body.isReported !== undefined ? (body.isReported ? 1 : 0) : Number(existing.is_reported || 0);
+      const reportCount = auth.user.isAdmin && body.reportCount !== undefined ? Number(body.reportCount) : Number(existing.report_count || 0);
+      const reportReason = auth.user.isAdmin && body.lastReportReason !== undefined ? String(body.lastReportReason || '') : (existing.last_report_reason || '');
+      const reporterName = auth.user.isAdmin && body.lastReporterName !== undefined ? String(body.lastReporterName || '') : (existing.last_reporter_name || '');
       const nowPut = Date.now();
 
       if (!Number.isFinite(ratingValue) || ratingValue < 1 || ratingValue > 5) {
@@ -1091,10 +1485,8 @@ try {
         SET rating = ?, comment = ?, edit_count = ?, is_reported = ?, report_count = ?,
             last_report_reason = ?, last_reporter_name = ?, updated_at = ?
         WHERE id = ?
-      `).bind(
-        ratingValue, commentValue, Math.max(0, editCount), isReported, Math.max(0, reportCount),
-        reportReason, reporterName, nowPut, reviewId
-      ).run();
+      `).bind(ratingValue, commentValue, Math.max(0, editCount), isReported, Math.max(0, reportCount),
+        reportReason, reporterName, nowPut, reviewId).run();
 
       const placeIdForRating = existing.place_id;
       const stats = await createTursoDB(env).prepare(`
@@ -1106,10 +1498,9 @@ try {
           COALESCE(stats_json, '{}'),
           '$.reviewCount', ?, '$.reviewsCount', ?, '$.rating', ?
         ) WHERE id = ?
-      `).bind(
-        nowPut, Number(stats?.review_count || 0), Number(stats?.review_count || 0),
-        Number(stats?.avg_rating || 0), placeIdForRating
-      ).run();
+      `).bind(nowPut, Number(stats?.review_count || 0), Number(stats?.review_count || 0),
+        Number(stats?.avg_rating || 0), placeIdForRating).run();
+      bumpDataVersion(env, ctx);
 
       return jsonResponse({ success: true, message: 'تم تحديث التقييم بنجاح', id: reviewId }, 200, corsHeaders);
     } catch (err) {
@@ -1119,16 +1510,23 @@ try {
 
   // ── D1: Delete Reviews (DELETE /api/reviews) ───────────────────
   if (url.pathname === '/api/reviews' && request.method === 'DELETE') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
     const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || '').trim();
     const reviewId = (url.searchParams.get('id') || url.searchParams.get('review_id') || '').trim();
 
     try {
       let affectedPlaceId = placeId;
       if (reviewId) {
-        const existing = await createTursoDB(env).prepare(`SELECT place_id FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
-        affectedPlaceId = existing?.place_id || affectedPlaceId;
+        const existing = await createTursoDB(env).prepare(`SELECT id, place_id, user_id FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
+        if (!existing) return jsonResponse({success:false,error:'التقييم غير موجود'},404,corsHeaders);
+        if (!auth.user.isAdmin && String(existing.user_id || '') !== String(auth.user.uid)) {
+          return jsonResponse({success:false,error:'لا يمكنك حذف تقييم مستخدم آخر'},403,corsHeaders);
+        }
+        affectedPlaceId = existing.place_id || affectedPlaceId;
         await createTursoDB(env).prepare(`DELETE FROM reviews WHERE id = ?`).bind(reviewId).run();
       } else if (placeId) {
+        if (!auth.user.isAdmin) return jsonResponse({success:false,error:'حذف جميع تقييمات المكان متاح للإدارة فقط'},403,corsHeaders);
         await createTursoDB(env).prepare(`DELETE FROM reviews WHERE place_id = ?`).bind(placeId).run();
       } else {
         return jsonResponse({ error: 'مطلوب id أو place_id لحذف المراجعات' }, 400, corsHeaders);
@@ -1144,10 +1542,9 @@ try {
             COALESCE(stats_json, '{}'),
             '$.reviewCount', ?, '$.reviewsCount', ?, '$.rating', ?
           ) WHERE id = ?
-        `).bind(
-          Date.now(), Number(stats?.review_count || 0), Number(stats?.review_count || 0),
-          Number(stats?.avg_rating || 0), affectedPlaceId
-        ).run();
+        `).bind(Date.now(), Number(stats?.review_count || 0), Number(stats?.review_count || 0),
+          Number(stats?.avg_rating || 0), affectedPlaceId).run();
+        bumpDataVersion(env, ctx);
       }
 
       return jsonResponse({ success: true, message: 'تم حذف التقييمات بنجاح' }, 200, corsHeaders);
@@ -1171,6 +1568,8 @@ try {
   }
 
   if (url.pathname === '/api/settings' && (request.method === 'POST' || request.method === 'PUT')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     try {
       await env.elmanzala.put('config/settings.json', JSON.stringify(body), {
@@ -1185,15 +1584,20 @@ try {
   // ── D1: User Profile Sync (POST /api/users/sync) ──
   // Architecture: D1 is the source of truth for role/status. Firebase Auth provides uid/name/email/photo only.
   if (url.pathname === '/api/users/sync' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const id = (body.uid || body.id || '').trim();
+    if (id !== auth.user.uid) return jsonResponse({success:false,error:'لا يمكن مزامنة حساب مستخدم آخر'},403,corsHeaders);
     if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
 
     const name = (body.name || '').trim();
     const email = (body.email || '').trim().toLowerCase();
     const photoUrl = (body.photoURL || body.photo_url || '').trim();
-    const requestedRole = (body.role || 'user').trim();
-    const status = (body.status || 'active').trim();
+    const requestedRole = auth.user.isSuperAdmin
+      ? 'superadmin'
+      : (auth.user.role === 'admin' ? 'admin' : 'user');
+    const status = 'active';
     const now = Date.now();
 
     try {
@@ -1227,7 +1631,10 @@ try {
   // ── D1: Get Single User by ID (GET /api/users/:id) ──
   // Used by auth.js to fetch full D1 profile after login
   if (url.pathname.startsWith('/api/users/') && request.method === 'GET') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const userId = url.pathname.replace('/api/users/', '').trim();
+    if (userId !== auth.user.uid && !auth.user.isAdmin) return jsonResponse({success:false,error:'غير مصرح'},403,corsHeaders);
     if (!userId || userId === 'sync' || userId === 'seed') {
       return jsonResponse({ error: 'Invalid user ID' }, 400, corsHeaders);
     }
@@ -1246,6 +1653,8 @@ try {
   // Recovery endpoint: inserts users who existed before D1 migration
   // Does NOT overwrite role if user already exists in D1
   if (url.pathname === '/api/users/seed' && request.method === 'POST') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const users = Array.isArray(body.users) ? body.users : (body.uid ? [body] : []);
     if (!users.length) return jsonResponse({ error: 'users array required' }, 400, corsHeaders);
@@ -1282,6 +1691,8 @@ try {
 
   // ── D1: Get Users List (GET /api/users) ──
   if (url.pathname === '/api/users' && request.method === 'GET') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     try {
       // Join with places count per user
       const result = await createTursoDB(env).prepare(`
@@ -1315,6 +1726,8 @@ try {
   if ((url.pathname.startsWith('/api/users/') || url.pathname === '/api/users') &&
       (request.method === 'PUT' || request.method === 'PATCH') &&
       !url.pathname.endsWith('/sync') && !url.pathname.endsWith('/seed')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/users/') ? url.pathname.replace('/api/users/', '').trim() : '';
     const body = await request.json().catch(() => ({}));
     const id = (idFromPath || body.id || body.uid || '').trim();
@@ -1325,7 +1738,17 @@ try {
       const existing = await createTursoDB(env).prepare(`SELECT * FROM users WHERE id = ? LIMIT 1`).bind(id).first();
       if (!existing) return jsonResponse({ error: 'User not found' }, 404, corsHeaders);
 
-      const role   = body.role   !== undefined ? body.role   : existing.role;
+      const desiredRole = String(body.role !== undefined ? body.role : existing.role).trim().toLowerCase();
+      const existingRole = String(existing.role || 'user').trim().toLowerCase();
+      if (!auth.user.isSuperAdmin && (existingRole === 'superadmin' || desiredRole === 'superadmin' ||
+          (desiredRole === 'admin' && existingRole !== 'admin'))) {
+        return jsonResponse({ success:false, error:'إدارة صلاحيات Superadmin/Admin متاحة للـ Superadmin فقط' },403,corsHeaders);
+      }
+      if (id === auth.user.uid && desiredRole !== existingRole) {
+        return jsonResponse({ success:false, error:'لا يمكنك تغيير صلاحيات حسابك بنفسك' },403,corsHeaders);
+      }
+
+      const role   = desiredRole;
       const status = body.status !== undefined ? body.status : existing.status;
       const name   = body.name   !== undefined ? body.name   : existing.name;
       const email  = body.email  !== undefined ? body.email  : existing.email;
@@ -1349,6 +1772,8 @@ try {
 
   // ── D1: Delete User (DELETE /api/users/:id) ──
   if (url.pathname.startsWith('/api/users/') && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env, true);
+    if (auth.response) return auth.response
     const id = url.pathname.replace('/api/users/', '').trim();
     if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
     try {
@@ -1364,6 +1789,8 @@ try {
 
   // ── D1: Category Requests (GET, POST, PUT, DELETE /api/category-requests) ──
   if (url.pathname === '/api/category-requests' && request.method === 'GET') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     try {
       const result = await createTursoDB(env).prepare(`
         SELECT id, category_name, place_name, owner_name, user_id, status, created_at, reviewed_at
@@ -1378,12 +1805,14 @@ try {
   }
 
   if (url.pathname === '/api/category-requests' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const id = body.id || `catreq_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const categoryName = (body.category_name || body.categoryName || '').trim();
     const placeName = (body.place_name || body.placeName || '').trim();
     const ownerName = (body.owner_name || body.ownerName || 'مستخدم').trim();
-    const userId = body.user_id || body.userId || '';
+    const userId = auth.user.uid;
     const now = Date.now();
 
     if (!categoryName) return jsonResponse({ error: 'اسم التصنيف مطلوب' }, 400, corsHeaders);
@@ -1400,6 +1829,8 @@ try {
   }
 
   if ((url.pathname.startsWith('/api/category-requests/') || url.pathname === '/api/category-requests') && (request.method === 'PUT' || request.method === 'PATCH')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/category-requests/') ? url.pathname.replace('/api/category-requests/', '') : '';
     const body = await request.json().catch(() => ({}));
     const id = (idFromPath || body.id || '').trim();
@@ -1420,6 +1851,8 @@ try {
 
   // ── D1: Verification Requests (GET, POST, PUT, DELETE /api/verification-requests) ──
   if (url.pathname === '/api/verification-requests' && request.method === 'GET') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     try {
       const result = await createTursoDB(env).prepare(`
         SELECT id, place_id, place_name, owner_id, owner_name, owner_email, phone, notes, status, verified_until, created_at, reviewed_at
@@ -1434,11 +1867,24 @@ try {
   }
 
   if (url.pathname === '/api/verification-requests' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const id = body.id || `vreq_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const placeId = (body.place_id || body.placeId || '').trim();
     const placeName = (body.place_name || body.placeName || '').trim();
-    const ownerId = body.owner_id || body.ownerId || '';
+    const ownerId = auth.user.uid;
+    if (!auth.user.isAdmin) {
+      const ownedPlace = await createTursoDB(env).prepare(
+        'SELECT id, owner_id, owner_email FROM places WHERE id = ? LIMIT 1'
+      ).bind(placeId).first();
+      if (!ownedPlace || (
+        ownedPlace.owner_id !== auth.user.uid &&
+        String(ownedPlace.owner_email || '').toLowerCase() !== String(auth.user.email || '').toLowerCase()
+      )) {
+        return jsonResponse({success:false,error:'طلب التوثيق متاح لمالك المكان فقط'},403,corsHeaders);
+      }
+    }
     const ownerName = body.owner_name || body.ownerName || '';
     const ownerEmail = body.owner_email || body.ownerEmail || '';
     const phone = body.phone || '';
@@ -1459,6 +1905,8 @@ try {
   }
 
   if ((url.pathname.startsWith('/api/verification-requests/') || url.pathname === '/api/verification-requests') && (request.method === 'PUT' || request.method === 'PATCH')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/verification-requests/') ? url.pathname.replace('/api/verification-requests/', '') : '';
     const body = await request.json().catch(() => ({}));
     const id = (idFromPath || body.id || '').trim();
@@ -1486,8 +1934,10 @@ try {
       return jsonResponse({ error: 'token مطلوب' }, 400, corsHeaders);
     }
 
-    const userId = body.userId || body.uid || 'anonymous';
-    const userName = body.userName || '';
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const userId = auth.user.uid;
+    const userName = auth.user.name || auth.user.email || '';
     const platform = body.platform || 'web';
     const userAgent = request.headers.get('user-agent') || body.userAgent || '';
     const now = Date.now();
@@ -1537,6 +1987,8 @@ try {
   // ── 1. Upload to R2 (POST /api/upload) ──
       // ── 1. Upload to R2 (POST /api/upload) ──
       if (url.pathname === '/api/upload' && request.method === 'POST') {
+        const auth = await requireAuth(request, env);
+        if (auth.response) return auth.response
         const formData = await request.formData();
         const file = formData.get('file');
         const customKey = formData.get('key');
@@ -1565,6 +2017,8 @@ try {
 
       // ── 2. Delete from R2 (DELETE /api/upload/:key) ──
       if (url.pathname.startsWith('/api/upload/') && request.method === 'DELETE') {
+        const auth = await requireAdmin(request, env);
+        if (auth.response) return auth.response
         const key = decodeURIComponent(url.pathname.replace('/api/upload/', ''));
         if (env.elmanzala && key) {
           await env.elmanzala.delete(key);
@@ -1778,6 +2232,8 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
       // ── 9. Set Telegram Webhook (GET /api/telegram/set-webhook) ──
       if (url.pathname === '/api/telegram/set-webhook' && request.method === 'GET') {
+        const auth = await requireAdmin(request, env);
+        if (auth.response) return auth.response
         const webhookUrl = url.searchParams.get('url') || `https://${url.host}/api/telegram/webhook`;
         const res = await telegramApi('setWebhook', { url: webhookUrl }, env);
         return jsonResponse({ success: true, webhookUrl, result: res }, 200, corsHeaders);
@@ -1785,6 +2241,8 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
       // ── 9b. Test Telegram Notification (POST /api/telegram/test) ──
       if (url.pathname === '/api/telegram/test' && (request.method === 'POST' || request.method === 'GET')) {
+        const auth = await requireAdmin(request, env);
+        if (auth.response) return auth.response
         const body = await request.json().catch(() => ({}));
         const testRes = await sendAdminPushNotification('contact_message', {
           name: 'مدير المنصة (اختبار الاتصال)',
@@ -1796,6 +2254,8 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
       // ── 10. Instant Push Notification (POST /api/notify) ──
       if (url.pathname === '/api/notify' && request.method === 'POST') {
+        const auth = await requireAdmin(request, env);
+        if (auth.response) return auth.response
         const body = await request.json().catch(() => ({}));
         const res = await sendAdminPushNotification(body.type, body.data || body.payload || body, env);
         return jsonResponse({ success: true, result: res }, 200, corsHeaders);
@@ -2239,5 +2699,4 @@ function parseJson(value, fallback) {
     return fallback;
   }
 }
-
 

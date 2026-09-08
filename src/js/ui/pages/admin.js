@@ -3601,7 +3601,6 @@ function openAdminUserPlacesModal(user, onDone) {
       });
       if (ok) {
         try {
-          fetch(`${WORKER_URL}/api/places/${encodeURIComponent(pid)}`, { method: 'DELETE' }).catch(() => {});
           await invalidateLocalPlaceCache(pid);
           await dbRemove(`places/${pid}`);
           if (adminCache.places && adminCache.places[pid]) delete adminCache.places[pid];
@@ -5258,7 +5257,6 @@ window.deletePlaceAdmin = async (placeId) => {
       await dbRemove(`places/${placeId}`);
 
       // Sync deletion to Turso & Invalidate cache
-      fetch(`${WORKER_URL}/api/places/${encodeURIComponent(placeId)}`, { method: 'DELETE' }).catch(() => {});
       await invalidateLocalPlaceCache(placeId, place?.slug);
 
       if (adminCache.places) {
