@@ -1097,9 +1097,15 @@ export async function adminApproveProduct(placeId,productId) {
   const data=await tursoFetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'approved',isApproved:true,is_approved:1})});return data?.data||data;
 }
 
-export async function adminRejectProduct(placeId,productId) {
+export async function adminRejectProduct(placeId,productId,rejectionReason='') {
   if(!productId)throw new Error('بيانات المنتج والمكان مطلوبة');
-  const data=await tursoFetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'rejected',isApproved:false,is_approved:0})});return data?.data||data;
+  const reason=String(rejectionReason||'').trim();
+  if(!reason) throw new Error('سبب رفض المنتج مطلوب');
+  const data=await tursoFetch('/api/products/'+encodeURIComponent(productId),{
+    method:'PUT',
+    body:JSON.stringify({status:'rejected',isApproved:false,is_approved:0,rejectionReason:reason})
+  });
+  return data?.data||data;
 }
 
 export async function adminDeleteProduct(placeId,productId) {
