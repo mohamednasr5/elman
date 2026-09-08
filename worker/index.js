@@ -571,7 +571,7 @@ try {
       const result = await createTursoDB(env).prepare(`
         SELECT p.*
         FROM places p
-        WHERE LOWER(p.slug) = LOWER(?) OR p.id = ? OR p.slug = ?
+        WHERE (LOWER(p.slug) = LOWER(?) OR p.id = ? OR p.slug = ?) AND p.status = 'published'
         LIMIT 1
       `).bind(slugParam, slugParam, slugParam).first();
 
@@ -628,6 +628,9 @@ try {
     const offset = Math.max(offsetParam, 0);
 
     const params = [];
+
+    // Public users must only receive published places. Admin mode deliberately omits this filter.
+    if (!adminList && !ownerIdFilter && !ownerEmailFilter) sql += ` WHERE p.status = 'published'`;
 
     // IMPORTANT: list endpoint must never aggregate the entire reviews table.
     // A global GROUP BY on reviews turns every homepage/search request into a
