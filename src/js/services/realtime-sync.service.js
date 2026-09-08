@@ -18,7 +18,6 @@ let _isListeningToFirebase = false;
 export function initRealtimePwaSyncBus() {
   if (typeof window === 'undefined') return;
 
-  // 1. Cross-Tab / Cross-Window / PWA BroadcastChannel
   if ('BroadcastChannel' in window && !_syncChannel) {
     _syncChannel = new BroadcastChannel('manzala_realtime_sync_bus');
     _syncChannel.onmessage = (event) => {
@@ -27,40 +26,20 @@ export function initRealtimePwaSyncBus() {
     };
   }
 
-  // 2. Firebase Live RTDB Listeners (for background remote sync from other devices/admin)
+  // Remote application state is reconciled through the Worker/Turso API.
+  // Firebase Realtime Database is intentionally not used.
   if (!_isListeningToFirebase) {
-    try {
-      const db = getDB();
-      _isListeningToFirebase = true;
-      const startTime = Date.now();
-
-      // Listen to urgent announcements & notifications (where real-time is actually needed)
-      db.ref('sync/version').on('value', (snap) => {
-        const remoteVersion = snap.val();
-        if (remoteVersion) {
-          handleIncomingRealtimeEvent('DATA_VERSION_CHANGED', { version: remoteVersion }, true);
-        }
-      });
-
-      // Listen to live news (يحدث الآن)
-      db.ref('liveNews').limitToLast(1).on('child_added', (snap) => {
-        const news = snap.val();
-        if (news && (Number(news.createdAt) || 0) > startTime - 5000 && news.status === 'published') {
-          handleIncomingRealtimeEvent('NEW_LIVE_NEWS', { news: { id: snap.key, ...news } }, true);
-        }
-      });
-
-      // Listen to global notifications
-      db.ref('globalNotifications').limitToLast(1).on('child_added', (snap) => {
-        const notif = snap.val();
-        if (notif && (Number(notif.createdAt) || 0) > startTime - 5000) {
-          handleIncomingRealtimeEvent('GLOBAL_NOTIFICATION', { notif: { id: snap.key, ...notif } }, true);
-        }
-      });
-
-    } catch (err) {
-      console.debug('[RealtimeSync] Firebase RTDB live listeners initialized in fallback mode:', err.message);
-    }
+    _isListeningToFirebase = true;
+    const reconcile = async () => {
+      try {
+        const { getPublishedPlaces } = await import('../core/db.js');
+        await getPublishedPlaces({limit:100,forceFresh:true});
+        handleIncomingRealtimeEvent('DATA_VERSION_CHANGED',{version:Date.now()},true);
+      } catch (_) {}
+    };
+    reconcile();
+    const timer=setInterval(reconcile,60000);
+    window.addEventListener('beforeunload',()=>clearInterval(timer),{once:true});
   }
 }
 
