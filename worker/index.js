@@ -2174,20 +2174,26 @@ try {
           return jsonResponse({ error: 'لم يتم إرسال ملف' }, 400, corsHeaders);
         }
 
-        const ext = file.name ? file.name.split('.').pop() : 'webp';
-        const key = customKey || `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
-
-        // Store into R2 Bucket
-        if (env.elmanzala) {
-          await env.elmanzala.put(key, file.stream(), {
-            httpMetadata: {
-              contentType: file.type || 'image/webp',
-              cacheControl: 'public, max-age=31536000'
-            }
-          });
+        if (!env.elmanzala) return jsonResponse({success:false,error:'R2 غير مهيأ على Worker'},503,corsHeaders);
+        const contentType = String(file.type || '').toLowerCase();
+        const allowedTypes = new Set(['image/jpeg','image/png','image/webp','image/gif','image/avif']);
+        if (!allowedTypes.has(contentType)) return jsonResponse({success:false,error:'نوع الملف غير مسموح. الصور فقط.'},415,corsHeaders);
+        const size = Number(file.size || 0);
+        if (!Number.isFinite(size) || size <= 0 || size > 10 * 1024 * 1024) return jsonResponse({success:false,error:'حجم الصورة يجب ألا يتجاوز 10 ميجابايت'},413,corsHeaders);
+        const safeFolder = String(folder).replace(/[^a-zA-Z0-9_-]/g,'').slice(0,40) || 'places';
+        const extMap = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/avif':'avif'};
+        const ext = extMap[contentType] || 'webp';
+        let key = String(customKey || '').trim().replace(/^\/+|\/g,'');
+        if (key) {
+          key = key.replace(/[^a-zA-Z0-9_./-]/g,'').slice(0,300);
+          if (!key || key.includes('..')) return jsonResponse({success:false,error:'مفتاح التخزين غير صالح'},400,corsHeaders);
+        } else {
+          key = safeFolder + '/' + Date.now() + '-' + Math.random().toString(36).substring(2,9) + '.' + ext;
         }
-
-        const publicUrl = `https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/${key}`;
+        await env.elmanzala.put(key, file.stream(), {
+          httpMetadata: { contentType, cacheControl: 'public, max-age=31536000, immutable' }
+        });
+        const publicUrl = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/' + key;
         return jsonResponse({ success: true, key, url: publicUrl }, 200, corsHeaders);
       }
 
