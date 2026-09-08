@@ -10,7 +10,6 @@
 export const firebaseConfig = {
   apiKey: "AIzaSyCUGCecmvBdf6b38UVIM9zcxhbbux7VSzM",
   authDomain: "elmanzla-7402a.firebaseapp.com",
-  databaseURL: "https://elmanzla-7402a-default-rtdb.firebaseio.com",
   projectId: "elmanzla-7402a",
   storageBucket: "elmanzla-7402a.firebasestorage.app",
   messagingSenderId: "252271215500",
