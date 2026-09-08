@@ -1100,23 +1100,20 @@ export async function getAds(placement='homepage') {
   try{const data=await tursoFetch('/api/ads');const list=Array.isArray(data?.data)?data.data:[];return list.filter(a=>!placement||a.placement===placement||a.placement==='all');}catch(_){return [];}
 }
 
-export async function getSettings() {
-  const cached=getCached('site_settings',600000);if(cached)return cached;
+export async function getSettings({forceFresh=false}={}) {
+  const cached=!forceFresh && getCached('site_settings',600000);if(cached)return cached;
   try{const data=await tursoFetch('/api/settings');if(data?.success&&data.data)return setCache('site_settings',data.data);}catch(_){}
   return setCache('site_settings',{siteName:'دليل المنزلة والمطرية الرقمي',contact:{whatsapp:'01000000000'}});
 }
 
 export async function updateSettings(settings) {
-  setCache('site_settings', settings);
-  try {
-    await fetch(`${WORKER_URL}/api/settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings)
-    });
-  } catch (err) {
-    console.warn('[updateSettings] Error saving to worker:', err.message);
-  }
+  const data = await tursoFetch('/api/settings', {
+    method:'POST',
+    body:JSON.stringify(settings || {})
+  });
+  if(!data?.success) throw new Error(data?.error || 'تعذر حفظ الإعدادات');
+  setCache('site_settings', data.data || settings);
+  return data.data || settings;
 }
 
 /**
