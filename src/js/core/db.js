@@ -244,8 +244,7 @@ async function tursoWriteBusiness(path, method, data = null) {
 }
 
 export function dbRef(path) {
-  if (isBusinessDataPath(path)) throw new Error(`Firebase RTDB access blocked for business data path: ${path}`);
-  return getDB().ref(path);
+  throw new Error('Firebase Realtime Database is disabled. Use Turso APIs: '+path);
 }
 
 export async function dbGet(path, useCache = true) {
@@ -381,25 +380,7 @@ export async function dbQuery({ path, orderBy = 'createdAt', limit = 20, startAf
     return items.slice(0, limit);
   }
 
-  let query = getDB().ref(path).orderByChild(orderBy);
-  if (equalTo !== null) query = query.equalTo(equalTo);
-  if (startAfter !== null) query = query.startAfter(startAfter);
-  query = direction === 'desc' ? query.limitToLast(limit) : query.limitToFirst(limit);
-  const snap = await query.once('value');
-  if (!snap.exists()) return [];
-  const items = [];
-  snap.forEach((child) => items.push({ _key: child.key, ...child.val() }));
-  return direction === 'desc' ? items.reverse() : items;
-}
-
-// ── Server timestamp ──
-export function serverTimestamp() {
-  return Date.now();
-}
-
-// ── Specific entity helpers ──
-
-/** Get user profile - Reads from Local/Turso */
+  throw new Error('Firebase Realtime Database queries are disabled; use Turso APIs: '+path);\n}\n\n
 export async function getUserProfile(uid) {
   if (!uid) return null;
   const cached = getCached('user:' + uid);
@@ -1287,21 +1268,6 @@ export async function broadcastNewPlaceNotification(place) {
   triggerNativePwaNotification(notification);
 
   try {
-    const db = getDB();
-    await Promise.all([
-      db.ref('globalNotifications/' + notifId).set(notification).catch(() => {}),
-      db.ref('platformNotifications/' + notifId).set(notification).catch(() => {})
-    ]);
-  } catch (_) {}
-
-  try {
-    fetch(WORKER_URL + '/api/notifications/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'new_place', notification, place }),
-      signal: AbortSignal.timeout(4000)
-    }).catch(() => {});
-  } catch (_) {}
 }
 
 export async function broadcastPlaceVerifiedNotification(place) {
@@ -1330,21 +1296,6 @@ export async function broadcastPlaceVerifiedNotification(place) {
   triggerNativePwaNotification(notification);
 
   try {
-    const db = getDB();
-    await Promise.all([
-      db.ref('globalNotifications/' + notifId).set(notification).catch(() => {}),
-      db.ref('platformNotifications/' + notifId).set(notification).catch(() => {})
-    ]);
-  } catch (_) {}
-
-  try {
-    fetch(WORKER_URL + '/api/notifications/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'place_verified', notification, place }),
-      signal: AbortSignal.timeout(4000)
-    }).catch(() => {});
-  } catch (_) {}
 }
 
 function triggerNativePwaNotification(notification) {
@@ -2581,42 +2532,14 @@ export async function getUserFollowedOffers(userId) {
  */
 export function subscribeToOwnerPresence(ownerId, callback) {
   if (!ownerId || typeof callback !== 'function') return () => {};
-
-  try {
-    const db = getDB();
-    const presenceRef = db.ref(`users/${ownerId}/presence`);
-    const userRef = db.ref(`users/${ownerId}`);
-
-    const listener = (snap) => {
-      if (snap && snap.exists()) {
-        const val = snap.val() || {};
-        const isOnline = Boolean(val.isOnline);
-        const lastSeen = Number(val.lastSeen) || 0;
-        const activeRecently = isOnline || (Date.now() - lastSeen < 3 * 60 * 1000);
-        callback({ isOnline: activeRecently, lastSeen });
-      } else {
-        userRef.once('value').then(uSnap => {
-          if (uSnap.exists()) {
-            const uVal = uSnap.val() || {};
-            const lastLogin = Number(uVal.lastLoginAt) || 0;
-            const activeRecently = Date.now() - lastLogin < 3 * 60 * 1000;
-            callback({ isOnline: activeRecently, lastSeen: lastLogin });
-          } else {
-            callback({ isOnline: false, lastSeen: 0 });
-          }
-        }).catch(() => callback({ isOnline: false, lastSeen: 0 }));
-      }
-    };
-
-    presenceRef.on('value', listener);
-
-    return () => {
-      try { presenceRef.off('value', listener); } catch (_) {}
-    };
-  } catch (err) {
-    console.warn('[subscribeToOwnerPresence] error:', err);
-    return () => {};
-  }
+  let cancelled=false;
+  const check=async()=>{ try {
+    const data=await tursoFetch('/api/users?id='+encodeURIComponent(ownerId));
+    const u=Array.isArray(data?.data)?data.data[0]:data?.data;
+    if(!cancelled) callback({isOnline:u?.status==='active',lastSeen:Number(u?.updated_at||u?.updatedAt||0)});
+  } catch(_) { if(!cancelled) callback({isOnline:false,lastSeen:0}); } };
+  check();
+  return ()=>{cancelled=true;};
 }
 
 
