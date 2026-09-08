@@ -2652,3 +2652,18 @@ function getDeterministicReviewerPoints(name = '', id = '') {
 }
 
 
+
+
+export async function getCategoryRequestsD1() {
+  const data = await d1Fetch('/api/category-requests');
+  const list = Array.isArray(data?.data) ? data.data.map(normalizeCategoryRequestD1) : [];
+  return Object.fromEntries(list.filter(r => r.id).map(r => [r.id, r]));
+}
+
+export async function updateCategoryRequestD1(reqId, status = 'approved') {
+  if (!reqId) throw new Error('Request ID required');
+  return d1Fetch('/api/category-requests/' + encodeURIComponent(reqId), {
+    method: 'PATCH',
+    body: JSON.stringify({ id: reqId, status })
+  });
+}
