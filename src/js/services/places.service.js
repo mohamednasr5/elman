@@ -42,7 +42,7 @@ export async function createPlace(placeData, currentUser) {
   await validatePlaceUniqueness({name:placeData.name,phone:placeData.phone,categoryId:placeData.categoryId,placeData});
   const placeId='p_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
   const cleanCandidate=generateCleanSlug(placeData.name); let slug=cleanCandidate;
-  try { const existingKey=await dbGet(`slugIndex/${slug}`); if(existingKey&&existingKey!==placeId) slug=`${cleanCandidate}-${placeId.slice(-5)}`; } catch(_){ slug=cleanCandidate; }
+  try { const existing=await tursoFetch('/api/places?slug='+encodeURIComponent(slug)); const existingId=existing?.data?.id || existing?.data?.place?.id; if(existingId&&String(existingId)!==String(placeId)) slug=`${cleanCandidate}-${placeId.slice(-5)}`; } catch(_){ slug=cleanCandidate; }
   const now = Date.now();
   const newPlace={
     id:placeId, slug, ownerId:currentUser.uid, ownerEmail:currentUser.email||'', name:placeData.name.trim(), nameEn:placeData.nameEn||'',
