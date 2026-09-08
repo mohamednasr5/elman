@@ -187,8 +187,8 @@ export async function createPlace(placeData, currentUser) {
   clearDbCache();
 
   // Sync new place to Turso
-      let tursoSyncFailed = false;
-    try {
+  let tursoSyncFailed = false;
+  try {
       await syncPlaceToWorkerTurso(placeId, newPlace);
     } catch (syncErr) {
       tursoSyncFailed = true;
@@ -198,9 +198,9 @@ export async function createPlace(placeData, currentUser) {
   // Broadcast realtime event across all open tabs, windows and PWA
   broadcastRealtimeChange('NEW_PLACE', { place: { id: placeId, ...newPlace } });
 
-      if (d1SyncFailed) {
-      throw new Error('تم حفظ المكان محليًا لكن فشلت مزامنته مع قاعدة البيانات الرئيسية، لذلك لن يظهر في نتائج البحث حاليًا. حاول مجددًا أو تواصل مع الدعم.');
-    }
+  if (tursoSyncFailed) {
+    throw new Error('تم حفظ المكان محليًا لكن فشلت مزامنته مع قاعدة البيانات الرئيسية، لذلك لن يظهر في نتائج البحث حاليًا. حاول مجددًا أو تواصل مع الدعم.');
+  }
 
     return placeId;
 }
