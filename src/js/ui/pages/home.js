@@ -12,7 +12,7 @@ import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } 
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { mountVoiceSearchButton, openManzalaVoiceAssistantModal } from '../../services/voice.service.js';
-import { mountLivePulseSection } from '../components/LivePulseSection.js?v=890e0bb0';
+import { mountLivePulseSection } from '../components/LivePulseSection.js?v=5c845970';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';
@@ -351,11 +351,8 @@ class StatsSoundSynth {
 
   playTick(frequency = 550) {
     try {
-      this.init();
       if (!this.ctx) return;
-      if (this.ctx.state === 'suspended') {
-        this.ctx.resume().catch(() => {});
-      }
+      if (this.ctx.state !== 'running') return;
       const now = this.ctx.currentTime;
       if (now - this.lastTickTime < 0.038) return; // Prevent audio congestion
       this.lastTickTime = now;
@@ -380,11 +377,8 @@ class StatsSoundSynth {
 
   playDoneChime() {
     try {
-      this.init();
       if (!this.ctx) return;
-      if (this.ctx.state === 'suspended') {
-        this.ctx.resume().catch(() => {});
-      }
+      if (this.ctx.state !== 'running') return;
       const now = this.ctx.currentTime;
       // Melodic celebration arpeggio: C6 -> E6 -> G6 -> C7
       const notes = [1046.50, 1318.51, 1567.98, 2093.00];
@@ -543,6 +537,10 @@ function setupStatsBarCounter(bar) {
   // Allow clicking any counter item to re-trigger animation & audio
   bar.querySelectorAll('.stats-interactive-item').forEach(item => {
     item.addEventListener('click', () => {
+      statsAudio.init();
+      if (statsAudio.ctx && statsAudio.ctx.state === 'suspended') {
+        statsAudio.ctx.resume().catch(() => {});
+      }
       runAnimation();
     });
   });
