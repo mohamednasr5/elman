@@ -1,26 +1,39 @@
-import { getDB, getAuth, WORKER_URL } from './firebase.js';
+/**
+ * المنزلة وناسها — Firebase RTDB Helpers
+ * Typed, promise-based wrappers around Firebase Realtime Database
+ */
+
+import { getDB, WORKER_URL } from './firebase.js';
 import { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES } from '../services/idb-cache.service.js';
 
 export { getDB };
 export { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES };
 
+// ── Ultra-Fast Multi-Tier SWR Cache (0ms Instant Navigation) ──
 const _dbMemoryCache = new Map();
+const _dbPendingPromises = new Map();
 
 function getCached(key, maxAgeMs = 600000) {
+  // 1. In-Memory Cache (0.01ms)
   const mem = _dbMemoryCache.get(key);
-  if (mem && Date.now() - mem.ts < maxAgeMs) return mem.data;
+  if (mem && (Date.now() - mem.ts < maxAgeMs)) {
+    return mem.data;
+  }
+
+  // 2. Persistent LocalStorage (0.5ms cold-start)
   try {
     if (typeof localStorage !== 'undefined') {
       const stored = localStorage.getItem('__db_' + key);
       if (stored) {
         const item = JSON.parse(stored);
-        if (item && Date.now() - item.ts < maxAgeMs * 3) {
+        if (item && (Date.now() - item.ts < maxAgeMs * 3)) {
           _dbMemoryCache.set(key, item);
           return item.data;
         }
       }
     }
   } catch (_) {}
+
   return null;
 }
 
@@ -28,7 +41,11 @@ function setCache(key, data) {
   if (!data) return data;
   const item = { data, ts: Date.now() };
   _dbMemoryCache.set(key, item);
-  try { if (typeof localStorage !== 'undefined') localStorage.setItem('__db_' + key, JSON.stringify(item)); } catch (_) {}
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('__db_' + key, JSON.stringify(item));
+    }
+  } catch (_) {}
   return data;
 }
 
@@ -36,15 +53,29 @@ export function clearDbCache(prefix = '') {
   if (!prefix) {
     _dbMemoryCache.clear();
     try {
-      if (typeof localStorage !== 'undefined') Object.keys(localStorage).filter(k => k.startsWith('__db_')).forEach(k => localStorage.removeItem(k));
+      if (typeof localStorage !== 'undefined') {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('__db_'))
+          .forEach(k => localStorage.removeItem(k));
+      }
     } catch (_) {}
-    return;
+  } else {
+    for (const k of _dbMemoryCache.keys()) {
+      if (k.startsWith(prefix)) _dbMemoryCache.delete(k);
+    }
+    try {
+      if (typeof localStorage !== 'undefined') {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('__db_' + prefix))
+          .forEach(k => localStorage.removeItem(k));
+      }
+    } catch (_) {}
   }
-  for (const k of _dbMemoryCache.keys()) if (k.startsWith(prefix)) _dbMemoryCache.delete(k);
-  try {
-    if (typeof localStorage !== 'undefined') Object.keys(localStorage).filter(k => k.startsWith('__db_' + prefix)).forEach(k => localStorage.removeItem(k));
-  } catch (_) {}
 }
+
+// ── Database helpers ──
+// Business/public data is NEVER read from Firebase RTDB.
+// Firebase remains available only for legacy user/notification/presence paths.
 
 function isBusinessDataPath(path = '') {
   const p = String(path || '').replace(/^\/+/, '');
@@ -57,7 +88,7 @@ function parseBusinessPath(path = '') {
   return { p, parts, root: parts[0] || '' };
 }
 
-async function workerFetch(path, options = {}) {
+async function d1Fetch(path, options = {}) {
   const auth = getAuth();
   let token = null;
   try { token = auth?.currentUser ? await auth.currentUser.getIdToken() : null; } catch (_) {}
@@ -66,11 +97,11 @@ async function workerFetch(path, options = {}) {
     ...(options.headers || {}),
     ...(token ? { Authorization: 'Bearer ' + token } : {})
   };
-  return fetch(`${WORKER_URL}${path}`, { ...options, headers });
-}
-
-async function d1Fetch(path, options = {}) {
-  const res = await workerFetch(path, { ...options, signal: options.signal || AbortSignal.timeout(7000) });
+  const res = await fetch(`${WORKER_URL}${path}`, {
+    ...options,
+    headers,
+    signal: options.signal || AbortSignal.timeout(7000)
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || data?.message || `Worker HTTP ${res.status}`);
   return data;
@@ -94,12 +125,29 @@ export async function syncPlaceToWorkerTurso(placeId, placeData = {}) {
 function normalizeReviewFromD1(r, placeId = '') {
   if (!r) return null;
   return {
-    id:r.id, placeId:r.place_id || placeId, userId:r.user_id, userName:r.user_name || 'مستخدم', userPhoto:r.user_photo || '',
-    placeName:r.place_name || '', placeSlug:r.place_slug || '', rating:Number(r.rating) || 5, comment:r.comment || '', likes:Number(r.likes)||0,
-    isAdminGenerated:Boolean(r.is_admin_generated), editCount:Number(r.edit_count)||0, isReported:Boolean(r.is_reported),
-    reportCount:Number(r.report_count)||0, lastReportReason:r.last_report_reason || '', reportedAt:Number(r.reported_at)||0,
-    lastReporterName:r.last_reporter_name || '', isReviewedByAdmin:Boolean(r.is_reviewed_by_admin), adminReviewStatus:r.admin_review_status || '',
-    adminReviewNote:r.admin_review_note || '', reviewedAt:Number(r.reviewed_at)||0, createdAt:Number(r.created_at)||Date.now(), updatedAt:Number(r.updated_at)||Date.now()
+    id: r.id,
+    placeId: r.place_id || placeId,
+    userId: r.user_id,
+    userName: r.user_name || 'مستخدم',
+    userPhoto: r.user_photo || '',
+    placeName: r.place_name || '',
+    placeSlug: r.place_slug || '',
+    rating: Number(r.rating) || 5,
+    comment: r.comment || '',
+    likes: Number(r.likes) || 0,
+    isAdminGenerated: Boolean(r.is_admin_generated),
+    editCount: Number(r.edit_count) || 0,
+    isReported: Boolean(r.is_reported),
+    reportCount: Number(r.report_count) || 0,
+    lastReportReason: r.last_report_reason || '',
+    reportedAt: Number(r.reported_at) || 0,
+    lastReporterName: r.last_reporter_name || '',
+    isReviewedByAdmin: Boolean(r.is_reviewed_by_admin),
+    adminReviewStatus: r.admin_review_status || '',
+    adminReviewNote: r.admin_review_note || '',
+    reviewedAt: Number(r.reviewed_at) || 0,
+    createdAt: Number(r.created_at) || Date.now(),
+    updatedAt: Number(r.updated_at) || Date.now()
   };
 }
 
@@ -184,174 +232,141 @@ export function dbRef(path) {
 }
 
 export async function dbGet(path, useCache = true) {
-  if (useCache) { const cached=getCached('path:'+path); if(cached!==null) return cached; }
+  if (useCache) {
+    const cached = getCached('path:' + path);
+    if (cached !== null) return cached;
+  }
+
   try {
-    if(isBusinessDataPath(path)){ const val=await d1GetBusiness(path); if(useCache)setCache('path:'+path,val); return val; }
-    const db=getDB(); if(!db || typeof db.ref!=='function') return null;
-    const snap=await db.ref(path).once('value'); const val=snap?.exists?.()?snap.val():null; if(useCache)setCache('path:'+path,val); return val;
-  } catch(err){ console.warn(`[dbGet] Handled error on path "${path}":`,err?.message||err); return null; }
-}
+    if (isBusinessDataPath(path)) {
+      const val = await d1GetBusiness(path);
+      if (useCache) setCache('path:' + path, val);
+      return val;
+    }
 
-export async function dbSet(path,data){ clearDbCache(); if(isBusinessDataPath(path)){ await d1WriteBusiness(path,'PUT',data); return; } await getDB().ref(path).set(data); }
-export async function dbUpdate(path,updates){ clearDbCache(); if(isBusinessDataPath(path)){ await d1WriteBusiness(path,'PUT',updates); return; } await getDB().ref(path).update(updates); }
-export async function dbPush(path,data){
-  if(isBusinessDataPath(path)){
-    const clean=String(path).replace(/^\/+/,''), m=clean.match(/^places\/([^/]+)\/reviews$/i);
-    if(m){ const result=await d1WriteBusiness(clean,'POST',{...(data||{}),place_id:data?.place_id||m[1]}); const id=result?.id||data?.id||`review_${Date.now()}`; return {key:id,id}; }
-    if(/^offers$/i.test(clean)){ const result=await d1WriteBusiness('offers','POST',data||{}); const id=result?.id||data?.id||`offer_${Date.now()}`; return {key:id,id}; }
-    if(/^products\/[^/]+$/i.test(clean)){ const result=await d1WriteBusiness(clean,'POST',data||{}); const id=result?.id||data?.id||`prod_${Date.now()}`; return {key:id,id}; }
-    if(/^ads(?:\/|$)/i.test(clean)){ const result=await d1WriteBusiness(clean,'POST',data||{}); const id=result?.id||data?.id||data?._id||`ad_${Date.now()}`; return {key:id,id}; }
-    throw new Error(`Turso write path is not supported for business data: ${clean}`);
+    const db = getDB();
+    if (!db || typeof db.ref !== 'function') return null;
+    const snap = await db.ref(path).once('value');
+    const val = (snap && typeof snap.exists === 'function' && snap.exists()) ? snap.val() : null;
+    if (useCache) setCache('path:' + path, val);
+    return val;
+  } catch (err) {
+    console.warn(`[dbGet] Handled error on path "${path}":`, err?.message || err);
+    return null;
   }
-  const pushed=await getDB().ref(path).push(data); const key=pushed?.key||`legacy_${Date.now()}`; return {key,id:key};
 }
 
-export async function dbRemove(path){ clearDbCache(); if(!path)return; if(isBusinessDataPath(path)){ await d1WriteBusiness(path,'DELETE'); return; } await getDB().ref(path).remove(); }
-
-export async function dbIncrement(path,delta=1){
-  if(isBusinessDataPath(path)){
-    const m=String(path).match(/^places\/([^/]+)\/stats\/([^/]+)$/);
-    if(m){ const res=await workerFetch('/api/places/track-stat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({placeId:m[1],stat:m[2],delta:Number(delta)||1}),signal:AbortSignal.timeout(4000)}); if(!res.ok)throw new Error(`Worker stat update failed: ${res.status}`); return; }
-    const offer=String(path).match(/^offers\/([^/]+)\/(views|clicks)$/); if(offer){const res=await workerFetch('/api/offers/track-stat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:offer[1],stat:offer[2]}),signal:AbortSignal.timeout(4000)});if(!res.ok)throw new Error(`Offer stat update failed: ${res.status}`);return;}
-    const product=String(path).match(/^products\/([^/]+)\/([^/]+)\/(views|clicks)$/); if(product){const res=await workerFetch('/api/products/track-stat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:product[2],stat:product[3]}),signal:AbortSignal.timeout(4000)});if(!res.ok)throw new Error(`Product stat update failed: ${res.status}`);return;}
-    throw new Error(`Turso increment path is not supported: ${path}`);
+export async function dbSet(path, data) {
+  clearDbCache();
+  if (isBusinessDataPath(path)) {
+    if (String(path).match(/^places\/[^/]+\/reviews\/[^/]+$/)) {
+      await d1WriteBusiness(path, 'POST', {
+        ...(data || {}),
+        place_id: data?.place_id || data?.placeId || String(path).split('/')[1]
+      });
+      return;
+    }
+    await d1WriteBusiness(path, 'PUT', data);
+    return;
   }
-  await getDB().ref(path).transaction(current=>(current||0)+delta);
+  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
+  await ref.set(data);
 }
 
-export function dbListen(path,callback){
-  if(isBusinessDataPath(path)) throw new Error(`Firebase RTDB listeners blocked for business data path: ${path}`);
-  return getDB().ref(path).on('value',callback);
-}
-export function dbOff(path,eventType='value',callback){ if(isBusinessDataPath(path)) return; return getDB().ref(path).off(eventType,callback); }
-export const serverTimestamp=()=>Date.now();
-
-export function getPlaceUrl(slugOrId){
-  if(!slugOrId)return '#'; if(typeof slugOrId==='string'&&/^https?:\/\//i.test(slugOrId))return slugOrId;
-  const slug=encodeURIComponent(slugOrId); const prefix=typeof window!=='undefined'&&window.location.pathname.includes('/admin/')?'../':'./'; return `${prefix}place.html?slug=${slug}`;
-}
-
-export async function getPlace(placeId){
-  if(!placeId)return null;
-  const cached=await idbGet(STORES.PLACES,placeId).catch(()=>null); if(cached)return cached;
-  try{const data=await d1Fetch(`/api/places?id=${encodeURIComponent(placeId)}`);if(data?.success&&data.data){const place=data.data;idbPut(STORES.PLACES,place).catch(()=>{});return place;}}catch(_){ }
-  return null;
-}
-
-export async function getPublishedPlaces(options={}){
-  try{const limit=Math.min(Number(options.limit||1000),1000);const data=await d1Fetch(`/api/places?limit=${limit}`);return Array.isArray(data.data)?data.data:[];}catch(_){return [];}
-}
-
-/** Compatibility name retained for callers; implementation is Turso-backed. */
-export async function syncPlaceToWorkerD1(placeId,updates={}){
-  if(!placeId) return false;
-  await d1Fetch('/api/places/sync',{method:'POST',body:JSON.stringify({id:placeId,...updates}),signal:AbortSignal.timeout(10000)});
-  return true;
-}
-
-export async function searchPlacesD1(query='',{category='',area='',limit=20,offset=0,verified=false,minRating=0}={}){
-  try{
-    const url=new URL(`${WORKER_URL}/api/search`); if(query)url.searchParams.set('q',query); if(category)url.searchParams.set('category',category); if(area)url.searchParams.set('area',area);
-    url.searchParams.set('limit',String(limit));url.searchParams.set('offset',String(offset));if(verified)url.searchParams.set('verified','1');if(Number(minRating)>0)url.searchParams.set('min_rating',String(minRating));
-    const res=await workerFetch(url.pathname+url.search,{signal:AbortSignal.timeout(6000)});if(!res.ok)return null;const data=await res.json();
-    if(data?.success&&Array.isArray(data.data))return {places:data.data,pagination:data.pagination||{limit,offset,returned:data.data.length,hasMore:false}};
-  }catch(err){console.warn('[Search] Worker search failed:',err);} return null;
+export async function dbUpdate(path, updates) {
+  clearDbCache();
+  if (isBusinessDataPath(path)) {
+    if (String(path).match(/^places\/[^/]+\/reviews\/[^/]+$/)) {
+      await d1WriteBusiness(path, 'PUT', updates);
+      return;
+    }
+    if (String(path).match(/^places\/[^/]+$/)) {
+      await d1WriteBusiness(path, 'PUT', updates);
+      return;
+    }
+    if (String(path).match(/^places\/[^/]+\/reviews$/)) {
+      // Update multiple reviews without touching Firebase.
+      const placeId = String(path).split('/')[1];
+      for (const [reviewId, patch] of Object.entries(updates || {})) {
+        if (patch === null) {
+          await d1WriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'DELETE');
+        } else {
+          await d1WriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'PUT', patch);
+        }
+      }
+      return;
+    }
+    await d1WriteBusiness(path, 'PUT', updates);
+    return;
+  }
+  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
+  await ref.update(updates);
 }
 
-export async function reportPlaceData({placeId,reason='معلومة غير صحيحة',details='',reporterName='زائر'}={}){
-  const res=await workerFetch('/api/place-reports',{method:'POST',body:JSON.stringify({placeId,reason,details,reporterName}),signal:AbortSignal.timeout(6000)});
-  const data=await res.json().catch(()=>({})); if(!res.ok)throw new Error(data?.error||`Worker HTTP ${res.status}`); return data;
+export async function dbPush(path, data) {
+  if (isBusinessDataPath(path)) {
+    const cleanPath = String(path || '').replace(/^\/+/, '');
+
+    // Ads are authoritative in Cloudflare D1. Never attempt Firebase push.
+    if (/^ads(?:\/|$)/i.test(cleanPath)) {
+      const parts = cleanPath.split('/').filter(Boolean);
+      const result = await d1WriteBusiness(cleanPath, 'POST', data || {});
+      const newId = result?.id || result?.data?.id || data?.id || data?._id || `d1_${Date.now()}`;
+      return { key: newId, id: newId };
+    }
+
+    // Reviews are authoritative in Cloudflare D1.
+    if (/^places\/[^/]+\/reviews$/i.test(cleanPath)) {
+      const placeId = cleanPath.split('/')[1];
+      const result = await d1WriteBusiness(cleanPath, 'POST', { ...(data || {}), place_id: data?.place_id || placeId });
+      const newId = result?.id || result?.data?.id || data?.id || `d1_${Date.now()}`;
+      return { key: newId, id: newId };
+    }
+
+    throw new Error(`D1 write path is not supported for business data: ${cleanPath}`);
+  }
+
+  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
+  const pushed = await ref.push(data);
+  const key = (pushed && pushed.key) ? pushed.key : `d1_${Date.now()}`;
+  return { key, id: key };
 }
 
-export async function sendTelegramAdminNotification(type,data={}){ try{await workerFetch('/api/telegram/test',{method:'POST',body:JSON.stringify({type,data}),signal:AbortSignal.timeout(5000)});}catch(_){ } }
-export async function broadcastNewPlaceNotification(place){ return place; }
-
-function normalizeUserD1(u = {}) {
-  return {
-    ...u,
-    uid: u.uid || u.id || '',
-    id: u.id || u.uid || '',
-    photoURL: u.photoURL || u.photo_url || '',
-    points: Number(u.points || 0),
-    createdAt: Number(u.createdAt || u.created_at || 0),
-    updatedAt: Number(u.updatedAt || u.updated_at || 0),
-    placesCount: Number(u.placesCount || u.places_count || 0)
-  };
+export async function dbRemove(path) {
+  clearDbCache();
+  if (!path || String(path).trim() === '') return;
+  if (isBusinessDataPath(path)) {
+    await d1WriteBusiness(path, 'DELETE');
+    return;
+  }
+  await getDB().ref(path).remove();
 }
 
-function normalizeCategoryRequestD1(r = {}) {
-  return {
-    ...r,
-    id: r.id || '',
-    categoryName: r.categoryName || r.category_name || '',
-    placeName: r.placeName || r.place_name || '',
-    ownerName: r.ownerName || r.owner_name || '',
-    userId: r.userId || r.user_id || '',
-    status: r.status || 'pending',
-    requestedAt: Number(r.requestedAt || r.createdAt || r.created_at || 0),
-    reviewedAt: Number(r.reviewedAt || r.reviewed_at || 0)
-  };
+export async function dbIncrement(path, delta = 1) {
+  if (isBusinessDataPath(path)) {
+    const m = String(path).match(/^places\/([^/]+)\/stats\/([^/]+)$/);
+    if (m) {
+      const res = await fetch(`${WORKER_URL}/api/places/track-stat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placeId: m[1], stat: m[2], delta: Number(delta) || 1 }),
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!res.ok) throw new Error(`Worker stat update failed: ${res.status}`);
+      return;
+    }
+    throw new Error(`Firebase increment blocked for business data path: ${path}`);
+  }
+  await getDB().ref(path).transaction((current) => (current || 0) + delta);
 }
 
-function normalizeVerificationRequestD1(r = {}) {
-  return {
-    ...r,
-    id: r.id || '',
-    placeId: r.placeId || r.place_id || '',
-    placeName: r.placeName || r.place_name || '',
-    ownerId: r.ownerId || r.owner_id || '',
-    ownerName: r.ownerName || r.owner_name || '',
-    ownerEmail: r.ownerEmail || r.owner_email || '',
-    verifiedUntil: r.verifiedUntil ?? r.verified_until ?? null,
-    requestedAt: Number(r.requestedAt || r.createdAt || r.created_at || 0),
-    reviewedAt: Number(r.reviewedAt || r.reviewed_at || 0)
-  };
+export function dbListen(path, callback) {
+  if (isBusinessDataPath(path)) throw new Error(`Realtime Firebase listener blocked for business data path: ${path}`);
+  const ref = getDB().ref(path);
+  ref.on('value', (snap) => callback(snap.val()));
+  return () => ref.off('value');
 }
 
-export async function getAllUsersD1() {
-  const data = await d1Fetch('/api/users');
-  const list = Array.isArray(data?.data) ? data.data.map(normalizeUserD1) : [];
-  return Object.fromEntries(list.filter(u => u.uid).map(u => [u.uid, u]));
-}
-
-export async function updateUserD1(uid, updates = {}) {
-  if (!uid) throw new Error('User ID required');
-  const data = await d1Fetch(`/api/users/${encodeURIComponent(uid)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(updates)
-  });
-  return data?.data ? normalizeUserD1(data.data) : data;
-}
-
-export async function getCategoryRequestsD1() {
-  const data = await d1Fetch('/api/category-requests');
-  const list = Array.isArray(data?.data) ? data.data.map(normalizeCategoryRequestD1) : [];
-  return Object.fromEntries(list.filter(r => r.id).map(r => [r.id, r]));
-}
-
-export async function updateCategoryRequestD1(reqId, status = 'approved') {
-  if (!reqId) throw new Error('Request ID required');
-  return d1Fetch(`/api/category-requests/${encodeURIComponent(reqId)}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ id: reqId, status })
-  });
-}
-
-export async function getVerificationRequestsD1() {
-  const data = await d1Fetch('/api/verification-requests');
-  const list = Array.isArray(data?.data) ? data.data.map(normalizeVerificationRequestD1) : [];
-  return Object.fromEntries(list.filter(r => r.id).map(r => [r.id, r]));
-}
-
-export async function updateVerificationRequestD1(reqId, status = 'approved', verifiedUntil = null) {
-  if (!reqId) throw new Error('Request ID required');
-  return d1Fetch(`/api/verification-requests/${encodeURIComponent(reqId)}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ id: reqId, status, verified_until: verifiedUntil })
-  });
-}
-
-// ── Restored compatibility API (Turso-backed) ─────────────────────────────
 export function dbListenChild(path, addedCb, changedCb, removedCb) {
   if (isBusinessDataPath(path)) throw new Error(`Realtime Firebase listener blocked for business data path: ${path}`);
   const ref = getDB().ref(path);
@@ -385,6 +400,14 @@ export async function dbQuery({ path, orderBy = 'createdAt', limit = 20, startAf
   return direction === 'desc' ? items.reverse() : items;
 }
 
+// ── Server timestamp ──
+export function serverTimestamp() {
+  return Date.now();
+}
+
+// ── Specific entity helpers ──
+
+/** Get user profile - Reads from Local/D1 */
 export async function getUserProfile(uid) {
   if (!uid) return null;
   const cached = getCached('user:' + uid);
@@ -402,6 +425,39 @@ export async function getUserProfile(uid) {
   return null;
 }
 
+/** Get all users - Primary Turso */
+export async function getAllUsersD1() {
+  try {
+    const res = await fetch(`${WORKER_URL}/api/users`, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.data)) {
+        const usersMap = {};
+        data.data.forEach(u => {
+          usersMap[u.id] = {
+            uid: u.id,
+            id: u.id,
+            name: u.name,
+            displayName: u.name,
+            email: u.email,
+            photoURL: u.photo_url,
+            phone: u.phone,
+            role: u.role,
+            status: u.status,
+            createdAt: u.created_at,
+            updatedAt: u.updated_at
+          };
+        });
+        return usersMap;
+      }
+    }
+  } catch (err) {
+    console.debug('[getAllUsersD1] Worker fetch handled:', err.message);
+  }
+  return {};
+}
+
+/** Get all Category Requests - Primary Turso */
 export async function getCategoryRequestsTurso() {
   try {
     const res = await fetch(`${WORKER_URL}/api/category-requests`, { signal: AbortSignal.timeout(4000) });
@@ -428,6 +484,7 @@ export async function getCategoryRequestsTurso() {
   return {};
 }
 
+/** Submit a new Category Request to Cloudflare D1 */
 export async function submitCategoryRequestD1({ categoryName, placeName, ownerName, userId }) {
   try {
     const res = await fetch(`${WORKER_URL}/api/category-requests`, {
@@ -441,25 +498,173 @@ export async function submitCategoryRequestD1({ categoryName, placeName, ownerNa
   }
 }
 
-export async function invalidateLocalPlaceCache(placeId,slug='') {
-  try { if(placeId) await idbDelete(STORES.PLACES,placeId); } catch(_){}
-  clearDbCache('path:places'); clearDbCache('places'); if(slug) clearDbCache('place:'+slug); return true;
+/** Update Category Request status in D1 */
+export async function updateCategoryRequestD1(id, status = 'approved') {
+  try {
+    await fetch(`${WORKER_URL}/api/category-requests/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+  } catch (_) {}
 }
 
-export async function getPlaceBySlug(slug) {
-  if (!slug) return null;
+/** Get all Verification Requests - Primary Turso */
+export async function getVerificationRequestsD1() {
   try {
-    const data = await d1Fetch('/api/places?slug=' + encodeURIComponent(String(slug).trim()));
-    if (data?.success && data.data) {
-      const p = normalizeD1Place(data.data);
-      if (p) { idbPut(STORES.PLACES, p).catch(()=>{}); return p; }
+    const res = await fetch(`${WORKER_URL}/api/verification-requests`, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.data)) {
+        const map = {};
+        data.data.forEach(r => {
+          map[r.id] = {
+            id: r.id,
+            placeId: r.place_id,
+            placeName: r.place_name,
+            ownerId: r.owner_id,
+            ownerName: r.owner_name,
+            ownerEmail: r.owner_email,
+            phone: r.phone,
+            notes: r.notes,
+            status: r.status,
+            verifiedUntil: r.verified_until,
+            createdAt: r.created_at,
+            requestedAt: r.created_at,
+            reviewedAt: r.reviewed_at
+          };
+        });
+        return map;
+      }
     }
   } catch (_) {}
+  return {};
+}
+
+/** Update Verification Request status in D1 */
+export async function updateVerificationRequestD1(id, status = 'approved', verifiedUntil = null) {
   try {
-    const all = await getPublishedPlaces({limit:1000});
-    const s = String(slug).trim().toLowerCase();
-    return all.find(p => String(p?.slug||'').toLowerCase()===s || String(p?.id||'').toLowerCase()===s) || null;
-  } catch (_) { return null; }
+    await fetch(`${WORKER_URL}/api/verification-requests/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, verifiedUntil })
+    });
+  } catch (_) {}
+}
+
+/** Update User Role/Status in D1 */
+export async function updateUserD1(uid, { role, status }) {
+  try {
+    await fetch(`${WORKER_URL}/api/users/${encodeURIComponent(uid)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, status })
+    });
+  } catch (_) {}
+}
+
+/** Get place by ID - Reads from Cloudflare D1 and IndexedDB */
+export async function getPlace(placeId) {
+  if (!placeId) return null;
+  try {
+    const cached = await idbGet(STORES.PLACES, placeId);
+    if (cached) return cached;
+  } catch (_) {}
+  try {
+    const res = await fetch(`${WORKER_URL}/api/places?id=${encodeURIComponent(placeId)}`, {
+      signal: AbortSignal.timeout(4000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && data.data) {
+        const place = normalizeD1Place(data.data);
+        idbPut(STORES.PLACES, place).catch(() => {});
+        return place;
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+/** Sync place updates to Cloudflare D1 and invalidate worker cache */
+export async function syncPlaceToWorkerD1(placeId, updates = {}) {
+  if (!placeId) return false;
+  try {
+    const payload = {
+      id: placeId,
+      ...updates
+    };
+    const res = await fetch(`${WORKER_URL}/api/places/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(6000)
+    });
+          if (!res.ok) {
+        let errMsg = `Worker HTTP ${res.status}`;
+        try { const errData = await res.json(); errMsg = errData?.error || errData?.message || errMsg; } catch (_) {}
+        throw new Error(errMsg);
+      }
+      return true;
+    } catch (err) {
+      console.error('[TursoSync] Failed to sync place to Turso:', err);
+      throw err;
+    }
+}
+
+/** Invalidate local caches (IndexedDB and in-memory SWR) for a place */
+export async function invalidateLocalPlaceCache(placeId,slug='') {
+  try{if(placeId)await idbDelete(STORES.PLACES,placeId);}catch(_){}
+  clearDbCache('path:places');clearDbCache('places');if(slug)clearDbCache('place:'+slug);return true;
+}
+
+export async function searchPlacesD1(query = '', { category = '', area = '', limit = 20, offset = 0, verified = false, minRating = 0 } = {}) {
+  try {
+    const url = new URL(`${WORKER_URL}/api/search`);
+    if (query) url.searchParams.set('q', query);
+    if (category) url.searchParams.set('category', category);
+    if (area) url.searchParams.set('area', area);
+    url.searchParams.set('limit', String(limit));
+    url.searchParams.set('offset', String(offset));
+    if (verified) url.searchParams.set('verified', '1');
+    if (Number(minRating) > 0) url.searchParams.set('min_rating', String(minRating));
+
+    const res = await fetch(url.toString(), {
+      signal: AbortSignal.timeout(6000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.data)) {
+        return {
+          places: data.data.map(p => normalizeD1Place(p)),
+          pagination: data.pagination || { limit, offset, returned: data.data.length, hasMore: false }
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[SearchD1] Worker search failed:', err);
+  }
+  return null;
+}
+
+/** Submit a public report about incorrect/stale place information. */
+export async function reportPlaceData({ placeId, reason = 'معلومة غير صحيحة', details = '', reporterName = 'زائر' } = {}) {
+  if (!placeId || !reason) throw new Error('بيانات البلاغ غير مكتملة');
+  const res = await fetch(`${WORKER_URL}/api/place-reports`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ placeId, reason, details, reporterName })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) throw new Error(data.error || 'تعذر إرسال البلاغ');
+  return data;
+}
+
+/** Get place by slug (with multi-tier resilient lookup) */
+export async function getPlaceBySlug(slug) {
+  if(!slug)return null;
+  try{const data=await d1Fetch('/api/places?slug='+encodeURIComponent(String(slug).trim()));if(data?.success&&data.data){const p=normalizeD1Place(data.data);if(p){idbPut(STORES.PLACES,p).catch(()=>{});return p;}}}catch(_){}
+  try{const all=await getPublishedPlaces({limit:1000}),s=String(slug).trim().toLowerCase();return all.find(p=>String(p?.slug||'').toLowerCase()===s||String(p?.id||'').toLowerCase()===s)||null;}catch(_){return null;}
 }
 
 export function isPlaceBanned(place) {
@@ -472,6 +677,7 @@ export function isPlaceBanned(place) {
   return false;
 }
 
+/** Admin: Ban a place (temporary or permanent) */
 export async function adminBanPlace(placeId, { type = 'temporary', durationDays = 30, bannedUntil = null, reason = '' } = {}) {
   if (!placeId) throw new Error('المكان مطلوب');
   const isPermanent = type === 'permanent';
@@ -493,6 +699,7 @@ export async function adminBanPlace(placeId, { type = 'temporary', durationDays 
   return updates;
 }
 
+/** Admin: Unban a place */
 export async function adminUnbanPlace(placeId) {
   if (!placeId) throw new Error('المكان مطلوب');
   const updates = {
@@ -510,11 +717,15 @@ export async function adminUnbanPlace(placeId) {
   return updates;
 }
 
+/**
+ * IP & User Ban System
+ */
 export function sanitizeIpKey(ip) {
   if (!ip) return '';
   return String(ip).trim().replace(/[.:%[\]#$]/g, '_');
 }
 
+/** Check if an IP address is banned */
 export async function isIpBanned(ip) {
   if (!ip) return false;
   const key = sanitizeIpKey(ip);
@@ -528,6 +739,7 @@ export async function isIpBanned(ip) {
   return false;
 }
 
+/** Admin: Ban an IP address */
 export async function adminBanIp(ip, { reason = '', durationDays = 30, isPermanent = false, bannedBy = 'admin', userId = null, userName = '' } = {}) {
   if (!ip) throw new Error('عنوان IP مطلوب للحظر');
   const key = sanitizeIpKey(ip);
@@ -551,6 +763,7 @@ export async function adminBanIp(ip, { reason = '', durationDays = 30, isPermane
   return banRecord;
 }
 
+/** Admin: Unban an IP address */
 export async function adminUnbanIp(ipOrKey) {
   if (!ipOrKey) throw new Error('معرف IP مطلوب');
   const key = sanitizeIpKey(ipOrKey);
@@ -558,6 +771,7 @@ export async function adminUnbanIp(ipOrKey) {
   return true;
 }
 
+/** Admin: Get all banned IPs */
 export async function getAllBannedIps() {
   const data = (await dbGet('bannedIPs', false)) || {};
   return Object.entries(data).map(([key, val]) => ({
@@ -566,6 +780,12 @@ export async function getAllBannedIps() {
   })).sort((a, b) => (b.bannedAt || 0) - (a.bannedAt || 0));
 }
 
+/**
+ * Get all published places with IndexedDB Cache-First & Background Sync Engine
+ * 1. Checks memory & IndexedDB first for instant 0ms response
+ * 2. Checks system/dataVersion or lastSync to avoid redundant Firebase reads
+ * 3. Falls back to RTDB query only when necessary
+ */
 export function normalizeD1Place(p) {
   if (!p) return null;
   const id = String(p.id || p._key || p._id || '');
@@ -600,6 +820,117 @@ export function normalizeD1Place(p) {
   };
 }
 
+export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFresh = false } = {}) {
+  const cacheKey = `published_${limit}_${lastKey || ''}`;
+  
+  if (!forceFresh) {
+    // 1. Fast in-memory SWR
+    const memCached = getCached(cacheKey, 300000);
+    if (memCached && Array.isArray(memCached) && memCached.length > 0) return memCached;
+
+    // 2. Fast IndexedDB local cache (0ms)
+    try {
+      const localPlaces = await idbGetAll(STORES.PLACES);
+      if (localPlaces && localPlaces.length > 0) {
+        const filtered = localPlaces.filter(p => p && p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p));
+        if (filtered.length > 0) {
+          filtered.sort((a, b) => {
+            const aSpons = Boolean(a.isSponsored && (!a.sponsoredUntil || a.sponsoredUntil > Date.now()));
+            const bSpons = Boolean(b.isSponsored && (!b.sponsoredUntil || b.sponsoredUntil > Date.now()));
+            if (aSpons && !bSpons) return -1;
+            if (!aSpons && bSpons) return 1;
+            return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
+          });
+          const res = filtered.slice(0, limit);
+          setCache(cacheKey, res);
+
+          // Background sync check (non-blocking)
+          _triggerBackgroundSyncPlaces().catch(() => {});
+          return res;
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 3. Primary Network Fetch from Cloudflare D1 via Worker
+  try {
+    const workerRes = await fetch(`${WORKER_URL}/api/places?limit=${limit}`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (workerRes.ok) {
+      const data = await workerRes.json();
+      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const places = [];
+        const allForIdb = [];
+
+        data.data.forEach(item => {
+          const p = normalizeD1Place(item);
+          if (!p) return;
+          allForIdb.push(p);
+
+          if (p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p)) {
+            places.push(p);
+          }
+        });
+
+        if (allForIdb.length > 0) {
+          idbPutBulk(STORES.PLACES, allForIdb).catch(() => {});
+          idbSetMeta('lastPlacesSync', Date.now()).catch(() => {});
+        }
+
+        places.sort((a, b) => {
+          const aSpons = Boolean(a.isSponsored && (!a.sponsoredUntil || a.sponsoredUntil > Date.now()));
+          const bSpons = Boolean(b.isSponsored && (!b.sponsoredUntil || b.sponsoredUntil > Date.now()));
+          if (aSpons && !bSpons) return -1;
+          if (!aSpons && bSpons) return 1;
+          return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
+        });
+
+        const res = places.slice(0, limit);
+        return setCache(cacheKey, res);
+      }
+    }
+  } catch (workerErr) {
+    console.debug('[getPublishedPlaces] D1 fetch error, using local cache:', workerErr.message);
+  }
+
+  // 4. Fallback: Return cached places from IndexedDB if network is offline
+  try {
+    const localPlaces = await idbGetAll(STORES.PLACES);
+    if (localPlaces && localPlaces.length > 0) {
+      const filtered = localPlaces.filter(p => p && p.status !== 'draft' && p.status !== 'rejected' && !isPlaceBanned(p));
+      const res = filtered.slice(0, limit);
+      return setCache(cacheKey, res);
+    }
+  } catch (_) {}
+
+  return [];
+}
+
+let _isSyncingPlaces = false;
+async function _triggerBackgroundSyncPlaces() {
+  if (_isSyncingPlaces) return;
+  const lastSync = await idbGetMeta('lastPlacesSync', 0);
+  if (Date.now() - lastSync < 21600000) return;
+
+  _isSyncingPlaces = true;
+  try {
+    const res = await fetch(`${WORKER_URL}/api/places?limit=250`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const places = data.data.map(normalizeD1Place).filter(Boolean);
+        await idbPutBulk(STORES.PLACES, places);
+        await idbSetMeta('lastPlacesSync', Date.now());
+        clearDbCache('published_');
+      }
+    }
+  } catch (_) {} finally {
+    _isSyncingPlaces = false;
+  }
+}
+
+/** Get places by category (excluding banned) - Reads from D1 / IndexedDB */
 export async function getPlacesByCategory(categoryId, limit = 20) {
   const cacheKey = `places_cat_${categoryId}_${limit}`;
   const cached = getCached(cacheKey, 600000);
@@ -632,6 +963,7 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
   }
 }
 
+/** Get places by owner (newest added first) - Reads from D1 / IndexedDB */
 export async function getPlacesByOwner(userOrUid) {
   if (!userOrUid) return [];
   const uid = typeof userOrUid === 'object' ? userOrUid.uid : userOrUid;
@@ -686,38 +1018,35 @@ export async function getPlacesByOwner(userOrUid) {
   }
 }
 
+/** Save or Update Category in Cloudflare D1 + Local IndexedDB */
 export async function saveCategoryD1(category) {
-  if (!category || (!category.name && !category.slug && !category.id)) throw new Error('بيانات التصنيف غير مكتملة');
+  if(!category||(!category.name&&!category.slug&&!category.id))throw new Error('بيانات التصنيف غير مكتملة');
   const slug=String(category.slug||category.id||category._key||'').trim().toLowerCase().replace(/\s+/g,'-');
   const payload={...category,id:category.id||slug,_key:category.id||slug,slug,nameEn:category.nameEn||category.name_en||slug,icon:category.icon||'📁',order:Number(category.order??category.sort_order??0)};
   const data=await d1Fetch('/api/categories',{method:'POST',body:JSON.stringify(payload)});
-  clearDbCache('categories'); clearDbCache('categories_all'); return data?.data||payload;
+  clearDbCache('categories');clearDbCache('categories_all');return data?.data||payload;
 }
 
 export async function deleteCategoryD1(categoryId) {
-  if(!categoryId) throw new Error('Category ID required');
+  if(!categoryId)throw new Error('Category ID required');
   const data=await d1Fetch('/api/categories/'+encodeURIComponent(categoryId),{method:'DELETE'});
-  clearDbCache('categories'); clearDbCache('categories_all'); return data;
+  clearDbCache('categories');clearDbCache('categories_all');return data;
 }
 
 export async function getCategories() {
-  const cached = getCached('categories_all', 1800000);
-  if (Array.isArray(cached) && cached.length) return cached;
-  try {
-    const data = await d1Fetch('/api/categories');
-    const categories = (Array.isArray(data?.data) ? data.data : []).map(c => ({
-      id: c.id || c.slug, _key: c.id || c.slug, slug: c.slug || c.id,
-      name: c.name || '', nameEn: c.name_en || c.nameEn || '',
-      icon: c.icon || '🏪', description: c.description || '',
-      color: c.color || '#1B4F72', order: Number(c.order ?? c.sort_order ?? 0),
-      placeCount: Number(c.place_count ?? c.placeCount ?? 0)
-    })).sort((a,b) => (a.order||0)-(b.order||0));
-    if (categories.length) {
-      idbPutBulk(STORES.CATEGORIES, categories).catch(()=>{});
-      return setCache('categories_all', categories);
-    }
-  } catch (err) { console.warn('[getCategories] Worker error:', err?.message || err); }
-  try { const local = await idbGetAll(STORES.CATEGORIES); return local?.length ? setCache('categories_all', local) : []; } catch (_) { return []; }
+  const cached=getCached('categories_all',1800000);
+  if(Array.isArray(cached)&&cached.length)return cached;
+  try{
+    const data=await d1Fetch('/api/categories');
+    const categories=(Array.isArray(data?.data)?data.data:[]).map(c=>({
+      id:c.id||c.slug,_key:c.id||c.slug,slug:c.slug||c.id,name:c.name||'',
+      nameEn:c.name_en||c.nameEn||'',icon:c.icon||'🏪',description:c.description||'',
+      color:c.color||'#1B4F72',order:Number(c.order??c.sort_order??0),
+      placeCount:Number(c.place_count??c.placeCount??0)
+    })).sort((a,b)=>(a.order||0)-(b.order||0));
+    if(categories.length){idbPutBulk(STORES.CATEGORIES,categories).catch(()=>{});return setCache('categories_all',categories);}
+  }catch(err){console.warn('[getCategories] Worker error:',err?.message||err);}
+  try{const local=await idbGetAll(STORES.CATEGORIES);return local?.length?setCache('categories_all',local):[];}catch(_){return [];}
 }
 
 export async function getCategory(slug) {
@@ -726,63 +1055,55 @@ export async function getCategory(slug) {
   return categories.find(c => c.slug === slug || c._key === slug) || null;
 }
 
-export async function getActiveOffers(limit = 20) {
-  const cacheKey = 'offers_active_' + limit;
-  const cached = getCached(cacheKey, 300000);
-  if (Array.isArray(cached)) return cached;
-  try {
-    const data = await d1Fetch('/api/offers');
-    const now = Date.now();
-    const list = (Array.isArray(data?.data) ? data.data : [])
-      .filter(o => !o.endDate || Number(o.endDate) > now)
-      .slice(0, Math.max(0, Number(limit)||20));
-    return setCache(cacheKey, list);
-  } catch (_) { return []; }
+/** Get active offers (not expired) */
+export async function getActiveOffers(limit=20) {
+  const key='offers_active_'+limit,cached=getCached(key,300000);
+  if(Array.isArray(cached))return cached;
+  try{const data=await d1Fetch('/api/offers');const now=Date.now();
+    const list=(Array.isArray(data?.data)?data.data:[]).filter(o=>!o.endDate||Number(o.endDate)>now).slice(0,Math.max(0,Number(limit)||20));
+    return setCache(key,list);
+  }catch(_){return [];}
 }
 
 export async function getPlaceOffers(placeId) {
-  if (!placeId) return [];
-  try { const data=await d1Fetch('/api/offers?place_id='+encodeURIComponent(placeId)); return Array.isArray(data?.data)?data.data:[]; } catch (_) { return []; }
+  if(!placeId)return [];
+  try{const data=await d1Fetch('/api/offers?place_id='+encodeURIComponent(placeId));return Array.isArray(data?.data)?data.data:[];}catch(_){return [];}
 }
 
 export async function getPlaceProducts(placeId,{limit=50,includePending=false}={}) {
-  if (!placeId) return [];
-  try {
-    const data=await d1Fetch('/api/products?place_id='+encodeURIComponent(placeId));
-    let list=Array.isArray(data?.data)?data.data:[];
-    if (!includePending) list=list.filter(p=>p.isApproved===true || p.is_approved===1 || !('isApproved' in p && p.isApproved===false));
+  if(!placeId)return [];
+  try{const data=await d1Fetch('/api/products?place_id='+encodeURIComponent(placeId));let list=Array.isArray(data?.data)?data.data:[];
+    if(!includePending)list=list.filter(p=>p.isApproved!==false&&p.is_approved!==0);
     return list.slice(0,Number(limit)||50);
-  } catch (_) { return []; }
+  }catch(_){return [];}
 }
 
 export async function getAllProducts() {
-  try { const data=await d1Fetch('/api/products'); return Array.isArray(data?.data)?data.data:[]; } catch (_) { return []; }
+  try{const data=await d1Fetch('/api/products');return Array.isArray(data?.data)?data.data:[];}catch(_){return [];}
 }
 
 export async function adminApproveProduct(placeId,productId) {
-  if(!productId) throw new Error('بيانات المنتج والمكان مطلوبة');
-  const data=await d1Fetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'approved',isApproved:true,is_approved:1})});
-  return data?.data||data;
+  if(!productId)throw new Error('بيانات المنتج والمكان مطلوبة');
+  const data=await d1Fetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'approved',isApproved:true,is_approved:1})});return data?.data||data;
 }
 
 export async function adminRejectProduct(placeId,productId) {
-  if(!productId) throw new Error('بيانات المنتج والمكان مطلوبة');
-  const data=await d1Fetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'rejected',isApproved:false,is_approved:0})});
-  return data?.data||data;
+  if(!productId)throw new Error('بيانات المنتج والمكان مطلوبة');
+  const data=await d1Fetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'rejected',isApproved:false,is_approved:0})});return data?.data||data;
 }
 
 export async function adminDeleteProduct(placeId,productId) {
-  if(!productId) throw new Error('بيانات المنتج والمكان مطلوبة');
+  if(!productId)throw new Error('بيانات المنتج والمكان مطلوبة');
   return d1Fetch('/api/products/'+encodeURIComponent(productId),{method:'DELETE'});
 }
 
 export async function getAds(placement='homepage') {
-  try { const data=await d1Fetch('/api/ads'); return Array.isArray(data?.data)?data.data.filter(a=>!placement || a.placement===placement || a.placement==='all'):[]; } catch (_) { return []; }
+  try{const data=await d1Fetch('/api/ads');const list=Array.isArray(data?.data)?data.data:[];return list.filter(a=>!placement||a.placement===placement||a.placement==='all');}catch(_){return [];}
 }
 
 export async function getSettings() {
-  const cached=getCached('site_settings',600000); if(cached) return cached;
-  try { const data=await d1Fetch('/api/settings'); if(data?.success && data.data) return setCache('site_settings',data.data); } catch (_) {}
+  const cached=getCached('site_settings',600000);if(cached)return cached;
+  try{const data=await d1Fetch('/api/settings');if(data?.success&&data.data)return setCache('site_settings',data.data);}catch(_){}
   return setCache('site_settings',{siteName:'دليل المنزلة والمطرية الرقمي',contact:{whatsapp:'01000000000'}});
 }
 
@@ -799,6 +1120,9 @@ export async function updateSettings(settings) {
   }
 }
 
+/**
+ * Get visitor IP, geographic location, and ISP details
+ */
 async function getVisitorClientInfo() {
   try {
     const res = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(3500) });
@@ -861,6 +1185,7 @@ function getVisitorDeviceSummary() {
   return browser ? `${os} (${browser})` : os;
 }
 
+/** Increment place view stat and notify place owner about profile visitors */
 export async function trackPlaceView(place, visitor = null) {
   if (!place) return;
   const placeId = typeof place === 'string' ? place : (place.id || place._key);
@@ -916,6 +1241,12 @@ export async function trackPlaceView(place, visitor = null) {
   }
 }
 
+/**
+ * Broadcast a new place notification to all users across the directory
+ */
+/**
+ * Store broadcast notification in local storage cache
+ */
 function saveToLocalBroadcastCache(notification) {
   if (typeof localStorage === 'undefined' || !notification) return;
   try {
@@ -936,6 +1267,57 @@ function saveToLocalBroadcastCache(notification) {
     }
     // Dispatch instant event to current active tab/window
     window.dispatchEvent(new CustomEvent('manzala:new_broadcast_notification', { detail: notification }));
+  } catch (_) {}
+}
+
+/**
+ * Broadcast a new place notification to all users across the directory
+ */
+/**
+ * Broadcast a new place notification to all users across the directory
+ */
+export async function broadcastNewPlaceNotification(place) {
+  if (!place) return;
+  const placeId = place.id || place._key || place._id || place.slug;
+  const notifId = 'notif_new_place_' + placeId;
+  const address = [place.area, place.address].filter(Boolean).join(' — ') || 'مدينة المنزلة والمطرية';
+  const targetUrl = 'place.html?slug=' + encodeURIComponent(place.slug || place._key || placeId);
+  
+  const notification = {
+    id: notifId,
+    type: 'new_place',
+    title: '🎉 انضمام نشاط جديد: ' + (place.name || 'نشاط جديد'),
+    placeId: placeId,
+    placeName: place.name || 'نشاط تجاري',
+    placeAddress: address,
+    placeSlug: place.slug || place._key || placeId,
+    message: '(' + (place.name || 'مكان جديد') + ') من (' + address + ') انضم حديثاً إلى دليل المنزلة والمطرية.',
+    actionText: 'مشاهدة المكان 👁️',
+    actionUrl: targetUrl,
+    url: targetUrl,
+    icon: place.logoUrl || './icons/icon-192x192.png',
+    createdAt: Date.now(),
+    isRead: false
+  };
+
+  saveToLocalBroadcastCache(notification);
+  triggerNativePwaNotification(notification);
+
+  try {
+    const db = getDB();
+    await Promise.all([
+      db.ref('globalNotifications/' + notifId).set(notification).catch(() => {}),
+      db.ref('platformNotifications/' + notifId).set(notification).catch(() => {})
+    ]);
+  } catch (_) {}
+
+  try {
+    fetch(WORKER_URL + '/api/notifications/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'new_place', notification, place }),
+      signal: AbortSignal.timeout(4000)
+    }).catch(() => {});
   } catch (_) {}
 }
 
@@ -1008,6 +1390,7 @@ function triggerNativePwaNotification(notification) {
   }
 }
 
+/** Get all notifications for a user (combining personal profile visits & global broadcasts) */
 export async function getUserNotifications(uid) {
   const mergedMap = {};
 
@@ -1079,6 +1462,7 @@ export async function markAllNotificationsAsRead(uid) {
   } catch (_) {}
 }
 
+/** Clear / Delete all notifications */
 export async function clearAllNotifications(uid) {
   if (!uid) return;
   await dbRemove(`userNotifications/${uid}`);
@@ -1091,6 +1475,7 @@ export async function clearAllNotifications(uid) {
   } catch (_) {}
 }
 
+/** Increment place stat */
 export async function trackPlaceStat(placeId, stat) {
   const allowed = ['phoneClicks', 'whatsappClicks', 'directionsClicks', 'productViews', 'offerViews', 'views'];
   if (!allowed.includes(stat) || !placeId) return;
@@ -1106,6 +1491,10 @@ export async function trackPlaceStat(placeId, stat) {
   } catch (_) {}
 
 }
+
+// ─────────────────────────────────────────────
+//  REVIEWS & RATINGS SYSTEM (Google-Style)
+// ─────────────────────────────────────────────
 
 export const HAMMAD_PLACE_SLUG = 'mhnds-mhmd-hmad-5lQJ1o';
 
@@ -1162,6 +1551,7 @@ export const HAMMAD_TESTIMONIALS = [
   { name: 'Ahmed Abdullah', rating: 5, comment: 'Excellent work, creative ideas, professional execution, and very good customer support.' }
 ];
 
+/** Get all reviews for a place */
 export async function getPlaceReviews(placeId) {
   if (!placeId) return [];
   try {
@@ -1178,6 +1568,7 @@ export async function getPlaceReviews(placeId) {
   }
 }
 
+/** Get all reviews across all places (for Admin) - Primary Turso */
 export async function getAllReviews() {
   try {
     const res = await fetch(`${WORKER_URL}/api/reviews`, {
@@ -1239,6 +1630,7 @@ export async function getAllReviews() {
   return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
+/** Sanitize review text (Strict text only, max 500 chars, no links or HTML) */
 export function sanitizeReviewText(text) {
   if (!text || typeof text !== 'string') return '';
   let clean = text
@@ -1254,6 +1646,7 @@ export function sanitizeReviewText(text) {
   return clean;
 }
 
+/** Recalculate place average rating and reviewCount */
 export async function recalculatePlaceRating(placeId) {
   if (!placeId) return;
   try {
@@ -1280,6 +1673,7 @@ export async function recalculatePlaceRating(placeId) {
   }
 }
 
+/** Add a review to a place (Logged-in user) - STRICT NO DUPLICATE RULE */
 export async function addPlaceReview({ placeId, placeName, placeSlug, user, rating, comment }) {
   if (!user || !placeId) throw new Error('يجب تسجيل الدخول لإضافة تقييم');
   
@@ -1337,6 +1731,56 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   return reviewData;
 }
 
+/**
+ * Robust Dual-Dispatch Telegram Admin Notification (Cloudflare Worker + Direct Fallback)
+ */
+export async function sendTelegramAdminNotification(type, payload) {
+  // 1. Try sending via Cloudflare Worker
+  try {
+    const res = await fetch(`${WORKER_URL}/api/notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, data: payload })
+    });
+    if (res.ok) return;
+  } catch (_) {}
+
+  // 2. Direct Browser-to-Telegram Fallback via Firebase Settings
+  try {
+    const settings = await getSettings();
+    const botToken = settings?.telegram?.botToken;
+    const chatId = settings?.telegram?.adminChatId;
+    if (!botToken || !chatId) return;
+
+    let text = '';
+    if (type === 'new_review') {
+      const starStr = '⭐'.repeat(Math.min(5, Math.max(1, payload.rating || 5)));
+      text = `🔔 *تعليق جديد على مكان في المنزلة!*\n\n🏢 *المكان / * ${payload.placeName || 'المكان'}\n👤 *صاحب التعليق / * ${payload.userName || 'عميل'}\n⭐ *التقييم / * ${payload.rating || 5} ${starStr}\n💬 *نص التعليق / *\n"${payload.comment || ''}"`;
+    } else if (type === 'review_reported') {
+      text = `🚩 *تم الإبلاغ عن تعليق كمسيء!*\n\n🏢 *المكان / * ${payload.placeName || 'المكان'}\n👤 *كاتب التعليق / * ${payload.userName || 'عميل'}\n💬 *التعليق / * "${payload.comment || ''}"\n⚠️ *سبب الإبلاغ / * ${payload.reason || 'محتوى غير لائق'}\n👤 *المُبلّغ / * ${payload.reporterName || 'مستخدم'}`;
+    } else if (type === 'new_place') {
+      text = `🏢 *تمت إضافة مكان جديد للمنصة:*\n\n📌 *الاسم:* ${payload.name}\n📂 *التصنيف:* ${payload.categoryName || 'عام'}\n📞 *الهاتف:* \`${payload.phone || 'غير مسجل'}\`\n📍 *المنطقة:* ${payload.area || 'المنزلة'}`;
+    } else if (type === 'verification_request') {
+      text = `🛡️ *طلب توثيق جديد ورد الآن!*\n\n🏢 *المكان:* ${payload.placeName}\n👤 *مقدم الطلب:* ${payload.requesterName || payload.requesterEmail}\n📞 *الهاتف:* \`${payload.phone || 'غير مسجل'}\``;
+    } else {
+      text = `📢 *إشعار من المنصة:*\n\n${JSON.stringify(payload, null, 2)}`;
+    }
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'Markdown'
+      })
+    });
+  } catch (_) {}
+}
+
+/**
+ * Report a Review as Abusive / Inappropriate (الإبلاغ عن تعليق مسيء)
+ */
 export async function reportPlaceReview({ placeId, reviewId, reason = 'محتوى غير لائق', reporterName = 'مستخدم', reporterId = null }) {
   if (!placeId || !reviewId) throw new Error('بيانات التعليق غير مكتملة');
 
@@ -1367,6 +1811,9 @@ export async function reportPlaceReview({ placeId, reviewId, reason = 'محتو�
   return { ...review, ...updates };
 }
 
+/**
+ * Admin: Mark Reported Review as Compliant & Clear Report (تم المراجعة والتأكيد)
+ */
 export async function adminApproveReportedReview(placeId, reviewId) {
   if (!placeId || !reviewId) throw new Error('المكان والتعليق مطلوبان');
   const updates = {
@@ -1381,6 +1828,7 @@ export async function adminApproveReportedReview(placeId, reviewId) {
   return updates;
 }
 
+/** Update user's review (Allows 1 edit maximum) */
 export async function updatePlaceReview(placeId, reviewId, { rating, comment }, user) {
   if (!user || !placeId || !reviewId) throw new Error('بيانات غير صحيحة');
 
@@ -1422,6 +1870,7 @@ export async function updatePlaceReview(placeId, reviewId, { rating, comment }, 
   return { ...review, ...updates };
 }
 
+/** Delete user's review (Protected for Hammad place) */
 export async function deletePlaceReview(placeId, reviewId, user) {
   if (!user || !placeId || !reviewId) throw new Error('بيانات غير صحيحة');
 
@@ -1443,6 +1892,7 @@ export async function deletePlaceReview(placeId, reviewId, user) {
   await recalculatePlaceRating(placeId);
 }
 
+/** Admin: Add review in the name of any user - STRICT NO DUPLICATE NAME */
 export async function adminAddReview({ placeId, placeName, placeSlug, userId, userName, userPhoto, rating, comment }) {
   if (!placeId) throw new Error('المكان مطلوب');
   const cleanName = (userName || 'عميل موثوق').trim();
@@ -1521,6 +1971,7 @@ export async function adminAddReview({ placeId, placeName, placeSlug, userId, us
   return reviewData;
 }
 
+/** Admin: Update any review */
 export async function adminUpdateReview(placeId, reviewId, { rating, comment }) {
   if (!placeId || !reviewId) throw new Error('المكان والتقييم مطلوبان');
   const cleanComment = sanitizeReviewText(comment);
@@ -1537,12 +1988,14 @@ export async function adminUpdateReview(placeId, reviewId, { rating, comment }) 
   return updates;
 }
 
+/** Admin: Delete single review */
 export async function adminDeleteReview(placeId, reviewId) {
   if (!placeId || !reviewId) throw new Error('المكان والتقييم مطلوبان');
   await d1WriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'DELETE');
   await recalculatePlaceRating(placeId);
 }
 
+/** Admin: Bulk delete reviews (with automatic place rating recalculation) */
 export async function adminBulkDeleteReviews(reviewsList = []) {
   if (!reviewsList.length) return { deletedCount: 0 };
   let deletedCount = 0;
@@ -1568,6 +2021,10 @@ export async function adminBulkDeleteReviews(reviewsList = []) {
   return { deletedCount };
 }
 
+/**
+ * Intelligent Bulk Reviews Parser
+ * Parses Markdown Tables, Pipe-delimited, Tab-delimited (Excel/Sheets), CSV, or line entries
+ */
 export function parseBulkReviews(rawText) {
   if (!rawText || typeof rawText !== 'string') return [];
   const lines = rawText.split(/\r?\n/);
@@ -2194,507 +2651,4 @@ function getDeterministicReviewerPoints(name = '', id = '') {
   }
 }
 
-export async function adminBulkAddReviews(placeId, items = []) {
-  if (!placeId || !items.length) {
-    throw new Error('بيانات المكان أو التقييمات فارغة');
-  }
 
-  const place = await dbGet(`places/${placeId}`);
-  if (!place) throw new Error('المكان غير موجود في قاعدة البيانات');
-
-  const existingReviews = await getPlaceReviews(placeId);
-  const existingNames = new Set(
-    existingReviews.map(r => (r.userName || '').trim().toLowerCase())
-  );
-
-  let addedCount = 0;
-  let skippedCount = 0;
-  const skippedNames = [];
-  const updates = {};
-  const now = Date.now();
-
-  items.forEach((item, index) => {
-    const cleanName = (item.name || '').trim();
-    const normName = cleanName.toLowerCase();
-    const cleanComment = sanitizeReviewText(item.comment);
-    const numRating = Math.min(5, Math.max(1, parseInt(item.rating, 10) || 5));
-
-    if (!cleanName || !cleanComment) {
-      skippedCount++;
-      return;
-    }
-
-    // If name already exists for this place, naturally diversify with a patronymic variation
-    // so the admin always gets the EXACT count requested without arbitrary drops
-    let finalName = cleanName;
-    if (existingNames.has(normName)) {
-      const suffixes = ['محمد', 'أحمد', 'محمود', 'علي', 'حسن', 'السيد', 'إبراهيم', 'عادل', 'سامح', 'خالد'];
-      const randomSuffix = suffixes[Math.floor(Math.random() * suffixes.length)];
-      finalName = `${cleanName} ${randomSuffix}`;
-    }
-
-    existingNames.add(finalName.toLowerCase());
-    const reviewId = `bulk_${now}_${index}_${Math.random().toString(36).substring(2, 6)}`;
-    
-    // Distribute timestamps naturally across months and days of the year (past 1-360 days)
-    const totalItems = Math.max(1, items.length);
-    const dayProgress = (index / totalItems) * 330; // Spread across ~11 months
-    const jitterDays = (Math.random() * 6) - 3; // +/- 3 days random jitter
-    const finalDaysAgo = Math.max(0, dayProgress + jitterDays);
-    const randomMsInDay = Math.floor(Math.random() * 86400000);
-    const reviewTime = Math.floor(now - (finalDaysAgo * 86400000) - randomMsInDay);
-
-    updates[reviewId] = {
-      id: reviewId,
-      placeId,
-      placeName: place.name || 'المكان',
-      placeSlug: place.slug || '',
-      userId: `bulk_${now}_${index}`,
-      userName: finalName,
-      userPhoto: '',
-      rating: numRating,
-      comment: cleanComment,
-      createdAt: reviewTime,
-      updatedAt: reviewTime,
-      editCount: 0,
-      isAdminGenerated: true
-    };
-
-    addedCount++;
-  });
-
-  if (addedCount > 0) {
-    const reviewsArray = Object.values(updates).map(reviewData => ({
-      id: reviewData.id,
-      place_id: placeId,
-      place_name: reviewData.placeName || place.name || '',
-      place_slug: reviewData.placeSlug || place.slug || '',
-      user_id: reviewData.userId,
-      user_name: reviewData.userName,
-      user_photo: reviewData.userPhoto || '',
-      rating: reviewData.rating,
-      comment: reviewData.comment,
-      is_admin_generated: 1,
-      edit_count: 0,
-      created_at: reviewData.createdAt,
-      updated_at: reviewData.updatedAt
-    }));
-
-    // Send in chunks of 50 to Worker batch API
-    for (let i = 0; i < reviewsArray.length; i += 50) {
-      const chunk = reviewsArray.slice(i, i + 50);
-      try {
-        await fetch(`${WORKER_URL}/api/reviews`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reviews: chunk })
-        });
-      } catch (err) {
-        console.warn('[adminBulkAddReviews] Batch chunk error:', err.message);
-      }
-    }
-    await recalculatePlaceRating(placeId);
-  }
-
-  return {
-    success: true,
-    addedCount,
-    skippedCount,
-    skippedNames
-  };
-}
-
-export function generateSyntheticReviews({ count = 50, starRange = '4-5', specialty = '', placeName = '', categoryName = '', gender = 'mixed' }) {
-  const targetCount = Math.min(5000, Math.max(1, parseInt(count, 10) || 50));
-  const spec = (specialty || categoryName || 'النشاط والخدمات').trim();
-  const pName = (placeName || 'المكان').trim();
-
-  const FIRST_NAMES_AR_M = [
-    'أحمد', 'محمد', 'محمود', 'مصطفى', 'كريم', 'عمر', 'طارق', 'حسام', 'إبراهيم', 'عمرو',
-    'يوسف', 'شريف', 'رامي', 'وليد', 'ياسر', 'حمدي', 'أشرف', 'بيشوي', 'مروان', 'فادي',
-    'خالد', 'عادل', 'سامح', 'حسن', 'عبد الرحمن', 'ماجد', 'تامر', 'هيثم', 'وائل', 'علاء',
-    'هشام', 'مدحت', 'إيهاب', 'زياد', 'بلال', 'معتز', 'أكرم', 'حازم', 'عصام', 'ضياء',
-    'باسم', 'نبيل', 'وجدي', 'مايكل', 'مينا', 'جورج', 'أنطون', 'كيرلس', 'أبانوب', 'رفيق',
-    'هاني', 'عماد', 'سامي', 'ماهر', 'مجدي', 'صلاح', 'أيمن', 'عاطف', 'نادر', 'يحيى'
-  ];
-
-  const FIRST_NAMES_AR_F = [
-    'سارة', 'مريم', 'نورهان', 'ياسمين', 'آية', 'دينا', 'منى', 'رنا', 'ريم', 'مروة',
-    'داليا', 'شيماء', 'هدى', 'مي', 'سلمى', 'إنجي', 'فاطمة', 'خلود', 'هدير', 'رضوى',
-    'إسراء', 'ندى', 'أمنية', 'ريهام', 'نهى', 'أسماء', 'بسنت', 'ميرنا', 'هاجر', 'شروق',
-    'رحمة', 'حبيبة', 'تسنيم', 'هايدي', 'نورا', 'يارا', 'روان', 'فريدة', 'جنى', 'ملك'
-  ];
-
-  const FIRST_NAMES_EN = [
-    'Ahmed', 'Mohamed', 'Mahmoud', 'Mostafa', 'Karim', 'Omar', 'Tarek', 'Hossam', 'Ibrahim', 'Amr',
-    'Youssef', 'Sherif', 'Ramy', 'Waleed', 'Yasser', 'Hamdy', 'Ashraf', 'Bishoy', 'Marwan', 'Fady',
-    'Khaled', 'Adel', 'Sameh', 'Hassan', 'Abdelrahman', 'Maged', 'Tamer', 'Sarah', 'Mariam', 'Nourhan',
-    'Dina', 'Aya', 'Rania', 'Mona', 'Reem', 'Hadeer', 'Salma', 'Farida', 'Nada', 'Nour'
-  ];
-
-  const LAST_NAMES_AR = [
-    'محمود', 'السيد', 'علي', 'حسن', 'إبراهيم', 'أحمد', 'عبد الرحمن', 'الجمال', 'النجار', 'الشناوي',
-    'الدسوقي', 'الشربيني', 'سمير', 'عادل', 'كمال', 'مصطفى', 'بدر', 'توفيق', 'غانم', 'زهران',
-    'الباز', 'عطية', 'يونس', 'منصور', 'سليمان', 'مطاوع', 'فهمي', 'رضوان', 'زكي', 'عثمان',
-    'عوض', 'حجازي', 'غريب', 'الشرقاوي', 'السعيد', 'خليل', 'عبد العال', 'شلبي', 'حامد', 'زايد',
-    'صقر', 'قنديل', 'العوضي', 'بركات', 'الجزار', 'فودة', 'البسيوني', 'خطاب', 'صبري', 'يحيى'
-  ];
-
-  const LAST_NAMES_EN = [
-    'Mahmoud', 'Elsayed', 'Ali', 'Hassan', 'Ibrahim', 'Ahmed', 'Abdelrahman', 'Gamal', 'Naggar', 'Shennawy',
-    'Desouky', 'Sherbiny', 'Samir', 'Adel', 'Kamal', 'Mostafa', 'Badr', 'Tawfik', 'Ghanem', 'Zahran',
-    'Baz', 'Attia', 'Younis', 'Mansour', 'Soliman', 'Fahmy', 'Radwan', 'Zaki', 'Osman', 'Awad'
-  ];
-
-  // 100% Authentic Egyptian Dialect Arabic Comments with Place & Specialty Integration
-  const TEMPLATES_5 = [
-    `بصراحة ${pName} في ${spec} مفيش بعد كده، دقة واحترافية والتزام في المواعيد وناس محترمة جداً.`,
-    `من أفضل الأماكن في المنزلة لـ ${spec}، تعامل راقي وشغل مظبوط على الفرازة تسلم إيديكم.`,
-    `تعاملت مع ${pName} وبجد تجربة ممتازة، شاطرين جداً في ${spec} وسريعين والأسعار مناسبة.`,
-    `شغل عالي واحترافي جداً في ${spec}، والنتيجة كانت فوق الممتازة ومرضية لأبعد حد.`,
-    `أحسن وأشطر حد في المنزلة والدقهلية في مجال ${spec}، ربنا يوفقكم دايماً.`,
-    `ما شاء الله تبارك الله، أمانة وإتقان وسرعة في الرد، أنصح أي حد محتاج ${spec} يتعامل مع ${pName}.`,
-    `خدمة 5 نجوم واستقبال ممتاز، ${pName} رقم 1 في ${spec} بلا منازع.`,
-    `تجربة هايلة، ${pName} ناس فاهمة في ${spec} جداً وعندهم ذوق عالي في التعامل وسرعة تنفيذ.`,
-    `من أحسن التجارب اللي مريت بيها، جودة في ${spec} ومعاملة في قمة الذوق والاحترام.`,
-    `مكان محترم وموثوق، والخدمة في ${spec} طلعت أحسن من اللي طلبته بكتير.`,
-    `قمة في الأمانة والاحترافية، شكراً جزيلاً لـ ${pName} على الشغل النظيف.`,
-    `بجد ناس في منتهى الذوق والأمانة، وخدمة ${spec} عندهم ممتازة ومفيهاش أي غلطة.`,
-    `كل الشكر والتقدير لـ ${pName}، متميزين جداً في ${spec} وسرعة في الإنجاز.`,
-    `أفضل خدمة وتجربة تعامل في المنزلة كلها، شغل ${spec} ممتاز ربنا يباركلهم.`,
-    `دقة في المواعيد وجودة وسعر ممتاز في ${spec}، أنصح بالتعامل معاهم بشدة.`,
-    `والله العظيم قمة في الذوق والاحتراف، ${pName} أحسن من يقدم ${spec}.`,
-    `شغل نظيف ومرتب، وأسعار مناسبة جداً مقارنة بالجودة العالية لـ ${spec}.`,
-    `استجابة سريعة جداً وخدمة عملاء ممتازة، ${pName} الاختيار الأول دائماً في ${spec}.`
-  ];
-
-  const TEMPLATES_4 = [
-    `خدمة جيدة جداً في ${spec} وتعامل راقي ومحترم، تجربة موفقة ومرضية.`,
-    `شغل نظيف ومنظم من ${pName}، فقط استغرق وقتاً قليلاً لكن النتيجة في ${spec} ممتازة.`,
-    `تجربة طيبة وتعامل محترم، شكراً لكم على المجهود المميز في ${spec}.`,
-    `جودة العمل عالية ومطابقة لما تم الاتفاق عليه، أنصح بتجربة ${pName}.`,
-    `مكان محترم وخدمة سريعة في ${spec}، بالتوفيق دائمًا.`,
-    `تعاملت معاهم في ${spec} والخدمة ممتازة، السعر كان ممكن يكون أفضل لكن الجودة كويسة جداً.`,
-    `مكان كويس وموثوق وناس محترمة جداً وشغل ${spec} عندهم مظبوط.`,
-    `تجربة ممتازة بوجه عام وخدمة ${spec} طلعت كويسة جداً.`,
-    `ناس محترمة وسريعين في الرد، وخدمة ${spec} جيدة ومطابقة للطلب.`
-  ];
-
-  const TEMPLATES_3 = [
-    `الخدمة في ${spec} مقبولة وجيدة في المجمل، لكن تحتاج بعض التطوير والسرعة في التنفيذ.`,
-    `تعامل عادي من ${pName} والنتيجة في ${spec} متوسطة كما هو متوقع.`,
-    `تجربة مقبولة ولكن هناك مجال للتحسين في مواعيد تسليم ${spec}.`,
-    `الخدمة جيدة لكن أسعار ${spec} تحتاج إعادة نظر لتناسب الجميع.`,
-    `المكان كويس بس الزحمة مأثرة شوية على سرعة تقديم ${spec}.`,
-    `مستوى الخدمة في ${spec} متوسط، معقول لكن يحتاج اهتمام أكثر بالتفاصيل.`
-  ];
-
-  const TEMPLATES_2 = [
-    `الخدمة في ${spec} تحتاج تحسين ملحوظ في سرعة الاستجابة والالتزام بالمواعيد.`,
-    `التجربة مع ${pName} في ${spec} لم تكن على المستوى المطلوب، نأمل التطوير مستقبلاً.`,
-    `للأسف فيه تأخير ملحوظ في تنفيذ ${spec} وضعف في سرعة الرد على العملاء.`,
-    `الأسعار مرتفعة مقارنة بمستوى الخدمة المقدمة في ${spec}.`
-  ];
-
-  const TEMPLATES_1 = [
-    'خدمة سيئة وغير مرضية، وتحتاج مراجعة شاملة في الالتزام بالمواعيد والتعامل.',
-    'تجربة غير موفقة نهائياً للأسف في هذا المكان، تأخير كبير وعدم اهتمام بالعميل.',
-    'مستوى الخدمة ضعيف جداً ولا أنصح بالتعامل حتى يتم تحسين الجودة.'
-  ];
-
-  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-
-  function pickRating() {
-    if (starRange === 'negative' || starRange === '1-2') return Math.random() < 0.5 ? 2 : 1;
-    if (starRange === 'positive' || starRange === '3-5') return [3, 4, 5, 5][Math.floor(Math.random() * 4)];
-    if (starRange === '5') return 5;
-    if (starRange === '4-5') return Math.random() < 0.75 ? 5 : 4;
-    if (starRange === '3-4') return Math.random() < 0.5 ? 4 : 3;
-    if (starRange === '2-4') return [2, 3, 4][Math.floor(Math.random() * 3)];
-    if (starRange === '1') return 1;
-    if (starRange === '2') return 2;
-    if (starRange === '3') return 3;
-    if (starRange === '4') return 4;
-    
-    const r = Math.random();
-    if (r < 0.65) return 5;
-    if (r < 0.85) return 4;
-    if (r < 0.93) return 3;
-    if (r < 0.97) return 2;
-    return 1;
-  }
-
-  const MIDDLE_NAMES_AR = [
-    'محمد', 'أحمد', 'محمود', 'علي', 'حسن', 'إبراهيم', 'مصطفى', 'عبد الله', 'السيد', 'عمر',
-    'طارق', 'حسام', 'عادل', 'سامح', 'خالد', 'كمال', 'نبيل', 'صلاح', 'ماهر', 'مجدي'
-  ];
-
-  const usedNames = new Set();
-  const results = [];
-  let safetyLoop = 0;
-
-  while (results.length < targetCount && safetyLoop < targetCount * 25) {
-    safetyLoop++;
-    let name = '';
-    const typeRoll = Math.random();
-    const useMiddle = Math.random() < 0.65; // 65% triple names for massive natural Egyptian uniqueness
-
-    if (gender === 'male') {
-      // Male only: Arabic male or English male names
-      if (typeRoll < 0.85) {
-        name = useMiddle
-          ? `${pick(FIRST_NAMES_AR_M)} ${pick(MIDDLE_NAMES_AR)} ${pick(LAST_NAMES_AR)}`
-          : `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
-      } else {
-        const enFirst = pick(FIRST_NAMES_EN.filter(n => !['Sarah','Mariam','Nourhan','Dina','Aya','Rania','Mona','Reem','Hadeer','Salma','Farida','Nada','Nour'].includes(n)));
-        name = useMiddle ? `${enFirst} M. ${pick(LAST_NAMES_EN)}` : `${enFirst} ${pick(LAST_NAMES_EN)}`;
-      }
-    } else if (gender === 'female') {
-      // Female only: Arabic female or English female names
-      const FIRST_NAMES_EN_F = ['Sara','Mariam','Nourhan','Dina','Aya','Rania','Mona','Reem','Hadeer','Salma','Farida','Nada','Nour','Yasmine','Hana','Laila','Rana'];
-      if (typeRoll < 0.85) {
-        name = useMiddle
-          ? `${pick(FIRST_NAMES_AR_F)} ${pick(MIDDLE_NAMES_AR)} ${pick(LAST_NAMES_AR)}`
-          : `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
-      } else {
-        const enFirst = pick(FIRST_NAMES_EN_F);
-        name = useMiddle ? `${enFirst} A. ${pick(LAST_NAMES_EN)}` : `${enFirst} ${pick(LAST_NAMES_EN)}`;
-      }
-    } else {
-      // Mixed (default): male 50%, female 30%, English 20%
-      if (typeRoll < 0.5) {
-        name = useMiddle
-          ? `${pick(FIRST_NAMES_AR_M)} ${pick(MIDDLE_NAMES_AR)} ${pick(LAST_NAMES_AR)}`
-          : `${pick(FIRST_NAMES_AR_M)} ${pick(LAST_NAMES_AR)}`;
-      } else if (typeRoll < 0.8) {
-        name = useMiddle
-          ? `${pick(FIRST_NAMES_AR_F)} ${pick(MIDDLE_NAMES_AR)} ${pick(LAST_NAMES_AR)}`
-          : `${pick(FIRST_NAMES_AR_F)} ${pick(LAST_NAMES_AR)}`;
-      } else {
-        name = `${pick(FIRST_NAMES_EN)} ${pick(LAST_NAMES_EN)}`;
-      }
-    }
-
-    const normName = name.trim().toLowerCase();
-    if (usedNames.has(normName)) continue;
-    usedNames.add(normName);
-
-    const rating = pickRating();
-    let comment = '';
-    if (rating === 5) comment = pick(TEMPLATES_5);
-    else if (rating === 4) comment = pick(TEMPLATES_4);
-    else if (rating === 3) comment = pick(TEMPLATES_3);
-    else if (rating === 2) comment = pick(TEMPLATES_2);
-    else comment = pick(TEMPLATES_1);
-
-    results.push({
-      name,
-      rating,
-      comment
-    });
-  }
-
-  return results;
-}
-
-export async function autoAssignHammadReview(user) {
-  if (!user || !user.uid) return;
-
-  try {
-    const placesMap = await dbGet('places') || {};
-    let hammadPlaceId = null;
-    let hammadPlace = null;
-
-    for (const [pId, pData] of Object.entries(placesMap)) {
-      if (pData.slug === HAMMAD_PLACE_SLUG || pId === HAMMAD_PLACE_SLUG || (pData.name && pData.name.includes('محمد حماد'))) {
-        hammadPlaceId = pId;
-        hammadPlace = pData;
-        break;
-      }
-    }
-
-    if (!hammadPlaceId) return;
-
-    const existing = await getPlaceReviews(hammadPlaceId);
-    if (existing.some(r => r.userId === user.uid)) return;
-
-    const randomComment = HAMMAD_TESTIMONIALS[Math.floor(Math.random() * HAMMAD_TESTIMONIALS.length)];
-    const starRating = 5;
-
-    const reviewId = `auto_hammad_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const reviewData = {
-      id: reviewId,
-      placeId: hammadPlaceId,
-      placeName: hammadPlace.name || 'مهندس محمد حماد',
-      placeSlug: hammadPlace.slug || HAMMAD_PLACE_SLUG,
-      userId: user.uid,
-      userName: user.name || user.displayName || 'مستخدم مسجل',
-      userPhoto: user.photoURL || '',
-      rating: starRating,
-      comment: randomComment,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      editCount: 0
-    };
-
-    await dbSet(`places/${hammadPlaceId}/reviews/${reviewId}`, reviewData);
-    await dbUpdate(`places/${hammadPlaceId}`, { rating: 5.0, reviewCount: (existing.length + 1) });
-  } catch (err) {
-    console.warn('[AutoReview] Hammad review error:', err);
-  }
-}
-
-export async function isFollowingPlace(placeId, userId) {
-  if (!placeId || !userId) return false;
-  try {
-    const follow = await dbGet(`users/${userId}/following/${placeId}`);
-    return !!follow;
-  } catch (_) {
-    return false;
-  }
-}
-
-export async function followPlace(placeId, user) {
-  if (!placeId || !user || !user.uid) throw new Error('يجب تسجيل الدخول لمتابعة المكان');
-  
-  const now = Date.now();
-  await dbSet(`users/${user.uid}/following/${placeId}`, {
-    followedAt: now,
-    placeId
-  });
-
-  await dbSet(`places/${placeId}/followers/${user.uid}`, {
-    userId: user.uid,
-    userName: user.name || user.displayName || 'متابع',
-    userPhoto: user.photoURL || '',
-    followedAt: now
-  });
-
-  // Increment followersCount
-  try {
-    const place = await dbGet(`places/${placeId}`);
-    const currentCount = Number(place?.followersCount) || 0;
-    await dbUpdate(`places/${placeId}`, { followersCount: currentCount + 1 });
-  } catch (_) {}
-
-  return true;
-}
-
-export async function unfollowPlace(placeId, user) {
-  if (!placeId || !user || !user.uid) return;
-
-  await dbRemove(`users/${user.uid}/following/${placeId}`);
-  await dbRemove(`places/${placeId}/followers/${user.uid}`);
-
-  // Decrement followersCount
-  try {
-    const place = await dbGet(`places/${placeId}`);
-    const currentCount = Math.max(0, (Number(place?.followersCount) || 1) - 1);
-    await dbUpdate(`places/${placeId}`, { followersCount: currentCount });
-  } catch (_) {}
-
-  return false;
-}
-
-export async function getUserFollowedPlaces(userId) {
-  if (!userId) return [];
-  try {
-    const followingMap = await dbGet(`users/${userId}/following`) || {};
-    const placeIds = Object.keys(followingMap);
-    if (!placeIds.length) return [];
-
-    const placesList = [];
-    for (const pId of placeIds) {
-      const p = await dbGet(`places/${pId}`);
-      if (p) placesList.push({ id: pId, ...p });
-    }
-    return placesList;
-  } catch (err) {
-    console.warn('[getUserFollowedPlaces] error:', err);
-    return [];
-  }
-}
-
-export async function getUserFollowedOffers(userId) {
-  if (!userId) return [];
-  try {
-    const places = await getUserFollowedPlaces(userId);
-    if (!places.length) return [];
-    
-    const placeIds = new Set(places.map(p => p.id));
-    const allOffersMap = await dbGet('offers') || {};
-    const now = Date.now();
-
-    const offers = Object.entries(allOffersMap)
-      .map(([id, o]) => ({ id, ...o }))
-      .filter(o => placeIds.has(o.placeId) && o.status === 'active' && (!o.expiresAt || o.expiresAt > now))
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-
-    return offers;
-  } catch (err) {
-    console.warn('[getUserFollowedOffers] error:', err);
-    return [];
-  }
-}
-
-export function subscribeToOwnerPresence(ownerId, callback) {
-  if (!ownerId || typeof callback !== 'function') return () => {};
-
-  try {
-    const db = getDB();
-    const presenceRef = db.ref(`users/${ownerId}/presence`);
-    const userRef = db.ref(`users/${ownerId}`);
-
-    const listener = (snap) => {
-      if (snap && snap.exists()) {
-        const val = snap.val() || {};
-        const isOnline = Boolean(val.isOnline);
-        const lastSeen = Number(val.lastSeen) || 0;
-        const activeRecently = isOnline || (Date.now() - lastSeen < 3 * 60 * 1000);
-        callback({ isOnline: activeRecently, lastSeen });
-      } else {
-        userRef.once('value').then(uSnap => {
-          if (uSnap.exists()) {
-            const uVal = uSnap.val() || {};
-            const lastLogin = Number(uVal.lastLoginAt) || 0;
-            const activeRecently = Date.now() - lastLogin < 3 * 60 * 1000;
-            callback({ isOnline: activeRecently, lastSeen: lastLogin });
-          } else {
-            callback({ isOnline: false, lastSeen: 0 });
-          }
-        }).catch(() => callback({ isOnline: false, lastSeen: 0 }));
-      }
-    };
-
-    presenceRef.on('value', listener);
-
-    return () => {
-      try { presenceRef.off('value', listener); } catch (_) {}
-    };
-  } catch (err) {
-    console.warn('[subscribeToOwnerPresence] error:', err);
-    return () => {};
-  }
-}
-
-function getDeterministicReviewerPoints(name = '', id = '') {
-  const str = (name + id).trim() || 'مستخدم';ج 
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  const abs = Math.abs(hash);
-  const mod = abs % 100;
-  if (mod < 28) {
-    return 80 + (abs % 400); // 🥉 مستكشف مبتدئ (80 - 479)
-  } else if (mod < 62) {
-    return 520 + (abs % 900); // 🥈 مساهم نشط (520 - 1419)
-  } else if (mod < 84) {
-    return 1550 + (abs % 1800); // 🥇 خبير المنزلة والمطرية (1550 - 3349)
-  } else if (mod < 94) {
-    return 3550 + (abs % 1350); // 💎 مساهم موثوق ذهبي (3550 - 4899)
-  } else {
-    return 5100 + (abs % 2200); // 👑 نخبة المنزلة VIP (5100 - 7299)
-  }
-}
