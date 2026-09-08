@@ -1388,6 +1388,15 @@ try {
     if (Array.isArray(body.reviews) && body.reviews.length > 0) {
       if (!auth.user.isAdmin) return jsonResponse({success:false,error:'إضافة تقييمات جماعية متاحة للإدارة فقط'},403,corsHeaders);
       const reviewsList = body.reviews;
+      if (reviewsList.length < 1 || reviewsList.length > 5000) {
+        return jsonResponse({success:false,error:'عدد التقييمات الجماعية يجب أن يكون بين 1 و5000'},400,corsHeaders);
+      }
+      const placeIds = [...new Set(reviewsList.map(r => String(r.place_id || r.placeId || '').trim()).filter(Boolean))];
+      if (placeIds.length !== 1) {
+        return jsonResponse({success:false,error:'الدفعة الجماعية يجب أن تخص مكاناً واحداً فقط'},400,corsHeaders);
+      }
+      const placeExists = await createTursoDB(env).prepare('SELECT id FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(placeIds[0],placeIds[0]).first();
+      if (!placeExists) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
       const now = Date.now();
       let insertedCount = 0;
 
