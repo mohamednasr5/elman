@@ -342,7 +342,7 @@ try {
     // 2. Query D1 with targeted filters and LIMIT
     // Search must never aggregate the entire reviews table. Search can run many
     // times while a user types, so a global GROUP BY reviews query multiplies
-    // D1 row reads dramatically. Ratings/review counts are loaded from
+    // Turso row reads dramatically. Ratings/review counts are loaded from
     // denormalized place stats when available; full reviews are only fetched
     // on the place profile.
     let sql = `
@@ -988,7 +988,7 @@ try {
           insertedCount += chunk.length;
         }
 
-        return jsonResponse({ success: true, message: `تم حفظ ${insertedCount} تقييم بنجاح في D1`, insertedCount }, 200, corsHeaders);
+        return jsonResponse({ success: true, message: `تم حفظ ${insertedCount} تقييم بنجاح في Turso`, insertedCount }, 200, corsHeaders);
       } catch (err) {
         return jsonResponse({ success: false, error: err.message, insertedCount }, 500, corsHeaders);
       }
@@ -1994,7 +1994,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
   let place = null;
 
   // ============================================================
-  // 1. البحث عن المكان في Cloudflare D1
+  // 1. البحث عن المكان في Turso
   // ============================================================
   try {
     const result = await createTursoDB(env).prepare(`
@@ -2008,7 +2008,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
       place = result;
     }
   } catch (err) {
-    console.error('[OG] D1 lookup error:', err);
+    console.error('[OG] Turso lookup error:', err);
   }
 
   // ============================================================
@@ -2028,7 +2028,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
         place = result;
       }
     } catch (err) {
-      console.error('[OG] D1 ID / prefix lookup error:', err);
+      console.error('[OG] Turso ID / prefix lookup error:', err);
     }
   }
 
