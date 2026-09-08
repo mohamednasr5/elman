@@ -184,20 +184,20 @@ async function d1GetBusiness(path) {
     return data.data || null;
   }
 
-  // offers/products are represented by the place payload. There is no Firebase fallback.
-  if (root === 'offers' || root === 'products') {
-    const data = await d1Fetch('/api/places?limit=1000');
-    const places = Array.isArray(data.data) ? data.data : [];
-    if (root === 'offers') {
-      const all = [];
-      places.forEach(p => (Array.isArray(p.offers) ? p.offers : []).forEach(o => all.push({ id: o.id || o._key, ...o, placeId: p.id, placeName: p.name, placeSlug: p.slug })));
-      if (parts.length === 1) return Object.fromEntries(all.filter(x => x.id).map(x => [x.id, x]));
-      return all.find(x => String(x.id) === String(parts[1])) || null;
-    }
-    const all = [];
-    places.forEach(p => (Array.isArray(p.products) ? p.products : []).forEach(x => all.push({ id: x.id || x._key, ...x, placeId: p.id, placeName: p.name, placeSlug: p.slug })));
-    if (parts.length === 1) return Object.fromEntries(all.filter(x => x.id).map(x => [x.id, x]));
-    return all.find(x => String(x.id) === String(parts[1])) || null;
+  if (root === 'offers') {
+    const data = await d1Fetch(parts.length > 1 ? `/api/offers?id=${encodeURIComponent(parts[1])}` : '/api/offers');
+    const list = Array.isArray(data.data) ? data.data : [];
+    if (parts.length === 1) return Object.fromEntries(list.filter(x => x.id).map(x => [x.id, x]));
+    return list.find(x => String(x.id) === String(parts[1])) || null;
+  }
+  if (root === 'products') {
+    const placeId = parts[1] || '';
+    const productId = parts[2] || '';
+    const apiPath = productId ? `/api/products?id=${encodeURIComponent(productId)}` : (placeId ? `/api/products?place_id=${encodeURIComponent(placeId)}` : '/api/products');
+    const data = await d1Fetch(apiPath);
+    const list = Array.isArray(data.data) ? data.data : [];
+    if (parts.length <= 2) return Object.fromEntries(list.filter(x => x.id).map(x => [x.id, x]));
+    return list.find(x => String(x.id) === String(productId)) || null;
   }
 
   return null;
@@ -258,6 +258,18 @@ async function d1WriteBusiness(path, method, data = null) {
     throw new Error(`D1 Worker does not expose a safe write endpoint for path: ${path}`);
   }
 
+  if (root === 'offers') {
+    if (method === 'POST') return d1Fetch('/api/offers',{method:'POST',body:JSON.stringify(data || {})});
+    if (method === 'PUT' && parts[1]) return d1Fetch(`/api/offers/${encodeURIComponent(parts[1])}`,{method:'PUT',body:JSON.stringify(data || {})});
+    if (method === 'DELETE' && parts[1]) return d1Fetch(`/api/offers/${encodeURIComponent(parts[1])}`,{method:'DELETE'});
+    throw new Error(`Unsupported offer write path: ${path}`);
+  }
+  if (root === 'products') {
+    if (method === 'POST') return d1Fetch('/api/products',{method:'POST',body:JSON.stringify({...data,place_id:data?.place_id||data?.placeId||parts[1]})});
+    if (method === 'PUT' && parts[2]) return d1Fetch(`/api/products/${encodeURIComponent(parts[2])}`,{method:'PUT',body:JSON.stringify(data || {})});
+    if (method === 'DELETE' && parts[2]) return d1Fetch(`/api/products/${encodeURIComponent(parts[2])}`,{method:'DELETE'});
+    throw new Error(`Unsupported product write path: ${path}`);
+  }
   if (root === 'categories') {
     if (method === 'POST') return d1Fetch('/api/categories', { method: 'POST', body: JSON.stringify(data || {}) });
     if (method === 'PUT' && parts[1]) return d1Fetch(`/api/categories/${encodeURIComponent(parts[1])}`, { method: 'PUT', body: JSON.stringify(data || {}) });
@@ -265,7 +277,7 @@ async function d1WriteBusiness(path, method, data = null) {
     throw new Error(`Unsupported category write path: ${path}`);
   }
 
-  throw new Error(`No D1 write endpoint configured for ${root}`);
+  throw new Error(`No Turso write endpoint configured for ${root}`);
 }
 
 /**
@@ -353,6 +365,17 @@ export async function dbPush(path, data) {
   if (isBusinessDataPath(path)) {
     const cleanPath = String(path || '').replace(/^\/+/, '');
 
+    if (/^offers$/i.test(cleanPath)) {
+      const result = await d1WriteBusiness('offers','POST',data || {});
+      const newId = result?.id || data?.id || `offer_${Date.now()}`;
+      return {key:newId,id:newId};
+    }
+    if (/^products\/[^/]+$/i.test(cleanPath)) {
+      const result = await d1WriteBusiness(cleanPath,'POST',data || {});
+      const newId = result?.id || data?.id || `prod_${Date.now()}`;
+      return {key:newId,id:newId};
+    }
+
     // Ads are authoritative in Cloudflare D1. Never attempt Firebase push.
     if (/^ads(?:\/|$)/i.test(cleanPath)) {
       const parts = cleanPath.split('/').filter(Boolean);
@@ -401,7 +424,19 @@ export async function dbIncrement(path, delta = 1) {
       if (!res.ok) throw new Error(`Worker stat update failed: ${res.status}`);
       return;
     }
-    throw new Error(`Firebase increment blocked for business data path: ${path}`);
+    const offerMatch = String(path).match(/^offers\/([^/]+)\/(views|clicks)$/);
+    if (offerMatch) {
+      const res = await workerFetch('/api/offers/track-stat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:offerMatch[1],stat:offerMatch[2]}),signal:AbortSignal.timeout(4000)});
+      if (!res.ok) throw new Error(`Offer stat update failed: ${res.status}`);
+      return;
+    }
+    const productMatch = String(path).match(/^products\/([^/]+)\/([^/]+)\/(views|clicks)$/);
+    if (productMatch) {
+      const res = await workerFetch('/api/products/track-stat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:productMatch[2],stat:productMatch[3]}),signal:AbortSignal.timeout(4000)});
+      if (!res.ok) throw new Error(`Product stat update failed: ${res.status}`);
+      return;
+    }
+    throw new Error(`Turso increment path is not supported: ${path}`);
   }
   await getDB().ref(path).transaction((current) => (current || 0) + delta);
 }
