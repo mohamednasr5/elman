@@ -498,17 +498,6 @@ export async function submitCategoryRequestD1({ categoryName, placeName, ownerNa
   }
 }
 
-/** Update Category Request status in D1 */
-export async function updateCategoryRequestD1(id, status = 'approved') {
-  try {
-    await fetch(`${WORKER_URL}/api/category-requests/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
-    });
-  } catch (_) {}
-}
-
 /** Get all Verification Requests - Primary Turso */
 export async function getVerificationRequestsD1() {
   try {
