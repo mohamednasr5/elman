@@ -146,7 +146,7 @@ export async function renderSearchPage($container, { q = '', user }) {
   let allProductsList = [];
   let allOffersList = [];
 
-  // D1 Edge Search is the primary path. Keep the page lightweight and hydrate
+  // Turso Edge Search is the primary path. Keep the page lightweight and hydrate
   // the full local index only when AI/local fallback actually needs it.
   async function ensureLocalPlaces() {
     if (allPlaces.length) return allPlaces;
@@ -272,7 +272,7 @@ export async function renderSearchPage($container, { q = '', user }) {
     }
 
     // Local-first: after IndexedDB hydration, live typing/search stays entirely
-    // in the browser instead of issuing a D1 scan for every query.
+    // in the browser instead of issuing a Turso scan for every query.
     try {
       await ensureLocalPlaces();
       if (allPlaces.length > 0) {

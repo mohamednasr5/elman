@@ -1,11 +1,11 @@
 /**
  * api.js — Unified Cloudflare Worker API Client
- * المعيارية: كل البيانات تمر من هنا → Worker → D1 / R2
+ * المعيارية: كل البيانات تمر من هنا → Worker → Turso / R2
  *
  * Architecture:
  *   Firebase Auth  → login + ID token only
  *   Firebase FCM   → push notifications only
- *   Worker + D1    → ALL data (users, places, categories, offers, products, settings, etc.)
+ *   Worker + Turso  → ALL data (users, places, categories, offers, products, settings, etc.)
  *   Worker + R2    → ALL files/images
  *
  * Usage:
@@ -121,11 +121,11 @@ export const api = {
 
 /** Users */
 export const usersApi = {
-  /** POST /api/users/sync — sync Firebase user to D1, returns D1 profile */
+  /** POST /api/users/sync — sync Firebase user to Turso, returns Turso profile */
   sync: (uid, name, email, photoURL, role, idToken) =>
     api.post('/api/users/sync', { uid, name, email, photoURL, role, status: 'active' }, idToken),
 
-  /** GET /api/users/:uid — get single user from D1 */
+  /** GET /api/users/:uid — get single user from Turso */
   getById: (uid, idToken = null) =>
     api.get(`/api/users/${uid}`, idToken),
 

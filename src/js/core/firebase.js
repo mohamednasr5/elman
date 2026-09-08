@@ -1,6 +1,6 @@
 /**
  * المنزلة وناسها — Firebase Core Initialization
- * Architecture: Cloudflare D1 + R2 + Worker (Primary Backend & DB)
+ * Architecture: Turso + R2 + Worker (Primary Backend & DB)
  * Firebase Auth is used for user authentication and tokens.
  * Firebase Cloud Messaging (FCM) is used for Web Push notifications.
  * Firebase Realtime Database is completely deprecated and removed.

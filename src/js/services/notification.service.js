@@ -224,7 +224,7 @@ export async function fetchManagedUserNotifications(uid) {
     });
   } catch (_) {}
 
-  // 2. Synthesize directly from Verified Places & Latest Places in D1 / Cache
+  // 2. Synthesize directly from Verified Places & Latest Places in Turso / Cache
   try {
     const placesList = (await getPublishedPlaces({ limit: 200 })) || [];
     placesList.forEach(place => {

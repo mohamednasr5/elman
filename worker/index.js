@@ -7,6 +7,7 @@
  */
 
 import { handleTelegramWebhook, sendAdminPushNotification, telegramApi } from './telegram.js';
+import { createTursoDB, checkTursoHealth } from './turso.js';
 
 
 async function sendDailyQuranReminder(env) {
@@ -15,7 +16,7 @@ async function sendDailyQuranReminder(env) {
   }).format(new Date()));
   if (cairoHour !== 10) return;
 
-  const result = await env.DB.prepare(
+  const result = await createTursoDB(env).prepare(
     'SELECT token FROM fcm_tokens WHERE token IS NOT NULL AND token <> ""'
   ).all();
   const rows = result?.results || [];
@@ -47,7 +48,7 @@ async function sendDailyQuranReminder(env) {
         })
       });
       if (response.status === 404 || response.status === 410) {
-        await env.DB.prepare('DELETE FROM fcm_tokens WHERE token = ?').bind(row.token).run().catch(() => {});
+        await createTursoDB(env).prepare('DELETE FROM fcm_tokens WHERE token = ?').bind(row.token).run().catch(() => {});
       } else if (!response.ok) {
         console.error('[Daily Quran Push] FCM:', response.status, await response.text());
       }
@@ -97,7 +98,7 @@ async function getFcmAccessToken(env) {
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
-      env.DB.prepare('UPDATE places SET is_sponsored = 0, is_featured = 0 WHERE is_sponsored = 1 AND sponsored_until IS NOT NULL AND sponsored_until < ?')
+      createTursoDB(env).prepare('UPDATE places SET is_sponsored = 0, is_featured = 0 WHERE is_sponsored = 1 AND sponsored_until IS NOT NULL AND sponsored_until < ?')
         .bind(Date.now()).run().catch(() => {})
     );
     ctx.waitUntil(sendDailyQuranReminder(env).catch(err => console.error('[Daily Quran Push]', err)));
@@ -242,6 +243,32 @@ if (url.pathname === '/index.html') {
 
 try {
 
+  // ── Turso database health check ───────────────────────────────
+  // GET /api/health — verifies that the Worker can reach Turso.
+  if (url.pathname === '/api/health' && request.method === 'GET') {
+    try {
+      const healthy = await checkTursoHealth(env);
+      return jsonResponse({
+        success: healthy,
+        status: healthy ? 'ok' : 'error',
+        database: 'turso'
+      }, healthy ? 200 : 503, {
+        ...corsHeaders,
+        'Cache-Control': 'no-store'
+      });
+    } catch (err) {
+      return jsonResponse({
+        success: false,
+        status: 'error',
+        database: 'turso',
+        error: err?.message || String(err)
+      }, 503, {
+        ...corsHeaders,
+        'Cache-Control': 'no-store'
+      });
+    }
+  }
+
   // ── Public Data Quality Reports ─────────────────────────────────
   // POST /api/place-reports — visitors can flag stale/incorrect place data.
   if (url.pathname === '/api/place-reports' && request.method === 'POST') {
@@ -252,7 +279,7 @@ try {
       const details = String(body.details || '').trim().slice(0, 1000);
       const reporterName = String(body.reporterName || 'زائر').trim().slice(0, 80);
       if (!placeId || !reason) return jsonResponse({ success:false, error:'بيانات البلاغ غير مكتملة' }, 400, corsHeaders);
-      const exists = await env.DB.prepare('SELECT id FROM places WHERE id = ? LIMIT 1').bind(placeId).first();
+      const exists = await createTursoDB(env).prepare('SELECT id FROM places WHERE id = ? LIMIT 1').bind(placeId).first();
       if (!exists) return jsonResponse({ success:false, error:'المكان غير موجود' }, 404, corsHeaders);
 
       // Small abuse guard: one report per IP/place within 10 minutes.
@@ -263,7 +290,7 @@ try {
         return jsonResponse({ success:false, error:'تم استلام بلاغ مشابه مؤخرًا، شكرًا لك' }, 429, { ...corsHeaders, 'Retry-After':'600' });
       }
       const id = crypto.randomUUID();
-      await env.DB.prepare('INSERT INTO place_reports (id, place_id, reason, details, reporter_name, status, created_at) VALUES (?, ?, ?, ?, ?, \'new\', ?)')
+      await createTursoDB(env).prepare('INSERT INTO place_reports (id, place_id, reason, details, reporter_name, status, created_at) VALUES (?, ?, ?, ?, ?, \'new\', ?)')
         .bind(id, placeId, reason, details, reporterName, Date.now()).run();
       ctx.waitUntil(rateCache.put(rateKey, new Response('1', { headers:{'Cache-Control':'max-age=600'} })));
       return jsonResponse({ success:true, message:'تم استلام البلاغ' }, 201, { ...corsHeaders, 'Cache-Control':'no-store' });
@@ -315,7 +342,7 @@ try {
     // 2. Query D1 with targeted filters and LIMIT
     // Search must never aggregate the entire reviews table. Search can run many
     // times while a user types, so a global GROUP BY reviews query multiplies
-    // D1 row reads dramatically. Ratings/review counts are loaded from
+    // Turso row reads dramatically. Ratings/review counts are loaded from
     // denormalized place stats when available; full reviews are only fetched
     // on the place profile.
     let sql = `
@@ -359,7 +386,7 @@ try {
       params.push(limit + 1, offset);
     }
 
-    const result = await env.DB.prepare(sql).bind(...params).all();
+    const result = await createTursoDB(env).prepare(sql).bind(...params).all();
     const rows = result.results || [];
     const hasMore = rows.length > limit;
     const items = hasMore ? rows.slice(0, limit) : rows;
@@ -425,7 +452,7 @@ try {
 
       // Fetch the place first. Do NOT GROUP BY the entire reviews table here:
       // that pattern scans every review whenever any place profile is opened.
-      const result = await env.DB.prepare(`
+      const result = await createTursoDB(env).prepare(`
         SELECT p.*
         FROM places p
         WHERE LOWER(p.slug) = LOWER(?) OR p.id = ? OR p.slug = ?
@@ -435,7 +462,7 @@ try {
       if (result) {
         // The reviews table has an index on (place_id, created_at), so this
         // reads only reviews belonging to the requested place.
-        const reviewStats = await env.DB.prepare(`
+        const reviewStats = await createTursoDB(env).prepare(`
           SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
           FROM reviews
           WHERE place_id = ?
@@ -531,7 +558,7 @@ try {
       }
     }
 
-    const result = await env.DB.prepare(sql).bind(...params).all();
+    const result = await createTursoDB(env).prepare(sql).bind(...params).all();
 
     const places = (result.results || []).map(place => ({
       ...place,
@@ -616,7 +643,7 @@ try {
     const ownerEmail = body.ownerEmail || body.owner_email || '';
     const now = Date.now();
 
-    await env.DB.prepare(`
+    await createTursoDB(env).prepare(`
       INSERT INTO places (
         id, name, name_en, slug, category_id, subcategory_id, custom_category,
         address, area, phone, whatsapp, maps_link, latitude, longitude,
@@ -691,7 +718,7 @@ try {
     const id = (idFromPath || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
 
     if (id) {
-      await env.DB.prepare(`DELETE FROM places WHERE id = ? OR slug = ?`).bind(id, id).run();
+      await createTursoDB(env).prepare(`DELETE FROM places WHERE id = ? OR slug = ?`).bind(id, id).run();
 
       const cache = caches.default;
       const purgeUrls = [
@@ -722,7 +749,7 @@ try {
     }
 
     try {
-      const result = await env.DB.prepare(`
+      const result = await createTursoDB(env).prepare(`
         SELECT id, name, name_en, slug, icon, description, sort_order as "order", created_at
         FROM categories
         ORDER BY sort_order ASC, name ASC
@@ -762,7 +789,7 @@ try {
     }
 
     try {
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         INSERT INTO categories (id, name, name_en, slug, icon, description, sort_order, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
@@ -800,7 +827,7 @@ try {
     }
 
     try {
-      await env.DB.prepare(`DELETE FROM categories WHERE id = ? OR slug = ?`).bind(id, id).run();
+      await createTursoDB(env).prepare(`DELETE FROM categories WHERE id = ? OR slug = ?`).bind(id, id).run();
 
       // Invalidate Categories Cache
       const cache = caches.default;
@@ -816,7 +843,7 @@ try {
   // ── D1: Ads API (GET, POST, DELETE /api/ads) ───────────────────
   if (url.pathname === '/api/ads' && request.method === 'GET') {
     try {
-      const result = await env.DB.prepare(`
+      const result = await createTursoDB(env).prepare(`
         SELECT * FROM ads ORDER BY priority DESC, created_at DESC
       `).all();
       const ads = (result.results || []).map(a => ({
@@ -853,7 +880,7 @@ try {
     const createdBy = body.createdBy || body.created_by || '';
 
     try {
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         INSERT INTO ads (id, title, place_id, link, image_url, placement, priority, is_active, start_date, end_date, clicks, created_at, created_by)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
@@ -881,7 +908,7 @@ try {
     if (!id) return jsonResponse({ error: 'ID مطلوب' }, 400, corsHeaders);
 
     try {
-      await env.DB.prepare(`DELETE FROM ads WHERE id = ?`).bind(id).run();
+      await createTursoDB(env).prepare(`DELETE FROM ads WHERE id = ?`).bind(id).run();
       return jsonResponse({ success: true, message: 'تم حذف الإعلان بنجاح من D1' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
@@ -907,7 +934,7 @@ try {
       }
       query += ` ORDER BY r.created_at DESC LIMIT 500 `;
 
-      const stmt = env.DB.prepare(query);
+      const stmt = createTursoDB(env).prepare(query);
       const result = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all();
 
       // Reviews are user-submitted content and must be immediately visible after
@@ -947,7 +974,7 @@ try {
             const pName = r.place_name || r.placeName || '';
             const pSlug = r.place_slug || r.placeSlug || '';
 
-            return env.DB.prepare(`
+            return createTursoDB(env).prepare(`
               INSERT INTO reviews (id, place_id, user_id, user_name, user_photo, place_name, place_slug, rating, comment, is_admin_generated, edit_count, created_at, updated_at)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
               ON CONFLICT(id) DO UPDATE SET
@@ -957,11 +984,11 @@ try {
             `).bind(rId, pId, uId, uName, uPhoto, pName, pSlug, rScore, cText, isAdminGen, rTime, rTime);
           });
 
-          await env.DB.batch(stmts);
+          await createTursoDB(env).batch(stmts);
           insertedCount += chunk.length;
         }
 
-        return jsonResponse({ success: true, message: `تم حفظ ${insertedCount} تقييم بنجاح في D1`, insertedCount }, 200, corsHeaders);
+        return jsonResponse({ success: true, message: `تم حفظ ${insertedCount} تقييم بنجاح في Turso`, insertedCount }, 200, corsHeaders);
       } catch (err) {
         return jsonResponse({ success: false, error: err.message, insertedCount }, 500, corsHeaders);
       }
@@ -989,7 +1016,7 @@ try {
     }
 
     try {
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         INSERT INTO reviews (id, place_id, user_id, user_name, user_photo, place_name, place_slug, rating, comment, is_admin_generated, edit_count, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
@@ -1000,12 +1027,12 @@ try {
 
       // Keep the denormalized place rating in sync in the same request so the
       // public place card and the submitted review become consistent immediately.
-      const stats = await env.DB.prepare(`
+      const stats = await createTursoDB(env).prepare(`
         SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
         FROM reviews
         WHERE place_id = ?
       `).bind(placeId).first();
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         UPDATE places
         SET updated_at = ?, stats_json = json_set(
           COALESCE(stats_json, '{}'),
@@ -1043,7 +1070,7 @@ try {
     if (!reviewId) return jsonResponse({ error: 'معرف التقييم مطلوب' }, 400, corsHeaders);
 
     try {
-      const existing = await env.DB.prepare(`SELECT * FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
+      const existing = await createTursoDB(env).prepare(`SELECT * FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
       if (!existing) return jsonResponse({ error: 'التقييم غير موجود' }, 404, corsHeaders);
 
       const ratingValue = body.rating !== undefined ? Number(body.rating) : Number(existing.rating);
@@ -1059,7 +1086,7 @@ try {
         return jsonResponse({ error: 'التقييم يجب أن يكون بين 1 و5 نجوم' }, 400, corsHeaders);
       }
 
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         UPDATE reviews
         SET rating = ?, comment = ?, edit_count = ?, is_reported = ?, report_count = ?,
             last_report_reason = ?, last_reporter_name = ?, updated_at = ?
@@ -1070,11 +1097,11 @@ try {
       ).run();
 
       const placeIdForRating = existing.place_id;
-      const stats = await env.DB.prepare(`
+      const stats = await createTursoDB(env).prepare(`
         SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
         FROM reviews WHERE place_id = ?
       `).bind(placeIdForRating).first();
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         UPDATE places SET updated_at = ?, stats_json = json_set(
           COALESCE(stats_json, '{}'),
           '$.reviewCount', ?, '$.reviewsCount', ?, '$.rating', ?
@@ -1098,21 +1125,21 @@ try {
     try {
       let affectedPlaceId = placeId;
       if (reviewId) {
-        const existing = await env.DB.prepare(`SELECT place_id FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
+        const existing = await createTursoDB(env).prepare(`SELECT place_id FROM reviews WHERE id = ? LIMIT 1`).bind(reviewId).first();
         affectedPlaceId = existing?.place_id || affectedPlaceId;
-        await env.DB.prepare(`DELETE FROM reviews WHERE id = ?`).bind(reviewId).run();
+        await createTursoDB(env).prepare(`DELETE FROM reviews WHERE id = ?`).bind(reviewId).run();
       } else if (placeId) {
-        await env.DB.prepare(`DELETE FROM reviews WHERE place_id = ?`).bind(placeId).run();
+        await createTursoDB(env).prepare(`DELETE FROM reviews WHERE place_id = ?`).bind(placeId).run();
       } else {
         return jsonResponse({ error: 'مطلوب id أو place_id لحذف المراجعات' }, 400, corsHeaders);
       }
 
       if (affectedPlaceId) {
-        const stats = await env.DB.prepare(`
+        const stats = await createTursoDB(env).prepare(`
           SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
           FROM reviews WHERE place_id = ?
         `).bind(affectedPlaceId).first();
-        await env.DB.prepare(`
+        await createTursoDB(env).prepare(`
           UPDATE places SET updated_at = ?, stats_json = json_set(
             COALESCE(stats_json, '{}'),
             '$.reviewCount', ?, '$.reviewsCount', ?, '$.rating', ?
@@ -1171,7 +1198,7 @@ try {
 
     try {
       // Upsert: preserve existing role in D1 (server-side protection)
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         INSERT INTO users (id, name, email, photo_url, role, status, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
@@ -1187,7 +1214,7 @@ try {
       `).bind(id, name, email, photoUrl, requestedRole, status, now, now).run();
 
       // Return full D1 profile so auth.js can use actual DB role
-      const profile = await env.DB.prepare(
+      const profile = await createTursoDB(env).prepare(
         `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
       ).bind(id).first();
 
@@ -1205,7 +1232,7 @@ try {
       return jsonResponse({ error: 'Invalid user ID' }, 400, corsHeaders);
     }
     try {
-      const user = await env.DB.prepare(
+      const user = await createTursoDB(env).prepare(
         `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
       ).bind(userId).first();
       if (!user) return jsonResponse({ success: false, error: 'User not found' }, 404, corsHeaders);
@@ -1230,7 +1257,7 @@ try {
       const uid = (u.uid || u.id || '').trim();
       if (!uid) continue;
       try {
-        await env.DB.prepare(`
+        await createTursoDB(env).prepare(`
           INSERT INTO users (id, name, email, photo_url, role, status, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO NOTHING
@@ -1257,7 +1284,7 @@ try {
   if (url.pathname === '/api/users' && request.method === 'GET') {
     try {
       // Join with places count per user
-      const result = await env.DB.prepare(`
+      const result = await createTursoDB(env).prepare(`
         SELECT
           u.id, u.name, u.email, u.photo_url, u.phone, u.role, u.status,
           u.created_at, u.updated_at,
@@ -1272,7 +1299,7 @@ try {
     } catch (err) {
       // Fallback without JOIN if places table schema differs
       try {
-        const result = await env.DB.prepare(`
+        const result = await createTursoDB(env).prepare(`
           SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at
           FROM users ORDER BY created_at DESC LIMIT 500
         `).all();
@@ -1295,7 +1322,7 @@ try {
     if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
 
     try {
-      const existing = await env.DB.prepare(`SELECT * FROM users WHERE id = ? LIMIT 1`).bind(id).first();
+      const existing = await createTursoDB(env).prepare(`SELECT * FROM users WHERE id = ? LIMIT 1`).bind(id).first();
       if (!existing) return jsonResponse({ error: 'User not found' }, 404, corsHeaders);
 
       const role   = body.role   !== undefined ? body.role   : existing.role;
@@ -1305,12 +1332,12 @@ try {
       const phone  = body.phone  !== undefined ? body.phone  : existing.phone;
       const now    = Date.now();
 
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         UPDATE users SET role = ?, status = ?, name = ?, email = ?, phone = ?, updated_at = ?
         WHERE id = ?
       `).bind(role, status, name, email, phone, now, id).run();
 
-      const updated = await env.DB.prepare(
+      const updated = await createTursoDB(env).prepare(
         `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
       ).bind(id).first();
 
@@ -1325,7 +1352,7 @@ try {
     const id = url.pathname.replace('/api/users/', '').trim();
     if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
     try {
-      await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(id).run();
+      await createTursoDB(env).prepare(`DELETE FROM users WHERE id = ?`).bind(id).run();
       return jsonResponse({ success: true, message: 'User deleted from D1' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
@@ -1338,7 +1365,7 @@ try {
   // ── D1: Category Requests (GET, POST, PUT, DELETE /api/category-requests) ──
   if (url.pathname === '/api/category-requests' && request.method === 'GET') {
     try {
-      const result = await env.DB.prepare(`
+      const result = await createTursoDB(env).prepare(`
         SELECT id, category_name, place_name, owner_name, user_id, status, created_at, reviewed_at
         FROM category_requests
         ORDER BY created_at DESC
@@ -1362,7 +1389,7 @@ try {
     if (!categoryName) return jsonResponse({ error: 'اسم التصنيف مطلوب' }, 400, corsHeaders);
 
     try {
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         INSERT INTO category_requests (id, category_name, place_name, owner_name, user_id, status, created_at)
         VALUES (?, ?, ?, ?, ?, 'pending', ?)
       `).bind(id, categoryName, placeName, ownerName, userId, now).run();
@@ -1382,7 +1409,7 @@ try {
     if (!id) return jsonResponse({ error: 'Request ID required' }, 400, corsHeaders);
 
     try {
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         UPDATE category_requests SET status = ?, reviewed_at = ? WHERE id = ?
       `).bind(status, now, id).run();
       return jsonResponse({ success: true, message: 'تم تحديث حالة طلب التصنيف' }, 200, corsHeaders);
@@ -1394,7 +1421,7 @@ try {
   // ── D1: Verification Requests (GET, POST, PUT, DELETE /api/verification-requests) ──
   if (url.pathname === '/api/verification-requests' && request.method === 'GET') {
     try {
-      const result = await env.DB.prepare(`
+      const result = await createTursoDB(env).prepare(`
         SELECT id, place_id, place_name, owner_id, owner_name, owner_email, phone, notes, status, verified_until, created_at, reviewed_at
         FROM verification_requests
         ORDER BY created_at DESC
@@ -1421,7 +1448,7 @@ try {
     if (!placeId) return jsonResponse({ error: 'place_id مطلوب' }, 400, corsHeaders);
 
     try {
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         INSERT INTO verification_requests (id, place_id, place_name, owner_id, owner_name, owner_email, phone, notes, status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
       `).bind(id, placeId, placeName, ownerId, ownerName, ownerEmail, phone, notes, now).run();
@@ -1442,7 +1469,7 @@ try {
     if (!id) return jsonResponse({ error: 'Request ID required' }, 400, corsHeaders);
 
     try {
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         UPDATE verification_requests SET status = ?, verified_until = ?, reviewed_at = ? WHERE id = ?
       `).bind(status, verifiedUntil, now, id).run();
       return jsonResponse({ success: true, message: 'تم تحديث حالة طلب التوثيق' }, 200, corsHeaders);
@@ -1466,7 +1493,7 @@ try {
     const now = Date.now();
 
     try {
-      await env.DB.prepare(`
+      await createTursoDB(env).prepare(`
         INSERT INTO fcm_tokens (token, user_id, user_name, platform, user_agent, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(token) DO UPDATE SET
@@ -1495,11 +1522,11 @@ try {
 
     try {
       // Read current stats_json, increment, and update
-      const place = await env.DB.prepare(`SELECT stats_json FROM places WHERE id = ? OR slug = ? LIMIT 1`).bind(placeId, placeId).first();
+      const place = await createTursoDB(env).prepare(`SELECT stats_json FROM places WHERE id = ? OR slug = ? LIMIT 1`).bind(placeId, placeId).first();
       if (place) {
         const stats = parseJson(place.stats_json, {});
         stats[stat] = (Number(stats[stat]) || 0) + 1;
-        await env.DB.prepare(`UPDATE places SET stats_json = ?, updated_at = ? WHERE id = ? OR slug = ?`).bind(JSON.stringify(stats), Date.now(), placeId, placeId).run();
+        await createTursoDB(env).prepare(`UPDATE places SET stats_json = ?, updated_at = ? WHERE id = ? OR slug = ?`).bind(JSON.stringify(stats), Date.now(), placeId, placeId).run();
       }
       return jsonResponse({ success: true }, 200, corsHeaders);
     } catch (err) {
@@ -1967,10 +1994,10 @@ async function handleDynamicOpenGraph(slug, request, env) {
   let place = null;
 
   // ============================================================
-  // 1. البحث عن المكان في Cloudflare D1
+  // 1. البحث عن المكان في Turso
   // ============================================================
   try {
-    const result = await env.DB.prepare(`
+    const result = await createTursoDB(env).prepare(`
       SELECT *
       FROM places
       WHERE slug = ?
@@ -1981,7 +2008,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
       place = result;
     }
   } catch (err) {
-    console.error('[OG] D1 lookup error:', err);
+    console.error('[OG] Turso lookup error:', err);
   }
 
   // ============================================================
@@ -1989,7 +2016,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
   // ============================================================
   if (!place) {
     try {
-      const result = await env.DB.prepare(`
+      const result = await createTursoDB(env).prepare(`
         SELECT *
         FROM places
         WHERE id = ? OR slug LIKE ?
@@ -2001,7 +2028,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
         place = result;
       }
     } catch (err) {
-      console.error('[OG] D1 ID / prefix lookup error:', err);
+      console.error('[OG] Turso ID / prefix lookup error:', err);
     }
   }
 

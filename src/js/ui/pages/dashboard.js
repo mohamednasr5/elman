@@ -29,7 +29,7 @@ import {
  * AI translation, AI cover generator, and verification requests.
  */
 
-import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace, clearDbCache, getPublishedPlaces, submitCategoryRequestD1 } from '../../core/db.js';
+import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace, clearDbCache, getPublishedPlaces, submitCategoryRequestTurso } from '../../core/db.js';
 import { createPlace, updatePlace, deletePlace, addOffer, updateOffer, deleteOffer, addProduct, updateProduct, deleteProduct, submitVerificationRequest } from '../../services/places.service.js';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { uploadImage } from '../../services/upload.service.js';
@@ -446,7 +446,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   if (!catMap.has('atm')) {
     catMap.set('atm', { _key: 'atm', slug: 'atm', name: 'ماكينة صراف آلي (ATM)', icon: '🏧' });
   }
-  // Merge any other categories from remote D1
+  // Merge any other categories from remote Turso
   remoteCategories.forEach(rc => {
     const slug = rc.slug || rc._key || rc.id;
     if (!catMap.has(slug)) {
@@ -2062,7 +2062,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       // If user proposed custom category, also register it in categoryRequests node for admin review
       if (customCategory) {
         try {
-          await submitCategoryRequestD1({
+          await submitCategoryRequestTurso({
             categoryName: customCategory,
             placeName: placeData.name,
             ownerName: user.name || user.displayName || 'مستخدم',

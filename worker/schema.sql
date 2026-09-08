@@ -1,5 +1,5 @@
--- Dalil Manzala - Cloudflare D1 Schema & Indexes
--- Run with: npx wrangler d1 execute dalilmanzala-db --file=worker/schema.sql
+-- Dalil Manzala - Turso/SQLite-compatible Schema & Indexes
+-- Turso schema reference. The production database is `dalilmanzala`.
 
 CREATE TABLE IF NOT EXISTS places (
   id TEXT PRIMARY KEY,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS places (
   updated_at INTEGER
 );
 
--- Essential indexes to prevent Full Table Scans and minimize D1 rows read
+-- Essential indexes to prevent Full Table Scans and minimize Turso reads
 CREATE INDEX IF NOT EXISTS idx_places_slug ON places(slug);
 CREATE INDEX IF NOT EXISTS idx_places_category ON places(category_id);
 CREATE INDEX IF NOT EXISTS idx_places_area ON places(area);

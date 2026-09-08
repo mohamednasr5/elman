@@ -156,7 +156,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         <div class="admin-quick-nav-wrapper" id="admin-quick-nav-bar">
           <div class="admin-quick-nav-track">
             <button type="button" class="admin-quick-chip ${section === 'overview' ? 'active' : ''}" data-admin-sec="overview">📊 الإحصائيات</button>
-            <button type="button" class="admin-quick-chip ${section === 'integrity' ? 'active' : ''}" data-admin-sec="integrity">🛡️ سلامة D1</button>
+            <button type="button" class="admin-quick-chip ${section === 'integrity' ? 'active' : ''}" data-admin-sec="integrity">🛡️ سلامة قاعدة البيانات</button>
             <button type="button" class="admin-quick-chip ${section === 'places' ? 'active' : ''}" data-admin-sec="places">📍 الأماكن والأنشطة</button>
             <button type="button" class="admin-quick-chip ${section === 'live-news' ? 'active' : ''}" data-admin-sec="live-news">🔥 يحدث الآن</button>
             <button type="button" class="admin-quick-chip ${section === 'products' ? 'active' : ''}" data-admin-sec="products">🛍️ مراجعة المنتجات</button>
@@ -198,7 +198,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         </button>
         <button type="button" class="admin-bottom-tab ${section === 'integrity' ? 'active' : ''}" data-admin-sec="integrity">
           <span class="admin-bottom-tab__icon">${ICONS.shield}</span>
-          <span class="admin-bottom-tab__label">سلامة D1</span>
+          <span class="admin-bottom-tab__label">سلامة قاعدة البيانات</span>
         </button>
         <button type="button" class="admin-bottom-tab ${['products', 'reviews', 'categories', 'users', 'offers', 'settings', 'live-news'].includes(section) ? 'active' : ''}" id="btn-admin-open-more-sheet" data-admin-action="open-more" aria-label="المزيد من الأقسام">
           <span class="admin-bottom-tab__icon">
@@ -5257,7 +5257,7 @@ window.deletePlaceAdmin = async (placeId) => {
       if (place?.slug) await dbRemove(`slugIndex/${place.slug}`).catch(() => {});
       await dbRemove(`places/${placeId}`);
 
-      // Sync deletion to Cloudflare D1 & Invalidate cache
+      // Sync deletion to Turso & Invalidate cache
       fetch(`${WORKER_URL}/api/places/${encodeURIComponent(placeId)}`, { method: 'DELETE' }).catch(() => {});
       await invalidateLocalPlaceCache(placeId, place?.slug);
 
