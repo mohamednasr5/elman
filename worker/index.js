@@ -2382,6 +2382,22 @@ try {
         }, 200, corsHeaders);
       }
 
+      // ── AI Category Icon (POST /api/ai/category-icon) ──
+      if (url.pathname === '/api/ai/category-icon' && request.method === 'POST') {
+        const auth = await requireAdmin(request, env);
+        if (auth.response) return auth.response;
+        const body = await request.json().catch(() => ({}));
+        const name = String(body.name || '').trim();
+        if (!name) return jsonResponse({success:false,error:'اسم التصنيف مطلوب'},400,corsHeaders);
+        const generated = await callOpenRouterAI(
+          'Choose exactly ONE Unicode emoji that professionally represents this business directory category. Understand the Arabic business/activity meaning, not literal translation. Return ONLY one emoji and nothing else. Category: ' + name,
+          env
+        );
+        const emoji = String(generated || '').trim().match(/^\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*$/u)?.[0];
+        if (!emoji) return jsonResponse({success:false,error:'تعذر توليد أيقونة مناسبة'},502,corsHeaders);
+        return jsonResponse({success:true,icon:emoji},200,corsHeaders);
+      }
+
       // ── 4. AI Cover Image Generation (POST /api/ai/generate-cover) ──
       if (url.pathname === '/api/ai/generate-cover' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
