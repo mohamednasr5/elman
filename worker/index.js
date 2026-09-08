@@ -672,8 +672,18 @@ try {
     if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
     const requestedOwnerId = String(body.ownerId || body.owner_id || '').trim();
-    if (!auth.user.isAdmin && requestedOwnerId && requestedOwnerId !== auth.user.uid) {
-      return jsonResponse({ success:false, error:'لا يمكنك تعديل مكان لا تملكه' },403,corsHeaders);
+    let existingPlaceForAuth = null;
+    if (!auth.user.isAdmin) {
+      existingPlaceForAuth = await createTursoDB(env).prepare(
+        'SELECT id, owner_id, owner_email FROM places WHERE id = ? OR slug = ? LIMIT 1'
+      ).bind(String(body.id || body._id || body.placeId || '').trim(), String(body.slug || '').trim()).first().catch(() => null);
+      if (existingPlaceForAuth && existingPlaceForAuth.owner_id !== auth.user.uid &&
+          String(existingPlaceForAuth.owner_email || '').toLowerCase() !== auth.user.email) {
+        return jsonResponse({ success:false, error:'لا يمكنك تعديل مكان لا تملكه' },403,corsHeaders);
+      }
+      if (requestedOwnerId && requestedOwnerId !== auth.user.uid) {
+        return jsonResponse({ success:false, error:'لا يمكنك نقل ملكية المكان إلى مستخدم آخر' },403,corsHeaders);
+      }
     }
     if (!auth.user.isAdmin) {
       body.ownerId = auth.user.uid;
@@ -1305,8 +1315,10 @@ try {
     const name = (body.name || '').trim();
     const email = (body.email || '').trim().toLowerCase();
     const photoUrl = (body.photoURL || body.photo_url || '').trim();
-    const requestedRole = (body.role || 'user').trim();
-    const status = (body.status || 'active').trim();
+    const requestedRole = auth.user.isSuperAdmin
+      ? 'superadmin'
+      : (auth.user.role === 'admin' ? 'admin' : 'user');
+    const status = 'active';
     const now = Date.now();
 
     try {
@@ -1447,7 +1459,17 @@ try {
       const existing = await createTursoDB(env).prepare(`SELECT * FROM users WHERE id = ? LIMIT 1`).bind(id).first();
       if (!existing) return jsonResponse({ error: 'User not found' }, 404, corsHeaders);
 
-      const role   = body.role   !== undefined ? body.role   : existing.role;
+      const desiredRole = String(body.role !== undefined ? body.role : existing.role).trim().toLowerCase();
+      const existingRole = String(existing.role || 'user').trim().toLowerCase();
+      if (!auth.user.isSuperAdmin && (existingRole === 'superadmin' || desiredRole === 'superadmin' ||
+          (desiredRole === 'admin' && existingRole !== 'admin'))) {
+        return jsonResponse({ success:false, error:'إدارة صلاحيات Superadmin/Admin متاحة للـ Superadmin فقط' },403,corsHeaders);
+      }
+      if (id === auth.user.uid && desiredRole !== existingRole) {
+        return jsonResponse({ success:false, error:'لا يمكنك تغيير صلاحيات حسابك بنفسك' },403,corsHeaders);
+      }
+
+      const role   = desiredRole;
       const status = body.status !== undefined ? body.status : existing.status;
       const name   = body.name   !== undefined ? body.name   : existing.name;
       const email  = body.email  !== undefined ? body.email  : existing.email;
