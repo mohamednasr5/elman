@@ -45,7 +45,7 @@ const _dummyRef = {
   set: async () => {},
   update: async () => {},
   remove: async () => {},
-  push: (data) => ({ key: 'd1_' + Date.now(), then: (fn) => Promise.resolve(fn ? fn() : null) }),
+  push: (data) => ({ key: 'local_' + Date.now(), then: (fn) => Promise.resolve(fn ? fn() : null) }),
   transaction: async (fn) => ({ committed: true, snapshot: _dummySnap }),
   orderByChild: function() { return this; },
   equalTo: function() { return this; },
