@@ -243,6 +243,32 @@ if (url.pathname === '/index.html') {
 
 try {
 
+  // ── Turso database health check ───────────────────────────────
+  // GET /api/health — verifies that the Worker can reach Turso.
+  if (url.pathname === '/api/health' && request.method === 'GET') {
+    try {
+      const healthy = await checkTursoHealth(env);
+      return jsonResponse({
+        success: healthy,
+        status: healthy ? 'ok' : 'error',
+        database: 'turso'
+      }, healthy ? 200 : 503, {
+        ...corsHeaders,
+        'Cache-Control': 'no-store'
+      });
+    } catch (err) {
+      return jsonResponse({
+        success: false,
+        status: 'error',
+        database: 'turso',
+        error: 'Database connection failed'
+      }, 503, {
+        ...corsHeaders,
+        'Cache-Control': 'no-store'
+      });
+    }
+  }
+
   // ── Public Data Quality Reports ─────────────────────────────────
   // POST /api/place-reports — visitors can flag stale/incorrect place data.
   if (url.pathname === '/api/place-reports' && request.method === 'POST') {
