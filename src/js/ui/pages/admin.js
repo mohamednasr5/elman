@@ -1,10 +1,10 @@
-﻿/**
+/**
  * المنزلة وناسها — Admin Control Panel (Instant SPA + Sponsored Ads Edition)
  * Zero-latency navigation, in-memory caching, responsive mobile bottom-bar,
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryD1, deleteCategoryD1, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerD1, invalidateLocalPlaceCache, getAllUsersD1, getCategoryRequestsD1, updateCategoryRequestD1, getVerificationRequestsD1, updateVerificationRequestD1, updateUserD1 } from '../../core/db.js?v=9f0aa9f8';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=9f0aa9f8';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
@@ -231,7 +231,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
             </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="integrity" style="background:rgba(2,132,199,0.15);border-color:#0284C7">
               <span>🛡️</span>
-              <span style="color:#0284C7;font-weight:800">سلامة وتناسق D1</span>
+              <span style="color:#0284C7;font-weight:800">سلامة وتناسق Turso</span>
             </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="places">
               <span>📍</span>
@@ -579,7 +579,7 @@ async function renderAdminOverview($container) {
     if (!adminCache.places || !adminCache.users || !adminCache.products || !adminCache.offers) {
       const [places, users, products, offers, reviews, cats, news] = await Promise.all([
         loadAdminPlacesMap(),
-        getAllUsersD1(),
+        getAllUsersTurso(),
         getAllProducts(),
         dbGet('offers').catch(() => ({})),
         getAllReviews().catch(() => []),
@@ -1187,7 +1187,7 @@ export async function exportPlacesToExcel() {
 
   try {
     if (!adminCache.places || !adminCache.users) {
-      const [u, p] = await Promise.all([getAllUsersD1(), loadAdminPlacesMap()]);
+      const [u, p] = await Promise.all([getAllUsersTurso(), loadAdminPlacesMap()]);
       adminCache.users = u || {};
       adminCache.places = p || {};
     }
@@ -1692,7 +1692,7 @@ async function renderAdminReviews($container) {
     const [revs, pls, usrs] = await Promise.all([
       getAllReviews(),
       adminCache.places || loadAdminPlacesMap(),
-      adminCache.users || getAllUsersD1()
+      adminCache.users || getAllUsersTurso()
     ]);
     adminCache.reviews = revs || [];
     adminCache.places = pls || {};
@@ -2765,7 +2765,7 @@ async function renderAdminReviews($container) {
 // ─────────────────────────────────────────────
 async function renderAdminVerification($container) {
   if (!adminCache.verificationRequests) {
-    adminCache.verificationRequests = (await getVerificationRequestsD1()) || {};
+    adminCache.verificationRequests = (await getVerificationRequestsTurso()) || {};
   }
   const reqs = Object.entries(adminCache.verificationRequests || {}).map(([id, r]) => ({ ...r, id }))
     .sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
@@ -2830,7 +2830,7 @@ async function renderAdminVerification($container) {
 async function renderAdminCategories($container) {
   if (!adminCache.categories || !adminCache.categoryRequests) {
     const [cat, catReqs, p] = await Promise.all([
-      getCategories(), getCategoryRequestsD1().catch(() => ({})), loadAdminPlacesMap()
+      getCategories(), getCategoryRequestsTurso().catch(() => ({})), loadAdminPlacesMap()
     ]);
     adminCache.categories = cat || [];
     adminCache.categoryRequests = catReqs || {};
@@ -3020,13 +3020,13 @@ function showAddCategoryModal(onDone) {
               placeCount: 0,
               createdAt: Date.now()
             };
-            await saveCategoryD1(newCat);
+            await saveCategoryTurso(newCat);
             if (adminCache.categories) {
               const existingIdx = adminCache.categories.findIndex(c => (c.slug || c.id) === slug);
               if (existingIdx >= 0) adminCache.categories[existingIdx] = newCat;
               else adminCache.categories.push(newCat);
             }
-            toast.success('تمت إضافة التصنيف وحفظه في D1 بنجاح ✨');
+            toast.success('تمت إضافة التصنيف وحفظه في Turso بنجاح ✨');
             modal.close();
             onDone();
           } catch (err) {
@@ -3045,7 +3045,7 @@ function showAddCategoryModal(onDone) {
 async function renderAdminUsers($container) {
   // Load users, places, reviews, and banned IPs
   if (!adminCache.users) {
-    adminCache.users = (await getAllUsersD1()) || {};
+    adminCache.users = (await getAllUsersTurso()) || {};
   }
   if (!adminCache.places) {
     adminCache.places = (await loadAdminPlacesMap()) || {};
@@ -3321,7 +3321,7 @@ function _bindAdminUserRowEvents($container, usersList) {
       });
       if (ok) {
         try {
-          await updateUserD1(uid, { role: newRole });
+          await updateUserTurso(uid, { role: newRole });
           await dbUpdate(`users/${uid}`, { role: newRole }).catch(() => {});
           if (adminCache.users && adminCache.users[uid]) {
             adminCache.users[uid].role = newRole;
@@ -3431,7 +3431,7 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
           }
 
           try {
-            await updateUserD1(uid, { points: newPts });
+            await updateUserTurso(uid, { points: newPts });
             try {
               const db = getDB();
               if (db && typeof db.ref === 'function') {
@@ -3831,7 +3831,7 @@ function openAdminUserBanModal(user, onDone) {
           try {
             // 1. Suspend User Account
             if (banAccount) {
-              await updateUserD1(user.uid, { status: 'suspended' });
+              await updateUserTurso(user.uid, { status: 'suspended' });
               await dbUpdate(`users/${user.uid}`, {
                 status: 'suspended',
                 suspendedAt: Date.now(),
@@ -4707,7 +4707,7 @@ window.togglePlaceSponsored = async (placeId, newStatus) => {
     let placeData = adminCache.places ? adminCache.places[placeId] : (await getPlace(placeId));
     if (placeData) {
       Object.assign(placeData, updates);
-      await syncPlaceToWorkerD1(placeId, placeData);
+      await syncPlaceToWorkerTurso(placeId, placeData);
       await invalidateLocalPlaceCache(placeId, placeData.slug);
     }
 
@@ -4730,7 +4730,7 @@ window.savePlaceTrustScore = async (placeId, score) => {
     let placeData = adminCache.places ? adminCache.places[placeId] : null;
     if (!placeData) placeData = await getPlace(placeId).catch(() => null);
     const updates = { trustScore, trust_score: trustScore, updatedAt: Date.now() };
-    await syncPlaceToWorkerD1(placeId, { ...(placeData || { id: placeId }), ...updates });
+    await syncPlaceToWorkerTurso(placeId, { ...(placeData || { id: placeId }), ...updates });
     await invalidateLocalPlaceCache(placeId, placeData?.slug);
     if (adminCache.places?.[placeId]) Object.assign(adminCache.places[placeId], updates);
     toast.success('تم حفظ نسبة الثقة: ' + trustScore + '/100 ✓');
@@ -4761,7 +4761,7 @@ window.togglePlaceVerification = async (placeId, status) => {
       placeData = { id: placeId, ...updates };
     }
 
-    await syncPlaceToWorkerD1(placeId, placeData);
+    await syncPlaceToWorkerTurso(placeId, placeData);
     await dbUpdate(`places/${placeId}`, updates).catch(() => {});
     await invalidateLocalPlaceCache(placeId, placeData?.slug);
 
@@ -4908,7 +4908,7 @@ window.transferPlaceOwnershipAdmin = async (placeId) => {
             let placeData = adminCache.places ? adminCache.places[placeId] : (await getPlace(placeId));
             if (placeData) {
               Object.assign(placeData, updates);
-              await syncPlaceToWorkerD1(placeId, placeData);
+              await syncPlaceToWorkerTurso(placeId, placeData);
               await invalidateLocalPlaceCache(placeId, placeData.slug);
             }
 
@@ -5208,8 +5208,8 @@ window.editPlaceAdmin = async (placeId) => {
           try {
             await dbUpdate(`places/${placeId}`, updates);
 
-            // Sync to Cloudflare D1 & Invalidate Worker and Local Cache
-            await syncPlaceToWorkerD1(placeId, { ...place, ...updates, id: placeId, slug: place.slug || updates.slug });
+            // Sync to Turso & Invalidate Worker and Local Cache
+            await syncPlaceToWorkerTurso(placeId, { ...place, ...updates, id: placeId, slug: place.slug || updates.slug });
             await invalidateLocalPlaceCache(placeId, place.slug);
 
             if (adminCache.places && adminCache.places[placeId]) {
@@ -5298,7 +5298,7 @@ window.approveVerification = async (reqId, placeId) => {
   }
 
   try {
-    await updateVerificationRequestD1(reqId, 'approved', updates.verifiedUntil);
+    await updateVerificationRequestTurso(reqId, 'approved', updates.verifiedUntil);
     await dbUpdate(`verificationRequests/${reqId}`, {
       status: 'approved',
       reviewedAt: serverTimestamp()
@@ -5308,7 +5308,7 @@ window.approveVerification = async (reqId, placeId) => {
     let placeData = adminCache.places ? adminCache.places[placeId] : (await getPlace(placeId));
     if (placeData) {
       Object.assign(placeData, updates);
-      await syncPlaceToWorkerD1(placeId, placeData);
+      await syncPlaceToWorkerTurso(placeId, placeData);
       await invalidateLocalPlaceCache(placeId, placeData.slug);
     }
 
@@ -5333,7 +5333,7 @@ window.approveVerification = async (reqId, placeId) => {
 window.rejectVerification = async (reqId, placeId) => {
   if (!confirm('هل أنت متأكد من رفض هذا الطلب؟')) return;
   try {
-    await updateVerificationRequestD1(reqId, 'rejected');
+    await updateVerificationRequestTurso(reqId, 'rejected');
     await dbUpdate(`verificationRequests/${reqId}`, {
       status: 'rejected',
       reviewedAt: serverTimestamp()
@@ -5344,7 +5344,7 @@ window.rejectVerification = async (reqId, placeId) => {
     const placeData = adminCache.places ? adminCache.places[placeId] : (await getPlace(placeId));
     if (placeData) {
       placeData.verificationStatus = 'unverified';
-      await syncPlaceToWorkerD1(placeId, placeData);
+      await syncPlaceToWorkerTurso(placeId, placeData);
     }
 
     if (adminCache.verificationRequests && adminCache.verificationRequests[reqId]) {
@@ -5362,7 +5362,7 @@ window.rejectVerification = async (reqId, placeId) => {
 window.deleteCategoryAdmin = async (catId) => {
   const ok = await showConfirm({ title: 'حذف التصنيف', message: 'هل أنت متأكد من حذف هذا التصنيف نهائياً؟' });
   if (ok) {
-    await deleteCategoryD1(catId);
+    await deleteCategoryTurso(catId);
     if (adminCache.categories) {
       adminCache.categories = adminCache.categories.filter(c => (c._key || c.slug || c.id) !== catId);
     }
@@ -5400,7 +5400,7 @@ window.editCategoryAdmin = async (catId, currentName, currentIcon) => {
               name,
               icon
             };
-            await saveCategoryD1(updated);
+            await saveCategoryTurso(updated);
             if (adminCache.categories) {
               const cat = adminCache.categories.find(c => (c._key || c.slug || c.id) === catId);
               if (cat) { cat.name = name; cat.icon = icon; }
@@ -5432,8 +5432,8 @@ window.approveCategoryRequest = async (reqId, categoryName) => {
       placeCount: 1,
       createdAt: Date.now()
     };
-    await saveCategoryD1(newCat);
-    await updateCategoryRequestD1(reqId, 'approved');
+    await saveCategoryTurso(newCat);
+    await updateCategoryRequestTurso(reqId, 'approved');
     await dbUpdate(`categoryRequests/${reqId}`, {
       status: 'approved',
       approvedAt: serverTimestamp()
@@ -5487,8 +5487,8 @@ window.editAndApproveCategoryRequest = async (reqId, initialName) => {
               placeCount: 1,
               createdAt: Date.now()
             };
-            await saveCategoryD1(newCat);
-            await updateCategoryRequestD1(reqId, 'approved');
+            await saveCategoryTurso(newCat);
+            await updateCategoryRequestTurso(reqId, 'approved');
             await dbUpdate(`categoryRequests/${reqId}`, {
               status: 'approved',
               finalName: name,
@@ -5517,7 +5517,7 @@ window.rejectCategoryRequest = async (reqId) => {
   const ok = await showConfirm({ title: 'رفض التصنيف', message: 'هل أنت متأكد من رفض هذا التصنيف المقترح؟' });
   if (ok) {
     try {
-      await updateCategoryRequestD1(reqId, 'rejected');
+      await updateCategoryRequestTurso(reqId, 'rejected');
       await dbUpdate(`categoryRequests/${reqId}`, {
         status: 'rejected',
         rejectedAt: serverTimestamp()
@@ -5535,7 +5535,7 @@ window.rejectCategoryRequest = async (reqId) => {
 
 window.toggleUserStatus = async (uid, newStatus) => {
   try {
-    await updateUserD1(uid, { status: newStatus });
+    await updateUserTurso(uid, { status: newStatus });
     await dbUpdate(`users/${uid}`, { status: newStatus }).catch(() => {});
     if (adminCache.users && adminCache.users[uid]) {
       adminCache.users[uid].status = newStatus;

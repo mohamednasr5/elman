@@ -4,7 +4,7 @@
  * and AI Semantic Search integration.
  */
 
-import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers, searchPlacesD1 } from '../../core/db.js';
+import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers, searchPlacesTurso } from '../../core/db.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
@@ -192,7 +192,7 @@ export async function renderSearchPage($container, { q = '', user }) {
       } catch (_) {}
       if (!matched.length && allPlaces.length === 0) {
         try {
-          const d1Phone = await searchPlacesD1(query, { limit: 20, offset: 0 });
+          const d1Phone = await searchPlacesTurso(query, { limit: 20, offset: 0 });
           matched = (d1Phone?.places || []).filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
         } catch (_) {}
       }
@@ -285,18 +285,18 @@ export async function renderSearchPage($container, { q = '', user }) {
     // Cold-cache fallback only.
     try {
       const offset = (page - 1) * 20;
-      const d1Res = await searchPlacesD1(query, { limit: 20, offset });
-      if (d1Res && Array.isArray(d1Res.places)) {
-        hasMoreResults = Boolean(d1Res.pagination && d1Res.pagination.hasMore);
-        const places = d1Res.places.filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
+      const tursoRes = await searchPlacesTurso(query, { limit: 20, offset });
+      if (tursoRes && Array.isArray(tursoRes.places)) {
+        hasMoreResults = Boolean(tursoRes.pagination && tursoRes.pagination.hasMore);
+        const places = tursoRes.places.filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
         const finalResults = sortSearchPlaces(places, currentUser?.uid);
         const countText = hasMoreResults ? `أول ${finalResults.length} مكان (صفحة ${page})` : `${finalResults.length} مكان`;
         await renderResults(finalResults, `تم العثور على <strong>${countText}</strong> لـ "<strong>${escHtml(query)}</strong>"`, page > 1);
         if (paginationContainer) paginationContainer.style.display = hasMoreResults ? 'block' : 'none';
         return;
       }
-    } catch (d1Err) {
-      console.warn('[Search] D1 search unavailable; using local fallback:', d1Err);
+    } catch (tursoErr) {
+      console.warn('[Search] Turso search unavailable; using local fallback:', tursoErr);
     }
 
     await localSearch(query);
@@ -305,7 +305,7 @@ export async function renderSearchPage($container, { q = '', user }) {
 
   async function localSearch(query) {
     await ensureLocalPlaces();
-    // Local fallback is rare; hydrate products/offers only when D1 search is unavailable.
+    // Local fallback is rare; hydrate products/offers only when Turso search is unavailable.
     if (!allProductsList.length) allProductsList = await getAllProducts().catch(() => []);
     if (!allOffersList.length) allOffersList = await getActiveOffers().catch(() => []);
     const rawClean = extractSearchKeywords(query);

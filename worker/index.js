@@ -382,7 +382,7 @@ try {
     }
   }
 
-  // ── D1: Search Places with Two-Tier Caching ────────────────────
+  // ── Turso: Search Places with Two-Tier Caching ────────────────────
   // GET /api/search?q=...&category=...&area=...&limit=20&offset=0
 
   if (url.pathname === '/api/search' && request.method === 'GET') {
@@ -423,7 +423,7 @@ try {
       return response;
     }
 
-    // 2. Query D1 with targeted filters and LIMIT
+    // 2. Query Turso with targeted filters and LIMIT
     // Search must never aggregate the entire reviews table. Search can run many
     // times while a user types, so a global GROUP BY reviews query multiplies
     // Turso row reads dramatically. Ratings/review counts are loaded from
@@ -521,7 +521,7 @@ try {
     return finalResponse;
   }
 
-  // ── D1: Get Place Details (Single or List with Caching) ────────
+  // ── Turso: Get Place Details (Single or List with Caching) ────────
   // GET /api/places
   if (url.pathname === '/api/places' && request.method === 'GET') {
     const slugParam = (url.searchParams.get('slug') || url.searchParams.get('id') || '').trim();
@@ -600,7 +600,7 @@ try {
 
     // IMPORTANT: list endpoint must never aggregate the entire reviews table.
     // A global GROUP BY on reviews turns every homepage/search request into a
-    // full reviews scan and can consume millions of D1 rows. Review details
+    // full reviews scan and can consume millions of Turso rows. Review details
     // are loaded only when a single place is opened.
     let sql = `
       SELECT
@@ -610,7 +610,7 @@ try {
         p.status, p.is_verified, p.verification_status, p.offer_count, p.product_count,
         p.services_json, p.social_json, p.stats_json, p.working_hours_json,
         p.created_at, p.updated_at, p.is_sponsored, p.is_featured, p.sponsored_until, p.priority,
-        u.name AS owner_name, u.email AS owner_email_d1, u.photo_url AS owner_photo
+        u.name AS owner_name, u.email AS owner_email_user, u.photo_url AS owner_photo
       FROM places p
       LEFT JOIN users u ON u.id = p.owner_id
     `;
@@ -631,7 +631,7 @@ try {
     params.push(limit, offset);
 
     // Public list requests are identical for most visitors. Cache the response at the
-    // Worker edge so repeated homepage/search loads do not hit D1.
+    // Worker edge so repeated homepage/search loads do not hit Turso.
     const usePublicListCache = !ownerIdFilter && !ownerEmailFilter;
     const listCache = caches.default;
     const listCacheUrl = new URL(request.url);
@@ -669,7 +669,7 @@ try {
       reviewCount: Number(place.review_count ?? place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0),
       review_count: Number(place.review_count ?? place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0),
       rating: Number(place.rating ?? place.stats?.rating ?? 0.0),
-      // Normalize owner name from D1 join
+      // Normalize owner name from Turso join
       owner_name: place.owner_name || place.owner_email || null,
     }));
 
@@ -693,7 +693,7 @@ try {
     return response;
   }
 
-  // ── D1: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
+  // ── Turso: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
   if ((url.pathname === '/api/places/sync' || url.pathname === '/api/places') && (request.method === 'POST' || request.method === 'PUT')) {
     const auth = await requireAuth(request, env);
     if (auth.response) return auth.response
@@ -837,7 +837,7 @@ try {
     }, 200, corsHeaders);
   }
 
-  // ── D1: Delete Place (DELETE /api/places/:id or /api/places?id=...) ──
+  // ── Turso: Delete Place (DELETE /api/places/:id or /api/places?id=...) ──
   if ((url.pathname.startsWith('/api/places/') || url.pathname === '/api/places') && request.method === 'DELETE') {
     const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response
@@ -865,7 +865,7 @@ try {
     return jsonResponse({ success: true, message: 'تم حذف المكان من Turso ومسح الكاش' }, 200, corsHeaders);
   }
 
-  // ── D1: Categories (GET, POST, PUT, DELETE /api/categories) ──────────
+  // ── Turso: Categories (GET, POST, PUT, DELETE /api/categories) ──────────
   if (url.pathname === '/api/categories' && request.method === 'GET') {
     const cache = caches.default;
     const forceFresh = url.searchParams.has('_ts');
@@ -947,7 +947,7 @@ try {
 
       return jsonResponse({
         success: true,
-        message: 'تم حفظ التصنيف في D1 بنجاح',
+        message: 'تم حفظ التصنيف في Turso بنجاح',
         data: { id, name, nameEn, slug, icon, description, color, order }
       }, 200, corsHeaders);
     } catch (err) {
@@ -975,13 +975,13 @@ try {
       const cacheKey = new Request('https://cache.local/api/categories', { method: 'GET' });
       ctx.waitUntil(cache.delete(cacheKey));
 
-      return jsonResponse({ success: true, message: 'تم حذف التصنيف من D1 ومسح الكاش' }, 200, corsHeaders);
+      return jsonResponse({ success: true, message: 'تم حذف التصنيف من Turso ومسح الكاش' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
   }
 
-  // ── D1: Ads API (GET, POST, DELETE /api/ads) ───────────────────
+  // ── Turso: Ads API (GET, POST, DELETE /api/ads) ───────────────────
   if (url.pathname === '/api/ads' && request.method === 'GET') {
     try {
       const result = await createTursoDB(env).prepare(`
@@ -1040,7 +1040,7 @@ try {
       `).bind(id, title, placeId, link, imageUrl, placement, priority, isActive, startDate, endDate, clicks, createdAt, createdBy).run();
       bumpDataVersion(env, ctx);
 
-      return jsonResponse({ success: true, message: 'تم حفظ الإعلان بنجاح في D1', id }, 200, corsHeaders);
+      return jsonResponse({ success: true, message: 'تم حفظ الإعلان بنجاح في Turso', id }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
@@ -1056,7 +1056,7 @@ try {
     try {
       await createTursoDB(env).prepare(`DELETE FROM ads WHERE id = ?`).bind(id).run();
       bumpDataVersion(env, ctx);
-      return jsonResponse({ success: true, message: 'تم حذف الإعلان بنجاح من D1' }, 200, corsHeaders);
+      return jsonResponse({ success: true, message: 'تم حذف الإعلان بنجاح من Turso' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
@@ -1310,7 +1310,7 @@ try {
     return jsonResponse({success:true},200,corsHeaders);
   }
 
-  // ── D1: Reviews (GET /api/reviews?place_id=... & POST /api/reviews) ──
+  // ── Turso: Reviews (GET /api/reviews?place_id=... & POST /api/reviews) ──
   if (url.pathname === '/api/reviews' && request.method === 'GET') {
     const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || url.searchParams.get('slug') || '').trim();
     const reqLimit = Math.min(5000, Math.max(1, parseInt(url.searchParams.get('limit') || '5000', 10)));
@@ -1358,7 +1358,7 @@ try {
       let insertedCount = 0;
 
       try {
-        // Process in chunks of 50 for optimal D1 transaction performance
+        // Process in chunks of 50 for optimal Turso transaction performance
         for (let i = 0; i < reviewsList.length; i += 50) {
           const chunk = reviewsList.slice(i, i + 50);
           const stmts = chunk.map((r, idx) => {
@@ -1502,7 +1502,7 @@ try {
     }
   }
 
-  // ── D1: Update Review (PUT /api/reviews?id=...) ───────────────
+  // ── Turso: Update Review (PUT /api/reviews?id=...) ───────────────
   if (url.pathname === '/api/reviews' && request.method === 'PUT') {
     const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
@@ -1560,7 +1560,7 @@ try {
     }
   }
 
-  // ── D1: Delete Reviews (DELETE /api/reviews) ───────────────────
+  // ── Turso: Delete Reviews (DELETE /api/reviews) ───────────────────
   if (url.pathname === '/api/reviews' && request.method === 'DELETE') {
     const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
@@ -1633,8 +1633,8 @@ try {
     }
   }
 
-  // ── D1: User Profile Sync (POST /api/users/sync) ──
-  // Architecture: D1 is the source of truth for role/status. Firebase Auth provides uid/name/email/photo only.
+  // ── Turso: User Profile Sync (POST /api/users/sync) ──
+  // Architecture: Turso is the source of truth for role/status. Firebase Auth provides uid/name/email/photo only.
   if (url.pathname === '/api/users/sync' && request.method === 'POST') {
     const auth = await requireAuth(request, env);
     if (auth.response) return auth.response
@@ -1653,7 +1653,7 @@ try {
     const now = Date.now();
 
     try {
-      // Upsert: preserve existing role in D1 (server-side protection)
+      // Upsert: preserve existing role in Turso (server-side protection)
       await createTursoDB(env).prepare(`
         INSERT INTO users (id, name, email, photo_url, role, status, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1669,7 +1669,7 @@ try {
           updated_at = excluded.updated_at
       `).bind(id, name, email, photoUrl, requestedRole, status, now, now).run();
 
-      // Return full D1 profile so auth.js can use actual DB role
+      // Return full Turso profile so auth.js can use actual DB role
       const profile = await createTursoDB(env).prepare(
         `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
       ).bind(id).first();
@@ -1680,8 +1680,8 @@ try {
     }
   }
 
-  // ── D1: Get Single User by ID (GET /api/users/:id) ──
-  // Used by auth.js to fetch full D1 profile after login
+  // ── Turso: Get Single User by ID (GET /api/users/:id) ──
+  // Used by auth.js to fetch full Turso profile after login
   if (url.pathname.startsWith('/api/users/') && request.method === 'GET') {
     const auth = await requireAuth(request, env);
     if (auth.response) return auth.response
@@ -1701,9 +1701,9 @@ try {
     }
   }
 
-  // ── D1: Seed Missing Users (POST /api/users/seed) ──
-  // Recovery endpoint: inserts users who existed before D1 migration
-  // Does NOT overwrite role if user already exists in D1
+  // ── Turso: Seed Missing Users (POST /api/users/seed) ──
+  // Recovery endpoint: inserts users who existed before Turso migration
+  // Does NOT overwrite role if user already exists in Turso
   if (url.pathname === '/api/users/seed' && request.method === 'POST') {
     const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response
@@ -1741,7 +1741,7 @@ try {
     return jsonResponse({ success: true, results }, 200, corsHeaders);
   }
 
-  // ── D1: Get Users List (GET /api/users) ──
+  // ── Turso: Get Users List (GET /api/users) ──
   if (url.pathname === '/api/users' && request.method === 'GET') {
     const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response
@@ -1773,7 +1773,7 @@ try {
     }
   }
 
-  // ── D1: Update User (PATCH/PUT /api/users/:id) ──
+  // ── Turso: Update User (PATCH/PUT /api/users/:id) ──
   // Allows updating: role, status, name, email, phone
   if ((url.pathname.startsWith('/api/users/') || url.pathname === '/api/users') &&
       (request.method === 'PUT' || request.method === 'PATCH') &&
@@ -1822,7 +1822,7 @@ try {
     }
   }
 
-  // ── D1: Delete User (DELETE /api/users/:id) ──
+  // ── Turso: Delete User (DELETE /api/users/:id) ──
   if (url.pathname.startsWith('/api/users/') && request.method === 'DELETE') {
     const auth = await requireAdmin(request, env, true);
     if (auth.response) return auth.response
@@ -1830,7 +1830,7 @@ try {
     if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
     try {
       await createTursoDB(env).prepare(`DELETE FROM users WHERE id = ?`).bind(id).run();
-      return jsonResponse({ success: true, message: 'User deleted from D1' }, 200, corsHeaders);
+      return jsonResponse({ success: true, message: 'User deleted from Turso' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
@@ -1839,7 +1839,7 @@ try {
 
 
 
-  // ── D1: Category Requests (GET, POST, PUT, DELETE /api/category-requests) ──
+  // ── Turso: Category Requests (GET, POST, PUT, DELETE /api/category-requests) ──
   if (url.pathname === '/api/category-requests' && request.method === 'GET') {
     const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response
@@ -1901,7 +1901,7 @@ try {
     }
   }
 
-  // ── D1: Verification Requests (GET, POST, PUT, DELETE /api/verification-requests) ──
+  // ── Turso: Verification Requests (GET, POST, PUT, DELETE /api/verification-requests) ──
   if (url.pathname === '/api/verification-requests' && request.method === 'GET') {
     const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response
@@ -1978,7 +1978,7 @@ try {
     }
   }
 
-  // ── D1: FCM Token Registration (POST /api/fcm/token) ───────────
+  // ── Turso: FCM Token Registration (POST /api/fcm/token) ───────────
   if (url.pathname === '/api/fcm/token' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const token = (body.token || '').trim();
@@ -2005,13 +2005,13 @@ try {
           updated_at = excluded.updated_at
       `).bind(token, userId, userName, platform, userAgent, now, now).run();
 
-      return jsonResponse({ success: true, message: 'تم تسجيل التوكن في D1' }, 200, corsHeaders);
+      return jsonResponse({ success: true, message: 'تم تسجيل التوكن في Turso' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
   }
 
-  // ── D1: Track Place Stat (POST /api/places/track-stat) ─────────
+  // ── Turso: Track Place Stat (POST /api/places/track-stat) ─────────
   if (url.pathname === '/api/places/track-stat' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const placeId = (body.placeId || body.id || '').trim();
