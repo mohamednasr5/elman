@@ -4,7 +4,7 @@
  */
 
 import { getDB } from '../core/firebase.js';
-import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getPlace, getPublishedPlaces, idbGet, idbPut, idbDelete, STORES } from '../core/db.js';
+import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getPlace, getPublishedPlaces, idbGet, idbPut, idbDelete, STORES, tursoFetch } from '../core/db.js';
 import { broadcastRealtimeChange } from './realtime-sync.service.js';
 import { generatePlaceSlug, generateCleanSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';
@@ -12,18 +12,13 @@ import { isAtmPlace } from '../utils/atm.js';
 import { WORKER_URL } from '../core/firebase.js';
 import { getIdToken } from '../core/auth.js';
 
-/**
- * Validate that Place Name and Phone Number are completely unique
- */
 export async function validatePlaceUniqueness({ name, phone, excludePlaceId = null, categoryId = '', placeData = null }) {
   const isAtm = isAtmPlace(placeData || { categoryId, name });
   const normName = normalizeArabic(name || '').trim();
   const cleanPhoneNum = (phone || '').replace(/\D/g, '');
-
   if (!normName) throw new Error(isAtm ? 'يرجى إدخال اسم البنك' : 'اسم المكان مطلوب');
   if (isAtm) return;
   if (!cleanPhoneNum || cleanPhoneNum.length < 4 || cleanPhoneNum.length > 15) throw new Error('يرجى إدخال رقم هاتف صحيح للمكان (موبايل، أرضي، أو رقم موحد مثل 17555)');
-
   const allPlaces = (await getPublishedPlaces({ limit: 1000 })) || [];
   const matchingPhonePlaces = [];
   for (const p of allPlaces) {
@@ -43,12 +38,12 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
 }
 
 export async function createPlace(placeData, currentUser) {
-  if (!currentUser) throw new Error('يجب تسجيل الدخول لإضافة مكان');
+  if (!currentUser?.uid) throw new Error('يجب تسجيل الدخول لإضافة مكان');
   await validatePlaceUniqueness({name:placeData.name,phone:placeData.phone,categoryId:placeData.categoryId,placeData});
   const placeId='p_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
   const cleanCandidate=generateCleanSlug(placeData.name); let slug=cleanCandidate;
   try { const existingKey=await dbGet(`slugIndex/${slug}`); if(existingKey&&existingKey!==placeId) slug=`${cleanCandidate}-${placeId.slice(-5)}`; } catch(_){ slug=cleanCandidate; }
-
+  const now = Date.now();
   const newPlace={
     id:placeId, slug, ownerId:currentUser.uid, ownerEmail:currentUser.email||'', name:placeData.name.trim(), nameEn:placeData.nameEn||'',
     categoryId:placeData.categoryId||'other', customCategory:placeData.customCategory||null, medicalSpecialty:placeData.medicalSpecialty||null,
@@ -57,34 +52,21 @@ export async function createPlace(placeData, currentUser) {
     alwaysOpen:Boolean(placeData.alwaysOpen), alwaysOpenExcept:Boolean(placeData.alwaysOpenExcept), workingHours:placeData.workingHours||getDefaultWorkingHours(),
     coverImageUrl:placeData.coverImageUrl||'', logoUrl:placeData.logoUrl||'', imageUrls:placeData.imageUrls||[], services:placeData.services||[],
     social:{facebook:'',instagram:'',tiktok:'',youtube:'',x:'',threads:'',website:'',...(placeData.social||{})}, deliveryType:placeData.deliveryType||null,
-    status:'published', verificationStatus:'unverified', isVerified:false, verifiedAt:null, verifiedBy:null, createdAt:Date.now(), updatedAt:Date.now(),
+    status:'published', verificationStatus:'unverified', isVerified:false, verifiedAt:null, verifiedBy:null, createdAt:now, updatedAt:now,
     stats:{views:0,phoneClicks:0,whatsappClicks:0,directionsClicks:0,productViews:0,offerViews:0}, offerCount:0, productCount:0
   };
 
-  // 1. Authoritative write to Turso directly!
+  // Turso is authoritative. The operation fails if Turso fails; no local-only success.
   await syncPlaceToWorkerTurso(placeId, newPlace);
 
-  // 2. Cache in IndexedDB for fast instant reads
+  // IndexedDB is cache only and is populated after authoritative persistence succeeds.
   await idbPut(STORES.PLACES, { id: placeId, ...newPlace }).catch(() => {});
-  if (placeData.categoryId) {
-    try {
-      const cat = await idbGet(STORES.CATEGORIES, placeData.categoryId);
-      if (cat) {
-        cat.placeCount = (cat.placeCount || 0) + 1;
-        await idbPut(STORES.CATEGORIES, cat);
-      }
-    } catch (_) {}
-  }
+  clearDbCache();
   broadcastNewPlaceNotification(newPlace).catch(() => {});
   sendTelegramAdminNotification('new_place', {
-    id: placeId,
-    name: newPlace.name,
-    categoryName: placeData.categoryName || placeData.categoryId,
-    phone: newPlace.phone,
-    area: newPlace.area,
-    ownerName: currentUser.name || currentUser.displayName || currentUser.email
+    id: placeId, name: newPlace.name, categoryName: placeData.categoryName || placeData.categoryId,
+    phone: newPlace.phone, area: newPlace.area, ownerName: currentUser.name || currentUser.displayName || currentUser.email
   });
-  clearDbCache();
   broadcastRealtimeChange('NEW_PLACE', { place: { id: placeId, ...newPlace } });
   return placeId;
 }
@@ -95,32 +77,74 @@ export async function updatePlace(placeId, placeData) {
   if (placeData.name || placeData.phone) await validatePlaceUniqueness({ name: placeData.name || current.name, phone: placeData.phone || current.phone, excludePlaceId: placeId, categoryId: placeData.categoryId || current.categoryId, placeData: { ...current, ...placeData } });
   const updates = { name: placeData.name ? placeData.name.trim() : current.name, nameEn: placeData.nameEn !== undefined ? placeData.nameEn : (current.nameEn || ''), categoryId: placeData.categoryId || current.categoryId, customCategory: placeData.customCategory !== undefined ? placeData.customCategory : (current.customCategory || null), medicalSpecialty: placeData.medicalSpecialty !== undefined ? placeData.medicalSpecialty : (current.medicalSpecialty || null), subcategoryId: placeData.subcategoryId || '', description: placeData.description !== undefined ? placeData.description : current.description, phone: placeData.phone || current.phone || '', whatsapp: placeData.whatsapp !== undefined ? placeData.whatsapp : (current.whatsapp || ''), address: placeData.address !== undefined ? placeData.address : current.address, area: placeData.area || current.area || 'المنزلة', mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''), location: placeData.location !== undefined ? placeData.location : current.location, alwaysOpen: placeData.alwaysOpen !== undefined ? Boolean(placeData.alwaysOpen) : Boolean(current.alwaysOpen), alwaysOpenExcept: placeData.alwaysOpenExcept !== undefined ? Boolean(placeData.alwaysOpenExcept) : Boolean(current.alwaysOpenExcept), workingHours: placeData.workingHours || current.workingHours, coverImageUrl: placeData.coverImageUrl !== undefined ? placeData.coverImageUrl : current.coverImageUrl, logoUrl: placeData.logoUrl !== undefined ? placeData.logoUrl : current.logoUrl, imageUrls: placeData.imageUrls || current.imageUrls || [], services: placeData.services || current.services || [], social: { ...(current.social || {}), ...(placeData.social || {}) }, deliveryType: placeData.deliveryType !== undefined ? placeData.deliveryType : (current.deliveryType || null), updatedAt: Date.now() };
   const updatedPlace = { ...current, ...updates, id: placeId, slug: current.slug || updates.slug };
-
-  // 1. Authoritative write to Turso directly!
   await syncPlaceToWorkerTurso(placeId, updatedPlace);
-
-  // 2. Cache in IndexedDB
   await idbPut(STORES.PLACES, updatedPlace).catch(() => {});
   await invalidateLocalPlaceCache(placeId, current.slug);
   clearDbCache();
   broadcastRealtimeChange('PLACE_UPDATED', { place: { id: placeId, ...updates } });
+  return updatedPlace;
 }
 
 export async function deletePlace(placeId,ownerId){
   const place=(await getPlace(placeId))||(await idbGet(STORES.PLACES,placeId)); if(!place)return;
+  await tursoFetch(`/api/places/${encodeURIComponent(placeId)}`,{method:'DELETE'});
   await idbDelete(STORES.PLACES,placeId).catch(()=>{});
-  if(place.categoryId){try{const cat=await idbGet(STORES.CATEGORIES,place.categoryId);if(cat&&cat.placeCount>0){cat.placeCount-=1;await idbPut(STORES.CATEGORIES,cat);}}catch(_) {}}
-  fetch(`${WORKER_URL}/api/places/${encodeURIComponent(placeId)}`,{method:'DELETE',headers:{Authorization:`Bearer ${await getIdToken()}`}}).catch(()=>{});
   await invalidateLocalPlaceCache(placeId,place.slug); clearDbCache(); broadcastRealtimeChange('PLACE_DELETED',{placeId});
 }
 
 export async function submitVerificationRequest(placeId,user,notes=''){
   const place=(await getPlace(placeId))||(await idbGet(STORES.PLACES,placeId)); if(!place)throw new Error('المكان غير موجود');
   const reqId=`vreq_${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
-  try{await fetch(`${WORKER_URL}/api/verification-requests`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${await getIdToken()}`},body:JSON.stringify({id:reqId,place_id:placeId,place_name:place.name,owner_id:user.uid,owner_name:user.name||user.displayName||'',owner_email:user.email||'',phone:user.phone||place.phone||'',notes})});}catch(_){}
-  place.verificationStatus='verification_requested'; await syncPlaceToWorkerTurso(placeId,{verificationStatus:'verification_requested'}); await idbPut(STORES.PLACES,place).catch(()=>{});
-  fetch(`${WORKER_URL}/api/notify`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${await getIdToken()}`},body:JSON.stringify({type:'verification_request',data:{placeId,placeName:place.name,requesterName:user.name||user.displayName||user.email,phone:user.phone||place.phone||'',notes}})}).catch(()=>{});
+  const response = await tursoFetch('/api/verification-requests',{method:'POST',body:JSON.stringify({id:reqId,place_id:placeId,place_name:place.name,owner_id:user.uid,owner_name:user.name||user.displayName||'',owner_email:user.email||'',phone:user.phone||place.phone||'',notes})});
+  if (response?.success === false) throw new Error(response.error || 'تعذر إرسال طلب التوثيق');
+  place.verificationStatus='verification_requested';
+  await idbPut(STORES.PLACES,place).catch(()=>{});
+  tursoFetch('/api/notify',{method:'POST',body:JSON.stringify({type:'verification_request',data:{placeId,placeName:place.name,requesterName:user.name||user.displayName||user.email,phone:user.phone||place.phone||'',notes}})}).catch(()=>{});
   return reqId;
 }
 
 function getDefaultWorkingHours(){return{ saturday:{open:'09:00',close:'22:00',closed:false}, sunday:{open:'09:00',close:'22:00',closed:false}, monday:{open:'09:00',close:'22:00',closed:false}, tuesday:{open:'09:00',close:'22:00',closed:false}, wednesday:{open:'09:00',close:'22:00',closed:false}, thursday:{open:'09:00',close:'22:00',closed:false}, friday:{open:'13:00',close:'22:00',closed:false} };}
+
+export async function addOffer(placeId, data = {}, user = null) {
+  if (!placeId) throw new Error('المكان مطلوب');
+  const id = data.id || `offer_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+  const result = await tursoFetch('/api/offers', { method:'POST', body:JSON.stringify({ ...data, id, place_id:placeId, placeId }) });
+  clearDbCache();
+  return result?.id || result?.data?.id || id;
+}
+
+export async function updateOffer(offerId, data = {}, user = null) {
+  if (!offerId) throw new Error('معرف العرض مطلوب');
+  const result = await tursoFetch(`/api/offers/${encodeURIComponent(offerId)}`, { method:'PUT', body:JSON.stringify(data) });
+  clearDbCache();
+  return result;
+}
+
+export async function deleteOffer(offerId, placeId = null, user = null) {
+  if (!offerId) throw new Error('معرف العرض مطلوب');
+  const result = await tursoFetch(`/api/offers/${encodeURIComponent(offerId)}`, { method:'DELETE' });
+  clearDbCache();
+  return result;
+}
+
+export async function addProduct(placeId, data = {}, user = null) {
+  if (!placeId) throw new Error('المكان مطلوب');
+  const id = data.id || `product_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+  const result = await tursoFetch('/api/products', { method:'POST', body:JSON.stringify({ ...data, id, place_id:placeId, placeId }) });
+  clearDbCache();
+  return result?.id || result?.data?.id || id;
+}
+
+export async function updateProduct(placeId, productId, data = {}, user = null) {
+  if (!productId) throw new Error('معرف المنتج مطلوب');
+  const result = await tursoFetch(`/api/products/${encodeURIComponent(productId)}`, { method:'PUT', body:JSON.stringify({ ...data, place_id:placeId, placeId }) });
+  clearDbCache();
+  return result;
+}
+
+export async function deleteProduct(placeId, productId, user = null) {
+  if (!productId) throw new Error('معرف المنتج مطلوب');
+  const result = await tursoFetch(`/api/products/${encodeURIComponent(productId)}`, { method:'DELETE' });
+  clearDbCache();
+  return result;
+}
