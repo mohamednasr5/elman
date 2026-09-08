@@ -3,7 +3,7 @@
  * Typed, promise-based wrappers around Firebase Realtime Database
  */
 
-import { getDB, WORKER_URL } from './firebase.js';
+import { getDB, WORKER_URL, getAuth } from './firebase.js';
 import { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES } from '../services/idb-cache.service.js';
 
 export { getDB };
