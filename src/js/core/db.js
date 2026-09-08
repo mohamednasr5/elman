@@ -89,7 +89,19 @@ function parseBusinessPath(path = '') {
 }
 
 async function d1Fetch(path, options = {}) {
-  const res = await workerFetch(path, { ...options, signal: options.signal || AbortSignal.timeout(7000) });
+  const auth = getAuth();
+  let token = null;
+  try { token = auth?.currentUser ? await auth.currentUser.getIdToken() : null; } catch (_) {}
+  const headers = {
+    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(options.headers || {}),
+    ...(token ? { Authorization: 'Bearer ' + token } : {})
+  };
+  const res = await fetch(`${WORKER_URL}${path}`, {
+    ...options,
+    headers,
+    signal: options.signal || AbortSignal.timeout(7000)
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || data?.message || `Worker HTTP ${res.status}`);
   return data;
