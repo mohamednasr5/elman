@@ -1,34 +1,39 @@
 /**
  * المنزلة وناسها — Telegram Admin Bot & Notification Engine
- * Integrates directly with Cloudflare Workers and Firebase Realtime Database.
+ * Uses Turso for application data. Firebase is not a database dependency.
  */
+import { createTursoDB } from './turso.js';
 
-const FIREBASE_DB_URL = 'https://elmanzla-default-rtdb.firebaseio.com';
-
-/**
- * Dynamically resolves Telegram Bot Token & Admin Chat ID from Env OR Firebase Database
- */
+async function tursoRows(env, sql, ...args) {
+  return (await createTursoDB(env).prepare(sql).bind(...args).all())?.results || [];
+}
+async function tursoFirst(env, sql, ...args) {
+  return createTursoDB(env).prepare(sql).bind(...args).first();
+}
+async function tursoRun(env, sql, ...args) {
+  return createTursoDB(env).prepare(sql).bind(...args).run();
+}
+function mapPlaceRow(p) {
+  if (!p) return null;
+  return {_id:p.id,id:p.id,name:p.name,nameEn:p.name_en,slug:p.slug,
+    categoryName:p.category_name||p.custom_category||p.category_id||'عام',
+    customCategory:p.custom_category,phone:p.phone,whatsapp:p.whatsapp,address:p.address,area:p.area,
+    description:p.description,coverImageUrl:p.cover_image_url,logoUrl:p.logo_url,
+    isVerified:Boolean(p.is_verified),isSponsored:Boolean(p.is_sponsored),isFeatured:Boolean(p.is_featured),
+    sponsoredUntil:p.sponsored_until,createdAt:p.created_at,updatedAt:p.updated_at};
+}
+function mapOfferRow(o) {
+  if (!o) return null;
+  return {_id:o.id,id:o.id,title:o.title,description:o.description,placeId:o.place_id,placeName:o.place_name,
+    discount:o.discount_percent,price:o.new_price,oldPrice:o.old_price,expiresAt:o.end_date,status:o.status};
+}
+function mapVerificationRow(r) {
+  if (!r) return null;
+  return {_id:r.id,id:r.id,placeId:r.place_id,placeName:r.place_name,requesterName:r.owner_name,
+    requesterEmail:r.owner_email,phone:r.phone,notes:r.notes,status:r.status,verifiedUntil:r.verified_until,createdAt:r.created_at};
+}
 export async function resolveTelegramCredentials(env) {
-  let token = env?.TELEGRAM_BOT_TOKEN;
-  let adminId = env?.TELEGRAM_ADMIN_ID;
-
-  // Fallback: Fetch directly from Firebase Realtime Database settings/telegram
-  if (!token || !adminId) {
-    try {
-      const res = await fetch(`${FIREBASE_DB_URL}/settings/telegram.json`);
-      if (res.ok) {
-        const tg = await res.json();
-        if (tg) {
-          if (!token && tg.botToken) token = tg.botToken.trim();
-          if (!adminId && tg.adminChatId) adminId = String(tg.adminChatId).trim();
-        }
-      }
-    } catch (e) {
-      console.warn('[Telegram] Could not fetch credentials from Firebase:', e);
-    }
-  }
-
-  return { token, adminId };
+  return {token:env?.TELEGRAM_BOT_TOKEN,adminId:env?.TELEGRAM_ADMIN_ID};
 }
 
 /**
@@ -283,14 +288,12 @@ async function sendMainMenu(chatId, name, env, editMessageId = null) {
  */
 async function sendStats(chatId, env, editMessageId = null) {
   try {
-    const [placesRes, verifRes, offersRes, categoriesRes] = await Promise.all([
-      fetch(`${FIREBASE_DB_URL}/places.json`).then(r => r.json()),
-      fetch(`${FIREBASE_DB_URL}/verificationRequests.json`).then(r => r.json()),
-      fetch(`${FIREBASE_DB_URL}/offers.json`).then(r => r.json()),
-      fetch(`${FIREBASE_DB_URL}/categories.json`).then(r => r.json())
+    const [placeRows, verifRows, offerRows] = await Promise.all([
+      tursoRows(env, 'SELECT p.*, c.name AS category_name FROM places p LEFT JOIN categories c ON c.id = p.category_id'),
+      tursoRows(env, 'SELECT id, status FROM verification_requests'),
+      tursoRows(env, 'SELECT status FROM offers')
     ]);
-
-    const places = Object.entries(placesRes || {}).map(([id, p]) => ({ _id: id, ...p }));
+    const places = placeRows.map(mapPlaceRow);
     const totalPlaces = places.length;
     const verifiedPlaces = places.filter(p => p.isVerified).length;
     const sponsoredPlaces = places.filter(p => p.isSponsored || p.isFeatured).length;
@@ -318,8 +321,8 @@ async function sendStats(chatId, env, editMessageId = null) {
       : 'لا يوجد';
 
     // Pending verifications
-    const pendingVerifs = Object.values(verifRes || {}).filter(v => v.status === 'pending').length;
-    const totalOffers = Object.values(offersRes || {}).filter(o => o.status === 'active' || !o.status).length;
+    const pendingVerifs = verifRows.filter(v => v.status === 'pending').length;
+    const totalOffers = offerRows.filter(o => o.status === 'active' || !o.status).length;
 
     const report = `📊 *تقرير منصة المنزلة وناسها اللحظي:*\n\n` +
       `📌 *إجمالي الأماكن:* ${totalPlaces} مكان\n` +
@@ -371,10 +374,7 @@ async function sendStats(chatId, env, editMessageId = null) {
  */
 async function sendVerificationRequests(chatId, env, editMessageId = null) {
   try {
-    const verifRes = await fetch(`${FIREBASE_DB_URL}/verificationRequests.json`).then(r => r.json()) || {};
-    const requests = Object.entries(verifRes)
-      .map(([id, r]) => ({ _id: id, ...r }))
-      .filter(r => r.status === 'pending');
+    const requests = (await tursoRows(env, 'SELECT id, place_id, place_name, owner_name, owner_email, phone, notes, status, verified_until, created_at FROM verification_requests ORDER BY created_at DESC')).map(mapVerificationRow).filter(r => r.status === 'pending');
 
     if (requests.length === 0) {
       const emptyText = '🛡️ *طلبات التوثيق:*\n\n✅ لا توجد أي طلبات توثيق معلقة حالياً!';
@@ -438,15 +438,8 @@ async function sendVerificationRequests(chatId, env, editMessageId = null) {
 async function togglePlaceVerification(chatId, placeId, isVerified, env, editMessageId = null) {
   try {
     const verifiedUntil = isVerified ? (Date.now() + (90 * 24 * 60 * 60 * 1000)) : null; // 3 months default
-    await fetch(`${FIREBASE_DB_URL}/places/${placeId}.json`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        isVerified: isVerified,
-        verifiedUntil: verifiedUntil,
-        verifiedAt: isVerified ? Date.now() : null
-      })
-    });
+    const result = await tursoRun(env, 'UPDATE places SET is_verified = ?, verification_status = ?, updated_at = ? WHERE id = ?', isVerified ? 1 : 0, isVerified ? 'verified' : 'unverified', Date.now(), placeId);
+    if (Number(result?.meta?.changes || 0) !== 1) throw new Error('المكان غير موجود أو لم يتم تحديثه');
 
     const statusText = isVerified 
       ? `✅ تم توثيق المكان بنجاح وتفعيل العلامة الزرقاء! 🛡️` 
@@ -467,11 +460,8 @@ async function togglePlaceVerification(chatId, placeId, isVerified, env, editMes
  */
 async function rejectVerification(chatId, requestId, env, editMessageId = null) {
   try {
-    await fetch(`${FIREBASE_DB_URL}/verificationRequests/${requestId}.json`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'rejected', rejectedAt: Date.now() })
-    });
+    const result = await tursoRun(env, 'UPDATE verification_requests SET status = ?, reviewed_at = ? WHERE id = ? AND status = ?', 'rejected', Date.now(), requestId, 'pending');
+    if (Number(result?.meta?.changes || 0) !== 1) throw new Error('طلب التوثيق غير موجود أو تمت معالجته بالفعل');
     await telegramApi('sendMessage', {
       chat_id: chatId,
       text: `❌ تم رفض طلب التوثيق رقم: \`${requestId}\``,
@@ -487,18 +477,15 @@ async function rejectVerification(chatId, requestId, env, editMessageId = null) 
  */
 async function toggleSponsored(chatId, placeId, env, editMessageId = null) {
   try {
-    const place = await fetch(`${FIREBASE_DB_URL}/places/${placeId}.json`).then(r => r.json());
+    const place = mapPlaceRow(await tursoFirst(env, 'SELECT p.*, c.name AS category_name FROM places p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ? LIMIT 1', placeId));
     if (!place) {
       await telegramApi('sendMessage', { chat_id: chatId, text: 'لم يتم العثور على المكان' }, env);
       return;
     }
 
     const newSponsored = !place.isSponsored;
-    await fetch(`${FIREBASE_DB_URL}/places/${placeId}.json`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isSponsored: newSponsored, isFeatured: newSponsored })
-    });
+    const result = await tursoRun(env, 'UPDATE places SET is_sponsored = ?, is_featured = ?, updated_at = ? WHERE id = ?', newSponsored ? 1 : 0, newSponsored ? 1 : 0, Date.now(), placeId);
+    if (Number(result?.meta?.changes || 0) !== 1) throw new Error('تعذر تحديث الإعلان المميز');
 
     const txt = newSponsored 
       ? `🌟 تم تثبيت "${place.name}" كإعلان مميز في صدارة الموقع!` 
@@ -515,8 +502,7 @@ async function toggleSponsored(chatId, placeId, env, editMessageId = null) {
  */
 async function searchPlaces(chatId, query, env) {
   try {
-    const placesRes = await fetch(`${FIREBASE_DB_URL}/places.json`).then(r => r.json()) || {};
-    const places = Object.entries(placesRes).map(([id, p]) => ({ _id: id, ...p }));
+    const places = (await tursoRows(env, 'SELECT p.*, c.name AS category_name FROM places p LEFT JOIN categories c ON c.id = p.category_id')).map(mapPlaceRow);
 
     const q = query.toLowerCase().trim();
     const results = places.filter(p => {
@@ -588,7 +574,7 @@ async function searchPlaces(chatId, query, env) {
  */
 async function viewPlaceDetails(chatId, placeId, env) {
   try {
-    const p = await fetch(`${FIREBASE_DB_URL}/places/${placeId}.json`).then(r => r.json());
+    const p = mapPlaceRow(await tursoFirst(env, 'SELECT p.*, c.name AS category_name FROM places p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ? LIMIT 1', placeId));
     if (!p) {
       await telegramApi('sendMessage', { chat_id: chatId, text: 'المكان غير موجود' }, env);
       return;
@@ -653,11 +639,11 @@ async function editPlaceField(chatId, placeId, field, value, env) {
       updatedAt: Date.now()
     };
 
-    await fetch(`${FIREBASE_DB_URL}/places/${placeId}.json`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates)
-    });
+    const allowedColumns = {name:'name',phone:'phone',area:'area',description:'description',coverImageUrl:'cover_image_url',logoUrl:'logo_url'};
+    const column = allowedColumns[targetKey];
+    if (!column) throw new Error('حقل غير مسموح بتعديله من Telegram');
+    const result = await tursoRun(env, `UPDATE places SET ${column} = ?, updated_at = ? WHERE id = ?`, value, Date.now(), placeId);
+    if (Number(result?.meta?.changes || 0) !== 1) throw new Error('المكان غير موجود أو لم يتم التعديل');
 
     await telegramApi('sendMessage', {
       chat_id: chatId,
@@ -700,12 +686,9 @@ async function addPlaceQuick(chatId, content, env) {
       updatedAt: Date.now()
     };
 
-    const res = await fetch(`${FIREBASE_DB_URL}/places.json`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newPlace)
-    });
-    const data = await res.json();
+    const id = 'tg_' + crypto.randomUUID();
+    await tursoRun(env, 'INSERT INTO places (id,name,slug,custom_category,phone,area,status,is_verified,verification_status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', id, name, slug, categoryName, phone, area, 'published', 1, 'verified', Date.now(), Date.now());
+    const data = {name:id};
 
     await telegramApi('sendMessage', {
       chat_id: chatId,
@@ -732,8 +715,7 @@ async function addPlaceQuick(chatId, content, env) {
  */
 async function sendActiveOffers(chatId, env, editMessageId = null) {
   try {
-    const offersRes = await fetch(`${FIREBASE_DB_URL}/offers.json`).then(r => r.json()) || {};
-    const offers = Object.entries(offersRes).map(([id, o]) => ({ _id: id, ...o }));
+    const offers = (await tursoRows(env, 'SELECT o.*, p.name AS place_name FROM offers o LEFT JOIN places p ON p.id = o.place_id ORDER BY o.created_at DESC')).map(mapOfferRow);
 
     if (offers.length === 0) {
       const msg = '🔥 *العروض والخصومات:*\n\nلا توجد عروض منشورة حالياً.';
@@ -775,10 +757,7 @@ async function sendActiveOffers(chatId, env, editMessageId = null) {
  */
 async function sendSponsoredShowcase(chatId, env, editMessageId = null) {
   try {
-    const placesRes = await fetch(`${FIREBASE_DB_URL}/places.json`).then(r => r.json()) || {};
-    const sponsored = Object.entries(placesRes)
-      .map(([id, p]) => ({ _id: id, ...p }))
-      .filter(p => p.isSponsored || p.isFeatured);
+    const sponsored = (await tursoRows(env, 'SELECT p.*, c.name AS category_name FROM places p LEFT JOIN categories c ON c.id = p.category_id WHERE p.is_sponsored = 1 OR p.is_featured = 1')).map(mapPlaceRow);
 
     let report = `🌟 *الأماكن المثبتة في الإعلانات المميزة (${sponsored.length}):*\n\n`;
     if (sponsored.length === 0) {
