@@ -94,15 +94,18 @@ async function tursoFetch(path, options = {}) {
   let token = null;
   try {
     let auth = getAuth();
-    if (!auth?.currentUser) {
-      for (let i = 0; i < 15; i++) {
+    if (auth?.currentUser) {
+      token = await auth.currentUser.getIdToken().catch(() => null);
+    } else if (options.requiresAuth || (options.method && options.method !== 'GET')) {
+      for (let i = 0; i < 10; i++) {
         await new Promise(r => setTimeout(r, 100));
         auth = getAuth();
-        if (auth?.currentUser) break;
+        if (auth?.currentUser) {
+          token = await auth.currentUser.getIdToken().catch(() => null);
+          break;
+        }
       }
     }
-    const user = auth?.currentUser;
-    token = user ? await user.getIdToken() : null;
   } catch (_) {}
 
   const headers = {
@@ -243,6 +246,10 @@ async function tursoWriteBusiness(path, method, data = null) {
   throw new Error(`No Turso write endpoint configured for ${root}`);
 }
 
+export function getDB() {
+  return null;
+}
+
 export function dbRef(path) {
   throw new Error('Firebase Realtime Database is disabled. Use Turso APIs: '+path);
 }
@@ -357,6 +364,10 @@ export async function dbIncrement(path, delta = 1) {
     throw new Error(`Firebase increment blocked for business data path: ${path}`);
   }
   throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
+}
+
+export function serverTimestamp() {
+  return Date.now();
 }
 
 export function dbListen(path, callback) {
@@ -632,13 +643,14 @@ export async function reportPlaceData({ placeId, reason = 'معلومة غير �
 /** Get place by slug (with multi-tier resilient lookup) */
 export async function getPlaceBySlug(slug) {
   if (!slug) return null;
-  const clean = String(slug).trim().toLowerCase();
+  const raw = String(slug).trim();
+  const clean = raw.toLowerCase();
 
   // Turso is authoritative. Read it first so a stale local cache cannot
   // resurrect a deleted/updated place.
-  // 1. Fetch directly from Turso Worker by slug
+  // 1. Fetch directly from Turso Worker by slug (try raw then clean)
   try {
-    const data = await tursoFetch('/api/places?slug=' + encodeURIComponent(clean));
+    const data = await tursoFetch('/api/places?slug=' + encodeURIComponent(raw));
     if (data?.success && data.data) {
       const p = normalizeTursoPlace(data.data);
       if (p) {
@@ -648,9 +660,22 @@ export async function getPlaceBySlug(slug) {
     }
   } catch (_) {}
 
-  // 3. Fallback: try by ID in Turso Worker
+  if (clean !== raw) {
+    try {
+      const dataClean = await tursoFetch('/api/places?slug=' + encodeURIComponent(clean));
+      if (dataClean?.success && dataClean.data) {
+        const p = normalizeTursoPlace(dataClean.data);
+        if (p) {
+          idbPut(STORES.PLACES, p).catch(() => {});
+          return p;
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 2. Fallback: try by ID in Turso Worker
   try {
-    const dataId = await tursoFetch('/api/places?id=' + encodeURIComponent(clean));
+    const dataId = await tursoFetch('/api/places?id=' + encodeURIComponent(raw));
     if (dataId?.success && dataId.data) {
       const p = normalizeTursoPlace(dataId.data);
       if (p) {
@@ -660,10 +685,15 @@ export async function getPlaceBySlug(slug) {
     }
   } catch (_) {}
 
-  // 4. Multi-tier resilient fallback: search published places list
+  // 3. Multi-tier resilient fallback: search published places list
   try {
     const all = await getPublishedPlaces({ limit: 1000 });
-    return (all || []).find(p => String(p?.slug || '').toLowerCase() === clean || String(p?.id || '').toLowerCase() === clean) || null;
+    return (all || []).find(p => 
+      String(p?.slug || '').toLowerCase() === clean || 
+      String(p?.id || '').toLowerCase() === clean ||
+      String(p?.slug || '') === raw ||
+      String(p?.id || '') === raw
+    ) || null;
   } catch (_) {
     return null;
   }

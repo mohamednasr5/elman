@@ -571,9 +571,9 @@ try {
       const result = await createTursoDB(env).prepare(`
         SELECT p.*
         FROM places p
-        WHERE (LOWER(p.slug) = LOWER(?) OR p.id = ? OR p.slug = ?) AND p.status = 'published'
+        WHERE (LOWER(p.slug) = LOWER(?) OR p.id = ? OR LOWER(p.id) = LOWER(?) OR p.slug = ?) AND p.status = 'published'
         LIMIT 1
-      `).bind(slugParam, slugParam, slugParam).first();
+      `).bind(slugParam, slugParam, slugParam, slugParam).first();
 
       if (result) {
         // The reviews table has an index on (place_id, created_at), so this
@@ -623,14 +623,12 @@ try {
     const limitParam = parseInt(url.searchParams.get('limit') || '500', 10);
     const offsetParam = parseInt(url.searchParams.get('offset') || '0', 10);
     const ownerIdFilter = (url.searchParams.get('owner_id') || '').trim();
+    const ownerEmailFilter = (url.searchParams.get('owner_email') || '').trim().toLowerCase();
 
     const limit = Math.min(Math.max(limitParam, 1), 1000);
     const offset = Math.max(offsetParam, 0);
 
     const params = [];
-
-    // Public users must only receive published places. Admin mode deliberately omits this filter.
-    if (!adminList && !ownerIdFilter && !ownerEmailFilter) sql += ` WHERE p.status = 'published'`;
 
     // IMPORTANT: list endpoint must never aggregate the entire reviews table.
     // A global GROUP BY on reviews turns every homepage/search request into a
@@ -648,7 +646,9 @@ try {
       FROM places p
       LEFT JOIN users u ON u.id = p.owner_id
     `;
-    const ownerEmailFilter = (url.searchParams.get('owner_email') || '').trim().toLowerCase();
+    if (!adminList && !ownerIdFilter && !ownerEmailFilter) {
+      sql += ` WHERE p.status = 'published'`;
+    }
 
     if (ownerIdFilter && ownerEmailFilter) {
       sql += ` WHERE (p.owner_id = ? OR LOWER(p.owner_email) = ?)`;
@@ -2338,7 +2338,7 @@ try {
         const safeFolder = String(folder).replace(/[^a-zA-Z0-9_-]/g,'').slice(0,40) || 'places';
         const extMap = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/avif':'avif'};
         const ext = extMap[contentType] || 'webp';
-        let key = String(customKey || '').trim().replace(/^\/+|\/g,'');
+        let key = String(customKey || '').trim().replace(/^\/+|\/+$/g, '');
         if (key) {
           key = key.replace(/[^a-zA-Z0-9_./-]/g,'').slice(0,300);
           if (!key || key.includes('..')) return jsonResponse({success:false,error:'مفتاح التخزين غير صالح'},400,corsHeaders);
@@ -2727,6 +2727,32 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         }, 200, corsHeaders);
       }
 
+      // ── Turso: ATM Poll API ─────────────────────────────────────
+      if (url.pathname.startsWith('/api/places/') && url.pathname.endsWith('/atm-poll') && (request.method === 'GET' || request.method === 'POST')) {
+        const placeId = decodeURIComponent(url.pathname.slice('/api/places/'.length, -'/atm-poll'.length));
+        if (!placeId) return jsonResponse({success:false,error:'معرف المكان مطلوب'},400,corsHeaders);
+        const db = createTursoDB(env);
+        if (request.method === 'GET') {
+          const row = await db.prepare('SELECT atm_poll_json FROM places WHERE id=? LIMIT 1').bind(placeId).first();
+          let poll={}; try { poll=JSON.parse(row?.atm_poll_json||'{}'); } catch (_) {}
+          return jsonResponse({success:true,data:poll},200,{...corsHeaders,'Cache-Control':'no-store'});
+        }
+        const auth = await requireAuth(request, env);
+        if (auth.response) return auth.response;
+        const body = await request.json().catch(()=>({}));
+        const questionKey=String(body.questionKey||'').trim(), voteType=body.voteType==='yes'?'yes':'no';
+        if (!questionKey) return jsonResponse({success:false,error:'questionKey مطلوب'},400,corsHeaders);
+        const row = await db.prepare('SELECT atm_poll_json FROM places WHERE id=? LIMIT 1').bind(placeId).first();
+        let poll={}; try { poll=JSON.parse(row?.atm_poll_json||'{}'); } catch (_) {}
+        const q={...(poll[questionKey]||{})}, now=Date.now();
+        q.yesCount=Number(q.yesCount||0)+(voteType==='yes'?1:0); q.noCount=Number(q.noCount||0)+(voteType==='no'?1:0);
+        q.totalVotes=q.yesCount+q.noCount; q.lastAnswerTime=now; q.lastAnswerChoice=voteType; q.updatedAt=now;
+        poll[questionKey]=q; poll.updatedAt=now;
+        if(questionKey==='cash'){poll.yesCount=q.yesCount;poll.noCount=q.noCount;poll.totalVotes=q.totalVotes;poll.lastAnswerTime=now;poll.lastAnswerChoice=voteType;}
+        await db.prepare('UPDATE places SET atm_poll_json=? WHERE id=?').bind(JSON.stringify(poll),placeId).run();
+        return jsonResponse({success:true,data:poll},200,corsHeaders);
+      }
+
       // ── 404 Catch-all ──
       return jsonResponse({ error: 'المسار غير موجود' }, 404, corsHeaders);
 
@@ -3052,30 +3078,3 @@ function parseJson(value, fallback) {
     return fallback;
   }
 }
-  // ── Turso: ATM Poll API ─────────────────────────────────────
-  if (url.pathname.startsWith('/api/places/') && url.pathname.endsWith('/atm-poll') && (request.method === 'GET' || request.method === 'POST')) {
-    const placeId = decodeURIComponent(url.pathname.slice('/api/places/'.length, -'/atm-poll'.length));
-    if (!placeId) return jsonResponse({success:false,error:'معرف المكان مطلوب'},400,corsHeaders);
-    const db = createTursoDB(env);
-    if (request.method === 'GET') {
-      const row = await db.prepare('SELECT atm_poll_json FROM places WHERE id=? LIMIT 1').bind(placeId).first();
-      let poll={}; try { poll=JSON.parse(row?.atm_poll_json||'{}'); } catch (_) {}
-      return jsonResponse({success:true,data:poll},200,{...corsHeaders,'Cache-Control':'no-store'});
-    }
-    const auth = await requireAuth(request, env);
-    if (auth.response) return auth.response;
-    const body = await request.json().catch(()=>({}));
-    const questionKey=String(body.questionKey||'').trim(), voteType=body.voteType==='yes'?'yes':'no';
-    if (!questionKey) return jsonResponse({success:false,error:'questionKey مطلوب'},400,corsHeaders);
-    const row = await db.prepare('SELECT atm_poll_json FROM places WHERE id=? LIMIT 1').bind(placeId).first();
-    let poll={}; try { poll=JSON.parse(row?.atm_poll_json||'{}'); } catch (_) {}
-    const q={...(poll[questionKey]||{})}, now=Date.now();
-    q.yesCount=Number(q.yesCount||0)+(voteType==='yes'?1:0); q.noCount=Number(q.noCount||0)+(voteType==='no'?1:0);
-    q.totalVotes=q.yesCount+q.noCount; q.lastAnswerTime=now; q.lastAnswerChoice=voteType; q.updatedAt=now;
-    poll[questionKey]=q; poll.updatedAt=now;
-    if(questionKey==='cash'){poll.yesCount=q.yesCount;poll.noCount=q.noCount;poll.totalVotes=q.totalVotes;poll.lastAnswerTime=now;poll.lastAnswerChoice=voteType;}
-    await db.prepare('UPDATE places SET atm_poll_json=? WHERE id=?').bind(JSON.stringify(poll),placeId).run();
-    return jsonResponse({success:true,data:poll},200,corsHeaders);
-  }
-
-
