@@ -74,6 +74,22 @@ async function requireAdmin(request, env, superadminOnly = false) {
 
 
 
+async function getDataVersion(env) {
+  try {
+    const obj = await env.elmanzala.get('config/data-version');
+    return obj ? await obj.text() : '0';
+  } catch (_) {
+    return '0';
+  }
+}
+
+function bumpDataVersion(env, ctx) {
+  ctx.waitUntil(
+    env.elmanzala.put('config/data-version', String(Date.now()))
+      .catch(err => console.warn('[Cache] data-version update failed:', err?.message || err))
+  );
+}
+
 async function sendDailyQuranReminder(env) {
   const cairoHour = Number(new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Africa/Cairo', hour: '2-digit', hourCycle: 'h23'
@@ -391,6 +407,7 @@ try {
     if (normArea) cacheUrl.searchParams.set('area', normArea);
     cacheUrl.searchParams.set('limit', String(limit));
     cacheUrl.searchParams.set('offset', String(offset));
+    cacheUrl.searchParams.set('v', await getDataVersion(env));
     if (verifiedOnly) cacheUrl.searchParams.set('verified', '1');
     if (minRating > 0) cacheUrl.searchParams.set('min_rating', String(minRating));
 
@@ -504,6 +521,7 @@ try {
       const cleanSlug = slugParam.toLowerCase();
       const cache = caches.default;
       const cacheUrl = new URL(`https://cache.local/api/places?slug=${encodeURIComponent(cleanSlug)}`);
+      cacheUrl.searchParams.set('v', await getDataVersion(env));
       const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
       const cachedResponse = await cache.match(cacheKey);
@@ -611,6 +629,7 @@ try {
     const listCacheUrl = new URL(request.url);
     listCacheUrl.searchParams.set('limit', String(limit));
     listCacheUrl.searchParams.set('offset', String(offset));
+    listCacheUrl.searchParams.set('v', await getDataVersion(env));
     const listCacheKey = new Request(listCacheUrl.toString(), { method: 'GET' });
 
     if (usePublicListCache) {
@@ -823,6 +842,7 @@ try {
         }
       }
       await createTursoDB(env).prepare(`DELETE FROM places WHERE id = ? OR slug = ?`).bind(id, id).run();
+      bumpDataVersion(env, ctx);
 
       const cache = caches.default;
       const purgeUrls = [
@@ -907,6 +927,7 @@ try {
           sort_order = excluded.sort_order,
           updated_at = excluded.updated_at
       `).bind(id, name, nameEn, slug, icon, description, order, now, now).run();
+      bumpDataVersion(env, ctx);
 
       // Invalidate Categories Cache
       const cache = caches.default;
@@ -936,6 +957,7 @@ try {
 
     try {
       await createTursoDB(env).prepare(`DELETE FROM categories WHERE id = ? OR slug = ?`).bind(id, id).run();
+      bumpDataVersion(env, ctx);
 
       // Invalidate Categories Cache
       const cache = caches.default;
@@ -1005,6 +1027,7 @@ try {
           end_date = excluded.end_date,
           clicks = excluded.clicks
       `).bind(id, title, placeId, link, imageUrl, placement, priority, isActive, startDate, endDate, clicks, createdAt, createdBy).run();
+      bumpDataVersion(env, ctx);
 
       return jsonResponse({ success: true, message: 'تم حفظ الإعلان بنجاح في D1', id }, 200, corsHeaders);
     } catch (err) {
@@ -1021,6 +1044,7 @@ try {
 
     try {
       await createTursoDB(env).prepare(`DELETE FROM ads WHERE id = ?`).bind(id).run();
+      bumpDataVersion(env, ctx);
       return jsonResponse({ success: true, message: 'تم حذف الإعلان بنجاح من D1' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
