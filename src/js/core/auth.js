@@ -4,7 +4,7 @@
  * Architecture (Final):
  *   Firebase Auth  → Google Sign-In + ID Token ONLY
  *   Firebase FCM   → Push Notifications ONLY
- *   Cloudflare D1  → User profiles, roles, placeIds (via Worker)
+ *   Turso          → User profiles, roles, placeIds (via Worker)
  *   NO Firebase Realtime Database usage whatsoever
  */
 
@@ -48,7 +48,7 @@ export const ADMIN_EMAILS = [
 // ── initAuth ───────────────────────────────────────────────────────────────
 /**
  * Initialize auth state listener.
- * On sign-in: syncs user to D1 and fetches full D1 profile (role, placeIds).
+ * On sign-in: syncs user to Turso and fetches full Turso profile (role, placeIds).
  */
 export function initAuth() {
   const auth = getAuth();
@@ -68,14 +68,14 @@ export function initAuth() {
   _authUnsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
     if (firebaseUser) {
       try {
-        // Sync to D1 and get full profile back
+        // Sync to Turso and get full profile back
         const profile = await _syncUserToD1(firebaseUser);
         appState.set('user', profile);
         appState.set('authLoading', false);
         try { localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(profile)); } catch (_) {}
         emit('auth:signedIn', profile);
       } catch (err) {
-        console.error('[Auth] D1 sync failed, using Firebase profile:', err);
+        console.error('[Auth] Turso sync failed, using Firebase profile:', err);
         const basic = _buildBasicProfile(firebaseUser);
         appState.set('user', basic);
         appState.set('authLoading', false);
