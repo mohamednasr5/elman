@@ -4,7 +4,7 @@
  * Supports points accrual, levels, daily bonus, and 5000 points Place Verification Redemption.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate } from '../core/db.js';
+import { WORKER_URL } from '../core/firebase.js';
 import { playNotificationSound } from './notification.service.js';
 
 export const VERIFICATION_POINTS_COST = 5000;
@@ -68,7 +68,7 @@ export async function getUserLoyaltyProfile(uid) {
   if (!uid) return { points:0,totalEarned:0,history:[],lastDailyBonusDate:null };
   try {
     const { getIdToken } = await import('../core/auth.js'); const token=await getIdToken();
-    const res=await fetch('/api/loyalty/'+encodeURIComponent(uid),{headers:token?{Authorization:'Bearer '+token}:{}});
+    const res=await fetch(WORKER_URL + '/api/loyalty/'+encodeURIComponent(uid),{headers:token?{Authorization:'Bearer '+token}:{}});
     const data=await res.json().catch(()=>({}));
     if(!res.ok||!data.success) throw new Error(data.error||'تعذر تحميل رصيد النقاط');
     return data.data;
