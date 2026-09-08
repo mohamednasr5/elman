@@ -3,7 +3,6 @@
  * Core business logic for Place, Offers and Products management
  */
 
-import { getDB } from '../core/firebase.js';
 import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, serverTimestamp, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getPlace, getPublishedPlaces, idbGet, idbPut, idbDelete, STORES, tursoFetch } from '../core/db.js';
 import { broadcastRealtimeChange } from './realtime-sync.service.js';
 import { generatePlaceSlug, generateCleanSlug } from '../utils/slug.js';
