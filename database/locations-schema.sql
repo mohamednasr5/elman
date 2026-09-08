@@ -2,7 +2,7 @@
 -- Geographic Entity Hierarchy Schema
 -- Dalil Manzala & El-Matariya - Local Business Directory
 -- Hierarchy: Country > Governorate > Center (Markaz) > City/Village/Local Unit
--- Single Source of Truth: Cloudflare D1
+-- Single Source of Truth: Turso
 -- =====================================================================
 
 PRAGMA foreign_keys = ON;
