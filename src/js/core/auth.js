@@ -69,7 +69,7 @@ export function initAuth() {
     if (firebaseUser) {
       try {
         // Sync to Turso and get full profile back
-        const profile = await _syncUserToD1(firebaseUser);
+        const profile = await _syncUserToTurso(firebaseUser);
         appState.set('user', profile);
         appState.set('authLoading', false);
         try { localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(profile)); } catch (_) {}
@@ -215,16 +215,16 @@ export async function getClientIp() {
   return null;
 }
 
-// ── D1 User Sync (Core) ────────────────────────────────────────────────────
+// ── Turso User Sync (Core) ────────────────────────────────────────────────────
 /**
- * Sync Firebase user → D1 users table, then fetch full D1 profile.
- * D1 is the source of truth for role, placeIds, status, etc.
+ * Sync Firebase user → Turso users table, then fetch full Turso profile.
+ * Turso is the source of truth for role, placeIds, status, etc.
  * Firebase Auth is used ONLY for identity (uid, name, email, photoURL).
  *
  * @param {firebase.User} firebaseUser
  * @returns {Promise<UserProfile>}
  */
-async function _syncUserToD1(firebaseUser) {
+async function _syncUserToTurso(firebaseUser) {
   const uid = firebaseUser.uid;
   const email = (firebaseUser.email || '').trim().toLowerCase();
   const name = firebaseUser.displayName || 'مستخدم';
@@ -249,22 +249,22 @@ async function _syncUserToD1(firebaseUser) {
     throw new Error(syncData?.error || `User sync HTTP ${syncRes.status}`);
   }
 
-  const d1Profile = syncData.data || syncData.user || {};
+  const tursoProfile = syncData.data || syncData.user || {};
   return {
     uid,
-    name: d1Profile.name || name,
-    email: d1Profile.email || firebaseUser.email || '',
-    photoURL: d1Profile.photo_url || d1Profile.photoURL || photoURL,
-    role: d1Profile.role || (isSuper ? 'superadmin' : 'user'),
-    status: d1Profile.status || 'active',
-    phone: d1Profile.phone || null,
-    createdAt: d1Profile.created_at || Date.now(),
+    name: tursoProfile.name || name,
+    email: tursoProfile.email || firebaseUser.email || '',
+    photoURL: tursoProfile.photo_url || tursoProfile.photoURL || photoURL,
+    role: tursoProfile.role || (isSuper ? 'superadmin' : 'user'),
+    status: tursoProfile.status || 'active',
+    phone: tursoProfile.phone || null,
+    createdAt: tursoProfile.created_at || Date.now(),
     lastLoginAt: Date.now()
   };
 }
 
 /**
- * Build minimal profile from Firebase user alone (fallback when D1 fails)
+ * Build minimal profile from Firebase user alone (fallback when Turso fails)
  */
 function _buildBasicProfile(firebaseUser) {
   const email = (firebaseUser.email || '').trim().toLowerCase();

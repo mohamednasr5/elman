@@ -122,14 +122,14 @@ export { tursoFetch, d1Fetch };
 export async function syncPlaceToWorkerTurso(placeId, placeData = {}) {
   if (!placeId) throw new Error('Place ID is required for Turso sync');
   const payload = { ...(placeData || {}), id: placeId };
-  return d1Fetch('/api/places/sync', {
+  return tursoFetch('/api/places/sync', {
     method: 'POST',
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(10000)
   });
 }
 
-function normalizeReviewFromD1(r, placeId = '') {
+function normalizeReviewFromTurso(r, placeId = '') {
   if (!r) return null;
   return {
     id: r.id,
@@ -158,77 +158,77 @@ function normalizeReviewFromD1(r, placeId = '') {
   };
 }
 
-async function d1GetBusiness(path) {
+async function tursoGetBusiness(path) {
   const { parts, root } = parseBusinessPath(path);
   if (root === 'ads') {
-    const data = await d1Fetch('/api/ads'); const list = Array.isArray(data.data) ? data.data : [];
+    const data = await tursoFetch('/api/ads'); const list = Array.isArray(data.data) ? data.data : [];
     if (parts.length === 1) return Object.fromEntries(list.map(a => [a.id || a._id, a]));
     return list.find(a => String(a.id || a._id) === String(parts[1])) || null;
   }
   if (root === 'categories') {
-    const data = await d1Fetch('/api/categories'); const list = Array.isArray(data.data) ? data.data : [];
+    const data = await tursoFetch('/api/categories'); const list = Array.isArray(data.data) ? data.data : [];
     if (parts.length === 1) return Object.fromEntries(list.map(c => [c.id || c.slug, c]));
     return list.find(c => String(c.id || c.slug) === String(parts[1])) || null;
   }
   if (root === 'places') {
     if (parts.length >= 3 && parts[2] === 'reviews') {
-      const data = await d1Fetch(`/api/reviews?place_id=${encodeURIComponent(parts[1])}`); const list = Array.isArray(data.data) ? data.data : [];
+      const data = await tursoFetch(`/api/reviews?place_id=${encodeURIComponent(parts[1])}`); const list = Array.isArray(data.data) ? data.data : [];
       if (parts[3]) return list.find(r => String(r.id) === String(parts[3])) || null;
       return Object.fromEntries(list.map(r => [r.id, r]));
     }
     if (parts.length === 1) {
-      const data = await d1Fetch('/api/places?limit=1000');
+      const data = await tursoFetch('/api/places?limit=1000');
       return Object.fromEntries((Array.isArray(data.data) ? data.data : []).map(x => [x.id, x]));
     }
-    const data = await d1Fetch(`/api/places?id=${encodeURIComponent(parts[1])}`); return data.data || null;
+    const data = await tursoFetch(`/api/places?id=${encodeURIComponent(parts[1])}`); return data.data || null;
   }
   if (root === 'offers') {
-    const data = await d1Fetch(parts.length > 1 ? `/api/offers?id=${encodeURIComponent(parts[1])}` : '/api/offers');
+    const data = await tursoFetch(parts.length > 1 ? `/api/offers?id=${encodeURIComponent(parts[1])}` : '/api/offers');
     const list = Array.isArray(data.data) ? data.data : [];
     return parts.length === 1 ? Object.fromEntries(list.filter(x => x.id).map(x => [x.id, x])) : (list.find(x => String(x.id) === String(parts[1])) || null);
   }
   if (root === 'products') {
     const placeId = parts[1] || '', productId = parts[2] || '';
     const apiPath = productId ? `/api/products?id=${encodeURIComponent(productId)}` : (placeId ? `/api/products?place_id=${encodeURIComponent(placeId)}` : '/api/products');
-    const data = await d1Fetch(apiPath); const list = Array.isArray(data.data) ? data.data : [];
+    const data = await tursoFetch(apiPath); const list = Array.isArray(data.data) ? data.data : [];
     if (parts.length <= 2) return Object.fromEntries(list.filter(x => x.id).map(x => [x.id, x]));
     return list.find(x => String(x.id) === String(productId)) || null;
   }
   return null;
 }
 
-async function d1WriteBusiness(path, method, data = null) {
+async function tursoWriteBusiness(path, method, data = null) {
   const { parts, root } = parseBusinessPath(path);
   if (root === 'ads') {
-    if (method === 'POST' || method === 'PUT') return d1Fetch('/api/ads', { method:'POST', body:JSON.stringify({ ...(data || {}), id:parts[1] || data?.id || data?._id }) });
-    if (method === 'DELETE' && parts[1]) return d1Fetch(`/api/ads?id=${encodeURIComponent(parts[1])}`, { method:'DELETE' });
+    if (method === 'POST' || method === 'PUT') return tursoFetch('/api/ads', { method:'POST', body:JSON.stringify({ ...(data || {}), id:parts[1] || data?.id || data?._id }) });
+    if (method === 'DELETE' && parts[1]) return tursoFetch(`/api/ads?id=${encodeURIComponent(parts[1])}`, { method:'DELETE' });
     throw new Error(`Unsupported ads write path: ${path}`);
   }
   if (root === 'places') {
     if (parts.length >= 3 && parts[2] === 'reviews') {
       const placeId=parts[1], reviewId=parts[3];
-      if (method==='DELETE') return d1Fetch(reviewId ? `/api/reviews?id=${encodeURIComponent(reviewId)}` : `/api/reviews?place_id=${encodeURIComponent(placeId)}`, {method:'DELETE'});
-      if (method==='POST') return d1Fetch('/api/reviews',{method:'POST',body:JSON.stringify({...data,place_id:data?.place_id||placeId})});
-      if (method==='PUT' && reviewId) return d1Fetch(`/api/reviews?id=${encodeURIComponent(reviewId)}`,{method:'PUT',body:JSON.stringify(data||{})});
+      if (method==='DELETE') return tursoFetch(reviewId ? `/api/reviews?id=${encodeURIComponent(reviewId)}` : `/api/reviews?place_id=${encodeURIComponent(placeId)}`, {method:'DELETE'});
+      if (method==='POST') return tursoFetch('/api/reviews',{method:'POST',body:JSON.stringify({...data,place_id:data?.place_id||placeId})});
+      if (method==='PUT' && reviewId) return tursoFetch(`/api/reviews?id=${encodeURIComponent(reviewId)}`,{method:'PUT',body:JSON.stringify(data||{})});
     }
-    if (parts.length===2 && (method==='POST'||method==='PUT')) return d1Fetch('/api/places/sync',{method:'POST',body:JSON.stringify({id:parts[1],...(data||{})})});
-    if (parts.length===2 && method==='DELETE') return d1Fetch(`/api/places/${encodeURIComponent(parts[1])}`,{method:'DELETE'});
+    if (parts.length===2 && (method==='POST'||method==='PUT')) return tursoFetch('/api/places/sync',{method:'POST',body:JSON.stringify({id:parts[1],...(data||{})})});
+    if (parts.length===2 && method==='DELETE') return tursoFetch(`/api/places/${encodeURIComponent(parts[1])}`,{method:'DELETE'});
     throw new Error(`Unsupported place write path: ${path}`);
   }
   if (root==='offers') {
-    if(method==='POST') return d1Fetch('/api/offers',{method:'POST',body:JSON.stringify(data||{})});
-    if(method==='PUT'&&parts[1]) return d1Fetch(`/api/offers/${encodeURIComponent(parts[1])}`,{method:'PUT',body:JSON.stringify(data||{})});
-    if(method==='DELETE'&&parts[1]) return d1Fetch(`/api/offers/${encodeURIComponent(parts[1])}`,{method:'DELETE'});
+    if(method==='POST') return tursoFetch('/api/offers',{method:'POST',body:JSON.stringify(data||{})});
+    if(method==='PUT'&&parts[1]) return tursoFetch(`/api/offers/${encodeURIComponent(parts[1])}`,{method:'PUT',body:JSON.stringify(data||{})});
+    if(method==='DELETE'&&parts[1]) return tursoFetch(`/api/offers/${encodeURIComponent(parts[1])}`,{method:'DELETE'});
   }
   if (root==='products') {
-    if(method==='POST') return d1Fetch('/api/products',{method:'POST',body:JSON.stringify({...data,place_id:data?.place_id||data?.placeId||parts[1]})});
-    if(method==='PUT'&&parts[2]) return d1Fetch(`/api/products/${encodeURIComponent(parts[2])}`,{method:'PUT',body:JSON.stringify(data||{})});
-    if(method==='DELETE'&&parts[2]) return d1Fetch(`/api/products/${encodeURIComponent(parts[2])}`,{method:'DELETE'});
+    if(method==='POST') return tursoFetch('/api/products',{method:'POST',body:JSON.stringify({...data,place_id:data?.place_id||data?.placeId||parts[1]})});
+    if(method==='PUT'&&parts[2]) return tursoFetch(`/api/products/${encodeURIComponent(parts[2])}`,{method:'PUT',body:JSON.stringify(data||{})});
+    if(method==='DELETE'&&parts[2]) return tursoFetch(`/api/products/${encodeURIComponent(parts[2])}`,{method:'DELETE'});
   }
   if(root==='categories'){
-    if(method==='POST') return d1Fetch('/api/categories',{method:'POST',body:JSON.stringify(data||{})});
-    if(method==='PUT'&&parts[1]) return d1Fetch(`/api/categories/${encodeURIComponent(parts[1])}`,{method:'PUT',body:JSON.stringify(data||{})});
-    if(method==='DELETE'&&parts[1]) return d1Fetch(`/api/categories/${encodeURIComponent(parts[1])}`,{method:'DELETE'});
+    if(method==='POST') return tursoFetch('/api/categories',{method:'POST',body:JSON.stringify(data||{})});
+    if(method==='PUT'&&parts[1]) return tursoFetch(`/api/categories/${encodeURIComponent(parts[1])}`,{method:'PUT',body:JSON.stringify(data||{})});
+    if(method==='DELETE'&&parts[1]) return tursoFetch(`/api/categories/${encodeURIComponent(parts[1])}`,{method:'DELETE'});
   }
   throw new Error(`No Turso write endpoint configured for ${root}`);
 }
@@ -246,7 +246,7 @@ export async function dbGet(path, useCache = true) {
 
   try {
     if (isBusinessDataPath(path)) {
-      const val = await d1GetBusiness(path);
+      const val = await tursoGetBusiness(path);
       if (useCache) setCache('path:' + path, val);
       return val;
     }
@@ -267,13 +267,13 @@ export async function dbSet(path, data) {
   clearDbCache();
   if (isBusinessDataPath(path)) {
     if (String(path).match(/^places\/[^/]+\/reviews\/[^/]+$/)) {
-      await d1WriteBusiness(path, 'POST', {
+      await tursoWriteBusiness(path, 'POST', {
         ...(data || {}),
         place_id: data?.place_id || data?.placeId || String(path).split('/')[1]
       });
       return;
     }
-    await d1WriteBusiness(path, 'PUT', data);
+    await tursoWriteBusiness(path, 'PUT', data);
     return;
   }
   const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
@@ -284,11 +284,11 @@ export async function dbUpdate(path, updates) {
   clearDbCache();
   if (isBusinessDataPath(path)) {
     if (String(path).match(/^places\/[^/]+\/reviews\/[^/]+$/)) {
-      await d1WriteBusiness(path, 'PUT', updates);
+      await tursoWriteBusiness(path, 'PUT', updates);
       return;
     }
     if (String(path).match(/^places\/[^/]+$/)) {
-      await d1WriteBusiness(path, 'PUT', updates);
+      await tursoWriteBusiness(path, 'PUT', updates);
       return;
     }
     if (String(path).match(/^places\/[^/]+\/reviews$/)) {
@@ -296,14 +296,14 @@ export async function dbUpdate(path, updates) {
       const placeId = String(path).split('/')[1];
       for (const [reviewId, patch] of Object.entries(updates || {})) {
         if (patch === null) {
-          await d1WriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'DELETE');
+          await tursoWriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'DELETE');
         } else {
-          await d1WriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'PUT', patch);
+          await tursoWriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'PUT', patch);
         }
       }
       return;
     }
-    await d1WriteBusiness(path, 'PUT', updates);
+    await tursoWriteBusiness(path, 'PUT', updates);
     return;
   }
   const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
@@ -314,23 +314,23 @@ export async function dbPush(path, data) {
   if (isBusinessDataPath(path)) {
     const cleanPath = String(path || '').replace(/^\/+/, '');
 
-    // Ads are authoritative in Cloudflare D1. Never attempt Firebase push.
+    // Ads are authoritative in Turso. Never attempt Firebase push.
     if (/^ads(?:\/|$)/i.test(cleanPath)) {
       const parts = cleanPath.split('/').filter(Boolean);
-      const result = await d1WriteBusiness(cleanPath, 'POST', data || {});
+      const result = await tursoWriteBusiness(cleanPath, 'POST', data || {});
       const newId = result?.id || result?.data?.id || data?.id || data?._id || `d1_${Date.now()}`;
       return { key: newId, id: newId };
     }
 
-    // Reviews are authoritative in Cloudflare D1.
+    // Reviews are authoritative in Turso.
     if (/^places\/[^/]+\/reviews$/i.test(cleanPath)) {
       const placeId = cleanPath.split('/')[1];
-      const result = await d1WriteBusiness(cleanPath, 'POST', { ...(data || {}), place_id: data?.place_id || placeId });
+      const result = await tursoWriteBusiness(cleanPath, 'POST', { ...(data || {}), place_id: data?.place_id || placeId });
       const newId = result?.id || result?.data?.id || data?.id || `d1_${Date.now()}`;
       return { key: newId, id: newId };
     }
 
-    throw new Error(`D1 write path is not supported for business data: ${cleanPath}`);
+    throw new Error(`Turso write path is not supported for business data: ${cleanPath}`);
   }
 
   const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
@@ -343,7 +343,7 @@ export async function dbRemove(path) {
   clearDbCache();
   if (!path || String(path).trim() === '') return;
   if (isBusinessDataPath(path)) {
-    await d1WriteBusiness(path, 'DELETE');
+    await tursoWriteBusiness(path, 'DELETE');
     return;
   }
   await getDB().ref(path).remove();
@@ -385,7 +385,7 @@ export function dbListenChild(path, addedCb, changedCb, removedCb) {
 
 export async function dbQuery({ path, orderBy = 'createdAt', limit = 20, startAfter = null, equalTo = null, direction = 'desc' }) {
   if (isBusinessDataPath(path)) {
-    const val = await d1GetBusiness(path);
+    const val = await tursoGetBusiness(path);
     let items = Object.entries(val || {}).map(([id, item]) => ({ _key: id, ...item }));
     if (equalTo !== null) items = items.filter(x => x?.[orderBy] === equalTo);
     items.sort((a, b) => (Number(b?.[orderBy]) || 0) - (Number(a?.[orderBy]) || 0));
@@ -414,7 +414,7 @@ export function serverTimestamp() {
 
 // ── Specific entity helpers ──
 
-/** Get user profile - Reads from Local/D1 */
+/** Get user profile - Reads from Local/Turso */
 export async function getUserProfile(uid) {
   if (!uid) return null;
   const cached = getCached('user:' + uid);
@@ -433,9 +433,9 @@ export async function getUserProfile(uid) {
 }
 
 /** Get all users - Primary Turso */
-export async function getAllUsersD1() {
+export async function getAllUsersTurso() {
   try {
-    const data = await d1Fetch('/api/users');
+    const data = await tursoFetch('/api/users');
     if (data && data.success && Array.isArray(data.data)) {
       const usersMap = {};
       data.data.forEach(u => {
@@ -456,7 +456,7 @@ export async function getAllUsersD1() {
       return usersMap;
     }
   } catch (err) {
-    console.debug('[getAllUsersD1] Worker fetch handled:', err.message);
+    console.debug('[getAllUsersTurso] Worker fetch handled:', err.message);
   }
   return {};
 }
@@ -489,75 +489,67 @@ export async function getCategoryRequestsTurso() {
   return {};
 }
 
-/** Submit a new Category Request to Cloudflare D1 */
-export async function submitCategoryRequestD1({ categoryName, placeName, ownerName, userId }) {
+/** Submit a new Category Request to Turso */
+export async function submitCategoryRequestTurso({ categoryName, placeName, ownerName, userId }) {
   try {
-    const res = await fetch(`${WORKER_URL}/api/category-requests`, {
+    const data = await tursoFetch('/api/category-requests', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ categoryName, placeName, ownerName, userId })
     });
-    return res.ok;
+    return Boolean(data && data.success);
   } catch (_) {
     return false;
   }
 }
 
 /** Get all Verification Requests - Primary Turso */
-export async function getVerificationRequestsD1() {
+export async function getVerificationRequestsTurso() {
   try {
-    const res = await fetch(`${WORKER_URL}/api/verification-requests`, { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.success && Array.isArray(data.data)) {
-        const map = {};
-        data.data.forEach(r => {
-          map[r.id] = {
-            id: r.id,
-            placeId: r.place_id,
-            placeName: r.place_name,
-            ownerId: r.owner_id,
-            ownerName: r.owner_name,
-            ownerEmail: r.owner_email,
-            phone: r.phone,
-            notes: r.notes,
-            status: r.status,
-            verifiedUntil: r.verified_until,
-            createdAt: r.created_at,
-            requestedAt: r.created_at,
-            reviewedAt: r.reviewed_at
-          };
-        });
-        return map;
-      }
+    const data = await tursoFetch('/api/verification-requests');
+    if (data && data.success && Array.isArray(data.data)) {
+      const map = {};
+      data.data.forEach(r => {
+        map[r.id] = {
+          id: r.id,
+          placeId: r.place_id,
+          placeName: r.place_name,
+          ownerId: r.owner_id,
+          ownerName: r.owner_name,
+          ownerEmail: r.owner_email,
+          phone: r.phone,
+          notes: r.notes,
+          status: r.status,
+          verifiedUntil: r.verified_until,
+          createdAt: r.created_at,
+          requestedAt: r.created_at,
+          reviewedAt: r.reviewed_at
+        };
+      });
+      return map;
     }
-  } catch (_) {}
+  } catch (err) {
+    console.warn('[getVerificationRequestsTurso] Error:', err.message);
+  }
   return {};
 }
 
-/** Update Verification Request status in D1 */
-export async function updateVerificationRequestD1(id, status = 'approved', verifiedUntil = null) {
-  try {
-    await fetch(`${WORKER_URL}/api/verification-requests/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, verifiedUntil })
-    });
-  } catch (_) {}
+/** Update Verification Request status in Turso */
+export async function updateVerificationRequestTurso(id, status = 'approved', verifiedUntil = null) {
+  return tursoFetch('/api/verification-requests/' + encodeURIComponent(id), {
+    method: 'PUT',
+    body: JSON.stringify({ status, verifiedUntil })
+  });
 }
 
-/** Update User Role/Status in D1 */
-export async function updateUserD1(uid, { role, status }) {
-  try {
-    await fetch(`${WORKER_URL}/api/users/${encodeURIComponent(uid)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, status })
-    });
-  } catch (_) {}
+/** Update User Role/Status in Turso */
+export async function updateUserTurso(uid, { role, status }) {
+  return tursoFetch('/api/users/' + encodeURIComponent(uid), {
+    method: 'PUT',
+    body: JSON.stringify({ role, status })
+  });
 }
 
-/** Get place by ID - Reads from Cloudflare D1 and IndexedDB */
+/** Get place by ID - Reads from Turso and IndexedDB */
 export async function getPlace(placeId) {
   if (!placeId) return null;
   try {
@@ -571,7 +563,7 @@ export async function getPlace(placeId) {
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && data.data) {
-        const place = normalizeD1Place(data.data);
+        const place = normalizeTursoPlace(data.data);
         idbPut(STORES.PLACES, place).catch(() => {});
         return place;
       }
@@ -580,24 +572,7 @@ export async function getPlace(placeId) {
   return null;
 }
 
-/** Sync place updates to Cloudflare D1 and invalidate worker cache */
-export async function syncPlaceToWorkerD1(placeId, updates = {}) {
-  if (!placeId) return false;
-  try {
-    const payload = {
-      id: placeId,
-      ...updates
-    };
-    await d1Fetch('/api/places/sync', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    return true;
-  } catch (err) {
-    console.error('[TursoSync] Failed to sync place to Turso:', err);
-    throw err;
-  }
-}
+
 
 /** Invalidate local caches (IndexedDB and in-memory SWR) for a place */
 export async function invalidateLocalPlaceCache(placeId,slug='') {
@@ -605,7 +580,7 @@ export async function invalidateLocalPlaceCache(placeId,slug='') {
   clearDbCache('path:places');clearDbCache('places');if(slug)clearDbCache('place:'+slug);return true;
 }
 
-export async function searchPlacesD1(query = '', { category = '', area = '', limit = 20, offset = 0, verified = false, minRating = 0 } = {}) {
+export async function searchPlacesTurso(query = '', { category = '', area = '', limit = 20, offset = 0, verified = false, minRating = 0 } = {}) {
   try {
     const url = new URL(`${WORKER_URL}/api/search`);
     if (query) url.searchParams.set('q', query);
@@ -623,13 +598,13 @@ export async function searchPlacesD1(query = '', { category = '', area = '', lim
       const data = await res.json();
       if (data && data.success && Array.isArray(data.data)) {
         return {
-          places: data.data.map(p => normalizeD1Place(p)),
+          places: data.data.map(p => normalizeTursoPlace(p)),
           pagination: data.pagination || { limit, offset, returned: data.data.length, hasMore: false }
         };
       }
     }
   } catch (err) {
-    console.warn('[SearchD1] Worker search failed:', err);
+    console.warn('[SearchTurso] Worker search failed:', err);
   }
   return null;
 }
@@ -650,7 +625,7 @@ export async function reportPlaceData({ placeId, reason = 'معلومة غير �
 /** Get place by slug (with multi-tier resilient lookup) */
 export async function getPlaceBySlug(slug) {
   if(!slug)return null;
-  try{const data=await d1Fetch('/api/places?slug='+encodeURIComponent(String(slug).trim()));if(data?.success&&data.data){const p=normalizeD1Place(data.data);if(p){idbPut(STORES.PLACES,p).catch(()=>{});return p;}}}catch(_){}
+  try{const data=await tursoFetch('/api/places?slug='+encodeURIComponent(String(slug).trim()));if(data?.success&&data.data){const p=normalizeTursoPlace(data.data);if(p){idbPut(STORES.PLACES,p).catch(()=>{});return p;}}}catch(_){}
   try{const all=await getPublishedPlaces({limit:1000}),s=String(slug).trim().toLowerCase();return all.find(p=>String(p?.slug||'').toLowerCase()===s||String(p?.id||'').toLowerCase()===s)||null;}catch(_){return null;}
 }
 
@@ -681,7 +656,7 @@ export async function adminBanPlace(placeId, { type = 'temporary', durationDays 
     updatedAt: now
   };
 
-  await syncPlaceToWorkerD1(placeId, updates);
+  await syncPlaceToWorkerTurso(placeId, updates);
   clearDbCache();
   return updates;
 }
@@ -699,7 +674,7 @@ export async function adminUnbanPlace(placeId) {
     updatedAt: Date.now()
   };
 
-  await syncPlaceToWorkerD1(placeId, updates);
+  await syncPlaceToWorkerTurso(placeId, updates);
   clearDbCache();
   return updates;
 }
@@ -773,7 +748,7 @@ export async function getAllBannedIps() {
  * 2. Checks system/dataVersion or lastSync to avoid redundant Firebase reads
  * 3. Falls back to RTDB query only when necessary
  */
-export function normalizeD1Place(p) {
+export function normalizeTursoPlace(p) {
   if (!p) return null;
   const id = String(p.id || p._key || p._id || '');
   return {
@@ -841,7 +816,7 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
     } catch (_) {}
   }
 
-  // 3. Primary Network Fetch from Cloudflare D1 via Worker
+  // 3. Primary Network Fetch from Turso via Worker
   try {
     const workerRes = await fetch(`${WORKER_URL}/api/places?limit=${limit}`, {
       signal: AbortSignal.timeout(5000)
@@ -853,7 +828,7 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
         const allForIdb = [];
 
         data.data.forEach(item => {
-          const p = normalizeD1Place(item);
+          const p = normalizeTursoPlace(item);
           if (!p) return;
           allForIdb.push(p);
 
@@ -880,7 +855,7 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
       }
     }
   } catch (workerErr) {
-    console.debug('[getPublishedPlaces] D1 fetch error, using local cache:', workerErr.message);
+    console.debug('[getPublishedPlaces] Turso fetch error, using local cache:', workerErr.message);
   }
 
   // 4. Fallback: Return cached places from IndexedDB if network is offline
@@ -908,7 +883,7 @@ async function _triggerBackgroundSyncPlaces() {
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
-        const places = data.data.map(normalizeD1Place).filter(Boolean);
+        const places = data.data.map(normalizeTursoPlace).filter(Boolean);
         await idbPutBulk(STORES.PLACES, places);
         await idbSetMeta('lastPlacesSync', Date.now());
         clearDbCache('published_');
@@ -919,7 +894,7 @@ async function _triggerBackgroundSyncPlaces() {
   }
 }
 
-/** Get places by category (excluding banned) - Reads from D1 / IndexedDB */
+/** Get places by category (excluding banned) - Reads from Turso / IndexedDB */
 export async function getPlacesByCategory(categoryId, limit = 20) {
   const cacheKey = `places_cat_${categoryId}_${limit}`;
   const cached = getCached(cacheKey, 600000);
@@ -952,7 +927,7 @@ export async function getPlacesByCategory(categoryId, limit = 20) {
   }
 }
 
-/** Get places by owner (newest added first) - Reads from D1 / IndexedDB */
+/** Get places by owner (newest added first) - Reads from Turso / IndexedDB */
 export async function getPlacesByOwner(userOrUid) {
   if (!userOrUid) return [];
   const uid = typeof userOrUid === 'object' ? userOrUid.uid : userOrUid;
@@ -971,7 +946,7 @@ export async function getPlacesByOwner(userOrUid) {
     if (workerRes.ok) {
       const data = await workerRes.json();
       if (data && data.success && Array.isArray(data.data)) {
-        const places = data.data.map(normalizeD1Place).filter(Boolean);
+        const places = data.data.map(normalizeTursoPlace).filter(Boolean);
         places.sort((a, b) => {
           const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
           const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
@@ -982,7 +957,7 @@ export async function getPlacesByOwner(userOrUid) {
       }
     }
   } catch (workerErr) {
-    console.debug('[getPlacesByOwner] Worker D1 query error, falling back to local list:', workerErr.message);
+    console.debug('[getPlacesByOwner] Worker Turso query error, falling back to local list:', workerErr.message);
   }
 
   try {
@@ -1007,18 +982,18 @@ export async function getPlacesByOwner(userOrUid) {
   }
 }
 
-/** Save or Update Category in Cloudflare D1 + Local IndexedDB */
-export async function saveCategoryD1(category) {
+/** Save or Update Category in Turso + Local IndexedDB */
+export async function saveCategoryTurso(category) {
   if(!category||(!category.name&&!category.slug&&!category.id))throw new Error('بيانات التصنيف غير مكتملة');
   const slug=String(category.slug||category.id||category._key||'').trim().toLowerCase().replace(/\s+/g,'-');
   const payload={...category,id:category.id||slug,_key:category.id||slug,slug,nameEn:category.nameEn||category.name_en||slug,icon:category.icon||'📁',order:Number(category.order??category.sort_order??0)};
-  const data=await d1Fetch('/api/categories',{method:'POST',body:JSON.stringify(payload)});
+  const data=await tursoFetch('/api/categories',{method:'POST',body:JSON.stringify(payload)});
   clearDbCache('categories');clearDbCache('categories_all');return data?.data||payload;
 }
 
-export async function deleteCategoryD1(categoryId) {
+export async function deleteCategoryTurso(categoryId) {
   if(!categoryId)throw new Error('Category ID required');
-  const data=await d1Fetch('/api/categories/'+encodeURIComponent(categoryId),{method:'DELETE'});
+  const data=await tursoFetch('/api/categories/'+encodeURIComponent(categoryId),{method:'DELETE'});
   clearDbCache('categories');clearDbCache('categories_all');return data;
 }
 
@@ -1026,7 +1001,7 @@ export async function getCategories() {
   const cached=getCached('categories_all',1800000);
   if(Array.isArray(cached)&&cached.length)return cached;
   try{
-    const data=await d1Fetch('/api/categories');
+    const data=await tursoFetch('/api/categories');
     const categories=(Array.isArray(data?.data)?data.data:[]).map(c=>({
       id:c.id||c.slug,_key:c.id||c.slug,slug:c.slug||c.id,name:c.name||'',
       nameEn:c.name_en||c.nameEn||'',icon:c.icon||'🏪',description:c.description||'',
@@ -1048,7 +1023,7 @@ export async function getCategory(slug) {
 export async function getActiveOffers(limit=20) {
   const key='offers_active_'+limit,cached=getCached(key,300000);
   if(Array.isArray(cached))return cached;
-  try{const data=await d1Fetch('/api/offers');const now=Date.now();
+  try{const data=await tursoFetch('/api/offers');const now=Date.now();
     const list=(Array.isArray(data?.data)?data.data:[]).filter(o=>!o.endDate||Number(o.endDate)>now).slice(0,Math.max(0,Number(limit)||20));
     return setCache(key,list);
   }catch(_){return [];}
@@ -1056,43 +1031,43 @@ export async function getActiveOffers(limit=20) {
 
 export async function getPlaceOffers(placeId) {
   if(!placeId)return [];
-  try{const data=await d1Fetch('/api/offers?place_id='+encodeURIComponent(placeId));return Array.isArray(data?.data)?data.data:[];}catch(_){return [];}
+  try{const data=await tursoFetch('/api/offers?place_id='+encodeURIComponent(placeId));return Array.isArray(data?.data)?data.data:[];}catch(_){return [];}
 }
 
 export async function getPlaceProducts(placeId,{limit=50,includePending=false}={}) {
   if(!placeId)return [];
-  try{const data=await d1Fetch('/api/products?place_id='+encodeURIComponent(placeId));let list=Array.isArray(data?.data)?data.data:[];
+  try{const data=await tursoFetch('/api/products?place_id='+encodeURIComponent(placeId));let list=Array.isArray(data?.data)?data.data:[];
     if(!includePending)list=list.filter(p=>p.isApproved!==false&&p.is_approved!==0);
     return list.slice(0,Number(limit)||50);
   }catch(_){return [];}
 }
 
 export async function getAllProducts() {
-  try{const data=await d1Fetch('/api/products');return Array.isArray(data?.data)?data.data:[];}catch(_){return [];}
+  try{const data=await tursoFetch('/api/products');return Array.isArray(data?.data)?data.data:[];}catch(_){return [];}
 }
 
 export async function adminApproveProduct(placeId,productId) {
   if(!productId)throw new Error('بيانات المنتج والمكان مطلوبة');
-  const data=await d1Fetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'approved',isApproved:true,is_approved:1})});return data?.data||data;
+  const data=await tursoFetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'approved',isApproved:true,is_approved:1})});return data?.data||data;
 }
 
 export async function adminRejectProduct(placeId,productId) {
   if(!productId)throw new Error('بيانات المنتج والمكان مطلوبة');
-  const data=await d1Fetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'rejected',isApproved:false,is_approved:0})});return data?.data||data;
+  const data=await tursoFetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'rejected',isApproved:false,is_approved:0})});return data?.data||data;
 }
 
 export async function adminDeleteProduct(placeId,productId) {
   if(!productId)throw new Error('بيانات المنتج والمكان مطلوبة');
-  return d1Fetch('/api/products/'+encodeURIComponent(productId),{method:'DELETE'});
+  return tursoFetch('/api/products/'+encodeURIComponent(productId),{method:'DELETE'});
 }
 
 export async function getAds(placement='homepage') {
-  try{const data=await d1Fetch('/api/ads');const list=Array.isArray(data?.data)?data.data:[];return list.filter(a=>!placement||a.placement===placement||a.placement==='all');}catch(_){return [];}
+  try{const data=await tursoFetch('/api/ads');const list=Array.isArray(data?.data)?data.data:[];return list.filter(a=>!placement||a.placement===placement||a.placement==='all');}catch(_){return [];}
 }
 
 export async function getSettings() {
   const cached=getCached('site_settings',600000);if(cached)return cached;
-  try{const data=await d1Fetch('/api/settings');if(data?.success&&data.data)return setCache('site_settings',data.data);}catch(_){}
+  try{const data=await tursoFetch('/api/settings');if(data?.success&&data.data)return setCache('site_settings',data.data);}catch(_){}
   return setCache('site_settings',{siteName:'دليل المنزلة والمطرية الرقمي',contact:{whatsapp:'01000000000'}});
 }
 
@@ -1469,7 +1444,7 @@ export async function trackPlaceStat(placeId, stat) {
   const allowed = ['phoneClicks', 'whatsappClicks', 'directionsClicks', 'productViews', 'offerViews', 'views'];
   if (!allowed.includes(stat) || !placeId) return;
 
-  // 1. Primary: Cloudflare D1 via Worker
+  // 1. Primary: Turso via Worker
   try {
     fetch(`${WORKER_URL}/api/places/track-stat`, {
       method: 'POST',
@@ -1551,10 +1526,10 @@ export async function getPlaceReviews(placeId, slug = '') {
     });
     if (!res.ok) throw new Error(`Reviews Worker HTTP ${res.status}`);
     const data = await res.json();
-    const list = Array.isArray(data.data) ? data.data.map(r => normalizeReviewFromD1(r, targetId)).filter(Boolean) : [];
+    const list = Array.isArray(data.data) ? data.data.map(r => normalizeReviewFromTurso(r, targetId)).filter(Boolean) : [];
     return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   } catch (err) {
-    console.warn('[getPlaceReviews] D1 error:', err?.message || err);
+    console.warn('[getPlaceReviews] Turso error:', err?.message || err);
     return [];
   }
 }
@@ -1562,7 +1537,7 @@ export async function getPlaceReviews(placeId, slug = '') {
 /** Get all reviews across all places (for Admin) - Primary Turso */
 export async function getAllReviews() {
   try {
-    const data = await d1Fetch('/api/reviews');
+    const data = await tursoFetch('/api/reviews');
     if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
         return data.data.map(r => ({
           id: r.id,
@@ -1700,8 +1675,8 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     editCount: 0
   };
 
-  // Single authoritative write: Frontend → Worker → D1.
-  // Do not silently ignore a D1 failure; the user only sees "published"
+  // Single authoritative write: Frontend → Worker → Turso.
+  // Do not silently ignore a Turso failure; the user only sees "published"
   // after the review has actually been persisted.
   await dbSet(`places/${placeId}/reviews/${reviewId}`, {
     ...reviewData,
@@ -1711,7 +1686,7 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   });
 
   // Review persistence is intentionally isolated from notifications.
-  // The review is considered successful as soon as D1 confirms the write.
+  // The review is considered successful as soon as Turso confirms the write.
   // Notifications are handled by separate server-side flows and must never
   // participate in the user's submit transaction.
 
@@ -1978,7 +1953,7 @@ export async function adminUpdateReview(placeId, reviewId, { rating, comment }) 
 /** Admin: Delete single review */
 export async function adminDeleteReview(placeId, reviewId) {
   if (!placeId || !reviewId) throw new Error('المكان والتقييم مطلوبان');
-  await d1WriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'DELETE');
+  await tursoWriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'DELETE');
   await recalculatePlaceRating(placeId);
 }
 
@@ -1993,7 +1968,7 @@ export async function adminBulkDeleteReviews(reviewsList = []) {
     const reviewId = r?.id || r?.reviewId;
     if (!placeId || !reviewId) continue;
     try {
-      await d1WriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'DELETE');
+      await tursoWriteBusiness(`places/${placeId}/reviews/${reviewId}`, 'DELETE');
       deletedCount++;
       affectedPlaces.add(placeId);
     } catch (err) {
@@ -2207,7 +2182,7 @@ export async function adminBulkAddReviews(placeId, items = [], onProgress = null
         try { onProgress(chunkIdx, totalChunks, chunk.length); } catch (_) {}
       }
       try {
-        await d1Fetch('/api/reviews', {
+        await tursoFetch('/api/reviews', {
           method: 'POST',
           body: JSON.stringify({ reviews: chunk })
         });
@@ -2625,7 +2600,7 @@ export function subscribeToOwnerPresence(ownerId, callback) {
 
 
 function getDeterministicReviewerPoints(name = '', id = '') {
-  const str = (name + id).trim() || 'مستخدم';ج 
+  const str = (name + id).trim() || 'مستخدم'; 
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = (hash << 5) - hash + str.charCodeAt(i);
@@ -2649,15 +2624,9 @@ function getDeterministicReviewerPoints(name = '', id = '') {
 
 
 
-export async function getCategoryRequestsD1() {
-  const data = await d1Fetch('/api/category-requests');
-  const list = Array.isArray(data?.data) ? data.data.map(normalizeCategoryRequestD1) : [];
-  return Object.fromEntries(list.filter(r => r.id).map(r => [r.id, r]));
-}
-
-export async function updateCategoryRequestD1(reqId, status = 'approved') {
+export async function updateCategoryRequestTurso(reqId, status = 'approved') {
   if (!reqId) throw new Error('Request ID required');
-  return d1Fetch('/api/category-requests/' + encodeURIComponent(reqId), {
+  return tursoFetch('/api/category-requests/' + encodeURIComponent(reqId), {
     method: 'PATCH',
     body: JSON.stringify({ id: reqId, status })
   });
