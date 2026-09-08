@@ -3,7 +3,7 @@
  * Typed, promise-based wrappers around Firebase Realtime Database
  */
 
-import { getDB, WORKER_URL } from './firebase.js';
+import { getDB, getAuth, WORKER_URL } from './firebase.js';
 import { idbGetAll, idbPutBulk, idbPut, idbGet, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES } from '../services/idb-cache.service.js';
 
 export { getDB };
@@ -88,8 +88,20 @@ function parseBusinessPath(path = '') {
   return { p, parts, root: parts[0] || '' };
 }
 
+async function workerFetch(path, options = {}) {
+  const auth = getAuth();
+  let token = null;
+  try { token = auth?.currentUser ? await auth.currentUser.getIdToken() : null; } catch (_) {}
+  const headers = {
+    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(options.headers || {}),
+    ...(token ? { Authorization: 'Bearer ' + token } : {})
+  };
+  return workerFetch(`${path}`, { ...options, headers });
+}
+
 async function d1Fetch(path, options = {}) {
-  const res = await fetch(`${WORKER_URL}${path}`, {
+  const res = await workerFetch(path, {
     ...options,
     signal: options.signal || AbortSignal.timeout(7000),
     headers: {
@@ -380,7 +392,7 @@ export async function dbIncrement(path, delta = 1) {
   if (isBusinessDataPath(path)) {
     const m = String(path).match(/^places\/([^/]+)\/stats\/([^/]+)$/);
     if (m) {
-      const res = await fetch(`${WORKER_URL}/api/places/track-stat`, {
+      const res = await workerFetch(`/api/places/track-stat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ placeId: m[1], stat: m[2], delta: Number(delta) || 1 }),
@@ -447,7 +459,7 @@ export async function getUserProfile(uid) {
   const cached = getCached('user:' + uid);
   if (cached) return cached;
   try {
-    const res = await fetch(`${WORKER_URL}/api/users`, { signal: AbortSignal.timeout(3000) });
+    const res = await workerFetch(`/api/users`, { signal: AbortSignal.timeout(3000) });
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.data)) {
@@ -462,7 +474,7 @@ export async function getUserProfile(uid) {
 /** Get all users - Primary Turso */
 export async function getAllUsersD1() {
   try {
-    const res = await fetch(`${WORKER_URL}/api/users`, { signal: AbortSignal.timeout(4000) });
+    const res = await workerFetch(`/api/users`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.data)) {
@@ -494,7 +506,7 @@ export async function getAllUsersD1() {
 /** Get all Category Requests - Primary Turso */
 export async function getCategoryRequestsTurso() {
   try {
-    const res = await fetch(`${WORKER_URL}/api/category-requests`, { signal: AbortSignal.timeout(4000) });
+    const res = await workerFetch(`/api/category-requests`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.data)) {
@@ -521,7 +533,7 @@ export async function getCategoryRequestsTurso() {
 /** Submit a new Category Request to Cloudflare D1 */
 export async function submitCategoryRequestD1({ categoryName, placeName, ownerName, userId }) {
   try {
-    const res = await fetch(`${WORKER_URL}/api/category-requests`, {
+    const res = await workerFetch(`/api/category-requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ categoryName, placeName, ownerName, userId })
@@ -535,7 +547,7 @@ export async function submitCategoryRequestD1({ categoryName, placeName, ownerNa
 /** Update Category Request status in D1 */
 export async function updateCategoryRequestD1(id, status = 'approved') {
   try {
-    await fetch(`${WORKER_URL}/api/category-requests/${encodeURIComponent(id)}`, {
+    await workerFetch(`/api/category-requests/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
@@ -546,7 +558,7 @@ export async function updateCategoryRequestD1(id, status = 'approved') {
 /** Get all Verification Requests - Primary Turso */
 export async function getVerificationRequestsD1() {
   try {
-    const res = await fetch(`${WORKER_URL}/api/verification-requests`, { signal: AbortSignal.timeout(4000) });
+    const res = await workerFetch(`/api/verification-requests`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.data)) {
@@ -578,7 +590,7 @@ export async function getVerificationRequestsD1() {
 /** Update Verification Request status in D1 */
 export async function updateVerificationRequestD1(id, status = 'approved', verifiedUntil = null) {
   try {
-    await fetch(`${WORKER_URL}/api/verification-requests/${encodeURIComponent(id)}`, {
+    await workerFetch(`/api/verification-requests/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, verifiedUntil })
@@ -589,7 +601,7 @@ export async function updateVerificationRequestD1(id, status = 'approved', verif
 /** Update User Role/Status in D1 */
 export async function updateUserD1(uid, { role, status }) {
   try {
-    await fetch(`${WORKER_URL}/api/users/${encodeURIComponent(uid)}`, {
+    await workerFetch(`/api/users/${encodeURIComponent(uid)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role, status })
@@ -605,7 +617,7 @@ export async function getPlace(placeId) {
     if (cached) return cached;
   } catch (_) {}
   try {
-    const res = await fetch(`${WORKER_URL}/api/places?id=${encodeURIComponent(placeId)}`, {
+    const res = await workerFetch(`/api/places?id=${encodeURIComponent(placeId)}`, {
       signal: AbortSignal.timeout(4000)
     });
     if (res.ok) {
@@ -628,7 +640,7 @@ export async function syncPlaceToWorkerD1(placeId, updates = {}) {
       id: placeId,
       ...updates
     };
-    const res = await fetch(`${WORKER_URL}/api/places/sync`, {
+    const res = await workerFetch(`/api/places/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -692,7 +704,7 @@ export async function searchPlacesD1(query = '', { category = '', area = '', lim
 /** Submit a public report about incorrect/stale place information. */
 export async function reportPlaceData({ placeId, reason = 'معلومة غير صحيحة', details = '', reporterName = 'زائر' } = {}) {
   if (!placeId || !reason) throw new Error('بيانات البلاغ غير مكتملة');
-  const res = await fetch(`${WORKER_URL}/api/place-reports`, {
+  const res = await workerFetch(`/api/place-reports`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ placeId, reason, details, reporterName })
@@ -709,7 +721,7 @@ export async function getPlaceBySlug(slug) {
 
   // 1. Direct Cloudflare D1 lookup — no Firebase.
   try {
-    const workerRes = await fetch(`${WORKER_URL}/api/places?slug=${encodeURIComponent(cleanSlug)}`, {
+    const workerRes = await workerFetch(`/api/places?slug=${encodeURIComponent(cleanSlug)}`, {
       signal: AbortSignal.timeout(4000)
     });
     if (workerRes.ok) {
@@ -934,7 +946,7 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
 
   // 3. Primary Network Fetch from Cloudflare D1 via Worker
   try {
-    const workerRes = await fetch(`${WORKER_URL}/api/places?limit=${limit}`, {
+    const workerRes = await workerFetch(`/api/places?limit=${limit}`, {
       signal: AbortSignal.timeout(5000)
     });
     if (workerRes.ok) {
@@ -995,7 +1007,7 @@ async function _triggerBackgroundSyncPlaces() {
 
   _isSyncingPlaces = true;
   try {
-    const res = await fetch(`${WORKER_URL}/api/places?limit=250`, { signal: AbortSignal.timeout(8000) });
+    const res = await workerFetch(`/api/places?limit=250`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
@@ -1128,7 +1140,7 @@ export async function saveCategoryD1(category) {
 
   // 2. Persist to Cloudflare Worker D1
   try {
-    const res = await fetch(`${WORKER_URL}/api/categories`, {
+    const res = await workerFetch(`/api/categories`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -1157,7 +1169,7 @@ export async function deleteCategoryD1(catId) {
 
   // 2. Delete from D1 via Worker
   try {
-    await fetch(`${WORKER_URL}/api/categories/${encodeURIComponent(cleanId)}`, {
+    await workerFetch(`/api/categories/${encodeURIComponent(cleanId)}`, {
       method: 'DELETE'
     });
   } catch (err) {
@@ -1173,7 +1185,7 @@ export async function getCategories() {
 
   // 1. Fetch from Cloudflare D1 via Worker
   try {
-    const workerRes = await fetch(`${WORKER_URL}/api/categories?_ts=${Date.now()}`, {
+    const workerRes = await workerFetch(`/api/categories?_ts=${Date.now()}`, {
       cache: 'no-store',
       signal: AbortSignal.timeout(5000)
     });
@@ -1220,7 +1232,7 @@ async function _refreshCategoriesInBackground() {
   if (Date.now() - lastSync < 3600000) return;
 
   try {
-    const res = await fetch(`${WORKER_URL}/api/categories`, { signal: AbortSignal.timeout(5000) });
+    const res = await workerFetch(`/api/categories`, { signal: AbortSignal.timeout(5000) });
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
@@ -1430,7 +1442,7 @@ export async function getSettings() {
   if (cached) return cached;
 
   try {
-    const res = await fetch(`${WORKER_URL}/api/settings`, { signal: AbortSignal.timeout(4000) });
+    const res = await workerFetch(`/api/settings`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && data.data && typeof data.data === 'object' && Object.keys(data.data).length > 0) {
@@ -1451,7 +1463,7 @@ export async function getSettings() {
 export async function updateSettings(settings) {
   setCache('site_settings', settings);
   try {
-    await fetch(`${WORKER_URL}/api/settings`, {
+    await workerFetch(`/api/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
@@ -1823,7 +1835,7 @@ export async function trackPlaceStat(placeId, stat) {
 
   // 1. Primary: Cloudflare D1 via Worker
   try {
-    fetch(`${WORKER_URL}/api/places/track-stat`, {
+    workerFetch(`/api/places/track-stat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ placeId, stat }),
@@ -1896,7 +1908,7 @@ export const HAMMAD_TESTIMONIALS = [
 export async function getPlaceReviews(placeId) {
   if (!placeId) return [];
   try {
-    const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(placeId)}`, {
+    const res = await workerFetch(`/api/reviews?place_id=${encodeURIComponent(placeId)}`, {
       signal: AbortSignal.timeout(5000)
     });
     if (!res.ok) throw new Error(`Reviews Worker HTTP ${res.status}`);
@@ -1912,7 +1924,7 @@ export async function getPlaceReviews(placeId) {
 /** Get all reviews across all places (for Admin) - Primary Turso */
 export async function getAllReviews() {
   try {
-    const res = await fetch(`${WORKER_URL}/api/reviews`, {
+    const res = await workerFetch(`/api/reviews`, {
       signal: AbortSignal.timeout(5000)
     });
     if (res.ok) {
@@ -2078,7 +2090,7 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
 export async function sendTelegramAdminNotification(type, payload) {
   // 1. Try sending via Cloudflare Worker
   try {
-    const res = await fetch(`${WORKER_URL}/api/notify`, {
+    const res = await workerFetch(`/api/notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, data: payload })
@@ -2556,7 +2568,7 @@ export async function adminBulkAddReviews(placeId, items = []) {
     for (let i = 0; i < reviewsArray.length; i += 50) {
       const chunk = reviewsArray.slice(i, i + 50);
       try {
-        await fetch(`${WORKER_URL}/api/reviews`, {
+        await workerFetch(`/api/reviews`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ reviews: chunk })
