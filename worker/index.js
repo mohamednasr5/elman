@@ -819,7 +819,7 @@ try {
 
   // ── D1: Delete Place (DELETE /api/places/:id or /api/places?id=...) ──
   if ((url.pathname.startsWith('/api/places/') || url.pathname === '/api/places') && request.method === 'DELETE') {
-    const auth = await requireAuth(request, env);
+    const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/places/') ? url.pathname.replace('/api/places/', '') : '';
     const id = (idFromPath || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
@@ -1078,7 +1078,7 @@ try {
   }
 
   if (url.pathname === '/api/offers' && request.method === 'POST') {
-    const auth = await requireAuth(request, env);
+    const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
     const placeId = String(body.placeId || body.place_id || '').trim();
@@ -1122,7 +1122,7 @@ try {
   }
 
   if (url.pathname.startsWith('/api/offers/') && request.method === 'PUT') {
-    const auth = await requireAuth(request, env);
+    const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response;
     const id = decodeURIComponent(url.pathname.replace('/api/offers/','')).trim();
     const existing = await createTursoDB(env).prepare('SELECT * FROM offers WHERE id = ? LIMIT 1').bind(id).first();
@@ -1152,7 +1152,7 @@ try {
   }
 
   if (url.pathname.startsWith('/api/offers/') && request.method === 'DELETE') {
-    const auth = await requireAuth(request, env);
+    const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response;
     const id = decodeURIComponent(url.pathname.replace('/api/offers/','')).trim();
     const existing = await createTursoDB(env).prepare('SELECT * FROM offers WHERE id = ? LIMIT 1').bind(id).first();
@@ -1201,7 +1201,7 @@ try {
   }
 
   if (url.pathname === '/api/products' && request.method === 'POST') {
-    const auth = await requireAuth(request, env);
+    const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
     const placeId = String(body.placeId || body.place_id || '').trim();
@@ -1233,7 +1233,7 @@ try {
   }
 
   if (url.pathname.startsWith('/api/products/') && request.method === 'PUT') {
-    const auth = await requireAuth(request, env);
+    const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response;
     const id = decodeURIComponent(url.pathname.replace('/api/products/','')).trim();
     const existing = await createTursoDB(env).prepare('SELECT * FROM products WHERE id=? LIMIT 1').bind(id).first();
@@ -1328,8 +1328,9 @@ try {
     if (auth.response) return auth.response
     const body = await request.json().catch(() => ({}));
 
-    // Support batch insertion (e.g. bulk reviews from admin)
+    // Bulk review insertion is an administrative operation.
     if (Array.isArray(body.reviews) && body.reviews.length > 0) {
+      if (!auth.user.isAdmin) return jsonResponse({success:false,error:'إضافة تقييمات جماعية متاحة للإدارة فقط'},403,corsHeaders);
       const reviewsList = body.reviews;
       const now = Date.now();
       let insertedCount = 0;
