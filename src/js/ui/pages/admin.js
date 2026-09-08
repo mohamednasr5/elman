@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryD1, deleteCategoryD1, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerD1, invalidateLocalPlaceCache, getAllUsersD1, getCategoryRequestsD1, updateCategoryRequestD1, getVerificationRequestsD1, updateVerificationRequestD1, updateUserD1 } from '../../core/db.js?v=a3a8e555';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryD1, deleteCategoryD1, getPublishedPlaces, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerD1, invalidateLocalPlaceCache, getAllUsersD1, getCategoryRequestsD1, updateCategoryRequestD1, getVerificationRequestsD1, updateVerificationRequestD1, updateUserD1 } from '../../core/db.js?v=9f0aa9f8';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
@@ -2628,7 +2628,9 @@ async function renderAdminReviews($container) {
 
             try {
               toast.info(`جاري حفظ ${items.length} تقييم بنظام الدفعات السريعة...`);
-              const res = await adminBulkAddReviews(placeId, items);
+              const res = await adminBulkAddReviews(placeId, items, (curr, total, count) => {
+                toast.info(`جاري رفع الدفعة ${curr} من ${total} (${count} تقييم)...`);
+              });
 
               if (res.addedCount > 0) {
                 toast.success(`تمت إضافة ${res.addedCount} تقييم بنجاح! ⭐`);
@@ -2637,6 +2639,8 @@ async function renderAdminReviews($container) {
                 toast.warning(`تم تخطي ${res.skippedCount} اسم مكرر لمنع التكرار على نفس المكان.`);
               }
 
+              adminCache.places = null;
+              adminCache.reviews = null;
               modal.close();
               if (onSuccess) onSuccess();
             } catch (err) {

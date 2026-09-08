@@ -88,7 +88,11 @@ function parseBusinessPath(path = '') {
   return { p, parts, root: parts[0] || '' };
 }
 
-async function d1Fetch(path, options = {}) {
+/**
+ * Primary Worker API caller - Communicates with Worker which connects directly to Turso DB.
+ * (tursoFetch is the canonical name, d1Fetch kept as backward-compatible alias)
+ */
+async function tursoFetch(path, options = {}) {
   const auth = getAuth();
   let token = null;
   try { token = auth?.currentUser ? await auth.currentUser.getIdToken() : null; } catch (_) {}
@@ -106,6 +110,9 @@ async function d1Fetch(path, options = {}) {
   if (!res.ok) throw new Error(data?.error || data?.message || `Worker HTTP ${res.status}`);
   return data;
 }
+
+const d1Fetch = tursoFetch;
+export { tursoFetch, d1Fetch };
 
 /**
  * Sync a place to the authoritative Turso database through the Worker.
@@ -581,22 +588,15 @@ export async function syncPlaceToWorkerD1(placeId, updates = {}) {
       id: placeId,
       ...updates
     };
-    const res = await fetch(`${WORKER_URL}/api/places/sync`, {
+    await d1Fetch('/api/places/sync', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(6000)
+      body: JSON.stringify(payload)
     });
-          if (!res.ok) {
-        let errMsg = `Worker HTTP ${res.status}`;
-        try { const errData = await res.json(); errMsg = errData?.error || errData?.message || errMsg; } catch (_) {}
-        throw new Error(errMsg);
-      }
-      return true;
-    } catch (err) {
-      console.error('[TursoSync] Failed to sync place to Turso:', err);
-      throw err;
-    }
+    return true;
+  } catch (err) {
+    console.error('[TursoSync] Failed to sync place to Turso:', err);
+    throw err;
+  }
 }
 
 /** Invalidate local caches (IndexedDB and in-memory SWR) for a place */
@@ -803,7 +803,9 @@ export function normalizeD1Place(p) {
     social: typeof p.social === 'object' ? p.social : (typeof p.social_json === 'string' ? JSON.parse(p.social_json || '{}') : {}),
     reviewCount: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
     review_count: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
-    rating: Number(p.rating != null ? p.rating : 0.0)
+    rating: Number(p.rating != null ? p.rating : 0.0),
+    trustScore: (p.trustScore != null ? Number(p.trustScore) : (p.trust_score != null ? Number(p.trust_score) : undefined)),
+    trust_score: (p.trust_score != null ? Number(p.trust_score) : (p.trustScore != null ? Number(p.trustScore) : undefined))
   };
 }
 
@@ -1539,15 +1541,17 @@ export const HAMMAD_TESTIMONIALS = [
 ];
 
 /** Get all reviews for a place */
-export async function getPlaceReviews(placeId) {
-  if (!placeId) return [];
+export async function getPlaceReviews(placeId, slug = '') {
+  if (!placeId && !slug) return [];
+  const targetId = placeId || slug;
   try {
-    const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(placeId)}`, {
-      signal: AbortSignal.timeout(5000)
+    const querySlug = slug && slug !== targetId ? `&slug=${encodeURIComponent(slug)}` : '';
+    const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(targetId)}${querySlug}&limit=5000`, {
+      signal: AbortSignal.timeout(8000)
     });
     if (!res.ok) throw new Error(`Reviews Worker HTTP ${res.status}`);
     const data = await res.json();
-    const list = Array.isArray(data.data) ? data.data.map(r => normalizeReviewFromD1(r, placeId)).filter(Boolean) : [];
+    const list = Array.isArray(data.data) ? data.data.map(r => normalizeReviewFromD1(r, targetId)).filter(Boolean) : [];
     return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   } catch (err) {
     console.warn('[getPlaceReviews] D1 error:', err?.message || err);
@@ -2108,7 +2112,7 @@ export function parseBulkReviews(rawText) {
 /**
  * Admin Bulk Add Reviews - STRICT NO DUPLICATE NAMES
  */
-export async function adminBulkAddReviews(placeId, items = []) {
+export async function adminBulkAddReviews(placeId, items = [], onProgress = null) {
   if (!placeId || !items.length) {
     throw new Error('بيانات المكان أو التقييمات فارغة');
   }
@@ -2116,7 +2120,7 @@ export async function adminBulkAddReviews(placeId, items = []) {
   const place = await dbGet(`places/${placeId}`);
   if (!place) throw new Error('المكان غير موجود في قاعدة البيانات');
 
-  const existingReviews = await getPlaceReviews(placeId);
+  const existingReviews = await getPlaceReviews(placeId, place.slug);
   const existingNames = new Set(
     existingReviews.map(r => (r.userName || '').trim().toLowerCase())
   );
@@ -2194,9 +2198,14 @@ export async function adminBulkAddReviews(placeId, items = []) {
       updated_at: reviewData.updatedAt
     }));
 
-    // Send in chunks of 50 to Worker batch API
-    for (let i = 0; i < reviewsArray.length; i += 50) {
-      const chunk = reviewsArray.slice(i, i + 50);
+    // Send in chunks of 100 to Worker batch API for faster 5,000 imports
+    const totalChunks = Math.ceil(reviewsArray.length / 100);
+    for (let i = 0; i < reviewsArray.length; i += 100) {
+      const chunk = reviewsArray.slice(i, i + 100);
+      const chunkIdx = Math.floor(i / 100) + 1;
+      if (typeof onProgress === 'function') {
+        try { onProgress(chunkIdx, totalChunks, chunk.length); } catch (_) {}
+      }
       try {
         await d1Fetch('/api/reviews', {
           method: 'POST',
@@ -2206,7 +2215,11 @@ export async function adminBulkAddReviews(placeId, items = []) {
         console.warn('[adminBulkAddReviews] Batch chunk error:', err.message);
       }
     }
-    await recalculatePlaceRating(placeId);
+    const newStats = await recalculatePlaceRating(placeId);
+    await invalidateLocalPlaceCache(placeId, place?.slug);
+    if (newStats) {
+      clearDbCache();
+    }
   }
 
   return {

@@ -54,19 +54,31 @@ async function authenticateRequest(request, env) {
 }
 
 async function requireAuth(request, env) {
+  const origin = request.headers.get('Origin') || '';
+  const cors = {
+    'Access-Control-Allow-Origin': origin || 'https://dalilmanzala.com',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+  };
   const user = await authenticateRequest(request, env);
-  if (!user) return { user: null, response: jsonResponse({ success:false, error:'Unauthorized' }, 401, { 'WWW-Authenticate':'Bearer' }) };
+  if (!user) return { user: null, response: jsonResponse({ success:false, error:'Unauthorized' }, 401, { ...cors, 'WWW-Authenticate':'Bearer' }) };
   if (['banned','suspended','disabled'].includes(user.status)) {
-    return { user:null, response:jsonResponse({ success:false, error:'الحساب موقوف ولا يمكنه تنفيذ هذه العملية' },403) };
+    return { user:null, response:jsonResponse({ success:false, error:'الحساب موقوف ولا يمكنه تنفيذ هذه العملية' },403, cors) };
   }
   return { user, response:null };
 }
 
 async function requireAdmin(request, env, superadminOnly = false) {
+  const origin = request.headers.get('Origin') || '';
+  const cors = {
+    'Access-Control-Allow-Origin': origin || 'https://dalilmanzala.com',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+  };
   const auth = await requireAuth(request, env);
   if (auth.response) return auth;
   if (!auth.user.isAdmin || (superadminOnly && !auth.user.isSuperAdmin)) {
-    return { user:null, response:jsonResponse({ success:false, error:'صلاحيات الإدارة مطلوبة' },403) };
+    return { user:null, response:jsonResponse({ success:false, error:'صلاحيات الإدارة مطلوبة' },403, cors) };
   }
   return auth;
 }
@@ -191,12 +203,14 @@ export default {
           return Response.redirect(url.toString(), 301);
         }
         const origin = request.headers.get('Origin') || '';
-    const allowedOrigins = ['https://dalilmanzala.com', 'http://localhost:8788', 'http://127.0.0.1:8788'];
-    const isAllowedOrigin = allowedOrigins.includes(origin);
+    const allowedOrigins = ['https://dalilmanzala.com', 'https://www.dalilmanzala.com', 'http://localhost:8788', 'http://127.0.0.1:8788'];
+    const isAllowedOrigin = allowedOrigins.includes(origin) ||
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+      /^https:\/\/[a-z0-9-]+\.github\.io$/.test(origin);
 
     // CORS Headers
     const corsHeaders = {
-            'Access-Control-Allow-Origin': isAllowedOrigin ? origin : allowedOrigins[0],
+      'Access-Control-Allow-Origin': isAllowedOrigin ? origin : 'https://dalilmanzala.com',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
       'Access-Control-Max-Age': '86400',
@@ -461,25 +475,30 @@ try {
     const hasMore = rows.length > limit;
     const items = hasMore ? rows.slice(0, limit) : rows;
 
-    const places = items.map(place => ({
-      ...place,
-      services: parseJson(place.services_json, []),
-      social: parseJson(place.social_json, {}),
-      stats: parseJson(place.stats_json, {}),
-      working_hours: parseJson(place.working_hours_json, {}),
-      is_verified: Boolean(place.is_verified),
-      trustScore: place.trust_score == null ? null : Number(place.trust_score),
-      trust_score: place.trust_score == null ? null : Number(place.trust_score),
-      is_sponsored: Boolean(place.is_sponsored || place.is_featured),
-      is_featured: Boolean(place.is_featured),
-      isSponsored: Boolean(place.is_sponsored || place.is_featured),
-      isFeatured: Boolean(place.is_featured),
-      sponsoredUntil: place.sponsored_until,
-      sponsored_until: place.sponsored_until,
-      reviewCount: Number(place.review_count ?? place.reviewCount ?? place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0),
-      review_count: Number(place.review_count ?? place.reviewCount ?? place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0),
-      rating: Number(place.rating ?? place.stats?.rating ?? 0.0)
-    }));
+    const places = items.map(place => {
+      const stats = parseJson(place.stats_json, {});
+      const reviewCountVal = Number(stats?.reviewCount ?? stats?.reviewsCount ?? place.review_count ?? place.reviewCount ?? 0);
+      const ratingVal = Number(stats?.rating ?? place.rating ?? 0.0);
+      return {
+        ...place,
+        services: parseJson(place.services_json, []),
+        social: parseJson(place.social_json, {}),
+        stats,
+        working_hours: parseJson(place.working_hours_json, {}),
+        is_verified: Boolean(place.is_verified),
+        trustScore: place.trust_score == null ? null : Number(place.trust_score),
+        trust_score: place.trust_score == null ? null : Number(place.trust_score),
+        is_sponsored: Boolean(place.is_sponsored || place.is_featured),
+        is_featured: Boolean(place.is_featured),
+        isSponsored: Boolean(place.is_sponsored || place.is_featured),
+        isFeatured: Boolean(place.is_featured),
+        sponsoredUntil: place.sponsored_until,
+        sponsored_until: place.sponsored_until,
+        reviewCount: reviewCountVal,
+        review_count: reviewCountVal,
+        rating: ratingVal
+      };
+    });
 
     const responseData = {
       success: true,
@@ -791,6 +810,7 @@ try {
         services_json = CASE WHEN excluded.services_json != '[]' THEN excluded.services_json ELSE places.services_json END,
         social_json = CASE WHEN excluded.social_json != '{}' THEN excluded.social_json ELSE places.social_json END,
         working_hours_json = CASE WHEN excluded.working_hours_json != '{}' THEN excluded.working_hours_json ELSE places.working_hours_json END,
+        stats_json = CASE WHEN excluded.stats_json != '{}' AND excluded.stats_json IS NOT NULL THEN excluded.stats_json ELSE places.stats_json END,
         updated_at = excluded.updated_at
     `).bind(
       placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
@@ -1292,7 +1312,8 @@ try {
 
   // ── D1: Reviews (GET /api/reviews?place_id=... & POST /api/reviews) ──
   if (url.pathname === '/api/reviews' && request.method === 'GET') {
-    const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || '').trim();
+    const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || url.searchParams.get('slug') || '').trim();
+    const reqLimit = Math.min(5000, Math.max(1, parseInt(url.searchParams.get('limit') || '5000', 10)));
 
     try {
       let query = `
@@ -1304,13 +1325,14 @@ try {
       `;
       const params = [];
       if (placeId) {
-        query += ` WHERE r.place_id = ? `;
-        params.push(placeId);
+        query += ` WHERE (r.place_id = ? OR r.place_slug = ? OR p.slug = ?) `;
+        params.push(placeId, placeId, placeId);
       }
-      query += ` ORDER BY r.created_at DESC LIMIT 500 `;
+      query += ` ORDER BY r.created_at DESC LIMIT ? `;
+      params.push(reqLimit);
 
       const stmt = createTursoDB(env).prepare(query);
-      const result = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all();
+      const result = await stmt.bind(...params).all();
 
       // Reviews are user-submitted content and must be immediately visible after
       // publishing. Do not let browser/CDN caching hide a newly submitted review.
@@ -1366,7 +1388,37 @@ try {
           insertedCount += chunk.length;
         }
 
-        return jsonResponse({ success: true, message: `تم حفظ ${insertedCount} تقييم بنجاح في Turso`, insertedCount }, 200, corsHeaders);
+        // Keep denormalized place rating and review count in sync for all affected places
+        const affectedPlaceIds = [...new Set(reviewsList.map(r => (r.place_id || r.placeId || '').trim()).filter(Boolean))];
+        for (const pid of affectedPlaceIds) {
+          try {
+            const stats = await createTursoDB(env).prepare(`
+              SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
+              FROM reviews
+              WHERE place_id = ? OR place_slug = ?
+            `).bind(pid, pid).first();
+            await createTursoDB(env).prepare(`
+              UPDATE places
+              SET updated_at = ?, stats_json = json_set(
+                COALESCE(stats_json, '{}'),
+                '$.reviewCount', ?,
+                '$.reviewsCount', ?,
+                '$.rating', ?
+              )
+              WHERE id = ? OR slug = ?
+            `).bind(
+              now,
+              Number(stats?.review_count || 0),
+              Number(stats?.review_count || 0),
+              Number(stats?.avg_rating || 0),
+              pid,
+              pid
+            ).run();
+          } catch (_) {}
+        }
+        bumpDataVersion(env, ctx);
+
+        return jsonResponse({ success: true, message: `تم حفظ ${insertedCount} تقييم بنجاح وتحديث إحصائيات المكان`, insertedCount }, 200, corsHeaders);
       } catch (err) {
         return jsonResponse({ success: false, error: err.message, insertedCount }, 500, corsHeaders);
       }
