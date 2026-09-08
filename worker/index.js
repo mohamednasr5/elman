@@ -630,7 +630,7 @@ try {
     const params = [];
 
     // Public users must only receive published places. Admin mode deliberately omits this filter.
-    if (!adminList) sql += ` WHERE p.status = 'published'`;
+    if (!adminList && !ownerIdFilter && !ownerEmailFilter) sql += ` WHERE p.status = 'published'`;
 
     // IMPORTANT: list endpoint must never aggregate the entire reviews table.
     // A global GROUP BY on reviews turns every homepage/search request into a
