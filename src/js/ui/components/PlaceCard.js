@@ -13,10 +13,60 @@ import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.serv
 import { isFavorite, toggleFavorite } from '../../services/favorites.service.js';
 import { resolvePlaceProfession, getProfessionSvg } from '../../utils/professions-data.js';
 
+// ── Instant 0ms Place Registry & Navigation Helpers ──
+if (typeof window !== 'undefined') {
+  window._placesRegistry = window._placesRegistry || new Map();
+
+  window.__openPlaceCard = function(el, slug, event) {
+    if (event) {
+      if (event.target.closest('a[href^="tel:"], a[href^="https://wa.me"], button, .place-favorite-btn, .place-card__action-btn')) {
+        return;
+      }
+    }
+    const clean = String(slug || '').toLowerCase().trim();
+    const p = window._placesRegistry.get(clean) || window._placesRegistry.get(String(slug || '').trim());
+    if (p) {
+      try {
+        sessionStorage.setItem('instant_place_' + clean, JSON.stringify(p));
+        sessionStorage.setItem('instant_place_latest', JSON.stringify(p));
+      } catch (_) {}
+    }
+    window.location.href = `place.html?slug=${encodeURIComponent(slug)}`;
+  };
+
+  window.__prefetchPlaceCard = function(slug) {
+    const clean = String(slug || '').toLowerCase().trim();
+    const p = window._placesRegistry.get(clean) || window._placesRegistry.get(String(slug || '').trim());
+    if (p) {
+      try {
+        sessionStorage.setItem('instant_place_' + clean, JSON.stringify(p));
+        sessionStorage.setItem('instant_place_latest', JSON.stringify(p));
+      } catch (_) {}
+    }
+    // Dynamic prefetch of the HTML document
+    if (!document.querySelector(`link[rel="prefetch"][href*="${encodeURIComponent(slug)}"]`)) {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = `place.html?slug=${encodeURIComponent(slug)}`;
+      document.head.appendChild(link);
+    }
+  };
+}
+
 /**
  * Render a place card HTML string
  */
 export function renderPlaceCard(place) {
+  // Register place in instant cache
+  if (place && typeof window !== 'undefined' && window._placesRegistry) {
+    const pKey = String(place.slug || place.id || place._key || '').toLowerCase().trim();
+    if (pKey) {
+      window._placesRegistry.set(pKey, place);
+      if (place.id) window._placesRegistry.set(String(place.id).toLowerCase().trim(), place);
+      if (place.slug) window._placesRegistry.set(String(place.slug).toLowerCase().trim(), place);
+    }
+  }
+
   const isAtm = isAtmPlace(place);
   const defaultAssets = getDefaultPlaceAssets(place);
   const isSponsored = !isAtm && isPlaceSponsored(place);
@@ -125,11 +175,17 @@ export function renderPlaceCard(place) {
     place.isVerified ? 'place-card--verified' : ''
   ].filter(Boolean).join(' ');
 
+  const targetSlug = place.slug || place.id || place._key;
+
   return `
     <article class="${cardClasses}" 
              role="article"
-             onclick="window.location.href='${placeUrl}'"
-             data-place-id="${escAttr(place._key || place.id)}">
+             onclick="window.__openPlaceCard(this, '${escAttr(targetSlug)}', event)"
+             onpointerdown="window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
+             onmouseenter="window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
+             data-place-id="${escAttr(place._key || place.id)}"
+             data-place-slug="${escAttr(targetSlug)}"
+             style="cursor:pointer">
       ${sponsoredTag}
       <div class="place-card__cover">
         ${coverImg}
@@ -172,7 +228,7 @@ export function renderPlaceCard(place) {
         ${place.description ? `<p class="place-card__description">${escHtml(place.description)}</p>` : ''}
       </div>
       <div class="place-card__footer">
-        <a href="${placeUrl}" class="btn btn-outline btn-sm">عرض التفاصيل</a>
+        <a href="${placeUrl}" class="btn btn-outline btn-sm" onclick="event.preventDefault();window.__openPlaceCard(this, '${escAttr(targetSlug)}', event)">عرض التفاصيل</a>
         <div class="place-card__actions">
           ${phoneBtn}
           ${waBtn}

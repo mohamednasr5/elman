@@ -646,6 +646,26 @@ export async function getPlaceBySlug(slug) {
   const raw = String(slug).trim();
   const clean = raw.toLowerCase();
 
+  // Tier -1: Instant In-Memory & SessionStorage (0ms immediate return)
+  try {
+    if (typeof window !== 'undefined') {
+      const reg = window._placesRegistry?.get(clean) || window._placesRegistry?.get(raw);
+      if (reg && !isPlaceBanned(reg)) {
+        return reg;
+      }
+
+      const rawSession = sessionStorage.getItem('instant_place_' + clean) || sessionStorage.getItem('instant_place_latest');
+      if (rawSession) {
+        const p = JSON.parse(rawSession);
+        if (p && (String(p.slug || '').toLowerCase() === clean || String(p.id || '').toLowerCase() === clean || String(p._key || '').toLowerCase() === clean || String(p.slug || '') === raw || String(p.id || '') === raw)) {
+          if (!isPlaceBanned(p)) {
+            return p;
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
   // Tier 0: Check Local Storage / IndexedDB for 0ms sub-second transition
   try {
     let localPlace = await idbGet(STORES.PLACES, raw);

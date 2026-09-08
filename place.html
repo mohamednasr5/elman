@@ -49,13 +49,48 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=ca2defce"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=f5f35de2"/>
 </head>
 <body class="">
 <div id="app">
 
   <!-- Header injected by JS -->
   <div id="header-slot"></div>
+
+  <!-- Instant Place Pre-Hydration (0ms navigation) -->
+  <script>
+    (function() {
+      try {
+        var params = new URLSearchParams(location.search);
+        var slug = (params.get('slug') || params.get('id') || '').trim();
+        var clean = slug.toLowerCase();
+        var cached = null;
+        if (clean) {
+          var raw = sessionStorage.getItem('instant_place_' + clean);
+          if (raw) cached = JSON.parse(raw);
+        }
+        if (!cached) {
+          var rawLatest = sessionStorage.getItem('instant_place_latest');
+          if (rawLatest) {
+            var parsedLatest = JSON.parse(rawLatest);
+            if (parsedLatest && (
+              String(parsedLatest.slug || '').toLowerCase() === clean ||
+              String(parsedLatest.id || '').toLowerCase() === clean ||
+              !clean
+            )) {
+              cached = parsedLatest;
+            }
+          }
+        }
+        if (cached) {
+          window.__INSTANT_PLACE__ = cached;
+          if (cached.name) {
+            document.title = cached.name + ' | دليل المنزلة والمطرية الرقمي';
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
 
   <!-- Page Content -->
   <main class="page-main" id="page-container" role="main">
@@ -87,27 +122,39 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=ca2defce';
-  import { renderPlacePage } from './src/js/ui/pages/place.js?v=ca2defce';
-  import { getCurrentUser } from './src/js/core/auth.js?v=ca2defce';
+  import { initPage } from './src/js/core/page-shell.js?v=f5f35de2';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=f5f35de2';
+  import { getCurrentUser } from './src/js/core/auth.js?v=f5f35de2';
 
   (async () => {
     const params = new URLSearchParams(location.search);
     let slug = params.get('slug') || params.get('id') || '';
     if (slug === 'undefined' || slug === 'null') slug = '';
-    if (!slug) {
+    if (!slug && !window.__INSTANT_PLACE__) {
       location.href = 'places.html';
       return;
     }
+    if (!slug && window.__INSTANT_PLACE__) {
+      slug = window.__INSTANT_PLACE__.slug || window.__INSTANT_PLACE__.id || '';
+    }
+
+    const container = document.getElementById('page-container');
+
+    // Concurrently initialize page shell (header, nav, pwa, footer) and render place in 0ms
+    const shellPromise = initPage('place.html').catch(err => {
+      console.warn('[PlaceBootstrap] Page shell non-fatal error:', err);
+    });
 
     try {
-      await initPage('place.html');
-      await renderPlacePage(document.getElementById('page-container'), { slug, user: getCurrentUser() });
+      await renderPlacePage(container, {
+        slug,
+        user: getCurrentUser(),
+        initialPlace: window.__INSTANT_PLACE__
+      });
     } catch (err) {
       console.error('[PlaceBootstrap] Fatal error during render:', err);
-      const pc = document.getElementById('page-container');
-      if (pc) {
-        pc.innerHTML = `
+      if (container && !container.querySelector('.place-hero')) {
+        container.innerHTML = `
           <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1rem;text-align:center;padding:2rem;">
             <div style="font-size:3rem">⚠️</div>
             <p style="font-size:1.1rem;color:var(--text-muted,#888);">حدث خطأ أثناء تحميل بيانات المكان، يرجى إعادة المحاولة</p>
@@ -116,6 +163,8 @@
         `;
       }
     }
+
+    await shellPromise;
   })();
 </script>
 </body>
