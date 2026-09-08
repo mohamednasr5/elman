@@ -1042,6 +1042,254 @@ try {
     }
   }
 
+
+  // ── Turso: Offers API ─────────────────────────────────────────
+  if (url.pathname === '/api/offers' && request.method === 'GET') {
+    try {
+      const placeId = (url.searchParams.get('place_id') || '').trim();
+      const id = (url.searchParams.get('id') || '').trim();
+      let sql = 'SELECT * FROM offers';
+      const params = [];
+      if (id) { sql += ' WHERE id = ?'; params.push(id); }
+      else if (placeId) { sql += ' WHERE place_id = ?'; params.push(placeId); }
+      sql += ' ORDER BY created_at DESC LIMIT 500';
+      const result = await createTursoDB(env).prepare(sql).bind(...params).all();
+      const data = (result.results || []).map(o => ({
+        ...o,
+        placeId: o.place_id,
+        placeName: o.place_name || '',
+        oldPrice: Number(o.old_price || 0),
+        newPrice: Number(o.new_price || 0),
+        discountPercent: Number(o.discount_percent || 0),
+        imageUrl: o.image_url || '',
+        startDate: o.start_date,
+        endDate: o.end_date,
+        ownerId: o.owner_id,
+        isVerifiedPlace: Boolean(o.is_verified_place),
+        views: Number(o.views || 0),
+        clicks: Number(o.clicks || 0),
+        createdAt: o.created_at,
+        updatedAt: o.updated_at
+      }));
+      return jsonResponse({ success:true, data },200,corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success:false, error:err.message, data:[] },500,corsHeaders);
+    }
+  }
+
+  if (url.pathname === '/api/offers' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const placeId = String(body.placeId || body.place_id || '').trim();
+    if (!placeId) return jsonResponse({success:false,error:'place_id مطلوب'},400,corsHeaders);
+
+    const place = await createTursoDB(env).prepare(
+      'SELECT id, name, slug, owner_id, owner_email, is_verified FROM places WHERE id = ? LIMIT 1'
+    ).bind(placeId).first();
+    if (!place) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
+    if (!auth.user.isAdmin && place.owner_id !== auth.user.uid && String(place.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية إدارة عروض هذا المكان'},403,corsHeaders);
+    }
+
+    const now = Date.now();
+    const active = await createTursoDB(env).prepare(
+      "SELECT COUNT(*) AS count FROM offers WHERE place_id = ? AND status = 'active' AND (end_date IS NULL OR end_date > ?)"
+    ).bind(placeId,now).first();
+    const maxAllowed = Number(place.is_verified) ? 3 : 1;
+    if (Number(active?.count || 0) >= maxAllowed) {
+      return jsonResponse({success:false,error:`الحد الأقصى للعروض النشطة لهذا المكان هو ${maxAllowed}`},409,corsHeaders);
+    }
+
+    const id = String(body.id || `offer_${Date.now()}_${Math.random().toString(36).slice(2,8)}`).trim();
+    const startDate = body.startDate || body.start_date || now;
+    const endDate = body.endDate || body.end_date || (now + 86400000);
+    await createTursoDB(env).prepare(`
+      INSERT INTO offers (
+        id, place_id, title, description, old_price, new_price, discount_percent, image_url,
+        start_date, end_date, status, owner_id, is_verified_place, views, clicks, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 0, 0, ?, ?)
+    `).bind(
+      id, placeId, String(body.title || '').trim(), String(body.description || ''),
+      Number(body.oldPrice ?? body.old_price ?? 0), Number(body.newPrice ?? body.new_price ?? 0),
+      Number(body.discountPercent ?? body.discount_percent ?? 0), String(body.imageUrl || body.image_url || ''),
+      startDate, endDate, auth.user.uid, Number(place.is_verified) ? 1 : 0, now, now
+    ).run();
+    await createTursoDB(env).prepare('UPDATE places SET offer_count = COALESCE(offer_count,0) + 1, updated_at = ? WHERE id = ?')
+      .bind(now,placeId).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,id,message:'تم حفظ العرض بنجاح'},201,corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/offers/') && request.method === 'PUT') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const id = decodeURIComponent(url.pathname.replace('/api/offers/','')).trim();
+    const existing = await createTursoDB(env).prepare('SELECT * FROM offers WHERE id = ? LIMIT 1').bind(id).first();
+    if (!existing) return jsonResponse({success:false,error:'العرض غير موجود'},404,corsHeaders);
+    const place = await createTursoDB(env).prepare('SELECT owner_id, owner_email FROM places WHERE id = ? LIMIT 1').bind(existing.place_id).first();
+    if (!auth.user.isAdmin && existing.owner_id !== auth.user.uid && place?.owner_id !== auth.user.uid && String(place?.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية تعديل هذا العرض'},403,corsHeaders);
+    }
+    const body = await request.json().catch(() => ({}));
+    await createTursoDB(env).prepare(`
+      UPDATE offers SET title=?, description=?, old_price=?, new_price=?, discount_percent=?, image_url=?,
+        start_date=?, end_date=?, status=?, updated_at=? WHERE id=?
+    `).bind(
+      body.title !== undefined ? String(body.title).trim() : existing.title,
+      body.description !== undefined ? String(body.description) : existing.description,
+      body.oldPrice !== undefined ? Number(body.oldPrice) : existing.old_price,
+      body.newPrice !== undefined ? Number(body.newPrice) : existing.new_price,
+      body.discountPercent !== undefined ? Number(body.discountPercent) : existing.discount_percent,
+      body.imageUrl !== undefined ? String(body.imageUrl) : existing.image_url,
+      body.startDate !== undefined ? body.startDate : existing.start_date,
+      body.endDate !== undefined ? body.endDate : existing.end_date,
+      body.status !== undefined ? String(body.status) : existing.status,
+      Date.now(), id
+    ).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,id,message:'تم تحديث العرض'},200,corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/offers/') && request.method === 'DELETE') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const id = decodeURIComponent(url.pathname.replace('/api/offers/','')).trim();
+    const existing = await createTursoDB(env).prepare('SELECT * FROM offers WHERE id = ? LIMIT 1').bind(id).first();
+    if (!existing) return jsonResponse({success:true},200,corsHeaders);
+    const place = await createTursoDB(env).prepare('SELECT owner_id, owner_email FROM places WHERE id = ? LIMIT 1').bind(existing.place_id).first();
+    if (!auth.user.isAdmin && existing.owner_id !== auth.user.uid && place?.owner_id !== auth.user.uid && String(place?.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية حذف هذا العرض'},403,corsHeaders);
+    }
+    await createTursoDB(env).prepare('DELETE FROM offers WHERE id = ?').bind(id).run();
+    await createTursoDB(env).prepare('UPDATE places SET offer_count = MAX(COALESCE(offer_count,0)-1,0), updated_at=? WHERE id=?').bind(Date.now(),existing.place_id).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,message:'تم حذف العرض'},200,corsHeaders);
+  }
+
+  if (url.pathname === '/api/offers/track-stat' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const id = String(body.id || '').trim();
+    const stat = String(body.stat || '').trim();
+    if (!id || !['views','clicks'].includes(stat)) return jsonResponse({success:false,error:'بيانات التتبع غير صالحة'},400,corsHeaders);
+    await createTursoDB(env).prepare(`UPDATE offers SET ${stat} = COALESCE(${stat},0) + 1 WHERE id = ?`).bind(id).run();
+    return jsonResponse({success:true},200,corsHeaders);
+  }
+
+  // ── Turso: Products API ───────────────────────────────────────
+  if (url.pathname === '/api/products' && request.method === 'GET') {
+    try {
+      const placeId = (url.searchParams.get('place_id') || '').trim();
+      const id = (url.searchParams.get('id') || '').trim();
+      let sql = 'SELECT * FROM products';
+      const params = [];
+      if (id) { sql += ' WHERE id = ?'; params.push(id); }
+      else if (placeId) { sql += ' WHERE place_id = ?'; params.push(placeId); }
+      sql += ' ORDER BY created_at DESC LIMIT 1000';
+      const result = await createTursoDB(env).prepare(sql).bind(...params).all();
+      const data = (result.results || []).map(p => ({
+        ...p,
+        placeId:p.place_id, placeName:p.place_name || '', placeSlug:p.place_slug || '',
+        oldPrice:Number(p.old_price || 0), price:Number(p.price || 0),
+        imageUrl:p.image_url || '', inStock:Boolean(p.in_stock), isFeatured:Boolean(p.is_featured),
+        isApproved:Boolean(p.is_approved), createdAt:p.created_at, updatedAt:p.updated_at
+      }));
+      return jsonResponse({success:true,data},200,corsHeaders);
+    } catch(err) {
+      return jsonResponse({success:false,error:err.message,data:[]},500,corsHeaders);
+    }
+  }
+
+  if (url.pathname === '/api/products' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const placeId = String(body.placeId || body.place_id || '').trim();
+    const place = await createTursoDB(env).prepare('SELECT id,name,slug,owner_id,owner_email,is_verified FROM places WHERE id=? LIMIT 1').bind(placeId).first();
+    if (!place) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
+    if (!auth.user.isAdmin && place.owner_id !== auth.user.uid && String(place.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية إدارة منتجات هذا المكان'},403,corsHeaders);
+    }
+    if (!auth.user.isAdmin && !place.is_verified) return jsonResponse({success:false,error:'إضافة المنتجات متاحة حصرياً للأماكن الموثقة'},403,corsHeaders);
+    const countRow = await createTursoDB(env).prepare('SELECT COUNT(*) AS count FROM products WHERE place_id=?').bind(placeId).first();
+    if (Number(countRow?.count || 0) >= 350) return jsonResponse({success:false,error:'تم الوصول للحد الأقصى من المنتجات (350 منتج)'},409,corsHeaders);
+    const id = String(body.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2,8)}`).trim();
+    const now = Date.now();
+    const approved = auth.user.isAdmin ? 1 : 0;
+    await createTursoDB(env).prepare(`
+      INSERT INTO products (
+        id, place_id, name, description, price, old_price, image_url, category, sku, in_stock,
+        is_featured, status, is_approved, views, clicks, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+    `).bind(
+      id,placeId,String(body.name || '').trim(),String(body.description || ''),
+      Number(body.price || 0),Number(body.oldPrice ?? body.old_price ?? 0),String(body.imageUrl || body.image_url || ''),
+      String(body.category || ''),String(body.sku || ''),body.inStock === false ? 0 : 1,
+      body.isFeatured ? 1 : 0, approved ? 'approved' : 'pending', approved, now, now
+    ).run();
+    await createTursoDB(env).prepare('UPDATE places SET product_count=COALESCE(product_count,0)+1,updated_at=? WHERE id=?').bind(now,placeId).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,id,message:approved?'تم نشر المنتج':'تم إرسال المنتج للمراجعة'},201,corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/products/') && request.method === 'PUT') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const id = decodeURIComponent(url.pathname.replace('/api/products/','')).trim();
+    const existing = await createTursoDB(env).prepare('SELECT * FROM products WHERE id=? LIMIT 1').bind(id).first();
+    if (!existing) return jsonResponse({success:false,error:'المنتج غير موجود'},404,corsHeaders);
+    const place = await createTursoDB(env).prepare('SELECT owner_id,owner_email FROM places WHERE id=? LIMIT 1').bind(existing.place_id).first();
+    if (!auth.user.isAdmin && existing.owner_id !== auth.user.uid && place?.owner_id !== auth.user.uid && String(place?.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية تعديل هذا المنتج'},403,corsHeaders);
+    }
+    const body = await request.json().catch(() => ({}));
+    const ownerEdit = !auth.user.isAdmin;
+    await createTursoDB(env).prepare(`
+      UPDATE products SET name=?,description=?,price=?,old_price=?,image_url=?,category=?,sku=?,in_stock=?,is_featured=?,
+        status=?,is_approved=?,updated_at=? WHERE id=?
+    `).bind(
+      body.name !== undefined ? String(body.name).trim() : existing.name,
+      body.description !== undefined ? String(body.description) : existing.description,
+      body.price !== undefined ? Number(body.price) : existing.price,
+      body.oldPrice !== undefined ? Number(body.oldPrice) : existing.old_price,
+      body.imageUrl !== undefined ? String(body.imageUrl) : existing.image_url,
+      body.category !== undefined ? String(body.category) : existing.category,
+      body.sku !== undefined ? String(body.sku) : existing.sku,
+      body.inStock !== undefined ? (body.inStock ? 1 : 0) : existing.in_stock,
+      body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : existing.is_featured,
+      ownerEdit ? 'pending' : (body.status !== undefined ? String(body.status) : existing.status),
+      ownerEdit ? 0 : (body.isApproved !== undefined ? (body.isApproved ? 1 : 0) : existing.is_approved),
+      Date.now(), id
+    ).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,id,message:'تم تحديث المنتج'},200,corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/products/') && request.method === 'DELETE') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const id = decodeURIComponent(url.pathname.replace('/api/products/','')).trim();
+    const existing = await createTursoDB(env).prepare('SELECT * FROM products WHERE id=? LIMIT 1').bind(id).first();
+    if (!existing) return jsonResponse({success:true},200,corsHeaders);
+    const place = await createTursoDB(env).prepare('SELECT owner_id,owner_email FROM places WHERE id=? LIMIT 1').bind(existing.place_id).first();
+    if (!auth.user.isAdmin && existing.owner_id !== auth.user.uid && place?.owner_id !== auth.user.uid && String(place?.owner_email || '').toLowerCase() !== auth.user.email) {
+      return jsonResponse({success:false,error:'لا تملك صلاحية حذف هذا المنتج'},403,corsHeaders);
+    }
+    await createTursoDB(env).prepare('DELETE FROM products WHERE id=?').bind(id).run();
+    await createTursoDB(env).prepare('UPDATE places SET product_count=MAX(COALESCE(product_count,0)-1,0),updated_at=? WHERE id=?').bind(Date.now(),existing.place_id).run();
+    bumpDataVersion(env,ctx);
+    return jsonResponse({success:true,message:'تم حذف المنتج'},200,corsHeaders);
+  }
+
+  if (url.pathname === '/api/products/track-stat' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const id = String(body.id || '').trim();
+    const stat = String(body.stat || '').trim();
+    if (!id || !['views','clicks'].includes(stat)) return jsonResponse({success:false,error:'بيانات التتبع غير صالحة'},400,corsHeaders);
+    await createTursoDB(env).prepare(`UPDATE products SET ${stat} = COALESCE(${stat},0) + 1 WHERE id = ?`).bind(id).run();
+    return jsonResponse({success:true},200,corsHeaders);
+  }
+
   // ── D1: Reviews (GET /api/reviews?place_id=... & POST /api/reviews) ──
   if (url.pathname === '/api/reviews' && request.method === 'GET') {
     const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || '').trim();
