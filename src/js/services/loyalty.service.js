@@ -4,7 +4,7 @@
  * Supports points accrual, levels, daily bonus, and 5000 points Place Verification Redemption.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate } from '../core/db.js';
+import { WORKER_URL } from '../core/firebase.js';
 import { playNotificationSound } from './notification.service.js';
 
 export const VERIFICATION_POINTS_COST = 5000;
@@ -65,167 +65,42 @@ export function getLoyaltyLevelInfo(points = 0) {
  * Fetch fresh user loyalty data from Firebase (with multi-path fallback)
  */
 export async function getUserLoyaltyProfile(uid) {
-  if (!uid) return { points: 0, totalEarned: 0, history: [], lastDailyBonusDate: null };
+  if (!uid) return { points:0,totalEarned:0,history:[],lastDailyBonusDate:null };
   try {
-    const db = getDB();
-    const [snap, userSnap] = await Promise.all([
-      db.ref('users/' + uid + '/loyalty').once('value').catch(() => null),
-      db.ref('users/' + uid).once('value').catch(() => null)
-    ]);
-    const data = (snap && snap.exists()) ? (snap.val() || {}) : {};
-    const uData = (userSnap && userSnap.exists()) ? (userSnap.val() || {}) : {};
-
-    const pts = Number(data.points ?? uData.points ?? 0);
-    const earned = Number(data.totalEarned ?? data.points ?? uData.points ?? pts);
-
-    return {
-      points: pts,
-      totalEarned: earned,
-      history: data.history ? Object.values(data.history).sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0)) : [],
-      lastDailyBonusDate: data.lastDailyBonusDate || null
-    };
-  } catch (err) {
-    console.debug('[LoyaltyService] Error reading loyalty profile:', err);
-    return { points: 0, totalEarned: 0, history: [], lastDailyBonusDate: null };
-  }
+    const { getIdToken } = await import('../core/auth.js'); const token=await getIdToken();
+    const res=await fetch(WORKER_URL + '/api/loyalty/'+encodeURIComponent(uid),{headers:token?{Authorization:'Bearer '+token}:{}});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||!data.success) throw new Error(data.error||'تعذر تحميل رصيد النقاط');
+    return data.data;
+  } catch(err) { console.debug('[LoyaltyService] Turso read failed:',err); return {points:0,totalEarned:0,history:[],lastDailyBonusDate:null}; }
 }
 
-export async function awardPoints(uid, ruleKey, customMeta = {}) {
-  if (!uid) return null;
-  const rule = POINTS_RULES[ruleKey] || { points: 10, label: 'مكافأة تفاعل' };
-  const amount = customMeta.pointsOverride || rule.points;
-  const db = getDB();
-
+export async function awardPoints(uid,ruleKey,customMeta={}) {
+  if(!uid) return null;
+  const amount=Math.max(1,Math.min(1000,Number(customMeta.pointsOverride||POINTS_RULES[ruleKey]?.points||10)));
   try {
-    const loyaltyRef = db.ref(`users/${uid}/loyalty`);
-    const snap = await loyaltyRef.once('value');
-    const cur = snap.val() || { points: 0, totalEarned: 0 };
-
-    const newPoints = (cur.points || 0) + amount;
-    const newTotal = (cur.totalEarned || 0) + amount;
-
-    const logEntry = {
-      id: db.ref().push().key,
-      type: 'earn',
-      ruleKey,
-      amount: `+${amount}`,
-      pointsDelta: amount,
-      label: customMeta.label || rule.label,
-      createdAt: Date.now(),
-      meta: customMeta
-    };
-
-    await Promise.all([
-      loyaltyRef.update({
-        points: newPoints,
-        totalEarned: newTotal,
-        lastUpdated: Date.now()
-      }),
-      db.ref(`users/${uid}/loyalty/history/${logEntry.id}`).set(logEntry)
-    ]);
-
-    playNotificationSound();
-    return { success: true, newPoints, awarded: amount, label: logEntry.label };
-  } catch (err) {
-    console.error('[Loyalty] Error awarding points:', err);
-    return { success: false, error: err };
-  }
+    const {getIdToken}=await import('../core/auth.js'); const token=await getIdToken();
+    const res=await fetch('/api/loyalty/'+encodeURIComponent(uid),{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({action:'award',ruleKey,amount,label:customMeta.label||POINTS_RULES[ruleKey]?.label||'مكافأة تفاعل',meta:customMeta})});
+    const data=await res.json().catch(()=>({})); if(!res.ok||!data.success) throw new Error(data.error||'تعذر إضافة النقاط');
+    playNotificationSound(); return {success:true,newPoints:Number(data.newPoints||0),awarded:amount};
+  } catch(err) { return {success:false,error:err}; }
 }
 
-/**
- * Claim Daily Login Bonus (+10 points once every 24h)
- */
 export async function claimDailyBonus(uid) {
-  if (!uid) return { success: false, reason: 'no_uid' };
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const db = getDB();
-
-  const snap = await db.ref(`users/${uid}/loyalty/lastDailyBonusDate`).once('value');
-  if (snap.val() === todayStr) {
-    return { success: false, reason: 'already_claimed' };
-  }
-
-  const res = await awardPoints(uid, 'DAILY_LOGIN', { label: 'مكافأة تسجيل الدخول اليومي' });
-  if (res && res.success) {
-    await db.ref(`users/${uid}/loyalty/lastDailyBonusDate`).set(todayStr);
-  }
-  return res;
+  if(!uid) return {success:false,reason:'no_uid'};
+  const {getIdToken}=await import('../core/auth.js'); const token=await getIdToken();
+  const res=await fetch('/api/loyalty/'+encodeURIComponent(uid),{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({action:'daily'})});
+  const data=await res.json().catch(()=>({})); if(res.status===409) return {success:false,reason:'already_claimed'};
+  if(!res.ok||!data.success) return {success:false,reason:'error',message:data.error||'تعذر صرف المكافأة'};
+  playNotificationSound(); return {success:true,newPoints:Number(data.newPoints||0),awarded:10};
 }
 
-/**
- * Core Feature: Redeem 5000 Points for Full Place/Account Verification
- */
-export async function redeemPointsForVerification(uid, placeId, placeName = '') {
-  if (!uid || !placeId) {
-    return { success: false, message: 'بيانات غير مكتملة' };
-  }
-
-  const db = getDB();
-
+export async function redeemPointsForVerification(uid,placeId,placeName='') {
+  if(!uid||!placeId) return {success:false,message:'بيانات غير مكتملة'};
   try {
-    const loyaltyRef = db.ref(`users/${uid}/loyalty`);
-    const snap = await loyaltyRef.once('value');
-    const loyalty = snap.val() || {};
-    const curPoints = loyalty.points || 0;
-
-    if (curPoints < VERIFICATION_POINTS_COST) {
-      return {
-        success: false,
-        message: `رصيدك (${curPoints} نقطة) لا يكفي. تحتاج إلى ${VERIFICATION_POINTS_COST} نقطة لتوثيق المكان.`
-      };
-    }
-
-    const newPoints = curPoints - VERIFICATION_POINTS_COST;
-    const oneYearFromNow = Date.now() + 365 * 24 * 60 * 60 * 1000;
-
-    // 1. Verify Place in Firebase
-    await db.ref(`places/${placeId}`).update({
-      isVerified: true,
-      verifiedAt: Date.now(),
-      verifiedUntil: oneYearFromNow,
-      verifiedVia: 'loyalty_points_redemption',
-      verifiedByPoints: VERIFICATION_POINTS_COST
-    });
-
-    // 2. Deduct points & log in history
-    const logId = db.ref().push().key;
-    const logEntry = {
-      id: logId,
-      type: 'redeem',
-      ruleKey: 'REDEEM_VERIFICATION',
-      amount: `-${VERIFICATION_POINTS_COST}`,
-      pointsDelta: -VERIFICATION_POINTS_COST,
-      label: `استبدال 5000 نقطة بتوثيق رسمي لمكان (${placeName || placeId})`,
-      placeId,
-      placeName,
-      createdAt: Date.now()
-    };
-
-    await Promise.all([
-      loyaltyRef.update({
-        points: newPoints,
-        lastRedemptionAt: Date.now()
-      }),
-      db.ref(`users/${uid}/loyalty/history/${logId}`).set(logEntry),
-      db.ref(`loyaltyRedemptions/${logId}`).set({
-        uid,
-        placeId,
-        placeName,
-        pointsRedeemed: VERIFICATION_POINTS_COST,
-        createdAt: Date.now()
-      })
-    ]);
-
-    playNotificationSound();
-
-    return {
-      success: true,
-      newPoints,
-      verifiedUntil: oneYearFromNow,
-      message: `تهانينا! تم استبدال ${VERIFICATION_POINTS_COST} نقطة وتوثيق مكانك (${placeName}) رسمياً لمدة عام كامل! 🌟`
-    };
-  } catch (err) {
-    console.error('[Loyalty] Error redeeming points:', err);
-    return { success: false, message: err.message || 'حدث خطأ أثناء استبدال النقاط' };
-  }
+    const {getIdToken}=await import('../core/auth.js'); const token=await getIdToken();
+    const res=await fetch('/api/loyalty/'+encodeURIComponent(uid),{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({action:'redeem_verification',placeId,placeName})});
+    const data=await res.json().catch(()=>({})); if(!res.ok||!data.success) return {success:false,message:data.error||'حدث خطأ أثناء استبدال النقاط'};
+    playNotificationSound(); return {success:true,newPoints:Number(data.newPoints||0),verifiedUntil:data.verifiedUntil,message:'تهانينا! تم توثيق مكانك ('+(placeName||placeId)+') رسمياً لمدة عام كامل! 🌟'};
+  } catch(err) { return {success:false,message:err.message||'حدث خطأ أثناء استبدال النقاط'}; }
 }

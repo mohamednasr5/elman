@@ -1799,6 +1799,72 @@ try {
     }
   }
 
+  // ── Turso: Loyalty API ────────────────────────────────────────
+  if (url.pathname.startsWith('/api/loyalty/')) {
+    const uid = decodeURIComponent(url.pathname.replace('/api/loyalty/','')).trim();
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    if (!uid || (auth.user.uid !== uid && !auth.user.isAdmin)) return jsonResponse({success:false,error:'غير مصرح'},403,corsHeaders);
+    const db = createTursoDB(env);
+
+    if (request.method === 'GET') {
+      const user = await db.prepare('SELECT points,total_earned,last_daily_bonus_date,last_redemption_at FROM users WHERE id=? LIMIT 1').bind(uid).first();
+      if (!user) return jsonResponse({success:false,error:'المستخدم غير موجود'},404,corsHeaders);
+      const history = (await db.prepare('SELECT id,type,rule_key,amount,label,place_id,place_name,meta_json,created_at FROM loyalty_history WHERE user_id=? ORDER BY created_at DESC LIMIT 200').bind(uid).all()).results || [];
+      return jsonResponse({success:true,data:{points:Number(user.points||0),totalEarned:Number(user.total_earned||0),lastDailyBonusDate:user.last_daily_bonus_date||null,lastRedemptionAt:user.last_redemption_at||null,history}},200,{...corsHeaders,'Cache-Control':'no-store'});
+    }
+
+    if (request.method !== 'POST') return jsonResponse({success:false,error:'Method not allowed'},405,corsHeaders);
+    const body = await request.json().catch(()=>({}));
+    const action = String(body.action || '').trim();
+
+    if (action === 'award' || action === 'daily') {
+      if (auth.user.uid !== uid && !auth.user.isAdmin) return jsonResponse({success:false,error:'غير مصرح'},403,corsHeaders);
+      const amount = action === 'daily' ? 10 : Math.max(1,Math.min(1000,Number(body.amount)||10));
+      const ruleKey = action === 'daily' ? 'DAILY_LOGIN' : String(body.ruleKey || 'INTERACTION').slice(0,80);
+      const today = new Date().toISOString().slice(0,10);
+      if (action === 'daily') {
+        const upd = await db.prepare('UPDATE users SET points=COALESCE(points,0)+10,total_earned=COALESCE(total_earned,0)+10,last_daily_bonus_date=?,updated_at=? WHERE id=? AND (last_daily_bonus_date IS NULL OR last_daily_bonus_date<>?)')
+          .bind(today,Date.now(),uid,today).run();
+        if (Number(upd?.meta?.changes||0) !== 1) return jsonResponse({success:false,reason:'already_claimed'},409,corsHeaders);
+      } else {
+        const upd = await db.prepare('UPDATE users SET points=COALESCE(points,0)+?,total_earned=COALESCE(total_earned,0)+?,updated_at=? WHERE id=?').bind(amount,amount,Date.now(),uid).run();
+        if (Number(upd?.meta?.changes||0) !== 1) return jsonResponse({success:false,error:'المستخدم غير موجود'},404,corsHeaders);
+      }
+      const id='lh_'+crypto.randomUUID();
+      await db.prepare('INSERT INTO loyalty_history (id,user_id,type,rule_key,amount,label,meta_json,created_at) VALUES (?,?,?,?,?,?,?,?)')
+        .bind(id,uid,'earn',ruleKey,amount,String(body.label||ruleKey).slice(0,200),JSON.stringify(body.meta||{}),Date.now()).run();
+      const user=await db.prepare('SELECT points,total_earned,last_daily_bonus_date FROM users WHERE id=?').bind(uid).first();
+      return jsonResponse({success:true,newPoints:Number(user?.points||0),awarded:amount},200,corsHeaders);
+    }
+
+    if (action === 'redeem_verification') {
+      const placeId=String(body.placeId||'').trim();
+      if (!placeId) return jsonResponse({success:false,error:'المكان مطلوب'},400,corsHeaders);
+      const place=await db.prepare('SELECT id,name,slug,owner_id FROM places WHERE id=? OR slug=? LIMIT 1').bind(placeId,placeId).first();
+      if (!place) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
+      if (!auth.user.isAdmin && place.owner_id !== uid) return jsonResponse({success:false,error:'لا تملك هذا المكان'},403,corsHeaders);
+      const cost=5000, now=Date.now(), until=now+365*86400000;
+      const deduct=await db.prepare('UPDATE users SET points=points-?,last_redemption_at=?,updated_at=? WHERE id=? AND points>=?').bind(cost,now,now,uid,cost).run();
+      if (Number(deduct?.meta?.changes||0)!==1) return jsonResponse({success:false,error:'رصيد النقاط غير كاف'},400,corsHeaders);
+      try {
+        await db.prepare('UPDATE places SET is_verified=1,verification_status=?,updated_at=? WHERE id=?').bind('verified',now,place.id).run();
+        const logId='lh_'+crypto.randomUUID();
+        await db.prepare('INSERT INTO loyalty_history (id,user_id,type,rule_key,amount,label,place_id,place_name,created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+          .bind(logId,uid,'redeem','REDEEM_VERIFICATION',-cost,'استبدال 5000 نقطة بتوثيق رسمي',place.id,place.name,now).run();
+        await db.prepare('INSERT INTO loyalty_redemptions (id,user_id,place_id,place_name,points_redeemed,created_at) VALUES (?,?,?,?,?,?)')
+          .bind('lr_'+crypto.randomUUID(),uid,place.id,place.name,cost,now).run();
+      } catch (err) {
+        await db.prepare('UPDATE users SET points=COALESCE(points,0)+?,updated_at=? WHERE id=?').bind(cost,Date.now(),uid).run();
+        throw err;
+      }
+      const user=await db.prepare('SELECT points FROM users WHERE id=?').bind(uid).first();
+      return jsonResponse({success:true,newPoints:Number(user?.points||0),verifiedUntil:until},200,corsHeaders);
+    }
+
+    return jsonResponse({success:false,error:'إجراء loyalty غير معروف'},400,corsHeaders);
+  }
+
   // ── Turso: Get Single User by ID (GET /api/users/:id) ──
   // Used by auth.js to fetch full Turso profile after login
   if (url.pathname.startsWith('/api/users/') && request.method === 'GET') {
