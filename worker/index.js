@@ -1380,7 +1380,15 @@ try {
       return jsonResponse({ error: 'place_id و user_id و rating مطلوبة' }, 400, corsHeaders);
     }
 
-    const reviewId = body.id || `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    // Never allow a normal user to choose an existing review ID: the POST
+    // endpoint uses UPSERT semantics, so a supplied ID could otherwise overwrite
+    // another user's/admin-generated review.
+    let reviewId = body.id || `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    if (!auth.user.isAdmin && body.id) {
+      const collision = await createTursoDB(env).prepare('SELECT id FROM reviews WHERE id = ? LIMIT 1').bind(String(body.id).trim()).first();
+      if (collision) return jsonResponse({success:false,error:'معرف التقييم مستخدم بالفعل'},409,corsHeaders);
+      reviewId = String(body.id).trim();
+    }
     const userName = auth.user.isAdmin ? (body.user_name || body.userName || 'مستخدم') : auth.user.name;
     const userPhoto = body.user_photo || body.userPhoto || '';
     const comment = String(body.comment || '').trim().slice(0, 500);
@@ -1866,6 +1874,17 @@ try {
     const placeId = (body.place_id || body.placeId || '').trim();
     const placeName = (body.place_name || body.placeName || '').trim();
     const ownerId = auth.user.uid;
+    if (!auth.user.isAdmin) {
+      const ownedPlace = await createTursoDB(env).prepare(
+        'SELECT id, owner_id, owner_email FROM places WHERE id = ? LIMIT 1'
+      ).bind(placeId).first();
+      if (!ownedPlace || (
+        ownedPlace.owner_id !== auth.user.uid &&
+        String(ownedPlace.owner_email || '').toLowerCase() !== String(auth.user.email || '').toLowerCase()
+      )) {
+        return jsonResponse({success:false,error:'طلب التوثيق متاح لمالك المكان فقط'},403,corsHeaders);
+      }
+    }
     const ownerName = body.owner_name || body.ownerName || '';
     const ownerEmail = body.owner_email || body.ownerEmail || '';
     const phone = body.phone || '';
