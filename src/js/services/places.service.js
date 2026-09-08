@@ -286,7 +286,7 @@ export async function deletePlace(placeId, ownerId) {
   }
 
   // Delete from Cloudflare D1 and invalidate local caches
-  fetch(`${WORKER_URL}/api/places/${encodeURIComponent(placeId)}`, { method: 'DELETE' }).catch(() => {});
+  fetch(`${WORKER_URL}/api/places/${encodeURIComponent(placeId)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${await getIdToken()}` } }).catch(() => {});
   await invalidateLocalPlaceCache(placeId, place.slug);
 
   clearDbCache();
@@ -306,7 +306,7 @@ export async function submitVerificationRequest(placeId, user, notes = '') {
   try {
     await fetch(`${WORKER_URL}/api/verification-requests`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getIdToken()}` },
       body: JSON.stringify({
         id: reqId,
         place_id: placeId,
@@ -327,7 +327,7 @@ export async function submitVerificationRequest(placeId, user, notes = '') {
   // Push instant notification to Telegram Admin (async)
   fetch(`${WORKER_URL}/api/notify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getIdToken()}` },
     body: JSON.stringify({
       type: 'verification_request',
       data: {
