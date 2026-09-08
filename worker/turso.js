@@ -22,7 +22,7 @@ function normalizeArgs(args) {
   return (args || []).map(value => value === undefined ? null : value);
 }
 
-class TursoD1Statement {
+class TursoStatement {
   constructor(client, sql) {
     this.client = client;
     this.sql = sql;
@@ -82,7 +82,7 @@ export function createTursoDB(env) {
 
   return {
     prepare(sql) {
-      return new TursoD1Statement(client, sql);
+      return new TursoStatement(client, sql);
     },
 
     async batch(statements) {

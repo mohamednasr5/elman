@@ -552,10 +552,14 @@ export async function updateVerificationRequestTurso(id, status = 'approved', ve
 }
 
 /** Update User Role/Status in Turso */
-export async function updateUserTurso(uid, { role, status }) {
+export async function updateUserTurso(uid, { role, status, name, email, phone, points } = {}) {
+  const body = {};
+  for (const [key, value] of Object.entries({ role, status, name, email, phone, points })) {
+    if (value !== undefined) body[key] = value;
+  }
   return tursoFetch('/api/users/' + encodeURIComponent(uid), {
     method: 'PUT',
-    body: JSON.stringify({ role, status })
+    body: JSON.stringify(body)
   });
 }
 
@@ -762,56 +766,40 @@ export function sanitizeIpKey(ip) {
 /** Check if an IP address is banned */
 export async function isIpBanned(ip) {
   if (!ip) return false;
-  const key = sanitizeIpKey(ip);
-  const banInfo = await dbGet(`bannedIPs/${key}`, false);
-  if (!banInfo) return false;
-  
-  if (banInfo.isPermanent) return banInfo;
-  if (banInfo.bannedUntil && banInfo.bannedUntil > Date.now()) return banInfo;
-  
-  // Expired ban
-  return false;
+  try {
+    const data = await tursoFetch('/api/ip-bans?ip=' + encodeURIComponent(String(ip).trim()));
+    return data?.data || false;
+  } catch (_) {
+    return false;
+  }
 }
 
 /** Admin: Ban an IP address */
 export async function adminBanIp(ip, { reason = '', durationDays = 30, isPermanent = false, bannedBy = 'admin', userId = null, userName = '' } = {}) {
   if (!ip) throw new Error('عنوان IP مطلوب للحظر');
-  const key = sanitizeIpKey(ip);
-  const now = Date.now();
-  const until = isPermanent ? null : (now + (Number(durationDays) * 86400000));
-
-  const banRecord = {
-    ip: String(ip).trim(),
-    ipKey: key,
-    reason: (reason || '').trim() || 'انتهاك سياسة واستخدام المنصة',
-    isPermanent: Boolean(isPermanent),
-    durationDays: isPermanent ? null : Number(durationDays),
-    bannedAt: now,
-    bannedUntil: until,
-    bannedBy,
-    userId: userId || null,
-    userName: userName || null
-  };
-
-  await dbSet(`bannedIPs/${key}`, banRecord);
-  return banRecord;
+  const days = Number(durationDays);
+  if (!isPermanent && (!Number.isFinite(days) || days < 1 || days > 3650)) throw new Error('مدة حظر IP غير صالحة');
+  const res = await tursoFetch('/api/ip-bans', {
+    method: 'POST',
+    body: JSON.stringify({ ip:String(ip).trim(), reason, durationDays:days, isPermanent:Boolean(isPermanent), bannedBy, userId, userName })
+  });
+  return res?.data || res;
 }
 
 /** Admin: Unban an IP address */
 export async function adminUnbanIp(ipOrKey) {
   if (!ipOrKey) throw new Error('معرف IP مطلوب');
-  const key = sanitizeIpKey(ipOrKey);
-  await dbRemove(`bannedIPs/${key}`);
-  return true;
+  return tursoFetch('/api/ip-bans?ip=' + encodeURIComponent(String(ipOrKey).trim()), { method:'DELETE' });
 }
 
 /** Admin: Get all banned IPs */
 export async function getAllBannedIps() {
-  const data = (await dbGet('bannedIPs', false)) || {};
-  return Object.entries(data).map(([key, val]) => ({
-    ipKey: key,
-    ...val
-  })).sort((a, b) => (b.bannedAt || 0) - (a.bannedAt || 0));
+  try {
+    const data = await tursoFetch('/api/ip-bans');
+    return Array.isArray(data?.data) ? data.data : [];
+  } catch (_) {
+    return [];
+  }
 }
 
 /**
@@ -1097,9 +1085,15 @@ export async function adminApproveProduct(placeId,productId) {
   const data=await tursoFetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'approved',isApproved:true,is_approved:1})});return data?.data||data;
 }
 
-export async function adminRejectProduct(placeId,productId) {
+export async function adminRejectProduct(placeId,productId,rejectionReason='') {
   if(!productId)throw new Error('بيانات المنتج والمكان مطلوبة');
-  const data=await tursoFetch('/api/products/'+encodeURIComponent(productId),{method:'PUT',body:JSON.stringify({status:'rejected',isApproved:false,is_approved:0})});return data?.data||data;
+  const reason=String(rejectionReason||'').trim();
+  if(!reason) throw new Error('سبب رفض المنتج مطلوب');
+  const data=await tursoFetch('/api/products/'+encodeURIComponent(productId),{
+    method:'PUT',
+    body:JSON.stringify({status:'rejected',isApproved:false,is_approved:0,rejectionReason:reason})
+  });
+  return data?.data||data;
 }
 
 export async function adminDeleteProduct(placeId,productId) {
@@ -2137,6 +2131,7 @@ export async function adminBulkAddReviews(placeId, items = [], onProgress = null
   if (!placeId || !items.length) {
     throw new Error('بيانات المكان أو التقييمات فارغة');
   }
+  if (items.length > 5000) throw new Error('الحد الأقصى للإضافة الجماعية هو 5000 تقييم في العملية الواحدة');
 
   const place = await dbGet(`places/${placeId}`);
   if (!place) throw new Error('المكان غير موجود في قاعدة البيانات');
@@ -2228,12 +2223,14 @@ export async function adminBulkAddReviews(placeId, items = [], onProgress = null
         try { onProgress(chunkIdx, totalChunks, chunk.length); } catch (_) {}
       }
       try {
-        await tursoFetch('/api/reviews', {
+        const result = await tursoFetch('/api/reviews', {
           method: 'POST',
           body: JSON.stringify({ reviews: chunk })
         });
+        const persisted = Number(result?.insertedCount ?? chunk.length);
+        if (persisted !== chunk.length) throw new Error(`تم حفظ ${persisted} من ${chunk.length} فقط في الدفعة ${chunkIdx}`);
       } catch (err) {
-        console.warn('[adminBulkAddReviews] Batch chunk error:', err.message);
+        throw new Error(`فشل حفظ الدفعة ${chunkIdx}/${totalChunks}: ${err?.message || err}`);
       }
     }
     const newStats = await recalculatePlaceRating(placeId);

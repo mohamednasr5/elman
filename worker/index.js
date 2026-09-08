@@ -326,6 +326,32 @@ if (url.pathname === '/index.html') {
 
 try {
 
+  // Server-side IP enforcement for API traffic. Admins can still reach
+  // the management endpoints so a ban can be reviewed/removed.
+  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && request.method !== 'OPTIONS') {
+    try {
+      const clientIp = String(request.headers.get('CF-Connecting-IP') || '').trim();
+      if (clientIp) {
+        const ipKey = clientIp.replace(/[.:%[\\]#$]/g, '_');
+        const ban = await createTursoDB(env).prepare(
+          'SELECT is_permanent, banned_until, reason FROM banned_ips WHERE ip_key = ? LIMIT 1'
+        ).bind(ipKey).first();
+        const activeBan = ban && (Number(ban.is_permanent) === 1 || (ban.banned_until && Number(ban.banned_until) > Date.now()));
+        if (activeBan) {
+          const authHeader = request.headers.get('Authorization') || '';
+          let isAdmin = false;
+          if (authHeader) {
+            const caller = await authenticateRequest(request, env);
+            isAdmin = Boolean(caller?.isAdmin);
+          }
+          if (!isAdmin) return jsonResponse({success:false,error:'تم حظر عنوان IP من استخدام المنصة',reason:ban.reason || ''},403,corsHeaders);
+        }
+      }
+    } catch (ipErr) {
+      console.warn('[IP Ban] enforcement lookup failed:', ipErr?.message || ipErr);
+    }
+  }
+
   // ── Turso database health check ───────────────────────────────
   // GET /api/health — verifies that the Worker can reach Turso.
   if (url.pathname === '/api/health' && request.method === 'GET') {
@@ -1006,6 +1032,56 @@ try {
     }
   }
 
+  // ── Turso: IP Ban API ───────────────────────────────────────────
+  if (url.pathname === '/api/ip-bans' && request.method === 'GET') {
+    const ip = String(url.searchParams.get('ip') || '').trim();
+    try {
+      if (ip) {
+        const key = ip.replace(/[.:%[\\]#$]/g, '_');
+        const row = await createTursoDB(env).prepare(
+          'SELECT ip_key, ip, reason, is_permanent, duration_days, banned_at, banned_until, banned_by, user_id, user_name FROM banned_ips WHERE ip_key = ? OR ip = ? LIMIT 1'
+        ).bind(key, ip).first();
+        if (!row) return jsonResponse({success:true,data:false},200,corsHeaders);
+        if (!row.is_permanent && row.banned_until && Number(row.banned_until) <= Date.now()) return jsonResponse({success:true,data:false},200,corsHeaders);
+        return jsonResponse({success:true,data:{...row,isPermanent:Boolean(row.is_permanent),bannedAt:row.banned_at,bannedUntil:row.banned_until}},200,corsHeaders);
+      }
+      const auth = await requireAdmin(request, env);
+      if (auth.response) return auth.response;
+      const rows = (await createTursoDB(env).prepare('SELECT * FROM banned_ips ORDER BY banned_at DESC LIMIT 5000').all()).results || [];
+      return jsonResponse({success:true,data:rows.map(r=>({...r,isPermanent:Boolean(r.is_permanent),bannedAt:r.banned_at,bannedUntil:r.banned_until}))},200,corsHeaders);
+    } catch(err) { return jsonResponse({success:false,error:err.message,data:[]},500,corsHeaders); }
+  }
+
+  if (url.pathname === '/api/ip-bans' && request.method === 'POST') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const ip = String(body.ip || '').trim();
+    if (!ip || ip.length > 64) return jsonResponse({success:false,error:'عنوان IP غير صالح'},400,corsHeaders);
+    const ipKey = ip.replace(/[.:%[\\]#$]/g, '_');
+    const permanent = Boolean(body.isPermanent);
+    const days = Number(body.durationDays);
+    if (!permanent && (!Number.isFinite(days) || days < 1 || days > 3650)) return jsonResponse({success:false,error:'مدة الحظر غير صالحة'},400,corsHeaders);
+    const now = Date.now(), until = permanent ? null : now + days * 86400000;
+    try {
+      await createTursoDB(env).prepare('INSERT INTO banned_ips (ip_key,ip,reason,is_permanent,duration_days,banned_at,banned_until,banned_by,user_id,user_name) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(ip_key) DO UPDATE SET ip=excluded.ip,reason=excluded.reason,is_permanent=excluded.is_permanent,duration_days=excluded.duration_days,banned_at=excluded.banned_at,banned_until=excluded.banned_until,banned_by=excluded.banned_by,user_id=excluded.user_id,user_name=excluded.user_name')
+        .bind(ipKey,ip,String(body.reason || '').trim(),permanent?1:0,permanent?null:Math.floor(days),now,until,String(body.bannedBy || auth.user.email || auth.user.uid),body.userId || null,body.userName || null).run();
+      return jsonResponse({success:true,data:{ip,ipKey,reason:String(body.reason || '').trim(),isPermanent:permanent,durationDays:permanent?null:Math.floor(days),bannedAt:now,bannedUntil:until}},200,corsHeaders);
+    } catch(err) { return jsonResponse({success:false,error:err.message},500,corsHeaders); }
+  }
+
+  if (url.pathname === '/api/ip-bans' && request.method === 'DELETE') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
+    const ip = String(url.searchParams.get('ip') || '').trim();
+    if (!ip) return jsonResponse({success:false,error:'معرف IP مطلوب'},400,corsHeaders);
+    const ipKey = ip.replace(/[.:%[\\]#$]/g, '_');
+    try {
+      await createTursoDB(env).prepare('DELETE FROM banned_ips WHERE ip_key = ? OR ip = ?').bind(ipKey,ip).run();
+      return jsonResponse({success:true},200,corsHeaders);
+    } catch(err) { return jsonResponse({success:false,error:err.message},500,corsHeaders); }
+  }
+
   // ── Turso: Ads API (GET, POST, DELETE /api/ads) ───────────────────
   if (url.pathname === '/api/ads' && request.method === 'GET') {
     try {
@@ -1306,6 +1382,15 @@ try {
       ownerEdit ? 0 : (body.isApproved !== undefined ? (body.isApproved ? 1 : 0) : existing.is_approved),
       Date.now(), id
     ).run();
+    if (!auth.user.isAdmin) {
+      await createTursoDB(env).prepare('UPDATE products SET rejection_reason = NULL WHERE id = ?').bind(id).run();
+    } else if (body.status === 'rejected') {
+      const reason = String(body.rejectionReason || body.rejection_reason || '').trim().slice(0, 1000);
+      if (!reason) return jsonResponse({success:false,error:'سبب رفض المنتج مطلوب'},400,corsHeaders);
+      await createTursoDB(env).prepare('UPDATE products SET rejection_reason = ? WHERE id = ?').bind(reason,id).run();
+    } else if (body.status === 'approved' || body.isApproved === true || body.is_approved === 1) {
+      await createTursoDB(env).prepare('UPDATE products SET rejection_reason = NULL WHERE id = ?').bind(id).run();
+    }
     bumpDataVersion(env,ctx);
     return jsonResponse({success:true,id,message:'تم تحديث المنتج'},200,corsHeaders);
   }
@@ -1379,6 +1464,15 @@ try {
     if (Array.isArray(body.reviews) && body.reviews.length > 0) {
       if (!auth.user.isAdmin) return jsonResponse({success:false,error:'إضافة تقييمات جماعية متاحة للإدارة فقط'},403,corsHeaders);
       const reviewsList = body.reviews;
+      if (reviewsList.length < 1 || reviewsList.length > 5000) {
+        return jsonResponse({success:false,error:'عدد التقييمات الجماعية يجب أن يكون بين 1 و5000'},400,corsHeaders);
+      }
+      const placeIds = [...new Set(reviewsList.map(r => String(r.place_id || r.placeId || '').trim()).filter(Boolean))];
+      if (placeIds.length !== 1) {
+        return jsonResponse({success:false,error:'الدفعة الجماعية يجب أن تخص مكاناً واحداً فقط'},400,corsHeaders);
+      }
+      const placeExists = await createTursoDB(env).prepare('SELECT id FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(placeIds[0],placeIds[0]).first();
+      if (!placeExists) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
       const now = Date.now();
       let insertedCount = 0;
 
@@ -1799,7 +1893,7 @@ try {
   }
 
   // ── Turso: Update User (PATCH/PUT /api/users/:id) ──
-  // Allows updating: role, status, name, email, phone
+  // Allows updating profile fields plus administrator-controlled points
   if ((url.pathname.startsWith('/api/users/') || url.pathname === '/api/users') &&
       (request.method === 'PUT' || request.method === 'PATCH') &&
       !url.pathname.endsWith('/sync') && !url.pathname.endsWith('/seed')) {
@@ -1830,15 +1924,20 @@ try {
       const name   = body.name   !== undefined ? body.name   : existing.name;
       const email  = body.email  !== undefined ? body.email  : existing.email;
       const phone  = body.phone  !== undefined ? body.phone  : existing.phone;
+      const pointsRaw = body.points !== undefined ? Number(body.points) : Number(existing.points || 0);
+      if (!Number.isFinite(pointsRaw) || pointsRaw < 0 || pointsRaw > 1000000000) {
+        return jsonResponse({success:false,error:'رصيد النقاط غير صالح'},400,corsHeaders);
+      }
+      const points = Math.floor(pointsRaw);
       const now    = Date.now();
 
       await createTursoDB(env).prepare(`
-        UPDATE users SET role = ?, status = ?, name = ?, email = ?, phone = ?, updated_at = ?
+        UPDATE users SET role = ?, status = ?, name = ?, email = ?, phone = ?, points = ?, updated_at = ?
         WHERE id = ?
-      `).bind(role, status, name, email, phone, now, id).run();
+      `).bind(role, status, name, email, phone, points, now, id).run();
 
       const updated = await createTursoDB(env).prepare(
-        `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
+        `SELECT id, name, email, photo_url, phone, role, status, points, total_earned, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
       ).bind(id).first();
 
       return jsonResponse({ success: true, data: updated }, 200, corsHeaders);
