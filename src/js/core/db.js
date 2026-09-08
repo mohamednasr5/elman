@@ -380,25 +380,7 @@ export async function dbQuery({ path, orderBy = 'createdAt', limit = 20, startAf
     return items.slice(0, limit);
   }
 
-  let query = getDB().ref(path).orderByChild(orderBy);
-  if (equalTo !== null) query = query.equalTo(equalTo);
-  if (startAfter !== null) query = query.startAfter(startAfter);
-  query = direction === 'desc' ? query.limitToLast(limit) : query.limitToFirst(limit);
-  const snap = await query.once('value');
-  if (!snap.exists()) return [];
-  const items = [];
-  snap.forEach((child) => items.push({ _key: child.key, ...child.val() }));
-  return direction === 'desc' ? items.reverse() : items;
-}
-
-// ── Server timestamp ──
-export function serverTimestamp() {
-  return Date.now();
-}
-
-// ── Specific entity helpers ──
-
-/** Get user profile - Reads from Local/Turso */
+  throw new Error('Firebase Realtime Database queries are disabled; use Turso APIs: '+path);\n}\n\n
 export async function getUserProfile(uid) {
   if (!uid) return null;
   const cached = getCached('user:' + uid);
@@ -1286,21 +1268,6 @@ export async function broadcastNewPlaceNotification(place) {
   triggerNativePwaNotification(notification);
 
   try {
-    const db = getDB();
-    await Promise.all([
-      db.ref('globalNotifications/' + notifId).set(notification).catch(() => {}),
-      db.ref('platformNotifications/' + notifId).set(notification).catch(() => {})
-    ]);
-  } catch (_) {}
-
-  try {
-    fetch(WORKER_URL + '/api/notifications/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'new_place', notification, place }),
-      signal: AbortSignal.timeout(4000)
-    }).catch(() => {});
-  } catch (_) {}
 }
 
 export async function broadcastPlaceVerifiedNotification(place) {
@@ -1329,21 +1296,6 @@ export async function broadcastPlaceVerifiedNotification(place) {
   triggerNativePwaNotification(notification);
 
   try {
-    const db = getDB();
-    await Promise.all([
-      db.ref('globalNotifications/' + notifId).set(notification).catch(() => {}),
-      db.ref('platformNotifications/' + notifId).set(notification).catch(() => {})
-    ]);
-  } catch (_) {}
-
-  try {
-    fetch(WORKER_URL + '/api/notifications/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'place_verified', notification, place }),
-      signal: AbortSignal.timeout(4000)
-    }).catch(() => {});
-  } catch (_) {}
 }
 
 function triggerNativePwaNotification(notification) {
