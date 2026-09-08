@@ -5,7 +5,7 @@ import { normalizeArabic } from './arabic.js';
  * unified branding, and simplified form support.
  */
 
-import { dbGet, dbUpdate } from '../core/db.js';
+import { tursoFetch } from '../core/db.js';
 
 export const ATM_UNIFIED_COVER = 'assets/images/atm-cover.jpg';
 export const ATM_UNIFIED_LOGO = 'assets/images/atm-logo.png';
@@ -141,63 +141,11 @@ export function formatAtmTimeAgo(timestamp) {
  * @param {'yes' | 'no'} voteType
  */
 export async function submitAtmPollVote(placeId, questionKey, voteType) {
-  if (!placeId || !questionKey) return;
-  const now = Date.now();
-  const isYes = voteType === 'yes';
-
-  const pollPath = `places/${placeId}/atmPoll`;
-  const snap = await dbGet(pollPath, false) || {};
-
-  // Resolve question node with backward compatibility for cash
-  let qData = snap[questionKey] || {};
-  if (questionKey === 'cash' && snap.yesCount !== undefined && !snap.cash) {
-    qData = {
-      yesCount: Number(snap.yesCount) || 0,
-      noCount: Number(snap.noCount) || 0,
-      totalVotes: Number(snap.totalVotes) || 0,
-      lastAnswerTime: snap.lastAnswerTime || snap.updatedAt,
-      lastAnswerChoice: snap.lastAnswerChoice
-    };
-  }
-
-  const currentYes = Number(qData.yesCount) || 0;
-  const currentNo = Number(qData.noCount) || 0;
-  const total = (Number(qData.totalVotes) || (currentYes + currentNo)) + 1;
-
-  const updatedQ = {
-    yesCount: isYes ? currentYes + 1 : currentYes,
-    noCount: !isYes ? currentNo + 1 : currentNo,
-    totalVotes: total,
-    lastAnswerTime: now,
-    lastAnswerChoice: voteType,
-    updatedAt: now
-  };
-
-  const updates = {};
-  updates[`${pollPath}/${questionKey}`] = updatedQ;
-  updates[`${pollPath}/updatedAt`] = now;
-  if (questionKey === 'cash') {
-    updates[`${pollPath}/yesCount`] = updatedQ.yesCount;
-    updates[`${pollPath}/noCount`] = updatedQ.noCount;
-    updates[`${pollPath}/totalVotes`] = updatedQ.totalVotes;
-    updates[`${pollPath}/lastAnswerTime`] = now;
-    updates[`${pollPath}/lastAnswerChoice`] = voteType;
-  }
-
-  await dbUpdate('', updates);
-
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(`atm_vote_${placeId}_${questionKey}`, JSON.stringify({
-      choice: voteType,
-      time: now
-    }));
-  }
-
-  const result = { ...snap, [questionKey]: updatedQ, updatedAt: now };
-  if (questionKey === 'cash') {
-    Object.assign(result, updatedQ);
-  }
-  return result;
+  if(!placeId||!questionKey) return;
+  const data=await tursoFetch('/api/places/'+encodeURIComponent(placeId)+'/atm-poll',{method:'POST',body:JSON.stringify({questionKey,voteType})});
+  if(!data?.success) throw new Error(data?.error||'تعذر حفظ تقييم ماكينة الصراف');
+  if(typeof localStorage!=='undefined') localStorage.setItem('atm_vote_'+placeId+'_'+questionKey,JSON.stringify({choice:voteType,time:Date.now()}));
+  return data.data || {};
 }
 
 // Backward compatibility alias

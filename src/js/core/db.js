@@ -250,28 +250,16 @@ export function dbRef(path) {
 }
 
 export async function dbGet(path, useCache = true) {
-  if (useCache) {
-    const cached = getCached('path:' + path);
-    if (cached !== null) return cached;
-  }
-
+  const key='path:'+path;
+  if(useCache){const cached=getCached(key);if(cached!==null)return cached;}
   try {
-    if (isBusinessDataPath(path)) {
-      const val = await tursoGetBusiness(path);
-      if (useCache) setCache('path:' + path, val);
-      return val;
+    if(isBusinessDataPath(path)){
+      const val=await tursoGetBusiness(path); if(useCache)setCache(key,val); return val;
     }
-
-    const db = getDB();
-    if (!db || typeof db.ref !== 'function') return null;
-    const snap = await db.ref(path).once('value');
-    const val = (snap && typeof snap.exists === 'function' && snap.exists()) ? snap.val() : null;
-    if (useCache) setCache('path:' + path, val);
-    return val;
-  } catch (err) {
-    console.warn(`[dbGet] Handled error on path "${path}":`, err?.message || err);
+    // No Firebase Realtime Database fallback. Non-business legacy paths must
+    // be migrated to a dedicated Turso endpoint instead of silently reading RTDB.
     return null;
-  }
+  } catch(err){ console.warn('[dbGet] Turso read failed for '+path+':',err?.message||err); return null; }
 }
 
 export async function dbSet(path, data) {
@@ -287,8 +275,7 @@ export async function dbSet(path, data) {
     await tursoWriteBusiness(path, 'PUT', data);
     return;
   }
-  const ref = (path && String(path).trim() !== '') ? getDB().ref(path) : getDB().ref();
-  await ref.set(data);
+  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
 }
 
 export async function dbUpdate(path, updates) {
@@ -843,6 +830,7 @@ export function normalizeTursoPlace(p) {
     workingHours: p.workingHours || p.working_hours || {},
     services: Array.isArray(p.services) ? p.services : (typeof p.services_json === 'string' ? JSON.parse(p.services_json || '[]') : []),
     social: typeof p.social === 'object' ? p.social : (typeof p.social_json === 'string' ? JSON.parse(p.social_json || '{}') : {}),
+    atmPoll: typeof p.atmPoll === 'object' ? p.atmPoll : (typeof p.atm_poll_json === 'string' ? (()=>{try{return JSON.parse(p.atm_poll_json||'{}')}catch(_){return {}}})() : {}),
     reviewCount: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
     review_count: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
     rating: Number(p.rating != null ? p.rating : 0.0),
@@ -1112,23 +1100,20 @@ export async function getAds(placement='homepage') {
   try{const data=await tursoFetch('/api/ads');const list=Array.isArray(data?.data)?data.data:[];return list.filter(a=>!placement||a.placement===placement||a.placement==='all');}catch(_){return [];}
 }
 
-export async function getSettings() {
-  const cached=getCached('site_settings',600000);if(cached)return cached;
+export async function getSettings({forceFresh=false}={}) {
+  const cached=!forceFresh && getCached('site_settings',600000);if(cached)return cached;
   try{const data=await tursoFetch('/api/settings');if(data?.success&&data.data)return setCache('site_settings',data.data);}catch(_){}
   return setCache('site_settings',{siteName:'دليل المنزلة والمطرية الرقمي',contact:{whatsapp:'01000000000'}});
 }
 
 export async function updateSettings(settings) {
-  setCache('site_settings', settings);
-  try {
-    await fetch(`${WORKER_URL}/api/settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings)
-    });
-  } catch (err) {
-    console.warn('[updateSettings] Error saving to worker:', err.message);
-  }
+  const data = await tursoFetch('/api/settings', {
+    method:'POST',
+    body:JSON.stringify(settings || {})
+  });
+  if(!data?.success) throw new Error(data?.error || 'تعذر حفظ الإعدادات');
+  setCache('site_settings', data.data || settings);
+  return data.data || settings;
 }
 
 /**
