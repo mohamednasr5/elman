@@ -326,6 +326,32 @@ if (url.pathname === '/index.html') {
 
 try {
 
+  // Server-side IP enforcement for API traffic. Admins can still reach
+  // the management endpoints so a ban can be reviewed/removed.
+  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && request.method !== 'OPTIONS') {
+    try {
+      const clientIp = String(request.headers.get('CF-Connecting-IP') || '').trim();
+      if (clientIp) {
+        const ipKey = clientIp.replace(/[.:%[\\]#$]/g, '_');
+        const ban = await createTursoDB(env).prepare(
+          'SELECT is_permanent, banned_until, reason FROM banned_ips WHERE ip_key = ? LIMIT 1'
+        ).bind(ipKey).first();
+        const activeBan = ban && (Number(ban.is_permanent) === 1 || (ban.banned_until && Number(ban.banned_until) > Date.now()));
+        if (activeBan) {
+          const authHeader = request.headers.get('Authorization') || '';
+          let isAdmin = false;
+          if (authHeader) {
+            const caller = await authenticateRequest(request, env);
+            isAdmin = Boolean(caller?.isAdmin);
+          }
+          if (!isAdmin) return jsonResponse({success:false,error:'تم حظر عنوان IP من استخدام المنصة',reason:ban.reason || ''},403,corsHeaders);
+        }
+      }
+    } catch (ipErr) {
+      console.warn('[IP Ban] enforcement lookup failed:', ipErr?.message || ipErr);
+    }
+  }
+
   // ── Turso database health check ───────────────────────────────
   // GET /api/health — verifies that the Worker can reach Turso.
   if (url.pathname === '/api/health' && request.method === 'GET') {
