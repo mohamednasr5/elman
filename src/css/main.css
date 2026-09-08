@@ -13108,3 +13108,13 @@ textarea,
 .cat-anim-key{animation:cat-key-turn 2.2s ease-in-out infinite;transform-box:fill-box;transform-origin:30% 50%}
 .cat-anim-key-shine{animation:cat-key-shine 2.2s ease-in-out infinite}
 .cat-anim-key-shine-2{animation:cat-key-shine 2.2s ease-in-out infinite .4s}
+
+
+/* Site-wide advertisement banner */
+.wide-ads-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+  .wide-ads-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 560px) {
+  .wide-ads-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+}
