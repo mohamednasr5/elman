@@ -280,52 +280,18 @@ function _footerHTML() {
 
 function _pwaBannerHTML() {
   return `
-<div class="pwa-banner" id="pwa-banner" hidden role="dialog" aria-label="تثبيت تطبيق دليل المنزلة والمطرية">
-  <div class="pwa-banner__glass">
-    <button type="button" class="pwa-banner__close" id="pwa-banner-close" aria-label="إغلاق التنبيه" title="إغلاق">✕</button>
-    
-    <div class="pwa-banner__header">
-      <div class="pwa-banner__icon-wrap">
-        <img src="./icons/icon-96x96.png" alt="شعار تطبيق دليل المنزلة والمطرية" class="pwa-banner__icon" width="62" height="62" loading="eager" decoding="async" />
-        <span class="pwa-banner__icon-ring"></span>
-      </div>
-      <div class="pwa-banner__main-text">
-        <div class="pwa-banner__meta">
-          <span class="pwa-banner__chip">⚡ تطبيق ويب مستقل (PWA)</span>
-          <span class="pwa-banner__rating">★ 4.9 (موثق)</span>
-        </div>
-        <h3 class="pwa-banner__title">تطبيق دليل المنزلة والمطرية</h3>
-        <p class="pwa-banner__subtitle">تثبيت تطبيق مستقل كامل على جهازك خفيف وفوري وبدون استهلاك للذاكرة</p>
+<div class="pwa-banner" id="pwa-banner" hidden role="dialog" aria-label="تثبيت تطبيق المنزلة والمطرية الرقمي">
+  <div class="pwa-banner__rect">
+    <div class="pwa-banner__lead">
+      <img src="./icons/icon-96x96.png" alt="دليل المنزلة والمطرية" class="pwa-banner__rect-icon" width="42" height="42" loading="eager" decoding="async" />
+      <div class="pwa-banner__rect-text">
+        <strong class="pwa-banner__rect-title">ثبت تطبيق المنزلة والمطرية الرقمي</strong>
+        <span class="pwa-banner__rect-desc">وخليك دايماً متابع</span>
       </div>
     </div>
-
-    <div class="pwa-banner__badges">
-      <div class="pwa-badge-item">
-        <span class="pwa-badge-icon">🚀</span>
-        <span>فتح فوري 0ms</span>
-      </div>
-      <div class="pwa-badge-item">
-        <span class="pwa-badge-icon">🔔</span>
-        <span>تنبيهات فورية</span>
-      </div>
-      <div class="pwa-badge-item">
-        <span class="pwa-badge-icon">📶</span>
-        <span>تصفح أوفلاين</span>
-      </div>
-      <div class="pwa-badge-item">
-        <span class="pwa-badge-icon">🛡️</span>
-        <span>آمن وخفيف</span>
-      </div>
-    </div>
-
-    <div class="pwa-banner__actions">
-      <button type="button" class="btn pwa-banner__install-btn" id="pwa-install-btn">
-        <span class="pwa-install-btn__icon">📲</span>
-        <span class="pwa-install-btn__text">تثبيت التطبيق الآن</span>
-      </button>
-      <button type="button" class="pwa-banner__later-btn" id="pwa-banner-later">
-        <span>لاحقاً</span>
-      </button>
+    <div class="pwa-banner__rect-actions">
+      <button type="button" class="pwa-banner__rect-install" id="pwa-install-btn">تثبيت</button>
+      <button type="button" class="pwa-banner__rect-close" id="pwa-banner-close" aria-label="إغلاق التنبيه" title="إغلاق">✕</button>
     </div>
   </div>
 </div>`;
@@ -603,21 +569,49 @@ function _isAppInstalled() {
   );
 }
 
+function _hasDismissedRecently() {
+  try {
+    const val = localStorage.getItem('pwa-dismissed');
+    if (!val) return false;
+    const ts = parseInt(val, 10);
+    if (isNaN(ts)) return true; // legacy boolean
+    // Cooldown: 14 days
+    return (Date.now() - ts) < (14 * 24 * 60 * 60 * 1000);
+  } catch (_) {
+    return false;
+  }
+}
+
+function _canShowPwaBanner() {
+  if (_isAppInstalled()) return false;
+  if (_hasDismissedRecently()) return false;
+  try {
+    // Prevent showing on every refresh in the same session
+    if (sessionStorage.getItem('pwa_session_shown') === 'true') return false;
+  } catch (_) {}
+  return true;
+}
+
 function _setupPwa() {
-  if (_isAppInstalled()) return;
+  if (!_canShowPwaBanner()) return;
 
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _dp = e;
-    _showPwaBanner();
+    // Don't show immediately on refresh - wait 5s and re-check conditions
+    setTimeout(() => {
+      if (_canShowPwaBanner()) {
+        _showPwaBanner();
+      }
+    }, 5000);
   });
 
-  // Fallback timer for browsers that don't trigger beforeinstallprompt or delay it
+  // Fallback timer for browsers that don't trigger beforeinstallprompt (e.g. iOS Safari)
   setTimeout(() => {
-    if (!_isAppInstalled() && !localStorage.getItem('pwa-dismissed')) {
+    if (_canShowPwaBanner()) {
       _showPwaBanner();
     }
-  }, 2800);
+  }, 7000);
 
   document.addEventListener('click', e => {
     if (e.target.closest('#pwa-banner-close') || e.target.closest('#pwa-banner-later')) {
@@ -639,9 +633,12 @@ function _setupPwa() {
 }
 
 function _showPwaBanner() {
-  if (_isAppInstalled()) return;
+  if (!_canShowPwaBanner()) return;
   const b = document.getElementById('pwa-banner');
   if (b) {
+    try {
+      sessionStorage.setItem('pwa_session_shown', 'true');
+    } catch (_) {}
     b.hidden = false;
     b.style.display = 'block';
     requestAnimationFrame(() => {
@@ -657,9 +654,12 @@ function _dismissPwaBanner() {
     setTimeout(() => {
       b.hidden = true;
       b.style.display = 'none';
-    }, 450);
+    }, 350);
   }
-  localStorage.setItem('pwa-dismissed', Date.now().toString());
+  try {
+    localStorage.setItem('pwa-dismissed', Date.now().toString());
+    sessionStorage.setItem('pwa_session_shown', 'true');
+  } catch (_) {}
 
   // Trigger one-time animated voice search discovery guide
   _showVoiceSearchGuideOnce();
