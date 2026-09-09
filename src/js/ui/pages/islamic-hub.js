@@ -94,7 +94,7 @@ async function renderQuran(container){
  try{
   const meta=await loadQuranMeta();
   await mountDailyAyah(container);
-  box.innerHTML='<div class="ih-meta"><b>سور القرآن الكريم</b><span>'+meta.length+' سورة · اختر السورة لفتح صفحة مستقلة</span></div><div class="ih-surah-list">'+meta.map(s=>'<a class="ih-surah" href="quran-surah.html?surah='+s.number+'"><strong>'+esc(s.name)+'</strong><small>'+s.count+' آية · '+esc(s.type)+'</small></a>').join('')+'</div>';
+  box.innerHTML='<div class="ih-meta"><b>سور القرآن الكريم</b><span>'+meta.length+' سورة · اختر السورة لفتح صفحة مستقلة</span></div><div class="ih-surah-list">'+meta.map((s,i)=>'<a class="ih-surah" style="--i:'+i+'" href="quran-surah.html?surah='+s.number+'"><strong>'+esc(s.name)+'</strong><small>'+s.count+' آية · '+esc(s.type)+'</small></a>').join('')+'</div>';
  }catch(e){
   if(today)today.innerHTML='<div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text">تعذر تحميل الآية الآن.</div>';
   box.innerHTML='<div class="ih-empty">تعذر قراءة ملفات القرآن المحلية.</div>';console.error('[IslamicHub] Quran',e)
@@ -163,7 +163,7 @@ async function renderHadith(container){
  const box=container.querySelector('#ih-content');
  let removeTashkeel=false;
  const stripTashkeel=(s)=>String(s||'').replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g,'');
- box.innerHTML='<div class="ih-meta ih-hadith-toolbar"><b>كتب الحديث</b><span>17 كتاباً</span><button id="hadith-tashkeel" class="ih-btn ih-tashkeel-btn" type="button" aria-pressed="false">إزالة التشكيل</button></div><div class="ih-book-grid">'+HADITH_BOOKS.map(b=>'<button class="ih-book" data-id="'+b.id+'"><span class="ih-book-icon">۞</span><strong>'+esc(b.title)+'</strong><small>'+b.chapters+' فصول تقريباً</small></button>').join('')+'</div><div id="hadith-panel" class="ih-results"></div>';
+ box.innerHTML='<div class="ih-meta ih-hadith-toolbar"><b>كتب الحديث</b><span>17 كتاباً</span><button id="hadith-tashkeel" class="ih-btn ih-tashkeel-btn" type="button" aria-pressed="false">إزالة التشكيل</button></div><div class="ih-book-grid">'+HADITH_BOOKS.map((b,i)=>'<button class="ih-book" style="--i:'+i+'" data-id="'+b.id+'"><span class="ih-book-icon">۞</span><strong>'+esc(b.title)+'</strong><small>'+b.chapters+' فصول تقريباً</small></button>').join('')+'</div><div id="hadith-panel" class="ih-results"></div>';
  const panel=box.querySelector('#hadith-panel');
  const tashkeelBtn=box.querySelector('#hadith-tashkeel');
  tashkeelBtn.onclick=()=>{removeTashkeel=!removeTashkeel;tashkeelBtn.textContent=removeTashkeel?'إظهار التشكيل':'إزالة التشكيل';tashkeelBtn.setAttribute('aria-pressed',String(removeTashkeel));};
