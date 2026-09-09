@@ -299,7 +299,7 @@ function setupPwaInstall() {
 
   document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
     if (!_deferredInstallPrompt) {
-      showInstallInstructions();
+      hidePwaBanner();
       return;
     }
 

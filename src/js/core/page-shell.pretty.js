@@ -561,7 +561,20 @@ function _renderUser(user) {
   }
 }
 
-let _dp = null;
+let _dp = (typeof window !== 'undefined' && window.__deferredPwaPrompt) ? window.__deferredPwaPrompt : null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _dp = e;
+    window.__deferredPwaPrompt = e;
+  });
+  window.addEventListener('appinstalled', () => {
+    try { localStorage.setItem('pwa-installed', 'true'); } catch (_) {}
+    _dp = null;
+    if (typeof window !== 'undefined') window.__deferredPwaPrompt = null;
+    _dismissPwaBanner();
+  });
+}
 
 function _isAppInstalled() {
   if (typeof window === 'undefined') return false;
@@ -607,25 +620,24 @@ function _setupPwa() {
     }, 2000);
   }
 
-  if (_canShowPwaBanner()) {
-    const pwaDelay = isFirstTimeVoice ? 12000 : 5000;
-    window.addEventListener('beforeinstallprompt', e => {
-      e.preventDefault();
-      _dp = e;
-      // Don't show immediately on refresh - wait and ensure voice guide is done
-      setTimeout(() => {
-        if (_canShowPwaBanner() && !document.getElementById('voice-guide-callout')) {
-          _showPwaBanner();
-        }
-      }, pwaDelay);
-    });
+  const pwaDelay = isFirstTimeVoice ? 12000 : 5000;
 
-    // Fallback timer for browsers that don't trigger beforeinstallprompt (e.g. iOS Safari)
-    setTimeout(() => {
-      if (_canShowPwaBanner() && !document.getElementById('voice-guide-callout')) {
-        _showPwaBanner();
-      }
-    }, pwaDelay + 2000);
+  const triggerShowBanner = () => {
+    const promptEvent = _dp || (typeof window !== 'undefined' ? window.__deferredPwaPrompt : null);
+    if (!promptEvent) return; // Strict: ONLY show banner if native install prompt is ready!
+    if (_canShowPwaBanner() && !document.getElementById('voice-guide-callout')) {
+      _showPwaBanner();
+    }
+  };
+
+  if (_canShowPwaBanner()) {
+    if (_dp || (typeof window !== 'undefined' && window.__deferredPwaPrompt)) {
+      setTimeout(triggerShowBanner, pwaDelay);
+    } else if (typeof window !== 'undefined') {
+      window.addEventListener('beforeinstallprompt', () => {
+        setTimeout(triggerShowBanner, pwaDelay);
+      }, { once: true });
+    }
   }
 
   document.addEventListener('click', e => {
@@ -681,30 +693,27 @@ function _dismissPwaBanner() {
 }
 
 async function _triggerInstall() {
-  if (_dp) {
+  const promptEvent = _dp || (typeof window !== 'undefined' ? window.__deferredPwaPrompt : null);
+  if (promptEvent) {
     try {
-      _dp.prompt();
-      const { outcome } = await _dp.userChoice;
+      promptEvent.prompt();
+      const { outcome } = await promptEvent.userChoice;
       if (outcome === 'accepted') {
-        localStorage.setItem('pwa-installed', 'true');
+        try { localStorage.setItem('pwa-installed', 'true'); } catch (_) {}
         _dismissPwaBanner();
         toast.success('تم تثبيت التطبيق بنجاح! ستجده في شاشة تطبيقات هاتفك 🎉');
         setTimeout(() => _showVoiceSearchGuideOnce(), 1200);
       } else {
         _dismissPwaBanner();
       }
-      _dp = null;
     } catch (_) {
       _dismissPwaBanner();
+    } finally {
+      _dp = null;
+      if (typeof window !== 'undefined') window.__deferredPwaPrompt = null;
     }
   } else {
-    // If beforeinstallprompt hasn't fired
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    if (isIOS) {
-      toast.info('لتثبيت التطبيق على الآيفون: اضغط على زر المشاركة ⎋ ثم اختر "إضافة إلى الصفحة الرئيسية" ➕', 7000);
-    } else {
-      toast.info('لتثبيت التطبيق: افتح قائمة المتصفح (⋮) واختر "تثبيت التطبيق" (Install app)');
-    }
+    // Completely silent: zero toasts, zero hints, zero tooltips
     _dismissPwaBanner();
   }
 }
