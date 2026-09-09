@@ -3617,17 +3617,23 @@ body.admin-page .modal .btn-ghost:hover,
   line-height: 1.35;
   margin-bottom: var(--space-4);
   text-shadow: 0 2px 14px rgba(0,0,0,0.25);
-  min-height: 2.3em;
+  /* Reserved to fit the fully-typed headline (2 wrapped lines on narrow
+     mobile viewports) + the sub-headline line below, so the typewriter
+     animation never grows the box height mid-type and shifts content
+     beneath it (was the top CLS offender on mobile: ~0.09-0.115). */
+  min-height: 4.05em;
 }
 
 .hero__title-line1 {
   display: inline-block;
+  min-height: 2.7em;
 }
 
 .hero__title-line2 {
   display: block;
   margin-top: 4px;
   font-size: 0.9em;
+  min-height: 1.35em;
 }
 
 .hero__title-highlight {
