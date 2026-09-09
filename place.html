@@ -51,7 +51,7 @@
   <link rel="dns-prefetch" href="https://elmanzala.nonm1724.workers.dev"/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=a9881e28"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=4e0d1bca"/>
   <!-- Pre-Boot Instant Place Fetcher: Dispatched immediately during initial HTML parse -->
   <script>
     (function() {
@@ -86,11 +86,244 @@
             }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
           }
         }
-      } catch (e) {}
-    })();
-  </script>
+  <!-- Native Splash Loading Styles -->
+  <style id="splash-style">
+    #splash{
+      --theme:#1B4F72;
+      --theme2:#2E86C1;
+      --gold:#F1C40F;
+      --gold2:#F39C12;
+      --red:#E74C3C;
+      --cycle:6.4s;
+      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:99999;
+      background:radial-gradient(ellipse at center,#1F5A80 0%,#0E2A3D 65%,#061421 100%);
+      overflow:hidden;
+      font-family:'Cairo',sans-serif;
+    }
+    #splash.done{animation:splashOut .6s ease forwards;pointer-events:none;}
+    @keyframes splashOut{to{opacity:0;transform:scale(1.04);visibility:hidden;}}
+
+    /* خلفية */
+    #splash .particles{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+    #splash .particle{position:absolute;bottom:-20px;background:rgba(241,196,15,.5);border-radius:50%;animation:rise linear infinite;}
+    @keyframes rise{
+      0%{transform:translateY(0) translateX(0);opacity:0;}
+      10%{opacity:1;}90%{opacity:.5;}
+      100%{transform:translateY(-110vh) translateX(var(--drift,0px));opacity:0;}
+    }
+    #splash .radar{position:absolute;border-radius:50%;border:2px solid rgba(46,134,193,.3);animation:radarPulse 2.8s ease-out infinite;pointer-events:none;}
+    #splash .radar:nth-child(2){animation-delay:1s;}
+    #splash .radar:nth-child(3){animation-delay:2s;}
+    @keyframes radarPulse{0%{width:180px;height:180px;opacity:.7;border-color:rgba(241,196,15,.5);}100%{width:520px;height:520px;opacity:0;border-color:rgba(46,134,193,0);}}
+
+    /* منصة التجميع */
+    #splash .stage{position:relative;width:320px;height:420px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;}
+
+    /* الحلقة الخلفية الذهبية الثابتة النبض */
+    #splash .ring-bg{position:absolute;top:26px;width:180px;height:180px;border-radius:50%;
+      background:radial-gradient(circle at 35% 30%, #3f9bd6, #1B4F72 70%);
+      box-shadow:0 0 0 4px var(--gold), 0 20px 40px rgba(0,0,0,.5);
+      animation:ringPulse 2.4s ease-in-out infinite;
+    }
+    @keyframes ringPulse{0%,100%{box-shadow:0 0 0 4px var(--gold),0 20px 40px rgba(0,0,0,.5);}50%{box-shadow:0 0 0 6px var(--gold2),0 25px 55px rgba(0,0,0,.6);}}
+
+    /* الدبوس */
+    #splash .pin{position:absolute;top:8px;width:70px;height:82px;z-index:5;
+      animation:pinAssemble var(--cycle) cubic-bezier(.5,0,.2,1) infinite;
+      filter:drop-shadow(0 10px 14px rgba(0,0,0,.5));
+    }
+    @keyframes pinAssemble{
+      0%{transform:translateY(-260px) rotate(-30deg) scale(.5);opacity:0;}
+      14%{transform:translateY(10px) rotate(6deg) scale(1.08);opacity:1;}
+      18%{transform:translateY(0) rotate(0deg) scale(1);opacity:1;}
+      70%{transform:translateY(0) rotate(0deg) scale(1);opacity:1;}
+      86%{transform:translateY(-260px) rotate(24deg) scale(.5);opacity:0;}
+      100%{transform:translateY(-260px) rotate(-30deg) scale(.5);opacity:0;}
+    }
+    #splash .pin svg{width:100%;height:100%;}
+
+    /* كلمة "دليل" + أيقونة بحث */
+    #splash .row-daleel{position:absolute;top:112px;display:flex;align-items:center;gap:8px;z-index:4;
+      animation:fromRight var(--cycle) cubic-bezier(.5,0,.2,1) infinite;
+    }
+    @keyframes fromRight{
+      0%{transform:translateX(340px) rotate(8deg);opacity:0;}
+      20%{transform:translateX(-10px) rotate(-2deg);opacity:1;}
+      24%{transform:translateX(0) rotate(0);opacity:1;}
+      70%{transform:translateX(0) rotate(0);opacity:1;}
+      84%{transform:translateX(-340px) rotate(-8deg);opacity:0;}
+      100%{transform:translateX(340px) rotate(8deg);opacity:0;}
+    }
+    #splash .row-daleel .mag{width:20px;height:20px;border:3px solid var(--gold);border-radius:50%;position:relative;}
+    #splash .row-daleel .mag::after{content:'';position:absolute;width:9px;height:3px;background:var(--gold);border-radius:2px;left:16px;top:15px;transform:rotate(45deg);}
+    #splash .row-daleel span{font-size:26px;font-weight:800;color:var(--gold);letter-spacing:1px;text-shadow:0 2px 6px rgba(0,0,0,.5);}
+
+    /* كلمة "المنزلة والمطرية" */
+    #splash .row-main{position:absolute;top:150px;z-index:4;
+      animation:fromLeft var(--cycle) cubic-bezier(.5,0,.2,1) infinite;
+    }
+    @keyframes fromLeft{
+      0%{transform:translateX(-360px) rotate(-8deg) scale(.85);opacity:0;}
+      26%{transform:translateX(12px) rotate(2deg) scale(1.04);opacity:1;}
+      30%{transform:translateX(0) rotate(0) scale(1);opacity:1;}
+      70%{transform:translateX(0) rotate(0) scale(1);opacity:1;}
+      82%{transform:translateX(360px) rotate(8deg) scale(.85);opacity:0;}
+      100%{transform:translateX(-360px) rotate(-8deg) scale(.85);opacity:0;}
+    }
+    #splash .row-main span{
+      font-size:29px;font-weight:900;color:#fff;
+      background:linear-gradient(180deg,#ffffff,#cfe8ff);
+      -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+      text-shadow:0 2px 0 rgba(0,0,0,.25);
+      white-space:nowrap;
+    }
+
+    /* كلمة "الرقمي" */
+    #splash .row-sub{position:absolute;top:196px;z-index:4;
+      animation:fromBottom var(--cycle) cubic-bezier(.5,0,.2,1) infinite;
+    }
+    @keyframes fromBottom{
+      0%{transform:translateY(120px) scale(.6);opacity:0;}
+      32%{transform:translateY(-6px) scale(1.05);opacity:1;}
+      36%{transform:translateY(0) scale(1);opacity:1;}
+      70%{transform:translateY(0) scale(1);opacity:1;}
+      80%{transform:translateY(120px) scale(.6);opacity:0;}
+      100%{transform:translateY(120px) scale(.6);opacity:0;}
+    }
+    #splash .row-sub span{
+      display:inline-block;padding:3px 18px;border-radius:20px;
+      background:linear-gradient(90deg,var(--red),#c0392b);
+      color:#fff;font-size:14px;font-weight:700;letter-spacing:3px;
+      box-shadow:0 6px 16px rgba(231,76,60,.45);
+    }
+
+    /* شارة الدومين */
+    #splash .row-domain{position:absolute;top:250px;z-index:4;
+      animation:scaleIn var(--cycle) cubic-bezier(.34,1.56,.64,1) infinite;
+    }
+    @keyframes scaleIn{
+      0%{transform:scale(0) rotate(-10deg);opacity:0;}
+      40%{transform:scale(0) rotate(-10deg);opacity:0;}
+      48%{transform:scale(1.15) rotate(3deg);opacity:1;}
+      52%{transform:scale(1) rotate(0);opacity:1;}
+      70%{transform:scale(1) rotate(0);opacity:1;}
+      78%{transform:scale(0) rotate(10deg);opacity:0;}
+      100%{transform:scale(0) rotate(-10deg);opacity:0;}
+    }
+    #splash .row-domain span{
+      display:flex;align-items:center;gap:6px;
+      background:#fff;color:var(--theme);
+      padding:6px 16px;border-radius:30px;
+      font-size:13px;font-weight:700;
+      box-shadow:0 8px 20px rgba(0,0,0,.35);
+    }
+    #splash .row-domain .dot{width:8px;height:8px;border-radius:50%;background:var(--theme2);}
+
+    /* شرارات تجميع */
+    #splash .spark{position:absolute;top:150px;width:6px;height:6px;border-radius:50%;background:var(--gold);
+      animation:sparkPop var(--cycle) linear infinite;opacity:0;
+    }
+    @keyframes sparkPop{
+      0%,17%{opacity:0;transform:scale(0);}
+      19%{opacity:1;transform:scale(2.5);}
+      25%{opacity:0;transform:scale(0);}
+      100%{opacity:0;}
+    }
+
+    /* شريط الحالة السفلي */
+    #splash .status{position:absolute;bottom:46px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+    #splash .loader-track{width:200px;height:5px;background:rgba(255,255,255,.12);border-radius:10px;overflow:hidden;position:relative;}
+    #splash .loader-fill{position:absolute;inset:0;width:40%;border-radius:10px;
+      background:linear-gradient(90deg,var(--red),var(--gold));
+      animation:indet 1.6s ease-in-out infinite;
+    }
+    @keyframes indet{
+      0%{left:-40%;width:40%;}
+      50%{width:60%;}
+      100%{left:100%;width:40%;}
+    }
+    #splash .loader-text{font-size:12px;color:#AED6F1;letter-spacing:1px;}
+    #splash .footer-sign{position:absolute;bottom:16px;font-size:11px;color:rgba(255,255,255,.35);}
+  </style>
 </head>
 <body class="">
+
+<!-- Native Animated Loading Screen (Shown during network delay / cold-start) -->
+<div id="splash" aria-hidden="true">
+  <div class="particles" id="splash-particles"></div>
+  <div class="radar"></div><div class="radar"></div><div class="radar"></div>
+
+  <div class="stage">
+    <div class="ring-bg"></div>
+
+    <div class="pin">
+      <svg viewBox="0 0 70 82" fill="none">
+        <path d="M35 2C17 2 3 16 3 34C3 58 35 80 35 80S67 58 67 34C67 16 53 2 35 2Z" fill="#E74C3C" stroke="#C0392B" stroke-width="2"/>
+        <circle cx="35" cy="33" r="15" fill="#fff"/>
+        <circle cx="35" cy="33" r="9" fill="#2E86C1"/>
+      </svg>
+    </div>
+
+    <div class="row-daleel"><div class="mag"></div><span>دليل</span></div>
+    <div class="row-main"><span>المنزلة والمطرية</span></div>
+    <div class="row-sub"><span>الرقمي</span></div>
+    <div class="row-domain"><span><span class="dot"></span>dalilmanzala.com</span></div>
+
+    <div class="spark" style="left:40px;"></div>
+    <div class="spark" style="right:40px;top:190px;"></div>
+    <div class="spark" style="left:60px;top:250px;"></div>
+  </div>
+
+  <div class="status">
+    <div class="loader-track"><div class="loader-fill"></div></div>
+    <div class="loader-text">جارِ تحميل الصفحة المطلوبة...</div>
+  </div>
+
+  <div class="footer-sign">dalilmanzala.com</div>
+</div>
+
+<script>
+  (function() {
+    try {
+      if (window.__INSTANT_PLACE__) {
+        var sp = document.getElementById('splash');
+        if (sp) sp.style.display = 'none';
+        return;
+      }
+      var box = document.getElementById('splash-particles');
+      if (box) {
+        for (var i = 0; i < 24; i++) {
+          var p = document.createElement('div');
+          p.className = 'particle';
+          var s = Math.random() * 4 + 2;
+          p.style.width = s + 'px';
+          p.style.height = s + 'px';
+          p.style.left = (Math.random() * 100) + '%';
+          p.style.setProperty('--drift', (Math.random() * 80 - 40) + 'px');
+          p.style.animationDuration = (Math.random() * 4 + 4) + 's';
+          p.style.animationDelay = (Math.random() * 4) + 's';
+          box.appendChild(p);
+        }
+      }
+    } catch (_) {}
+  })();
+
+  window.hideSplash = function() {
+    var s = document.getElementById('splash');
+    if (s && !s.classList.contains('done')) {
+      s.classList.add('done');
+      setTimeout(function() {
+        if (s && s.parentNode) s.parentNode.removeChild(s);
+      }, 650);
+    }
+  };
+
+  // Safe fallback if network stalls
+  setTimeout(function() {
+    if (typeof window.hideSplash === 'function') window.hideSplash();
+  }, 8000);
+</script>
+
 <div id="app">
 
   <!-- Header injected by JS -->
@@ -143,9 +376,9 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=a9881e28';
-  import { renderPlacePage } from './src/js/ui/pages/place.js?v=a9881e28';
-  import { getCurrentUser } from './src/js/core/auth.js?v=a9881e28';
+  import { initPage } from './src/js/core/page-shell.js?v=4e0d1bca';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=4e0d1bca';
+  import { getCurrentUser } from './src/js/core/auth.js?v=4e0d1bca';
 
   (async () => {
     const params = new URLSearchParams(location.search);
@@ -182,6 +415,10 @@
             <button onclick="location.reload()" style="padding:.6rem 1.5rem;border-radius:8px;background:#1B4F72;color:#fff;border:none;cursor:pointer;font-weight:700">إعادة التحميل</button>
           </div>
         `;
+      }
+    } finally {
+      if (typeof window.hideSplash === 'function') {
+        window.hideSplash();
       }
     }
 

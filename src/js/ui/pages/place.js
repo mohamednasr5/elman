@@ -5,14 +5,14 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG } from '../../core/db.js?v=a9881e28';
+import { getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG } from '../../core/db.js?v=4e0d1bca';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
-import { submitVerificationRequest } from '../../services/places.service.js?v=a9881e28';
+import { submitVerificationRequest } from '../../services/places.service.js?v=4e0d1bca';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
@@ -632,6 +632,13 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     if (isAtm) {
       setupAtmPollInteractivity(placeId, place.atmPoll);
     }
+
+    // Dismiss splash loading animation if active
+    try {
+      if (typeof window !== 'undefined' && typeof window.hideSplash === 'function') {
+        window.hideSplash();
+      }
+    } catch (_) {}
 
     // ── Non-Blocking Background Hydration ──
 
