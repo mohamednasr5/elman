@@ -12,7 +12,7 @@ export { idbGetAll, idbPutBulk, idbPut, idbGet, idbGetByIndex, idbDelete, idbCle
 const _dbMemoryCache = new Map();
 const _dbPendingPromises = new Map();
 
-function getCached(key, maxAgeMs = 600000) {
+export function getCached(key, maxAgeMs = 600000) {
   // 1. In-Memory Cache (0.01ms)
   const mem = _dbMemoryCache.get(key);
   if (mem && (Date.now() - mem.ts < maxAgeMs)) {
@@ -767,6 +767,22 @@ export async function getPlaceBySlug(slug) {
         }
       }).catch(() => {});
       return localPlace;
+    }
+  // Tier 0.5: Pre-Boot In-Flight Promise (initiated in HTML <head> to eliminate network waterfall)
+  try {
+    if (typeof window !== 'undefined' && window.__PLACE_PREFETCH_PROMISE__) {
+      const prefetched = await window.__PLACE_PREFETCH_PROMISE__;
+      window.__PLACE_PREFETCH_PROMISE__ = null;
+      if (prefetched?.success && prefetched.data) {
+        const p = normalizeTursoPlace(prefetched.data);
+        if (p && !isPlaceBanned(p)) {
+          idbPut(STORES.PLACES, p).catch(() => {});
+          try {
+            sessionStorage.setItem('instant_place_' + clean, JSON.stringify(p));
+          } catch (_) {}
+          return p;
+        }
+      }
     }
   } catch (_) {}
 

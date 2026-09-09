@@ -5,14 +5,14 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG } from '../../core/db.js?v=7ccecd72';
+import { getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG } from '../../core/db.js?v=1cd39ad1';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
-import { submitVerificationRequest } from '../../services/places.service.js?v=7ccecd72';
+import { submitVerificationRequest } from '../../services/places.service.js?v=1cd39ad1';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
@@ -97,10 +97,25 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     const placeId = place.id || place._key;
     const isHammad = (place.slug === HAMMAD_PLACE_SLUG || place.name?.includes('محمد حماد'));
 
-    // Fast categories retrieval (cached in IDB / memory)
-    const categories = await getCategories().catch(() => []);
-    const category = categories?.find(c => c._key === place.categoryId || c.slug === place.categoryId);
-    const catInfo = resolvePlaceCategoryInfo(place, category);
+    // Fast categories retrieval (cached in IDB / memory - non-blocking for instant render)
+    let categories = getCached('categories_all') || [];
+    let category = categories.find(c => c._key === place.categoryId || c.slug === place.categoryId);
+    let catInfo = resolvePlaceCategoryInfo(place, category);
+
+    // Asynchronously resolve & update category metadata if not present in instant cache
+    if (!categories.length) {
+      getCategories().then(cats => {
+        if (!cats?.length) return;
+        const freshCat = cats.find(c => c._key === place.categoryId || c.slug === place.categoryId);
+        if (freshCat) {
+          const freshCatInfo = resolvePlaceCategoryInfo(place, freshCat);
+          const badgeEl = $container.querySelector('.place-badge--category');
+          if (badgeEl && freshCatInfo.name) {
+            badgeEl.innerHTML = `${freshCatInfo.icon ? `<span style="margin-left:4px">${freshCatInfo.icon}</span>` : ''}${freshCatInfo.name}`;
+          }
+        }
+      }).catch(() => {});
+    }
     const isFollowing = false; // Resolved asynchronously
 
     // ── Initial Reviews / Ratings Summary (0ms) ──
@@ -201,7 +216,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       <!-- Place Hero Cover -->
       <section class="place-hero">
         ${placeCover
-          ? `<img src="${escAttr(placeCover)}" alt="${escAttr(place.name)}" class="place-hero__cover" />`
+          ? `<img src="${escAttr(placeCover)}" alt="${escAttr(place.name)}" class="place-hero__cover" fetchpriority="high" decoding="async" />`
           : `<div class="place-hero__cover-placeholder">${catInfo.icon || '🏪'}</div>`
         }
         <div class="place-hero__overlay"></div>
@@ -216,7 +231,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             <div class="place-header-card__top">
               <div class="place-logo">
                 ${placeLogo
-                  ? `<img src="${escAttr(placeLogo)}" alt="${escAttr(place.name)} logo" />`
+                  ? `<img src="${escAttr(placeLogo)}" alt="${escAttr(place.name)} logo" decoding="async" />`
                   : `<div class="place-logo__placeholder">${catInfo.icon || '🏪'}</div>`
                 }
               </div>

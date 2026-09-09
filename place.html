@@ -47,9 +47,48 @@
   <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="preconnect" href="https://elmanzala.nonm1724.workers.dev" crossorigin/>
+  <link rel="dns-prefetch" href="https://elmanzala.nonm1724.workers.dev"/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=7ccecd72"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=1cd39ad1"/>
+  <!-- Pre-Boot Instant Place Fetcher: Dispatched immediately during initial HTML parse -->
+  <script>
+    (function() {
+      try {
+        var params = new URLSearchParams(location.search);
+        var slug = (params.get('slug') || params.get('id') || '').trim();
+        if (slug && slug !== 'undefined' && slug !== 'null') {
+          var clean = slug.toLowerCase();
+          var cached = null;
+          var raw = sessionStorage.getItem('instant_place_' + clean);
+          if (raw) {
+            try { cached = JSON.parse(raw); } catch (_) {}
+          }
+          if (!cached) {
+            var rawLatest = sessionStorage.getItem('instant_place_latest');
+            if (rawLatest) {
+              try {
+                var p = JSON.parse(rawLatest);
+                if (p && (String(p.slug || '').toLowerCase() === clean || String(p.id || '').toLowerCase() === clean)) {
+                  cached = p;
+                }
+              } catch (_) {}
+            }
+          }
+          if (cached) {
+            window.__INSTANT_PLACE__ = cached;
+            if (cached.name) document.title = cached.name + ' | دليل المنزلة والمطرية الرقمي';
+          } else {
+            // Dispatches parallel to stylesheet & module download
+            window.__PLACE_PREFETCH_PROMISE__ = fetch('https://elmanzala.nonm1724.workers.dev/api/places?slug=' + encodeURIComponent(slug), {
+              headers: { 'Accept': 'application/json' }
+            }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body class="">
 <div id="app">
@@ -57,46 +96,28 @@
   <!-- Header injected by JS -->
   <div id="header-slot"></div>
 
-  <!-- Instant Place Pre-Hydration (0ms navigation) -->
-  <script>
-    (function() {
-      try {
-        var params = new URLSearchParams(location.search);
-        var slug = (params.get('slug') || params.get('id') || '').trim();
-        var clean = slug.toLowerCase();
-        var cached = null;
-        if (clean) {
-          var raw = sessionStorage.getItem('instant_place_' + clean);
-          if (raw) cached = JSON.parse(raw);
-        }
-        if (!cached) {
-          var rawLatest = sessionStorage.getItem('instant_place_latest');
-          if (rawLatest) {
-            var parsedLatest = JSON.parse(rawLatest);
-            if (parsedLatest && (
-              String(parsedLatest.slug || '').toLowerCase() === clean ||
-              String(parsedLatest.id || '').toLowerCase() === clean ||
-              !clean
-            )) {
-              cached = parsedLatest;
-            }
-          }
-        }
-        if (cached) {
-          window.__INSTANT_PLACE__ = cached;
-          if (cached.name) {
-            document.title = cached.name + ' | دليل المنزلة والمطرية الرقمي';
-          }
-        }
-      } catch (e) {}
-    })();
-  </script>
-
-  <!-- Page Content -->
+  <!-- Page Content: Realistic Native Skeleton for instant perceived FCP (<100ms) -->
   <main class="page-main" id="page-container" role="main">
-    <div style="display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:1rem">
-      <div class="spinner spinner-lg"></div>
-      <p style="color:var(--text-muted);font-size:.9rem">جاري التحميل...</p>
+    <div class="place-hero skeleton" style="min-height:240px;background:linear-gradient(135deg,#1B4F72 0%,#0E2F44 100%);"></div>
+    <div class="container" style="max-width:var(--container-xl, 1200px);margin:0 auto;padding:1rem;position:relative;z-index:10;">
+      <div class="place-header-card" style="margin-top:-45px;padding:1.25rem;background:#fff;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.06);">
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <div class="skeleton skeleton-circle" style="width:72px;height:72px;flex-shrink:0;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.08);"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:.6rem;">
+            <div class="skeleton" style="height:22px;width:75%;border-radius:6px;"></div>
+            <div class="skeleton" style="height:14px;width:45%;border-radius:4px;"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:.75rem;margin-top:1.25rem;">
+          <div class="skeleton" style="flex:1;height:44px;border-radius:12px;"></div>
+          <div class="skeleton" style="flex:1;height:44px;border-radius:12px;"></div>
+          <div class="skeleton" style="flex:1;height:44px;border-radius:12px;"></div>
+        </div>
+      </div>
+      <div style="margin-top:1.25rem;display:flex;flex-direction:column;gap:1rem;">
+        <div class="skeleton" style="height:120px;border-radius:16px;"></div>
+        <div class="skeleton" style="height:160px;border-radius:16px;"></div>
+      </div>
     </div>
   </main>
 
@@ -122,9 +143,9 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=7ccecd72';
-  import { renderPlacePage } from './src/js/ui/pages/place.js?v=7ccecd72';
-  import { getCurrentUser } from './src/js/core/auth.js?v=7ccecd72';
+  import { initPage } from './src/js/core/page-shell.js?v=1cd39ad1';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=1cd39ad1';
+  import { getCurrentUser } from './src/js/core/auth.js?v=1cd39ad1';
 
   (async () => {
     const params = new URLSearchParams(location.search);

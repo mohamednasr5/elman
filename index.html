@@ -37,9 +37,11 @@
   <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="preconnect" href="https://elmanzala.nonm1724.workers.dev" crossorigin/>
+  <link rel="dns-prefetch" href="https://elmanzala.nonm1724.workers.dev"/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=7ccecd72"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=1cd39ad1"/>
 
   <!-- Schema.org WebSite & Local Coverage -->
   <script type="application/ld+json">
@@ -98,11 +100,24 @@
   <!-- Header — injected by page-shell.js -->
   <div id="header-slot"></div>
 
-  <!-- Homepage Content -->
+  <!-- Homepage Content: Instant Skeleton for sub-100ms FCP -->
   <main class="page-main" id="page-container" role="main">
-    <div style="display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:1rem">
-      <div class="spinner spinner-lg"></div>
-      <p style="color:var(--text-muted);font-size:.9rem">جاري التحميل...</p>
+    <div style="padding:2.5rem 1rem;text-align:center;background:linear-gradient(180deg,rgba(27,79,114,0.06) 0%,transparent 100%);">
+      <div style="max-width:600px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:.85rem;">
+        <div class="skeleton" style="height:32px;width:65%;border-radius:8px;"></div>
+        <div class="skeleton" style="height:16px;width:45%;border-radius:6px;"></div>
+        <div class="skeleton" style="height:50px;width:100%;border-radius:16px;margin-top:.5rem;"></div>
+      </div>
+    </div>
+    <div class="container" style="padding:1.5rem 1rem;max-width:var(--container-xl, 1200px);margin:0 auto;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.75rem;">
+        <div class="skeleton" style="height:86px;border-radius:14px;"></div>
+        <div class="skeleton" style="height:86px;border-radius:14px;"></div>
+        <div class="skeleton" style="height:86px;border-radius:14px;"></div>
+        <div class="skeleton" style="height:86px;border-radius:14px;"></div>
+        <div class="skeleton" style="height:86px;border-radius:14px;"></div>
+        <div class="skeleton" style="height:86px;border-radius:14px;"></div>
+      </div>
     </div>
   </main>
 
@@ -118,23 +133,30 @@
 </div>
 
 <!-- Firebase SDK (compat) -->
-  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=7ccecd72';
-  import { renderHomePage } from './src/js/ui/pages/home.js?v=7ccecd72';
+  import { initPage } from './src/js/core/page-shell.js?v=1cd39ad1';
+  import { renderHomePage } from './src/js/ui/pages/home.js?v=1cd39ad1';
+  const pc = document.getElementById('page-container');
+
+  // Concurrently initialize page shell (header, bottom-nav, pwa) in parallel
+  const shellPromise = initPage('index.html').catch(err => {
+    console.warn('[Bootstrap] Page shell non-fatal error:', err);
+  });
+
   try {
-      await initPage('index.html');
-      // Public homepage must not wait for Auth before rendering.
-      void renderHomePage(document.getElementById('page-container'), { user: null });
-    } catch (err) {
-      console.error('[Bootstrap] Fatal error during page init:', err);
-      const pc = document.getElementById('page-container');
-      if (pc) {
-        pc.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1rem;text-align:center;padding:2rem;"><p style="font-size:1.1rem;color:var(--text-muted,#888);">حدث خطأ أثناء تحميل الصفحة، يرجى إعادة المحاولة</p><button onclick="location.reload()" style="padding:.6rem 1.5rem;border-radius:8px;background:#1B4F72;color:#fff;border:none;cursor:pointer;">إعادة التحميل</button></div>';
-      }
+    // Render public homepage structure immediately without waiting for shell completion
+    renderHomePage(pc, { user: null });
+  } catch (err) {
+    console.error('[Bootstrap] Fatal error during home render:', err);
+    if (pc) {
+      pc.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1rem;text-align:center;padding:2rem;"><p style="font-size:1.1rem;color:var(--text-muted,#888);">حدث خطأ أثناء تحميل الصفحة، يرجى إعادة المحاولة</p><button onclick="location.reload()" style="padding:.6rem 1.5rem;border-radius:8px;background:#1B4F72;color:#fff;border:none;cursor:pointer;">إعادة التحميل</button></div>';
     }
+  }
+
+  await shellPromise;
 </script>
 </body>
 </html>

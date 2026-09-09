@@ -47,9 +47,11 @@
   <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="preconnect" href="https://elmanzala.nonm1724.workers.dev" crossorigin/>
+  <link rel="dns-prefetch" href="https://elmanzala.nonm1724.workers.dev"/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=7ccecd72"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=1cd39ad1"/>
 </head>
 <body class="">
 <div id="app">
@@ -57,11 +59,21 @@
   <!-- Header injected by JS -->
   <div id="header-slot"></div>
 
-  <!-- Page Content -->
+  <!-- Page Content: Instant Skeleton -->
   <main class="page-main" id="page-container" role="main">
-    <div style="display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:1rem">
-      <div class="spinner spinner-lg"></div>
-      <p style="color:var(--text-muted);font-size:.9rem">جاري التحميل...</p>
+    <div class="container" style="padding:1.5rem 1rem;max-width:var(--container-xl, 1200px);margin:0 auto;">
+      <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;overflow-x:auto;padding-bottom:.5rem;">
+        <div class="skeleton" style="height:38px;width:90px;border-radius:20px;flex-shrink:0;"></div>
+        <div class="skeleton" style="height:38px;width:110px;border-radius:20px;flex-shrink:0;"></div>
+        <div class="skeleton" style="height:38px;width:100px;border-radius:20px;flex-shrink:0;"></div>
+        <div class="skeleton" style="height:38px;width:95px;border-radius:20px;flex-shrink:0;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">
+        <div class="skeleton" style="height:190px;border-radius:16px;"></div>
+        <div class="skeleton" style="height:190px;border-radius:16px;"></div>
+        <div class="skeleton" style="height:190px;border-radius:16px;"></div>
+        <div class="skeleton" style="height:190px;border-radius:16px;"></div>
+      </div>
     </div>
   </main>
 
@@ -87,14 +99,17 @@
 
 <!-- Page Module -->
 <script type="module">
-
   import { initPage } from './src/js/core/page-shell.js';
   import { renderPlacesPage } from './src/js/ui/pages/places.js';
-  await initPage('places.html');
+  const pc = document.getElementById('page-container');
+  const shellPromise = initPage('places.html').catch(err => {
+    console.warn('[Bootstrap] Page shell non-fatal error:', err);
+  });
   const params = new URLSearchParams(location.search);
-  await renderPlacesPage(document.getElementById('page-container'), {
+  await renderPlacesPage(pc, {
     query: { q: params.get('q')||'', category: params.get('category')||'', filter: params.get('filter')||'' }
   });
+  await shellPromise;
 </script>
 </body>
 </html>
