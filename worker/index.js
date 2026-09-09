@@ -219,11 +219,30 @@ export default {
     if (ctx?.waitUntil) {
       ctx.waitUntil(ensureSlugsHealedInTurso(env));
     }
+    const isHead = request.method === 'HEAD';
+    const effectiveRequest = isHead ? new Request(request.url, {
+      method: 'GET',
+      headers: request.headers,
+      cf: request.cf
+    }) : request;
+
+    const response = await this.handleRequest(effectiveRequest, env, ctx);
+    if (isHead) {
+      return new Response(null, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      });
+    }
+    return response;
+  },
+
+  async handleRequest(request, env, ctx) {
     const url = new URL(request.url);
-        if (url.protocol === 'http:') {
-          url.protocol = 'https:';
-          return Response.redirect(url.toString(), 301);
-        }
+    if (url.protocol === 'http:') {
+      url.protocol = 'https:';
+      return Response.redirect(url.toString(), 301);
+    }
         const origin = request.headers.get('Origin') || '';
     const allowedOrigins = ['https://dalilmanzala.com', 'https://www.dalilmanzala.com', 'http://localhost:8788', 'http://127.0.0.1:8788'];
     const isAllowedOrigin = allowedOrigins.includes(origin) ||
@@ -451,16 +470,26 @@ try {
         headers: { Accept: accept || 'image/avif,image/webp,image/*,*/*;q=0.8' }
       });
       let response = await fetch(imageRequest, { cf: { image: imageOptions } });
-      if (!response.ok) return new Response('Image transformation failed', { status: response.status || 502 });
+      if (response.ok) {
+        response = new Response(response.body, response);
+        response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        response.headers.set('Vary', 'Accept');
+        response.headers.set('X-Image-Resize', width + 'x' + (height || ''));
+        return response;
+      }
 
-      response = new Response(response.body, response);
-      response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-      response.headers.set('Vary', 'Accept');
-      response.headers.set('X-Image-Resize', width + 'x' + (height || ''));
-      return response;
+      // Fallback: fetch original image directly from source if transformation fails
+      console.warn('[Image Resize] cf.image returned status:', response.status, 'falling back to source');
+      const fallbackResponse = await fetch(source.toString());
+      if (fallbackResponse.ok) {
+        const fallback = new Response(fallbackResponse.body, fallbackResponse);
+        fallback.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        return fallback;
+      }
+      return Response.redirect(source.toString(), 302);
     } catch (err) {
-      console.warn('[Image Resize] failed:', err?.message || err);
-      return new Response('Image transformation failed', { status: 502 });
+      console.warn('[Image Resize] failed, redirecting to source:', err?.message || err);
+      return Response.redirect(source.toString(), 302);
     }
   }
 
@@ -3270,7 +3299,7 @@ async function ensureSlugsHealedInTurso(env) {
       ['dktwr-by-sy-lkhdmat-alkmbywtr-walantrnt', '-P0hhX-OTkLMFSSYzWIp']
     ];
     for (const [cleanSlug, id] of updates) {
-      await db.prepare('UPDATE places SET slug = ? WHERE id = ? AND (slug = id OR slug LIKE "p_%" OR slug LIKE "-P0%")').bind(cleanSlug, id).run().catch(() => {});
+      await db.prepare("UPDATE places SET slug = ? WHERE id = ? AND (slug = id OR slug LIKE 'p_%' OR slug LIKE '-P0%')").bind(cleanSlug, id).run().catch(() => {});
     }
   } catch (err) {
     console.warn('[ensureSlugsHealedInTurso] Notice:', err.message);
