@@ -598,36 +598,34 @@ function _canShowPwaBanner() {
 }
 
 function _setupPwa() {
-  // Voice search guide check: show once for first-time users
-  try {
-    if (!localStorage.getItem('manzala_voice_guide_seen')) {
-      setTimeout(() => {
-        const b = document.getElementById('pwa-banner');
-        if (!b || b.hidden || !b.classList.contains('visible')) {
-          _showVoiceSearchGuideOnce();
-        }
-      }, 3500);
-    }
-  } catch (_) {}
+  const isFirstTimeVoice = !localStorage.getItem('manzala_voice_guide_seen');
+
+  // Voice search guide check: show once for first-time users after 2 seconds
+  if (isFirstTimeVoice) {
+    setTimeout(() => {
+      _showVoiceSearchGuideOnce();
+    }, 2000);
+  }
 
   if (_canShowPwaBanner()) {
+    const pwaDelay = isFirstTimeVoice ? 12000 : 5000;
     window.addEventListener('beforeinstallprompt', e => {
       e.preventDefault();
       _dp = e;
-      // Don't show immediately on refresh - wait 5s and re-check conditions
+      // Don't show immediately on refresh - wait and ensure voice guide is done
       setTimeout(() => {
-        if (_canShowPwaBanner()) {
+        if (_canShowPwaBanner() && !document.getElementById('voice-guide-callout')) {
           _showPwaBanner();
         }
-      }, 5000);
+      }, pwaDelay);
     });
 
     // Fallback timer for browsers that don't trigger beforeinstallprompt (e.g. iOS Safari)
     setTimeout(() => {
-      if (_canShowPwaBanner()) {
+      if (_canShowPwaBanner() && !document.getElementById('voice-guide-callout')) {
         _showPwaBanner();
       }
-    }, 7000);
+    }, pwaDelay + 2000);
   }
 
   document.addEventListener('click', e => {
@@ -742,6 +740,14 @@ function _showVoiceSearchGuideOnce() {
 
     // Remove any previous instance
     document.getElementById('voice-guide-callout')?.remove();
+
+    // Ensure PWA banner does not overlap the voice guide
+    const pwaBanner = document.getElementById('pwa-banner');
+    if (pwaBanner && pwaBanner.classList.contains('visible')) {
+      pwaBanner.classList.remove('visible');
+      pwaBanner.style.display = 'none';
+      pwaBanner.hidden = true;
+    }
 
     const callout = document.createElement('div');
     callout.className = 'voice-guide-callout';
