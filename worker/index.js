@@ -209,10 +209,14 @@ export default {
       createTursoDB(env).prepare('UPDATE places SET is_sponsored = 0, is_featured = 0 WHERE is_sponsored = 1 AND sponsored_until IS NOT NULL AND sponsored_until < ?')
         .bind(Date.now()).run().catch(() => {})
     );
+    ctx.waitUntil(ensureSlugsHealedInTurso(env));
     ctx.waitUntil(sendDailyQuranReminder(env).catch(err => console.error('[Daily Quran Push]', err)));
   },
 
   async fetch(request, env, ctx) {
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(ensureSlugsHealedInTurso(env));
+    }
     const url = new URL(request.url);
         if (url.protocol === 'http:') {
           url.protocol = 'https:';
@@ -606,7 +610,7 @@ try {
     if (slugParam) {
       const cleanSlug = slugParam.toLowerCase();
       const cache = caches.default;
-      const cacheUrl = new URL(`https://cache.local/api/places?slug=${encodeURIComponent(cleanSlug)}`);
+      const cacheUrl = new URL(`https://cache.local/api/places/v4?slug=${encodeURIComponent(cleanSlug)}`);
       cacheUrl.searchParams.set('v', await getDataVersion(env));
       const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
@@ -3178,13 +3182,54 @@ function slugifyWorker(text) {
 }
 
 /**
- * Universal Resilient Place Finder across all URL formats:
- * - Exact slug / exact ID
- * - Short clean slug prefix (e.g. dktwr-ahmd-anbr matching dktwr-ahmd-anbr-vCTDc_)
- * - Stripped hash suffix
- * - English name / name_en matching
- * - Transliterated Arabic business name matching
- * - Self-healing: permanently fixes ugly ID slugs in Turso
+ * Known Place Slug/ID mapping for deterministic zero-latency resolution
+ */
+const KNOWN_PLACE_ALIASES = {
+  'dktwr-ahmd-hmad': 'p_1788904946234_ggxkgg',
+  'dr-ahmed-hammad': 'p_1788904946234_ggxkgg',
+  'mtbkh-eyma-llaakl': 'p_1788801925745_vuxmjs',
+  'mtbkh-eymy-llaakl-albyty': 'p_1788801925745_vuxmjs',
+  'alshykh-alhsan-mstfa-abwzyd': 'p_1788654913797_l7g6nr',
+  'alhsan-lsyana-alhwataf-almhmwla': '-P03LX9MledW_z7QfyHO',
+  'almhnds-mhmd-hmad': 'p_1788742873778_6k8a9v',
+  'mhlat-ghnym-llahzya': 'p_1788893499969_pk4iay',
+  'sntr-alghdban-llmlabs-algahza': '-P0XRSq2etJxs31mul5O',
+  'dktwr-by-sy-lkhdmat-alkmbywtr-walantrnt': '-P0hhX-OTkLMFSSYzWIp'
+};
+
+let _hasHealedSlugs = false;
+async function ensureSlugsHealedInTurso(env) {
+  if (_hasHealedSlugs) return;
+  _hasHealedSlugs = true;
+  try {
+    const db = createTursoDB(env);
+    const updates = [
+      ['dktwr-ahmd-hmad', 'p_1788904946234_ggxkgg'],
+      ['mtbkh-eymy-llaakl-albyty', 'p_1788801925745_vuxmjs'],
+      ['alshykh-alhsan-mstfa-abwzyd', 'p_1788654913797_l7g6nr'],
+      ['alhsan-lsyana-alhwataf-almhmwla', '-P03LX9MledW_z7QfyHO'],
+      ['almhnds-mhmd-hmad', 'p_1788742873778_6k8a9v'],
+      ['mhlat-ghnym-llahzya', 'p_1788893499969_pk4iay'],
+      ['sntr-alghdban-llmlabs-algahza', '-P0XRSq2etJxs31mul5O'],
+      ['dktwr-by-sy-lkhdmat-alkmbywtr-walantrnt', '-P0hhX-OTkLMFSSYzWIp']
+    ];
+    for (const [cleanSlug, id] of updates) {
+      await db.prepare('UPDATE places SET slug = ? WHERE id = ? AND (slug = id OR slug LIKE "p_%" OR slug LIKE "-P0%")').bind(cleanSlug, id).run().catch(() => {});
+    }
+  } catch (err) {
+    console.warn('[ensureSlugsHealedInTurso] Notice:', err.message);
+  }
+}
+
+/**
+ * Universal Deterministic Place Finder across all URL formats:
+ * - Tier 1: Exact match on slug OR id (case-insensitive)
+ * - Tier 2: Direct alias dictionary for historical / social links
+ * - Tier 3: Exact base slug match (for slugs with unique ID hash suffixes)
+ * - Tier 4: Exact transliterated business name match (slugify(p.name) === query)
+ *
+ * NOTE: NEVER do loose prefix matching (LIKE ? || '%') or substring matching,
+ * as it falsely cross-matches completely different places (e.g. Dr. Ahmed Hammad vs Dr. Ahmed Zahran).
  */
 async function findPlaceInTurso(env, rawQuery) {
   const query = decodeURIComponent(String(rawQuery || '').trim()).toLowerCase();
@@ -3204,95 +3249,68 @@ async function findPlaceInTurso(env, rawQuery) {
     console.warn('[findPlaceInTurso] Tier 1 lookup notice:', err.message);
   }
 
-  // 2. Prefix match on slug or id (e.g. clean prefix without random suffix)
-  try {
-    const row = await db.prepare(`
-      SELECT p.* FROM places p
-      WHERE (LOWER(p.slug) LIKE ? || '%' OR LOWER(p.id) LIKE ? || '%')
-      ORDER BY p.updated_at DESC
-      LIMIT 1
-    `).bind(query, query).first();
-    if (row) return row;
-  } catch (err) {
-    console.warn('[findPlaceInTurso] Tier 2 lookup notice:', err.message);
-  }
-
-  // 3. Stripped suffix match (e.g. removing trailing -abc123 or -albyty)
-  const stripped = query.replace(/-[a-z0-9_]{4,10}$/i, '');
-  if (stripped && stripped !== query) {
+  // 2. Direct alias mapping (e.g. dktwr-ahmd-hmad -> p_1788904946234_ggxkgg)
+  const mappedId = KNOWN_PLACE_ALIASES[query];
+  if (mappedId) {
     try {
       const row = await db.prepare(`
-        SELECT p.* FROM places p
-        WHERE (LOWER(p.slug) LIKE ? || '%' OR LOWER(p.id) LIKE ? || '%')
-        ORDER BY p.updated_at DESC
-        LIMIT 1
-      `).bind(stripped, stripped).first();
-      if (row) return row;
+        SELECT p.* FROM places p WHERE p.id = ? OR LOWER(p.slug) = ? LIMIT 1
+      `).bind(mappedId, query).first();
+      if (row) {
+        // Auto-heal slug in Turso if it's currently an ID
+        if (row.slug === row.id || row.slug.startsWith('p_') || row.slug.startsWith('-P0')) {
+          row.slug = query;
+          db.prepare('UPDATE places SET slug = ? WHERE id = ?').bind(query, row.id).run().catch(() => {});
+        }
+        return row;
+      }
     } catch (err) {
-      console.warn('[findPlaceInTurso] Tier 3 lookup notice:', err.message);
+      console.warn('[findPlaceInTurso] Tier 2 alias notice:', err.message);
     }
   }
 
-  // 4. English name match (name_en in Turso)
+  // 3. Exact clean base slug match (for places whose slug has a unique ID suffix, e.g. 'foo-bar-6pUaTG')
+  // We match ONLY when cand.slug is `${query}-${id_suffix}` where id_suffix matches the place ID!
   try {
-    const row = await db.prepare(`
+    const candidates = (await db.prepare(`
       SELECT p.* FROM places p
-      WHERE (
-        LOWER(REPLACE(p.name_en, ' ', '-')) LIKE ? || '%' OR
-        LOWER(REPLACE(p.name_en, ' ', '')) LIKE ? || '%' OR
-        LOWER(p.name_en) LIKE ? || '%'
-      )
-      ORDER BY p.updated_at DESC
-      LIMIT 1
-    `).bind(stripped || query, (stripped || query).replace(/-/g, ''), stripped || query).first();
-    if (row) return row;
-  } catch (err) {
-    console.warn('[findPlaceInTurso] Tier 4 lookup notice:', err.message);
-  }
+      WHERE LOWER(p.slug) LIKE ? || '-%'
+      LIMIT 10
+    `).bind(query).all()).results || [];
 
-  // 5. Transliterated candidate search (extracting leading tokens from slug)
-  try {
-    const tokens = (stripped || query).split(/[-_]/).filter(t => t.length >= 3);
-    if (tokens.length > 0) {
-      const firstToken = `%${tokens[0]}%`;
-      const candidates = (await db.prepare(`
-        SELECT p.* FROM places p
-        WHERE (
-          LOWER(p.name_en) LIKE ? OR
-          p.name LIKE ? OR
-          p.slug LIKE ?
-        )
-        LIMIT 15
-      `).bind(firstToken, `%${tokens[0]}%`, firstToken).all()).results || [];
-
-      for (const cand of candidates) {
-        const translitName = slugifyWorker(cand.name);
-        const translitEn = slugifyWorker(cand.name_en);
-        const candStripped = translitName.replace(/-[a-z0-9_]{5,7}$/i, '');
-
-        if (
-          translitName.startsWith(query) ||
-          query.startsWith(translitName) ||
-          (stripped && translitName.startsWith(stripped)) ||
-          (candStripped && (candStripped === stripped || candStripped.startsWith(stripped) || stripped.startsWith(candStripped))) ||
-          (translitEn && (translitEn.startsWith(query) || query.startsWith(translitEn) || translitEn.startsWith(stripped)))
-        ) {
-          // Self-heal: if the place currently has an ugly ID slug in Turso, heal it in the background
-          if (cand.slug === cand.id || cand.slug.startsWith('p_') || cand.slug.startsWith('-P0')) {
-            const cleanHealedSlug = stripped || candStripped || translitName;
-            if (cleanHealedSlug && cleanHealedSlug.length >= 3) {
-              cand.slug = cleanHealedSlug;
-              try {
-                db.prepare('UPDATE places SET slug = ? WHERE id = ?').bind(cleanHealedSlug, cand.id).run().catch(() => {});
-              } catch (_) {}
-            }
-          }
-          return cand;
-        }
+    for (const cand of candidates) {
+      const candSlug = String(cand.slug || '').toLowerCase();
+      const m = candSlug.match(/^(.*?)-([a-z0-9_]{5,7})$/i);
+      if (m && m[1] === query) {
+        return cand;
       }
     }
   } catch (err) {
-    console.warn('[findPlaceInTurso] Tier 5 lookup notice:', err.message);
+    console.warn('[findPlaceInTurso] Tier 3 suffix lookup notice:', err.message);
+  }
+
+  // 4. Exact transliterated Arabic / English name match (slugify(p.name) === query)
+  // Scans places strictly using full-string equality (zero prefix or partial guessing)
+  try {
+    const allPlaces = (await db.prepare(`
+      SELECT p.* FROM places p
+      WHERE p.status = 'published'
+    `).all()).results || [];
+
+    for (const cand of allPlaces) {
+      const translitName = slugifyWorker(cand.name);
+      const translitEn = slugifyWorker(cand.name_en || '');
+
+      if (translitName === query || translitEn === query) {
+        if (cand.slug === cand.id || cand.slug.startsWith('p_') || cand.slug.startsWith('-P0')) {
+          cand.slug = query;
+          db.prepare('UPDATE places SET slug = ? WHERE id = ?').bind(query, cand.id).run().catch(() => {});
+        }
+        return cand;
+      }
+    }
+  } catch (err) {
+    console.warn('[findPlaceInTurso] Tier 4 scan notice:', err.message);
   }
 
   return null;

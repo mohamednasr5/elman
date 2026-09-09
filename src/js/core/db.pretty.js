@@ -5,6 +5,7 @@
 
 import { WORKER_URL, getAuth } from './firebase.js';
 import { idbGetAll, idbPutBulk, idbPut, idbGet, idbGetByIndex, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES } from '../services/idb-cache.service.js';
+import { generateCleanSlug } from '../utils/slug.js';
 
 export { idbGetAll, idbPutBulk, idbPut, idbGet, idbGetByIndex, idbDelete, idbClear, idbGetMeta, idbSetMeta, STORES };
 
@@ -832,11 +833,12 @@ export async function getPlaceBySlug(slug) {
     }
   } catch (_) {}
 
-  // 3. Multi-tier resilient fallback: search published places list
+  // 3. Multi-tier deterministic fallback: search published places list
   try {
     const all = await getPublishedPlaces({ limit: 1000 });
     const places = all || [];
-    // 3.1 Exact match
+
+    // 3.1 Exact match by slug or id
     let match = places.find(p => 
       String(p?.slug || '').toLowerCase() === clean || 
       String(p?.id || '').toLowerCase() === clean ||
@@ -845,28 +847,38 @@ export async function getPlaceBySlug(slug) {
     );
     if (match) return match;
 
-    // 3.2 Prefix and stripped suffix match
-    const stripped = clean.replace(/-[a-z0-9_]{4,10}$/i, '');
+    // 3.2 Known aliases mapping (e.g. dktwr-ahmd-hmad -> p_1788904946234_ggxkgg)
+    const KNOWN_ALIASES = {
+      'dktwr-ahmd-hmad': 'p_1788904946234_ggxkgg',
+      'dr-ahmed-hammad': 'p_1788904946234_ggxkgg',
+      'mtbkh-eyma-llaakl': 'p_1788801925745_vuxmjs',
+      'mtbkh-eymy-llaakl-albyty': 'p_1788801925745_vuxmjs',
+      'alshykh-alhsan-mstfa-abwzyd': 'p_1788654913797_l7g6nr',
+      'alhsan-lsyana-alhwataf-almhmwla': '-P03LX9MledW_z7QfyHO',
+      'almhnds-mhmd-hmad': 'p_1788742873778_6k8a9v',
+      'mhlat-ghnym-llahzya': 'p_1788893499969_pk4iay',
+      'sntr-alghdban-llmlabs-algahza': '-P0XRSq2etJxs31mul5O',
+      'dktwr-by-sy-lkhdmat-alkmbywtr-walantrnt': '-P0hhX-OTkLMFSSYzWIp'
+    };
+    if (KNOWN_ALIASES[clean]) {
+      const targetId = KNOWN_ALIASES[clean];
+      match = places.find(p => String(p?.id || '').toLowerCase() === targetId.toLowerCase() || String(p?.slug || '').toLowerCase() === clean);
+      if (match) return match;
+    }
+
+    // 3.3 Exact clean base slug match (for places with random ID suffix appended, e.g. foo-6pUaTG)
     match = places.find(p => {
       const pSlug = String(p?.slug || '').toLowerCase();
-      const pId = String(p?.id || '').toLowerCase();
-      const pStripped = pSlug.replace(/-[a-z0-9_]{4,10}$/i, '');
-      return (
-        pSlug.startsWith(clean) || clean.startsWith(pSlug) ||
-        (stripped && (pSlug.startsWith(stripped) || pStripped === stripped)) ||
-        (pId && (clean.startsWith(pId) || pId.startsWith(clean)))
-      );
+      const m = pSlug.match(/^(.*?)-([a-z0-9_]{5,7})$/i);
+      return m && m[1] === clean;
     });
     if (match) return match;
 
-    // 3.3 English name / transliterated match
+    // 3.4 Strict transliterated Arabic / English name match (strictly ===, no partial or prefix guessing)
     match = places.find(p => {
-      const pNameEn = String(p?.name_en || p?.nameEn || '').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-      return pNameEn && (
-        pNameEn.includes(clean) || 
-        clean.includes(pNameEn) || 
-        (stripped && pNameEn.includes(stripped))
-      );
+      const cleanName = generateCleanSlug(p?.name || '');
+      const cleanNameEn = generateCleanSlug(p?.name_en || p?.nameEn || '');
+      return cleanName === clean || cleanNameEn === clean;
     });
     if (match) return match;
 
