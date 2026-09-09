@@ -421,3 +421,106 @@
 .ih-hadith-en summary{cursor:pointer;color:#7DD3FC;font-weight:700}
 .ih-hadith-en p{line-height:1.8}
 @media(max-width:430px){.ih-hadith-single{padding:14px}.ih-hadith-single .ih-hadith{min-height:240px;font-size:1.2rem;line-height:2.15}.ih-hadith-nav{gap:8px}.ih-hadith-nav .ih-btn{min-width:105px}}
+
+/* ============================================================
+   Signature entrance choreography — Islamic hub
+   Pure CSS, no JS/markup changes. Every element is freshly
+   inserted into the DOM by islamic-hub.js on each render, so
+   these keyframes replay correctly every time the page/section
+   mounts, without any observer or trigger logic needed.
+   All "opacity:0" states live only inside @keyframes "from"
+   frames (never as a static rule), so if the animation is
+   removed under prefers-reduced-motion the element simply
+   renders at full opacity immediately — content can never get
+   stuck invisible.
+   ============================================================ */
+
+@keyframes ihRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes ihSettle{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@keyframes ihStarSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes ihPulseGlow{0%,100%{transform:scale(.7);opacity:.22}50%{transform:scale(1.18);opacity:.55}}
+
+/* Whole-page mount */
+.islamic-hub{animation:ihRise .55s cubic-bezier(.2,.75,.3,1) both}
+
+/* Hero copy — staggered word-by-word reveal (kicker → title → sub → tools) */
+.ih-hero{position:relative}
+.ih-hero-copy,.ih-ornament{position:relative;z-index:1}
+.ih-kicker{display:inline-block;animation:ihRise .55s ease .06s both}
+.ih-title{animation:ihRise .6s ease .14s both}
+.ih-sub{animation:ihRise .6s ease .22s both}
+.ih-tools{animation:ihRise .6s ease .3s both}
+.ih-ornament{animation:ihSettle .65s cubic-bezier(.2,.8,.3,1) .18s both}
+
+/* Ambient geometric motif — a slow, faint 8-point star field behind the
+   hero, evoking classic Islamic geometric ornamentation. Decorative
+   only: absolutely positioned, pointer-events:none, z-index below the
+   copy, so it never affects layout, CLS, or interaction. */
+.ih-hero::after{
+  content:"";
+  position:absolute;
+  top:50%;left:50%;
+  width:min(420px,80%);
+  aspect-ratio:1;
+  transform:translate(-50%,-50%);
+  background:conic-gradient(from 0deg,
+    rgba(245,176,65,.05) 0deg 22.5deg, transparent 22.5deg 45deg,
+    rgba(56,189,248,.05) 45deg 67.5deg, transparent 67.5deg 90deg,
+    rgba(245,176,65,.05) 90deg 112.5deg, transparent 112.5deg 135deg,
+    rgba(56,189,248,.05) 135deg 157.5deg, transparent 157.5deg 180deg,
+    rgba(245,176,65,.05) 180deg 202.5deg, transparent 202.5deg 225deg,
+    rgba(56,189,248,.05) 225deg 247.5deg, transparent 247.5deg 270deg,
+    rgba(245,176,65,.05) 270deg 292.5deg, transparent 292.5deg 315deg,
+    rgba(56,189,248,.05) 315deg 337.5deg, transparent 337.5deg 360deg);
+  border-radius:50%;
+  pointer-events:none;
+  z-index:0;
+  animation:ihStarSpin 90s linear infinite;
+  will-change:transform;
+}
+
+/* Content card + freshly-injected sections cascade in */
+.ih-card{animation:ihRise .5s ease .1s both}
+.ih-meta,.ih-surah-list,.ih-book-grid,.ih-results,.ih-search-head,.ih-reader,.ih-hadith-single{animation:ihRise .45s ease both}
+
+/* Cascading reveal for grid/list items — each tile arrives a beat after
+   the previous one for a refined, deliberate "unrolling scroll" feel
+   rather than everything popping in at once. */
+.ih-surah,.ih-book{animation:ihIn .45s cubic-bezier(.2,.8,.3,1) both}
+.ih-surah:nth-child(1),.ih-book:nth-child(1){animation-delay:.03s}
+.ih-surah:nth-child(2),.ih-book:nth-child(2){animation-delay:.06s}
+.ih-surah:nth-child(3),.ih-book:nth-child(3){animation-delay:.09s}
+.ih-surah:nth-child(4),.ih-book:nth-child(4){animation-delay:.12s}
+.ih-surah:nth-child(5),.ih-book:nth-child(5){animation-delay:.15s}
+.ih-surah:nth-child(6),.ih-book:nth-child(6){animation-delay:.18s}
+.ih-surah:nth-child(7),.ih-book:nth-child(7){animation-delay:.21s}
+.ih-surah:nth-child(8),.ih-book:nth-child(8){animation-delay:.24s}
+.ih-surah:nth-child(n+9),.ih-book:nth-child(n+9){animation-delay:.27s}
+.ih-result:nth-child(1){animation-delay:.03s}
+.ih-result:nth-child(2){animation-delay:.07s}
+.ih-result:nth-child(3){animation-delay:.11s}
+.ih-result:nth-child(4){animation-delay:.15s}
+.ih-result:nth-child(5){animation-delay:.19s}
+.ih-result:nth-child(n+6){animation-delay:.22s}
+
+/* Refined loader — the existing dual-tone ring gains a soft breathing
+   glow at its core, echoing a crescent's gentle light rather than a
+   flat mechanical spinner. */
+.ih-loading .ih-pulse{position:relative}
+.ih-loading .ih-pulse::after{
+  content:"";
+  position:absolute;
+  inset:9px;
+  border-radius:50%;
+  background:radial-gradient(circle,#F5B041 0%,transparent 72%);
+  animation:ihPulseGlow 1.7s ease-in-out infinite;
+}
+
+@media(prefers-reduced-motion:reduce){
+  .islamic-hub,.ih-kicker,.ih-title,.ih-sub,.ih-tools,.ih-ornament,
+  .ih-card,.ih-meta,.ih-surah-list,.ih-book-grid,.ih-results,
+  .ih-search-head,.ih-reader,.ih-hadith-single,.ih-surah,.ih-book,
+  .ih-result,.ih-hero::after,.ih-loading .ih-pulse::after{
+    animation:none !important;
+  }
+}
