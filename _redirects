@@ -50,6 +50,7 @@
 /about              /manzala.html       200
 /about/             /manzala.html       200
 /api/*   https://elmanzala.nonm1724.workers.dev/api/:splat   200
+/p/*     https://elmanzala.nonm1724.workers.dev/p/:splat     200
 # Dynamic parameterized splat routes
 /place/*            /place.html?slug=:splat 200
 /places/*           /place.html?slug=:splat 200

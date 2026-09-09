@@ -618,14 +618,8 @@ try {
         return response;
       }
 
-      // Fetch the place first. Do NOT GROUP BY the entire reviews table here:
-      // that pattern scans every review whenever any place profile is opened.
-      const result = await createTursoDB(env).prepare(`
-        SELECT p.*
-        FROM places p
-        WHERE (LOWER(p.slug) = LOWER(?) OR p.id = ? OR LOWER(p.id) = LOWER(?) OR p.slug = ?) AND p.status = 'published'
-        LIMIT 1
-      `).bind(slugParam, slugParam, slugParam, slugParam).first();
+      // Fetch the place using universal multi-tier resilient lookup
+      const result = await findPlaceInTurso(env, slugParam);
 
       if (result) {
         // The reviews table has an index on (place_id, created_at), so this
@@ -3156,6 +3150,154 @@ function jsonResponse(data, status = 200, headers = {}) {
   });
 }
 
+const ARABIC_CHAR_MAP = {
+  'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'aa',
+  'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'g',
+  'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'z',
+  'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh',
+  'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z',
+  'ع': 'a', 'غ': 'gh', 'ف': 'f', 'ق': 'k',
+  'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+  'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y',
+  'ى': 'a', 'ئ': 'y', 'ؤ': 'w', 'ء': ''
+};
+
+function transliterateArabicWorker(text) {
+  if (!text) return '';
+  return String(text).split('').map(c => ARABIC_CHAR_MAP[c] ?? c).join('');
+}
+
+function slugifyWorker(text) {
+  if (!text) return '';
+  return transliterateArabicWorker(text)
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Universal Resilient Place Finder across all URL formats:
+ * - Exact slug / exact ID
+ * - Short clean slug prefix (e.g. dktwr-ahmd-anbr matching dktwr-ahmd-anbr-vCTDc_)
+ * - Stripped hash suffix
+ * - English name / name_en matching
+ * - Transliterated Arabic business name matching
+ * - Self-healing: permanently fixes ugly ID slugs in Turso
+ */
+async function findPlaceInTurso(env, rawQuery) {
+  const query = decodeURIComponent(String(rawQuery || '').trim()).toLowerCase();
+  if (!query) return null;
+
+  const db = createTursoDB(env);
+
+  // 1. Exact match by slug or id (case-insensitive)
+  try {
+    const row = await db.prepare(`
+      SELECT p.* FROM places p
+      WHERE (LOWER(p.slug) = ? OR LOWER(p.id) = ? OR p.slug = ? OR p.id = ?)
+      LIMIT 1
+    `).bind(query, query, rawQuery, rawQuery).first();
+    if (row) return row;
+  } catch (err) {
+    console.warn('[findPlaceInTurso] Tier 1 lookup notice:', err.message);
+  }
+
+  // 2. Prefix match on slug or id (e.g. clean prefix without random suffix)
+  try {
+    const row = await db.prepare(`
+      SELECT p.* FROM places p
+      WHERE (LOWER(p.slug) LIKE ? || '%' OR LOWER(p.id) LIKE ? || '%')
+      ORDER BY p.updated_at DESC
+      LIMIT 1
+    `).bind(query, query).first();
+    if (row) return row;
+  } catch (err) {
+    console.warn('[findPlaceInTurso] Tier 2 lookup notice:', err.message);
+  }
+
+  // 3. Stripped suffix match (e.g. removing trailing -abc123 or -albyty)
+  const stripped = query.replace(/-[a-z0-9_]{4,10}$/i, '');
+  if (stripped && stripped !== query) {
+    try {
+      const row = await db.prepare(`
+        SELECT p.* FROM places p
+        WHERE (LOWER(p.slug) LIKE ? || '%' OR LOWER(p.id) LIKE ? || '%')
+        ORDER BY p.updated_at DESC
+        LIMIT 1
+      `).bind(stripped, stripped).first();
+      if (row) return row;
+    } catch (err) {
+      console.warn('[findPlaceInTurso] Tier 3 lookup notice:', err.message);
+    }
+  }
+
+  // 4. English name match (name_en in Turso)
+  try {
+    const row = await db.prepare(`
+      SELECT p.* FROM places p
+      WHERE (
+        LOWER(REPLACE(p.name_en, ' ', '-')) LIKE ? || '%' OR
+        LOWER(REPLACE(p.name_en, ' ', '')) LIKE ? || '%' OR
+        LOWER(p.name_en) LIKE ? || '%'
+      )
+      ORDER BY p.updated_at DESC
+      LIMIT 1
+    `).bind(stripped || query, (stripped || query).replace(/-/g, ''), stripped || query).first();
+    if (row) return row;
+  } catch (err) {
+    console.warn('[findPlaceInTurso] Tier 4 lookup notice:', err.message);
+  }
+
+  // 5. Transliterated candidate search (extracting leading tokens from slug)
+  try {
+    const tokens = (stripped || query).split(/[-_]/).filter(t => t.length >= 3);
+    if (tokens.length > 0) {
+      const firstToken = `%${tokens[0]}%`;
+      const candidates = (await db.prepare(`
+        SELECT p.* FROM places p
+        WHERE (
+          LOWER(p.name_en) LIKE ? OR
+          p.name LIKE ? OR
+          p.slug LIKE ?
+        )
+        LIMIT 15
+      `).bind(firstToken, `%${tokens[0]}%`, firstToken).all()).results || [];
+
+      for (const cand of candidates) {
+        const translitName = slugifyWorker(cand.name);
+        const translitEn = slugifyWorker(cand.name_en);
+        const candStripped = translitName.replace(/-[a-z0-9_]{5,7}$/i, '');
+
+        if (
+          translitName.startsWith(query) ||
+          query.startsWith(translitName) ||
+          (stripped && translitName.startsWith(stripped)) ||
+          (candStripped && (candStripped === stripped || candStripped.startsWith(stripped) || stripped.startsWith(candStripped))) ||
+          (translitEn && (translitEn.startsWith(query) || query.startsWith(translitEn) || translitEn.startsWith(stripped)))
+        ) {
+          // Self-heal: if the place currently has an ugly ID slug in Turso, heal it in the background
+          if (cand.slug === cand.id || cand.slug.startsWith('p_') || cand.slug.startsWith('-P0')) {
+            const cleanHealedSlug = stripped || candStripped || translitName;
+            if (cleanHealedSlug && cleanHealedSlug.length >= 3) {
+              cand.slug = cleanHealedSlug;
+              try {
+                db.prepare('UPDATE places SET slug = ? WHERE id = ?').bind(cleanHealedSlug, cand.id).run().catch(() => {});
+              } catch (_) {}
+            }
+          }
+          return cand;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[findPlaceInTurso] Tier 5 lookup notice:', err.message);
+  }
+
+  return null;
+}
+
 /**
  * Dynamic OpenGraph / Social Media Crawler Preview & Fast Redirect
  */
@@ -3171,51 +3313,20 @@ async function handleDynamicOpenGraph(slug, request, env) {
 
   const canonicalBase = 'https://dalilmanzala.com';
 
-  let place = null;
+  // ============================================================
+  // 1. البحث الشامل والمرن عن المكان في Turso
+  // ============================================================
+  const place = await findPlaceInTurso(env, cleanSlug);
 
   // ============================================================
-  // 1. البحث عن المكان في Turso
-  // ============================================================
-  try {
-    const result = await createTursoDB(env).prepare(`
-      SELECT *
-      FROM places
-      WHERE slug = ?
-      LIMIT 1
-    `).bind(cleanSlug).first();
-
-    if (result) {
-      place = result;
-    }
-  } catch (err) {
-    console.error('[OG] Turso lookup error:', err);
-  }
-
-  // ============================================================
-  // 2. محاولة البحث بالـ ID أو بالـ Slug كبادئة (prefix match)
+  // 2. إذا لم يوجد المكان بعد كل محاولات البحث المتقدمة
   // ============================================================
   if (!place) {
-    try {
-      const result = await createTursoDB(env).prepare(`
-        SELECT *
-        FROM places
-        WHERE id = ? OR slug LIKE ?
-        ORDER BY updated_at DESC
-        LIMIT 1
-      `).bind(cleanSlug, `${cleanSlug}%`).first();
-
-      if (result) {
-        place = result;
-      }
-    } catch (err) {
-      console.error('[OG] Turso ID / prefix lookup error:', err);
+    const userAgent = request.headers.get('user-agent') || '';
+    const isCrawler = /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|googlebot|bingbot|slackbot|discordbot/i.test(userAgent);
+    if (!isCrawler) {
+      return Response.redirect(`${canonicalBase}/places.html`, 302);
     }
-  }
-
-  // ============================================================
-  // 3. إذا لم يوجد المكان
-  // ============================================================
-  if (!place) {
     return new Response(
       `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -3227,13 +3338,14 @@ async function handleDynamicOpenGraph(slug, request, env) {
 <body>
   <h1>المكان غير موجود</h1>
   <p>لم يتم العثور على هذا المكان في دليل المنزلة والمطرية الرقمي.</p>
+  <p><a href="https://dalilmanzala.com/places.html">تصفح جميع الأماكن في الدليل</a></p>
 </body>
 </html>`,
       {
         status: 404,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'public, max-age=300'
+          'Cache-Control': 'public, max-age=120'
         }
       }
     );
@@ -3258,9 +3370,20 @@ async function handleDynamicOpenGraph(slug, request, env) {
     place.logo_url ||
     'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
 
-  const placeTargetSlug =
-    place.slug ||
-    cleanSlug;
+  const isIdLike = (s) => !s || s.startsWith('p_') || s.startsWith('-P0') || (s.length > 20 && /^[a-zA-Z0-9_-]+$/.test(s));
+  const cleanTranslit = slugifyWorker(place.name);
+  const cleanPrefix = cleanSlug.replace(/-[a-z0-9_]{4,10}$/i, '');
+
+  let canonicalSlug = '';
+  if (cleanSlug && !isIdLike(cleanSlug)) {
+    canonicalSlug = cleanSlug;
+  } else if (place.slug && !isIdLike(place.slug)) {
+    canonicalSlug = place.slug;
+  } else {
+    canonicalSlug = cleanTranslit || cleanPrefix || place.id;
+  }
+
+  const placeTargetSlug = canonicalSlug || place.slug || cleanSlug;
 
   // ============================================================
   // 5. الرابط القانوني للمشاركة
@@ -3272,7 +3395,7 @@ async function handleDynamicOpenGraph(slug, request, env) {
   // 6. صفحة المكان الحقيقية على GitHub Pages
   // ============================================================
   const destinationUrl =
-  `${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`;
+    `${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`;
 
 const userAgent = request.headers.get('user-agent') || '';
 

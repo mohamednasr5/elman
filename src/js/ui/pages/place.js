@@ -5,14 +5,14 @@
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG } from '../../core/db.js?v=f133e346';
+import { getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG } from '../../core/db.js?v=bd772441';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
-import { submitVerificationRequest } from '../../services/places.service.js?v=f133e346';
+import { submitVerificationRequest } from '../../services/places.service.js?v=bd772441';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
@@ -25,6 +25,7 @@ import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, ATM_POLL_QUESTIONS, fo
 import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service.js';
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
 import { resolvePlaceProfession, getCategorySvg, getProfessionSvg } from '../../utils/professions-data.js';
+import { generateCleanSlug } from '../../utils/slug.js';
 
 export async function renderPlacePage($container, { slug, user, initialPlace = null }) {
   // ── Instant 0ms Place Detection ──
@@ -152,8 +153,31 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       const seoTitle = `${place.name} | دليل المنزلة والمطرية الرقمي`;
       const seoDesc = `${place.name} في ${placeArea}. ${placeSpecialty}${addressText}${phoneText}. مواعيد العمل، تقييمات العملاء، وأرقام التواصل عبر دليل المنزلة والمطرية الرقمي.`;
       const rawPlaceSlug = place.slug || place.id;
-      const cleanSlug = String(rawPlaceSlug).replace(/-[a-z0-9_]{5,7}$/i, '') || rawPlaceSlug;
-      const placeCanonical = `https://dalilmanzala.com/p/${encodeURIComponent(cleanSlug)}`;
+      const cleanTranslit = generateCleanSlug(place.name);
+      const isIdLike = (s) => !s || s.startsWith('p_') || s.startsWith('-P0') || (s.length > 20 && /^[a-zA-Z0-9_-]+$/.test(s));
+
+      let canonicalSlug = '';
+      if (place.slug && !isIdLike(place.slug)) {
+        canonicalSlug = String(place.slug).replace(/-[a-z0-9_]{5,7}$/i, '') || place.slug;
+      } else if (cleanSlug && !isIdLike(cleanSlug)) {
+        canonicalSlug = cleanSlug;
+      } else {
+        canonicalSlug = cleanTranslit || place.id;
+      }
+
+      const placeCanonical = `https://dalilmanzala.com/p/${encodeURIComponent(canonicalSlug)}`;
+
+      // Seamless URL normalization in browser address bar (SEO & user experience)
+      try {
+        if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+          const currentUrl = new URL(window.location.href);
+          const currentSlugParam = currentUrl.searchParams.get('slug');
+          if (currentSlugParam && isIdLike(currentSlugParam) && canonicalSlug && !isIdLike(canonicalSlug)) {
+            currentUrl.searchParams.set('slug', canonicalSlug);
+            window.history.replaceState(null, '', currentUrl.toString());
+          }
+        }
+      } catch (_) {}
 
       setMeta({
         title: seoTitle,
@@ -1345,8 +1369,16 @@ function setupPlaceSharing(place) {
   const placeName = place.name || 'المكان';
   const placeAddress = place.address || place.area || 'مدينة المنزلة، محافظة الدقهلية';
   const rawSlug = place.slug || place.id || '';
-  const cleanShortSlug = String(rawSlug).replace(/-[a-z0-9_]{5,7}$/i, '');
-  const finalSlug = (cleanShortSlug && cleanShortSlug.length >= 3) ? cleanShortSlug : rawSlug;
+  const isIdLike = (s) => !s || s.startsWith('p_') || s.startsWith('-P0') || (s.length > 20 && /^[a-zA-Z0-9_-]+$/.test(s));
+  const cleanTranslit = generateCleanSlug(place.name);
+
+  let canonicalSlug = '';
+  if (place.slug && !isIdLike(place.slug)) {
+    canonicalSlug = String(place.slug).replace(/-[a-z0-9_]{5,7}$/i, '') || place.slug;
+  } else {
+    canonicalSlug = cleanTranslit || place.id;
+  }
+  const finalSlug = (canonicalSlug && canonicalSlug.length >= 3) ? canonicalSlug : rawSlug;
   // Branded official share URL via Cloudflare Worker Dynamic OpenGraph handler
   const brandedShareUrl = `https://dalilmanzala.com/p/${encodeURIComponent(finalSlug || rawSlug)}`;
   const coverUrl = place.coverImageUrl || place.logoUrl || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';

@@ -835,12 +835,42 @@ export async function getPlaceBySlug(slug) {
   // 3. Multi-tier resilient fallback: search published places list
   try {
     const all = await getPublishedPlaces({ limit: 1000 });
-    return (all || []).find(p => 
+    const places = all || [];
+    // 3.1 Exact match
+    let match = places.find(p => 
       String(p?.slug || '').toLowerCase() === clean || 
       String(p?.id || '').toLowerCase() === clean ||
       String(p?.slug || '') === raw ||
       String(p?.id || '') === raw
-    ) || null;
+    );
+    if (match) return match;
+
+    // 3.2 Prefix and stripped suffix match
+    const stripped = clean.replace(/-[a-z0-9_]{4,10}$/i, '');
+    match = places.find(p => {
+      const pSlug = String(p?.slug || '').toLowerCase();
+      const pId = String(p?.id || '').toLowerCase();
+      const pStripped = pSlug.replace(/-[a-z0-9_]{4,10}$/i, '');
+      return (
+        pSlug.startsWith(clean) || clean.startsWith(pSlug) ||
+        (stripped && (pSlug.startsWith(stripped) || pStripped === stripped)) ||
+        (pId && (clean.startsWith(pId) || pId.startsWith(clean)))
+      );
+    });
+    if (match) return match;
+
+    // 3.3 English name / transliterated match
+    match = places.find(p => {
+      const pNameEn = String(p?.name_en || p?.nameEn || '').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      return pNameEn && (
+        pNameEn.includes(clean) || 
+        clean.includes(pNameEn) || 
+        (stripped && pNameEn.includes(stripped))
+      );
+    });
+    if (match) return match;
+
+    return null;
   } catch (_) {
     return null;
   }
