@@ -2468,7 +2468,7 @@ try {
       // ── 3. AI Translation (POST /api/ai/translate) ──
       if (url.pathname === '/api/ai/translate' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
-        const arabicName = body.name || '';
+        const arabicName = String(body.name || body.text || '').trim();
         const category = body.category || '';
 
         if (!arabicName) {
@@ -2480,11 +2480,47 @@ try {
           env
         );
 
+        const cleanTranslated = (translated || arabicName).trim();
+
         return jsonResponse({
           success: true,
-          translatedName: (translated || arabicName).trim()
+          translatedName: cleanTranslated,
+          result: cleanTranslated,
+          text: cleanTranslated
         }, 200, corsHeaders);
       }
+
+      // ── AI General Chat / Generation (POST /api/ai/chat) ──
+      if (url.pathname === '/api/ai/chat' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const prompt = String(body.prompt || body.message || '').trim();
+        const systemPrompt = typeof body.systemPrompt === 'string' ? body.systemPrompt : undefined;
+        const dynamicModel = typeof body.model === 'string' ? body.model : undefined;
+        const dynamicModels = Array.isArray(body.models) ? body.models : undefined;
+
+        if (!prompt) {
+          return jsonResponse({ success: false, error: 'نص المحادثة مطلوب' }, 400, corsHeaders);
+        }
+
+        const text = await callOpenRouterWithAccountFailover({
+          prompt,
+          systemPrompt,
+          model: dynamicModel,
+          models: dynamicModels
+        }, env);
+
+        if (!text) {
+          return jsonResponse({ success: false, error: 'تعذر الحصول على استجابة من خدمة الذكاء الاصطناعي' }, 502, corsHeaders);
+        }
+
+        return jsonResponse({
+          success: true,
+          result: text,
+          text: text,
+          content: text
+        }, 200, corsHeaders);
+      }
+
 
       // ── AI Category Icon (POST /api/ai/category-icon) ──
       if (url.pathname === '/api/ai/category-icon' && request.method === 'POST') {
@@ -2784,45 +2820,165 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 };
 
 /**
- * Call OpenRouter AI (Ox Alpha / DeepSeek)
+ * ─────────────────────────────────────────────────────────────
+ * PRODUCTION OPENROUTER MULTI-ACCOUNT FAILOVER & MODEL CASCADE
+ * ─────────────────────────────────────────────────────────────
+ * LEVEL 1 — Model Fallback: OpenRouter native model cascade (`models: [...]`).
+ * LEVEL 2 — Account Fallback: Failover across Account #1 -> #2 -> #3 -> #4.
  */
-async function callOpenRouterAI(prompt, env) {
-  const apiKey = env.OPENROUTER_API_KEY || 'sk-or-v1-openrouter-free';
-  const model = env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-exp:free';
 
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://elmanzala.com',
-        'X-Title': 'Elmanzala Platform'
-      },
-      body: JSON.stringify({
-        model: model,
-        models: [
-          'google/gemini-2.0-flash-exp:free',
-          'meta-llama/llama-3.3-70b-instruct:free',
-          'deepseek/deepseek-chat:free',
-          'qwen/qwen-2.5-72b-instruct:free'
-        ],
-        messages: [
-          { role: 'system', content: 'You are an intelligent local directory assistant for El Manzala city, Egypt. Provide concise, direct outputs.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 300
-      })
-    });
+const DEFAULT_OPENROUTER_MODELS = [
+  'google/gemini-2.0-flash-exp:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'deepseek/deepseek-chat:free',
+  'qwen/qwen-2.5-72b-instruct:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'mistralai/mistral-7b-instruct:free'
+];
 
-    if (!res.ok) return '';
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || '';
-  } catch (err) {
-    console.warn('[Worker AI Error]:', err);
-    return '';
+/**
+ * Resolves models array for OpenRouter native fallback.
+ * Preserves dynamic primary model while ensuring fallback models are included.
+ */
+function resolveOpenRouterModels(primaryModel, customFallbackModels = []) {
+  const models = [
+    ...(primaryModel ? [primaryModel] : []),
+    ...(Array.isArray(customFallbackModels) && customFallbackModels.length > 0 ? customFallbackModels : DEFAULT_OPENROUTER_MODELS)
+  ];
+  return [...new Set(models.filter(m => typeof m === 'string' && m.trim().length > 0))];
+}
+
+/**
+ * Discovers configured OpenRouter accounts from Cloudflare Worker environment/secrets.
+ * Supports:
+ * - OPENROUTER_API_KEY   (Account #1 - Primary)
+ * - OPENROUTER_API_KEY_2 (Account #2 - Failover)
+ * - OPENROUTER_API_KEY_3 (Account #3 - Failover)
+ * - OPENROUTER_API_KEY_4 (Account #4 - Failover)
+ * Only accounts with non-empty keys participate in failover.
+ */
+function getConfiguredOpenRouterAccounts(env) {
+  if (!env || typeof env !== 'object') return [];
+
+  const candidates = [
+    { id: 1, name: 'Account #1', key: env.OPENROUTER_API_KEY },
+    { id: 2, name: 'Account #2', key: env.OPENROUTER_API_KEY_2 },
+    { id: 3, name: 'Account #3', key: env.OPENROUTER_API_KEY_3 },
+    { id: 4, name: 'Account #4', key: env.OPENROUTER_API_KEY_4 }
+  ];
+
+  return candidates.filter(acc => typeof acc.key === 'string' && acc.key.trim().length > 0);
+}
+
+/**
+ * Production-grade OpenRouter request with Level-1 Model Fallback and Level-2 Account Fallover.
+ *
+ * @param {Object} options
+ * @param {string} options.prompt - Prompt text (required)
+ * @param {string} [options.systemPrompt] - System prompt
+ * @param {string} [options.model] - Dynamic primary model
+ * @param {string[]} [options.models] - Custom fallback models array
+ * @param {number} [options.temperature] - Generation temperature (default 0.3)
+ * @param {number} [options.max_tokens] - Max tokens (default 300)
+ * @param {number} [options.timeoutMs] - Timeout per account attempt in ms (default 9000)
+ * @param {string} [options.fallbackText] - Text returned if all accounts fail (default '')
+ * @param {Object} env - Cloudflare Worker environment / secrets
+ * @returns {Promise<string>} Generated text content or fallback text
+ */
+async function callOpenRouterWithAccountFailover(options, env) {
+  const prompt = options?.prompt || '';
+  if (!prompt) return '';
+
+  const configuredAccounts = getConfiguredOpenRouterAccounts(env);
+
+  if (configuredAccounts.length === 0) {
+    console.warn('[OpenRouter] No configured API keys found in environment (OPENROUTER_API_KEY[_2|_3|_4])');
+    return options.fallbackText || '';
   }
+
+  const resolvedModels = resolveOpenRouterModels(
+    options.model || env.OPENROUTER_MODEL,
+    options.models
+  );
+  const primaryModel = resolvedModels[0] || 'google/gemini-2.0-flash-exp:free';
+  const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 9000;
+  const systemPrompt = options.systemPrompt || 'You are an intelligent local directory assistant for El Manzala city, Egypt. Provide concise, direct outputs.';
+  const temperature = typeof options.temperature === 'number' ? options.temperature : 0.3;
+  const maxTokens = typeof options.max_tokens === 'number' ? options.max_tokens : 300;
+
+  const requestBody = JSON.stringify({
+    model: primaryModel,
+    models: resolvedModels,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ],
+    temperature,
+    max_tokens: maxTokens
+  });
+
+  for (let i = 0; i < configuredAccounts.length; i++) {
+    const account = configuredAccounts[i];
+    const isLastAccount = i === configuredAccounts.length - 1;
+    const accountLabel = `${account.name} (${i + 1}/${configuredAccounts.length})`;
+
+    try {
+      console.log(`[OpenRouter] ${accountLabel} executing request with ${resolvedModels.length} models cascade...`);
+
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${account.key.trim()}`,
+          'HTTP-Referer': 'https://dalilmanzala.com',
+          'X-Title': 'Dalil El Manzala Platform'
+        },
+        body: requestBody,
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+
+      // Transient & Provider Failures -> Trigger account failover
+      if (!res.ok) {
+        console.warn(`[OpenRouter] ${account.name} failed with HTTP ${res.status} (${res.statusText || 'Error'})${!isLastAccount ? ', failing over to next account...' : ''}`);
+        continue;
+      }
+
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        console.warn(`[OpenRouter] ${account.name} returned invalid or non-JSON body${!isLastAccount ? ', failing over to next account...' : ''}`);
+        continue;
+      }
+
+      const content = data.choices?.[0]?.message?.content;
+      if (typeof content !== 'string' || !content.trim()) {
+        console.warn(`[OpenRouter] ${account.name} returned empty or malformed AI response content${!isLastAccount ? ', failing over to next account...' : ''}`);
+        continue;
+      }
+
+      // Successful, validated response!
+      console.log(`[OpenRouter] ${account.name} succeeded (model: ${data.model || primaryModel})`);
+      return content.trim();
+
+    } catch (err) {
+      const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
+      const reason = isTimeout ? `Timeout after ${timeoutMs}ms` : (err.message || 'NetworkError');
+      console.warn(`[OpenRouter] ${account.name} request error (${reason})${!isLastAccount ? ', failing over to next account...' : ''}`);
+    }
+  }
+
+  console.error(`[OpenRouter] All ${configuredAccounts.length} configured account(s) failed.`);
+  return options.fallbackText || '';
+}
+
+/**
+ * Call OpenRouter AI (Backward-compatible wrapper for existing endpoints).
+ */
+async function callOpenRouterAI(prompt, env, options = {}) {
+  const result = await callOpenRouterWithAccountFailover({
+    prompt,
+    ...options
+  }, env);
+  return result || '';
 }
 
 function jsonResponse(data, status = 200, headers = {}) {
