@@ -7,9 +7,14 @@ binding = "elmanzala"
 bucket_name = "elmanzala"
 
 
+# OpenRouter API Secrets (Configure securely via Cloudflare Secrets):
+# - OPENROUTER_API_KEY    (Account #1 - Primary)
+# - OPENROUTER_API_KEY_2  (Account #2 - Failover)
+# - OPENROUTER_API_KEY_3  (Account #3 - Failover)
+# - OPENROUTER_API_KEY_4  (Account #4 - Failover)
+
 [vars]
 TURSO_DATABASE_URL = "https://dalilmanzala-mohamednasr.aws-eu-west-1.turso.io"
-OPENROUTER_API_KEY = "sk-or-v1-openrouter-free"
 FIREBASE_API_KEY = "AIzaSyCUGCecmvBdf6b38UVIM9zcxhbbux7VSzM"
 [triggers]
 crons = ["0 * * * *"]
