@@ -18,7 +18,7 @@ export const firebaseConfig = {
 };
 
 // Cloudflare Worker base URL
-export const WORKER_URL = 'https://elmanzala.nonm1724.workers.dev';
+export const WORKER_URL = '';
 
 // R2 Public CDN base URL
 export const R2_PUBLIC_URL = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev';
@@ -61,11 +61,46 @@ export function initFirebase() {
   return { app: _app, auth: _auth, db: null };
 }
 
+let _firebaseLoadPromise = null;
+
+export function loadFirebaseSDK() {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  if (window.firebase && window.firebase.initializeApp) return Promise.resolve(window.firebase);
+  if (_firebaseLoadPromise) return _firebaseLoadPromise;
+
+  _firebaseLoadPromise = new Promise((resolve) => {
+    const scripts = [
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js'
+    ];
+    const loadNext = (idx) => {
+      if (idx >= scripts.length) {
+        resolve(window.firebase || null);
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = scripts[idx];
+      s.async = true;
+      s.onload = () => loadNext(idx + 1);
+      s.onerror = () => loadNext(idx + 1);
+      document.head.appendChild(s);
+    };
+    loadNext(0);
+  });
+  return _firebaseLoadPromise;
+}
+
 /**
- * Ensures Firebase is loaded and ready
+ * Ensures Firebase is loaded and ready (lazy-loads SDK if not present)
  */
-export async function ensureFirebaseReady(timeoutMs = 5000) {
-  if (_app && _auth) return { app: _app, auth: _auth, db: _dummyDb };
+export async function ensureFirebaseReady(timeoutMs = 6000) {
+  if (_app && _auth) return { app: _app, auth: _auth, db: null };
+
+  const fb = typeof window !== 'undefined' ? window.firebase : null;
+  if (!fb || !fb.initializeApp) {
+    await loadFirebaseSDK();
+  }
 
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {

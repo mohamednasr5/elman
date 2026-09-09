@@ -1,6 +1,16 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('elmanzala-theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch(_) {}
+    })();
+  </script>
+
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
   <title>دليل المنتجات والأسعار | دليل المنزلة والمطرية الرقمي</title>
@@ -49,7 +59,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=4e0d1bca"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=f4d4ab51"/>
 </head>
 <body class="">
 <div id="app">
@@ -76,10 +86,6 @@
 
 </div>
 
-<!-- Firebase SDK -->
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script>
   // Safe ServerValue fallback for legacy scripts
   window.ServerValue = window.ServerValue || { TIMESTAMP: Date.now() };

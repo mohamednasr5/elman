@@ -110,9 +110,10 @@ export function mountSponsoredShowcase(target, places = [], options = {}) {
     }
 
     gridEl.classList.remove('fade-in-cards');
-    void gridEl.offsetWidth; // Trigger reflow for animation
     gridEl.innerHTML = visiblePlaces.map(p => renderPlaceCard(p)).join('');
-    gridEl.classList.add('fade-in-cards');
+    requestAnimationFrame(() => {
+      gridEl.classList.add('fade-in-cards');
+    });
   }
 
   function advanceNext() {

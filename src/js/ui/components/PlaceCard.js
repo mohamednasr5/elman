@@ -76,17 +76,17 @@ export function renderPlaceCard(place) {
   const rawLogo = place.logoUrl || (isAtm ? ATM_UNIFIED_LOGO : defaultAssets.logoUrl);
 
   const finalCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.THUMB);
-  const finalLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.THUMB);
+  const finalLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.LOGO);
 
   const coverImg = finalCover
-    ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" loading="lazy" decoding="async" />`
+    ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" width="280" height="160" loading="lazy" decoding="async" />`
     : `<div class="place-card__cover-placeholder" style="background:${catStyle.gradient}">
         <span class="place-card__cover-icon">${catStyle.icon}</span>
         <span class="place-card__cover-tag">${escHtml(catStyle.label)}</span>
        </div>`;
 
   const logoImg = finalLogo
-    ? `<img src="${escAttr(finalLogo)}" alt="${escAttr(place.name)} logo" loading="lazy" decoding="async" />`
+    ? `<img src="${escAttr(finalLogo)}" alt="${escAttr(place.name)} logo" width="44" height="44" loading="lazy" decoding="async" />`
     : `<div class="place-card__logo-placeholder">${catStyle.icon}</div>`;
 
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';

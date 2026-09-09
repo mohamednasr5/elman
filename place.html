@@ -47,11 +47,9 @@
   <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link rel="preconnect" href="https://elmanzala.nonm1724.workers.dev" crossorigin/>
-  <link rel="dns-prefetch" href="https://elmanzala.nonm1724.workers.dev"/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=4e0d1bca"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=f4d4ab51"/>
   <!-- Pre-Boot Instant Place Fetcher: Dispatched immediately during initial HTML parse -->
   <script>
     (function() {
@@ -81,7 +79,7 @@
             if (cached.name) document.title = cached.name + ' | دليل المنزلة والمطرية الرقمي';
           } else {
             // Dispatches parallel to stylesheet & module download
-            window.__PLACE_PREFETCH_PROMISE__ = fetch('https://elmanzala.nonm1724.workers.dev/api/places?slug=' + encodeURIComponent(slug), {
+            window.__PLACE_PREFETCH_PROMISE__ = fetch('/api/places?slug=' + encodeURIComponent(slug), {
               headers: { 'Accept': 'application/json' }
             }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
           }
@@ -365,10 +363,6 @@
 
 </div>
 
-<!-- Firebase SDK -->
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script>
   // Safe ServerValue fallback for legacy scripts
   window.ServerValue = window.ServerValue || { TIMESTAMP: Date.now() };
@@ -376,9 +370,9 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=4e0d1bca';
-  import { renderPlacePage } from './src/js/ui/pages/place.js?v=4e0d1bca';
-  import { getCurrentUser } from './src/js/core/auth.js?v=4e0d1bca';
+  import { initPage } from './src/js/core/page-shell.js?v=f4d4ab51';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=f4d4ab51';
+  import { getCurrentUser } from './src/js/core/auth.js?v=f4d4ab51';
 
   (async () => {
     const params = new URLSearchParams(location.search);

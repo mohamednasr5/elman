@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=4e0d1bca';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=f4d4ab51';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser, getIdToken } from '../../core/auth.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
@@ -4232,7 +4232,7 @@ async function renderAdminAds($container) {
                   <td>${a.clicks || 0}</td>
                   <td>${a.isActive ? '<span class="badge badge--published">نشط</span>' : '<span class="badge badge--pending">متوقف</span>'}</td>
                   <td>
-                    <button class="btn btn-xs btn-danger" onclick="deleteAdAdmin('${escAttr(a._id)}')">${ICONS.trash} حذف</button>
+                    <button class="btn btn-xs btn-danger" onclick="deleteAdAdmin('${escAttr(a.id || a._id)}')">${ICONS.trash} حذف</button>
                   </td>
                 </tr>
               `).join('')}
@@ -4646,7 +4646,7 @@ async function renderAdminSettings($container) {
     }
 
     try {
-      const webhookUrl = `https://elmanzala.nonm1724.workers.dev/api/telegram/webhook`;
+      const webhookUrl = `https://dalilmanzala.com/api/telegram/webhook`;
       const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
       const data = await res.json();
       if (data.ok) {
@@ -5775,21 +5775,47 @@ window.deleteOfferAdmin = async (offerId) => {
 };
 
 window.deleteAdAdmin = async (adId) => {
+  const cleanId = String(adId || '').trim();
+  if (!cleanId || cleanId === 'undefined' || cleanId === 'null') {
+    toast.error('معرّف الإعلان غير صحيح');
+    return;
+  }
+
+  if (!confirm('هل أنت متأكد من حذف هذا الإعلان نهائياً؟')) {
+    return;
+  }
+
   try {
-    const ad = adminCache.ads ? adminCache.ads[adId] : await dbGet(`ads/${adId}`);
+    const ad = (adminCache.ads && (adminCache.ads[cleanId] || Object.values(adminCache.ads).find(x => x.id === cleanId || x._id === cleanId))) || null;
+
     if (ad?.placeId) {
-      await dbUpdate(`places/${ad.placeId}`, { isSponsored: false, isFeatured: false });
-      if (adminCache.places && adminCache.places[ad.placeId]) {
-        adminCache.places[ad.placeId].isSponsored = false;
-        adminCache.places[ad.placeId].isFeatured = false;
+      try {
+        await dbUpdate(`places/${ad.placeId}`, { isSponsored: false, isFeatured: false });
+        if (adminCache.places && adminCache.places[ad.placeId]) {
+          adminCache.places[ad.placeId].isSponsored = false;
+          adminCache.places[ad.placeId].isFeatured = false;
+        }
+      } catch (placeErr) {
+        console.warn('[deleteAdAdmin] Could not un-sponsor place:', placeErr);
       }
     }
-    await dbRemove(`ads/${adId}`);
-    if (adminCache.ads) delete adminCache.ads[adId];
-    toast.success('تم حذف الإعلان');
+
+    await dbRemove(`ads/${cleanId}`);
+
+    if (adminCache.ads) {
+      delete adminCache.ads[cleanId];
+      for (const k of Object.keys(adminCache.ads)) {
+        if (adminCache.ads[k]?.id === cleanId || adminCache.ads[k]?._id === cleanId) {
+          delete adminCache.ads[k];
+        }
+      }
+    }
+
+    toast.success('تم حذف الإعلان بنجاح ✓');
     switchAdminSection('ads', false);
   } catch (err) {
-    toast.error('فشل الحذف');
+    console.error('[deleteAdAdmin] Error:', err);
+    toast.error('فشل حذف الإعلان: ' + (err?.message || 'خطأ في الاتصال'));
   }
 };
 

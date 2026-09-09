@@ -332,8 +332,9 @@ export async function updateAllNotificationBadges(uid) {
         badge.style.display = unread > 0 ? 'inline-flex' : 'none';
         if (unread > 0) {
           badge.classList.remove('badge-pop-anim');
-          void badge.offsetWidth;
-          badge.classList.add('badge-pop-anim');
+          requestAnimationFrame(() => {
+            badge.classList.add('badge-pop-anim');
+          });
         }
       });
     });

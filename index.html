@@ -35,13 +35,30 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link rel="preconnect" href="https://elmanzala.nonm1724.workers.dev" crossorigin/>
-  <link rel="dns-prefetch" href="https://elmanzala.nonm1724.workers.dev"/>
+  <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('elmanzala-theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch(_) {}
+    })();
+  </script>
+
+  <!-- Parallel API Prefetch: Starts during initial HTML parse -->
+  <script>
+    (function() {
+      try {
+        window.__PLACES_PREFETCH__ = fetch('/api/places?limit=100', { headers: { 'Accept': 'application/json' } })
+          .then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+        window.__CATEGORIES_PREFETCH__ = fetch('/api/categories', { headers: { 'Accept': 'application/json' } })
+          .then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+      } catch(_) {}
+    })();
+  </script>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=4e0d1bca"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=f4d4ab51"/>
 
   <!-- Schema.org WebSite & Local Coverage -->
   <script type="application/ld+json">
@@ -100,13 +117,27 @@
   <!-- Header — injected by page-shell.js -->
   <div id="header-slot"></div>
 
-  <!-- Homepage Content: Instant Skeleton for sub-100ms FCP -->
+  <!-- Homepage Content: True-to-Size Responsive Skeleton matching real Hero dimensions (Zero CLS) -->
   <main class="page-main" id="page-container" role="main">
-    <div style="padding:2.5rem 1rem;text-align:center;background:linear-gradient(180deg,rgba(27,79,114,0.06) 0%,transparent 100%);">
-      <div style="max-width:600px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:.85rem;">
-        <div class="skeleton" style="height:32px;width:65%;border-radius:8px;"></div>
-        <div class="skeleton" style="height:16px;width:45%;border-radius:6px;"></div>
-        <div class="skeleton" style="height:50px;width:100%;border-radius:16px;margin-top:.5rem;"></div>
+    <div class="hero-skeleton-wrapper" style="min-height:clamp(440px, 58vh, 510px);padding:clamp(2.5rem, 5vw, 4rem) 1rem clamp(3rem, 6vw, 5rem);background:linear-gradient(145deg, #154360 0%, #1B4F72 50%, #2980B9 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;">
+      <div style="max-width:800px;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <!-- Eyebrow skeleton -->
+        <div class="skeleton" style="height:28px;width:240px;max-width:70%;border-radius:9999px;margin-bottom:1rem;background:rgba(255,255,255,0.18);"></div>
+        <!-- Title line 1 skeleton -->
+        <div class="skeleton" style="height:42px;width:460px;max-width:92%;border-radius:10px;margin-bottom:.5rem;background:rgba(255,255,255,0.25);"></div>
+        <!-- Title line 2 skeleton -->
+        <div class="skeleton" style="height:28px;width:320px;max-width:78%;border-radius:8px;margin-bottom:1.25rem;background:rgba(255,255,255,0.18);"></div>
+        <!-- Subtitle skeleton -->
+        <div class="skeleton" style="height:38px;width:580px;max-width:95%;border-radius:8px;margin-bottom:1.75rem;background:rgba(255,255,255,0.14);"></div>
+        <!-- Search bar skeleton (exact shape & size of hero-search-pill) -->
+        <div class="skeleton" style="height:56px;width:640px;max-width:100%;border-radius:9999px;margin-bottom:1.5rem;background:rgba(255,255,255,0.92);box-shadow:0 0 18px 4px rgba(0, 153, 255, 0.4);"></div>
+        <!-- Quick categories chips row skeleton -->
+        <div style="display:flex;gap:.65rem;justify-content:center;flex-wrap:wrap;min-height:40px;width:100%;">
+          <div class="skeleton" style="height:36px;width:95px;border-radius:9999px;background:rgba(255,255,255,0.18);"></div>
+          <div class="skeleton" style="height:36px;width:105px;border-radius:9999px;background:rgba(255,255,255,0.18);"></div>
+          <div class="skeleton" style="height:36px;width:90px;border-radius:9999px;background:rgba(255,255,255,0.18);"></div>
+          <div class="skeleton" style="height:36px;width:100px;border-radius:9999px;background:rgba(255,255,255,0.18);"></div>
+        </div>
       </div>
     </div>
     <div class="container" style="padding:1.5rem 1rem;max-width:var(--container-xl, 1200px);margin:0 auto;">
@@ -131,14 +162,9 @@
   <div id="footer-slot"></div>
 
 </div>
-
-<!-- Firebase SDK (compat) -->
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=4e0d1bca';
-  import { renderHomePage } from './src/js/ui/pages/home.js?v=4e0d1bca';
+  import { initPage } from './src/js/core/page-shell.js?v=f4d4ab51';
+  import { renderHomePage } from './src/js/ui/pages/home.js?v=f4d4ab51';
   const pc = document.getElementById('page-container');
 
   // Concurrently initialize page shell (header, bottom-nav, pwa) in parallel

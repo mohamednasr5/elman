@@ -1,4 +1,4 @@
-﻿# ── Cloudflare Pages Clean URLs & Static Routes ──
+# ── Cloudflare Pages Clean URLs & Static Routes ──
 /admin              /admin.html         200
 /admin/             /admin.html         200
 /places             /places.html        200
@@ -49,7 +49,7 @@
 /matariya/          /matariya.html      200
 /about              /manzala.html       200
 /about/             /manzala.html       200
-
+/api/*   https://elmanzala.nonm1724.workers.dev/api/:splat   200
 # Dynamic parameterized splat routes
 /place/*            /place.html?slug=:splat 200
 /places/*           /place.html?slug=:splat 200

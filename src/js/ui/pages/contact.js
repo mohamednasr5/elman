@@ -824,7 +824,7 @@ async function initFairRotationShowcase() {
       name: 'مطعم باسل وباهى للمأكولات البحرية',
       area: 'المطرية دقهلية',
       category: 'مطاعم وأسماك',
-      cover: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80'
+      cover: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=180&q=75'
     },
     {
       id: '-P03LX9MledW_z7QfyHO',
@@ -832,7 +832,7 @@ async function initFairRotationShowcase() {
       name: 'الحسن لصيانة الهواتف المحمولة',
       area: 'المنزلة - شارع البحر',
       category: 'صيانة وموبايل',
-      cover: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80'
+      cover: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=300&h=180&q=75'
     },
     {
       id: 'p_1788801925745_vuxmjs',
@@ -840,7 +840,7 @@ async function initFairRotationShowcase() {
       name: 'مطبخ إيمى للأكل البيتي',
       area: 'المنزلة - طريق المنصورة',
       category: 'أكل بيتي وحلويات',
-      cover: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80'
+      cover: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=300&h=180&q=75'
     },
     {
       id: '-P0hEa0K6ZfAM65O27G9',
@@ -848,7 +848,7 @@ async function initFairRotationShowcase() {
       name: 'كوافير منه أسعد',
       area: 'المنزلة - حي السلام',
       category: 'بيوتي وكوافير',
-      cover: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80'
+      cover: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&h=180&q=75'
     }
   ];
 
@@ -902,7 +902,7 @@ async function initFairRotationShowcase() {
           </div>
         </div>
         <div class="fair-place-card__body">
-          <h4 class="fair-place-card__title" title="${escAttr(p.name)}">${escHtml(p.name)}</h4>
+          <h3 class="fair-place-card__title" title="${escAttr(p.name)}">${escHtml(p.name)}</h3>
           <div class="fair-place-card__meta">
             <span>📍 ${escHtml(p.area)}</span>
             <span>🏷️ ${escHtml(p.category)}</span>

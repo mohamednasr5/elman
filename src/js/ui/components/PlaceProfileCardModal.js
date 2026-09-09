@@ -762,7 +762,7 @@ async function fetchImageAsDataUrl(url) {
 
   // Strategy 4: Cloudflare Worker proxy
   try {
-    const workerProxy = `https://elmanzala.nonm1724.workers.dev/api/proxy-image?url=${encodeURIComponent(cleanUrl)}`;
+    const workerProxy = `/api/proxy-image?url=${encodeURIComponent(cleanUrl)}`;
     const res = await fetch(workerProxy, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const blob = await res.blob();
