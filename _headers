@@ -1,6 +1,6 @@
 # ── Cloudflare Pages Custom Headers ──
 
-# Versioned & immutable static assets (1 Year Cache)
+# Safe browser caching for static assets (without stale-deploy risk)
 /src/css/*
   # CSS modules are not content-hashed; keep browser TTL short to avoid stale deployments.
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400
