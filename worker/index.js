@@ -2521,8 +2521,17 @@ try {
         }, 200, corsHeaders);
       }
 
+      // ── AI Multi-Account Diagnostic Test (GET or POST /api/ai/test-accounts) ──
+      if (url.pathname === '/api/ai/test-accounts') {
+        const diagnostics = await testAllOpenRouterAccounts(env);
+        return jsonResponse({
+          success: true,
+          ...diagnostics
+        }, 200, corsHeaders);
+      }
 
       // ── AI Category Icon (POST /api/ai/category-icon) ──
+
       if (url.pathname === '/api/ai/category-icon' && request.method === 'POST') {
         const auth = await requireAdmin(request, env);
         if (auth.response) return auth.response;
@@ -2828,12 +2837,9 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
  */
 
 const DEFAULT_OPENROUTER_MODELS = [
-  'google/gemini-2.0-flash-exp:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'deepseek/deepseek-chat:free',
-  'qwen/qwen-2.5-72b-instruct:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'mistralai/mistral-7b-instruct:free'
+  'google/gemma-4-31b-it:free',
+  'google/gemma-4-26b-a4b-it:free',
+  'openrouter/free'
 ];
 
 /**
@@ -2845,30 +2851,153 @@ function resolveOpenRouterModels(primaryModel, customFallbackModels = []) {
     ...(primaryModel ? [primaryModel] : []),
     ...(Array.isArray(customFallbackModels) && customFallbackModels.length > 0 ? customFallbackModels : DEFAULT_OPENROUTER_MODELS)
   ];
-  return [...new Set(models.filter(m => typeof m === 'string' && m.trim().length > 0))];
+  return [...new Set(models.filter(m => typeof m === 'string' && m.trim().length > 0))].slice(0, 3);
+}
+
+/**
+ * Returns all candidate OpenRouter accounts (1 to 4).
+ */
+function getCandidateOpenRouterAccounts(env) {
+  if (!env || typeof env !== 'object') return [];
+  return [
+    { id: 1, name: 'Account #1', key: env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY_1 || env.OPENROUTER_KEY },
+    { id: 2, name: 'Account #2', key: env.OPENROUTER_API_KEY_2 },
+    { id: 3, name: 'Account #3', key: env.OPENROUTER_API_KEY_3 },
+    { id: 4, name: 'Account #4', key: env.OPENROUTER_API_KEY_4 }
+  ];
 }
 
 /**
  * Discovers configured OpenRouter accounts from Cloudflare Worker environment/secrets.
  * Supports:
- * - OPENROUTER_API_KEY   (Account #1 - Primary)
+ * - OPENROUTER_API_KEY / OPENROUTER_API_KEY_1 (Account #1 - Primary)
  * - OPENROUTER_API_KEY_2 (Account #2 - Failover)
  * - OPENROUTER_API_KEY_3 (Account #3 - Failover)
  * - OPENROUTER_API_KEY_4 (Account #4 - Failover)
  * Only accounts with non-empty keys participate in failover.
  */
 function getConfiguredOpenRouterAccounts(env) {
-  if (!env || typeof env !== 'object') return [];
-
-  const candidates = [
-    { id: 1, name: 'Account #1', key: env.OPENROUTER_API_KEY },
-    { id: 2, name: 'Account #2', key: env.OPENROUTER_API_KEY_2 },
-    { id: 3, name: 'Account #3', key: env.OPENROUTER_API_KEY_3 },
-    { id: 4, name: 'Account #4', key: env.OPENROUTER_API_KEY_4 }
-  ];
-
-  return candidates.filter(acc => typeof acc.key === 'string' && acc.key.trim().length > 0);
+  return getCandidateOpenRouterAccounts(env).filter(
+    acc => typeof acc.key === 'string' && acc.key.trim().length > 0
+  );
 }
+
+/**
+ * Diagnostic tool: Tests all 4 OpenRouter accounts individually and reports status.
+ */
+async function testAllOpenRouterAccounts(env) {
+  const candidates = getCandidateOpenRouterAccounts(env);
+  const accountTests = [];
+
+  for (const account of candidates) {
+    if (!account.key || typeof account.key !== 'string' || account.key.trim().length === 0) {
+      accountTests.push({
+        id: account.id,
+        name: account.name,
+        configured: false,
+        status: 'missing_key',
+        maskedKey: null,
+        error: 'Key not found in Cloudflare Worker environment / secrets'
+      });
+      continue;
+    }
+
+    const cleanKey = account.key.trim();
+    const maskedKey = cleanKey.length > 12 
+      ? `${cleanKey.slice(0, 7)}...${cleanKey.slice(-4)}`
+      : '***';
+
+    const startTime = Date.now();
+    const testModels = DEFAULT_OPENROUTER_MODELS;
+
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${cleanKey}`,
+          'HTTP-Referer': 'https://dalilmanzala.com',
+          'X-Title': 'Dalil El Manzala Account Verification'
+        },
+        body: JSON.stringify({
+          model: testModels[0],
+          models: testModels,
+          messages: [
+            { role: 'user', content: 'Say "Account OK" in two words.' }
+          ],
+          max_tokens: 15,
+          temperature: 0.1
+        }),
+        signal: AbortSignal.timeout(12000)
+      });
+
+      const latencyMs = Date.now() - startTime;
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        accountTests.push({
+          id: account.id,
+          name: account.name,
+          configured: true,
+          maskedKey,
+          status: 'http_error',
+          httpStatus: res.status,
+          latencyMs,
+          error: `HTTP ${res.status}: ${errText.slice(0, 160)}`
+        });
+        continue;
+      }
+
+      const data = await res.json().catch(() => null);
+      const reply = data?.choices?.[0]?.message?.content?.trim() || '';
+      const modelUsed = data?.model || testModels[0];
+
+      accountTests.push({
+        id: account.id,
+        name: account.name,
+        configured: true,
+        maskedKey,
+        status: reply ? 'success' : 'empty_response',
+        httpStatus: res.status,
+        latencyMs,
+        modelUsed,
+        reply,
+        ok: Boolean(reply)
+      });
+    } catch (err) {
+      const latencyMs = Date.now() - startTime;
+      accountTests.push({
+        id: account.id,
+        name: account.name,
+        configured: true,
+        maskedKey,
+        status: 'network_error',
+        latencyMs,
+        error: err?.message || String(err)
+      });
+    }
+  }
+
+  // Test the end-to-end cascade
+  const cascadeStart = Date.now();
+  const cascadeOutput = await callOpenRouterAI('Ping test', env);
+  const cascadeLatencyMs = Date.now() - cascadeStart;
+
+  const detectedEnvKeys = Object.keys(env || {}).filter(k => k.toUpperCase().includes('OPENROUTER'));
+
+  return {
+    timestamp: new Date().toISOString(),
+    totalConfigured: accountTests.filter(a => a.configured).length,
+    totalWorking: accountTests.filter(a => a.status === 'success').length,
+    detectedOpenRouterEnvKeys: detectedEnvKeys,
+    accounts: accountTests,
+    endToEndCascade: {
+      status: cascadeOutput ? 'working' : 'failed',
+      latencyMs: cascadeLatencyMs,
+      response: cascadeOutput
+    }
+  };
+}
+
 
 /**
  * Production-grade OpenRouter request with Level-1 Model Fallback and Level-2 Account Fallover.

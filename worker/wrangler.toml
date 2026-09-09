@@ -1,6 +1,15 @@
 name = "elmanzala"
 main = "index.js"
 compatibility_date = "2024-01-01"
+workers_dev = true
+
+
+routes = [
+  { pattern = "dalilmanzala.com/p/*", zone_name = "dalilmanzala.com" },
+  { pattern = "dalilmanzala.com/api/*", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/p/*", zone_name = "dalilmanzala.com" }
+]
+
 
 [[r2_buckets]]
 binding = "elmanzala"
