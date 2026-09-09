@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const WORKER_URL = 'https://elmanzala.nonm1724.workers.dev/api/places?limit=1000';
+const WORKER_URL = 'https://dalilmanzala.com/api/places?limit=1000';
 
 async function fetchPlaces() {
   const res = await fetch(WORKER_URL);
