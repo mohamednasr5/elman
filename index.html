@@ -35,6 +35,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
+  <!-- LLM & AI Search Engine Discovery (llmstxt.org standard) -->
+  <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLM Context"/>
+  <link rel="describedby" href="/llms.txt"/>
+
   <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
   <script>
     (function() {
@@ -58,7 +62,7 @@
   </script>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=f4d4ab51"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=f133e346"/>
 
   <!-- Schema.org WebSite & Local Coverage -->
   <script type="application/ld+json">
@@ -163,8 +167,8 @@
 
 </div>
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=f4d4ab51';
-  import { renderHomePage } from './src/js/ui/pages/home.js?v=f4d4ab51';
+  import { initPage } from './src/js/core/page-shell.js?v=f133e346';
+  import { renderHomePage } from './src/js/ui/pages/home.js?v=f133e346';
   const pc = document.getElementById('page-container');
 
   // Concurrently initialize page shell (header, bottom-nav, pwa) in parallel
