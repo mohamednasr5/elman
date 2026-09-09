@@ -1310,6 +1310,17 @@ try {
     }
   }
 
+  if (url.pathname === '/api/ads/track-click' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const id = String(body.id || url.searchParams.get('id') || '').trim();
+    if (!id) return jsonResponse({ error: 'ID مطلوب' }, 400, corsHeaders);
+    try {
+      await createTursoDB(env).prepare('UPDATE ads SET clicks = COALESCE(clicks, 0) + 1 WHERE id = ?').bind(id).run();
+      return jsonResponse({ success: true }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
 
   // ── Turso: Offers API ─────────────────────────────────────────
   if (url.pathname === '/api/offers' && request.method === 'GET') {

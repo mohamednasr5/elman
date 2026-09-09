@@ -1,4 +1,4 @@
-﻿/**
+/**
  * المنزلة وناسها — Admin Control Panel (Instant SPA + Sponsored Ads Edition)
  * Zero-latency navigation, in-memory caching, responsive mobile bottom-bar,
  * and complete Sponsored Place / Paid Ad priority controls.
@@ -7,6 +7,7 @@
 import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=c1cf1c7c';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser, getIdToken } from '../../core/auth.js';
+import { uploadImage } from '../../services/upload.service.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
@@ -4144,6 +4145,8 @@ async function renderAdminAds($container) {
   adminCache.places = placesMap || {};
 
   const ads = Object.entries(adminCache.ads || {}).map(([id, a]) => ({ ...a, _id: id }));
+  const wideStripAds = ads.filter(a => a.placement === 'wide_strip');
+  const generalAds = ads.filter(a => a.placement !== 'wide_strip');
   const sponsoredPlaces = Object.entries(adminCache.places || {})
     .map(([id, p]) => ({ ...p, _id: id }))
     .filter(p => p.isSponsored || p.isFeatured || p.is_sponsored || p.is_featured || p.isPromoted);
@@ -4153,17 +4156,132 @@ async function renderAdminAds($container) {
       <div class="dashboard-header">
         <div>
           <h1 class="dashboard-header__title">إدارة الإعلانات وترويج الأماكن</h1>
-          <div class="dashboard-header__subtitle">تعيين الأماكن كإعلانات مدفوعة في صدارة الصفحات + إضافة بانرات مخصصة</div>
+          <div class="dashboard-header__subtitle">التحكم في شريط إعلانات الواجهة المربعة (1:1)، الأماكن المميزة، والبانرات الترويجية</div>
         </div>
-        <button class="btn btn-primary" id="btn-add-ad">
-          ${ICONS.plus} إضافة إعلان / ترويج مكان
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-warning" id="btn-add-wide-strip-ad" style="background:#F59E0B;color:#0F172A;font-weight:800;border:none;box-shadow:0 3px 12px rgba(245,158,11,0.3)">
+            <span>✨</span> إضافة إعلان للشريط المربع (1:1)
+          </button>
+          <button class="btn btn-primary" id="btn-add-ad">
+            ${ICONS.plus} إضافة إعلان عام / ترويج مكان
+          </button>
+        </div>
       </div>
 
-      <!-- Sponsored Places Table -->
+      <!-- 1. Dedicated 1:1 Square Wide Strip Section (إعلانك هنا يحقق أهدافك) -->
+      <div class="form-section" style="margin-bottom:24px;border:2px solid #F59E0B;border-radius:16px;background:var(--surface-1);box-shadow:0 4px 20px rgba(245,158,11,0.08)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+          <div>
+            <h2 class="form-section__title" style="color:#F59E0B;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+              <span>💎</span> شريط إعلانات الواجهة المربعة (1:1) — "إعلانك هنا يحقق أهدافك" (${wideStripAds.length})
+            </h2>
+            <div style="font-size:12.5px;color:var(--text-muted)">
+              التحكم المنفصل بالكامل في صور ونسب وإعادة توجيه الشريط العلوي (1:1) مع تأثير اللمعان المتحرك والرابط المباشر
+            </div>
+          </div>
+          <button class="btn btn-sm btn-warning" onclick="window.showAddWideStripAdModalAction()" style="background:#F59E0B;color:#0F172A;font-weight:700">
+            + إضافة إعلان 1:1 جديد
+          </button>
+        </div>
+
+        ${wideStripAds.length > 0 ? `
+          <!-- Mini Live Preview of the Strip inside Admin Dashboard -->
+          <div style="margin-bottom:16px;padding:14px;background:var(--surface-2);border-radius:12px;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span style="font-size:12px;font-weight:800;color:var(--text-primary);display:inline-flex;align-items:center;gap:6px">
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#F59E0B;box-shadow:0 0 8px #F59E0B"></span>
+                معاينة حية لشريط الإعلانات اللامع على الموقع:
+              </span>
+              <span style="font-size:11px;color:var(--text-muted)">نسبة 1:1 مربعة مع لمعان متحرك</span>
+            </div>
+            <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:6px">
+              ${wideStripAds.filter(a => a.isActive !== false).map((a, idx) => `
+                <a href="${escAttr(a.link || '#')}" target="_blank" class="wide-ad-card" style="width:84px;height:84px;flex-shrink:0;aspect-ratio:1/1;border-radius:12px;position:relative;overflow:hidden;background:#0F172A;box-shadow:0 3px 12px rgba(0,0,0,0.12);border:1.5px solid rgba(245,158,11,0.5);display:block;--ad-index:${idx}">
+                  <img src="${escAttr(a.imageUrl)}" alt="${escAttr(a.title || '')}" style="width:100%;height:100%;object-fit:cover" />
+                  <span class="wide-ad-shimmer"></span>
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="dashboard-table-wrapper">
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th style="width:70px">الصورة (1:1)</th>
+                <th>العنوان / النشاط</th>
+                <th>رابط التوجيه عند الضغط</th>
+                <th>النقرات</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${wideStripAds.length === 0 ? `
+                <tr>
+                  <td colspan="6" class="text-center" style="padding:32px 14px">
+                    <div style="font-size:32px;margin-bottom:8px">🖼️</div>
+                    <div style="font-weight:800;font-size:14px;color:var(--text-primary);margin-bottom:6px">لا توجد إعلانات مخصصة في الشريط المربع حالياً</div>
+                    <div style="font-size:12px;color:var(--text-muted);max-width:540px;margin:0 auto 16px">
+                      يقوم الموقع حالياً بعرض البانرات العامة تلقائياً كبديل مؤقت. اضغط على الزر بالأسفل لرفع صورة مربعة 1:1 ورابط توجيه مخصص لإعلانات هذا الشريط بشكل منفصل.
+                    </div>
+                    <button class="btn btn-warning" onclick="window.showAddWideStripAdModalAction()" style="background:#F59E0B;color:#0F172A;font-weight:800">
+                      ✨ إضافة أول إعلان للشريط المربع (1:1)
+                    </button>
+                  </td>
+                </tr>
+              ` : wideStripAds.map(a => `
+                <tr>
+                  <td>
+                    <a href="${escAttr(a.imageUrl)}" target="_blank" title="عرض الصورة بالحجم الكامل"
+                       style="display:block;width:52px;height:52px;aspect-ratio:1/1;border-radius:10px;overflow:hidden;border:1.5px solid #F59E0B;background:#0F172A;box-shadow:0 2px 8px rgba(0,0,0,0.12)">
+                      <img src="${escAttr(a.imageUrl)}" alt="${escAttr(a.title || '')}" style="width:100%;height:100%;object-fit:cover" />
+                    </a>
+                  </td>
+                  <td>
+                    <strong style="font-size:13.5px">${escHtml(a.title || 'إعلان بدون عنوان')}</strong>
+                    <div style="font-size:11px;color:var(--text-muted)">الأولوية: ${a.priority || 15}</div>
+                  </td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:6px;max-width:280px">
+                      <span class="truncate" style="font-size:12px;direction:ltr;color:var(--primary);font-weight:600">${escHtml(a.link || 'بدون رابط')}</span>
+                      ${a.link ? `
+                        <a href="${escAttr(a.link)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline" style="padding:2px 7px" title="تجربة الرابط في نافذة جديدة">
+                          🔗
+                        </a>
+                      ` : ''}
+                    </div>
+                  </td>
+                  <td>
+                    <span style="font-weight:800;color:var(--primary);font-size:13px">${a.clicks || 0}</span>
+                  </td>
+                  <td>
+                    <button class="btn btn-xs ${a.isActive ? 'btn-success' : 'btn-ghost'}" onclick="window.toggleAdActiveAdmin('${escAttr(a.id || a._id)}', ${!a.isActive})" style="font-size:11px;padding:3px 9px;font-weight:700">
+                      ${a.isActive ? '✓ نشط (مفعل)' : '⏸ متوقف'}
+                    </button>
+                  </td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <button class="btn btn-xs btn-outline" onclick="window.editWideStripAdAdmin('${escAttr(a.id || a._id)}')">
+                        ✏️ تعديل
+                      </button>
+                      <button class="btn btn-xs btn-danger" onclick="deleteAdAdmin('${escAttr(a.id || a._id)}')">
+                        ${ICONS.trash} حذف
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. Sponsored Places Table -->
       <div class="form-section" style="margin-bottom:24px;border:1.5px solid #FF8C00">
         <h2 class="form-section__title" style="color:#FF8C00">
-          <span>⭐</span> الأماكن المميزة كإعلانات مدفوعة (${sponsoredPlaces.length})
+          <span>⭐</span> الأماكن المميزة كإعلانات مدفوعة في صدارة الصفحات (${sponsoredPlaces.length})
         </h2>
         <div class="dashboard-table-wrapper">
           <table class="dashboard-table">
@@ -4200,10 +4318,10 @@ async function renderAdminAds($container) {
         </div>
       </div>
 
-      <!-- General Banner Ads Table -->
+      <!-- 3. Other General Banner Ads Table -->
       <div class="form-section">
         <h2 class="form-section__title">
-          <span>${ICONS.megaphone}</span> البانرات الإعلانية العامة (${ads.length})
+          <span>${ICONS.megaphone}</span> البانرات الإعلانية العامة الأخرى (${generalAds.length})
         </h2>
         <div class="dashboard-table-wrapper">
           <table class="dashboard-table">
@@ -4215,11 +4333,11 @@ async function renderAdminAds($container) {
                 <th>النوع</th>
                 <th>النقرات</th>
                 <th>الحالة</th>
-                <th>حذف</th>
+                <th>إجراء</th>
               </tr>
             </thead>
             <tbody>
-              ${ads.length === 0 ? '<tr><td colspan="7" class="text-center">لا توجد بانرات إعلانية نشطة</td></tr>' : ads.map(a => `
+              ${generalAds.length === 0 ? '<tr><td colspan="7" class="text-center">لا توجد بانرات إعلانية أخرى</td></tr>' : generalAds.map(a => `
                 <tr>
                   <td>
                     ${a.imageUrl ? `<img src="${escAttr(a.imageUrl)}" style="height:36px;border-radius:4px;object-fit:cover" />` : 'نص'}
@@ -4240,6 +4358,10 @@ async function renderAdminAds($container) {
       </div>
     </div>
   `;
+
+  document.getElementById('btn-add-wide-strip-ad')?.addEventListener('click', () => {
+    showAddWideStripAdModal(_currentUser, () => switchAdminSection('ads', false));
+  });
 
   document.getElementById('btn-add-ad')?.addEventListener('click', () => {
     showAddAdModal(_currentUser, () => switchAdminSection('ads', false));
@@ -4450,8 +4572,244 @@ function showAddAdModal(user, onDone) {
     searchInputId: 'ad-place-search',
     selectElementId: 'ad-place-id',
     matchCountId: 'ad-place-match-count',
-    previewCardId: 'ad-place-preview-card',
     totalCount: placesList.length
+  });
+}
+
+function showAddWideStripAdModal(user, onDone, adToEdit = null) {
+  const isEditing = Boolean(adToEdit);
+  const placesList = Object.entries(adminCache.places || {}).map(([id, p]) => ({ ...p, _id: id }));
+
+  let currentImageUrl = adToEdit?.imageUrl || '';
+
+  const modal = showModal({
+    title: isEditing ? '✏️ تعديل إعلان الشريط المربع (1:1)' : '✨ إضافة إعلان جديد للشريط المربع (1:1)',
+    size: 'md',
+    content: `
+      <div style="direction:rtl">
+        <div style="background:rgba(245,158,11,0.08);border:1.5px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+          <span style="font-size:26px">💎</span>
+          <div style="font-size:12.5px;color:var(--text-primary);line-height:1.6">
+            <strong>شريط إعلانات الواجهة المربعة (1:1) — "إعلانك هنا يحقق أهدافك"</strong><br>
+            يمكنك تخصيص صورة مربعة (1:1) ورابط توجيه مباشر ينقل الزائر فور الضغط عليها، مع لمعان متحرك فاخر.
+          </div>
+        </div>
+
+        <!-- 1. Image 1:1 Upload & Live Preview -->
+        <div class="form-group" style="margin-bottom:18px">
+          <label class="form-label" style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px">
+            <span>🖼️</span> صورة الإعلان المربعة (1:1) <span class="required">*</span>
+          </label>
+          <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+            <!-- 1:1 Preview Box with Shimmer -->
+            <div id="wsa-preview-container" style="position:relative;width:125px;height:125px;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#0F172A;border:2.5px dashed #F59E0B;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,0.15)">
+              <img id="wsa-preview-img" src="${currentImageUrl || ''}" style="${currentImageUrl ? 'display:block;' : 'display:none;'}width:100%;height:100%;object-fit:cover" />
+              <div id="wsa-preview-placeholder" style="${currentImageUrl ? 'display:none;' : 'display:flex;'}flex-direction:column;align-items:center;justify-content:center;color:#94A3B8;text-align:center;padding:8px">
+                <span style="font-size:30px">📐</span>
+                <span style="font-size:11px;font-weight:800;margin-top:2px">نسبة 1:1</span>
+              </div>
+              <span class="wide-ad-shimmer" style="position:absolute;top:-80%;left:-100%;width:65%;height:260%;background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.7) 50%,rgba(255,255,255,0) 100%);transform:rotate(26deg);animation:wideAdShine 3.6s infinite;pointer-events:none"></span>
+            </div>
+
+            <!-- Upload / URL Input -->
+            <div style="flex:1;min-width:210px">
+              <label class="btn btn-warning btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-weight:700;margin-bottom:8px;background:#F59E0B;color:#0F172A;border:none">
+                <span>📁</span> رفع صورة مربعة من الجهاز (R2)
+                <input type="file" id="wsa-file-input" accept="image/jpeg,image/png,image/webp" style="display:none" />
+              </label>
+              <div id="wsa-upload-status" style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">
+                سيتم تحويل الصورة تلقائياً لـ WebP خفيفة وفائقة السرعة
+              </div>
+
+              <div style="margin-top:6px">
+                <label class="form-label" style="font-size:11px;color:var(--text-muted);margin-bottom:3px">أو الصق رابط صورة مباشر (URL):</label>
+                <input type="url" id="wsa-img-url-input" class="form-input" placeholder="https://..." value="${escAttr(currentImageUrl)}" style="direction:ltr;font-size:12px;padding:7px 10px;border-radius:8px" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Target Link -->
+        <div class="form-group" style="margin-bottom:18px">
+          <label class="form-label" style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px">
+            <span>🔗</span> رابط التوجيه عند الضغط على الصورة <span class="required">*</span>
+          </label>
+          <div style="margin-bottom:8px">
+            <select id="wsa-quick-place-select" class="form-select" style="font-size:12.5px;border-radius:8px;font-weight:600">
+              <option value="">-- أو اختر مكاناً من الدليل للربط به تلقائياً --</option>
+              ${placesList.map(p => `
+                <option value="/place.html?slug=${escAttr(p.slug || p._id)}" data-name="${escAttr(p.name)}" data-img="${escAttr(p.coverImageUrl || p.logoUrl || '')}">
+                  🏢 ${escHtml(p.name)} (${escHtml(p.categoryName || p.categoryId || 'عام')} - ${escHtml(p.area || 'المنزلة')})
+                </option>
+              `).join('')}
+            </select>
+          </div>
+          <input type="text" id="wsa-link-input" class="form-input" placeholder="مثال: /place.html?slug=... أو https://wa.me/2010... أو رابط صفحة فيسبوك" value="${escAttr(adToEdit?.link || '')}" style="direction:ltr;font-weight:600;font-size:13px" />
+          <div class="form-hint" style="font-size:11px;margin-top:4px">
+            يمكنك كتابة رابط صفحة المكان أو أي رابط خارجي (موقع، فيسبوك، واتساب، متجر). سيفتح مباشرة عند الضغط.
+          </div>
+        </div>
+
+        <!-- 3. Title / Alt text -->
+        <div class="form-group" style="margin-bottom:18px">
+          <label class="form-label" style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px">
+            <span>📝</span> عنوان الإعلان / اسم النشاط <span class="required">*</span>
+          </label>
+          <input type="text" id="wsa-title-input" class="form-input" placeholder="مثال: سنتر الغضبان للملابس الجاهزة" value="${escAttr(adToEdit?.title || '')}" />
+        </div>
+
+        <!-- 4. Duration & Status & Priority -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <label class="form-label" style="font-weight:700;font-size:12px">المدة (بالأيام)</label>
+            <input type="number" id="wsa-days-input" class="form-input" value="${adToEdit?.endDate ? Math.max(1, Math.round((adToEdit.endDate - Date.now()) / (24*3600*1000))) : 30}" min="1" max="365" />
+          </div>
+          <div>
+            <label class="form-label" style="font-weight:700;font-size:12px">الترتيب / الأولوية</label>
+            <input type="number" id="wsa-priority-input" class="form-input" value="${adToEdit?.priority || 20}" min="1" max="100" />
+          </div>
+          <div>
+            <label class="form-label" style="font-weight:700;font-size:12px">الحالة</label>
+            <select id="wsa-status-input" class="form-select">
+              <option value="1" ${adToEdit && !adToEdit.isActive ? '' : 'selected'}>✓ نشط ومفعل</option>
+              <option value="0" ${adToEdit && !adToEdit.isActive ? 'selected' : ''}>⏸ متوقف مؤقتاً</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    `,
+    buttons: [
+      {
+        label: isEditing ? 'حفظ التعديلات' : 'إضافة وتفعيل الإعلان',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async () => {
+          const title = document.getElementById('wsa-title-input')?.value.trim();
+          const link = document.getElementById('wsa-link-input')?.value.trim();
+          const imageUrl = currentImageUrl || document.getElementById('wsa-img-url-input')?.value.trim();
+          const daysNum = Number(document.getElementById('wsa-days-input')?.value) || 30;
+          const priority = Number(document.getElementById('wsa-priority-input')?.value) || 20;
+          const isActive = document.getElementById('wsa-status-input')?.value === '1';
+
+          if (!imageUrl) {
+            toast.warning('يرجى اختيار أو رفع صورة مربعة (1:1) للإعلان');
+            return;
+          }
+          if (!link) {
+            toast.warning('يرجى تحديد رابط التوجيه عند الضغط على الصورة');
+            return;
+          }
+          if (!title) {
+            toast.warning('يرجى كتابة عنوان أو اسم الإعلان');
+            return;
+          }
+
+          try {
+            const adData = {
+              id: adToEdit?.id || adToEdit?._id || `ad_strip_${Date.now()}`,
+              title,
+              link,
+              imageUrl,
+              placement: 'wide_strip',
+              priority,
+              isActive,
+              startDate: isEditing && adToEdit?.startDate ? adToEdit.startDate : Date.now(),
+              endDate: Date.now() + (daysNum * 24 * 60 * 60 * 1000),
+              clicks: adToEdit?.clicks || 0,
+              createdAt: adToEdit?.createdAt || serverTimestamp(),
+              createdBy: user?.uid || 'admin'
+            };
+
+            const res = await dbPush('ads', adData);
+            const savedId = res?.id || res?.key || adData.id;
+            adData.id = savedId;
+            adData._id = savedId;
+
+            if (adminCache.ads) {
+              adminCache.ads[savedId] = adData;
+            }
+
+            toast.success(isEditing ? 'تم تحديث إعلان الشريط المربع بنجاح ✓' : 'تمت إضافة إعلان الشريط المربع بنجاح ✓');
+            modal.close();
+            onDone();
+          } catch (err) {
+            console.error('[showAddWideStripAdModal] Save error:', err);
+            toast.error('فشل حفظ الإعلان: ' + (err?.message || 'خطأ غير متوقع'));
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+
+  // Wire up File Upload & Live 1:1 Preview
+  const fileInput = document.getElementById('wsa-file-input');
+  const imgUrlInput = document.getElementById('wsa-img-url-input');
+  const previewImg = document.getElementById('wsa-preview-img');
+  const placeholder = document.getElementById('wsa-preview-placeholder');
+  const statusEl = document.getElementById('wsa-upload-status');
+  const placeSelect = document.getElementById('wsa-quick-place-select');
+  const linkInput = document.getElementById('wsa-link-input');
+  const titleInput = document.getElementById('wsa-title-input');
+
+  fileInput?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show instant local preview
+    try {
+      const localUrl = URL.createObjectURL(file);
+      previewImg.src = localUrl;
+      previewImg.style.display = 'block';
+      placeholder.style.display = 'none';
+    } catch (_) {}
+
+    statusEl.textContent = '⏳ جاري رفع الصورة إلى التخزين السحابي (R2)...';
+    statusEl.style.color = 'var(--primary)';
+
+    try {
+      const uploadRes = await uploadImage(file, 'ads');
+      currentImageUrl = uploadRes.url;
+      if (imgUrlInput) imgUrlInput.value = uploadRes.url;
+      statusEl.textContent = '✓ تم رفع الصورة المربعة بنجاح وجاهزة للعرض';
+      statusEl.style.color = '#10B981';
+      toast.success('تم رفع الصورة بنجاح ✓');
+    } catch (err) {
+      console.error('[WideStripAd] Upload error:', err);
+      statusEl.textContent = 'فشل الرفع: ' + (err?.message || 'خطأ في الاتصال');
+      statusEl.style.color = '#EF4444';
+      toast.error('تعذر رفع الصورة: ' + (err?.message || ''));
+    }
+  });
+
+  imgUrlInput?.addEventListener('input', () => {
+    const val = imgUrlInput.value.trim();
+    currentImageUrl = val;
+    if (val) {
+      previewImg.src = val;
+      previewImg.style.display = 'block';
+      placeholder.style.display = 'none';
+    } else {
+      previewImg.style.display = 'none';
+      placeholder.style.display = 'flex';
+    }
+  });
+
+  placeSelect?.addEventListener('change', () => {
+    const opt = placeSelect.selectedOptions?.[0];
+    if (placeSelect.value) {
+      linkInput.value = placeSelect.value;
+      if (!titleInput.value) {
+        titleInput.value = opt?.dataset.name || '';
+      }
+      if (!currentImageUrl && opt?.dataset.img) {
+        currentImageUrl = opt.dataset.img;
+        if (imgUrlInput) imgUrlInput.value = opt.dataset.img;
+        previewImg.src = opt.dataset.img;
+        previewImg.style.display = 'block';
+        placeholder.style.display = 'none';
+      }
+    }
   });
 }
 
@@ -5815,6 +6173,52 @@ window.deleteAdAdmin = async (adId) => {
     console.error('[deleteAdAdmin] Error:', err);
     toast.error('فشل حذف الإعلان: ' + (err?.message || 'خطأ في الاتصال'));
   }
+};
+
+window.toggleAdActiveAdmin = async (adId, newStatus) => {
+  const cleanId = String(adId || '').trim();
+  if (!cleanId) return;
+  try {
+    const ad = (adminCache.ads && (adminCache.ads[cleanId] || Object.values(adminCache.ads).find(x => x.id === cleanId || x._id === cleanId))) || null;
+    if (!ad) {
+      toast.error('لم يتم العثور على الإعلان');
+      return;
+    }
+    const updated = {
+      ...ad,
+      id: cleanId,
+      isActive: Boolean(newStatus),
+      is_active: Boolean(newStatus) ? 1 : 0
+    };
+    await dbPush('ads', updated);
+    if (adminCache.ads) {
+      if (adminCache.ads[cleanId]) adminCache.ads[cleanId].isActive = Boolean(newStatus);
+      for (const k of Object.keys(adminCache.ads)) {
+        if (adminCache.ads[k]?.id === cleanId || adminCache.ads[k]?._id === cleanId) {
+          adminCache.ads[k].isActive = Boolean(newStatus);
+        }
+      }
+    }
+    toast.success(newStatus ? 'تم تفعيل الإعلان بنجاح ✓' : 'تم إيقاف الإعلان مؤقتاً');
+    switchAdminSection('ads', false);
+  } catch (err) {
+    console.error('[toggleAdActiveAdmin] Error:', err);
+    toast.error('فشل تغيير حالة الإعلان: ' + (err?.message || ''));
+  }
+};
+
+window.editWideStripAdAdmin = (adId) => {
+  const cleanId = String(adId || '').trim();
+  const ad = (adminCache.ads && (adminCache.ads[cleanId] || Object.values(adminCache.ads).find(x => x.id === cleanId || x._id === cleanId))) || null;
+  if (!ad) {
+    toast.error('لم يتم العثور على الإعلان');
+    return;
+  }
+  showAddWideStripAdModal(_currentUser, () => switchAdminSection('ads', false), ad);
+};
+
+window.showAddWideStripAdModalAction = () => {
+  showAddWideStripAdModal(_currentUser, () => switchAdminSection('ads', false));
 };
 
 window.adminViewProductAction = async (placeId, productId) => {
