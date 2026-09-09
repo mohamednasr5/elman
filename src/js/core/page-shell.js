@@ -593,25 +593,37 @@ function _canShowPwaBanner() {
 }
 
 function _setupPwa() {
-  if (!_canShowPwaBanner()) return;
+  // Voice search guide check: show once for first-time users
+  try {
+    if (!localStorage.getItem('manzala_voice_guide_seen')) {
+      setTimeout(() => {
+        const b = document.getElementById('pwa-banner');
+        if (!b || b.hidden || !b.classList.contains('visible')) {
+          _showVoiceSearchGuideOnce();
+        }
+      }, 3500);
+    }
+  } catch (_) {}
 
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    _dp = e;
-    // Don't show immediately on refresh - wait 5s and re-check conditions
+  if (_canShowPwaBanner()) {
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      _dp = e;
+      // Don't show immediately on refresh - wait 5s and re-check conditions
+      setTimeout(() => {
+        if (_canShowPwaBanner()) {
+          _showPwaBanner();
+        }
+      }, 5000);
+    });
+
+    // Fallback timer for browsers that don't trigger beforeinstallprompt (e.g. iOS Safari)
     setTimeout(() => {
       if (_canShowPwaBanner()) {
         _showPwaBanner();
       }
-    }, 5000);
-  });
-
-  // Fallback timer for browsers that don't trigger beforeinstallprompt (e.g. iOS Safari)
-  setTimeout(() => {
-    if (_canShowPwaBanner()) {
-      _showPwaBanner();
-    }
-  }, 7000);
+    }, 7000);
+  }
 
   document.addEventListener('click', e => {
     if (e.target.closest('#pwa-banner-close') || e.target.closest('#pwa-banner-later')) {
@@ -695,84 +707,98 @@ async function _triggerInstall() {
 }
 
 /**
- * High-End One-Time Animated Voice Search Guide
- * Displays an animated glowing arrow pointing to the microphone
- * and an attractive tooltip "ممكن تبحث بالصوت من هنا 🎙️"
+ * One-Time Clean Voice Search Callout Guide (كلمة مع سهم أنيقة)
+ * Displays a sleek red callout pill "ممكن تبحث بالصوت من هنا 🎙️" with an animated arrow
+ * pointing directly at the center 'M' button on mobile, or the desktop mic on desktop.
+ * Shows once and only once for the user.
  */
 function _showVoiceSearchGuideOnce() {
   if (typeof document === 'undefined') return;
-  if (localStorage.getItem('manzala_voice_guide_seen')) return;
-  localStorage.setItem('manzala_voice_guide_seen', 'true');
+  try {
+    if (localStorage.getItem('manzala_voice_guide_seen') === 'true') return;
+    localStorage.setItem('manzala_voice_guide_seen', 'true');
+  } catch (_) {
+    return;
+  }
 
   setTimeout(() => {
     const isDesktop = window.innerWidth >= 769;
-    let micBtn = null;
+    let targetBtn = null;
     if (isDesktop) {
-      micBtn = document.getElementById('desktop-voice-fab') ||
-               document.getElementById('header-search-trigger') ||
-               document.getElementById('global-voice-assistant-fab');
+      targetBtn = document.getElementById('desktop-voice-fab') ||
+                  document.getElementById('global-voice-assistant-fab');
     } else {
-      micBtn = document.getElementById('global-voice-assistant-fab') ||
-               document.querySelector('.bottom-nav__voice-assistant-fab');
+      targetBtn = document.getElementById('global-voice-assistant-fab') ||
+                  document.querySelector('.bottom-nav__fab-btn') ||
+                  document.querySelector('.bottom-nav__fab');
     }
 
-    if (!micBtn) return;
+    if (!targetBtn) return;
 
-    // Remove any previous guide overlay
-    document.getElementById('voice-search-guide-overlay')?.remove();
+    // Remove any previous instance
+    document.getElementById('voice-guide-callout')?.remove();
 
-    const overlay = document.createElement('div');
-    overlay.className = 'voice-search-guide-overlay' + (isDesktop ? ' desktop-guide' : ' mobile-guide');
-    overlay.id = 'voice-search-guide-overlay';
+    const callout = document.createElement('div');
+    callout.className = 'voice-guide-callout';
+    callout.id = 'voice-guide-callout';
+    callout.setAttribute('role', 'tooltip');
 
-    overlay.innerHTML = `
-      <div class="voice-search-guide-popup">
-        <button type="button" class="voice-guide-close-btn" id="voice-guide-close-btn" aria-label="إغلاق التلميح" title="إغلاق">✕</button>
-        <div class="voice-guide-sparkle">✨ ميزة حصرية وسريعة</div>
-        <div class="voice-guide-title">
-          <span>ممكن تبحث بالصوت من هنا</span>
-          <span class="voice-guide-mic-icon">🎙️</span>
+    callout.innerHTML = `
+      <div class="voice-guide-callout__bubble" id="voice-guide-bubble">
+        <button type="button" class="voice-guide-callout__close" id="voice-guide-callout-close" aria-label="إغلاق التلميح" title="إغلاق">✕</button>
+        <div class="voice-guide-callout__body">
+          <span class="voice-guide-callout__text">ممكن تبحث بالصوت من هنا</span>
+          <span class="voice-guide-callout__mic">🎙️</span>
         </div>
-        <p class="voice-guide-text">
-          اضغط وتحدث مباشرة باسم أي مكان أو دكتور أو خدمة للوصول إليها في ثانية واحدة!
-        </p>
-        <div class="voice-guide-arrow-container">
-          <div class="voice-guide-arrow-bounce">
-            <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="4" x2="12" y2="20"></line>
-              <polyline points="19 13 12 20 5 13"></polyline>
-            </svg>
-          </div>
-        </div>
+      </div>
+      <div class="voice-guide-callout__arrow-wrap">
+        <svg class="voice-guide-callout__arrow" viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="3" x2="12" y2="19"></line>
+          <polyline points="19 12 12 19 5 12"></polyline>
+        </svg>
       </div>
     `;
 
-    document.body.appendChild(overlay);
-    micBtn.classList.add('voice-mic-highlighted');
+    document.body.appendChild(callout);
+    targetBtn.classList.add('voice-mic-highlighted');
 
     const closeGuide = () => {
-      overlay.classList.add('fade-out');
-      micBtn?.classList.remove('voice-mic-highlighted');
-      setTimeout(() => overlay.remove(), 400);
+      callout.classList.add('fade-out');
+      targetBtn?.classList.remove('voice-mic-highlighted');
+      setTimeout(() => callout.remove(), 350);
     };
 
-    overlay.querySelector('#voice-guide-close-btn')?.addEventListener('click', (e) => {
+    callout.querySelector('#voice-guide-callout-close')?.addEventListener('click', e => {
       e.stopPropagation();
       closeGuide();
     });
 
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeGuide();
+    callout.querySelector('#voice-guide-bubble')?.addEventListener('click', e => {
+      if (e.target.closest('#voice-guide-callout-close')) return;
+      closeGuide();
+      try { openManzalaVoiceAssistantModal(); } catch (_) {}
     });
 
-    micBtn.addEventListener('click', closeGuide, { once: true });
+    targetBtn.addEventListener('click', closeGuide, { once: true });
 
-    // Auto fade out after 8.5 seconds
-    setTimeout(() => {
-      if (document.body.contains(overlay)) {
+    // Dismiss on click outside
+    const outsideClickListener = e => {
+      if (!callout.contains(e.target) && !targetBtn.contains(e.target)) {
         closeGuide();
+        document.removeEventListener('click', outsideClickListener);
       }
-    }, 8500);
+    };
+    setTimeout(() => {
+      document.addEventListener('click', outsideClickListener);
+    }, 400);
+
+    // Auto dismiss after 9 seconds if not interacted with
+    setTimeout(() => {
+      if (document.body.contains(callout)) {
+        closeGuide();
+        document.removeEventListener('click', outsideClickListener);
+      }
+    }, 9000);
   }, 500);
 }
 
