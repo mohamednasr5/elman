@@ -58,7 +58,8 @@ async function requireAuth(request, env) {
   const cors = {
     'Access-Control-Allow-Origin': origin || 'https://dalilmanzala.com',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Vary': 'Origin'
   };
   const user = await authenticateRequest(request, env);
   if (!user) return { user: null, response: jsonResponse({ success:false, error:'Unauthorized' }, 401, { ...cors, 'WWW-Authenticate':'Bearer' }) };
@@ -73,7 +74,8 @@ async function requireAdmin(request, env, superadminOnly = false) {
   const cors = {
     'Access-Control-Allow-Origin': origin || 'https://dalilmanzala.com',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Vary': 'Origin'
   };
   const auth = await requireAuth(request, env);
   if (auth.response) return auth;
@@ -234,6 +236,7 @@ export default {
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
       'Access-Control-Max-Age': '86400',
+      'Vary': 'Origin',
     };
 
     // Preflight OPTIONS
