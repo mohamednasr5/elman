@@ -4,18 +4,8 @@
  * Initializes Firebase, Auth, Theme, Floating Voice Assistant, Realtime Live Sync, and FCM.
  */
 
-import { initFirebase, ensureFirebaseReady } from './firebase.js';
 import { initAuth, onAuthStateChange, signOut, waitForAuth, isAdmin, getCurrentUser, getClientIp } from './auth.js';
-import { getSettings, getUserNotifications, isIpBanned } from './db.js';
 import { toast } from '../ui/components/Toast.js';
-import { bindGlobalVoiceAssistantFab, openManzalaVoiceAssistantModal } from '../services/voice.service.js';
-import { initRealtimePwaSyncBus } from '../services/realtime-sync.service.js';
-import { initLiveNotificationSubscriber, updateAllNotificationBadges } from '../services/notification.service.js';
-import { initFcmMessaging } from '../services/fcm.service.js';
-import { initUniversalMobileTouchTooltips } from '../utils/mobile-tooltip.js';
-import { executeFastSearch } from '../services/search-engine.service.js';
-import { mountWideAdsBanner } from '../ui/components/WideAdsBanner.js';
-import { showModal } from '../ui/components/Modal.js';
 
 /* ─────────────────────────────────────────────────────────
    HTML BUILDERS
@@ -319,7 +309,11 @@ export async function initPage(activeFile = '') {
       }
     }
     if (banner) {
-      setTimeout(() => mountWideAdsBanner(banner), 100);
+      setTimeout(() => {
+        import('../ui/components/WideAdsBanner.js')
+          .then(({ mountWideAdsBanner }) => mountWideAdsBanner(banner))
+          .catch(() => {});
+      }, 100);
     }
   }
   _inject('footer-slot',  _footerHTML());
@@ -333,7 +327,11 @@ export async function initPage(activeFile = '') {
   _bindThemeToggle();
 
   /* 5. Attach M Voice Assistant FAB listener */
-try { bindGlobalVoiceAssistantFab(); } catch (err) { console.warn('[initPage] voice FAB init failed:', err); }
+try {
+  import('../services/voice.service.js')
+    .then(({ bindGlobalVoiceAssistantFab }) => bindGlobalVoiceAssistantFab())
+    .catch(err => console.warn('[initPage] voice FAB init failed:', err));
+} catch (err) { console.warn('[initPage] voice FAB import failed:', err); }
 
   /* 6. Scroll shadow on header & Scroll to top floating button */
   const hdr = document.getElementById('site-header');
@@ -366,9 +364,17 @@ try { _setupHeaderSearch(); } catch (err) { console.warn('[initPage] header sear
     else setTimeout(fn, 0);
   };
   runDeferred(async () => {
-    try { const firebaseReady = await ensureFirebaseReady(2500); if (firebaseReady?.auth) initAuth(); } catch (_) {}
+    try {
+      const { ensureFirebaseReady } = await import('./firebase.js');
+      const firebaseReady = await ensureFirebaseReady(2500);
+      if (firebaseReady?.auth) initAuth();
+    } catch (_) {}
     try { await _enforceBanGuard(); } catch (_) {}
     try {
+      const [{ initLiveNotificationSubscriber }, { initFcmMessaging }] = await Promise.all([
+        import('../services/notification.service.js'),
+        import('../services/fcm.service.js')
+      ]);
       onAuthStateChange(user => {
         _renderUser(user);
         initLiveNotificationSubscriber(user?.uid);
@@ -376,6 +382,7 @@ try { _setupHeaderSearch(); } catch (err) { console.warn('[initPage] header sear
       });
     } catch (_) {}
     try {
+      const { getSettings } = await import('./db.js');
       const s = await getSettings();
       const waLink = s?.contact?.whatsappLink;
       if (waLink) document.querySelectorAll('[data-wa]').forEach(a => { a.href = waLink; });
@@ -402,8 +409,12 @@ try { _setupPwa(); } catch (err) { console.warn('[initPage] PWA setup failed:', 
 
   /* 11. Non-critical enhancement work */
   runDeferred(() => {
-    try { initRealtimePwaSyncBus(); } catch (_) {}
-    try { initUniversalMobileTouchTooltips(); } catch (_) {}
+    import('../services/realtime-sync.service.js')
+      .then(({ initRealtimePwaSyncBus }) => initRealtimePwaSyncBus())
+      .catch(() => {});
+    import('../utils/mobile-tooltip.js')
+      .then(({ initUniversalMobileTouchTooltips }) => initUniversalMobileTouchTooltips())
+      .catch(() => {});
     try { _setupInstantPrefetch(); } catch (_) {}
     try { _setupContentProtection(); } catch (_) {}
   });
@@ -577,7 +588,7 @@ function _renderUser(user) {
 /**
  * Mobile More Menu & Dashboard Bottom Sheet Drawer
  */
-export function openDashboardMoreModal(user = null) {
+export async function openDashboardMoreModal(user = null) {
   const currentUser = user || getCurrentUser();
   const isLoggedIn = Boolean(currentUser && (currentUser.uid || currentUser.id));
   const isUserAdmin = isLoggedIn && isAdmin(currentUser);
@@ -691,6 +702,7 @@ export function openDashboardMoreModal(user = null) {
     </div>
   `;
 
+  const { showModal } = await import('../ui/components/Modal.js');
   const modal = showModal({
     title: '☰ القائمة ولوحة التحكم',
     content,
@@ -820,7 +832,11 @@ function _setupPwa() {
     }
     if (e.target.closest('#desktop-voice-fab')) {
       e.preventDefault();
-      try { openManzalaVoiceAssistantModal(); } catch (_) {}
+      try {
+        import('../services/voice.service.js')
+          .then(({ openManzalaVoiceAssistantModal }) => openManzalaVoiceAssistantModal())
+          .catch(() => {});
+      } catch (_) {}
       return;
     }
   });
@@ -963,7 +979,11 @@ function _showVoiceSearchGuideOnce() {
     callout.querySelector('#voice-guide-bubble')?.addEventListener('click', e => {
       if (e.target.closest('#voice-guide-callout-close')) return;
       closeGuide();
-      try { openManzalaVoiceAssistantModal(); } catch (_) {}
+      try {
+        import('../services/voice.service.js')
+          .then(({ openManzalaVoiceAssistantModal }) => openManzalaVoiceAssistantModal())
+          .catch(() => {});
+      } catch (_) {}
     });
 
     targetBtn.addEventListener('click', closeGuide, { once: true });
@@ -1130,6 +1150,7 @@ async function _enforceBanGuard() {
     // Check IP
     const clientIp = await getClientIp();
     if (clientIp) {
+      const { isIpBanned } = await import('./db.js');
       const banInfo = await isIpBanned(clientIp);
       if (banInfo) {
         const reason = banInfo.reason || 'مخالفة معايير وسياسات المنصة';
@@ -1248,6 +1269,7 @@ function _setupHeaderSearch() {
     debounceTimer = setTimeout(async () => {
       const currentReq = ++activeSearchReq;
       try {
+        const { executeFastSearch } = await import('../services/search-engine.service.js');
         const results = await executeFastSearch(query, { limit: 6 });
         if (currentReq !== activeSearchReq) return; // Discard stale request
 

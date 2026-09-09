@@ -58,7 +58,8 @@ async function requireAuth(request, env) {
   const cors = {
     'Access-Control-Allow-Origin': origin || 'https://dalilmanzala.com',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Vary': 'Origin'
   };
   const user = await authenticateRequest(request, env);
   if (!user) return { user: null, response: jsonResponse({ success:false, error:'Unauthorized' }, 401, { ...cors, 'WWW-Authenticate':'Bearer' }) };
@@ -73,7 +74,8 @@ async function requireAdmin(request, env, superadminOnly = false) {
   const cors = {
     'Access-Control-Allow-Origin': origin || 'https://dalilmanzala.com',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Vary': 'Origin'
   };
   const auth = await requireAuth(request, env);
   if (auth.response) return auth;
@@ -234,6 +236,7 @@ export default {
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
       'Access-Control-Max-Age': '86400',
+      'Vary': 'Origin',
     };
 
     // Preflight OPTIONS
@@ -384,7 +387,7 @@ try {
 
   // Server-side IP enforcement for API traffic. Admins can still reach
   // the management endpoints so a ban can be reviewed/removed.
-  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && request.method !== 'OPTIONS') {
+  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && url.pathname !== '/api/image' && request.method !== 'OPTIONS') {
     try {
       const clientIp = String(request.headers.get('CF-Connecting-IP') || '').trim();
       if (clientIp) {
@@ -405,6 +408,59 @@ try {
       }
     } catch (ipErr) {
       console.warn('[IP Ban] enforcement lookup failed:', ipErr?.message || ipErr);
+    }
+  }
+
+  // ── Cloudflare Image Resizing Proxy ───────────────────────────
+  // GET /api/image?src=<R2 URL>&w=300&h=180&q=80&fit=cover
+  // Keeps R2 originals intact while serving edge-resized AVIF/WebP variants.
+  if (url.pathname === '/api/image' && request.method === 'GET') {
+    const rawSource = String(url.searchParams.get('src') || '').trim();
+    if (!rawSource) return new Response('Missing image source', { status: 400 });
+
+    let source;
+    try { source = new URL(rawSource); } catch (_) {
+      return new Response('Invalid image source', { status: 400 });
+    }
+
+    const allowedHost = 'pub-85efa06866b24efbbd08e79a654ed53f.r2.dev';
+    if (source.protocol !== 'https:' || source.hostname !== allowedHost || !/\.(?:jpe?g|png|gif|webp|avif)$/i.test(source.pathname)) {
+      return new Response('Image source not allowed', { status: 403 });
+    }
+
+    const allowedWidths = [44, 90, 180, 300, 360, 600, 800, 1200, 1400];
+    const requestedWidth = Number(url.searchParams.get('w') || 300);
+    const width = allowedWidths.reduce((best, candidate) =>
+      Math.abs(candidate - requestedWidth) < Math.abs(best - requestedWidth) ? candidate : best,
+      allowedWidths[0]
+    );
+    const requestedHeight = Number(url.searchParams.get('h') || 0);
+    const height = requestedHeight > 0 ? Math.min(1200, Math.max(44, Math.round(requestedHeight))) : undefined;
+    const quality = Math.min(90, Math.max(45, Number(url.searchParams.get('q') || 80) || 80));
+    const requestedFit = String(url.searchParams.get('fit') || 'scale-down');
+    const fit = ['scale-down', 'contain', 'cover', 'crop', 'pad'].includes(requestedFit) ? requestedFit : 'scale-down';
+    const accept = request.headers.get('Accept') || '';
+    const format = /image\/avif/i.test(accept) ? 'avif' : (/image\/webp/i.test(accept) ? 'webp' : undefined);
+
+    try {
+      const imageOptions = { width, quality, fit };
+      if (height) imageOptions.height = height;
+      if (format) imageOptions.format = format;
+
+      const imageRequest = new Request(source.toString(), {
+        headers: { Accept: accept || 'image/avif,image/webp,image/*,*/*;q=0.8' }
+      });
+      let response = await fetch(imageRequest, { cf: { image: imageOptions } });
+      if (!response.ok) return new Response('Image transformation failed', { status: response.status || 502 });
+
+      response = new Response(response.body, response);
+      response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+      response.headers.set('Vary', 'Accept');
+      response.headers.set('X-Image-Resize', width + 'x' + (height || ''));
+      return response;
+    } catch (err) {
+      console.warn('[Image Resize] failed:', err?.message || err);
+      return new Response('Image transformation failed', { status: 502 });
     }
   }
 
