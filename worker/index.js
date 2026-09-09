@@ -2937,7 +2937,13 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         return jsonResponse({success:true,data:poll},200,corsHeaders);
       }
 
-      // ── 404 Catch-all ──
+      // ── Passthrough for non-API requests ──
+      // If request is not an /api route, pass through to GitHub Pages origin so static files and HTML pages work seamlessly
+      if (!url.pathname.startsWith('/api')) {
+        return fetch(request);
+      }
+
+      // ── 404 Catch-all for API ──
       return jsonResponse({ error: 'المسار غير موجود' }, 404, corsHeaders);
 
     } catch (err) {

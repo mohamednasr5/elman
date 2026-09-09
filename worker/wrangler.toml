@@ -5,10 +5,12 @@ workers_dev = true
 
 
 routes = [
-  { pattern = "dalilmanzala.com/p*", zone_name = "dalilmanzala.com" },
-  { pattern = "dalilmanzala.com/api*", zone_name = "dalilmanzala.com" },
-  { pattern = "www.dalilmanzala.com/api*", zone_name = "dalilmanzala.com" },
-  { pattern = "www.dalilmanzala.com/p*", zone_name = "dalilmanzala.com" }
+  { pattern = "dalilmanzala.com/p/*", zone_name = "dalilmanzala.com" },
+  { pattern = "dalilmanzala.com/api/*", zone_name = "dalilmanzala.com" },
+  { pattern = "dalilmanzala.com/api", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/api/*", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/api", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/p/*", zone_name = "dalilmanzala.com" }
 ]
 
 
