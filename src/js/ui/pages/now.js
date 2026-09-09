@@ -1,7 +1,7 @@
 ﻿/**
  * now.js — المنزلة والمطرية الآن (يحدث الآن)
  */
-import { mountLivePulseSection } from '../components/LivePulseSection.js?v=5d9dc081';
+import { mountLivePulseSection } from '../components/LivePulseSection.js?v=c1cf1c7c';
 
 export async function renderNowPage($container) {
   $container.innerHTML = '<div id="standalone-live-pulse-container" style="padding-top:20px"></div>';

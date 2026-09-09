@@ -3,7 +3,7 @@
  * Core business logic for Place, Offers and Products management
  */
 
-import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getPlace, getPublishedPlaces, idbGet, idbPut, idbDelete, STORES, tursoFetch } from '../core/db.js?v=5d9dc081';
+import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getPlace, getPublishedPlaces, idbGet, idbPut, idbDelete, STORES, tursoFetch } from '../core/db.js?v=c1cf1c7c';
 import { broadcastRealtimeChange } from './realtime-sync.service.js';
 import { generatePlaceSlug, generateCleanSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';

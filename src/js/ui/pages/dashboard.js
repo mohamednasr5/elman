@@ -102,6 +102,10 @@ export async function renderDashboard($container, { user, section = 'overview', 
             <span id="sidebar-notifs-badge" class="badge badge--danger" style="margin-right:auto;font-size:11px;padding:2px 6px;${unreadNotifsCount > 0 ? '' : 'display:none'}">${unreadNotifsCount}</span>
           </a>
           
+          <a href="contact.html?type=verification" class="dashboard-nav-item" style="background:rgba(217,119,6,0.08);color:#d97706;font-weight:700;border:1px solid rgba(217,119,6,0.25);margin-top:4px">
+            <span class="dashboard-nav-item__icon">🛡️</span> وثق ملفك (العلامة الزرقاء)
+          </a>
+          
           ${isAdmin(user) ? `
             <div class="dashboard-nav-section">الإدارة</div>
             <a href="admin/index.html" class="dashboard-nav-item" style="color:var(--secondary);font-weight:bold">
@@ -123,6 +127,10 @@ export async function renderDashboard($container, { user, section = 'overview', 
 }
 
 export async function switchDashboardSection(section = 'overview', placeId = null, pushState = true) {
+  if (section === 'verify' || section === 'verification') {
+    window.location.href = 'contact.html?type=verification';
+    return;
+  }
   const $mainArea = document.getElementById('dashboard-main-area');
   if (!$mainArea) return;
 
@@ -226,6 +234,12 @@ function setupDashboardNavigation() {
       if (btn) {
         e.preventDefault();
         const section = btn.getAttribute('data-dash-sec');
+        if (section === 'more') {
+          if (typeof window.openDashboardMoreModal === 'function') {
+            window.openDashboardMoreModal(_dashUser);
+          }
+          return;
+        }
         switchDashboardSection(section, null, true);
       }
     });
@@ -295,6 +309,20 @@ async function renderOverviewSection($container, user) {
         <div class="stat-card__value" style="color:#25D366">${totalPhoneClicks + totalWaClicks}</div>
         <div class="stat-card__label">نقرات الاتصال والواتساب</div>
       </div>
+    </div>
+
+    <!-- Verification CTA Banner -->
+    <div class="dashboard-verify-banner animate-fade-in" style="background:linear-gradient(135deg,rgba(217,119,6,0.08) 0%,rgba(245,166,35,0.14) 100%);border:1.5px solid rgba(245,166,35,0.38);border-radius:16px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin:1.5rem 0;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:14px;max-width:680px">
+        <div style="font-size:30px;line-height:1;background:rgba(245,166,35,0.2);padding:10px;border-radius:12px;flex-shrink:0">🛡️</div>
+        <div>
+          <div style="font-size:1.05rem;font-weight:800;color:#92400E;margin-bottom:4px">وثّق نشاطك التجاري بالعلامة الزرقاء المعتمدة</div>
+          <div style="font-size:0.85rem;color:#78350F;line-height:1.4">احصل على ثقة آلاف العملاء مع أسبقية الظهور في نتائج البحث وتصدّر دليل المنزلة والمطرية.</div>
+        </div>
+      </div>
+      <a href="contact.html?type=verification" class="btn" style="background:linear-gradient(135deg,#D97706 0%,#B45309 100%);color:#fff;font-weight:700;padding:10px 20px;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(217,119,6,0.25)">
+        <span>طلب توثيق ملفك الآن 🛡️</span>
+      </a>
     </div>
 
     <!-- Places Overview -->
@@ -381,7 +409,9 @@ function renderPlacesListHTML(places) {
                     <a href="dashboard.html?section=offers&id=${escAttr(placeId)}" class="btn btn-sm btn-secondary">🏷️ العروض</a>
                     ${place.isVerified ? `
                       <a href="dashboard.html?section=products&id=${escAttr(placeId)}" class="btn btn-sm btn-primary">🛍️ المنتجات</a>
-                    ` : ''}
+                    ` : `
+                      <a href="contact.html?type=verification" class="btn btn-sm" style="background:rgba(217,119,6,0.1);color:#b45309;border:1px solid rgba(217,119,6,0.3);font-weight:700" title="طلب توثيق هذا المكان بالعلامة الزرقاء">🛡️ وثق مكانك</a>
+                    `}
                   </div>
                 `;
               })()}

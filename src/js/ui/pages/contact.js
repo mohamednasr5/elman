@@ -704,6 +704,18 @@ export async function renderContactPage($container, { user } = {}) {
 
   initContactCounters($container);
 
+  // Auto-select topic if passed in URL (?type=verification or ?topic=verification)
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlTopic = urlParams.get('type') || urlParams.get('topic');
+    if (urlTopic && TOPICS[urlTopic]) {
+      setTopic(urlTopic);
+      setTimeout(() => {
+        document.getElementById('contact-form-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
+  } catch (_) {}
+
   // Form Submit
   form?.addEventListener('submit', async e => {
     e.preventDefault();

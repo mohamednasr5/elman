@@ -15,6 +15,7 @@ import { initFcmMessaging } from '../services/fcm.service.js';
 import { initUniversalMobileTouchTooltips } from '../utils/mobile-tooltip.js';
 import { executeFastSearch } from '../services/search-engine.service.js';
 import { mountWideAdsBanner } from '../ui/components/WideAdsBanner.js';
+import { showModal } from '../ui/components/Modal.js';
 
 /* ─────────────────────────────────────────────────────────
    HTML BUILDERS
@@ -145,9 +146,9 @@ function _bottomNavHTML(active) {
     <span class="bottom-nav__icon">🏷️</span>
     <span class="bottom-nav__label">العروض</span>
   </button>
-  <button type="button" data-dash-sec="products" class="bottom-nav__item">
-    <span class="bottom-nav__icon">📦</span>
-    <span class="bottom-nav__label">المنتجات</span>
+  <button type="button" data-dash-sec="more" class="bottom-nav__item" id="dash-bottom-more-btn" aria-label="المزيد">
+    <span class="bottom-nav__icon">☰</span>
+    <span class="bottom-nav__label">المزيد</span>
   </button>
 </nav>`;
   }
@@ -156,7 +157,7 @@ function _bottomNavHTML(active) {
     ['index.html',      '🏠', 'الرئيسية'],
     ['categories.html', '📋', 'التصنيفات'],
     ['offers.html',     '🏷️', 'العروض'],
-    ['dashboard.html',  '👤', 'حسابي'],
+    ['#more',           '☰', 'المزيد'],
   ];
   return `
 <nav class="bottom-nav" id="bottom-nav" role="navigation" aria-label="تنقل سريع">
@@ -180,10 +181,10 @@ function _bottomNavHTML(active) {
     <span class="bottom-nav__icon">${items[2][1]}</span>
     <span class="bottom-nav__label">${items[2][2]}</span>
   </a>
-  <a href="${items[3][0]}" class="bottom-nav__item${items[3][0]===active?' active':''}">
+  <button type="button" class="bottom-nav__item" id="bottom-nav-more-btn" aria-label="المزيد">
     <span class="bottom-nav__icon">${items[3][1]}</span>
     <span class="bottom-nav__label">${items[3][2]}</span>
-  </a>
+  </button>
 </nav>`;
 }
 
@@ -350,6 +351,14 @@ try { bindGlobalVoiceAssistantFab(); } catch (err) { console.warn('[initPage] vo
 
   /* 7. Header Luxury Expandable Search & Live Results Dropdown */
 try { _setupHeaderSearch(); } catch (err) { console.warn('[initPage] header search init failed:', err); }
+
+  /* 7.5 Mobile More Menu / Dashboard Drawer trigger from Bottom Nav */
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#bottom-nav-more-btn') || e.target.closest('#dash-bottom-more-btn')) {
+      e.preventDefault();
+      openDashboardMoreModal();
+    }
+  });
 
   /* 8. Non-critical account, settings and notification work runs after first paint. */
   const runDeferred = (fn) => {
@@ -538,6 +547,10 @@ function _renderUser(user) {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (window.innerWidth < 769) {
+          openDashboardMoreModal(user);
+          return;
+        }
         const isOpen = dd.classList.contains('open');
         dd.classList.toggle('open', !isOpen);
         btn.setAttribute('aria-expanded', !isOpen ? 'true' : 'false');
@@ -559,6 +572,160 @@ function _renderUser(user) {
   } else {
     wrap.innerHTML = `<a href="login.html" class="btn btn-primary btn-sm"><span>🔑</span> دخول</a>`;
   }
+}
+
+/**
+ * Mobile More Menu & Dashboard Bottom Sheet Drawer
+ */
+export function openDashboardMoreModal(user = null) {
+  const currentUser = user || getCurrentUser();
+  const isLoggedIn = Boolean(currentUser && (currentUser.uid || currentUser.id));
+  const isUserAdmin = isLoggedIn && isAdmin(currentUser);
+  const userName = isLoggedIn ? (currentUser.name || currentUser.displayName || 'صاحب النشاط') : 'زائر كريم';
+  const userPhoto = isLoggedIn ? (currentUser.photoURL || './icons/icon-72x72.png') : './icons/icon-72x72.png';
+  const isDashboardPage = typeof window !== 'undefined' && (window.location.pathname.endsWith('dashboard.html') || window.location.pathname.endsWith('/dashboard.html'));
+
+  const content = `
+    <div class="more-menu-container" style="direction:rtl;text-align:right">
+      <!-- User Info Card -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:var(--surface-2,#F8FAFC);border-radius:14px;margin-bottom:12px;border:1px solid var(--border,#E2E8F0)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="${_a(userPhoto)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${_h(userName)}" onerror="this.src='./icons/icon-72x72.png'"/>
+          <div>
+            <div style="font-weight:800;font-size:0.98rem;color:var(--text-primary,#0F172A)">${_h(userName)}</div>
+            <div style="font-size:0.8rem;color:var(--text-muted,#64748B)">${isLoggedIn ? (isUserAdmin ? 'مدير المنصة ⭐' : 'صاحب حساب تجاري') : 'دليل المنزلة والمطرية'}</div>
+          </div>
+        </div>
+        ${!isLoggedIn ? `
+          <a href="login.html" class="btn btn-primary btn-sm" style="font-weight:700;padding:6px 14px"><span>🔑</span> دخول</a>
+        ` : ''}
+      </div>
+
+      <!-- Golden Verification Card -->
+      <a href="contact.html?type=verification" class="more-menu-highlight-card" id="more-modal-verify-card">
+        <div style="font-size:26px;line-height:1;background:rgba(245,166,35,0.22);padding:8px;border-radius:10px;flex-shrink:0">🛡️</div>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:0.95rem;color:#92400E;display:flex;align-items:center;justify-content:space-between">
+            <span>وثّق ملفك التجاري</span>
+            <span style="font-size:11px;background:#d97706;color:#fff;padding:2px 7px;border-radius:6px;font-weight:700">شارة التوثيق</span>
+          </div>
+          <div style="font-size:0.78rem;color:#78350F;margin-top:2px">احصل على الشارة الزرقاء 🛡️ وأولوية الظهور في نتائج البحث</div>
+        </div>
+      </a>
+
+      <!-- Dashboard Sections Grid -->
+      <div style="font-weight:800;font-size:0.88rem;color:var(--text-muted,#64748B);margin-bottom:8px">أقسام لوحة التحكم</div>
+      <div class="more-menu-grid">
+        <a href="dashboard.html?section=overview" class="more-menu-tile" data-dash-nav="overview">
+          <span class="tile-icon">📊</span>
+          <span class="tile-title">نظرة عامة</span>
+        </a>
+        <a href="dashboard.html?section=places" class="more-menu-tile" data-dash-nav="places">
+          <span class="tile-icon">🏪</span>
+          <span class="tile-title">أماكني</span>
+        </a>
+        <a href="dashboard.html?section=add" class="more-menu-tile" data-dash-nav="add" style="background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.3);color:#059669">
+          <span class="tile-icon">➕</span>
+          <span class="tile-title">إضافة مكان</span>
+        </a>
+        <a href="dashboard.html?section=offers" class="more-menu-tile" data-dash-nav="offers">
+          <span class="tile-icon">🏷️</span>
+          <span class="tile-title">إدارة العروض</span>
+        </a>
+        <a href="dashboard.html?section=products" class="more-menu-tile" data-dash-nav="products">
+          <span class="tile-icon">📦</span>
+          <span class="tile-title">المنتجات</span>
+        </a>
+        <a href="dashboard.html?section=notifications" class="more-menu-tile" data-dash-nav="notifications">
+          <span class="tile-icon">🔔</span>
+          <span class="tile-title">الإشعارات</span>
+        </a>
+        <a href="dashboard.html?section=following" class="more-menu-tile" data-dash-nav="following">
+          <span class="tile-icon">⭐</span>
+          <span class="tile-title">متابعاتي</span>
+        </a>
+        <a href="dashboard.html?section=loyalty" class="more-menu-tile" data-dash-nav="loyalty">
+          <span class="tile-icon">🎁</span>
+          <span class="tile-title">نادي الولاء</span>
+        </a>
+        <a href="around-me.html" class="more-menu-tile">
+          <span class="tile-icon">🧭</span>
+          <span class="tile-title">بالقرب مني</span>
+        </a>
+        <a href="favorites.html" class="more-menu-tile">
+          <span class="tile-icon">❤️</span>
+          <span class="tile-title">المفضلة</span>
+        </a>
+        ${isUserAdmin ? `
+          <a href="admin.html" class="more-menu-tile" style="grid-column:1 / -1;background:rgba(27,79,114,0.08);border-color:rgba(27,79,114,0.3);color:var(--primary)">
+            <span class="tile-icon">⚙️</span>
+            <span class="tile-title">لوحة تحكم الإدارة الشاملة</span>
+          </a>
+        ` : ''}
+      </div>
+
+      <!-- Quick Services -->
+      <div style="font-weight:800;font-size:0.88rem;color:var(--text-muted,#64748B);margin-bottom:6px;margin-top:4px">روابط سريعة</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <a href="contact.html" class="more-menu-row">
+          <span style="font-size:18px">💬</span>
+          <span>تواصل مع الإدارة والدعم الفني</span>
+        </a>
+        <a href="quran.html" class="more-menu-row">
+          <span style="font-size:18px">📖</span>
+          <span>القرآن الكريم والأذكار</span>
+        </a>
+        <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="more-menu-row">
+          <span style="font-size:18px">📥</span>
+          <span>تحميل تطبيق الأندرويد APK</span>
+        </a>
+      </div>
+
+      ${isLoggedIn ? `
+        <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border,#E2E8F0)">
+          <button type="button" class="btn btn-outline btn-block" id="more-modal-logout-btn" style="color:var(--danger,#EF4444);border-color:rgba(239,68,68,0.3);font-weight:700">
+            <span>🚪</span> تسجيل الخروج
+          </button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  const modal = showModal({
+    title: '☰ القائمة ولوحة التحكم',
+    content,
+    sheet: true,
+    closeable: true,
+    size: 'sm'
+  });
+
+  const modalEl = document.querySelector('.modal');
+  if (modalEl) {
+    modalEl.querySelectorAll('[data-dash-nav]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        const sec = el.getAttribute('data-dash-nav');
+        if (isDashboardPage && typeof window.switchDashboardSection === 'function') {
+          e.preventDefault();
+          modal.close();
+          window.switchDashboardSection(sec, null, true);
+        } else {
+          modal.close();
+        }
+      });
+    });
+
+    document.getElementById('more-modal-logout-btn')?.addEventListener('click', async () => {
+      modal.close();
+      await signOut();
+      toast.success('تم تسجيل الخروج بنجاح');
+      window.location.reload();
+    });
+  }
+  return modal;
+}
+
+if (typeof window !== 'undefined') {
+  window.openDashboardMoreModal = openDashboardMoreModal;
 }
 
 let _dp = (typeof window !== 'undefined' && window.__deferredPwaPrompt) ? window.__deferredPwaPrompt : null;
@@ -592,9 +759,9 @@ function _hasDismissedRecently() {
     const val = localStorage.getItem('pwa-dismissed');
     if (!val) return false;
     const ts = parseInt(val, 10);
-    if (isNaN(ts)) return true; // legacy boolean
-    // Cooldown: 14 days
-    return (Date.now() - ts) < (14 * 24 * 60 * 60 * 1000);
+    if (isNaN(ts)) return false;
+    // Cooldown: 2 hours so testing and repeated visits can install
+    return (Date.now() - ts) < (2 * 60 * 60 * 1000);
   } catch (_) {
     return false;
   }
