@@ -52,18 +52,32 @@ export function getOptimizedImageUrl(url, size = IMAGE_SIZES.THUMB) {
     }
   }
 
-  // 3. Cloudflare R2 / Worker Resizing URLs
+  // 3. R2 originals -> same-origin Worker image resizing.
+  // R2's public endpoint does not interpret arbitrary w/q query parameters;
+  // route transformations through /api/image so Cloudflare Images can resize
+  // and negotiate AVIF/WebP at the edge while preserving the original object.
   if (cleanUrl.includes('r2.dev') || (R2_PUBLIC_URL && cleanUrl.includes(R2_PUBLIC_URL))) {
-    const separator = cleanUrl.includes('?') ? '&' : '?';
-    if (size === IMAGE_SIZES.LOGO && !cleanUrl.includes('w=')) {
-      return `${cleanUrl}${separator}w=90&h=90&fit=crop&q=80&format=webp`;
+    const params = new URLSearchParams();
+    if (size === IMAGE_SIZES.LOGO) {
+      params.set('w', '90');
+      params.set('h', '90');
+      params.set('fit', 'cover');
+      params.set('q', '80');
+    } else if (size === IMAGE_SIZES.THUMB) {
+      params.set('w', '300');
+      params.set('h', '180');
+      params.set('fit', 'cover');
+      params.set('q', '80');
+    } else if (size === IMAGE_SIZES.MEDIUM) {
+      params.set('w', '800');
+      params.set('h', '500');
+      params.set('fit', 'cover');
+      params.set('q', '85');
+    } else {
+      return cleanUrl;
     }
-    if (size === IMAGE_SIZES.THUMB && !cleanUrl.includes('w=')) {
-      return `${cleanUrl}${separator}w=300&q=80&format=webp`;
-    }
-    if (size === IMAGE_SIZES.MEDIUM && !cleanUrl.includes('w=')) {
-      return `${cleanUrl}${separator}w=800&q=85&format=webp`;
-    }
+    params.set('src', cleanUrl);
+    return '/api/image?' + params.toString();
   }
 
   return cleanUrl;
