@@ -768,6 +768,8 @@ export async function getPlaceBySlug(slug) {
       }).catch(() => {});
       return localPlace;
     }
+  } catch (_) {}
+
   // Tier 0.5: Pre-Boot In-Flight Promise (initiated in HTML <head> to eliminate network waterfall)
   try {
     if (typeof window !== 'undefined' && window.__PLACE_PREFETCH_PROMISE__) {
