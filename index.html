@@ -42,6 +42,18 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
   <link rel="stylesheet" href="./src/css/main.css?v=4e0d1bca"/>
+  <!-- Modulepreload the deepest links of the critical JS chain (page-shell
+       -> firebase -> auth -> events -> db -> home) so the browser fetches
+       and parses them in parallel with HTML/CSS instead of discovering
+       each one only after parsing the file before it. This only changes
+       WHEN these modules download, never the import graph or execution
+       order, so app behavior is unaffected. -->
+  <link rel="modulepreload" href="./src/js/core/page-shell.js?v=4e0d1bca"/>
+  <link rel="modulepreload" href="./src/js/core/firebase.js"/>
+  <link rel="modulepreload" href="./src/js/core/auth.js"/>
+  <link rel="modulepreload" href="./src/js/core/events.js"/>
+  <link rel="modulepreload" href="./src/js/core/db.js"/>
+  <link rel="modulepreload" href="./src/js/ui/pages/home.js?v=4e0d1bca"/>
 
   <!-- Schema.org WebSite & Local Coverage -->
   <script type="application/ld+json">
