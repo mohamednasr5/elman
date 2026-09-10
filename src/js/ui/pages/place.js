@@ -1,11 +1,11 @@
-﻿import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
+import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 /**
  * المنزلة وناسها — Place Detail Page
  * Full production place view with cover, logo, verified badge, working hours,
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG } from '../../core/db.js?v=c1cf1c7c';
+import { getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=c1cf1c7c';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
@@ -26,6 +26,31 @@ import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
 import { resolvePlaceProfession, getCategorySvg, getProfessionSvg } from '../../utils/professions-data.js';
 import { generateCleanSlug } from '../../utils/slug.js';
+
+export function renderAvailabilityBadge(status) {
+  const s = String(status || 'available').toLowerCase();
+  if (s === 'busy') {
+    return `
+      <span class="place-availability-badge place-availability-badge--busy" style="display:inline-flex;align-items:center;gap:6px;background:#FEF3C7;color:#92400E;padding:3px 10px;border-radius:9999px;font-size:12px;font-weight:700;border:1px solid #FCD34D" title="هذا المكان أو الفني مشغول حالياً">
+        <span style="width:8px;height:8px;border-radius:50%;background:#F59E0B;display:inline-block"></span>
+        <span>مشغول حالياً</span>
+      </span>
+    `;
+  } else if (s === 'unavailable') {
+    return `
+      <span class="place-availability-badge place-availability-badge--unavailable" style="display:inline-flex;align-items:center;gap:6px;background:#FEE2E2;color:#991B1B;padding:3px 10px;border-radius:9999px;font-size:12px;font-weight:700;border:1px solid #FECACA" title="هذا المكان أو الفني غير متاح الآن">
+        <span style="width:8px;height:8px;border-radius:50%;background:#EF4444;display:inline-block"></span>
+        <span>غير متاح الآن</span>
+      </span>
+    `;
+  }
+  return `
+    <span class="place-availability-badge place-availability-badge--available" style="display:inline-flex;align-items:center;gap:6px;background:#DCFCE7;color:#166534;padding:3px 10px;border-radius:9999px;font-size:12px;font-weight:700;border:1px solid #BBF7D0" title="جاهز للرد واستقبال طلباتكم في أي وقت">
+      <span style="width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block;box-shadow:0 0 0 2px rgba(34,197,94,0.3)"></span>
+      <span>🟢 متاح الآن</span>
+    </span>
+  `;
+}
 
 export async function renderPlacePage($container, { slug, user, initialPlace = null }) {
   // ── Instant 0ms Place Detection ──
@@ -318,9 +343,13 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                       <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : '0.0'})</span>
                     </div>
                   ` : ''}
+                  <div id="place-availability-badge-container">
+                    ${renderAvailabilityBadge(place.availabilityStatus || place.availability_status || 'available')}
+                  </div>
                 </div>
 
-                <span class="place-trust-mini ${trustClass}" title="نسبة الثقة التي تحددها إدارة الدليل">🛡️ ثقة البيانات ${trustScore}/100</span>\n                <div class="place-address">
+                <span class="place-trust-mini ${trustClass}" title="نسبة الثقة التي تحددها إدارة الدليل">🛡️ ثقة البيانات ${trustScore}/100</span>
+                <div class="place-address">
                   <span>📍</span>
                   <span>${escHtml(place.address || place.area || 'مدينة المنزلة')}</span>
                 </div>
@@ -368,6 +397,19 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                 <span>🚩</span>
                 <span>الإبلاغ عن معلومة غير صحيحة</span>
               </button>
+              
+              ${(isOwner || (currentUser && currentUser.isAdmin)) ? `
+                <div class="availability-quick-switch" style="display:flex;align-items:center;gap:8px;background:var(--surface-2);padding:8px 14px;border-radius:var(--radius-md);margin-top:8px;border:1px solid var(--border);width:100%;justify-content:space-between;flex-wrap:wrap">
+                  <span style="font-size:12.5px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                    <span>⚡</span> <span>تعديل حالتك الآن:</span>
+                  </span>
+                  <select id="quick-availability-select" class="form-select" style="padding:4px 10px;font-size:12.5px;font-weight:700;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--surface)">
+                    <option value="available" ${(place.availabilityStatus || place.availability_status) === 'available' ? 'selected' : ''}>🟢 متاح الآن</option>
+                    <option value="busy" ${(place.availabilityStatus || place.availability_status) === 'busy' ? 'selected' : ''}>🟡 مشغول حالياً</option>
+                    <option value="unavailable" ${(place.availabilityStatus || place.availability_status) === 'unavailable' ? 'selected' : ''}>🔴 غير متاح حالياً</option>
+                  </select>
+                </div>
+              ` : ''}
             </div>
           </div>
 
@@ -552,11 +594,102 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             </div>
           </div>
 
+          <!-- Other Branches Section (فروع أخرى لهذا المكان) -->
+          <div class="info-card place-branches-card" id="place-branches-card" style="display:none;margin-top:var(--space-4)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:var(--space-3)">
+              <span style="font-size:20px">🏢</span>
+              <h3 class="info-card__title" style="margin:0;font-size:var(--font-size-base);font-weight:700">فروع أخرى لهذا المكان</h3>
+            </div>
+            <div id="place-branches-list" class="branches-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:14px">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
         </div>
       </div>
     `;
 
     // ── Setup Interactivity ──
+
+    // Expose global trackStat for inline event handlers
+    window.trackStat = function(pid, s, extra) {
+      trackPlaceStat(pid, s, extra);
+    };
+
+    // Track view and search keyword if visitor arrived from search or query
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const searchKeyword = urlParams.get('q') || urlParams.get('keyword') || urlParams.get('ref_query') || '';
+      trackPlaceStat(placeId, 'views', { keyword: searchKeyword });
+    } catch (_) {}
+
+    // Quick availability status switcher for owner/admin
+    const availSelect = document.getElementById('quick-availability-select');
+    if (availSelect) {
+      availSelect.addEventListener('change', async (e) => {
+        const newStatus = e.target.value;
+        try {
+          await updatePlaceAvailability(placeId, newStatus);
+          toast('تم تحديث حالة التوافر بنجاح', 'success');
+          const badge = document.getElementById('place-availability-badge-container');
+          if (badge) badge.innerHTML = renderAvailabilityBadge(newStatus);
+        } catch (err) {
+          toast('فشل تحديث الحالة: ' + err.message, 'error');
+        }
+      });
+    }
+
+    // ── Load & Render Other Branches ──
+    getPlaceBranches(placeId || place.id).then(branches => {
+      const branchesCard = document.getElementById('place-branches-card');
+      const branchesList = document.getElementById('place-branches-list');
+      if (!branchesCard || !branchesList) return;
+      const otherBranches = (branches || []).filter(b => b.id !== placeId && b.slug !== cleanSlug);
+      if (otherBranches.length === 0) return;
+
+      branchesCard.style.display = 'block';
+      branchesList.innerHTML = otherBranches.map(b => {
+        const branchPhone = b.phone || place.phone || '';
+        const branchWhatsapp = b.whatsapp || place.whatsapp || '';
+        const bStatus = b.availability_status || b.availabilityStatus || 'available';
+        const isMain = b.is_main;
+        return `
+          <div class="branch-card" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+                <span class="badge ${isMain ? 'badge--primary' : 'badge--secondary'}" style="font-size:11px">
+                  ${isMain ? '🏢 المقر الرئيسي' : '📍 فرع'}
+                </span>
+                ${renderAvailabilityBadge(bStatus)}
+              </div>
+              <h4 style="font-size:15px;font-weight:700;margin:0 0 6px 0;color:var(--text-primary)">
+                ${escHtml(b.name || place.name)}
+              </h4>
+              <p style="font-size:12.5px;color:var(--text-secondary);margin:0;display:flex;align-items:center;gap:5px">
+                <span>📍</span>
+                <span>${escHtml(b.address || b.area || place.address || '')}</span>
+              </p>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px dashed var(--border)">
+              ${branchPhone ? `
+                <a href="tel:${cleanPhone(branchPhone)}" class="btn btn-primary btn-sm" onclick="trackStat('${escAttr(b.id)}', 'phoneClicks')" style="font-size:12px;padding:4px 10px">
+                  <span>📞 اتصال</span>
+                </a>
+              ` : ''}
+              ${branchWhatsapp ? `
+                <a href="${buildContextualWhatsAppLink(branchWhatsapp, { source: 'branch_card', placeName: b.name, placeSlug: b.slug })}" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm" onclick="trackStat('${escAttr(b.id)}', 'whatsappClicks')" style="font-size:12px;padding:4px 10px">
+                  <span>واتساب</span>
+                </a>
+              ` : ''}
+              <a href="place.html?slug=${encodeURIComponent(b.slug || b.id)}" class="btn btn-outline btn-sm" style="font-size:12px;padding:4px 10px;margin-right:auto">
+                <span>عرض الفرع ←</span>
+              </a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }).catch(() => {});
 
     // Asynchronous real-time map link coordinate resolution for short links (e.g. maps.app.goo.gl)
     if (place.mapsLink && (!place.location || !place.location.lat)) {
@@ -1393,6 +1526,7 @@ https://dalilmanzala.com`;
 
   triggers.forEach(btn => {
     btn.addEventListener('click', async () => {
+      trackPlaceStat(place.id || placeId, 'shareClicks');
       // 1. Try Native Web Share API (Mobile native app chooser)
       if (navigator.share) {
         try {
@@ -1521,6 +1655,7 @@ function setupPlaceFollowing(placeId, currentUser) {
         toast.info('تم إلغاء متابعة المكان');
       } else {
         await followPlace(placeId, currentUser);
+        trackPlaceStat(placeId, 'favoriteClicks');
         btn.classList.add('following');
         btn.style.background = 'rgba(16,185,129,0.12)';
         btn.style.color = 'var(--success)';

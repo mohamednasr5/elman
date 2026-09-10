@@ -212,12 +212,14 @@ export default {
         .bind(Date.now()).run().catch(() => {})
     );
     ctx.waitUntil(ensureSlugsHealedInTurso(env));
+    ctx.waitUntil(ensureNewSchemaColumnsInTurso(env));
     ctx.waitUntil(sendDailyQuranReminder(env).catch(err => console.error('[Daily Quran Push]', err)));
   },
 
   async fetch(request, env, ctx) {
     if (ctx?.waitUntil) {
       ctx.waitUntil(ensureSlugsHealedInTurso(env));
+      ctx.waitUntil(ensureNewSchemaColumnsInTurso(env));
     }
     const isHead = request.method === 'HEAD';
     const effectiveRequest = isHead ? new Request(request.url, {
@@ -603,7 +605,8 @@ try {
         p.address, p.area, p.phone, p.whatsapp, p.maps_link, p.latitude, p.longitude,
         p.description, p.logo_url, p.cover_image_url, p.status, p.is_verified,
         p.trust_score, p.verification_status, p.offer_count, p.product_count, p.services_json,
-        p.social_json, p.stats_json, p.working_hours_json, p.created_at, p.updated_at,
+        p.social_json, p.stats_json, p.working_hours_json, p.parent_id, p.branches_json, p.availability_status,
+        p.created_at, p.updated_at,
         p.is_sponsored, p.is_featured, p.sponsored_until, p.priority
       FROM places p
       WHERE p.status = 'published'
@@ -653,6 +656,11 @@ try {
         social: parseJson(place.social_json, {}),
         stats,
         working_hours: parseJson(place.working_hours_json, {}),
+        parent_id: place.parent_id || null,
+        parentId: place.parent_id || null,
+        branches: parseJson(place.branches_json, []),
+        availability_status: place.availability_status || 'available',
+        availabilityStatus: place.availability_status || 'available',
         is_verified: Boolean(place.is_verified),
         trustScore: place.trust_score == null ? null : Number(place.trust_score),
         trust_score: place.trust_score == null ? null : Number(place.trust_score),
@@ -729,6 +737,12 @@ try {
           social: parseJson(result.social_json, {}),
           stats: parseJson(result.stats_json, {}),
           working_hours: parseJson(result.working_hours_json, {}),
+          parent_id: result.parent_id || null,
+          parentId: result.parent_id || null,
+          branches: parseJson(result.branches_json, []),
+          branches_json: result.branches_json || '[]',
+          availability_status: result.availability_status || 'available',
+          availabilityStatus: result.availability_status || 'available',
           is_verified: Boolean(result.is_verified),
           is_sponsored: Boolean(result.is_sponsored || result.is_featured),
           is_featured: Boolean(result.is_featured),
@@ -777,6 +791,7 @@ try {
         p.description, p.logo_url, p.cover_image_url, p.owner_id, p.owner_email,
         p.status, p.is_verified, p.verification_status, p.offer_count, p.product_count,
         p.services_json, p.social_json, p.stats_json, p.working_hours_json,
+        p.parent_id, p.branches_json, p.availability_status,
         p.created_at, p.updated_at, p.is_sponsored, p.is_featured, p.sponsored_until, p.priority,
         u.name AS owner_name, u.email AS owner_email_user, u.photo_url AS owner_photo
       FROM places p
@@ -829,6 +844,11 @@ try {
       social: parseJson(place.social_json, {}),
       stats: parseJson(place.stats_json, {}),
       working_hours: parseJson(place.working_hours_json, {}),
+      parent_id: place.parent_id || null,
+      parentId: place.parent_id || null,
+      branches: parseJson(place.branches_json, []),
+      availability_status: place.availability_status || 'available',
+      availabilityStatus: place.availability_status || 'available',
       is_verified: Boolean(place.is_verified),
       is_sponsored: Boolean(place.is_sponsored || place.is_featured),
       is_featured: Boolean(place.is_featured),
@@ -864,7 +884,168 @@ try {
         ctx.waitUntil(listCache.put(listCacheKey, response.clone()).catch(() => {}));
       } catch (_) {}
     }
+
     return response;
+  }
+
+  // ── Turso: Get Place Branches (GET /api/places/branches?place_id=...) ──
+  if (url.pathname === '/api/places/branches' && request.method === 'GET') {
+    const rawId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
+    if (!rawId) {
+      return jsonResponse({ error: 'place_id مطلوب' }, 400, corsHeaders);
+    }
+    try {
+      const db = createTursoDB(env);
+      const place = await findPlaceInTurso(env, rawId);
+      if (!place) {
+        return jsonResponse({ success: true, branches: [], total: 0 }, 200, corsHeaders);
+      }
+      const rootId = place.parent_id || place.id;
+      // Fetch all sibling places and parent (excluding the currently viewed place)
+      const result = await db.prepare(`
+        SELECT id, name, slug, address, area, phone, whatsapp, logo_url, cover_image_url,
+               availability_status, is_verified, parent_id, stats_json
+        FROM places
+        WHERE (id = ? OR parent_id = ?) AND id != ? AND status = 'published'
+        ORDER BY is_verified DESC, updated_at DESC
+      `).bind(rootId, rootId, place.id).all().catch(() => ({ results: [] }));
+
+      let branches = (result.results || []).map(b => ({
+        id: b.id,
+        name: b.name,
+        slug: b.slug,
+        address: b.address,
+        area: b.area,
+        phone: b.phone,
+        whatsapp: b.whatsapp,
+        logo_url: b.logo_url || place.logo_url,
+        cover_image_url: b.cover_image_url || place.cover_image_url,
+        availability_status: b.availability_status || 'available',
+        availabilityStatus: b.availability_status || 'available',
+        is_verified: Boolean(b.is_verified),
+        is_main: b.id === rootId
+      }));
+
+      // Fallback: If no DB sibling rows were found, but branches_json on parent exists
+      if (branches.length === 0 && place.branches_json) {
+        const jsonBranches = parseJson(place.branches_json, []);
+        if (Array.isArray(jsonBranches) && jsonBranches.length > 0) {
+          branches = jsonBranches.map((b, idx) => ({
+            id: b.id || `br_${place.id}_${idx + 1}`,
+            name: b.name || `${place.name} - فرع`,
+            slug: b.slug || `${place.slug}-branch-${idx + 1}`,
+            address: b.address || place.address,
+            area: b.area || place.area,
+            phone: b.phone || place.phone,
+            whatsapp: b.whatsapp || place.whatsapp,
+            logo_url: place.logo_url,
+            cover_image_url: place.cover_image_url,
+            availability_status: b.availability_status || 'available',
+            availabilityStatus: b.availability_status || 'available',
+            is_verified: Boolean(place.is_verified),
+            is_main: false
+          }));
+        }
+      }
+
+      return jsonResponse({ success: true, branches, total: branches.length, mainPlaceId: rootId }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message, branches: [] }, 500, corsHeaders);
+    }
+  }
+
+  // ── Turso: Fast 1-Click Availability Switcher (POST /api/places/availability) ──
+  if (url.pathname === '/api/places/availability' && request.method === 'POST') {
+    try {
+      const auth = await requireAuth(request, env);
+      if (auth.response) return auth.response;
+      const body = await request.json().catch(() => ({}));
+      const placeId = (body.placeId || body.id || '').trim();
+      const status = (body.status || body.availability || '').trim().toLowerCase();
+      const allowed = ['available', 'busy', 'unavailable'];
+
+      if (!placeId || !allowed.includes(status)) {
+        return jsonResponse({ error: 'placeId وحالة مسموحة (available, busy, unavailable) مطلوبة' }, 400, corsHeaders);
+      }
+
+      const db = createTursoDB(env);
+      const place = await db.prepare('SELECT id, slug, owner_id, owner_email FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(placeId, placeId).first();
+      if (!place) {
+        return jsonResponse({ error: 'المكان غير موجود' }, 404, corsHeaders);
+      }
+
+      if (!auth.user.isAdmin && place.owner_id !== auth.user.uid && String(place.owner_email || '').toLowerCase() !== auth.user.email) {
+        return jsonResponse({ error: 'غير مصرح لك بتعديل هذا المكان' }, 403, corsHeaders);
+      }
+
+      await db.prepare('UPDATE places SET availability_status = ?, updated_at = ? WHERE id = ?').bind(status, Date.now(), place.id).run();
+      bumpDataVersion(env, ctx);
+
+      // Cache purge
+      try {
+        const cache = caches.default;
+        if (cache) {
+          const purgeUrls = [
+            `https://cache.local/api/places?slug=${encodeURIComponent(place.slug.toLowerCase())}`,
+            `https://cache.local/api/places?id=${encodeURIComponent(place.id)}`
+          ];
+          ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)).catch(() => {}))));
+        }
+      } catch (_) {}
+
+      return jsonResponse({ success: true, placeId: place.id, availabilityStatus: status, message: 'تم تحديث حالة التوافر بنجاح' }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  // ── Turso: Place Analytics & Keyword Reports (GET /api/places/stats?place_id=...) ──
+  if (url.pathname === '/api/places/stats' && request.method === 'GET') {
+    try {
+      const auth = await requireAuth(request, env);
+      if (auth.response) return auth.response;
+      const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
+      if (!placeId) {
+        return jsonResponse({ error: 'place_id مطلوب' }, 400, corsHeaders);
+      }
+      const db = createTursoDB(env);
+      const place = await findPlaceInTurso(env, placeId);
+      if (!place) {
+        return jsonResponse({ error: 'المكان غير موجود' }, 404, corsHeaders);
+      }
+      if (!auth.user.isAdmin && place.owner_id !== auth.user.uid && String(place.owner_email || '').toLowerCase() !== auth.user.email) {
+        return jsonResponse({ error: 'غير مصرح لك بعرض إحصائيات هذا المكان' }, 403, corsHeaders);
+      }
+      const reviewStats = await db.prepare(`
+        SELECT COUNT(*) AS count, ROUND(AVG(rating), 1) AS avg_rating
+        FROM reviews WHERE place_id = ?
+      `).bind(place.id).first().catch(() => ({ count: 0, avg_rating: 0 }));
+
+      const stats = parseJson(place.stats_json, {});
+      const rawKeywords = stats.topKeywords || {};
+      const keywords = Object.entries(rawKeywords)
+        .map(([keyword, count]) => ({ keyword, count: Number(count) || 0 }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 30);
+
+      const report = {
+        placeId: place.id,
+        placeName: place.name,
+        views: Number(stats.views || 0),
+        phoneClicks: Number(stats.phoneClicks || 0),
+        whatsappClicks: Number(stats.whatsappClicks || 0),
+        directionsClicks: Number(stats.directionsClicks || 0),
+        shareClicks: Number(stats.shareClicks || 0),
+        favoriteClicks: Number(stats.favoriteClicks || 0),
+        reviewsCount: Number(reviewStats?.count || 0),
+        rating: Number(reviewStats?.avg_rating || 0),
+        topKeywords: keywords
+      };
+
+      return jsonResponse({ success: true, report }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
   }
 
   // ── Turso: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
@@ -1012,6 +1193,12 @@ try {
       const ownerId = (body.ownerId || body.owner_id) || existingPlace?.owner_id || '';
       const ownerEmail = (body.ownerEmail || body.owner_email) || existingPlace?.owner_email || '';
 
+      const parentId = body.parentId !== undefined ? (body.parentId || null) : (body.parent_id !== undefined ? (body.parent_id || null) : (existingPlace?.parent_id || null));
+      const availabilityStatus = (body.availabilityStatus || body.availability_status || existingPlace?.availability_status || 'available').toLowerCase();
+      const branchesJson = body.branches
+        ? (typeof body.branches === 'object' ? JSON.stringify(body.branches) : body.branches)
+        : (body.branches_json || existingPlace?.branches_json || '[]');
+
       if (existingPlace) {
         await db.prepare(`
           UPDATE places SET
@@ -1021,6 +1208,7 @@ try {
             status = ?, is_verified = ?, trust_score = ?, verification_status = ?,
             is_sponsored = ?, is_featured = ?, sponsored_until = ?, priority = ?,
             services_json = ?, social_json = ?, working_hours_json = ?, stats_json = ?,
+            parent_id = ?, branches_json = ?, availability_status = ?,
             updated_at = ?
           WHERE id = ?
         `).bind(
@@ -1030,6 +1218,7 @@ try {
           status, isVerified, trustScore, verificationStatus,
           isSponsored, isFeatured, sponsoredUntil, priorityVal,
           servicesJson, socialJson, workingHoursJson, statsJson,
+          parentId, branchesJson, availabilityStatus,
           now, placeId
         ).run();
       } else {
@@ -1039,21 +1228,76 @@ try {
             address, area, phone, whatsapp, maps_link, latitude, longitude,
             description, logo_url, cover_image_url, owner_id, owner_email,
             status, is_verified, trust_score, verification_status, services_json, social_json,
-            stats_json, working_hours_json, created_at, updated_at, is_sponsored, is_featured, sponsored_until, priority
+            stats_json, working_hours_json, parent_id, branches_json, availability_status,
+            created_at, updated_at, is_sponsored, is_featured, sponsored_until, priority
           ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?
           )
         `).bind(
           placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
           address, area, phone, whatsapp, mapsLink, lat, lng,
           description, logoUrl, coverImageUrl, ownerId, ownerEmail,
           status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
-          statsJson, workingHoursJson, Number(body.createdAt || body.created_at) || now, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
+          statsJson, workingHoursJson, parentId, branchesJson, availabilityStatus,
+          Number(body.createdAt || body.created_at) || now, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
         ).run();
+      }
+
+      // Automatically sync child branch places if branches array provided
+      if (Array.isArray(body.branches) && body.branches.length > 0) {
+        for (let i = 0; i < body.branches.length; i++) {
+          const b = body.branches[i];
+          if (!b || (!b.name && !b.address && !b.phone)) continue;
+          const bId = (b.id || `br_${placeId}_${i + 1}`).trim();
+          const bName = (b.name || `${name} - فرع ${b.area || i + 1}`).trim();
+          const bSlug = (b.slug || `${slug}-branch-${i + 1}`).trim();
+          const bAddress = (b.address || address).trim();
+          const bArea = (b.area || area).trim();
+          const bPhone = (b.phone !== undefined ? b.phone : phone).trim();
+          const bWhatsapp = (b.whatsapp !== undefined ? b.whatsapp : whatsapp).trim();
+          const bStatus = (b.availabilityStatus || b.availability_status || availabilityStatus || 'available').toLowerCase();
+
+          const existingBranch = await db.prepare('SELECT id FROM places WHERE id = ? LIMIT 1').bind(bId).first().catch(() => null);
+          if (existingBranch) {
+            await db.prepare(`
+              UPDATE places SET
+                name = ?, slug = ?, category_id = ?, subcategory_id = ?, custom_category = ?,
+                address = ?, area = ?, phone = ?, whatsapp = ?, maps_link = ?,
+                description = ?, logo_url = ?, cover_image_url = ?, owner_id = ?, owner_email = ?,
+                parent_id = ?, availability_status = ?, status = 'published', updated_at = ?
+              WHERE id = ?
+            `).bind(
+              bName, bSlug, categoryId, subcategoryId, customCategory,
+              bAddress, bArea, bPhone, bWhatsapp, mapsLink,
+              description, logoUrl, coverImageUrl, ownerId, ownerEmail,
+              placeId, bStatus, now, bId
+            ).run().catch(() => {});
+          } else {
+            await db.prepare(`
+              INSERT INTO places (
+                id, name, slug, category_id, subcategory_id, custom_category,
+                address, area, phone, whatsapp, maps_link, latitude, longitude,
+                description, logo_url, cover_image_url, owner_id, owner_email,
+                parent_id, availability_status, status, is_verified, created_at, updated_at
+              ) VALUES (
+                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?,
+                ?, ?, 'published', ?, ?, ?
+              )
+            `).bind(
+              bId, bName, bSlug, categoryId, subcategoryId, customCategory,
+              bAddress, bArea, bPhone, bWhatsapp, mapsLink, lat, lng,
+              description, logoUrl, coverImageUrl, ownerId, ownerEmail,
+              placeId, bStatus, isVerified, now, now
+            ).run().catch(() => {});
+          }
+        }
       }
 
       // If place is no longer sponsored, ensure any linked active ads are deactivated/removed
@@ -2553,10 +2797,14 @@ try {
     const body = await request.json().catch(() => ({}));
     const placeId = (body.placeId || body.id || '').trim();
     const stat = (body.stat || '').trim();
-    const allowed = ['phoneClicks', 'whatsappClicks', 'directionsClicks', 'productViews', 'offerViews', 'views'];
+    const keyword = (body.keyword || body.query || '').trim();
+    const allowed = ['phoneClicks', 'whatsappClicks', 'directionsClicks', 'productViews', 'offerViews', 'views', 'shareClicks', 'favoriteClicks'];
 
-    if (!placeId || !allowed.includes(stat)) {
-      return jsonResponse({ error: 'placeId و stat صالحة مطلوبة' }, 400, corsHeaders);
+    if (!placeId || (!stat && !keyword)) {
+      return jsonResponse({ error: 'placeId و (stat أو keyword) مطلوبة' }, 400, corsHeaders);
+    }
+    if (stat && !allowed.includes(stat)) {
+      return jsonResponse({ error: 'stat غير صالحة' }, 400, corsHeaders);
     }
 
     try {
@@ -2564,7 +2812,16 @@ try {
       const place = await createTursoDB(env).prepare(`SELECT stats_json FROM places WHERE id = ? OR slug = ? LIMIT 1`).bind(placeId, placeId).first();
       if (place) {
         const stats = parseJson(place.stats_json, {});
-        stats[stat] = (Number(stats[stat]) || 0) + 1;
+        if (stat) {
+          stats[stat] = (Number(stats[stat]) || 0) + 1;
+        }
+        if (keyword) {
+          stats.topKeywords = stats.topKeywords || {};
+          const cleanKw = keyword.slice(0, 50).trim();
+          if (cleanKw) {
+            stats.topKeywords[cleanKw] = (stats.topKeywords[cleanKw] || 0) + 1;
+          }
+        }
         await createTursoDB(env).prepare(`UPDATE places SET stats_json = ?, updated_at = ? WHERE id = ? OR slug = ?`).bind(JSON.stringify(stats), Date.now(), placeId, placeId).run();
       }
       return jsonResponse({ success: true }, 200, corsHeaders);
@@ -3477,6 +3734,22 @@ async function ensureSlugsHealedInTurso(env) {
     await db.prepare("UPDATE ads SET is_active = 0 WHERE image_url = '' OR image_url IS NULL").run().catch(() => {});
   } catch (err) {
     console.warn('[ensureSlugsHealedInTurso] Notice:', err.message);
+  }
+}
+
+let _hasEnsuredColumns = false;
+async function ensureNewSchemaColumnsInTurso(env) {
+  if (_hasEnsuredColumns) return;
+  _hasEnsuredColumns = true;
+  try {
+    const db = createTursoDB(env);
+    await db.prepare("ALTER TABLE places ADD COLUMN parent_id TEXT").run().catch(() => {});
+    await db.prepare("ALTER TABLE places ADD COLUMN branches_json TEXT").run().catch(() => {});
+    await db.prepare("ALTER TABLE places ADD COLUMN availability_status TEXT DEFAULT 'available'").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_places_parent_id ON places(parent_id)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_places_availability ON places(availability_status)").run().catch(() => {});
+  } catch (err) {
+    console.warn('[ensureNewSchemaColumnsInTurso] Notice:', err.message);
   }
 }
 

@@ -177,6 +177,16 @@ export function renderPlaceCard(place) {
 
   const targetSlug = place.slug || place.id || place._key;
 
+  const availStatus = place.availabilityStatus || place.availability_status || 'available';
+  let availBadge = '';
+  if (availStatus === 'busy') {
+    availBadge = `<span class="badge" style="background:rgba(245,158,11,0.15);color:#D97706;border:1px solid rgba(245,158,11,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🟡</span><span>مشغول</span></span>`;
+  } else if (availStatus === 'unavailable') {
+    availBadge = `<span class="badge" style="background:rgba(239,68,68,0.15);color:#DC2626;border:1px solid rgba(239,68,68,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🔴</span><span>غير متاح</span></span>`;
+  } else if (availStatus === 'available') {
+    availBadge = `<span class="badge" style="background:rgba(16,185,129,0.15);color:#16A34A;border:1px solid rgba(16,185,129,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🟢</span><span>متاح الآن</span></span>`;
+  }
+
   return `
     <article class="${cardClasses}" 
              role="article"
@@ -193,9 +203,12 @@ export function renderPlaceCard(place) {
       </div>
       <div class="place-card__body">
         <div class="place-card__meta-top">
-          <span class="place-trust-mini ${trustClass}" title="${escAttr(trustLabel)}">
-            🛡️ ${trustScore}/100
-          </span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="place-trust-mini ${trustClass}" title="${escAttr(trustLabel)}">
+              🛡️ ${trustScore}/100
+            </span>
+            ${availBadge}
+          </div>
           <button type="button" class="place-favorite-btn ${favorite ? 'is-favorite' : ''}" aria-label="${favorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}" title="${favorite ? 'إزالة من المفضلة' : 'حفظ المكان'}" data-favorite-place="${escAttr(placeId)}" onclick="event.stopPropagation();window.togglePlaceFavorite&&window.togglePlaceFavorite('${escAttr(placeId)}',this)">
             ${favorite ? '♥' : '♡'}
           </button>

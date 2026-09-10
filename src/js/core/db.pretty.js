@@ -1762,21 +1762,47 @@ export async function clearAllNotifications(uid) {
   } catch (_) {}
 }
 
-/** Increment place stat */
-export async function trackPlaceStat(placeId, stat) {
-  const allowed = ['phoneClicks', 'whatsappClicks', 'directionsClicks', 'productViews', 'offerViews', 'views'];
-  if (!allowed.includes(stat) || !placeId) return;
+/** Increment place stat and optional search keyword */
+export async function trackPlaceStat(placeId, stat, extra = {}) {
+  const allowed = ['phoneClicks', 'whatsappClicks', 'directionsClicks', 'productViews', 'offerViews', 'views', 'shareClicks', 'favoriteClicks'];
+  if (!placeId) return;
+  if (stat && !allowed.includes(stat) && !extra.keyword) return;
 
-  // 1. Primary: Turso via Worker
+  // Primary: Turso via Worker
   try {
     fetch(`${WORKER_URL}/api/places/track-stat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ placeId, stat }),
+      body: JSON.stringify({ placeId, stat, keyword: extra.keyword || '' }),
       signal: AbortSignal.timeout(3000)
     }).catch(() => {});
   } catch (_) {}
+}
 
+/** Update place availability status ('available' | 'busy' | 'unavailable') */
+export async function updatePlaceAvailability(placeId, status) {
+  return await tursoFetch('/api/places/availability', {
+    method: 'POST',
+    requiresAuth: true,
+    body: JSON.stringify({ placeId, status })
+  });
+}
+
+/** Get branches for a place */
+export async function getPlaceBranches(placeId) {
+  try {
+    const res = await tursoFetch(`/api/places/branches?place_id=${encodeURIComponent(placeId)}`);
+    return res.branches || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+/** Get analytics & keyword report for a place */
+export async function getPlaceAnalyticsReport(placeId) {
+  return await tursoFetch(`/api/places/stats?place_id=${encodeURIComponent(placeId)}`, {
+    requiresAuth: true
+  });
 }
 
 // ─────────────────────────────────────────────

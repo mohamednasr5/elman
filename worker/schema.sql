@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS places (
   social_json TEXT,
   stats_json TEXT,
   working_hours_json TEXT,
+  parent_id TEXT,
+  branches_json TEXT,
+  availability_status TEXT DEFAULT 'available',
   created_at INTEGER,
   updated_at INTEGER
 );
@@ -42,6 +45,8 @@ CREATE INDEX IF NOT EXISTS idx_places_area ON places(area);
 CREATE INDEX IF NOT EXISTS idx_places_status ON places(status);
 CREATE INDEX IF NOT EXISTS idx_places_name ON places(name);
 CREATE INDEX IF NOT EXISTS idx_places_updated ON places(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_places_parent_id ON places(parent_id);
+CREATE INDEX IF NOT EXISTS idx_places_availability ON places(availability_status);
 
 -- ── 2. Categories & Taxonomy ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS categories (

@@ -29,7 +29,7 @@ import {
  * AI translation, AI cover generator, and verification requests.
  */
 
-import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace, clearDbCache, getPublishedPlaces, submitCategoryRequestTurso } from '../../core/db.js';
+import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace, clearDbCache, getPublishedPlaces, submitCategoryRequestTurso, updatePlaceAvailability, getPlaceBranches, getPlaceAnalyticsReport } from '../../core/db.js';
 import { createPlace, updatePlace, deletePlace, addOffer, updateOffer, deleteOffer, addProduct, updateProduct, deleteProduct, submitVerificationRequest } from '../../services/places.service.js';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { uploadImage } from '../../services/upload.service.js';
@@ -84,6 +84,9 @@ export async function renderDashboard($container, { user, section = 'overview', 
           </a>
           <a href="dashboard.html?section=places" data-section="places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📍</span> أماكني
+          </a>
+          <a href="dashboard.html?section=analytics" data-section="analytics" class="dashboard-nav-item ${section === 'analytics' || section === 'reports' ? 'active' : ''}">
+            <span class="dashboard-nav-item__icon">📈</span> التقارير والإحصائيات
           </a>
           <a href="dashboard.html?section=following" data-section="following" class="dashboard-nav-item ${section === 'following' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">⭐</span> متابعاتي وعروضها
@@ -172,6 +175,8 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
       await renderOverviewSection($mainArea, _dashUser);
     } else if (section === 'places') {
       await renderPlacesSection($mainArea, _dashUser);
+    } else if (section === 'analytics' || section === 'reports') {
+      await renderAnalyticsSection($mainArea, _dashUser, placeId);
     } else if (section === 'add' || section === 'add-place') {
       await renderPlaceFormSection($mainArea, _dashUser, null);
     } else if (section === 'edit' || section === 'edit-place') {
@@ -332,6 +337,7 @@ async function renderOverviewSection($container, user) {
 
     ${renderPlacesListHTML(places)}
   `;
+  setupAvailabilitySelectListeners($container);
 }
 
 // ── 2. Places Section ──
@@ -342,11 +348,11 @@ async function renderPlacesSection($container, user) {
     <div class="dashboard-header animate-fade-in" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
       <div>
         <h1 class="dashboard-header__title">إدارة أماكني</h1>
-        <div class="dashboard-header__subtitle">تحكم في بيانات الأماكن، العروض، والمنتجات</div>
+        <div class="dashboard-header__subtitle">تحكم في بيانات الأماكن، الفروع، العروض، والمنتجات</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <a href="index.html" class="btn btn-outline" style="background:#fff;border-color:var(--primary);color:var(--primary);font-weight:700;display:inline-flex;align-items:center;gap:6px">
-          <span>🔍</span> الذهاب للدليل للبحث
+        <a href="dashboard.html?section=analytics" class="btn btn-outline" style="background:#fff;border-color:var(--primary);color:var(--primary);font-weight:700;display:inline-flex;align-items:center;gap:6px">
+          <span>📊</span> التقارير والإحصائيات
         </a>
         <a href="dashboard.html?section=add" class="btn" style="background:linear-gradient(135deg,#10B981 0%,#059669 100%);color:#fff;border:none;font-weight:800;box-shadow:0 4px 14px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:6px">
           <span style="font-size:16px">➕</span> إضافة مكان جديد
@@ -356,6 +362,7 @@ async function renderPlacesSection($container, user) {
 
     ${renderPlacesListHTML(places)}
   `;
+  setupAvailabilitySelectListeners($container);
 }
 
 function renderPlacesListHTML(places) {
@@ -417,6 +424,21 @@ function renderPlacesListHTML(places) {
               })()}
             </div>
 
+            <!-- Quick 1-Click Availability & Analytics Bar -->
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:var(--surface-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:12px;font-weight:700;color:var(--text-primary)">⚡ حالة التوافر:</span>
+                <select class="dash-availability-select form-select" data-place-id="${escAttr(placeId)}" style="padding:3px 8px;font-size:12px;font-weight:700;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--surface)">
+                  <option value="available" ${(place.availabilityStatus || place.availability_status) === 'available' ? 'selected' : ''}>🟢 متاح الآن</option>
+                  <option value="busy" ${(place.availabilityStatus || place.availability_status) === 'busy' ? 'selected' : ''}>🟡 مشغول حالياً</option>
+                  <option value="unavailable" ${(place.availabilityStatus || place.availability_status) === 'unavailable' ? 'selected' : ''}>🔴 غير متاح حالياً</option>
+                </select>
+              </div>
+              <a href="dashboard.html?section=analytics&id=${escAttr(placeId)}" class="btn btn-sm btn-outline" style="font-size:12px;padding:3px 10px;font-weight:700">
+                <span>📊 تقرير الأداء والكلمات</span>
+              </a>
+            </div>
+
             <div class="my-place-item__body">
               <div class="my-place-stat">
                 <div class="my-place-stat__value">${place.stats?.views || 0}</div>
@@ -432,7 +454,15 @@ function renderPlacesListHTML(places) {
               </div>
               <div class="my-place-stat">
                 <div class="my-place-stat__value">${place.stats?.directionsClicks || 0}</div>
-                <div class="my-place-stat__label">نقرات الخريطة</div>
+                <div class="my-place-stat__label">خرائط</div>
+              </div>
+              <div class="my-place-stat">
+                <div class="my-place-stat__value">${place.stats?.favoriteClicks || 0}</div>
+                <div class="my-place-stat__label">حفظ بالمفضلة</div>
+              </div>
+              <div class="my-place-stat">
+                <div class="my-place-stat__value">${place.stats?.shareClicks || 0}</div>
+                <div class="my-place-stat__label">مشاركات</div>
               </div>
             </div>
           </div>
@@ -440,6 +470,160 @@ function renderPlacesListHTML(places) {
       }).join('')}
     </div>
   `;
+}
+
+function setupAvailabilitySelectListeners($container) {
+  $container.querySelectorAll('.dash-availability-select').forEach(sel => {
+    sel.addEventListener('change', async (e) => {
+      const pid = sel.getAttribute('data-place-id');
+      const newStatus = e.target.value;
+      try {
+        await updatePlaceAvailability(pid, newStatus);
+        toast.success('تم تحديث حالة التوافر بنجاح ✨');
+      } catch (err) {
+        toast.error('فشل تحديث الحالة: ' + err.message);
+      }
+    });
+  });
+}
+
+// ── Analytics & Reports Section ──
+async function renderAnalyticsSection($container, user, targetPlaceId = null) {
+  $container.innerHTML = `
+    <div class="dashboard-header animate-fade-in" style="margin-bottom:var(--space-4)">
+      <div>
+        <h1 class="dashboard-header__title">📊 تقارير وإحصائيات النشاط</h1>
+        <div class="dashboard-header__subtitle">تعرف على أداء نشاطك، تفاعل العملاء، وأكثر كلمات البحث التي أوصلتهم إليك</div>
+      </div>
+    </div>
+    <div id="analytics-content" class="animate-fade-in"><div class="skeleton" style="height:220px;border-radius:var(--radius-lg)"></div></div>
+  `;
+
+  const places = await getPlacesByOwner(user);
+  if (!places || places.length === 0) {
+    document.getElementById('analytics-content').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state__icon">📊</div>
+        <h2 class="empty-state__title">لا توجد أماكن مسجلة لديك</h2>
+        <p class="empty-state__text">أضف مكانك أولاً لتتبع إحصائيات الزيارات والمكالمات وكلمات البحث.</p>
+        <a href="dashboard.html?section=add" class="btn btn-primary">➕ أضف مكانك الآن</a>
+      </div>
+    `;
+    return;
+  }
+
+  let selectedId = targetPlaceId || places[0].id || places[0]._key;
+  if (!places.some(p => (p.id || p._key) === selectedId)) {
+    selectedId = places[0].id || places[0]._key;
+  }
+
+  async function loadReport(pid) {
+    const content = document.getElementById('analytics-content');
+    if (!content) return;
+    content.innerHTML = `<div class="skeleton" style="height:250px;border-radius:var(--radius-lg);margin-top:1rem"></div>`;
+    try {
+      const res = await getPlaceAnalyticsReport(pid);
+      const rep = res?.report || {};
+      const currentP = places.find(p => (p.id || p._key) === pid) || {};
+
+      content.innerHTML = `
+        <!-- Place Switcher -->
+        <div style="display:flex;align-items:center;gap:10px;background:var(--surface-2);padding:12px 16px;border-radius:var(--radius-md);margin-bottom:20px;border:1px solid var(--border);flex-wrap:wrap">
+          <label style="font-weight:700;font-size:13.5px;color:var(--text-primary)">🏪 اختر النشاط لعرض تقريره:</label>
+          <select id="analytics-place-selector" class="form-select" style="padding:6px 14px;font-size:13.5px;font-weight:700;border-radius:var(--radius-sm);cursor:pointer;border:1.5px solid var(--primary);background:var(--surface);min-width:220px">
+            ${places.map(p => `
+              <option value="${escAttr(p.id || p._key)}" ${(p.id || p._key) === pid ? 'selected' : ''}>
+                ${escHtml(p.name)} (${escHtml(p.area || 'المنزلة')})
+              </option>
+            `).join('')}
+          </select>
+          <a href="/place.html?slug=${escAttr(currentP.slug || pid)}" target="_blank" class="btn btn-outline btn-sm" style="margin-right:auto">
+            <span>🔗 عرض الصفحة العامة</span>
+          </a>
+        </div>
+
+        <!-- KPI Metrics Grid -->
+        <div class="metrics-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));gap:14px;margin-bottom:24px">
+          <div class="metric-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+            <div style="font-size:24px;margin-bottom:4px">👁️</div>
+            <div style="font-size:26px;font-weight:800;color:var(--primary)">${rep.views || 0}</div>
+            <div style="font-size:12.5px;color:var(--text-secondary);font-weight:600">إجمالي المشاهدات</div>
+          </div>
+          <div class="metric-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+            <div style="font-size:24px;margin-bottom:4px">📞</div>
+            <div style="font-size:26px;font-weight:800;color:#0284C7">${rep.phoneClicks || 0}</div>
+            <div style="font-size:12.5px;color:var(--text-secondary);font-weight:600">نقرات الاتصال الهاتفي</div>
+          </div>
+          <div class="metric-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+            <div style="font-size:24px;margin-bottom:4px">💬</div>
+            <div style="font-size:26px;font-weight:800;color:#16A34A">${rep.whatsappClicks || 0}</div>
+            <div style="font-size:12.5px;color:var(--text-secondary);font-weight:600">نقرات محادثات واتساب</div>
+          </div>
+          <div class="metric-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+            <div style="font-size:24px;margin-bottom:4px">🗺️</div>
+            <div style="font-size:26px;font-weight:800;color:#D97706">${rep.directionsClicks || 0}</div>
+            <div style="font-size:12.5px;color:var(--text-secondary);font-weight:600">طلبات الاتجاهات والخرائط</div>
+          </div>
+          <div class="metric-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+            <div style="font-size:24px;margin-bottom:4px">❤️</div>
+            <div style="font-size:26px;font-weight:800;color:#DC2626">${rep.favoriteClicks || 0}</div>
+            <div style="font-size:12.5px;color:var(--text-secondary);font-weight:600">مرات الحفظ بالمفضلة</div>
+          </div>
+          <div class="metric-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+            <div style="font-size:24px;margin-bottom:4px">📤</div>
+            <div style="font-size:26px;font-weight:800;color:#7C3AED">${rep.shareClicks || 0}</div>
+            <div style="font-size:12.5px;color:var(--text-secondary);font-weight:600">مشاركات المكان للغير</div>
+          </div>
+          <div class="metric-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+            <div style="font-size:24px;margin-bottom:4px">⭐</div>
+            <div style="font-size:26px;font-weight:800;color:#EAB308">${(rep.rating || 0).toFixed(1)} <span style="font-size:13px;font-weight:normal;color:var(--text-muted)">(${rep.reviewsCount || 0})</span></div>
+            <div style="font-size:12.5px;color:var(--text-secondary);font-weight:600">تقييمات وآراء العملاء</div>
+          </div>
+        </div>
+
+        <!-- Top Search Keywords Section -->
+        <div class="info-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:22px">🔍</span>
+              <div>
+                <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text-primary)">أكثر كلمات البحث التي أوصلت العملاء إليك</h3>
+                <p style="margin:0;font-size:12px;color:var(--text-muted)">الكلمات والعبارات التي كتبها المستخدمون في محرك بحث الدليل ووصلوا عبرها لصفحتك</p>
+              </div>
+            </div>
+          </div>
+
+          ${rep.topKeywords && rep.topKeywords.length > 0 ? `
+            <div style="display:flex;flex-direction:column;gap:8px">
+              ${rep.topKeywords.map((item, idx) => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface-2);border-radius:var(--radius-md);border:1px solid var(--border)">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${idx + 1}</span>
+                    <span style="font-weight:700;font-size:14px;color:var(--text-primary)">"${escHtml(item.keyword)}"</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="chip chip--primary" style="font-size:12px;font-weight:700">وصل عبرها ${item.count} عميل</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px">
+              <span>ℹ️</span> لا توجد كلمات بحث مسجلة حتى الآن. ستظهر هنا فور قيام العملاء بالبحث عن نشاطك في الدليل.
+            </div>
+          `}
+        </div>
+      `;
+
+      document.getElementById('analytics-place-selector')?.addEventListener('change', (e) => {
+        loadReport(e.target.value);
+      });
+    } catch (err) {
+      content.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">فشل تحميل التقرير: ${err.message}</p></div>`;
+    }
+  }
+
+  await loadReport(selectedId);
 }
 
 // ── 3. Place Add / Edit Form Section ──
@@ -461,6 +645,8 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       return;
     }
   }
+
+  const existingBranches = Array.isArray(place?.branches) ? place.branches : [];
 
   const remoteCategories = (await getCategories()) || [];
   const catMap = new Map();
@@ -835,6 +1021,46 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             <input type="tel" id="p-whatsapp" class="form-input" placeholder="01012345678" value="${escAttr(place?.whatsapp || '')}" style="direction:ltr;text-align:right" />
           </div>
         </div>
+
+        <!-- Real-Time Availability Switcher -->
+        <div class="form-group" style="margin-top:14px;background:var(--surface-2);padding:14px;border-radius:var(--radius-md);border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div>
+              <label class="form-label" style="font-weight:700;margin-bottom:2px">⚡ حالة التوافر اللحظية «متاح الآن»</label>
+              <p style="font-size:12px;color:var(--text-muted);margin:0">تظهر هذه الحالة مباشرة للعملاء في بطاقة المكان وصفحته للتأكيد على جاهزيتك للرد واستقبال الطلبات.</p>
+            </div>
+            <select id="p-availability-status" class="form-select" style="padding:6px 12px;font-size:13px;font-weight:700;border-radius:var(--radius-sm);cursor:pointer;border:1.5px solid var(--primary);background:var(--surface)">
+              <option value="available" ${(place?.availabilityStatus || place?.availability_status) === 'available' ? 'selected' : ''}>🟢 متاح الآن (استقبال الطلبات)</option>
+              <option value="busy" ${(place?.availabilityStatus || place?.availability_status) === 'busy' ? 'selected' : ''}>🟡 مشغول حالياً</option>
+              <option value="unavailable" ${(place?.availabilityStatus || place?.availability_status) === 'unavailable' ? 'selected' : ''}>🔴 غير متاح الآن</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Multi-Branch Support Section (الفروع المتعددة) -->
+        <div class="form-group" style="margin-top:14px;background:var(--surface-2);border:1.5px dashed var(--primary);border-radius:var(--radius-lg);padding:var(--space-4)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14.5px;font-weight:700;color:var(--text-primary);margin:0">
+              <input type="checkbox" id="has-branches-toggle" style="width:20px;height:20px;accent-color:var(--primary)" ${existingBranches.length > 0 ? 'checked' : ''} />
+              <span style="display:flex;align-items:center;gap:6px">
+                <span>🏢</span> <span>هل لديك فروع أخرى لهذا المكان؟</span>
+              </span>
+            </label>
+            <span style="font-size:11.5px;color:var(--text-muted)">إضافة فروع للمحل مع توحيد الشعار والغلاف</span>
+          </div>
+
+          <div id="branches-container" style="margin-top:16px;${existingBranches.length > 0 ? 'display:block' : 'display:none'}">
+            <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px;line-height:1.6">
+              💡 كل فرع جديد سيحصل تلقائياً على نفس بيانات المكان (الوصف، الشعار، الغلاف، التصنيف) مع إمكانية تخصيص اسم وعنوان وأرقام هواتف كل فرع، وتظهر بطاقات الفروع الأخرى لزوار أي فرع.
+            </p>
+            <div id="branches-list-inputs" style="display:flex;flex-direction:column;gap:14px">
+              <!-- Dynamic branch items rendered here -->
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-add-branch-item" style="margin-top:12px;font-weight:700">
+              <span>➕ إضافة فرع آخر</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- 4. Description, Services & Specialized Keywords Section -->
@@ -1091,6 +1317,93 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   `;
 
   // ── Handlers ──
+
+  // Dynamic Branch Rows Controller
+  const branchesToggle = document.getElementById('has-branches-toggle');
+  const branchesContainer = document.getElementById('branches-container');
+  const branchesListEl = document.getElementById('branches-list-inputs');
+  const addBranchBtn = document.getElementById('btn-add-branch-item');
+
+  function addBranchRow(initialData = null) {
+    if (!branchesListEl) return;
+    const idx = branchesListEl.children.length + 1;
+    const row = document.createElement('div');
+    row.className = 'branch-form-row animate-fade-in';
+    row.setAttribute('data-branch-id', initialData?.id || '');
+    row.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px';
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:6px">
+        <span style="font-size:13px;font-weight:700;color:var(--primary)">📍 الفرع #${idx}</span>
+        <button type="button" class="btn-remove-branch" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;font-weight:700">🗑️ حذف الفرع</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" style="font-size:12px;font-weight:700">اسم الفرع <span class="required">*</span></label>
+          <input type="text" class="form-input b-name" placeholder="مثال: فرع المطرية، فرع المحطة" value="${escAttr(initialData?.name || '')}" required />
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label" style="font-size:12px;font-weight:700">المنطقة أو القرية</label>
+          <input type="text" class="form-input b-area" placeholder="مثال: المطرية، المنزلة" value="${escAttr(initialData?.area || '')}" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="font-size:12px;font-weight:700">عنوان الفرع بالتفصيل</label>
+        <input type="text" class="form-input b-address" placeholder="مثال: شارع بورسعيد، بجوار البنك الأهلي" value="${escAttr(initialData?.address || '')}" />
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin:2px 0">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--primary)">
+          <input type="checkbox" class="b-same-phone-cb" />
+          <span>استخدام نفس أرقام الفرع الرئيسي</span>
+        </label>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" style="font-size:12px;font-weight:700">رقم هاتف الفرع</label>
+          <input type="tel" class="form-input b-phone" placeholder="01012345678" value="${escAttr(initialData?.phone || '')}" style="direction:ltr;text-align:right" />
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label" style="font-size:12px;font-weight:700">واتساب الفرع</label>
+          <input type="tel" class="form-input b-whatsapp" placeholder="01012345678" value="${escAttr(initialData?.whatsapp || '')}" style="direction:ltr;text-align:right" />
+        </div>
+      </div>
+    `;
+
+    row.querySelector('.btn-remove-branch').addEventListener('click', () => {
+      row.remove();
+    });
+
+    const sameCb = row.querySelector('.b-same-phone-cb');
+    const phoneInput = row.querySelector('.b-phone');
+    const waInput = row.querySelector('.b-whatsapp');
+    sameCb.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        phoneInput.value = document.getElementById('p-phone')?.value || '';
+        waInput.value = document.getElementById('p-whatsapp')?.value || '';
+        phoneInput.disabled = true;
+        waInput.disabled = true;
+      } else {
+        phoneInput.disabled = false;
+        waInput.disabled = false;
+      }
+    });
+
+    branchesListEl.appendChild(row);
+  }
+
+  branchesToggle?.addEventListener('change', (e) => {
+    if (branchesContainer) branchesContainer.style.display = e.target.checked ? 'block' : 'none';
+    if (e.target.checked && branchesListEl && branchesListEl.children.length === 0) {
+      addBranchRow();
+    }
+  });
+
+  addBranchBtn?.addEventListener('click', () => {
+    addBranchRow();
+  });
+
+  if (existingBranches.length > 0) {
+    existingBranches.forEach(b => addBranchRow(b));
+  }
 
   // ── Services & Interactive Tags Management ──
   let _currentTagsList = [...initialServices];
@@ -2067,7 +2380,25 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           threads: document.getElementById('p-social-threads')?.value.trim() || '',
           youtube: document.getElementById('p-social-youtube')?.value.trim() || '',
           website: document.getElementById('p-social-website')?.value.trim() || ''
-        }
+        },
+        availabilityStatus: document.getElementById('p-availability-status')?.value || 'available',
+        branches: (() => {
+          const hasBranches = document.getElementById('has-branches-toggle')?.checked;
+          if (!hasBranches) return [];
+          const res = [];
+          document.querySelectorAll('.branch-form-row').forEach(row => {
+            const bName = row.querySelector('.b-name')?.value.trim() || '';
+            const bAddress = row.querySelector('.b-address')?.value.trim() || '';
+            const bArea = row.querySelector('.b-area')?.value.trim() || '';
+            const bPhone = row.querySelector('.b-phone')?.value.trim() || '';
+            const bWhatsapp = row.querySelector('.b-whatsapp')?.value.trim() || '';
+            const bId = row.getAttribute('data-branch-id') || '';
+            if (bName || bAddress || bPhone) {
+              res.push({ id: bId, name: bName, address: bAddress, area: bArea, phone: bPhone, whatsapp: bWhatsapp });
+            }
+          });
+          return res;
+        })()
       };
 
       const isAtm = isAtmPlace(placeData);

@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso } from '../../core/db.js?v=c1cf1c7c';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso, getPlaceAnalyticsReport } from '../../core/db.js?v=c1cf1c7c';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser, getIdToken } from '../../core/auth.js';
 import { uploadImage } from '../../services/upload.service.js';
@@ -1097,6 +1097,8 @@ async function renderAdminPlaces($container) {
       const input = actionBtn.closest('td')?.querySelector('[data-trust-input]');
       const score = input ? Number(input.value) : NaN;
       if (typeof window.savePlaceTrustScore === 'function') window.savePlaceTrustScore(id, score);
+    } else if (action === 'analytics') {
+      if (typeof window.viewPlaceAnalyticsAdmin === 'function') window.viewPlaceAnalyticsAdmin(id);
     }
   });
 
@@ -1192,6 +1194,7 @@ function renderAdminPlacesTableRows(places) {
         <td style="padding:12px 14px">
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             ${banButtonHtml}
+            <button type="button" class="btn btn-xs" data-action="analytics" data-id="${escAttr(p._id)}" style="background:#10B981;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:3px" title="تقرير النشاط والإحصائيات"><span>📊</span></button>
             <button type="button" class="btn btn-xs" data-action="transfer" data-id="${escAttr(p._id)}" style="background:#8B5CF6;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="نقل ملكية هذا المكان لمستخدم مسجل"><span style="pointer-events:none;display:inline-flex">${ICONS.users}</span><span>نقل</span></button>
             <button type="button" class="btn btn-xs" data-action="edit" data-id="${escAttr(p._id)}" style="background:#0284C7;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="تعديل كافة بيانات المكان أو الشخص"><span style="pointer-events:none;display:inline-flex">${ICONS.edit}</span></button>
             <a href="${getPlaceUrl(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="عرض صفحة المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.eye}</span></a>
@@ -5534,6 +5537,14 @@ window.editPlaceAdmin = async (placeId) => {
             </select>
           </div>
           <div class="form-group">
+            <label class="form-label">حالة التوفر (متاح الآن)</label>
+            <select id="aep-availabilityStatus" class="form-select">
+              <option value="available" ${(place.availabilityStatus === 'available' || place.availability_status === 'available' || !place.availabilityStatus) ? 'selected' : ''}>🟢 متاح الآن للعمل / الطلبات</option>
+              <option value="busy" ${(place.availabilityStatus === 'busy' || place.availability_status === 'busy') ? 'selected' : ''}>🟡 مشغول حالياً (يرجى الانتظار)</option>
+              <option value="unavailable" ${(place.availabilityStatus === 'unavailable' || place.availability_status === 'unavailable') ? 'selected' : ''}>🔴 غير متاح حالياً / مغلق مؤقتاً</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label class="form-label">حالة التوثيق</label>
             <select id="aep-isVerified" class="form-select">
               <option value="false" ${!place.isVerified ? 'selected' : ''}>غير موثق</option>
@@ -5621,6 +5632,8 @@ window.editPlaceAdmin = async (placeId) => {
             coverImageUrl: document.getElementById('aep-coverImageUrl')?.value.trim() || '',
             logoUrl: document.getElementById('aep-logoUrl')?.value.trim() || '',
             status: document.getElementById('aep-status')?.value || 'published',
+            availabilityStatus: document.getElementById('aep-availabilityStatus')?.value || 'available',
+            availability_status: document.getElementById('aep-availabilityStatus')?.value || 'available',
             isVerified: document.getElementById('aep-isVerified')?.value === 'true',
             description: document.getElementById('aep-description')?.value.trim() || '',
             services: servicesArr,
@@ -5690,6 +5703,136 @@ window.editPlaceAdmin = async (placeId) => {
     const customGroup = document.getElementById('aep-custom-area-group');
     if (customGroup) customGroup.style.display = isOther ? 'block' : 'none';
   });
+};
+
+window.viewPlaceAnalyticsAdmin = async (placeId) => {
+  let place = adminCache.places ? adminCache.places[placeId] : null;
+  if (!place && adminCache.places) {
+    place = Object.values(adminCache.places).find(p => p && (p._id === placeId || p.id === placeId));
+  }
+  if (!place) {
+    place = await dbGet(`places/${placeId}`);
+  }
+  const placeName = place?.name || 'المكان';
+
+  showModal({
+    title: `📊 تقرير النشاط: ${escHtml(placeName)}`,
+    size: 'lg',
+    content: `<div id="admin-analytics-modal-content" style="padding:10px 4px;min-height:260px"><div class="skeleton" style="height:220px;border-radius:12px"></div></div>`,
+    buttons: [
+      {
+        label: '✏️ تعديل هذا المكان',
+        type: 'secondary',
+        onClick: () => {
+          if (typeof window.editPlaceAdmin === 'function') window.editPlaceAdmin(placeId);
+        }
+      },
+      {
+        label: 'إغلاق',
+        type: 'ghost',
+        closeOnClick: true
+      }
+    ]
+  });
+
+  try {
+    const res = await getPlaceAnalyticsReport(placeId);
+    const rep = res?.report || {};
+    const topKeywords = rep.topKeywords || [];
+
+    const container = document.getElementById('admin-analytics-modal-content');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;background:var(--surface-2,#0f172a);padding:12px 16px;border-radius:10px;border:1px solid var(--border,#334155)">
+        <div>
+          <div style="font-weight:800;font-size:16px;color:var(--text-primary,#fff)">${escHtml(placeName)}</div>
+          <div style="font-size:12px;color:var(--text-muted,#94a3b8)">📍 ${escHtml(place?.area || 'المنزلة')} | ${escHtml(place?.categoryName || place?.categoryId || 'عام')}</div>
+        </div>
+        <a href="${getPlaceUrl(place?.slug || placeId)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border-radius:6px;padding:6px 12px;font-weight:700;display:inline-flex;align-items:center;gap:6px">
+          <span>🔗 زيارة الصفحة العامة</span>
+        </a>
+      </div>
+
+      <!-- KPI Metrics Grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:12px;margin-bottom:20px">
+        <div style="background:var(--surface,#1e293b);border:1px solid var(--border,#334155);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px">👁️</div>
+          <div style="font-size:22px;font-weight:900;color:var(--primary,#0284c7)">${rep.views || 0}</div>
+          <div style="font-size:11.5px;color:var(--text-secondary,#94a3b8)">مشاهدات الملف</div>
+        </div>
+        <div style="background:var(--surface,#1e293b);border:1px solid var(--border,#334155);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px">📞</div>
+          <div style="font-size:22px;font-weight:900;color:#0284C7">${rep.phoneClicks || 0}</div>
+          <div style="font-size:11.5px;color:var(--text-secondary,#94a3b8)">اتصال هاتفي</div>
+        </div>
+        <div style="background:var(--surface,#1e293b);border:1px solid var(--border,#334155);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px">💬</div>
+          <div style="font-size:22px;font-weight:900;color:#16A34A">${rep.whatsappClicks || 0}</div>
+          <div style="font-size:11.5px;color:var(--text-secondary,#94a3b8)">محادثات واتساب</div>
+        </div>
+        <div style="background:var(--surface,#1e293b);border:1px solid var(--border,#334155);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px">🗺️</div>
+          <div style="font-size:22px;font-weight:900;color:#D97706">${rep.directionsClicks || 0}</div>
+          <div style="font-size:11.5px;color:var(--text-secondary,#94a3b8)">طلبات الاتجاهات</div>
+        </div>
+        <div style="background:var(--surface,#1e293b);border:1px solid var(--border,#334155);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px">❤️</div>
+          <div style="font-size:22px;font-weight:900;color:#DC2626">${rep.favoriteClicks || 0}</div>
+          <div style="font-size:11.5px;color:var(--text-secondary,#94a3b8)">حفظ بالمفضلة</div>
+        </div>
+        <div style="background:var(--surface,#1e293b);border:1px solid var(--border,#334155);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px">📤</div>
+          <div style="font-size:22px;font-weight:900;color:#7C3AED">${rep.shareClicks || 0}</div>
+          <div style="font-size:11.5px;color:var(--text-secondary,#94a3b8)">مشاركات الرابط</div>
+        </div>
+        <div style="background:var(--surface,#1e293b);border:1px solid var(--border,#334155);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px">⭐</div>
+          <div style="font-size:22px;font-weight:900;color:#EAB308">${(rep.rating || 0).toFixed(1)} <span style="font-size:12px;font-weight:normal;color:var(--text-muted,#64748b)">(${rep.reviewsCount || 0})</span></div>
+          <div style="font-size:11.5px;color:var(--text-secondary,#94a3b8)">التقييمات</div>
+        </div>
+      </div>
+
+      <!-- Top Keywords Section -->
+      <div style="background:var(--surface,#1e293b);border:1px solid var(--border,#334155);border-radius:10px;padding:16px">
+        <h4 style="margin:0 0 10px 0;font-size:14px;font-weight:800;color:var(--text-primary,#fff);display:flex;align-items:center;gap:6px">
+          <span>🔍 أكثر كلمات البحث التي أوصلت العملاء لهذا النشاط</span>
+        </h4>
+        ${topKeywords && topKeywords.length > 0 ? `
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;text-align:right">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border,#334155);color:var(--text-secondary,#94a3b8)">
+                  <th style="padding:8px">#</th>
+                  <th style="padding:8px">كلمة البحث</th>
+                  <th style="padding:8px;text-align:center">عدد مرات التوجيه</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${topKeywords.map((k, idx) => `
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                    <td style="padding:8px;color:var(--text-muted,#64748b)">${idx + 1}</td>
+                    <td style="padding:8px;font-weight:700">🔎 ${escHtml(k.keyword)}</td>
+                    <td style="padding:8px;text-align:center;font-weight:800;color:var(--primary,#0284c7)">${k.count}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : `
+          <div style="text-align:center;padding:20px;color:var(--text-muted,#94a3b8);font-size:12.5px">
+            لا توجد بيانات كلمات بحث مسجلة حتى الآن. عند قيام الزوار بالبحث عن خدمات أو منتجات والتوجيه لهذا المكان ستظهر الكلمات هنا.
+          </div>
+        `}
+      </div>
+    `;
+  } catch (err) {
+    console.error('Failed to load admin analytics:', err);
+    const container = document.getElementById('admin-analytics-modal-content');
+    if (container) {
+      container.innerHTML = `<div style="text-align:center;color:#ef4444;padding:24px">تعذر تحميل بيانات التقرير حالياً.</div>`;
+    }
+  }
 };
 
 window.deletePlaceAdmin = async (placeId) => {

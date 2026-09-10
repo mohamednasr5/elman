@@ -13,6 +13,7 @@ import { toast } from '../ui/components/Toast.js';
 function _headerHTML(active) {
   const links = [
     ['index.html',      'الرئيسية'],
+    ['popular.html',    'الأكثر شعبية 🔥'],
     ['places.html',     'الأماكن'],
     ['categories.html', 'التصنيفات'],
     ['offers.html',     'العروض'],
@@ -216,6 +217,7 @@ function _footerHTML() {
         <h3 class="footer__col-title">روابط سريعة</h3>
         <ul class="footer__links">
           <li><a href="index.html"      class="footer__link">الرئيسية</a></li>
+          <li><a href="popular.html"    class="footer__link">🔥 الأكثر شعبية</a></li>
           <li><a href="places.html"     class="footer__link">دليل الأماكن</a></li>
           <li><a href="categories.html" class="footer__link">التصنيفات</a></li>
           <li><a href="offers.html"     class="footer__link">العروض اليومية</a></li>
@@ -522,7 +524,7 @@ function _setupInstantPrefetch() {
     if (a) prefetch(a.href);
   }, { passive: true });
 
-  const corePages = ['index.html', 'places.html', 'categories.html', 'offers.html', 'search.html'];
+  const corePages = ['index.html', 'popular.html', 'places.html', 'categories.html', 'offers.html', 'search.html'];
   const idlePrefetch = () => {
     corePages.forEach(p => prefetch(p));
   };
@@ -685,6 +687,10 @@ export async function openDashboardMoreModal(user = null) {
           <span class="tile-icon">🧭</span>
           <span class="tile-title">بالقرب مني</span>
         </a>
+        <a href="popular.html" class="more-menu-tile">
+          <span class="tile-icon">🔥</span>
+          <span class="tile-title">الأكثر شعبية</span>
+        </a>
         <a href="favorites.html" class="more-menu-tile">
           <span class="tile-icon">❤️</span>
           <span class="tile-title">المفضلة</span>
@@ -778,6 +784,10 @@ export async function openDashboardMoreModal(user = null) {
         <a href="around-me.html" class="more-menu-tile">
           <span class="tile-icon">🧭</span>
           <span class="tile-title">بالقرب مني</span>
+        </a>
+        <a href="popular.html" class="more-menu-tile">
+          <span class="tile-icon">🔥</span>
+          <span class="tile-title">الأكثر شعبية</span>
         </a>
         <a href="favorites.html" class="more-menu-tile">
           <span class="tile-icon">❤️</span>
