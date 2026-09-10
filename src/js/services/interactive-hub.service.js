@@ -36,10 +36,24 @@ export async function closeServiceRequest(id) {
   });
 }
 
+export async function updateServiceRequest(id, payload) {
+  return await tursoFetch(`/api/service-requests/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteServiceRequest(id) {
+  return await tursoFetch(`/api/service-requests/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  });
+}
+
 export async function fetchLiveCraftsmen(params = {}) {
   const query = new URLSearchParams();
   if (params.professionId) query.set('profession_id', params.professionId);
   if (params.village) query.set('village', params.village);
+  if (params.all) query.set('all', '1');
 
   try {
     const qs = query.toString();
@@ -58,6 +72,20 @@ export async function toggleCraftsmanLive(payload) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function updateCraftsmanLive(id, payload) {
+  return await tursoFetch(`/api/craftsmen/live/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteCraftsmanLive(id) {
+  return await tursoFetch(`/api/craftsmen/live/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  });
+}
+
 
 export async function fetchVillagePolls(villageId) {
   try {

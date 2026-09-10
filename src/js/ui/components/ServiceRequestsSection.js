@@ -1,11 +1,7 @@
-/**
- * ServiceRequestsSection.js
- * «طلبات الخدمات» — Privacy-First Live Community Service Requests Feed & Dispatcher
- * يعرض طلبات أهالي المنزلة والمطرية مع خصوصية كاملة للأرقام وزر إضافة طلب فوري
- */
-
-import { fetchServiceRequests } from '../../services/interactive-hub.service.js';
+import { fetchServiceRequests, closeServiceRequest, deleteServiceRequest } from '../../services/interactive-hub.service.js';
 import { openNeedServiceModal } from './NeedServiceModal.js';
+import { getCurrentUser, isAdmin } from '../../core/auth.js';
+import { toast } from './Toast.js';
 
 export async function renderServiceRequestsSection($container, { limit = 6, showHero = true, isCompact = false } = {}) {
   const container = typeof $container === 'string' ? document.getElementById($container) : $container;
@@ -135,15 +131,40 @@ async function loadRequests(container, limit = 6) {
       return;
     }
 
+    const currentUser = getCurrentUser();
+
     $grid.innerHTML = requests.map(r => {
       const isClosed = r.status === 'closed';
+      const isOwner = currentUser && (currentUser.uid === r.userId || r.isOwner || isAdmin(currentUser));
       const waText = encodeURIComponent(`السلام عليكم، أنا فني بخصوص طلبك على دليل المنزلة والمطرية: "${r.title}" في ${r.village}`);
       const waUrl = !r.isPhoneMasked && r.userPhone 
         ? `https://wa.me/2${r.userPhone.replace(/[^0-9]/g,'')}?text=${waText}` 
         : `https://wa.me/201004128504?text=${waText}`;
 
       return `
-        <article class="need-service-card">
+        <article class="need-service-card" data-req-card="${esc(r.id)}">
+          
+          ${isOwner ? `
+            <div style="background:rgba(16,185,129,0.12);border:1.5px solid rgba(16,185,129,0.4);border-radius:12px;padding:8px 10px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+              <div style="font-size:0.78rem;color:#047857;font-weight:800;display:flex;align-items:center;gap:5px">
+                <span>👑</span>
+                <span>طلبك الخاص</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                ${!isClosed ? `
+                  <button type="button" class="btn btn-sm btn-close-my-request" data-req-id="${esc(r.id)}" style="background:#10b981;color:#fff;border-radius:8px;font-size:0.75rem;padding:5px 10px;font-weight:800;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+                    <span>✓</span>
+                    <span>تم العثور على الخدمة</span>
+                  </button>
+                ` : ''}
+                <button type="button" class="btn btn-sm btn-delete-my-request" data-req-id="${esc(r.id)}" style="background:#ef4444;color:#fff;border-radius:8px;font-size:0.75rem;padding:5px 8px;font-weight:800;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="حذف الطلب نهائياً">
+                  <span>🗑️</span>
+                  <span>حذف</span>
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
           <div class="need-service-card-header">
             <span class="need-category-pill">
               <span>🔧</span>
@@ -168,7 +189,7 @@ async function loadRequests(container, limit = 6) {
 
           <div class="need-privacy-notice">
             <span class="need-privacy-icon">🛡️</span>
-            <span><strong>رقم الهاتف:</strong> ${r.userPhone ? 'محمي بالخصوصية' : 'متاح للفنيين المختارين فقط'}</span>
+            <span><strong>رقم الهاتف:</strong> ${r.userPhone || (r.isPhoneMasked ? 'محمي بالخصوصية' : 'متاح للاتصال')}</span>
           </div>
 
           ${!isClosed ? `
@@ -183,10 +204,86 @@ async function loadRequests(container, limit = 6) {
       `;
     }).join('');
 
+    // Attach owner action listeners (تم العثور على الخدمة)
+    $grid.querySelectorAll('.btn-close-my-request').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const reqId = btn.getAttribute('data-req-id');
+        if (!reqId) return;
+
+        if (!confirm('تهانينا! هل تم العثور على الفني وإنجاز الخدمة بالفعل؟\nسيتم إغلاق طلبك وحذفه تلقائياً من القائمة النشطة.')) return;
+
+        btn.disabled = true;
+        btn.textContent = 'جاري الإغلاق...';
+
+        try {
+          const res = await closeServiceRequest(reqId);
+          if (res?.success) {
+            toast.success('تم إغلاق طلبك بنجاح! يسعدنا تلبية احتياجك عبر دليل المنزلة والمطرية.');
+            // Animate card removal
+            const card = $grid.querySelector(`[data-req-card="${reqId}"]`);
+            if (card) {
+              card.style.transition = 'all 0.35s ease';
+              card.style.opacity = '0';
+              card.style.transform = 'scale(0.9)';
+              setTimeout(() => loadRequests(container, limit), 400);
+            } else {
+              loadRequests(container, limit);
+            }
+          } else {
+            toast.error(res?.error || 'تعذر إغلاق الطلب');
+            btn.disabled = false;
+            btn.textContent = '✓ تم العثور على الخدمة';
+          }
+        } catch (err) {
+          toast.error('حدث خطأ في الاتصال');
+          btn.disabled = false;
+          btn.textContent = '✓ تم العثور على الخدمة';
+        }
+      });
+    });
+
+    // Attach owner action listeners (حذف الطلب نهائياً)
+    $grid.querySelectorAll('.btn-delete-my-request').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const reqId = btn.getAttribute('data-req-id');
+        if (!reqId) return;
+
+        if (!confirm('هل أنت متأكد من رغبتك في حذف هذا الطلب نهائياً من الدليل؟')) return;
+
+        btn.disabled = true;
+        btn.textContent = 'جاري الحذف...';
+
+        try {
+          const res = await deleteServiceRequest(reqId);
+          if (res?.success) {
+            toast.success('تم حذف طلب الخدمة بنجاح');
+            const card = $grid.querySelector(`[data-req-card="${reqId}"]`);
+            if (card) {
+              card.style.transition = 'all 0.35s ease';
+              card.style.opacity = '0';
+              card.style.transform = 'scale(0.9)';
+              setTimeout(() => loadRequests(container, limit), 400);
+            } else {
+              loadRequests(container, limit);
+            }
+          } else {
+            toast.error(res?.error || 'تعذر حذف الطلب');
+            btn.disabled = false;
+            btn.textContent = '🗑️ حذف';
+          }
+        } catch (err) {
+          toast.error('حدث خطأ في الاتصال');
+          btn.disabled = false;
+          btn.textContent = '🗑️ حذف';
+        }
+      });
+    });
+
   } catch (err) {
     console.error('[ServiceRequestsSection] load error:', err);
     $grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#ef4444;padding:16px">تعذر تحميل طلبات الخدمات حالياً.</div>`;
   }
+
 }
 
 function esc(str) {

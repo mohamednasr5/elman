@@ -2553,9 +2553,12 @@ try {
         timing: r.timing,
         description: r.description,
         photoUrl: r.photo_url,
+        userId: r.user_id,
         userName: r.user_name || 'مواطن',
         userPhone: isOwner ? r.user_phone : maskedPhone,
+        rawUserPhone: isOwner ? r.user_phone : null,
         isPhoneMasked: !isOwner,
+        isOwner: Boolean(isOwner),
         status: r.status,
         offersCount: Number(r.offers_count || 0),
         createdAt: Number(r.created_at || 0),
@@ -2587,7 +2590,13 @@ try {
 
     let authUser = null;
     try { authUser = await authenticateRequest(request, env); } catch (_) {}
-    const userId = authUser?.uid || ('guest_' + crypto.randomUUID().slice(0, 8));
+    const userId = authUser?.uid || String(body.userId || '').trim();
+
+    // User must be registered to post a service request
+    if (!userId || userId.startsWith('guest_')) {
+      return jsonResponse({ success: false, error: 'يجب تسجيل الدخول بحسابك أولاً لتتمكن من نشر طلب خدمة' }, 401, corsHeaders);
+    }
+
     const id = 'req_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6);
     const now = Date.now();
     const expiresAt = now + (7 * 86400000); // 7 days
@@ -2600,6 +2609,7 @@ try {
     return jsonResponse({ success: true, id, message: 'تم نشر طلبك بنجاح وسيتواصل معك الفنيون المناسبون' }, 201, corsHeaders);
   }
 
+  // Close service request
   if (url.pathname.startsWith('/api/service-requests/') && url.pathname.endsWith('/close') && request.method === 'POST') {
     const id = decodeURIComponent(url.pathname.replace('/api/service-requests/', '').replace('/close', '')).trim();
     if (!id) return jsonResponse({ success: false, error: 'معرف الطلب مطلوب' }, 400, corsHeaders);
@@ -2612,16 +2622,69 @@ try {
     return jsonResponse({ success: true, id, message: 'تم إغلاق الطلب بنجاح' }, 200, corsHeaders);
   }
 
+  // Update service request (Admin or Owner)
+  if (url.pathname.startsWith('/api/service-requests/') && !url.pathname.endsWith('/close') && request.method === 'PUT') {
+    const id = decodeURIComponent(url.pathname.replace('/api/service-requests/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الطلب مطلوب' }, 400, corsHeaders);
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    const db = createTursoDB(env);
+    const existing = await db.prepare('SELECT user_id FROM service_requests WHERE id = ?').bind(id).first();
+    if (!existing) return jsonResponse({ success: false, error: 'الطلب غير موجود' }, 404, corsHeaders);
+    if (!authUser || (!authUser.isAdmin && authUser.uid !== existing.user_id)) {
+      return jsonResponse({ success: false, error: 'غير مصرح لك بتعديل هذا الطلب' }, 403, corsHeaders);
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const updates = [];
+    const args = [];
+    if (body.category) { updates.push('category = ?'); args.push(String(body.category).trim()); }
+    if (body.title) { updates.push('title = ?'); args.push(String(body.title).trim()); }
+    if (body.village) { updates.push('village = ?'); args.push(String(body.village).trim()); }
+    if (body.timing) { updates.push('timing = ?'); args.push(String(body.timing).trim()); }
+    if (body.description !== undefined) { updates.push('description = ?'); args.push(String(body.description || '').trim()); }
+    if (body.status) { updates.push('status = ?'); args.push(String(body.status).trim()); }
+    if (body.userPhone) { updates.push('user_phone = ?'); args.push(String(body.userPhone).trim()); }
+    if (body.userName) { updates.push('user_name = ?'); args.push(String(body.userName).trim()); }
+
+    if (!updates.length) return jsonResponse({ success: true, message: 'لا توجد تعديلات' }, 200, corsHeaders);
+    args.push(id);
+    await db.prepare(`UPDATE service_requests SET ${updates.join(', ')} WHERE id = ?`).bind(...args).run();
+
+    return jsonResponse({ success: true, id, message: 'تم تحديث الطلب بنجاح' }, 200, corsHeaders);
+  }
+
+  // Delete service request (Admin or Owner)
+  if (url.pathname.startsWith('/api/service-requests/') && request.method === 'DELETE') {
+    const id = decodeURIComponent(url.pathname.replace('/api/service-requests/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الطلب مطلوب' }, 400, corsHeaders);
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    const db = createTursoDB(env);
+    const existing = await db.prepare('SELECT user_id FROM service_requests WHERE id = ?').bind(id).first();
+    if (!existing) return jsonResponse({ success: false, error: 'الطلب غير موجود' }, 404, corsHeaders);
+    if (!authUser || (!authUser.isAdmin && authUser.uid !== existing.user_id)) {
+      return jsonResponse({ success: false, error: 'غير مصرح لك بحذف هذا الطلب' }, 403, corsHeaders);
+    }
+
+    await db.prepare('DELETE FROM service_requests WHERE id = ?').bind(id).run();
+    return jsonResponse({ success: true, id, message: 'تم حذف الطلب بنجاح' }, 200, corsHeaders);
+  }
+
+
   // ═══════════════════════════════════════════════════════════
   // ── LIVE ON-CALL CRAFTSMEN («مين متاح ييجي دلوقتي؟») ──
   // ═══════════════════════════════════════════════════════════
   if (url.pathname === '/api/craftsmen/live' && request.method === 'GET') {
     const professionId = (url.searchParams.get('profession_id') || '').trim();
     const village = (url.searchParams.get('village') || '').trim();
+    const showAll = url.searchParams.get('all') === '1';
     const now = Date.now();
 
-    const where = ['is_available_now = 1', 'available_until > ?'];
-    const args = [now];
+    const where = showAll ? [] : ['is_available_now = 1', 'available_until > ?'];
+    const args = showAll ? [] : [now];
 
     if (professionId) {
       where.push('profession_id = ?');
@@ -2632,7 +2695,8 @@ try {
       args.push(`%${village}%`);
     }
 
-    const sql = `SELECT * FROM craftsman_presence WHERE ${where.join(' AND ')} ORDER BY available_until ASC LIMIT 50`;
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const sql = `SELECT * FROM craftsman_presence ${whereClause} ORDER BY available_until DESC LIMIT 100`;
     const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
 
     const data = rows.map(r => {
@@ -2712,6 +2776,55 @@ try {
       message: isAvailable ? `تم تفعيل حالتك كـ "متاح الآن" لمدة ${hours} ساعات بنجاح` : 'تم إيقاف التوفر المؤقت'
     }, 200, corsHeaders);
   }
+
+  // Delete Craftsman Presence (Admin)
+  if (url.pathname.startsWith('/api/craftsmen/live/') && request.method === 'DELETE') {
+    const id = decodeURIComponent(url.pathname.replace('/api/craftsmen/live/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'المعرف مطلوب' }, 400, corsHeaders);
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser?.isAdmin) {
+      return jsonResponse({ success: false, error: 'صلاحيات الإدارة مطلوبة' }, 403, corsHeaders);
+    }
+    await createTursoDB(env).prepare('DELETE FROM craftsman_presence WHERE id = ?').bind(id).run();
+    return jsonResponse({ success: true, id, message: 'تم حذف سجل الفني بنجاح' }, 200, corsHeaders);
+  }
+
+  // Update Craftsman Presence (Admin)
+  if (url.pathname.startsWith('/api/craftsmen/live/') && request.method === 'PUT') {
+    const id = decodeURIComponent(url.pathname.replace('/api/craftsmen/live/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'المعرف مطلوب' }, 400, corsHeaders);
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser?.isAdmin) {
+      return jsonResponse({ success: false, error: 'صلاحيات الإدارة مطلوبة' }, 403, corsHeaders);
+    }
+    const body = await request.json().catch(() => ({}));
+    const updates = [];
+    const args = [];
+    if (body.craftsmanName) { updates.push('craftsman_name = ?'); args.push(String(body.craftsmanName).trim()); }
+    if (body.professionName) { updates.push('profession_name = ?'); args.push(String(body.professionName).trim()); }
+    if (body.phone) { updates.push('phone = ?'); args.push(String(body.phone).trim()); }
+    if (body.whatsapp !== undefined) { updates.push('whatsapp = ?'); args.push(String(body.whatsapp || '').trim()); }
+    if (body.inspectionFee) { updates.push('inspection_fee = ?'); args.push(String(body.inspectionFee).trim()); }
+    if (body.etaMinutes) { updates.push('eta_minutes = ?'); args.push(Number(body.etaMinutes)); }
+    if (body.isAvailableNow !== undefined) { updates.push('is_available_now = ?'); args.push(body.isAvailableNow ? 1 : 0); }
+    if (body.coverageVillages) {
+      updates.push('coverage_villages_json = ?');
+      args.push(Array.isArray(body.coverageVillages) ? JSON.stringify(body.coverageVillages) : body.coverageVillages);
+    }
+    if (body.hoursAvailable) {
+      updates.push('available_until = ?');
+      args.push(Date.now() + (Number(body.hoursAvailable) * 3600000));
+    }
+    updates.push('updated_at = ?');
+    args.push(Date.now());
+    args.push(id);
+
+    await createTursoDB(env).prepare(`UPDATE craftsman_presence SET ${updates.join(', ')} WHERE id = ?`).bind(...args).run();
+    return jsonResponse({ success: true, id, message: 'تم تحديث بيانات الفني بنجاح' }, 200, corsHeaders);
+  }
+
 
   // ═══════════════════════════════════════════════════════════
   // ── VILLAGE HUB POLLS & VOTING («تصويت خدمات القرى») ──

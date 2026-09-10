@@ -11,6 +11,34 @@ import { toast } from './Toast.js';
 export function openNeedServiceModal(onCreated) {
   const user = getCurrentUser();
 
+  if (!user) {
+    showModal({
+      title: 'تسجيل الدخول مطلوب',
+      size: 'sm',
+      content: `
+        <div style="text-align:center;padding:16px 8px">
+          <div style="font-size:2.8rem;margin-bottom:12px">🔐</div>
+          <h3 style="font-size:1.15rem;font-weight:900;color:var(--text-primary);margin:0 0 8px">
+            تسجيل الدخول مطلوب أولاً
+          </h3>
+          <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;margin:0 0 20px">
+            حفاظاً على مصداقية طلبات الخدمات بالدليل، ومتابعة عروض الفنيين والقدرة على إغلاق أو حذف طلبك عند العثور على فني، يرجى تسجيل الدخول بحسابك.
+          </p>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <a href="login.html?redirect=${encodeURIComponent(location.pathname + location.search)}" class="btn btn-primary" style="padding:12px;border-radius:12px;font-weight:800;font-size:0.95rem;justify-content:center;display:flex;align-items:center;gap:6px">
+              <span>تسجيل الدخول / إنشاء حساب</span>
+              <span>←</span>
+            </a>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="document.querySelector('.modal-overlay')?.remove()" style="color:var(--text-muted);margin-top:4px">
+              إلغاء
+            </button>
+          </div>
+        </div>
+      `
+    });
+    return;
+  }
+
   showModal({
     title: 'طلبات الخدمات — اطلب خدمة أو صنايعي الآن',
     size: 'md',
@@ -126,7 +154,8 @@ export function openNeedServiceModal(onCreated) {
         timing,
         description,
         userName,
-        userPhone
+        userPhone,
+        userId: user?.uid
       });
 
       if (res?.success) {

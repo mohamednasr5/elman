@@ -12,6 +12,18 @@ import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { formatDate } from '../../utils/date.js';
+import { 
+  fetchServiceRequests, 
+  updateServiceRequest, 
+  deleteServiceRequest, 
+  closeServiceRequest, 
+  fetchLiveCraftsmen, 
+  toggleCraftsmanLive, 
+  updateCraftsmanLive, 
+  deleteCraftsmanLive 
+} from '../../services/interactive-hub.service.js';
+import { openCraftsmanLiveToggleModal } from '../components/WhoIsAvailableNow.js';
+import { openNeedServiceModal } from '../components/NeedServiceModal.js';
 import { getPendingLiveNews, getPublishedLiveNews, adminApproveLiveNews, adminUpdateLiveNews, adminDeleteLiveNews, submitLiveReport, NEWS_CATEGORIES, STATUS_TAGS } from '../../services/live-news.service.js';
 import { getLoyaltyLevelInfo, LOYALTY_LEVELS } from '../../services/loyalty.service.js';
 import { arabicMatch, normalizeArabic } from '../../utils/arabic.js';
@@ -114,7 +126,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           ${navLink('overview',      '#', ICONS.chart,     'الإحصائيات',     section === 'overview')}
           ${navLink('places',        '#', ICONS.pin,       'الأماكن',         section === 'places')}
           ${navLink('integrity',     '#', ICONS.shield,    'سلامة قاعدة البيانات', section === 'integrity')}
-          ${navLink('live-news',     '#', svgIcon('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'), 'المنزلة والمطرية الآن 🔥', section === 'live-news')}
+          ${navLink('services-hub',  '#', ICONS.bullhorn,  'طلبات الخدمات والمتاحين ⚡', ['services-hub', 'live-news'].includes(section))}
           ${navLink('products',      '#', ICONS.tag,       'المنتجات والمراجعة 🛍️', section === 'products')}
           ${navLink('reviews',       '#', ICONS.star,      'التقييمات ⭐',    section === 'reviews')}
           ${navLink('verification',  '#', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
@@ -241,9 +253,9 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
               <span>📍</span>
               <span>الأماكن والأنشطة</span>
             </button>
-            <button type="button" class="admin-sheet-item" data-admin-sec="live-news">
-              <span>🔥</span>
-              <span>يحدث الآن</span>
+            <button type="button" class="admin-sheet-item" data-admin-sec="services-hub">
+              <span>⚡</span>
+              <span>الخدمات والمتاحين</span>
             </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="reviews">
               <span>⭐</span>
@@ -348,7 +360,7 @@ async function switchAdminSection(sectionName, pushState = true) {
     else if (sectionName === 'integrity')     await renderAdminIntegrity($main);
     else if (sectionName === 'places')        await renderAdminPlaces($main);
     else if (sectionName === 'products')      await renderAdminProducts($main);
-    else if (sectionName === 'live-news')     await renderAdminLiveNews($main);
+    else if (sectionName === 'services-hub' || sectionName === 'live-news') await renderAdminServicesHub($main);
     else if (sectionName === 'reviews')       await renderAdminReviews($main);
     else if (sectionName === 'verification')  await renderAdminVerification($main);
     else if (sectionName === 'categories')    await renderAdminCategories($main);
@@ -6637,6 +6649,650 @@ window.deleteProductAdmin = async (placeId, productId) => {
     }
   }
 };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  SERVICES HUB & LIVE CRAFTSMEN FULL CRUD (إدارة طلبات الخدمات والمتاحين)
+// ─────────────────────────────────────────────────────────────────────────
+async function renderAdminServicesHub($container) {
+  $container.innerHTML = '<div class="spinner spinner-lg" style="margin:4rem auto"></div>';
+
+  try {
+    const [requests, craftsmen] = await Promise.all([
+      fetchServiceRequests({ status: 'all', limit: 100 }),
+      fetchLiveCraftsmen({ all: true })
+    ]);
+
+    let activeTab = 'requests'; // 'requests' or 'craftsmen'
+    let statusFilter = 'all';
+    let searchQuery = '';
+
+    function renderUI() {
+      const openCount = requests.filter(r => r.status === 'open').length;
+      const closedCount = requests.filter(r => r.status === 'closed').length;
+      const activeCraftsmenCount = craftsmen.filter(c => c.isAvailableNow && (c.remainingMinutes > 0 || c.availableUntil > Date.now())).length;
+
+      // Filter requests
+      const filteredRequests = requests.filter(r => {
+        if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+        if (searchQuery) {
+          const q = normalizeArabic(searchQuery.toLowerCase());
+          const hay = normalizeArabic(`${r.title} ${r.category} ${r.village} ${r.userName} ${r.userPhone || ''} ${r.rawUserPhone || ''}`.toLowerCase());
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      $container.innerHTML = `
+        <div class="admin-fade-in">
+          <!-- Section Header -->
+          <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:22px">
+            <div>
+              <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:900;display:flex;align-items:center;gap:10px">
+                <span style="color:#F5A623">⚡</span>
+                <span>إدارة طلبات الخدمات والمتاحين الآن</span>
+              </h1>
+              <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
+                التحكم الكامل: مراجعة وتعديل وحذف طلبات أهالي المنزلة والمطرية، والتحكم بالفنيين المتاحين للطوارئ فوراً
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px">
+              ${activeTab === 'craftsmen' ? `
+                <button type="button" id="btn-admin-add-craftsman" class="btn btn-primary" style="border-radius:12px;font-weight:800;gap:6px">
+                  <span>➕</span>
+                  <span>إضافة فني متاح الآن</span>
+                </button>
+              ` : `
+                <button type="button" id="btn-admin-add-request" class="btn btn-primary" style="border-radius:12px;font-weight:800;gap:6px">
+                  <span>➕</span>
+                  <span>إضافة طلب خدمة جديد</span>
+                </button>
+              `}
+            </div>
+          </div>
+
+          <!-- Quick Stats Grid -->
+          <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;margin-bottom:22px">
+            <div class="stat-card" style="background:#0F273D;padding:18px;border-radius:16px;border:1.5px solid rgba(255,255,255,0.1)">
+              <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-bottom:6px;font-weight:700">📢 إجمالي طلبات الخدمات</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#fff">${requests.length}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:18px;border-radius:16px;border:1.5px solid rgba(245,158,11,0.3)">
+              <div style="font-size:12.5px;color:#F5A623;margin-bottom:6px;font-weight:700">🟢 طلبات قيد البحث عن فني</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#F5A623">${openCount}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:18px;border-radius:16px;border:1.5px solid rgba(16,185,129,0.3)">
+              <div style="font-size:12.5px;color:#10B981;margin-bottom:6px;font-weight:700">✓ تم الاتفاق وإنجاز الخدمة</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#10B981">${closedCount}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:18px;border-radius:16px;border:1.5px solid rgba(56,189,248,0.3)">
+              <div style="font-size:12.5px;color:#38BDF8;margin-bottom:6px;font-weight:700">🔧 فنيون متاحون للطوارئ الآن</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#38BDF8">${activeCraftsmenCount}</div>
+            </div>
+          </div>
+
+          <!-- Primary Navigation Tabs -->
+          <div style="display:flex;gap:10px;border-bottom:2px solid rgba(255,255,255,0.1);padding-bottom:12px;margin-bottom:20px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm ${activeTab === 'requests' ? 'btn-primary' : 'btn-ghost'}" id="tab-nav-requests" style="border-radius:12px;font-weight:800;padding:8px 18px">
+              <span>📢</span>
+              <span>طلبات الخدمات الجارية (${requests.length})</span>
+            </button>
+            <button type="button" class="btn btn-sm ${activeTab === 'craftsmen' ? 'btn-primary' : 'btn-ghost'}" id="tab-nav-craftsmen" style="border-radius:12px;font-weight:800;padding:8px 18px">
+              <span>⚡</span>
+              <span>مين متاح ييجي دلوقتي؟ (${craftsmen.length})</span>
+            </button>
+          </div>
+
+          <!-- TAB 1: SERVICE REQUESTS CONTENT -->
+          ${activeTab === 'requests' ? `
+            <div style="background:#0F273D;border-radius:18px;padding:20px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 8px 30px rgba(0,0,0,0.25)">
+              
+              <!-- Filter & Search Toolbar -->
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+                <div style="display:flex;gap:6px">
+                  <button type="button" class="btn btn-sm ${statusFilter === 'all' ? 'btn-primary' : 'btn-outline'} btn-req-filter" data-filter="all" style="border-radius:8px;font-size:12px">الكل (${requests.length})</button>
+                  <button type="button" class="btn btn-sm ${statusFilter === 'open' ? 'btn-primary' : 'btn-outline'} btn-req-filter" data-filter="open" style="border-radius:8px;font-size:12px;color:#F5A623">قيد البحث (${openCount})</button>
+                  <button type="button" class="btn btn-sm ${statusFilter === 'closed' ? 'btn-primary' : 'btn-outline'} btn-req-filter" data-filter="closed" style="border-radius:8px;font-size:12px;color:#10B981">تم الاتفاق (${closedCount})</button>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="text" id="admin-search-requests" class="form-input" placeholder="🔍 بحث في الطلبات، الاسم، الهاتف..." value="${escAttr(searchQuery)}" style="width:240px;font-size:12.5px;padding:6px 12px;margin:0" />
+                </div>
+              </div>
+
+              <!-- Requests Table -->
+              <div class="table-responsive" style="overflow-x:auto">
+                <table class="dashboard-table" style="width:100%;text-align:right">
+                  <thead>
+                    <tr>
+                      <th>عنوان الطلب / الفئة</th>
+                      <th>صاحب الطلب / الهاتف</th>
+                      <th>المنطقة / التوقيت</th>
+                      <th>الحالة</th>
+                      <th>التاريخ</th>
+                      <th>الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${filteredRequests.length === 0 ? `
+                      <tr>
+                        <td colspan="6" style="text-align:center;padding:30px;color:rgba(255,255,255,0.5)">لا توجد طلبات تطابق الفلتر الحالي</td>
+                      </tr>
+                    ` : filteredRequests.map(r => `
+                      <tr>
+                        <td>
+                          <div style="font-weight:800;color:#fff;font-size:13.5px">${escHtml(r.title)}</div>
+                          <div style="font-size:11.5px;color:#38BDF8">🔧 ${escHtml(r.category)}</div>
+                          ${r.description ? `<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.description)}</div>` : ''}
+                        </td>
+                        <td>
+                          <div style="font-weight:700;color:#fff">${escHtml(r.userName || 'مواطن')}</div>
+                          <div style="font-size:12px;direction:ltr;text-align:right;color:#F5A623;font-family:monospace;font-weight:800">
+                            <a href="tel:${escAttr(r.rawUserPhone || r.userPhone || '')}" style="color:#F5A623;text-decoration:underline">${escHtml(r.rawUserPhone || r.userPhone || 'غير متوفر')}</a>
+                          </div>
+                        </td>
+                        <td>
+                          <div style="color:rgba(255,255,255,0.9);font-size:12.5px">📍 ${escHtml(r.village)}</div>
+                          <div style="color:rgba(255,255,255,0.6);font-size:11.5px">⏰ ${escHtml(r.timing)}</div>
+                        </td>
+                        <td>
+                          <span class="badge" style="background:${r.status === 'open' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'};color:${r.status === 'open' ? '#F5A623' : '#10B981'};border:1px solid ${r.status === 'open' ? 'rgba(245,158,11,0.4)' : 'rgba(16,185,129,0.4)'};border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800">
+                            ${r.status === 'open' ? '🟢 قيد البحث' : '✓ تم الاتفاق'}
+                          </span>
+                        </td>
+                        <td style="font-size:11.5px;color:rgba(255,255,255,0.5)">
+                          ${formatDate(r.createdAt || Date.now())}
+                        </td>
+                        <td>
+                          <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <button type="button" class="btn btn-sm btn-outline btn-edit-request" data-id="${escAttr(r.id)}" style="padding:4px 8px;font-size:11.5px;border-radius:8px;color:#38BDF8;border-color:#38BDF8" title="تعديل تفاصيل الطلب">
+                              ✏️ تعديل
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline btn-toggle-req-status" data-id="${escAttr(r.id)}" data-status="${escAttr(r.status)}" style="padding:4px 8px;font-size:11.5px;border-radius:8px;color:${r.status === 'open' ? '#10B981' : '#F5A623'};border-color:${r.status === 'open' ? '#10B981' : '#F5A623'}" title="تبديل الحالة">
+                              ${r.status === 'open' ? '✓ إغلاق' : '↺ إعادة فتح'}
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline btn-delete-request" data-id="${escAttr(r.id)}" style="padding:4px 8px;font-size:11.5px;border-radius:8px;color:#EF4444;border-color:#EF4444" title="حذف نهائي">
+                              🗑️ حذف
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ` : `
+            <!-- TAB 2: LIVE ON-CALL CRAFTSMEN CONTENT -->
+            <div style="background:#0F273D;border-radius:18px;padding:20px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 8px 30px rgba(0,0,0,0.25)">
+              
+              <div class="table-responsive" style="overflow-x:auto">
+                <table class="dashboard-table" style="width:100%;text-align:right">
+                  <thead>
+                    <tr>
+                      <th>اسم الفني / المهنة</th>
+                      <th>الهاتف / واتساب</th>
+                      <th>الكشفية / الوصول</th>
+                      <th>قرى التغطية</th>
+                      <th>حالة التوفر</th>
+                      <th>الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${craftsmen.length === 0 ? `
+                      <tr>
+                        <td colspan="6" style="text-align:center;padding:30px;color:rgba(255,255,255,0.5)">لا يوجد فنيون مسجلون حالياً</td>
+                      </tr>
+                    ` : craftsmen.map(c => {
+                      const isActive = c.isAvailableNow && (c.remainingMinutes > 0 || c.availableUntil > Date.now());
+                      const hoursLeft = Math.floor((c.remainingMinutes || 0) / 60);
+                      const minsLeft = (c.remainingMinutes || 0) % 60;
+                      const timeStr = hoursLeft > 0 ? `${hoursLeft}س و${minsLeft}د` : `${minsLeft} دقيقة`;
+                      const villagesStr = Array.isArray(c.coverageVillages) ? c.coverageVillages.join('، ') : 'المنزلة وقراها';
+
+                      return `
+                        <tr>
+                          <td>
+                            <div style="font-weight:800;color:#fff;font-size:13.5px">${escHtml(c.craftsmanName)}</div>
+                            <div style="font-size:12px;color:#34D399;font-weight:700">🔧 ${escHtml(c.professionName)}</div>
+                          </td>
+                          <td>
+                            <div style="font-size:12.5px;color:#fff;direction:ltr;text-align:right;font-family:monospace">
+                              <a href="tel:${escAttr(c.phone || '')}" style="color:#fff">${escHtml(c.phone || 'غير مسجل')}</a>
+                            </div>
+                            ${c.whatsapp ? `
+                              <div style="font-size:11px;color:#10B981">💬 واتساب: ${escHtml(c.whatsapp)}</div>
+                            ` : ''}
+                          </td>
+                          <td>
+                            <div style="font-size:12px;color:#F5A623">💵 ${escHtml(c.inspectionFee || 'حسب الاتفاق')}</div>
+                            <div style="font-size:11.5px;color:rgba(255,255,255,0.6)">🚀 ~${c.etaMinutes || 30} دقيقة</div>
+                          </td>
+                          <td style="font-size:12px;color:rgba(255,255,255,0.8);max-width:200px">
+                            ${escHtml(villagesStr)}
+                          </td>
+                          <td>
+                            ${isActive ? `
+                              <span class="badge" style="background:rgba(16,185,129,0.2);color:#10B981;border:1px solid rgba(16,185,129,0.4);border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800">
+                                🟢 متاح الآن (باقي ${timeStr})
+                              </span>
+                            ` : `
+                              <span class="badge" style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);border-radius:8px;padding:3px 8px;font-size:11px">
+                                ⚪ غير متاح حالياً
+                              </span>
+                            `}
+                          </td>
+                          <td>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                              <button type="button" class="btn btn-sm btn-outline btn-edit-craftsman" data-id="${escAttr(c.id)}" style="padding:4px 8px;font-size:11.5px;border-radius:8px;color:#38BDF8;border-color:#38BDF8" title="تعديل بيانات الفني">
+                                ✏️ تعديل
+                              </button>
+                              ${isActive ? `
+                                <button type="button" class="btn btn-sm btn-outline btn-toggle-craftsman-avail" data-id="${escAttr(c.id)}" data-avail="0" style="padding:4px 8px;font-size:11.5px;border-radius:8px;color:#F5A623;border-color:#F5A623" title="إنهاء التوفر فوراً">
+                                  ⏹️ إيقاف
+                                </button>
+                              ` : `
+                                <button type="button" class="btn btn-sm btn-outline btn-toggle-craftsman-avail" data-id="${escAttr(c.id)}" data-avail="1" style="padding:4px 8px;font-size:11.5px;border-radius:8px;color:#10B981;border-color:#10B981" title="تفعيل لساعتين">
+                                  ▶️ تفعيل
+                                </button>
+                              `}
+                              <button type="button" class="btn btn-sm btn-outline btn-delete-craftsman" data-id="${escAttr(c.id)}" style="padding:4px 8px;font-size:11.5px;border-radius:8px;color:#EF4444;border-color:#EF4444" title="حذف نهائي">
+                                🗑️ حذف
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
+
+      attachListeners();
+    }
+
+    function attachListeners() {
+      // Tab switcher
+      document.getElementById('tab-nav-requests')?.addEventListener('click', () => {
+        activeTab = 'requests';
+        renderUI();
+      });
+      document.getElementById('tab-nav-craftsmen')?.addEventListener('click', () => {
+        activeTab = 'craftsmen';
+        renderUI();
+      });
+
+      // Filter chips
+      document.querySelectorAll('.btn-req-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+          statusFilter = btn.getAttribute('data-filter');
+          renderUI();
+        });
+      });
+
+      // Search input
+      const searchInput = document.getElementById('admin-search-requests');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          searchQuery = e.target.value;
+          renderUI();
+          const nextInput = document.getElementById('admin-search-requests');
+          if (nextInput) {
+            nextInput.focus();
+            nextInput.selectionStart = nextInput.selectionEnd = nextInput.value.length;
+          }
+        });
+      }
+
+      // Add Request Button
+      document.getElementById('btn-admin-add-request')?.addEventListener('click', () => {
+        openNeedServiceModal(() => renderAdminServicesHub($container));
+      });
+
+      // Add Craftsman Button
+      document.getElementById('btn-admin-add-craftsman')?.addEventListener('click', () => {
+        openCraftsmanLiveToggleModal(() => renderAdminServicesHub($container));
+      });
+
+      // Edit Request
+      document.querySelectorAll('.btn-edit-request').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const reqId = btn.getAttribute('data-id');
+          const req = requests.find(r => r.id === reqId);
+          if (req) openAdminEditRequestModal(req, () => renderAdminServicesHub($container));
+        });
+      });
+
+      // Toggle Request Status
+      document.querySelectorAll('.btn-toggle-req-status').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const reqId = btn.getAttribute('data-id');
+          const currentStatus = btn.getAttribute('data-status');
+          const nextStatus = currentStatus === 'open' ? 'closed' : 'open';
+          btn.disabled = true;
+          try {
+            if (nextStatus === 'closed') {
+              await closeServiceRequest(reqId);
+            } else {
+              await updateServiceRequest(reqId, { status: 'open' });
+            }
+            toast.success('تم تحديث حالة الطلب بنجاح');
+            await renderAdminServicesHub($container);
+          } catch (err) {
+            toast.error('تعذر تحديث الحالة');
+            btn.disabled = false;
+          }
+        });
+      });
+
+      // Delete Request
+      document.querySelectorAll('.btn-delete-request').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const reqId = btn.getAttribute('data-id');
+          if (!confirm('هل أنت متأكد من رغبتك في حذف طلب الخدمة نهائياً من قاعدة البيانات؟')) return;
+          btn.disabled = true;
+          try {
+            const res = await deleteServiceRequest(reqId);
+            if (res?.success) {
+              toast.success('تم حذف الطلب بنجاح');
+              await renderAdminServicesHub($container);
+            } else {
+              toast.error(res?.error || 'فشل حذف الطلب');
+              btn.disabled = false;
+            }
+          } catch (err) {
+            toast.error('فشل في الاتصال');
+            btn.disabled = false;
+          }
+        });
+      });
+
+      // Edit Craftsman
+      document.querySelectorAll('.btn-edit-craftsman').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cId = btn.getAttribute('data-id');
+          const craftsman = craftsmen.find(c => c.id === cId);
+          if (craftsman) openAdminEditCraftsmanModal(craftsman, () => renderAdminServicesHub($container));
+        });
+      });
+
+      // Toggle Craftsman Availability
+      document.querySelectorAll('.btn-toggle-craftsman-avail').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const cId = btn.getAttribute('data-id');
+          const isAvail = btn.getAttribute('data-avail') === '1';
+          btn.disabled = true;
+          try {
+            await updateCraftsmanLive(cId, {
+              isAvailableNow: isAvail,
+              hoursAvailable: isAvail ? 4 : 0
+            });
+            toast.success(isAvail ? 'تم تفعيل توفر الفني' : 'تم إيقاف توفر الفني');
+            await renderAdminServicesHub($container);
+          } catch (err) {
+            toast.error('فشل تحديث توفر الفني');
+            btn.disabled = false;
+          }
+        });
+      });
+
+      // Delete Craftsman
+      document.querySelectorAll('.btn-delete-craftsman').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const cId = btn.getAttribute('data-id');
+          if (!confirm('هل أنت متأكد من رغبتك في حذف هذا الفني من قائمة المتاحين؟')) return;
+          btn.disabled = true;
+          try {
+            const res = await deleteCraftsmanLive(cId);
+            if (res?.success) {
+              toast.success('تم حذف الفني بنجاح');
+              await renderAdminServicesHub($container);
+            } else {
+              toast.error(res?.error || 'فشل الحذف');
+              btn.disabled = false;
+            }
+          } catch (err) {
+            toast.error('فشل في الاتصال');
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    renderUI();
+
+  } catch (err) {
+    console.error('[AdminServicesHub] render error:', err);
+    $container.innerHTML = `
+      <div class="empty-state" style="margin-top:60px">
+        <span class="empty-state__icon">⚠️</span>
+        <h3>تعذر تحميل بيانات الخدمات والمتاحين</h3>
+        <p style="color:var(--danger);max-width:440px;margin:.5rem auto">${escHtml(err.message || 'حدث خطأ غير متوقع')}</p>
+        <button class="btn btn-primary" onclick="window.refreshCurrentAdminSection()" style="margin-top:16px">إعادة المحاولة</button>
+      </div>
+    `;
+  }
+}
+
+// ── Admin Modal: Edit Service Request ──
+function openAdminEditRequestModal(req, onSave) {
+  showModal({
+    title: `تعديل طلب الخدمة #${req.id}`,
+    size: 'md',
+    content: `
+      <form id="admin-edit-req-form" style="display:flex;flex-direction:column;gap:14px;text-align:right">
+        <div>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">عنوان الطلب *</label>
+          <input type="text" id="edit-req-title" required class="form-control" value="${escAttr(req.title)}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">التصنيف *</label>
+            <input type="text" id="edit-req-cat" required class="form-control" value="${escAttr(req.category)}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">المنطقة / القرية *</label>
+            <input type="text" id="edit-req-village" required class="form-control" value="${escAttr(req.village)}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">التوقيت المفضل</label>
+            <input type="text" id="edit-req-timing" class="form-control" value="${escAttr(req.timing || 'الآن')}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">حالة الطلب</label>
+            <select id="edit-req-status" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1">
+              <option value="open" ${req.status === 'open' ? 'selected' : ''}>🟢 قيد البحث (مفتوح)</option>
+              <option value="closed" ${req.status === 'closed' ? 'selected' : ''}>✓ تم الاتفاق (مغلق)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">اسم صاحب الطلب</label>
+            <input type="text" id="edit-req-username" class="form-control" value="${escAttr(req.userName || '')}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">رقم الهاتف *</label>
+            <input type="tel" id="edit-req-phone" required class="form-control" value="${escAttr(req.rawUserPhone || req.userPhone || '')}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">التفاصيل والشرح</label>
+          <textarea id="edit-req-desc" rows="3" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1">${escHtml(req.description || '')}</textarea>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button type="submit" id="btn-save-req" class="btn btn-primary" style="flex:2;padding:12px;border-radius:10px;font-weight:800">
+            💾 حفظ التعديلات
+          </button>
+          <button type="button" class="btn btn-ghost" onclick="document.querySelector('.modal-overlay')?.remove()" style="flex:1">
+            إلغاء
+          </button>
+        </div>
+      </form>
+    `
+  });
+
+  document.getElementById('admin-edit-req-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-req');
+    if (btn) { btn.disabled = true; btn.textContent = 'جاري الحفظ...'; }
+
+    try {
+      const payload = {
+        title: document.getElementById('edit-req-title')?.value.trim(),
+        category: document.getElementById('edit-req-cat')?.value.trim(),
+        village: document.getElementById('edit-req-village')?.value.trim(),
+        timing: document.getElementById('edit-req-timing')?.value.trim(),
+        status: document.getElementById('edit-req-status')?.value,
+        userName: document.getElementById('edit-req-username')?.value.trim(),
+        userPhone: document.getElementById('edit-req-phone')?.value.trim(),
+        description: document.getElementById('edit-req-desc')?.value.trim()
+      };
+
+      const res = await updateServiceRequest(req.id, payload);
+      if (res?.success) {
+        toast.success('تم حفظ تعديلات الطلب بنجاح');
+        document.querySelector('.modal-overlay')?.remove();
+        if (typeof onSave === 'function') onSave();
+      } else {
+        toast.error(res?.error || 'فشل الحفظ');
+      }
+    } catch (err) {
+      toast.error('حدث خطأ في الاتصال');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '💾 حفظ التعديلات'; }
+    }
+  });
+}
+
+// ── Admin Modal: Edit Craftsman ──
+function openAdminEditCraftsmanModal(c, onSave) {
+  const villagesStr = Array.isArray(c.coverageVillages) ? c.coverageVillages.join('، ') : (c.coverageVillages || 'المنزلة');
+
+  showModal({
+    title: `تعديل بيانات الفني: ${c.craftsmanName}`,
+    size: 'md',
+    content: `
+      <form id="admin-edit-craftsman-form" style="display:flex;flex-direction:column;gap:14px;text-align:right">
+        <div>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">اسم الفني أو الورشة *</label>
+          <input type="text" id="edit-c-name" required class="form-control" value="${escAttr(c.craftsmanName)}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+        </div>
+
+        <div>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">المهنة والتخصص *</label>
+          <input type="text" id="edit-c-prof" required class="form-control" value="${escAttr(c.professionName)}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">رقم الهاتف للاتصال *</label>
+            <input type="tel" id="edit-c-phone" required class="form-control" value="${escAttr(c.phone || '')}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">رقم واتساب</label>
+            <input type="tel" id="edit-c-whatsapp" class="form-control" value="${escAttr(c.whatsapp || c.phone || '')}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">تكلفة المعاينة/الكشف</label>
+            <input type="text" id="edit-c-fee" class="form-control" value="${escAttr(c.inspectionFee || '')}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">وقت الوصول التقديري (بالدقائق)</label>
+            <input type="number" id="edit-c-eta" class="form-control" value="${c.etaMinutes || 30}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">قرى ومناطق التغطية (مفصولة بفواصل)</label>
+          <input type="text" id="edit-c-villages" class="form-control" value="${escAttr(villagesStr)}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+        </div>
+
+        <div>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">حالة التوفر وتمديد الوقت</label>
+          <select id="edit-c-avail" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1">
+            <option value="keep">الإبقاء على الحالة الحالية</option>
+            <option value="renew_2">تفعيل / تمديد التوفر لمدة 2 ساعة من الآن</option>
+            <option value="renew_4">تفعيل / تمديد التوفر لمدة 4 ساعات من الآن</option>
+            <option value="renew_8">تفعيل / تمديد التوفر لمدة 8 ساعات من الآن</option>
+            <option value="offline">إيقاف التوفر الآن (غير متاح)</option>
+          </select>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button type="submit" id="btn-save-craftsman" class="btn btn-primary" style="flex:2;padding:12px;border-radius:10px;font-weight:800">
+            💾 حفظ بيانات الفني
+          </button>
+          <button type="button" class="btn btn-ghost" onclick="document.querySelector('.modal-overlay')?.remove()" style="flex:1">
+            إلغاء
+          </button>
+        </div>
+      </form>
+    `
+  });
+
+  document.getElementById('admin-edit-craftsman-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-craftsman');
+    if (btn) { btn.disabled = true; btn.textContent = 'جاري الحفظ...'; }
+
+    try {
+      const availChoice = document.getElementById('edit-c-avail')?.value;
+      const payload = {
+        craftsmanName: document.getElementById('edit-c-name')?.value.trim(),
+        professionName: document.getElementById('edit-c-prof')?.value.trim(),
+        phone: document.getElementById('edit-c-phone')?.value.trim(),
+        whatsapp: document.getElementById('edit-c-whatsapp')?.value.trim(),
+        inspectionFee: document.getElementById('edit-c-fee')?.value.trim(),
+        etaMinutes: Number(document.getElementById('edit-c-eta')?.value || 30),
+        coverageVillages: (document.getElementById('edit-c-villages')?.value || '')
+          .split(/[,،]/)
+          .map(v => v.trim())
+          .filter(Boolean)
+      };
+
+      if (availChoice === 'offline') {
+        payload.isAvailableNow = false;
+      } else if (availChoice === 'renew_2') {
+        payload.isAvailableNow = true;
+        payload.hoursAvailable = 2;
+      } else if (availChoice === 'renew_4') {
+        payload.isAvailableNow = true;
+        payload.hoursAvailable = 4;
+      } else if (availChoice === 'renew_8') {
+        payload.isAvailableNow = true;
+        payload.hoursAvailable = 8;
+      }
+
+      const res = await updateCraftsmanLive(c.id, payload);
+      if (res?.success) {
+        toast.success('تم تحديث بيانات الفني بنجاح');
+        document.querySelector('.modal-overlay')?.remove();
+        if (typeof onSave === 'function') onSave();
+      } else {
+        toast.error(res?.error || 'فشل تحديث البيانات');
+      }
+    } catch (err) {
+      toast.error('حدث خطأ في الاتصال');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '💾 حفظ بيانات الفني'; }
+    }
+  });
 }
 
 // ── Utils ──
