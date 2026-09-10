@@ -423,6 +423,31 @@ function registerRoutes() {
     await renderOffersPage($main, { user });
   });
 
+  // Now & Live Emergency Services
+  route('/now', async () => {
+    appLoading?.remove();
+    setMeta({ title: 'المنزلة والمطرية الآن — طوارئ وخدمات فورية', url: '/#/now' });
+    const { renderNowPage } = await import('./ui/pages/now.js');
+    await renderNowPage($main);
+  });
+
+  // Need Service Shortcut
+  route('/need-service', async () => {
+    navigate('/now');
+  });
+
+  // Village Hub
+  route('/village/:slug', async ({ params }) => {
+    appLoading?.remove();
+    setMeta({ title: 'دليل القرية والمواصلات والحرفيين', url: `/#/village/${params.slug}` });
+    const { renderVillageHubPage } = await import('./ui/pages/village-hub.js');
+    await renderVillageHubPage($main, { slug: params.slug });
+  });
+
+  route('/villages', async () => {
+    navigate('/village/al-aziza');
+  });
+
   // Products
   route('/products', async ({ user }) => {
     appLoading?.remove();

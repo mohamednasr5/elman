@@ -27,7 +27,7 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v3.2.0-bcs-refresh-v1';
+const CACHE_VERSION = 'v3.3.0-branch-phone-sharing-v1';
 const STATIC_CACHE = 'manzala-static-' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'manzala-dynamic-' + CACHE_VERSION;
 const IMAGE_CACHE = 'manzala-images-' + CACHE_VERSION;

@@ -18,6 +18,7 @@ import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';
 import { getCategoryVisualMeta, renderCategoryCardIcon } from '../../utils/category-visual.js';
+import { renderWhoIsAvailableNow } from '../components/WhoIsAvailableNow.js';
 
 const CATEGORY_EMOJIS = {
   'pharmacy':      { emoji: '💊', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
@@ -88,6 +89,9 @@ export async function renderHomePage($main, { user } = {}) {
     }
 
     // Render sections
+    const craftsmenBox = document.getElementById('home-oncall-craftsmen-container');
+    if (craftsmenBox) renderWhoIsAvailableNow(craftsmenBox);
+
     mountLivePulseSection('home-live-pulse-container');
     mountAroundMeRadar('home-around-me-container');
 
@@ -1258,16 +1262,30 @@ function getHomeHTML() {
         </div>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-top:14px" id="villages-grid-container">
-          ${villageList.map(t => `
-            <a href="places.html?area=${encodeURIComponent(t.name)}" class="category-card village-grid-item" data-name="${escAttr(t.name)}" style="padding:12px 8px;text-align:center;text-decoration:none;border-radius:var(--radius-md);transition:all 0.2s ease;display:flex;flex-direction:column;align-items:center" title="دليل أماكن وخدمات ${t.name}">
+          ${villageList.map(t => {
+            const villageHubMap = {
+              'العزيزة': '#/village/al-aziza',
+              'البصراط': '#/village/al-basrat',
+              'الشبول': '#/village/al-shabboul',
+              'العصافرة': '#/village/al-asafra',
+              'النسايمة': '#/village/al-nasayma'
+            };
+            const targetHref = villageHubMap[t.name] || `places.html?area=${encodeURIComponent(t.name)}`;
+            return `
+            <a href="${targetHref}" class="category-card village-grid-item" data-name="${escAttr(t.name)}" style="padding:12px 8px;text-align:center;text-decoration:none;border-radius:var(--radius-md);transition:all 0.2s ease;display:flex;flex-direction:column;align-items:center" title="دليل أماكن وخدمات ومواصلات ${t.name}">
               <div style="font-size:22px;margin-bottom:4px">${t.icon}</div>
               <div style="font-weight:700;font-size:13px;color:var(--text-primary)">${t.name}</div>
               <div style="font-size:11px;color:var(--text-secondary);font-weight:600;margin-top:2px">${t.desc}</div>
             </a>
-          `).join('')}
+          `;}).join('')}
         </div>
       </div>
     </section>
+
+    <!-- ⚡ قسم مين متاح ييجي دلوقتي (طوارئ الحرفيين) -->
+    <div class="container section" style="padding-top:0;padding-bottom:0">
+      <div id="home-oncall-craftsmen-container"></div>
+    </div>
 
     <!-- 🔥 المنزلة والمطرية الآن (يحدث الآن) -->
     <div id="home-live-pulse-container"></div>

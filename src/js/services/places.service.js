@@ -12,6 +12,55 @@ import { WORKER_URL } from '../core/firebase.js';
 import { getIdToken } from '../core/auth.js';
 import { isValidPhoneNumber } from '../utils/phone.js';
 
+export function extractBrandRoot(name) {
+  if (!name) return '';
+  let str = String(name).trim();
+  // Split on branch delimiters before punctuation stripping
+  str = str.split(/\s*[\/\-–—|]\s*/)[0];
+  str = str.replace(/\s*\([^)]*\)/g, '');
+  str = str.split(/\s+فرع\s+/)[0];
+  str = str.split(/\s+بجوار\s+/)[0];
+  str = str.split(/\s+امام\s+/)[0];
+  str = str.split(/\s+أمام\s+/)[0];
+  return normalizeArabic(str).trim();
+}
+
+export function isSameBusinessOrBranch(p1, p2) {
+  if (!p1 || !p2) return false;
+
+  // 1. Same ID or slug
+  const id1 = p1.id || p1._key || p1.placeId;
+  const id2 = p2.id || p2._key || p2.placeId;
+  if (id1 && id2 && String(id1) === String(id2)) return true;
+  if (p1.slug && p2.slug && p1.slug === p2.slug) return true;
+
+  // 2. Parent-child or sibling branch relationship
+  const parent1 = p1.parent_id || p1.parentId;
+  const parent2 = p2.parent_id || p2.parentId;
+  if (parent1 && id2 && String(parent1) === String(id2)) return true;
+  if (parent2 && id1 && String(parent2) === String(id1)) return true;
+  if (parent1 && parent2 && String(parent1) === String(parent2)) return true;
+
+  // 3. Same owner
+  const owner1 = p1.ownerId || p1.owner_id;
+  const owner2 = p2.ownerId || p2.owner_id;
+  if (owner1 && owner2 && String(owner1) === String(owner2)) return true;
+  const email1 = (p1.ownerEmail || p1.owner_email || '').toLowerCase().trim();
+  const email2 = (p2.ownerEmail || p2.owner_email || '').toLowerCase().trim();
+  if (email1 && email2 && email1 === email2) return true;
+
+  // 4. Base Brand Name Match
+  const brand1 = extractBrandRoot(p1.name);
+  const brand2 = extractBrandRoot(p2.name);
+  if (brand1 && brand2) {
+    if (brand1 === brand2) return true;
+    if (brand1.length >= 6 && (brand1.startsWith(brand2) || brand2.startsWith(brand1))) return true;
+    if (brand1.length >= 6 && (brand1.includes(brand2) || brand2.includes(brand1))) return true;
+  }
+
+  return false;
+}
+
 export async function validatePlaceUniqueness({ name, phone, excludePlaceId = null, categoryId = '', placeData = null }) {
   const isAtm = isAtmPlace(placeData || { categoryId, name });
   const normName = normalizeArabic(name || '').trim();
@@ -21,21 +70,40 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
   if (!isValidPhoneNumber(phone)) {
     throw new Error('يرجى إدخال رقم هاتف مصري صحيح ومفعل (موبايل 11 رقم أو أرضي أو رقم موحد)، ولا يُقبل تسجيل أرقام غير صالحة أو أصفار.');
   }
+
   const allPlaces = (await getPublishedPlaces({ limit: 1000 })) || [];
-  const matchingPhonePlaces = [];
+  const currentPlaceObj = {
+    ...(placeData || {}),
+    name,
+    phone,
+    id: excludePlaceId || placeData?.id || placeData?._key
+  };
+
+  const unrelatedMatchingPhonePlaces = [];
+
   for (const p of allPlaces) {
     if (!p) continue;
     const currentId = p.id || p._key;
     if (excludePlaceId && (currentId === excludePlaceId || p.slug === excludePlaceId)) continue;
     if (isAtmPlace(p)) continue;
+
     const existingNormName = normalizeArabic(p.name || '').trim();
-    if (existingNormName && existingNormName === normName) throw new Error(`يوجد مكان مسجل مسبقاً بنفس الاسم ("${p.name}")، يرجى اختيار اسم فريد ومميز لنشاطك.`);
+    if (existingNormName && existingNormName === normName) {
+      throw new Error(`يوجد مكان مسجل مسبقاً بنفس الاسم تماماً ("${p.name}")، يرجى إضافة اسم الفرع أو المنطقة لتمييزه (مثال: "${p.name} / بجوار كذا").`);
+    }
+
     const existingPhone = (p.phone || '').replace(/\D/g, '');
-    if (existingPhone && existingPhone === cleanPhoneNum) matchingPhonePlaces.push(p);
+    if (existingPhone && existingPhone === cleanPhoneNum) {
+      const isBranch = isSameBusinessOrBranch(currentPlaceObj, p);
+      if (!isBranch) {
+        unrelatedMatchingPhonePlaces.push(p);
+      }
+    }
   }
-  if (matchingPhonePlaces.length >= 2) {
-    const placesNames = matchingPhonePlaces.map(p => `"${p.name}"`).join(' و ');
-    throw new Error(`رقم الهاتف ("${phone}") مسجل بالفعل لمكانين (${placesNames})، والحد الأقصى المسموح به هو تسجيل نفس الرقم لمكانين فقط.`);
+
+  if (unrelatedMatchingPhonePlaces.length >= 2) {
+    const placesNames = unrelatedMatchingPhonePlaces.map(p => `"${p.name}"`).join(' و ');
+    throw new Error(`رقم الهاتف ("${phone}") مسجل بالفعل لأنشطة تجارية أخرى مختلفة (${placesNames}). إذا كان هذا فرعاً لنفس النشاط، يرجى كتابة اسم النشاط الرئيسي في بداية اسم الفرع.`);
   }
 }
 

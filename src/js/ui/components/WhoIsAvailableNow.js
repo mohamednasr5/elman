@@ -1,0 +1,249 @@
+/**
+ * WhoIsAvailableNow.js
+ * «مين متاح ييجي دلوقتي؟» — Live Temporary Availability for Emergency Craftsmen
+ */
+
+import { fetchLiveCraftsmen, toggleCraftsmanLive } from '../../services/interactive-hub.service.js';
+import { getCurrentUser } from '../../core/auth.js';
+import { showModal } from './Modal.js';
+import { toast } from './Toast.js';
+
+export async function renderWhoIsAvailableNow($container, options = {}) {
+  if (!$container) return;
+
+  $container.innerHTML = `
+    <div class="oncall-craftsmen-section">
+      <div class="oncall-header">
+        <div class="oncall-title-box">
+          <div class="oncall-radar" aria-hidden="true">
+            <div class="oncall-radar-dot"></div>
+            <div class="oncall-radar-ring"></div>
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:1.25rem;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px">
+              <span>مين متاح ييجي دلوقتي؟</span>
+              <span style="font-size:0.75rem;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#6ee7b7;padding:2px 8px;border-radius:12px">طوارئ وزيارات فورية</span>
+            </h3>
+            <p style="margin:2px 0 0;font-size:0.84rem;color:#bae6fd">
+              فنيون وحرفيون متاحون للتحرك فوراً إلى قريتك أو منزلك (سباكة، كهرباء، صيانة، طوارئ)
+            </p>
+          </div>
+        </div>
+
+        <button type="button" id="btn-toggle-my-craftsman-live" class="btn btn-sm" style="background:#0284c7;color:#fff;border-radius:12px;font-weight:800;padding:8px 16px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+          <span>⚡</span>
+          <span>أنا صنايعي ومتاح للزيارات الآن</span>
+        </button>
+      </div>
+
+      <div id="oncall-craftsmen-list" class="oncall-grid">
+        <div style="grid-column:1/-1;text-align:center;padding:25px 0;color:#94a3b8">
+          <span>جاري تحديث قائمة المتاحين الآن...</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Attach button event
+  const $toggleBtn = $container.querySelector('#btn-toggle-my-craftsman-live');
+  $toggleBtn?.addEventListener('click', () => {
+    openCraftsmanLiveToggleModal(() => loadCraftsmen($container));
+  });
+
+  await loadCraftsmen($container);
+}
+
+async function loadCraftsmen($container) {
+  const $list = $container.querySelector('#oncall-craftsmen-list');
+  if (!$list) return;
+
+  try {
+    const craftsmen = await fetchLiveCraftsmen();
+
+    if (!craftsmen || craftsmen.length === 0) {
+      $list.innerHTML = `
+        <div style="grid-column:1/-1;background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.15);border-radius:14px;padding:24px;text-align:center">
+          <div style="font-size:2rem;margin-bottom:8px">⏱️</div>
+          <p style="margin:0 0 8px;font-weight:700;color:#f1f5f9;font-size:0.95rem">لا يوجد فنيون على وضع التوفر المباشر في هذه اللحظة</p>
+          <p style="margin:0;font-size:0.82rem;color:#94a3b8">إذا كنت فني سباكة أو كهرباء أو صيانة بالمنزلة والمطرية، اضغط زر "أنا صنايعي ومتاح" لتظهر فوراً للعملاء</p>
+        </div>
+      `;
+      return;
+    }
+
+    $list.innerHTML = craftsmen.map(c => {
+      const hoursLeft = Math.floor(c.remainingMinutes / 60);
+      const minsLeft = c.remainingMinutes % 60;
+      const timeDisplay = hoursLeft > 0 ? `${hoursLeft}س و${minsLeft}د` : `${minsLeft} دقيقة`;
+      const villagesStr = Array.isArray(c.coverageVillages) && c.coverageVillages.length > 0 
+        ? c.coverageVillages.slice(0, 3).join('، ') + (c.coverageVillages.length > 3 ? '...' : '') 
+        : 'المنزلة وقراها';
+
+      const phoneClean = (c.phone || '').replace(/[^0-9+]/g, '');
+      const waClean = (c.whatsapp || c.phone || '').replace(/[^0-9]/g, '');
+      const waLink = waClean ? `https://wa.me/2${waClean.startsWith('0') ? waClean.slice(1) : waClean}?text=${encodeURIComponent('السلام عليكم، شفتك على دليل المنزلة متاح الآن ومحتاج زيارة فورية')}` : null;
+
+      return `
+        <div class="oncall-card">
+          <div class="oncall-card-top">
+            <div class="oncall-craftsman-info">
+              <h4>${c.craftsmanName}</h4>
+              <div class="oncall-craftsman-spec">
+                <span>🔧</span>
+                <span>${c.professionName}</span>
+              </div>
+            </div>
+            <div class="oncall-countdown-pill" title="ينتهي التوفر التلقائي للحفاظ على المصداقية">
+              <span>⏳ متاح:</span>
+              <span>${timeDisplay}</span>
+            </div>
+          </div>
+
+          <div class="oncall-tags">
+            <span class="oncall-tag oncall-tag--eta">🚀 وصول: ~${c.etaMinutes} دقيقة</span>
+            <span class="oncall-tag oncall-tag--fee">💵 كشفية: ${c.inspectionFee}</span>
+            <span class="oncall-tag">📍 يغطي: ${villagesStr}</span>
+          </div>
+
+          <div class="oncall-actions">
+            ${phoneClean ? `
+              <a href="tel:${phoneClean}" class="oncall-btn-call">
+                <span>📞</span>
+                <span>اتصال فوري</span>
+              </a>
+            ` : ''}
+            ${waLink ? `
+              <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="oncall-btn-whatsapp">
+                <span>💬</span>
+                <span>واتساب</span>
+              </a>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  } catch (err) {
+    console.error('[WhoIsAvailableNow] load error:', err);
+    $list.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#ef4444">تعذر تحميل القائمة حالياً.</div>`;
+  }
+}
+
+export function openCraftsmanLiveToggleModal(onSuccess) {
+  const user = getCurrentUser();
+
+  showModal({
+    title: 'تفعيل التوفر المؤقت (متاح ييجي دلوقتي)',
+    size: 'md',
+    content: `
+      <form id="craftsman-live-form" style="display:flex;flex-direction:column;gap:14px;text-align:right">
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:12px;font-size:0.82rem;color:#0369a1;line-height:1.5">
+          ℹ️ تفعيل هذه الميزة يضع اسمك ورقاقك في أعلى المنصة كفني مستعد للطوارئ فوراً. تنتهي الحالة تلقائياً بعد مرور الساعات المحددة لضمان الشفافية.
+        </div>
+
+        <div>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">اسمك أو اسم الورشة *</label>
+          <input type="text" id="live-craftsman-name" required class="form-control" placeholder="مثال: فني محمد السعيد" value="${user?.name || ''}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+        </div>
+
+        <div>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">التخصص / المهنة *</label>
+          <select id="live-profession-name" class="form-control" required style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1">
+            <option value="سباك منازل وطوارئ">سباكة وصحي منازل</option>
+            <option value="كهربائي منازل وطوارئ">كهربائي منازل وتوصيلات</option>
+            <option value="فني تكييف وتبريد">تكييف وأجهزة تبريد</option>
+            <option value="فني صيانة غسالات وبوتاجازات">صيانة أجهزة منزلية</option>
+            <option value="ونش إنقاذ وسحب سيارات">ونش إنقاذ وسيارات</option>
+            <option value="فني كاوتش وبطاريات متنقل">طوارئ كاوتش وبطاريات</option>
+            <option value="نجار طوارئ وأبواب">نجارة وأقفال أبواب</option>
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">مدة التوفر الآن *</label>
+            <select id="live-hours" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1">
+              <option value="2">ساعتان (2 ساعة)</option>
+              <option value="4" selected>4 ساعات</option>
+              <option value="8">8 ساعات (اليوم كاملاً)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">وقت الوصول التقديري</label>
+            <select id="live-eta" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1">
+              <option value="20">20 دقيقة</option>
+              <option value="35" selected>30 - 40 دقيقة</option>
+              <option value="60">ساعة واحدة</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">رقم الهاتف للاتصال *</label>
+            <input type="tel" id="live-phone" required class="form-control" placeholder="01xxxxxxxxx" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+          <div>
+            <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">تكلفة المعاينة/الكشف</label>
+            <input type="text" id="live-fee" class="form-control" placeholder="مثال: 50 جنيه أو حسب الاتفاق" value="حسب الاتفاق" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">القرى والمناطق التي تستطيع التوجه إليها</label>
+          <input type="text" id="live-villages" class="form-control" placeholder="مثال: المنزلة، البصراط، العزيزة، العصافرة" value="المنزلة، العزيزة، البصراط" style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1" />
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <button type="submit" id="btn-submit-live" class="btn btn-primary" style="flex:2;padding:12px;border-radius:10px;font-weight:800">
+            🟢 تفعيل وضعي كمتاح الآن
+          </button>
+        </div>
+      </form>
+    `
+  });
+
+  const form = document.getElementById('craftsman-live-form');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-live');
+    if (btn) { btn.disabled = true; btn.textContent = 'جاري التفعيل...'; }
+
+    const name = document.getElementById('live-craftsman-name')?.value.trim();
+    const profession = document.getElementById('live-profession-name')?.value;
+    const hours = Number(document.getElementById('live-hours')?.value || 4);
+    const eta = Number(document.getElementById('live-eta')?.value || 30);
+    const phone = document.getElementById('live-phone')?.value.trim();
+    const fee = document.getElementById('live-fee')?.value.trim();
+    const villages = (document.getElementById('live-villages')?.value || '')
+      .split(/[,،]/)
+      .map(v => v.trim())
+      .filter(Boolean);
+
+    try {
+      const res = await toggleCraftsmanLive({
+        craftsmanName: name,
+        professionId: 'craftsman_' + Date.now(),
+        professionName: profession,
+        hoursAvailable: hours,
+        etaMinutes: eta,
+        phone,
+        inspectionFee: fee,
+        coverageVillages: villages.length > 0 ? villages : ['المنزلة'],
+        isAvailable: true
+      });
+
+      if (res?.success) {
+        toast.success(res.message || 'تم تفعيل توفرك بنجاح!');
+        document.querySelector('.modal-overlay')?.remove();
+        if (typeof onSuccess === 'function') onSuccess();
+      } else {
+        toast.error(res?.error || 'فشل تفعيل الحالة');
+      }
+    } catch (err) {
+      toast.error('حدث خطأ في الاتصال');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🟢 تفعيل وضعي كمتاح الآن'; }
+    }
+  });
+}

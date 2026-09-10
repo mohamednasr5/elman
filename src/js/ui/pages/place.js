@@ -28,6 +28,8 @@ import { resolvePlaceProfession, getCategorySvg, getProfessionSvg } from '../../
 import { generateCleanSlug } from '../../utils/slug.js';
 import { formatSocialUrl } from '../../utils/social.js';
 import { isValidPhoneNumber } from '../../utils/phone.js';
+import { renderTrustCard } from '../components/TrustCard.js';
+import { openAppointmentModal } from '../components/AppointmentModal.js';
 
 export function renderAvailabilityBadge(status) {
   if (!status) return '';
@@ -272,6 +274,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     const craftCatSvg = getCategorySvg(catInfo?.slug || place.categoryId || '', 18);
 
     // Render Full Page
+    window._currentActivePlace = place;
     $container.innerHTML = `
       <!-- Top Navigation & Return Bar -->
       <div class="container" style="padding-top:var(--space-3);padding-bottom:var(--space-1)">
@@ -442,6 +445,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   <span>إدارة وتعديل المكان</span>
                 </a>
               ` : ''}
+              ${!isAtm ? `
+                <button type="button" class="btn btn-outline btn--full-mobile" id="btn-book-appointment" style="border-color:#0284c7;color:#0284c7;font-weight:800;gap:6px">
+                  <span>📅</span>
+                  <span>طلب حجز موعد / استشارة</span>
+                </button>
+              ` : ''}
               <button type="button" class="btn btn-outline btn--full-mobile" id="btn-report-place-data" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name || '')}">
                 <span>🚩</span>
                 <span>الإبلاغ عن معلومة غير صحيحة</span>
@@ -521,6 +530,9 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
           <!-- Products Slot (Verified Places) -->
           <div id="place-products-slot"></div>
+
+          <!-- Activity Trust Breakdown Card -->
+          ${!isAtm ? renderTrustCard(place) : ''}
 
           <!-- Google-Style 5-Star Reviews Slot -->
           <div id="place-reviews-slot">
@@ -2273,6 +2285,14 @@ if (typeof window !== 'undefined') {
 
 if (typeof document !== 'undefined') {
   document.addEventListener('click', (event) => {
+    const aptBtn = event.target.closest?.('#btn-book-appointment');
+    if (aptBtn && window._currentActivePlace) {
+      event.preventDefault();
+      event.stopPropagation();
+      openAppointmentModal(window._currentActivePlace);
+      return;
+    }
+
     const btn = event.target.closest?.('#btn-report-place-data');
     if (!btn || !window.openPlaceDataReport) return;
     event.preventDefault();

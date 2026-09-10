@@ -14891,3 +14891,480 @@ textarea,
 
 
 
+
+
+/* === src/css/components/service-hub.css === */
+/* ═══════════════════════════════════════════════════════════
+   المنزلة وناسها — Service Hub, Live Craftsmen & Trust Cards
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Live Pulse Radar Animation ── */
+@keyframes hub-pulse-ring {
+  0% { transform: scale(0.85); opacity: 0.9; }
+  50% { transform: scale(1.6); opacity: 0.3; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes hub-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Live On-Call Craftsmen Section ── */
+.oncall-craftsmen-section {
+  background: linear-gradient(135deg, #091a28 0%, #102a43 50%, #064060 100%);
+  border-radius: var(--radius-xl, 20px);
+  padding: 22px 24px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 35px rgba(6, 30, 50, 0.25);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  margin-bottom: 2rem;
+}
+
+.oncall-craftsmen-section::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  left: -60px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.oncall-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.oncall-title-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.oncall-radar {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.oncall-radar-dot {
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #10b981;
+  z-index: 2;
+}
+
+.oncall-radar-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #10b981;
+  border-radius: 50%;
+  animation: hub-pulse-ring 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.oncall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+
+.oncall-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  animation: hub-slide-up 0.4s ease-out;
+}
+
+.oncall-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.oncall-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.oncall-craftsman-info h4 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.oncall-craftsman-spec {
+  font-size: 0.82rem;
+  color: #7dd3fc;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.oncall-countdown-pill {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fcd34d;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 4px 9px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.oncall-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.oncall-tag {
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.76rem;
+  color: #e2e8f0;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.oncall-tag--fee {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+  font-weight: 700;
+}
+
+.oncall-tag--eta {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #bae6fd;
+}
+
+.oncall-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.oncall-btn-call, .oncall-btn-whatsapp {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.oncall-btn-call {
+  background: #0284c7;
+  color: #fff;
+}
+.oncall-btn-call:hover {
+  background: #0369a1;
+}
+
+.oncall-btn-whatsapp {
+  background: #16a34a;
+  color: #fff;
+}
+.oncall-btn-whatsapp:hover {
+  background: #15803d;
+}
+
+/* ── Service Requests Feed («محتاج خدمة») ── */
+.need-service-hero {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+  border-radius: var(--radius-xl, 20px);
+  padding: 24px;
+  color: #fff;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(165, 180, 252, 0.25);
+  box-shadow: 0 10px 30px rgba(30, 27, 75, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.need-service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 2rem;
+}
+
+.need-service-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.need-service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md, 0 4px 14px rgba(0,0,0,0.12));
+}
+
+.need-service-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.need-category-pill {
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.need-status-pill {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+.need-status-pill--open {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+.need-status-pill--closed {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.need-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text, #0f172a);
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.need-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #64748b);
+  margin-bottom: 12px;
+}
+
+.need-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.need-description {
+  font-size: 0.88rem;
+  color: var(--text-secondary, #475569);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.need-privacy-notice {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  margin-bottom: 12px;
+}
+
+.need-privacy-icon {
+  font-size: 1.1rem;
+}
+
+/* ── Trust Card (بطاقة الثقة وتدقيق المعلومات) ── */
+.trust-card-container {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1.5px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 20px;
+  margin: 1.5rem 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+
+.trust-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 1.5px solid #e2e8f0;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.trust-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.trust-card-score {
+  background: #0284c7;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.trust-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.trust-metric-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: border-color 0.2s ease;
+}
+
+.trust-metric-item:hover {
+  border-color: #38bdf8;
+}
+
+.trust-metric-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #f0f9ff;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.trust-metric-content h5 {
+  margin: 0 0 3px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.trust-metric-content p {
+  margin: 0;
+  font-size: 0.77rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.trust-metric-verified-tag {
+  color: #15803d;
+  font-weight: 700;
+}
+
+/* ── Village Hub & Polls ── */
+.village-hub-banner {
+  background: linear-gradient(135deg, #064e3b 0%, #047857 60%, #059669 100%);
+  border-radius: 20px;
+  padding: 24px;
+  color: #fff;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 30px rgba(6, 78, 59, 0.2);
+}
+
+.village-poll-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 1.5rem;
+}
+
+.poll-option-row {
+  margin-bottom: 14px;
+}
+
+.poll-option-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 6px;
+}
+
+.poll-bar-bg {
+  background: #f1f5f9;
+  border-radius: 10px;
+  height: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.poll-bar-fill {
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}

@@ -2506,6 +2506,307 @@ try {
     return jsonResponse({success:true,id},200,corsHeaders);
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // ── SERVICE REQUESTS («محتاج خدمة» - Job Dispatcher) ──
+  // ═══════════════════════════════════════════════════════════
+  if (url.pathname === '/api/service-requests' && request.method === 'GET') {
+    const category = (url.searchParams.get('category') || '').trim();
+    const village = (url.searchParams.get('village') || '').trim();
+    const status = (url.searchParams.get('status') || 'open').trim();
+    const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 30)));
+
+    const where = [], args = [];
+    if (status && status !== 'all') {
+      where.push('status = ?');
+      args.push(status);
+    }
+    if (category) {
+      where.push('category = ?');
+      args.push(category);
+    }
+    if (village) {
+      where.push('village LIKE ?');
+      args.push(`%${village}%`);
+    }
+
+    const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const sql = `SELECT id, category, title, village, timing, description, photo_url, user_name, status, offers_count, created_at, expires_at, user_phone, user_id FROM service_requests ${whereClause} ORDER BY created_at DESC LIMIT ?`;
+    args.push(limit);
+
+    const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
+    
+    // Privacy protection: mask phone numbers unless requester is authenticated owner or admin
+    let clientUser = null;
+    try { clientUser = await authenticateRequest(request, env); } catch (_) {}
+
+    const data = rows.map(r => {
+      const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
+      let maskedPhone = null;
+      if (r.user_phone && r.user_phone.length >= 7) {
+        maskedPhone = r.user_phone.slice(0, 3) + '******' + r.user_phone.slice(-2);
+      }
+      return {
+        id: r.id,
+        category: r.category,
+        title: r.title,
+        village: r.village,
+        timing: r.timing,
+        description: r.description,
+        photoUrl: r.photo_url,
+        userName: r.user_name || 'مواطن',
+        userPhone: isOwner ? r.user_phone : maskedPhone,
+        isPhoneMasked: !isOwner,
+        status: r.status,
+        offersCount: Number(r.offers_count || 0),
+        createdAt: Number(r.created_at || 0),
+        expiresAt: Number(r.expires_at || 0)
+      };
+    });
+
+    return jsonResponse({ success: true, data }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+  }
+
+  if (url.pathname === '/api/service-requests' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const category = String(body.category || '').trim();
+    const title = String(body.title || '').trim();
+    const village = String(body.village || '').trim();
+    const timing = String(body.timing || 'الآن').trim();
+    const description = String(body.description || '').trim();
+    const photoUrl = String(body.photoUrl || '').trim();
+    const userName = String(body.userName || 'مواطن من المنزلة').trim();
+    const userPhone = String(body.userPhone || '').trim();
+
+    if (!title || !category || !village || !userPhone) {
+      return jsonResponse({ success: false, error: 'يرجى إكمال جميع الحقول الإلزامية ورقم الهاتف' }, 400, corsHeaders);
+    }
+
+    if (!/^01[0125][0-9]{8}$/.test(userPhone) && !/^[0-9]{7,11}$/.test(userPhone)) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال رقم هاتف محمول مصري صحيح للتواصل' }, 400, corsHeaders);
+    }
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    const userId = authUser?.uid || ('guest_' + crypto.randomUUID().slice(0, 8));
+    const id = 'req_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6);
+    const now = Date.now();
+    const expiresAt = now + (7 * 86400000); // 7 days
+
+    await createTursoDB(env).prepare(
+      `INSERT INTO service_requests (id, category, title, village, timing, description, photo_url, user_id, user_name, user_phone, status, offers_count, created_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', 0, ?, ?)`
+    ).bind(id, category, title, village, timing, description, photoUrl, userId, userName, userPhone, now, expiresAt).run();
+
+    return jsonResponse({ success: true, id, message: 'تم نشر طلبك بنجاح وسيتواصل معك الفنيون المناسبون' }, 201, corsHeaders);
+  }
+
+  if (url.pathname.startsWith('/api/service-requests/') && url.pathname.endsWith('/close') && request.method === 'POST') {
+    const id = decodeURIComponent(url.pathname.replace('/api/service-requests/', '').replace('/close', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الطلب مطلوب' }, 400, corsHeaders);
+
+    const now = Date.now();
+    await createTursoDB(env).prepare(
+      `UPDATE service_requests SET status = 'closed', closed_at = ? WHERE id = ?`
+    ).bind(now, id).run();
+
+    return jsonResponse({ success: true, id, message: 'تم إغلاق الطلب بنجاح' }, 200, corsHeaders);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // ── LIVE ON-CALL CRAFTSMEN («مين متاح ييجي دلوقتي؟») ──
+  // ═══════════════════════════════════════════════════════════
+  if (url.pathname === '/api/craftsmen/live' && request.method === 'GET') {
+    const professionId = (url.searchParams.get('profession_id') || '').trim();
+    const village = (url.searchParams.get('village') || '').trim();
+    const now = Date.now();
+
+    const where = ['is_available_now = 1', 'available_until > ?'];
+    const args = [now];
+
+    if (professionId) {
+      where.push('profession_id = ?');
+      args.push(professionId);
+    }
+    if (village) {
+      where.push('coverage_villages_json LIKE ?');
+      args.push(`%${village}%`);
+    }
+
+    const sql = `SELECT * FROM craftsman_presence WHERE ${where.join(' AND ')} ORDER BY available_until ASC LIMIT 50`;
+    const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
+
+    const data = rows.map(r => {
+      let coverageVillages = [];
+      try { coverageVillages = JSON.parse(r.coverage_villages_json || '[]'); } catch (_) {}
+      const remainingMs = Math.max(0, Number(r.available_until) - now);
+      const remainingMinutes = Math.round(remainingMs / 60000);
+      return {
+        id: r.id,
+        placeId: r.place_id,
+        craftsmanName: r.craftsman_name,
+        professionId: r.profession_id,
+        professionName: r.profession_name,
+        isAvailableNow: Boolean(r.is_available_now),
+        coverageVillages,
+        inspectionFee: r.inspection_fee || 'حسب الاتفاق',
+        etaMinutes: Number(r.eta_minutes || 30),
+        phone: r.phone,
+        whatsapp: r.whatsapp,
+        remainingMinutes,
+        availableUntil: Number(r.available_until)
+      };
+    });
+
+    return jsonResponse({ success: true, data }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+  }
+
+  if (url.pathname === '/api/craftsmen/live' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const placeId = String(body.placeId || '').trim();
+    const craftsmanName = String(body.craftsmanName || '').trim();
+    const professionId = String(body.professionId || '').trim();
+    const professionName = String(body.professionName || '').trim();
+    const isAvailable = body.isAvailable !== false;
+    const hours = Math.min(12, Math.max(1, Number(body.hoursAvailable || 3)));
+    const coverageVillages = Array.isArray(body.coverageVillages) ? body.coverageVillages : ['المنزلة'];
+    const inspectionFee = String(body.inspectionFee || 'كشفية رمزية').trim();
+    const etaMinutes = Math.min(180, Math.max(10, Number(body.etaMinutes || 30)));
+    const phone = String(body.phone || '').trim();
+    const whatsapp = String(body.whatsapp || phone).trim();
+
+    if (!craftsmanName || !professionName) {
+      return jsonResponse({ success: false, error: 'الاسم ونوع الحرفة مطلوبان' }, 400, corsHeaders);
+    }
+
+    const now = Date.now();
+    const availableUntil = isAvailable ? now + (hours * 3600000) : 0;
+    const id = placeId || ('craftsman_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6));
+
+    await createTursoDB(env).prepare(
+      `INSERT INTO craftsman_presence (id, place_id, craftsman_name, profession_id, profession_name, is_available_now, coverage_villages_json, inspection_fee, eta_minutes, phone, whatsapp, available_until, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         craftsman_name = excluded.craftsman_name,
+         profession_id = excluded.profession_id,
+         profession_name = excluded.profession_name,
+         is_available_now = excluded.is_available_now,
+         coverage_villages_json = excluded.coverage_villages_json,
+         inspection_fee = excluded.inspection_fee,
+         eta_minutes = excluded.eta_minutes,
+         phone = excluded.phone,
+         whatsapp = excluded.whatsapp,
+         available_until = excluded.available_until,
+         updated_at = excluded.updated_at`
+    ).bind(
+      id, placeId || null, craftsmanName, professionId, professionName,
+      isAvailable ? 1 : 0, JSON.stringify(coverageVillages),
+      inspectionFee, etaMinutes, phone, whatsapp, availableUntil, now
+    ).run();
+
+    return jsonResponse({
+      success: true,
+      id,
+      isAvailableNow: isAvailable,
+      availableUntil,
+      remainingMinutes: isAvailable ? hours * 60 : 0,
+      message: isAvailable ? `تم تفعيل حالتك كـ "متاح الآن" لمدة ${hours} ساعات بنجاح` : 'تم إيقاف التوفر المؤقت'
+    }, 200, corsHeaders);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // ── VILLAGE HUB POLLS & VOTING («تصويت خدمات القرى») ──
+  // ═══════════════════════════════════════════════════════════
+  if (url.pathname === '/api/villages/polls' && request.method === 'GET') {
+    const villageId = (url.searchParams.get('village') || 'العزيزة').trim();
+    const db = createTursoDB(env);
+    let rows = (await db.prepare('SELECT service_key, service_label, votes_count FROM village_polls WHERE village_id = ? ORDER BY votes_count DESC').bind(villageId).all()).results || [];
+
+    if (!rows || rows.length === 0) {
+      const defaults = [
+        { key: 'night_pharmacy', label: 'صيدلية ليلية 24 ساعة' },
+        { key: 'atm', label: 'ماكينة صراف آلي (ATM)' },
+        { key: 'post_office', label: 'مكتب بريد متطور' },
+        { key: 'pediatrician', label: 'عيادة أطفال تخصصية' },
+        { key: 'late_transit', label: 'خط مواصلات مسائي منتظم' }
+      ];
+      const now = Date.now();
+      for (const d of defaults) {
+        await db.prepare(
+          'INSERT OR IGNORE INTO village_polls (id, village_id, service_key, service_label, votes_count, updated_at) VALUES (?, ?, ?, ?, 0, ?)'
+        ).bind(`${villageId}_${d.key}`, villageId, d.key, d.label, now).run().catch(() => {});
+      }
+      rows = defaults.map(d => ({ service_key: d.key, service_label: d.label, votes_count: 0 }));
+    }
+
+    const totalVotes = rows.reduce((sum, r) => sum + Number(r.votes_count || 0), 0);
+    const polls = rows.map(r => ({
+      key: r.service_key,
+      label: r.service_label,
+      votes: Number(r.votes_count || 0),
+      percentage: totalVotes > 0 ? Math.round((Number(r.votes_count || 0) / totalVotes) * 100) : 0
+    }));
+
+    return jsonResponse({ success: true, village: villageId, totalVotes, polls }, 200, corsHeaders);
+  }
+
+  if (url.pathname === '/api/villages/vote' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const villageId = String(body.villageId || '').trim();
+    const serviceKey = String(body.serviceKey || '').trim();
+    const voterFingerprint = String(body.voterFingerprint || request.headers.get('cf-connecting-ip') || crypto.randomUUID()).slice(0, 64);
+
+    if (!villageId || !serviceKey) {
+      return jsonResponse({ success: false, error: 'القرية ونوع الخدمة مطلوبان' }, 400, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const existing = await db.prepare('SELECT id FROM village_votes WHERE village_id = ? AND voter_fingerprint = ? LIMIT 1').bind(villageId, voterFingerprint).first().catch(() => null);
+    if (existing) {
+      return jsonResponse({ success: false, error: 'لقد شاركت برأيك بالفعل في هذا الاستطلاع لهذه القرية' }, 429, corsHeaders);
+    }
+
+    const voteId = 'vote_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6);
+    const now = Date.now();
+
+    await db.prepare('INSERT INTO village_votes (id, village_id, service_key, voter_fingerprint, created_at) VALUES (?, ?, ?, ?, ?)')
+      .bind(voteId, villageId, serviceKey, voterFingerprint, now).run().catch(() => {});
+
+    await db.prepare('UPDATE village_polls SET votes_count = votes_count + 1, updated_at = ? WHERE village_id = ? AND service_key = ?')
+      .bind(now, villageId, serviceKey).run().catch(() => {});
+
+    return jsonResponse({ success: true, message: 'شكراً لمشاركتك صوتك لتطوير قريتك!' }, 200, corsHeaders);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // ── APPOINTMENT BOOKING («حجز وطلب موعد») ──
+  // ═══════════════════════════════════════════════════════════
+  if (url.pathname === '/api/appointments' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const placeId = String(body.placeId || '').trim();
+    const placeName = String(body.placeName || '').trim();
+    const clientName = String(body.clientName || '').trim();
+    const clientPhone = String(body.clientPhone || '').trim();
+    const preferredDate = String(body.preferredDate || '').trim();
+    const preferredTime = String(body.preferredTime || 'مسائي').trim();
+    const serviceNeeded = String(body.serviceNeeded || '').trim();
+
+    if (!placeId || !clientName || !clientPhone) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال الاسم ورقم الهاتف' }, 400, corsHeaders);
+    }
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    const id = 'apt_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6);
+    const now = Date.now();
+
+    await createTursoDB(env).prepare(
+      `INSERT INTO appointment_requests (id, place_id, place_name, client_name, client_phone, preferred_date, preferred_time, service_needed, status, user_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
+    ).bind(id, placeId, placeName, clientName, clientPhone, preferredDate, preferredTime, serviceNeeded, authUser?.uid || null, now).run();
+
+    return jsonResponse({ success: true, id, message: 'تم إرسال طلب الحجز بنجاح' }, 201, corsHeaders);
+  }
+
   // ── Turso: User Profile Sync (POST /api/users/sync) ──
   // Architecture: Turso is the source of truth for role/status. Firebase Auth provides uid/name/email/photo only.
   if (url.pathname === '/api/users/sync' && request.method === 'POST') {
@@ -4268,6 +4569,77 @@ async function ensureNewSchemaColumnsInTurso(env) {
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_place_id ON reviews(place_id)").run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_place_slug ON reviews(place_slug)").run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at)").run().catch(() => {});
+    
+    // Interactive features schema (Service Requests, Live Craftsmen On-Call, Village Hub, Appointments)
+    await db.prepare(`CREATE TABLE IF NOT EXISTS service_requests (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      title TEXT NOT NULL,
+      village TEXT NOT NULL,
+      timing TEXT NOT NULL,
+      description TEXT,
+      photo_url TEXT,
+      user_id TEXT,
+      user_name TEXT,
+      user_phone TEXT NOT NULL,
+      status TEXT DEFAULT 'open',
+      offers_count INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      closed_at INTEGER
+    )`).run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests(status, created_at DESC)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_service_requests_village ON service_requests(village)").run().catch(() => {});
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS craftsman_presence (
+      id TEXT PRIMARY KEY,
+      place_id TEXT,
+      craftsman_name TEXT NOT NULL,
+      profession_id TEXT NOT NULL,
+      profession_name TEXT NOT NULL,
+      is_available_now INTEGER DEFAULT 1,
+      coverage_villages_json TEXT,
+      inspection_fee TEXT,
+      eta_minutes INTEGER DEFAULT 30,
+      phone TEXT,
+      whatsapp TEXT,
+      available_until INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_craftsman_presence_avail ON craftsman_presence(is_available_now, available_until)").run().catch(() => {});
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS village_polls (
+      id TEXT PRIMARY KEY,
+      village_id TEXT NOT NULL,
+      service_key TEXT NOT NULL,
+      service_label TEXT NOT NULL,
+      votes_count INTEGER DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS village_votes (
+      id TEXT PRIMARY KEY,
+      village_id TEXT NOT NULL,
+      service_key TEXT NOT NULL,
+      voter_fingerprint TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+    await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_village_vote_unique ON village_votes(village_id, service_key, voter_fingerprint)").run().catch(() => {});
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS appointment_requests (
+      id TEXT PRIMARY KEY,
+      place_id TEXT NOT NULL,
+      place_name TEXT,
+      client_name TEXT NOT NULL,
+      client_phone TEXT NOT NULL,
+      preferred_date TEXT,
+      preferred_time TEXT,
+      service_needed TEXT,
+      status TEXT DEFAULT 'pending',
+      user_id TEXT,
+      created_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_appointments_place ON appointment_requests(place_id, created_at DESC)").run().catch(() => {});
   } catch (err) {
     console.warn('[ensureNewSchemaColumnsInTurso] Notice:', err.message);
   }
