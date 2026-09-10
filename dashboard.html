@@ -85,6 +85,10 @@
   window.ServerValue = window.ServerValue || { TIMESTAMP: Date.now() };
 </script>
 
+<!-- Strict category-aware AI description guard. Must load before the page module. -->
+<script src="./src/js/services/description-ai-guard.js?v=20260911"></script>
+<script src="./src/js/services/description-ai-response-guard.js?v=20260911"></script>
+
 <!-- Page Module -->
 <script type="module">
 
