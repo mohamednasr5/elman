@@ -84,6 +84,9 @@
             }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
           }
         }
+      } catch (_) {}
+    })();
+  </script>
   <!-- Native Splash Loading Styles -->
   <style id="splash-style">
     #splash{
@@ -370,9 +373,9 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=reviews_fix_2026_v5';
-  import { renderPlacePage } from './src/js/ui/pages/place.js?v=reviews_fix_2026_v5';
-  import { getCurrentUser } from './src/js/core/auth.js?v=reviews_fix_2026_v5';
+  import { initPage } from './src/js/core/page-shell.js?v=reviews_fix_2026_v7';
+  import { renderPlacePage } from './src/js/ui/pages/place.js?v=reviews_fix_2026_v7';
+  import { getCurrentUser } from './src/js/core/auth.js?v=reviews_fix_2026_v7';
 
   (async () => {
     const params = new URLSearchParams(location.search);
