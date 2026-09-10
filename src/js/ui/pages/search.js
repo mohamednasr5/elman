@@ -56,46 +56,88 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
       </div>
     </div>
 
-    <!-- Search Hero Header -->
-    <div class="search-page-header">
-      <div class="container text-center">
-        <h1 style="font-size:1.85rem;font-weight:900;color:#fff;margin-bottom:8px">
-          🔍 البحث الذكي في دليل المنزلة والمطرية
+    <!-- Search Hero Header (Luxury 2026 Redesign) -->
+    <div class="search-page-hero-luxury">
+      <!-- Ambient Glowing Backdrop Orbs -->
+      <div class="search-hero-orb search-hero-orb-1" aria-hidden="true"></div>
+      <div class="search-hero-orb search-hero-orb-2" aria-hidden="true"></div>
+
+      <div class="container text-center" style="position:relative;z-index:2">
+        <!-- Floating Shimmer Tag Badge -->
+        <div class="search-hero-badge-wrap">
+          <span class="search-hero-badge">
+            <span class="search-hero-badge-icon">⚡</span>
+            <span>البحث الفوري فائق السرعة بالذكاء الاصطناعي 2026</span>
+          </span>
+        </div>
+
+        <!-- Main Title -->
+        <h1 class="search-hero-title">
+          <span class="search-hero-title-icon" aria-hidden="true">🔍</span>
+          <span>البحث الذكي في </span>
+          <span class="search-hero-title-gradient">دليل المنزلة والمطرية</span>
         </h1>
-        <p style="color:rgba(255,255,255,0.85);font-size:0.92rem;margin-bottom:20px;max-width:600px;margin-left:auto;margin-right:auto">
+
+        <!-- Subtitle -->
+        <p class="search-hero-subtitle">
           ابحث بالاسم، النشاط التجاري، التخصص الطبي، الصنايعية والحرفيين، أو برقم الهاتف في كافة المدن والقرى
         </p>
-        
-        <!-- Search Input Form -->
-        <div style="max-width:700px;margin:0 auto">
-          <div class="hero-search" style="box-shadow:0 12px 36px rgba(0,0,0,0.25);position:relative">
-            <input
-              type="search"
-              id="search-page-input"
-              class="hero-search__input"
-              placeholder="ابحث عن مكان، دكتور، صيدلية، مطعم، سباك، أو برقم الهاتف..."
-              value="${escAttr(initialQ)}"
-              autocomplete="off"
-            />
-            <button type="button" id="btn-search-clear" aria-label="مسح البحث" style="position:absolute;left:85px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted,#64748B);font-size:18px;cursor:pointer;padding:6px;display:${initialQ ? 'block' : 'none'};z-index:2">
-              ✕
-            </button>
-            <button class="hero-search__btn" id="search-page-btn" style="z-index:2">
-              <span>🔍</span> بحث
-            </button>
+
+        <!-- Search Input Stage (Neon Glow Aura Pill) -->
+        <div class="search-hero-input-stage">
+          <div class="search-pill-glow-wrap" id="search-pill-glow-wrap">
+            <div class="search-pill-inner" role="search">
+              <!-- Right Circular Search Submit Button (First in RTL) -->
+              <button class="search-pill-btn-submit" id="search-page-btn" aria-label="تنفيذ البحث" title="ابحث الآن">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </button>
+
+              <!-- Main Input Field -->
+              <input
+                type="search"
+                id="search-page-input"
+                class="search-pill-field"
+                placeholder="ابحث عن مكان، دكتور، صيدلية، مطعم، سباك، أو برقم الهاتف..."
+                value="${escAttr(initialQ)}"
+                autocomplete="off"
+                aria-label="اكتب ما تبحث عنه"
+              />
+
+              <!-- Smooth Clear Button -->
+              <button type="button" class="search-pill-clear" id="btn-search-clear" aria-label="مسح البحث" title="مسح النص" style="display:${initialQ ? 'inline-flex' : 'none'}">
+                ✕
+              </button>
+
+              <!-- Divider -->
+              <div class="search-pill-sep" aria-hidden="true"></div>
+
+              <!-- Dedicated Voice Search Slot -->
+              <div class="search-pill-voice-slot" id="search-page-voice-slot">
+                <!-- Voice button mounted cleanly via mountVoiceSearchButton -->
+              </div>
+            </div>
           </div>
 
-          <!-- Smart Action Bar -->
-          <div style="margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
-            <button type="button" class="btn btn-sm btn-outline" id="btn-ai-search" style="border-color:rgba(255,255,255,0.5);color:#fff;font-weight:700;background:rgba(255,255,255,0.1)">
-              ✨ بحث ذكي بالذكاء الاصطناعي
+          <!-- Quick Actions & Cities Row -->
+          <div class="search-hero-actions-bar">
+            <button type="button" class="search-ai-magic-btn" id="btn-ai-search" title="تحليل نية البحث واقتراح أفضل النتائج بالذكاء الاصطناعي">
+              <span class="ai-sparkle-icon">✨</span>
+              <span>بحث ذكي بالذكاء الاصطناعي</span>
             </button>
-            <span style="color:rgba(255,255,255,0.5);font-size:12px">|</span>
-            <span style="color:rgba(255,255,255,0.8);font-size:12px">مدن سريعة:</span>
-            <button type="button" class="chip" data-quick-area="المنزلة" style="cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">🏙️ المنزلة</button>
-            <button type="button" class="chip" data-quick-area="المطرية" style="cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">🌊 المطرية</button>
-            <button type="button" class="chip" data-quick-area="العصافرة" style="cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">🌾 العصافرة</button>
-            <button type="button" class="chip" data-quick-area="الجمالية" style="cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">🏛️ الجمالية</button>
+
+            <span class="search-hero-actions-sep" aria-hidden="true">|</span>
+            <span class="search-hero-actions-label">📍 مدن سريعة:</span>
+
+            <div class="search-hero-chips-wrap">
+              <button type="button" class="search-quick-city-chip" data-quick-area="المنزلة">🏙️ المنزلة</button>
+              <button type="button" class="search-quick-city-chip" data-quick-area="المطرية">🌊 المطرية</button>
+              <button type="button" class="search-quick-city-chip" data-quick-area="العصافرة">🌾 العصافرة</button>
+              <button type="button" class="search-quick-city-chip" data-quick-area="الجمالية">🏛️ الجمالية</button>
+              <button type="button" class="search-quick-city-chip" data-quick-area="ميت سلسيل">🏢 ميت سلسيل</button>
+            </div>
           </div>
         </div>
       </div>
@@ -241,8 +283,13 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
     }
 
     if (searchClearBtn) {
-      searchClearBtn.style.display = q ? 'block' : 'none';
+      searchClearBtn.style.display = q ? 'inline-flex' : 'none';
     }
+
+    // Sync selected state on quick area chips
+    document.querySelectorAll('[data-quick-area]').forEach(c => {
+      c.classList.toggle('is-active', c.getAttribute('data-quick-area') === area);
+    });
 
     // If query looks like a phone number, run phone search
     if (isPhoneSearchQuery(q)) {
@@ -479,6 +526,7 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
     document.querySelectorAll('.search-smart-filter').forEach(b => {
       b.classList.toggle('is-active', b.dataset.smartFilter === 'all');
     });
+    document.querySelectorAll('[data-quick-area]').forEach(c => c.classList.remove('is-active'));
     applyFiltersAndRender();
   }
 
@@ -557,11 +605,13 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
     });
   });
 
-  // Quick Area Chips Click
+  // Quick Area Chips Click (with toggle)
   document.querySelectorAll('[data-quick-area]').forEach(chip => {
     chip.addEventListener('click', () => {
       const area = chip.getAttribute('data-quick-area');
-      if (areaSelect) areaSelect.value = area;
+      if (areaSelect) {
+        areaSelect.value = (areaSelect.value === area) ? 'all' : area;
+      }
       applyFiltersAndRender();
     });
   });
@@ -601,10 +651,12 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
     }
   });
 
-  // Initialize Voice Search Button
+  // Initialize Voice Search Button in dedicated luxury slot
+  const voiceSlot = document.getElementById('search-page-voice-slot');
   try {
     mountVoiceSearchButton({
       inputEl: searchInput,
+      buttonContainerEl: voiceSlot,
       onSearch: (spokenText) => {
         if (searchInput) searchInput.value = spokenText;
         applyFiltersAndRender();
