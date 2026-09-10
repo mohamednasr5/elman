@@ -1288,13 +1288,21 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
         <!-- Vehicle Type for Delivery -->
         <div class="form-group" id="delivery-type-group" style="${place?.categoryId?.includes('delivery') ? '' : 'display:none'}">
-          <label class="form-label">نوع وسيلة التوصيل</label>
+          <label class="form-label">نوع وسيلة التوصيل / النقل</label>
           <select id="p-delivery-type" class="form-select">
             <option value="">غير محدد</option>
             <option value="motorcycle" ${place?.deliveryType === 'motorcycle' ? 'selected' : ''}>🏍️ موتوسيكل</option>
             <option value="tuktuk" ${place?.deliveryType === 'tuktuk' ? 'selected' : ''}>🛺 توكتوك</option>
             <option value="car" ${place?.deliveryType === 'car' ? 'selected' : ''}>🚗 سيارة</option>
             <option value="taxi" ${place?.deliveryType === 'taxi' ? 'selected' : ''}>🚕 تاكسي</option>
+            <option value="bus" ${place?.deliveryType === 'bus' ? 'selected' : ''}>🚌 اتوبيس</option>
+            <option value="pickup_quarter" ${place?.deliveryType === 'pickup_quarter' ? 'selected' : ''}>🛻 عربية ربع نقل</option>
+            <option value="pickup_half" ${place?.deliveryType === 'pickup_half' ? 'selected' : ''}>🚚 عربية نص نقل</option>
+            <option value="truck_heavy" ${place?.deliveryType === 'truck_heavy' ? 'selected' : ''}>🚛 عربية نقل كبير</option>
+            <option value="cart_donkey" ${place?.deliveryType === 'cart_donkey' ? 'selected' : ''}>🫏 عربية بحمار</option>
+            <option value="cart_horse" ${place?.deliveryType === 'cart_horse' ? 'selected' : ''}>🐎 عربية بحصان</option>
+            <option value="loader" ${place?.deliveryType === 'loader' ? 'selected' : ''}>🚜 لودر</option>
+            <option value="tractor_trailer" ${place?.deliveryType === 'tractor_trailer' ? 'selected' : ''}>🚜 جرار ومقطورة</option>
           </select>
         </div>
       </div>

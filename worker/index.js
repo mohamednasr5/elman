@@ -761,7 +761,9 @@ try {
           sponsored_until: result.sponsored_until,
           reviewCount: Number(result.review_count || 0),
           review_count: Number(result.review_count || 0),
-          rating: Number(result.rating || 0.0)
+          rating: Number(result.rating || 0.0),
+          deliveryType: result.delivery_type || parseJson(result.stats_json, {}).deliveryType || null,
+          delivery_type: result.delivery_type || parseJson(result.stats_json, {}).deliveryType || null
         };
         const res = jsonResponse({ success: true, data: place }, 200, {
           ...corsHeaders,
@@ -872,6 +874,8 @@ try {
         reviewCount: reviewCountVal,
         review_count: reviewCountVal,
         rating: ratingVal,
+        deliveryType: place.delivery_type || stats.deliveryType || null,
+        delivery_type: place.delivery_type || stats.deliveryType || null,
         owner_name: place.owner_name || place.owner_email || null,
       };
     });
@@ -1241,6 +1245,11 @@ try {
       if (body.reviewsCount !== undefined && body.reviewsCount !== null) {
         baseStats.reviewCount = Number(body.reviewsCount) || 0;
         baseStats.reviewsCount = Number(body.reviewsCount) || 0;
+      }
+      if (body.deliveryType !== undefined) {
+        baseStats.deliveryType = body.deliveryType;
+      } else if (body.delivery_type !== undefined) {
+        baseStats.deliveryType = body.delivery_type;
       }
       const statsJson = JSON.stringify(baseStats);
       const ownerId = (body.ownerId || body.owner_id) || existingPlace?.owner_id || '';

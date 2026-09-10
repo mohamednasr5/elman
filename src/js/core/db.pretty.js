@@ -1074,6 +1074,8 @@ export function normalizeTursoPlace(p) {
       reviewCount: rCount,
       review_count: rCount,
       rating: rRating,
+      deliveryType: p.deliveryType || p.delivery_type || statsObj?.deliveryType || null,
+      delivery_type: p.delivery_type || p.deliveryType || statsObj?.deliveryType || null,
       trustScore: (p.trustScore != null ? Number(p.trustScore) : (p.trust_score != null ? Number(p.trust_score) : undefined)),
       trust_score: (p.trust_score != null ? Number(p.trust_score) : (p.trustScore != null ? Number(p.trustScore) : undefined))
     };

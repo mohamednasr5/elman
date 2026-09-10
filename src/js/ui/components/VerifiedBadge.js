@@ -56,9 +56,18 @@ export function renderStatusBadge(status) {
  */
 export function renderDeliveryBadge(type) {
   const map = {
-    motorcycle: { text: 'موتوسيكل', icon: '🏍️' },
-    tuktuk:     { text: 'توكتوك',   icon: '🛺' },
-    car:        { text: 'سيارة',    icon: '🚗' }
+    motorcycle:      { text: 'موتوسيكل',        icon: '🏍️' },
+    tuktuk:          { text: 'توكتوك',          icon: '🛺' },
+    car:             { text: 'سيارة',           icon: '🚗' },
+    taxi:            { text: 'تاكسي',           icon: '🚕' },
+    bus:             { text: 'اتوبيس',          icon: '🚌' },
+    pickup_quarter:  { text: 'عربية ربع نقل',   icon: '🛻' },
+    pickup_half:     { text: 'عربية نص نقل',    icon: '🚚' },
+    truck_heavy:     { text: 'عربية نقل كبير',  icon: '🚛' },
+    cart_donkey:     { text: 'عربية بحمار',     icon: '🫏' },
+    cart_horse:      { text: 'عربية بحصان',     icon: '🐎' },
+    loader:          { text: 'لودر',            icon: '🚜' },
+    tractor_trailer: { text: 'جرار ومقطورة',    icon: '🚜' }
   };
   const item = map[type];
   if (!item) return '';

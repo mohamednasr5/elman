@@ -434,7 +434,20 @@ function renderDeliveryServices(places) {
     return;
   }
 
-  const deliveryIcons = { motorcycle: '🏍️', tuktuk: '🛺', car: '🚗' };
+  const deliveryIcons = {
+    motorcycle: '🏍️',
+    tuktuk: '🛺',
+    car: '🚗',
+    taxi: '🚕',
+    bus: '🚌',
+    pickup_quarter: '🛻',
+    pickup_half: '🚚',
+    truck_heavy: '🚛',
+    cart_donkey: '🫏',
+    cart_horse: '🐎',
+    loader: '🚜',
+    tractor_trailer: '🚜'
+  };
 
   grid.innerHTML = places.slice(0, 6).map(place => {
     const targetSlug = place.slug || place._key || place.id || '';
