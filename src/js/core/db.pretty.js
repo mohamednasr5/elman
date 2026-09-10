@@ -252,7 +252,14 @@ async function tursoWriteBusiness(path, method, data = null) {
   if (root === 'ads') {
     if (method === 'POST') return tursoFetch('/api/ads', { method:'POST', body:JSON.stringify(data || {}) });
     if (method === 'PUT') return tursoFetch('/api/ads', { method:'POST', body:JSON.stringify({ ...(data || {}), id:parts[1] || data?.id || data?._id }) });
-    if (method === 'DELETE' && parts[1]) return tursoFetch(`/api/ads?id=${encodeURIComponent(parts[1])}`, { method:'DELETE' });
+    if (method === 'DELETE' && parts[1]) {
+      try {
+        return await tursoFetch(`/api/ads?id=${encodeURIComponent(parts[1])}`, { method:'DELETE' });
+      } catch (err) {
+        console.warn('[tursoWriteBusiness] DELETE failed, falling back to POST delete:', err);
+        return await tursoFetch('/api/ads', { method:'POST', body:JSON.stringify({ action:'delete', id:parts[1] }) });
+      }
+    }
     throw new Error(`Unsupported ads write path: ${path}`);
   }
   if (root === 'places') {

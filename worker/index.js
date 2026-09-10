@@ -238,12 +238,7 @@ export default {
   },
 
   async handleRequest(request, env, ctx) {
-    const url = new URL(request.url);
-    if (url.protocol === 'http:') {
-      url.protocol = 'https:';
-      return Response.redirect(url.toString(), 301);
-    }
-        const origin = request.headers.get('Origin') || '';
+    const origin = request.headers.get('Origin') || '';
     const allowedOrigins = ['https://dalilmanzala.com', 'https://www.dalilmanzala.com', 'http://localhost:8788', 'http://127.0.0.1:8788'];
     const isAllowedOrigin = allowedOrigins.includes(origin) ||
       /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
@@ -258,10 +253,16 @@ export default {
       'Vary': 'Origin',
     };
 
-    // Preflight OPTIONS
- if (request.method === 'OPTIONS') {
-  return new Response(null, { headers: corsHeaders });
-}
+    // Preflight OPTIONS must be handled first before any redirects or auth
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    const url = new URL(request.url);
+    if (url.protocol === 'http:' && !url.pathname.startsWith('/api/')) {
+      url.protocol = 'https:';
+      return Response.redirect(url.toString(), 301);
+    }
 
 // ── Static AI/SEO Discovery Files ────────────────────────────────
 // GET /llms.txt — AI Agentic Discovery (required for 3/3 score)
@@ -1313,6 +1314,37 @@ try {
     const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
+
+    // Support deletion via POST { action: 'delete', id: '...' }
+    if (body.action === 'delete') {
+      const rawId = decodeURIComponent(body.id || body._id || '').trim();
+      if (!rawId) return jsonResponse({ error: 'ID مطلوب للحذف' }, 400, corsHeaders);
+      const cleanId = rawId.replace(/^ad_/, '');
+      const withPrefix = 'ad_' + cleanId;
+      try {
+        const db = createTursoDB(env);
+        const existingAdRes = await db.prepare(
+          'SELECT * FROM ads WHERE id = ? OR id = ? OR id = ? OR place_id = ? LIMIT 1'
+        ).bind(rawId, cleanId, withPrefix, cleanId).first().catch(() => null);
+
+        const linkedPlaceId = existingAdRes?.place_id || (existingAdRes?.id && !existingAdRes.id.startsWith('ad_') ? existingAdRes.id : (cleanId !== rawId ? cleanId : null));
+
+        await db.prepare(
+          'DELETE FROM ads WHERE id = ? OR id = ? OR id = ? OR place_id = ?'
+        ).bind(rawId, cleanId, withPrefix, cleanId).run();
+
+        if (linkedPlaceId) {
+          await db.prepare(
+            'UPDATE places SET is_sponsored = 0, is_featured = 0, sponsored_until = NULL WHERE id = ?'
+          ).bind(linkedPlaceId).run().catch(() => {});
+        }
+
+        bumpDataVersion(env, ctx);
+        return jsonResponse({ success: true, message: 'تم حذف الإعلان بنجاح من Turso' }, 200, corsHeaders);
+      } catch (err) {
+        return jsonResponse({ success: false, error: err.message, details: err.stack }, 500, corsHeaders);
+      }
+    }
     const id = (body.id || body._id || `ad_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`).trim();
     const title = (body.title || '').trim();
     const placeId = body.placeId || body.place_id || null;

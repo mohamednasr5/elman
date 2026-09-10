@@ -6211,8 +6211,16 @@ window.deleteAdAdmin = async (adId) => {
         console.warn('[deleteAdAdmin] Could not un-sponsor place:', placeErr);
       }
     }
-
-    await dbRemove(`ads/${cleanId}`);
+    try {
+      await dbRemove(`ads/${cleanId}`);
+    } catch (delErr) {
+      console.warn('[deleteAdAdmin] dbRemove failed, trying direct POST fallback:', delErr);
+      const { tursoFetch } = await import('../../core/db.js');
+      await tursoFetch('/api/ads', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', id: cleanId })
+      });
+    }
 
     if (adminCache.ads) {
       delete adminCache.ads[cleanId];
