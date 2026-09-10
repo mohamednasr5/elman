@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"/>
@@ -72,6 +72,41 @@
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
   <link rel="stylesheet" href="./src/css/main.css?v=0713ab0"/>
 
+  <!-- ═══════════════════════════════════════════════════════════
+       Critical CSS Inline — Hero Above-the-Fold (LCP + CLS Fix)
+       Reserves exact layout space before main.css loads fully.
+       ═══════════════════════════════════════════════════════════ -->
+  <style>
+    /* Hero section — reserve space immediately to prevent CLS */
+    .hero{position:relative;background:linear-gradient(145deg,#154360 0%,#1B4F72 50%,#2980B9 100%);min-height:clamp(440px,58vh,510px);display:flex;align-items:center;justify-content:center;padding:clamp(2.5rem,5vw,4rem) 1rem clamp(3rem,6vw,5rem);box-sizing:border-box;overflow:hidden}
+    .hero__inner{max-width:800px;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1rem;position:relative;z-index:2}
+    .hero__eyebrow{display:inline-flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:9999px;padding:.35rem 1rem;font-size:.85rem;font-weight:600;color:rgba(255,255,255,.9);white-space:nowrap;min-height:28px}
+    .hero__title{font-family:"Cairo","Tajawal",-apple-system,sans-serif;font-weight:800;line-height:1.3;color:#fff;margin:0;font-size:clamp(1.5rem,5vw,2.25rem);text-align:center}
+    .hero__title-line1{display:block}
+    .hero__title-highlight{color:#F39C12}
+    .hero__title-white{color:#fff}
+    .hero__title-line2{display:block;font-size:clamp(.95rem,2.5vw,1.3rem);font-weight:600;margin-top:.35rem;min-height:1.8em}
+    .hero__title-subtext{color:rgba(255,255,255,.88)}
+    .typewriter-cursor{opacity:1;animation:tw-blink 1s step-end infinite;color:rgba(255,255,255,.7);margin-right:2px}
+    @keyframes tw-blink{0%,to{opacity:1}50%{opacity:0}}
+    .hero__subtitle{font-size:clamp(.8rem,2vw,1rem);color:rgba(255,255,255,.75);max-width:640px;line-height:1.7;margin:0}
+    /* Search pill — reserve exact height to prevent CLS */
+    .hero__search{width:100%;max-width:640px}
+    .hero-search-glow-wrap{position:relative;min-height:56px}
+    .hero-search-pill{display:flex;align-items:center;background:#fff;border-radius:9999px;box-shadow:0 0 18px 4px rgba(0,153,255,.4),0 4px 24px rgba(0,0,0,.18);overflow:hidden;min-height:56px}
+    .hero-search-pill-input{flex:1;border:none;outline:none;background:transparent;font-size:1rem;padding:.75rem 1rem;font-family:inherit;direction:rtl;color:#1B4F72}
+    .hero-voice-btn{background:linear-gradient(135deg,#1B4F72,#2980B9);color:#fff;border:none;border-radius:9999px;padding:.5rem 1rem;font-size:.75rem;cursor:pointer;display:flex;align-items:center;gap:.25rem;font-family:inherit;white-space:nowrap;min-width:48px;min-height:40px}
+    .hero-search-btn-trigger{background:linear-gradient(135deg,#1B4F72,#2980B9);color:#fff;border:none;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:.5rem;margin-right:.35rem;flex-shrink:0}
+    .hero-search-btn-trigger svg,.hero-voice-btn svg{width:18px;height:18px;stroke-width:2.2}
+    /* Quick cats — reserve height to prevent CLS */
+    .hero__quick-cats{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;min-height:40px}
+    /* Stats bar — reserve height */
+    .stats-bar{min-height:72px}
+    /* Skeleton shimmer */
+    @keyframes shimmer{0%{background-position:-200% 0}to{background-position:200% 0}}
+    .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.18) 25%,rgba(255,255,255,.28) 50%,rgba(255,255,255,.18) 75%);background-size:200% 100%;animation:shimmer 1.5s ease-in-out infinite;border-radius:8px}
+  </style>
+
   <!-- Schema.org WebSite & Local Coverage -->
   <script type="application/ld+json">
   {
@@ -129,29 +164,82 @@
   <!-- Header — injected by page-shell.js -->
   <div id="header-slot"></div>
 
-  <!-- Homepage Content: True-to-Size Responsive Skeleton matching real Hero dimensions (Zero CLS) -->
+  <!-- Homepage Content: Real Hero HTML for instant LCP — JS will adopt these elements -->
   <main class="page-main" id="page-container" role="main">
-    <div class="hero-skeleton-wrapper" style="min-height:clamp(440px, 58vh, 510px);padding:clamp(2.5rem, 5vw, 4rem) 1rem clamp(3rem, 6vw, 5rem);background:linear-gradient(145deg, #154360 0%, #1B4F72 50%, #2980B9 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;">
-      <div style="max-width:800px;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;">
-        <!-- Eyebrow skeleton -->
-        <div class="skeleton" style="height:28px;width:240px;max-width:70%;border-radius:9999px;margin-bottom:1rem;background:rgba(255,255,255,0.18);"></div>
-        <!-- Title line 1 skeleton -->
-        <div class="skeleton" style="height:42px;width:460px;max-width:92%;border-radius:10px;margin-bottom:.5rem;background:rgba(255,255,255,0.25);"></div>
-        <!-- Title line 2 skeleton -->
-        <div class="skeleton" style="height:28px;width:320px;max-width:78%;border-radius:8px;margin-bottom:1.25rem;background:rgba(255,255,255,0.18);"></div>
-        <!-- Subtitle skeleton -->
-        <div class="skeleton" style="height:38px;width:580px;max-width:95%;border-radius:8px;margin-bottom:1.75rem;background:rgba(255,255,255,0.14);"></div>
-        <!-- Search bar skeleton (exact shape & size of hero-search-pill) -->
-        <div class="skeleton" style="height:56px;width:640px;max-width:100%;border-radius:9999px;margin-bottom:1.5rem;background:rgba(255,255,255,0.92);box-shadow:0 0 18px 4px rgba(0, 153, 255, 0.4);"></div>
-        <!-- Quick categories chips row skeleton -->
-        <div style="display:flex;gap:.65rem;justify-content:center;flex-wrap:wrap;min-height:40px;width:100%;">
-          <div class="skeleton" style="height:36px;width:95px;border-radius:9999px;background:rgba(255,255,255,0.18);"></div>
-          <div class="skeleton" style="height:36px;width:105px;border-radius:9999px;background:rgba(255,255,255,0.18);"></div>
-          <div class="skeleton" style="height:36px;width:90px;border-radius:9999px;background:rgba(255,255,255,0.18);"></div>
-          <div class="skeleton" style="height:36px;width:100px;border-radius:9999px;background:rgba(255,255,255,0.18);"></div>
+
+    <!-- ═══════════ Real Hero Section (LCP Element visible at parse time) ═══════════ -->
+    <section class="hero" aria-labelledby="hero-title" id="hero-section-static">
+      <div class="hero__inner">
+        <div class="hero__eyebrow animate-fade-in">
+          <span aria-hidden="true">📍</span>
+          دليل المنزلة والمطرية الرقمي — المنزلة وناسها
+        </div>
+        <h1 class="hero__title" id="hero-title" aria-label="فين في المنزلة والمطرية؟ مين في المنزلة والمطرية؟ دليلك الشامل للمدن والقرى المجاورة">
+          <span class="hero__title-line1">
+            <span id="typewriter-part-1" class="hero__title-highlight">فين في المنزلة والمطرية؟</span>
+            <span id="typewriter-part-2" class="hero__title-white"> مين في المنزلة والمطرية؟</span>
+          </span>
+          <span class="hero__title-line2">
+            <span id="typewriter-part-3" class="hero__title-subtext">دليلك الشامل للمدن والقرى المجاورة</span>
+            <span class="typewriter-cursor" aria-hidden="true">|</span>
+          </span>
+        </h1>
+        <p class="hero__subtitle animate-fade-in">
+          دليلك الرقمي لجميع الأماكن والمحلات والأطباء والحرفيين في المنزلة والمطرية والعصافرة والجمالية والقرى المجاورة.
+        </p>
+
+        <!-- Search Bar — functional immediately at parse time -->
+        <div class="hero__search">
+          <div class="hero-search-glow-wrap" id="hero-search-glow-wrap">
+            <div class="hero-search-pill" id="hero-search-pill" role="search">
+              <div class="hero-search-voice-wrap" id="hero-search-voice-slot">
+                <button type="button" class="hero-voice-btn" id="hero-voice-trigger-btn" aria-label="البحث الصوتي الذكي" title="البحث الصوتي الذكي">
+                  <span class="voice-wave-left" aria-hidden="true">((( </span>
+                  <svg class="voice-mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                  <span class="voice-wave-right" aria-hidden="true"> )))</span>
+                </button>
+              </div>
+              <div class="hero-search-divider" aria-hidden="true"></div>
+              <input
+                type="search"
+                id="hero-search-input"
+                class="hero-search-pill-input"
+                placeholder="ابحث عن مكان أو خدمة في المنزلة والمطرية..."
+                autocomplete="off"
+                aria-label="ابحث في دليل المنزلة والمطرية"
+              />
+              <button type="button" class="hero-search-clear-btn" id="hero-search-clear" aria-label="مسح البحث" title="مسح">✕</button>
+              <button class="hero-search-btn-trigger" id="hero-search-btn" aria-label="بحث في الدليل" title="بحث في الدليل">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </button>
+            </div>
+            <!-- Live dropdown injected by JS -->
+            <div class="hero-live-dropdown" id="hero-live-dropdown" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <!-- Quick Categories — skeleton chips, replaced by JS -->
+        <div class="hero__quick-cats" id="hero-quick-cats" aria-label="تصنيفات سريعة">
+          <div class="skeleton" style="height:36px;width:90px;border-radius:9999px;"></div>
+          <div class="skeleton" style="height:36px;width:100px;border-radius:9999px;"></div>
+          <div class="skeleton" style="height:36px;width:85px;border-radius:9999px;"></div>
+          <div class="skeleton" style="height:36px;width:95px;border-radius:9999px;"></div>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- Stats bar placeholder — JS fills with animated counters -->
+    <div class="stats-bar" id="stats-bar" aria-label="إحصائيات الدليل"></div>
+
+    <!-- Categories section skeleton -->
     <div class="container" style="padding:1.5rem 1rem;max-width:var(--container-xl, 1200px);margin:0 auto;">
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.75rem;">
         <div class="skeleton" style="height:86px;border-radius:14px;"></div>

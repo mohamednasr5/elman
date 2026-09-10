@@ -1,12 +1,39 @@
 /* ═══════════════════════════════════════════════════════════
-   المنزلة وناسها — Service Hub, Live Craftsmen & Trust Cards
+   المنزلة وناسها — Service Hub, Live Craftsmen & Service Requests
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Live Pulse Radar Animation ── */
+/* ── Live Pulse Radar & Broadcast Animations ── */
 @keyframes hub-pulse-ring {
-  0% { transform: scale(0.85); opacity: 0.9; }
-  50% { transform: scale(1.6); opacity: 0.3; }
-  100% { transform: scale(2.2); opacity: 0; }
+  0% { transform: scale(0.85); opacity: 0.95; }
+  50% { transform: scale(1.65); opacity: 0.35; }
+  100% { transform: scale(2.3); opacity: 0; }
+}
+
+@keyframes hub-pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px #10b981, 0 0 18px rgba(16, 185, 129, 0.4); }
+  50% { box-shadow: 0 0 16px #34d399, 0 0 28px rgba(52, 211, 153, 0.7); }
+}
+
+@keyframes broadcast-wave-ping {
+  0% { transform: scale(0.7); opacity: 1; }
+  60% { transform: scale(1.4); opacity: 0.4; }
+  100% { transform: scale(2.0); opacity: 0; }
+}
+
+@keyframes broadcast-icon-bounce {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-8deg) scale(1.08); }
+  75% { transform: rotate(8deg) scale(1.08); }
+}
+
+@keyframes radar-beam-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes luxury-cta-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 @keyframes hub-slide-up {
@@ -14,27 +41,38 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Live On-Call Craftsmen Section ── */
+/* ── Live On-Call Craftsmen Section (مين متاح دلوقتي) ── */
 .oncall-craftsmen-section {
-  background: linear-gradient(135deg, #091a28 0%, #102a43 50%, #064060 100%);
-  border-radius: var(--radius-xl, 20px);
-  padding: 22px 24px;
+  background: linear-gradient(135deg, #091a28 0%, #0f2c4a 45%, #064060 100%);
+  border-radius: var(--radius-xl, 22px);
+  padding: 24px 26px;
   color: #fff;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 12px 35px rgba(6, 30, 50, 0.25);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  box-shadow: 0 14px 40px rgba(6, 30, 50, 0.32);
+  border: 1.5px solid rgba(56, 189, 248, 0.3);
   margin-bottom: 2rem;
 }
 
 .oncall-craftsmen-section::before {
   content: '';
   position: absolute;
-  top: -60px;
-  left: -60px;
+  top: -80px;
+  left: -80px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.oncall-craftsmen-section::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  right: -60px;
   width: 180px;
   height: 180px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -43,41 +81,59 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: 16px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
 }
 
 .oncall-title-box {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
-.oncall-radar {
+/* SVG Animated Radar Beacon */
+.oncall-beacon-badge {
   position: relative;
-  width: 22px;
-  height: 22px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(6, 78, 59, 0.35) 100%);
+  border: 1.5px solid rgba(16, 185, 129, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
 }
 
-.oncall-radar-dot {
+.oncall-beacon-svg {
+  width: 28px;
+  height: 28px;
+  color: #34d399;
+  animation: radar-beam-sweep 4s linear infinite;
+  transform-origin: center center;
+}
+
+.oncall-beacon-ping {
+  position: absolute;
+  inset: -4px;
+  border-radius: 18px;
+  border: 2px solid rgba(52, 211, 153, 0.6);
+  animation: hub-pulse-ring 2.2s cubic-bezier(0.1, 0.8, 0.2, 1) infinite;
+}
+
+.oncall-beacon-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
   width: 10px;
   height: 10px;
   background: #10b981;
   border-radius: 50%;
-  box-shadow: 0 0 10px #10b981;
-  z-index: 2;
-}
-
-.oncall-radar-ring {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border: 2px solid #10b981;
-  border-radius: 50%;
-  animation: hub-pulse-ring 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  border: 2px solid #091a28;
+  animation: hub-pulse-glow 1.8s infinite;
 }
 
 .oncall-grid {
@@ -209,20 +265,114 @@
   background: #15803d;
 }
 
-/* ── Service Requests Feed («محتاج خدمة») ── */
+/* ── Service Requests Feed (طلبات الخدمات) ── */
+.service-requests-section {
+  margin-bottom: 2.5rem;
+}
+
 .need-service-hero {
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
-  border-radius: var(--radius-xl, 20px);
-  padding: 24px;
+  background: linear-gradient(135deg, #18153e 0%, #2e266d 50%, #4338ca 100%);
+  border-radius: var(--radius-xl, 22px);
+  padding: 24px 26px;
   color: #fff;
-  margin-bottom: 2rem;
-  border: 1px solid rgba(165, 180, 252, 0.25);
-  box-shadow: 0 10px 30px rgba(30, 27, 75, 0.2);
+  margin-bottom: 1.75rem;
+  border: 1.5px solid rgba(199, 210, 254, 0.3);
+  box-shadow: 0 14px 40px rgba(24, 21, 62, 0.3);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.need-service-hero::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: -80px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.need-service-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  right: -60px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.22) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.service-request-badge {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.4) 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+}
+
+.service-request-svg {
+  width: 28px;
+  height: 28px;
+  color: #fbbf24;
+  animation: broadcast-icon-bounce 3s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+.service-request-ping {
+  position: absolute;
+  inset: -4px;
+  border-radius: 18px;
+  border: 2px solid rgba(251, 191, 36, 0.6);
+  animation: broadcast-wave-ping 2.4s cubic-bezier(0.1, 0.8, 0.2, 1) infinite;
+}
+
+.service-request-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  background: #f59e0b;
+  border-radius: 50%;
+  border: 2px solid #18153e;
+  animation: hub-pulse-glow 1.8s infinite;
+}
+
+.need-service-cta-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #1e1b4b;
+  font-weight: 900;
+  border-radius: 14px;
+  padding: 12px 24px;
+  font-size: 0.98rem;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.need-service-cta-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(245, 158, 11, 0.5);
 }
 
 .need-service-grid {
@@ -234,18 +384,20 @@
 
 .need-service-card {
   background: var(--surface, #ffffff);
-  border: 1px solid var(--border, #e2e8f0);
-  border-radius: 16px;
+  border: 1.5px solid var(--border, #e2e8f0);
+  border-radius: 18px;
   padding: 18px;
-  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+  box-shadow: var(--shadow-sm, 0 2px 6px rgba(0,0,0,0.06));
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  animation: hub-slide-up 0.4s ease-out;
 }
 
 .need-service-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md, 0 4px 14px rgba(0,0,0,0.12));
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md, 0 8px 22px rgba(0,0,0,0.12));
+  border-color: rgba(99, 102, 241, 0.4);
 }
 
 .need-service-card-header {
@@ -253,30 +405,38 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .need-category-pill {
   font-size: 0.78rem;
   font-weight: 800;
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 20px;
-  background: #f1f5f9;
-  color: #334155;
-  border: 1px solid #cbd5e1;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary, #4338ca);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .need-status-pill {
   font-size: 0.74rem;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 3px 9px;
   border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
+
 .need-status-pill--open {
   background: #dcfce7;
   color: #15803d;
   border: 1px solid #bbf7d0;
 }
+
 .need-status-pill--closed {
   background: #f1f5f9;
   color: #64748b;
@@ -286,10 +446,11 @@
 .need-title {
   font-size: 1.05rem;
   font-weight: 800;
-  color: var(--text, #0f172a);
+  color: var(--text-primary, #0f172a);
   margin: 0 0 8px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
+
 
 .need-meta {
   display: flex;

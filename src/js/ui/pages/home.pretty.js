@@ -12,13 +12,12 @@ import { mountSponsoredShowcase, isPlaceSponsored } from '../components/Sponsore
 import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
-import { mountVoiceSearchButton, openManzalaVoiceAssistantModal } from '../../services/voice.service.js';
-import { mountLivePulseSection } from '../components/LivePulseSection.js?v=c1cf1c7c';
-import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
+import { openManzalaVoiceAssistantModal } from '../../services/voice.service.js';
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';
 import { getCategoryVisualMeta, renderCategoryCardIcon } from '../../utils/category-visual.js';
-import { renderWhoIsAvailableNow } from '../components/WhoIsAvailableNow.js';
+// NOTE: mountLivePulseSection, mountAroundMeRadar, renderWhoIsAvailableNow are
+// loaded lazily (dynamic import) because they render below-the-fold content.
 
 const CATEGORY_EMOJIS = {
   'pharmacy':      { emoji: '💊', color: 'rgba(231,76,60,0.1)',    border: '#E74C3C' },
@@ -57,10 +56,46 @@ const CATEGORY_EMOJIS = {
 const DEFAULT_CAT = { emoji: '🏪', color: 'rgba(27,79,114,0.1)', border: '#1B4F72' };
 
 export async function renderHomePage($main, { user } = {}) {
-  // Render structure immediately
-  $main.innerHTML = getHomeHTML();
+  // ── Check if real Hero HTML already exists in the DOM (injected by index.html for LCP) ──
+  const staticHero = document.getElementById('hero-section-static');
+  const hasStaticHero = Boolean(staticHero);
 
-  // Instant 0ms cache-first render for verified places showcase
+  if (!hasStaticHero) {
+    // Cold render (no static HTML) — inject full page structure
+    $main.innerHTML = getHomeHTML();
+    // Start typewriter IMMEDIATELY — hero elements are now in DOM
+    initHeroTypewriterAnimation();
+  } else {
+    // ── Adopt the static hero from index.html (LCP already rendered) ──
+    // Remove skeleton elements that home.js will replace with real content
+    // (static stats-bar placeholder, categories skeleton, hero-section-static id)
+    staticHero.removeAttribute('id'); // disown so getHomeHTML's hero won't conflict
+
+    // Remove the static skeleton siblings (stats-bar placeholder, categories skeleton)
+    const childrenToRemove = [];
+    let node = staticHero.nextSibling;
+    while (node) {
+      childrenToRemove.push(node);
+      node = node.nextSibling;
+    }
+    childrenToRemove.forEach(n => n.parentNode && n.parentNode.removeChild(n));
+
+    // Inject full home structure — it will append after the adopted hero
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = getHomeHTML();
+    // Remove the duplicate hero from the generated HTML (hero is already in DOM)
+    const dynHero = tempDiv.querySelector('.hero');
+    if (dynHero) dynHero.remove();
+    // Append remaining sections to $main
+    while (tempDiv.firstChild) {
+      $main.appendChild(tempDiv.firstChild);
+    }
+
+    // Start typewriter IMMEDIATELY — hero elements already in DOM from index.html
+    initHeroTypewriterAnimation();
+  }
+
+
   initHomeVerifiedShowcase();
 
   try {
@@ -88,36 +123,22 @@ export async function renderHomePage($main, { user } = {}) {
       }
     }
 
-    // Render sections
-    const craftsmenBox = document.getElementById('home-oncall-craftsmen-container');
-    if (craftsmenBox) renderWhoIsAvailableNow(craftsmenBox);
-
-    mountLivePulseSection('home-live-pulse-container');
-    mountAroundMeRadar('home-around-me-container');
-
-    mountSponsoredShowcase('home-sponsored-container', allPlaces, {
-      title: 'أماكن وإعلانات مميزة في المنزلة والمطرية',
-      subtitle: 'أنشطة تجارية وخدمات موصى بها ومعتمدة في المدينة',
-      maxVisible: 4
-    });
-
+    // ── Render above-fold sections (synchronous) ──
     renderCategories(categories || []);
-    
+
     // Verified Places: 4-Card Horizontal Rotating Showcase with SWR Caching
     initHomeVerifiedShowcase(allPlaces);
 
-    // Latest Places (أحدث الأماكن): Sponsored first ALWAYS, then newest added places regardless of verification
+    // Latest Places: Sponsored first ALWAYS, then newest added places
     const latestPlaces = sortLatestPlaces(allPlaces, currentUser?.uid);
     renderLatestPlaces(latestPlaces.slice(0, 8));
 
     renderOffers(offers || []);
     renderDeliveryServices(allPlaces.filter(p => p.categoryId?.includes('delivery') || p.deliveryType));
     renderAds(ads || []);
-    try {
-      import('../components/WideAdsBanner.js')
-        .then(({ mountWideAdsBanner }) => mountWideAdsBanner('wide-ads-banner'))
-        .catch(() => {});
-    } catch (_) {}
+
+    // Stats bar
+    renderStatsBar((allPlaces.length || 0), (categories?.length || 31));
 
     // Setup hero search
     setupHeroSearch(categories || []);
@@ -125,14 +146,43 @@ export async function renderHomePage($main, { user } = {}) {
     // Setup villages and towns quick search filter
     setupVillagesSearch();
 
-    // Setup Hero Typewriter Animation
-    initHeroTypewriterAnimation();
+    // ── Lazy-load below-fold sections (dynamic imports) ──
+    // These are not visible on first screen — load after critical content
+    Promise.resolve().then(() => {
+      // WhoIsAvailable (craftsmen on-call) — first below-fold section
+      import('../components/WhoIsAvailableNow.js').then(({ renderWhoIsAvailableNow }) => {
+        const craftsmenBox = document.getElementById('home-oncall-craftsmen-container');
+        if (craftsmenBox) renderWhoIsAvailableNow(craftsmenBox);
+      }).catch(() => {});
 
-    // Stats bar
-    renderStatsBar((allPlaces.length || 0), (categories?.length || 31));
+      // Service Requests — قسم طلبات الخدمات الجارية
+      import('../components/ServiceRequestsSection.js').then(({ renderServiceRequestsSection }) => {
+        const reqBox = document.getElementById('home-service-requests-container');
+        if (reqBox) renderServiceRequestsSection(reqBox, { limit: 4, showHero: true, isCompact: true });
+      }).catch(() => {});
 
-    // First visit welcome video popup (1.mp4)
-    checkAndShowFirstVisitVideo();
+      // AroundMeRadar — GPS nearby section
+      import('../components/AroundMeRadar.js').then(({ mountAroundMeRadar }) => {
+        mountAroundMeRadar('home-around-me-container');
+      }).catch(() => {});
+
+      // SponsoredShowcase
+      mountSponsoredShowcase('home-sponsored-container', allPlaces, {
+        title: 'أماكن وإعلانات مميزة في المنزلة والمطرية',
+        subtitle: 'أنشطة تجارية وخدمات موصى بها ومعتمدة في المدينة',
+        maxVisible: 4
+      });
+
+      // Wide ads banner
+      try {
+        import('../components/WideAdsBanner.js')
+          .then(({ mountWideAdsBanner }) => mountWideAdsBanner('wide-ads-banner'))
+          .catch(() => {});
+      } catch (_) {}
+
+      // First visit welcome video popup (1.mp4)
+      checkAndShowFirstVisitVideo();
+    });
 
   } catch (err) {
   }
@@ -495,7 +545,8 @@ function renderAds(ads) {
           <span class="ad-banner__star" aria-hidden="true">⭐</span>
           <span class="ad-banner__text">إعلان مميز</span>
         </span>
-        <img src="${escAttr(img)}" alt="${escAttr(title)}" loading="lazy" decoding="async" />
+        <img src="${escAttr(img)}" alt="${escAttr(title)}" loading="lazy" decoding="async"
+             width="800" height="420" style="aspect-ratio:16/7;" />
       </a>
     `;
   }).join('');
@@ -1287,8 +1338,10 @@ function getHomeHTML() {
       <div id="home-oncall-craftsmen-container"></div>
     </div>
 
-    <!-- 🔥 المنزلة والمطرية الآن (يحدث الآن) -->
-    <div id="home-live-pulse-container"></div>
+    <!-- 📢 قسم طلبات الخدمات (سجل احتياجك / عروض الفنيين المباشرة) -->
+    <div class="container section" style="padding-top:0;padding-bottom:0">
+      <div id="home-service-requests-container"></div>
+    </div>
 
     <!-- 🗺️ اكتشف ما حولك (GPS Radar) -->
     <div id="home-around-me-container"></div>

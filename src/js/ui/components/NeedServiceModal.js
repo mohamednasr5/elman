@@ -12,7 +12,7 @@ export function openNeedServiceModal(onCreated) {
   const user = getCurrentUser();
 
   showModal({
-    title: 'طلب خدمة منزلية أو مهنية (محتاج خدمة)',
+    title: 'طلبات الخدمات — اطلب خدمة أو صنايعي الآن',
     size: 'md',
     content: `
       <form id="need-service-form" style="display:flex;flex-direction:column;gap:14px;text-align:right">
@@ -21,7 +21,7 @@ export function openNeedServiceModal(onCreated) {
         <div style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;color:#166534">
           <span style="font-size:1.4rem">🛡️</span>
           <div style="font-size:0.82rem;line-height:1.4">
-            <strong>خصوصيتك محمية 100%:</strong> لن يظهر رقم هاتفك علناً في الدليل، وسنتيح التواصل فقط للفنيين المناسبين لطلبك بعد موافقتك.
+            <strong>خصوصيتك محمية 100%:</strong> لن يظهر رقم هاتفك علناً في الدليل، وسنتيح التواصل وتقديم العروض فقط للفنيين المناسبين لطلبك.
           </div>
         </div>
 

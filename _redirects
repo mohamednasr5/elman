@@ -1,4 +1,6 @@
 # ── Cloudflare Pages Clean URLs & Static Routes ──
+# Canonical redirect: /index.html → / (prevents duplicate content)
+/index.html  /  301
 /admin              /admin.html         200
 /admin/             /admin.html         200
 /places             /places.html        200

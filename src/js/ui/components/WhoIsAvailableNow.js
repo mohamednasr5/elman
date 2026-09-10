@@ -15,23 +15,33 @@ export async function renderWhoIsAvailableNow($container, options = {}) {
     <div class="oncall-craftsmen-section">
       <div class="oncall-header">
         <div class="oncall-title-box">
-          <div class="oncall-radar" aria-hidden="true">
-            <div class="oncall-radar-dot"></div>
-            <div class="oncall-radar-ring"></div>
+          <div class="oncall-beacon-badge" aria-hidden="true">
+            <div class="oncall-beacon-ping"></div>
+            <svg class="oncall-beacon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <circle cx="12" cy="12" r="5"></circle>
+              <circle cx="12" cy="12" r="1.5" fill="currentColor"></circle>
+              <path d="M12 3a9 9 0 0 1 9 9"></path>
+              <path d="M12 12l6 -3"></path>
+            </svg>
+            <div class="oncall-beacon-dot"></div>
           </div>
           <div>
-            <h3 style="margin:0;font-size:1.25rem;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px">
+            <h3 style="margin:0;font-size:1.35rem;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span>مين متاح ييجي دلوقتي؟</span>
-              <span style="font-size:0.75rem;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);color:#6ee7b7;padding:2px 8px;border-radius:12px">طوارئ وزيارات فورية</span>
+              <span style="font-size:0.75rem;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.5);color:#6ee7b7;padding:2px 10px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px">
+                <span style="width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block"></span>
+                <span>طوارئ وزيارات فورية — مباشر</span>
+              </span>
             </h3>
-            <p style="margin:2px 0 0;font-size:0.84rem;color:#bae6fd">
-              فنيون وحرفيون متاحون للتحرك فوراً إلى قريتك أو منزلك (سباكة، كهرباء، صيانة، طوارئ)
+            <p style="margin:4px 0 0;font-size:0.86rem;color:#bae6fd;line-height:1.5">
+              فنيون وحرفيون متاحون للتحرك فوراً إلى قريتك أو منزلك بالمنزلة والمطرية (سباكة، كهرباء، تكييف، صيانة وطوارئ)
             </p>
           </div>
         </div>
 
-        <button type="button" id="btn-toggle-my-craftsman-live" class="btn btn-sm" style="background:#0284c7;color:#fff;border-radius:12px;font-weight:800;padding:8px 16px;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
-          <span>⚡</span>
+        <button type="button" id="btn-toggle-my-craftsman-live" class="btn" style="background:linear-gradient(135deg,#0284c7 0%,#0369a1 100%);color:#fff;border-radius:14px;font-weight:800;padding:10px 20px;border:1px solid rgba(125,211,252,0.4);cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(2,132,199,0.35);transition:all 0.25s ease">
+          <span style="font-size:1.15rem">⚡</span>
           <span>أنا صنايعي ومتاح للزيارات الآن</span>
         </button>
       </div>
