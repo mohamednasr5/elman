@@ -907,104 +907,161 @@ try {
         return jsonResponse({ error: 'معرف المكان (id) مطلوب' }, 400, corsHeaders);
       }
 
-      const name = (body.name || '').trim();
-      let slug = (body.slug || '').trim();
-      if (!slug) slug = placeId;
+      const db = createTursoDB(env);
+      const existingPlace = await db.prepare(
+        'SELECT * FROM places WHERE id = ? LIMIT 1'
+      ).bind(placeId).first().catch(() => null);
 
-      // Prevent UNIQUE constraint collision on slug with any other place
-      try {
-        const slugOwner = await createTursoDB(env).prepare(
-          'SELECT id FROM places WHERE (LOWER(slug) = LOWER(?) OR slug = ?) AND id != ? LIMIT 1'
-        ).bind(slug, slug, placeId).first();
-        if (slugOwner && slugOwner.id) {
-          slug = `${slug}-${placeId.slice(-5)}`;
-        }
-      } catch (_) {}
-
-      const nameEn = body.nameEn || body.name_en || '';
-      const categoryId = body.categoryId || body.category_id || 'general';
-      const customCategory = body.customCategory || body.custom_category || '';
-      const subcategoryId = body.subcategoryId || body.subcategory_id || '';
-      const phone = body.phone || '';
-      const whatsapp = body.whatsapp || '';
-      const area = body.area || 'المنزلة';
-      const address = body.address || '';
-      const mapsLink = body.mapsLink || body.maps_link || '';
-      const lat = body.location?.lat || body.latitude || null;
-      const lng = body.location?.lng || body.longitude || null;
-      const description = body.description || '';
-      const logoUrl = body.logoUrl || body.logo_url || '';
-      const coverImageUrl = body.coverImageUrl || body.cover_image_url || '';
-      const status = body.status || 'published';
-      const isVerified = body.isVerified !== undefined ? (body.isVerified ? 1 : 0) : (body.is_verified !== undefined ? (body.is_verified ? 1 : 0) : null);
-      const verificationStatus = body.verificationStatus || body.verification_status || (isVerified === 1 ? 'verified' : (isVerified === 0 ? 'unverified' : ''));
-      const trustScoreRaw = body.trustScore !== undefined ? body.trustScore : body.trust_score;
-      const trustScore = trustScoreRaw !== undefined && trustScoreRaw !== null && trustScoreRaw !== '' ? Math.max(0, Math.min(100, Math.round(Number(trustScoreRaw) || 0))) : null;
-      const isSponsored = body.isSponsored !== undefined ? (body.isSponsored ? 1 : 0) : (body.is_sponsored !== undefined ? (body.is_sponsored ? 1 : 0) : null);
-      const isFeatured = body.isFeatured !== undefined ? (body.isFeatured ? 1 : 0) : (body.is_featured !== undefined ? (body.is_featured ? 1 : 0) : null);
-      const sponsoredUntil = body.sponsoredUntil || body.sponsored_until || null;
-      const priorityVal = Number(body.priority) || 0;
-      const servicesJson = typeof body.services === 'object' ? JSON.stringify(body.services) : (body.services_json || '[]');
-      const socialJson = typeof body.social === 'object' ? JSON.stringify(body.social) : (body.social_json || '{}');
-      const workingHoursJson = typeof body.workingHours === 'object' ? JSON.stringify(body.workingHours) : (body.working_hours_json || '{}');
-      const statsJson = typeof body.stats === 'object' ? JSON.stringify(body.stats) : (body.stats_json || '{}');
-      const ownerId = body.ownerId || body.owner_id || '';
-      const ownerEmail = body.ownerEmail || body.owner_email || '';
       const now = Date.now();
+      let name = (body.name || '').trim();
+      let slug = (body.slug || '').trim();
 
-      await createTursoDB(env).prepare(`
-        INSERT INTO places (
-          id, name, name_en, slug, category_id, subcategory_id, custom_category,
-          address, area, phone, whatsapp, maps_link, latitude, longitude,
-          description, logo_url, cover_image_url, owner_id, owner_email,
-          status, is_verified, trust_score, verification_status, services_json, social_json,
-          stats_json, working_hours_json, created_at, updated_at, is_sponsored, is_featured, sponsored_until, priority
-        ) VALUES (
-          ?, ?, ?, ?, ?, ?, ?,
-          ?, ?, ?, ?, ?, ?, ?,
-          ?, ?, ?, ?, ?,
-          ?, ?, ?, ?, ?, ?,
-          ?, ?, ?, ?, ?, ?, ?, ?
-        )
-        ON CONFLICT(id) DO UPDATE SET
-          name = CASE WHEN excluded.name != '' THEN excluded.name ELSE places.name END,
-          name_en = CASE WHEN excluded.name_en != '' THEN excluded.name_en ELSE places.name_en END,
-          slug = CASE WHEN excluded.slug != '' THEN excluded.slug ELSE places.slug END,
-          category_id = CASE WHEN excluded.category_id != '' AND excluded.category_id != 'general' THEN excluded.category_id ELSE places.category_id END,
-          subcategory_id = CASE WHEN excluded.subcategory_id != '' THEN excluded.subcategory_id ELSE places.subcategory_id END,
-          custom_category = CASE WHEN excluded.custom_category != '' THEN excluded.custom_category ELSE places.custom_category END,
-          address = CASE WHEN excluded.address != '' THEN excluded.address ELSE places.address END,
-          area = CASE WHEN excluded.area != '' AND excluded.area != 'المنزلة' THEN excluded.area ELSE places.area END,
-          phone = CASE WHEN excluded.phone != '' THEN excluded.phone ELSE places.phone END,
-          whatsapp = CASE WHEN excluded.whatsapp != '' THEN excluded.whatsapp ELSE places.whatsapp END,
-          maps_link = CASE WHEN excluded.maps_link != '' THEN excluded.maps_link ELSE places.maps_link END,
-          latitude = COALESCE(excluded.latitude, places.latitude),
-          longitude = COALESCE(excluded.longitude, places.longitude),
-          description = CASE WHEN excluded.description != '' THEN excluded.description ELSE places.description END,
-          logo_url = CASE WHEN excluded.logo_url != '' THEN excluded.logo_url ELSE places.logo_url END,
-          cover_image_url = CASE WHEN excluded.cover_image_url != '' THEN excluded.cover_image_url ELSE places.cover_image_url END,
-          owner_id = CASE WHEN excluded.owner_id != '' THEN excluded.owner_id ELSE places.owner_id END,
-          owner_email = CASE WHEN excluded.owner_email != '' THEN excluded.owner_email ELSE places.owner_email END,
-          status = excluded.status,
-          is_verified = COALESCE(excluded.is_verified, places.is_verified),
-          trust_score = COALESCE(excluded.trust_score, places.trust_score),
-          verification_status = CASE WHEN excluded.verification_status != '' THEN excluded.verification_status ELSE places.verification_status END,
-          is_sponsored = COALESCE(excluded.is_sponsored, places.is_sponsored),
-          is_featured = COALESCE(excluded.is_featured, places.is_featured),
-          sponsored_until = COALESCE(excluded.sponsored_until, places.sponsored_until),
-          priority = excluded.priority,
-          services_json = CASE WHEN excluded.services_json != '[]' THEN excluded.services_json ELSE places.services_json END,
-          social_json = CASE WHEN excluded.social_json != '{}' THEN excluded.social_json ELSE places.social_json END,
-          working_hours_json = CASE WHEN excluded.working_hours_json != '{}' THEN excluded.working_hours_json ELSE places.working_hours_json END,
-          stats_json = CASE WHEN excluded.stats_json != '{}' AND excluded.stats_json IS NOT NULL THEN excluded.stats_json ELSE places.stats_json END,
-          updated_at = excluded.updated_at
-      `).bind(
-        placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
-        address, area, phone, whatsapp, mapsLink, lat, lng,
-        description, logoUrl, coverImageUrl, ownerId, ownerEmail,
-        status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
-        statsJson, workingHoursJson, Number(body.createdAt || body.created_at) || now, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
-      ).run();
+      if (existingPlace) {
+        if (!name) name = existingPlace.name || 'بدون اسم';
+        if (!slug) {
+          slug = existingPlace.slug || placeId;
+        } else if (slug !== existingPlace.slug) {
+          try {
+            const slugOwner = await db.prepare(
+              'SELECT id FROM places WHERE (LOWER(slug) = LOWER(?) OR slug = ?) AND id != ? LIMIT 1'
+            ).bind(slug, slug, placeId).first();
+            if (slugOwner && slugOwner.id) {
+              slug = `${slug}-${placeId.slice(-5)}`;
+            }
+          } catch (_) {}
+        }
+      } else {
+        if (!name) name = 'بدون اسم';
+        if (!slug) slug = placeId;
+        try {
+          const slugOwner = await db.prepare(
+            'SELECT id FROM places WHERE (LOWER(slug) = LOWER(?) OR slug = ?) AND id != ? LIMIT 1'
+          ).bind(slug, slug, placeId).first();
+          if (slugOwner && slugOwner.id) {
+            slug = `${slug}-${placeId.slice(-5)}`;
+          }
+        } catch (_) {}
+      }
+
+      const nameEn = (body.nameEn !== undefined || body.name_en !== undefined)
+        ? (body.nameEn || body.name_en || '')
+        : (existingPlace?.name_en || '');
+      const categoryId = body.categoryId || body.category_id || existingPlace?.category_id || 'general';
+      const customCategory = (body.customCategory !== undefined || body.custom_category !== undefined)
+        ? (body.customCategory || body.custom_category || '')
+        : (existingPlace?.custom_category || '');
+      const subcategoryId = (body.subcategoryId !== undefined || body.subcategory_id !== undefined)
+        ? (body.subcategoryId || body.subcategory_id || '')
+        : (existingPlace?.subcategory_id || '');
+      const phone = body.phone !== undefined ? body.phone : (existingPlace?.phone || '');
+      const whatsapp = body.whatsapp !== undefined ? body.whatsapp : (existingPlace?.whatsapp || '');
+      const area = body.area !== undefined ? body.area : (existingPlace?.area || 'المنزلة');
+      const address = body.address !== undefined ? body.address : (existingPlace?.address || '');
+      const mapsLink = (body.mapsLink !== undefined || body.maps_link !== undefined)
+        ? (body.mapsLink || body.maps_link || '')
+        : (existingPlace?.maps_link || '');
+      const lat = body.location?.lat !== undefined ? body.location.lat : (body.latitude !== undefined ? body.latitude : (existingPlace?.latitude ?? null));
+      const lng = body.location?.lng !== undefined ? body.location.lng : (body.longitude !== undefined ? body.longitude : (existingPlace?.longitude ?? null));
+      const description = body.description !== undefined ? body.description : (existingPlace?.description || '');
+      const logoUrl = (body.logoUrl !== undefined || body.logo_url !== undefined)
+        ? (body.logoUrl || body.logo_url || '')
+        : (existingPlace?.logo_url || '');
+      const coverImageUrl = (body.coverImageUrl !== undefined || body.cover_image_url !== undefined)
+        ? (body.coverImageUrl || body.cover_image_url || '')
+        : (existingPlace?.cover_image_url || '');
+      const status = body.status || existingPlace?.status || 'published';
+
+      const isVerified = (body.isVerified !== undefined || body.is_verified !== undefined)
+        ? (body.isVerified || body.is_verified ? 1 : 0)
+        : (existingPlace?.is_verified ?? 0);
+      const verificationStatus = body.verificationStatus || body.verification_status || existingPlace?.verification_status || (isVerified === 1 ? 'verified' : 'unverified');
+
+      const trustScoreRaw = body.trustScore !== undefined ? body.trustScore : (body.trust_score !== undefined ? body.trust_score : existingPlace?.trust_score);
+      const trustScore = trustScoreRaw !== undefined && trustScoreRaw !== null && trustScoreRaw !== '' ? Math.max(0, Math.min(100, Math.round(Number(trustScoreRaw) || 0))) : null;
+
+      const isSponsored = (body.isSponsored !== undefined || body.is_sponsored !== undefined)
+        ? (body.isSponsored || body.is_sponsored ? 1 : 0)
+        : (existingPlace?.is_sponsored ?? 0);
+      const isFeatured = (body.isFeatured !== undefined || body.is_featured !== undefined)
+        ? (body.isFeatured || body.is_featured ? 1 : 0)
+        : (existingPlace?.is_featured ?? 0);
+
+      let sponsoredUntil = null;
+      if (isSponsored === 0) {
+        sponsoredUntil = null;
+      } else if (body.sponsoredUntil !== undefined || body.sponsored_until !== undefined) {
+        sponsoredUntil = body.sponsoredUntil || body.sponsored_until || null;
+      } else {
+        sponsoredUntil = existingPlace?.sponsored_until ?? null;
+      }
+
+      const priorityVal = body.priority !== undefined ? (Number(body.priority) || 0) : (existingPlace?.priority ?? 0);
+      const servicesJson = body.services
+        ? (typeof body.services === 'object' ? JSON.stringify(body.services) : body.services)
+        : (body.services_json || existingPlace?.services_json || '[]');
+      const socialJson = body.social
+        ? (typeof body.social === 'object' ? JSON.stringify(body.social) : body.social)
+        : (body.social_json || existingPlace?.social_json || '{}');
+      const workingHoursJson = body.workingHours
+        ? (typeof body.workingHours === 'object' ? JSON.stringify(body.workingHours) : body.workingHours)
+        : (body.working_hours_json || existingPlace?.working_hours_json || '{}');
+      const statsJson = body.stats
+        ? (typeof body.stats === 'object' ? JSON.stringify(body.stats) : body.stats)
+        : (body.stats_json || existingPlace?.stats_json || '{}');
+      const ownerId = (body.ownerId || body.owner_id) || existingPlace?.owner_id || '';
+      const ownerEmail = (body.ownerEmail || body.owner_email) || existingPlace?.owner_email || '';
+
+      if (existingPlace) {
+        await db.prepare(`
+          UPDATE places SET
+            name = ?, name_en = ?, slug = ?, category_id = ?, subcategory_id = ?, custom_category = ?,
+            address = ?, area = ?, phone = ?, whatsapp = ?, maps_link = ?, latitude = ?, longitude = ?,
+            description = ?, logo_url = ?, cover_image_url = ?, owner_id = ?, owner_email = ?,
+            status = ?, is_verified = ?, trust_score = ?, verification_status = ?,
+            is_sponsored = ?, is_featured = ?, sponsored_until = ?, priority = ?,
+            services_json = ?, social_json = ?, working_hours_json = ?, stats_json = ?,
+            updated_at = ?
+          WHERE id = ?
+        `).bind(
+          name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
+          address, area, phone, whatsapp, mapsLink, lat, lng,
+          description, logoUrl, coverImageUrl, ownerId, ownerEmail,
+          status, isVerified, trustScore, verificationStatus,
+          isSponsored, isFeatured, sponsoredUntil, priorityVal,
+          servicesJson, socialJson, workingHoursJson, statsJson,
+          now, placeId
+        ).run();
+      } else {
+        await db.prepare(`
+          INSERT INTO places (
+            id, name, name_en, slug, category_id, subcategory_id, custom_category,
+            address, area, phone, whatsapp, maps_link, latitude, longitude,
+            description, logo_url, cover_image_url, owner_id, owner_email,
+            status, is_verified, trust_score, verification_status, services_json, social_json,
+            stats_json, working_hours_json, created_at, updated_at, is_sponsored, is_featured, sponsored_until, priority
+          ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?
+          )
+        `).bind(
+          placeId, name, nameEn, slug || placeId, categoryId, subcategoryId, customCategory,
+          address, area, phone, whatsapp, mapsLink, lat, lng,
+          description, logoUrl, coverImageUrl, ownerId, ownerEmail,
+          status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
+          statsJson, workingHoursJson, Number(body.createdAt || body.created_at) || now, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
+        ).run();
+      }
+
+      // If place is no longer sponsored, ensure any linked active ads are deactivated/removed
+      if (isSponsored === 0) {
+        await db.prepare(
+          'UPDATE ads SET is_active = 0 WHERE place_id = ? OR id = ? OR id = ?'
+        ).bind(placeId, `ad_${placeId}`, placeId).run().catch(() => {});
+      }
+
       bumpDataVersion(env, ctx);
 
       // Cache Invalidation for this place
@@ -1254,7 +1311,7 @@ try {
 
   if (url.pathname === '/api/ads' && (request.method === 'POST' || request.method === 'PUT')) {
     const auth = await requireAdmin(request, env);
-    if (auth.response) return auth.response
+    if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
     const id = (body.id || body._id || `ad_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`).trim();
     const title = (body.title || '').trim();
@@ -1296,17 +1353,36 @@ try {
 
   if ((url.pathname.startsWith('/api/ads/') || url.pathname === '/api/ads') && request.method === 'DELETE') {
     const auth = await requireAdmin(request, env);
-    if (auth.response) return auth.response
+    if (auth.response) return auth.response;
     const idFromPath = url.pathname.startsWith('/api/ads/') ? url.pathname.replace('/api/ads/', '') : '';
-    const id = (idFromPath || url.searchParams.get('id') || '').trim();
-    if (!id) return jsonResponse({ error: 'ID مطلوب' }, 400, corsHeaders);
+    const rawId = decodeURIComponent(idFromPath || url.searchParams.get('id') || '').trim();
+    if (!rawId) return jsonResponse({ error: 'ID مطلوب' }, 400, corsHeaders);
+
+    const cleanId = rawId.replace(/^ad_/, '');
+    const withPrefix = 'ad_' + cleanId;
 
     try {
-      await createTursoDB(env).prepare(`DELETE FROM ads WHERE id = ?`).bind(id).run();
+      const db = createTursoDB(env);
+      const existingAdRes = await db.prepare(
+        'SELECT * FROM ads WHERE id = ? OR id = ? OR id = ? OR place_id = ? LIMIT 1'
+      ).bind(rawId, cleanId, withPrefix, cleanId).first().catch(() => null);
+
+      const linkedPlaceId = existingAdRes?.place_id || (existingAdRes?.id && !existingAdRes.id.startsWith('ad_') ? existingAdRes.id : (cleanId !== rawId ? cleanId : null));
+
+      await db.prepare(
+        'DELETE FROM ads WHERE id = ? OR id = ? OR id = ? OR place_id = ?'
+      ).bind(rawId, cleanId, withPrefix, cleanId).run();
+
+      if (linkedPlaceId) {
+        await db.prepare(
+          'UPDATE places SET is_sponsored = 0, is_featured = 0, sponsored_until = NULL WHERE id = ?'
+        ).bind(linkedPlaceId).run().catch(() => {});
+      }
+
       bumpDataVersion(env, ctx);
       return jsonResponse({ success: true, message: 'تم حذف الإعلان بنجاح من Turso' }, 200, corsHeaders);
     } catch (err) {
-      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+      return jsonResponse({ success: false, error: err.message, details: err.stack }, 500, corsHeaders);
     }
   }
 

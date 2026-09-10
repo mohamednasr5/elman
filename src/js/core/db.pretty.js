@@ -141,7 +141,10 @@ async function tursoFetch(path, options = {}) {
     signal: options.signal || AbortSignal.timeout(20000)
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || data?.message || `Worker HTTP ${res.status}`);
+  if (!res.ok) {
+    const detailMsg = data?.details ? ` (${data.details})` : '';
+    throw new Error((data?.error || data?.message || `Worker HTTP ${res.status}`) + detailMsg);
+  }
   return data;
 }
 

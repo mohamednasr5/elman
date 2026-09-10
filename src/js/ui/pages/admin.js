@@ -4307,7 +4307,7 @@ async function renderAdminAds($container) {
                     <span class="badge-sponsored">⭐ الأولى في كل الصفحات</span>
                   </td>
                   <td>
-                    <button class="btn btn-xs btn-danger" onclick="togglePlaceSponsored('${escAttr(p._id)}', false)">
+                    <button class="btn btn-xs btn-danger" onclick="togglePlaceSponsored('${escAttr(p.id || p._id)}', false)">
                       ${ICONS.x} إلغاء الإعلان
                     </button>
                   </td>
@@ -5085,11 +5085,17 @@ async function renderAdminSettings($container) {
 
 if (typeof window !== 'undefined') {
 window.togglePlaceSponsored = async (placeId, newStatus) => {
+  const cleanPlaceId = String(placeId || '').trim();
+  if (!cleanPlaceId) return;
   try {
     const updates = {
-      isSponsored: newStatus,
-      isFeatured: newStatus,
-      sponsoredAt: newStatus ? serverTimestamp() : null
+      isSponsored: !!newStatus,
+      is_sponsored: newStatus ? 1 : 0,
+      isFeatured: !!newStatus,
+      is_featured: newStatus ? 1 : 0,
+      sponsoredAt: newStatus ? Date.now() : null,
+      sponsoredUntil: null,
+      sponsored_until: null
     };
 
     if (newStatus) {
@@ -5100,30 +5106,44 @@ window.togglePlaceSponsored = async (placeId, newStatus) => {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + Number(days));
         updates.sponsoredUntil = expiresAt.getTime();
-      } else {
-        updates.sponsoredUntil = null; // Permanent
+        updates.sponsored_until = expiresAt.getTime();
       }
-    } else {
-      updates.sponsoredUntil = null;
     }
 
-    await dbUpdate(`places/${placeId}`, updates);
+    let placeData = (adminCache.places && adminCache.places[cleanPlaceId])
+      ? { ...adminCache.places[cleanPlaceId] }
+      : (await getPlace(cleanPlaceId).catch(() => null)) || {};
 
-    let placeData = adminCache.places ? adminCache.places[placeId] : (await getPlace(placeId));
-    if (placeData) {
-      Object.assign(placeData, updates);
-      await syncPlaceToWorkerTurso(placeId, placeData);
-      await invalidateLocalPlaceCache(placeId, placeData.slug);
+    Object.assign(placeData, updates, { id: cleanPlaceId });
+
+    await syncPlaceToWorkerTurso(cleanPlaceId, placeData);
+    await invalidateLocalPlaceCache(cleanPlaceId, placeData.slug);
+
+    if (adminCache.places && adminCache.places[cleanPlaceId]) {
+      Object.assign(adminCache.places[cleanPlaceId], updates);
     }
 
-    if (adminCache.places && adminCache.places[placeId]) {
-      Object.assign(adminCache.places[placeId], updates);
+    // If un-sponsoring, remove matching ads from adminCache.ads and Turso ads table
+    if (!newStatus) {
+      if (adminCache.ads) {
+        for (const [k, ad] of Object.entries(adminCache.ads)) {
+          if (ad?.placeId === cleanPlaceId || ad?.place_id === cleanPlaceId || ad?.id === cleanPlaceId || k === cleanPlaceId || k === `ad_${cleanPlaceId}`) {
+            delete adminCache.ads[k];
+          }
+        }
+      }
+      try {
+        await tursoFetch(`/api/ads?id=${encodeURIComponent(cleanPlaceId)}`, { method: 'DELETE' });
+      } catch (_) {}
     }
 
-    toast.success(newStatus ? 'تم ترويج المكان وتحديد مدة الإعلان بنجاح ⭐' : 'تم إلغاء ترويج المكان');
-    switchAdminSection(_currentSection, false);
+    toast.success(newStatus ? 'تم ترويج المكان وتحديد مدة الإعلان بنجاح ⭐' : 'تم إلغاء ترويج المكان بنجاح ✓');
+    if (typeof switchAdminSection === 'function') {
+      switchAdminSection(_currentSection || 'ads', false);
+    }
   } catch (err) {
-    toast.error('فشلت العملية: ' + err.message);
+    console.error('[togglePlaceSponsored] Error:', err);
+    toast.error('فشلت العملية: ' + (err?.message || 'خطأ غير معروف'));
   }
 };
 
@@ -6143,13 +6163,26 @@ window.deleteAdAdmin = async (adId) => {
 
   try {
     const ad = (adminCache.ads && (adminCache.ads[cleanId] || Object.values(adminCache.ads).find(x => x.id === cleanId || x._id === cleanId))) || null;
+    const targetPlaceId = ad?.placeId || ad?.place_id || (!cleanId.startsWith('ad_') ? cleanId : null);
 
-    if (ad?.placeId) {
+    if (targetPlaceId) {
       try {
-        await dbUpdate(`places/${ad.placeId}`, { isSponsored: false, isFeatured: false });
-        if (adminCache.places && adminCache.places[ad.placeId]) {
-          adminCache.places[ad.placeId].isSponsored = false;
-          adminCache.places[ad.placeId].isFeatured = false;
+        let placeData = (adminCache.places && adminCache.places[targetPlaceId])
+          ? { ...adminCache.places[targetPlaceId] }
+          : (await getPlace(targetPlaceId).catch(() => null)) || {};
+        const updates = {
+          isSponsored: false,
+          is_sponsored: 0,
+          isFeatured: false,
+          is_featured: 0,
+          sponsoredUntil: null,
+          sponsored_until: null
+        };
+        Object.assign(placeData, updates, { id: targetPlaceId });
+        await syncPlaceToWorkerTurso(targetPlaceId, placeData);
+        await invalidateLocalPlaceCache(targetPlaceId, placeData.slug);
+        if (adminCache.places && adminCache.places[targetPlaceId]) {
+          Object.assign(adminCache.places[targetPlaceId], updates);
         }
       } catch (placeErr) {
         console.warn('[deleteAdAdmin] Could not un-sponsor place:', placeErr);
@@ -6161,14 +6194,16 @@ window.deleteAdAdmin = async (adId) => {
     if (adminCache.ads) {
       delete adminCache.ads[cleanId];
       for (const k of Object.keys(adminCache.ads)) {
-        if (adminCache.ads[k]?.id === cleanId || adminCache.ads[k]?._id === cleanId) {
+        if (adminCache.ads[k]?.id === cleanId || adminCache.ads[k]?._id === cleanId || (targetPlaceId && (adminCache.ads[k]?.placeId === targetPlaceId || adminCache.ads[k]?.place_id === targetPlaceId))) {
           delete adminCache.ads[k];
         }
       }
     }
 
     toast.success('تم حذف الإعلان بنجاح ✓');
-    switchAdminSection('ads', false);
+    if (typeof switchAdminSection === 'function') {
+      switchAdminSection(_currentSection || 'ads', false);
+    }
   } catch (err) {
     console.error('[deleteAdAdmin] Error:', err);
     toast.error('فشل حذف الإعلان: ' + (err?.message || 'خطأ في الاتصال'));
