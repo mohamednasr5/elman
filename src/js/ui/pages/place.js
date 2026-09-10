@@ -26,9 +26,12 @@ import { awardPoints, getLoyaltyLevelInfo } from '../../services/loyalty.service
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
 import { resolvePlaceProfession, getCategorySvg, getProfessionSvg } from '../../utils/professions-data.js';
 import { generateCleanSlug } from '../../utils/slug.js';
+import { formatSocialUrl } from '../../utils/social.js';
+import { isValidPhoneNumber } from '../../utils/phone.js';
 
 export function renderAvailabilityBadge(status) {
-  const s = String(status || 'available').toLowerCase();
+  if (!status) return '';
+  const s = String(status).toLowerCase();
   if (s === 'busy') {
     return `
       <span class="place-availability-badge place-availability-badge--busy" style="display:inline-flex;align-items:center;gap:6px;background:#FEF3C7;color:#92400E;padding:3px 10px;border-radius:9999px;font-size:12px;font-weight:700;border:1px solid #FCD34D" title="هذا المكان أو الفني مشغول حالياً">
@@ -43,13 +46,15 @@ export function renderAvailabilityBadge(status) {
         <span>غير متاح الآن</span>
       </span>
     `;
+  } else if (s === 'available') {
+    return `
+      <span class="place-availability-badge place-availability-badge--available" style="display:inline-flex;align-items:center;gap:6px;background:#DCFCE7;color:#166534;padding:3px 10px;border-radius:9999px;font-size:12px;font-weight:700;border:1px solid #BBF7D0" title="جاهز للرد واستقبال طلباتكم">
+        <span style="width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block;box-shadow:0 0 0 2px rgba(34,197,94,0.3)"></span>
+        <span>🟢 متاح لاستقبال الطلبات</span>
+      </span>
+    `;
   }
-  return `
-    <span class="place-availability-badge place-availability-badge--available" style="display:inline-flex;align-items:center;gap:6px;background:#DCFCE7;color:#166534;padding:3px 10px;border-radius:9999px;font-size:12px;font-weight:700;border:1px solid #BBF7D0" title="جاهز للرد واستقبال طلباتكم في أي وقت">
-      <span style="width:8px;height:8px;border-radius:50%;background:#22C55E;display:inline-block;box-shadow:0 0 0 2px rgba(34,197,94,0.3)"></span>
-      <span>🟢 متاح الآن</span>
-    </span>
-  `;
+  return '';
 }
 
 export async function renderPlacePage($container, { slug, user, initialPlace = null }) {
@@ -167,15 +172,18 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     // Early fetch reviews in parallel with page rendering
     const reviewsFetchPromise = !isAtm ? getPlaceReviews(placeId, place.slug) : Promise.resolve([]);
 
-    const calculatedTrustScore = Math.min(100,
-      (place.isVerified ? 35 : 0) + (place.phone || place.whatsapp ? 15 : 0) +
+    const hasValidPhone = !isAtm && isValidPhoneNumber(place.phone);
+    const hasValidWhatsapp = isValidPhoneNumber(place.whatsapp);
+
+    const calculatedCompleteness = Math.min(100,
+      (place.isVerified ? 30 : 0) + ((hasValidPhone || hasValidWhatsapp) ? 20 : 0) +
       ((place.lat || place.latitude) && (place.lng || place.longitude) ? 15 : 0) + (place.address ? 10 : 0) +
       ((place.coverImageUrl || place.logoUrl || place.cover_image_url || place.logo_url) ? 10 : 0) +
       ((place.workingHours || place.openHours) ? 5 : 0) + (place.description ? 5 : 0) + (totalReviews > 0 ? 5 : 0)
     );
     const hasManualTrustScore = place.trustScore !== undefined || place.trust_score !== undefined;
-    const trustScore = hasManualTrustScore ? Math.max(0, Math.min(100, Number(place.trustScore ?? place.trust_score) || 0)) : calculatedTrustScore;
-    const trustClass = trustScore < 50 ? 'place-trust-mini--low' : trustScore < 70 ? 'place-trust-mini--medium' : 'place-trust-mini--high';
+    const trustScore = hasManualTrustScore ? Math.max(0, Math.min(100, Number(place.trustScore ?? place.trust_score) || 0)) : calculatedCompleteness;
+    const trustClass = trustScore < 50 ? 'place-trust-mini--low' : trustScore < 75 ? 'place-trust-mini--medium' : 'place-trust-mini--high';
     let userReview = currentUser ? safeReviews.find(review => review.userId === currentUser.uid) : null;
 
     // Track View Count & Profile Visitor safely
@@ -361,16 +369,21 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   ` : ''}
 
                   ${!isAtm ? `
-                    <div id="place-header-rating-badge" style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
-                      <span>★</span>
-                      <span>${avgRating > 0 ? avgRating.toFixed(1) : (totalReviews > 0 ? '5.0' : '0.0')}</span>
-                      <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : 'جديد'})</span>
+                    <div id="place-header-rating-badge" style="display:inline-flex;align-items:center;gap:4px;color:${totalReviews > 0 ? '#F59E0B' : 'var(--text-muted)'};font-weight:700;font-size:12px;background:${totalReviews > 0 ? 'rgba(245,158,11,0.08)' : 'var(--surface-2)'};padding:3px 8px;border-radius:var(--radius-sm);border:1px solid var(--border)">
+                      ${totalReviews > 0 ? `
+                        <span>★</span>
+                        <span>${avgRating > 0 ? avgRating.toFixed(1) : '5.0'}</span>
+                        <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews} تقييم)</span>
+                      ` : `
+                        <span>✨</span>
+                        <span>لا توجد تقييمات بعد</span>
+                      `}
                     </div>
                   ` : ''}
                   <div id="place-availability-badge-container">
-                    ${renderAvailabilityBadge(place.availabilityStatus || place.availability_status || 'available')}
+                    ${renderAvailabilityBadge(place.availabilityStatus || place.availability_status)}
                   </div>
-                  <span class="place-trust-mini ${trustClass}" title="نسبة الثقة التي تحددها إدارة الدليل">🛡️ ثقة البيانات ${trustScore}/100</span>
+                  <span class="place-trust-mini ${trustClass}" title="مؤشر نسبة استيفاء حقول ومعلومات هذا الملف (وليس تقييماً لجودة النشاط)">📋 اكتمال الملف ${trustScore}%</span>
                 </div>
                 <div class="place-address">
                   <span>📍</span>
@@ -381,14 +394,27 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
             <!-- Quick Action Buttons -->
             <div class="place-contact-btns">
-              ${!isAtm && place.phone ? `
+              ${(!hasValidPhone && !hasValidWhatsapp && !isAtm) ? `
+                <div class="place-no-phone-notice" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border:1px dashed var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:8px;width:100%;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
+                    <span style="font-size:16px">ℹ️</span>
+                    <span><strong>رقم التواصل غير متاح حالياً</strong> لهذا النشاط.</span>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline" onclick="window.openSuggestPhoneNumber({ placeId: '${escAttr(placeId)}', placeName: '${escAttr(place.name || '')}' })" style="gap:5px;font-size:12px;font-weight:700;color:var(--primary)">
+                    <span>💡</span>
+                    <span>اقترح رقمًا صحيحًا</span>
+                  </button>
+                </div>
+              ` : ''}
+
+              ${hasValidPhone ? `
                 <a href="tel:${cleanPhone(place.phone)}" class="btn btn-primary" onclick="trackStat('${escAttr(placeId)}', 'phoneClicks')" title="اتصال هاتفي">
                   <span>📞</span>
                   <span>اتصال (${escHtml(place.phone)})</span>
                 </a>
               ` : ''}
               
-              ${place.whatsapp ? `
+              ${hasValidWhatsapp ? `
                 <a href="${buildContextualWhatsAppLink(place.whatsapp, { source: 'place_page', placeName: place.name, placeSlug: place.slug })}" 
                    target="_blank" 
                    rel="noopener" 
@@ -402,7 +428,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                 <a href="${escAttr(mapInfo.directLink || place.mapsLink || `https://www.google.com/maps/search/?api=1&query=${place.location?.lat},${place.location?.lng}`)}" 
                    target="_blank" 
                    rel="noopener" 
-                   class="btn btn-outline ${(!place.phone || !place.whatsapp) ? '' : 'btn--full-mobile'}" 
+                   class="btn btn-outline ${(!hasValidPhone || !hasValidWhatsapp) ? '' : 'btn--full-mobile'}" 
                    onclick="trackStat('${escAttr(placeId)}', 'directionsClicks')" 
                    title="الاتجاهات على الخريطة">
                   <span>🗺️</span>
@@ -538,43 +564,43 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               </h3>
               <div class="social-links" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
                 ${place.social?.facebook ? `
-                  <a href="${escAttr(place.social.facebook)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--fb" title="فيسبوك">
+                  <a href="${escAttr(formatSocialUrl('facebook', place.social.facebook))}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--fb" title="فيسبوك">
                     ${SOCIAL_ICONS.facebook}
                     <span>فيسبوك</span>
                   </a>
                 ` : ''}
                 ${(place.social?.x || place.social?.twitter) ? `
-                  <a href="${escAttr(place.social.x || place.social.twitter)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--x" title="منصة X (تويتر)">
+                  <a href="${escAttr(formatSocialUrl('x', place.social.x || place.social.twitter))}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--x" title="منصة X (تويتر)">
                     ${SOCIAL_ICONS.x}
                     <span>منصة X</span>
                   </a>
                 ` : ''}
                 ${place.social?.instagram ? `
-                  <a href="${escAttr(place.social.instagram)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--ig" title="إنستجرام">
+                  <a href="${escAttr(formatSocialUrl('instagram', place.social.instagram))}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--ig" title="إنستجرام">
                     ${SOCIAL_ICONS.instagram}
                     <span>إنستجرام</span>
                   </a>
                 ` : ''}
                 ${place.social?.tiktok ? `
-                  <a href="${escAttr(place.social.tiktok)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--tt" title="تيك توك">
+                  <a href="${escAttr(formatSocialUrl('tiktok', place.social.tiktok))}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--tt" title="تيك توك">
                     ${SOCIAL_ICONS.tiktok}
                     <span>تيك توك</span>
                   </a>
                 ` : ''}
                 ${place.social?.threads ? `
-                  <a href="${escAttr(place.social.threads)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--th" title="ثريدز">
+                  <a href="${escAttr(formatSocialUrl('threads', place.social.threads))}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--th" title="ثريدز">
                     ${SOCIAL_ICONS.threads}
                     <span>ثريدز</span>
                   </a>
                 ` : ''}
                 ${place.social?.youtube ? `
-                  <a href="${escAttr(place.social.youtube)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--yt" title="يوتيوب">
+                  <a href="${escAttr(formatSocialUrl('youtube', place.social.youtube))}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--yt" title="يوتيوب">
                     ${SOCIAL_ICONS.youtube}
                     <span>يوتيوب</span>
                   </a>
                 ` : ''}
                 ${place.social?.website ? `
-                  <a href="${escAttr(place.social.website)}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--web" title="الموقع الإلكتروني الرسمي">
+                  <a href="${escAttr(formatSocialUrl('website', place.social.website))}" target="_blank" rel="noopener" class="social-brand-btn social-brand-btn--web" title="الموقع الإلكتروني الرسمي">
                     ${SOCIAL_ICONS.website}
                     <span>الموقع الرسمي</span>
                   </a>
@@ -711,12 +737,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             </div>
 
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px dashed var(--border)">
-              ${branchPhone ? `
+              ${(branchPhone && isValidPhoneNumber(branchPhone)) ? `
                 <a href="tel:${cleanPhone(branchPhone)}" class="btn btn-primary btn-sm" onclick="trackStat('${escAttr(b.id)}', 'phoneClicks')" style="font-size:12px;padding:4px 10px">
                   <span>📞 اتصال</span>
                 </a>
               ` : ''}
-              ${branchWhatsapp ? `
+              ${(branchWhatsapp && isValidPhoneNumber(branchWhatsapp)) ? `
                 <a href="${buildContextualWhatsAppLink(branchWhatsapp, { source: 'branch_card', placeName: b.name, placeSlug: b.slug })}" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm" onclick="trackStat('${escAttr(b.id)}', 'whatsappClicks')" style="font-size:12px;padding:4px 10px">
                   <span>واتساب</span>
                 </a>
@@ -1402,11 +1428,11 @@ function escAttr(str) {
 }
 
 function cleanPhone(phone) {
-  return phone?.replace(/\D/g, '') || '';
+  return isValidPhoneNumber(phone) ? (phone?.replace(/\D/g, '') || '') : '';
 }
 
 function formatWhatsApp(phone) {
-  if (!phone) return '';
+  if (!phone || !isValidPhoneNumber(phone)) return '';
   let cleaned = String(phone).replace(/\D/g, '');
   if (cleaned.startsWith('201') && cleaned.length === 12) {
     return cleaned;
@@ -2186,6 +2212,59 @@ if (typeof window !== 'undefined') {
           } catch(err) { toast.error(err.message || 'تعذر إرسال البلاغ'); }
         }},
         { label:'إلغاء', type:'ghost', closeOnClick:true }
+      ]
+    });
+  };
+
+  window.openSuggestPhoneNumber = ({ placeId, placeName }) => {
+    const modal = showModal({
+      title: '💡 اقتراح رقم هاتف للمكان',
+      size: 'sm',
+      content: `
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-size:13px;line-height:1.7">
+            ساعد أهالي المنزلة والمطرية في الوصول لهذا المكان.<br>
+            <strong>${escHtml(placeName || 'هذا المكان')}</strong>
+          </div>
+          <div>
+            <label class="form-label" style="font-weight:800;display:block;margin-bottom:6px">رقم الهاتف أو الواتساب المقترح:</label>
+            <input id="suggested-phone-input" type="tel" class="form-input" dir="ltr" placeholder="مثال: 01012345678 أو 050xxxxxxx" autocomplete="tel" style="width:100%" />
+          </div>
+          <div>
+            <label class="form-label" style="font-weight:800;display:block;margin-bottom:6px">ملاحظة إضافية <span style="font-weight:500;color:var(--text-muted)">(اختياري)</span>:</label>
+            <input id="suggested-phone-note" type="text" class="form-input" placeholder="مثال: رقم الدليفري، رقم المسؤول، فرع..." style="width:100%" />
+          </div>
+        </div>
+      `,
+      buttons: [
+        {
+          label: '📤 إرسال الاقتراح للمراجعة',
+          type: 'primary',
+          closeOnClick: false,
+          onClick: async () => {
+            const rawPhone = document.getElementById('suggested-phone-input')?.value?.trim() || '';
+            const note = document.getElementById('suggested-phone-note')?.value?.trim() || '';
+            if (!isValidPhoneNumber(rawPhone)) {
+              toast.error('يرجى كتابة رقم هاتف مصري صحيح (موبايل 11 رقم أو أرضي)');
+              return;
+            }
+            try {
+              const u = getCurrentUser();
+              const details = `رقم مقترح: ${rawPhone}${note ? ` | ملاحظة: ${note}` : ''}`;
+              await reportPlaceData({
+                placeId,
+                reason: 'رقم الهاتف غير صحيح',
+                details,
+                reporterName: u?.name || u?.displayName || 'مستخدم متطوع'
+              });
+              toast.success('شكرًا لمساهمتك! تم إرسال الرقم المقترح للمراجعة والاعتماد. 💡');
+              modal.close();
+            } catch (err) {
+              toast.error(err.message || 'تعذر إرسال الاقتراح');
+            }
+          }
+        },
+        { label: 'إلغاء', type: 'ghost', closeOnClick: true }
       ]
     });
   };

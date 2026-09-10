@@ -213,6 +213,7 @@ export default {
     );
     ctx.waitUntil(ensureSlugsHealedInTurso(env));
     ctx.waitUntil(ensureNewSchemaColumnsInTurso(env));
+    ctx.waitUntil(ensureDataSanitizedInTurso(env));
     ctx.waitUntil(sendDailyQuranReminder(env).catch(err => console.error('[Daily Quran Push]', err)));
   },
 
@@ -220,6 +221,7 @@ export default {
     if (ctx?.waitUntil) {
       ctx.waitUntil(ensureSlugsHealedInTurso(env));
       ctx.waitUntil(ensureNewSchemaColumnsInTurso(env));
+      ctx.waitUntil(ensureDataSanitizedInTurso(env));
     }
     const isHead = request.method === 'HEAD';
     const effectiveRequest = isHead ? new Request(request.url, {
@@ -1198,8 +1200,15 @@ try {
       const subcategoryId = (body.subcategoryId !== undefined || body.subcategory_id !== undefined)
         ? (body.subcategoryId || body.subcategory_id || '')
         : (existingPlace?.subcategory_id || '');
-      const phone = body.phone !== undefined ? body.phone : (existingPlace?.phone || '');
-      const whatsapp = body.whatsapp !== undefined ? body.whatsapp : (existingPlace?.whatsapp || '');
+      function sanitizeWorkerPhone(p) {
+        if (!p) return null;
+        const norm = String(p).replace(/\D/g, '');
+        if (!norm || /^0+$/.test(norm) || /^(\d)\1+$/.test(norm) || norm.length < 4 || norm.length > 15) return null;
+        if (norm === '12345678' || norm === '123456789' || norm === '01234567890') return null;
+        return String(p).trim();
+      }
+      const phone = sanitizeWorkerPhone(body.phone !== undefined ? body.phone : (existingPlace?.phone || ''));
+      const whatsapp = sanitizeWorkerPhone(body.whatsapp !== undefined ? body.whatsapp : (existingPlace?.whatsapp || ''));
       const area = body.area !== undefined ? body.area : (existingPlace?.area || 'المنزلة');
       const address = body.address !== undefined ? body.address : (existingPlace?.address || '');
       const mapsLink = (body.mapsLink !== undefined || body.maps_link !== undefined)
@@ -1244,9 +1253,17 @@ try {
       const servicesJson = body.services
         ? (typeof body.services === 'object' ? JSON.stringify(body.services) : body.services)
         : (body.services_json || existingPlace?.services_json || '[]');
-      const socialJson = body.social
-        ? (typeof body.social === 'object' ? JSON.stringify(body.social) : body.social)
-        : (body.social_json || existingPlace?.social_json || '{}');
+      let socialObj = {};
+      try {
+        if (body.social && typeof body.social === 'object') {
+          socialObj = normalizeSocialLinksWorker(body.social);
+        } else if (body.social_json && typeof body.social_json === 'string') {
+          socialObj = normalizeSocialLinksWorker(parseJson(body.social_json, {}));
+        } else if (existingPlace?.social_json) {
+          socialObj = normalizeSocialLinksWorker(parseJson(existingPlace.social_json, {}));
+        }
+      } catch (_) {}
+      const socialJson = JSON.stringify(socialObj);
       const workingHoursJson = body.workingHours
         ? (typeof body.workingHours === 'object' ? JSON.stringify(body.workingHours) : body.workingHours)
         : (body.working_hours_json || existingPlace?.working_hours_json || '{}');
@@ -1344,8 +1361,8 @@ try {
           const bSlug = (b.slug || `${slug}-branch-${i + 1}`).trim();
           const bAddress = (b.address || address).trim();
           const bArea = (b.area || area).trim();
-          const bPhone = (b.phone !== undefined ? b.phone : phone).trim();
-          const bWhatsapp = (b.whatsapp !== undefined ? b.whatsapp : whatsapp).trim();
+          const bPhone = sanitizeWorkerPhone(b.phone !== undefined ? b.phone : phone);
+          const bWhatsapp = sanitizeWorkerPhone(b.whatsapp !== undefined ? b.whatsapp : whatsapp);
           const bStatus = (b.availabilityStatus || b.availability_status || availabilityStatus || 'available').toLowerCase();
 
           const existingBranch = await db.prepare('SELECT id FROM places WHERE id = ? LIMIT 1').bind(bId).first().catch(() => null);
@@ -3182,6 +3199,191 @@ try {
         }, 200, corsHeaders);
       }
 
+      // ── AI Business Card Scanner (POST /api/ai/scan-business-card) ──
+      if (url.pathname === '/api/ai/scan-business-card' && request.method === 'POST') {
+        try {
+          const auth = await requireAuth(request, env);
+          if (auth.response) return auth.response;
+
+          const body = await request.json().catch(() => ({}));
+          const imageUrl = String(body.imageUrl || body.url || '').trim();
+          const imageBase64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
+          const mimeType = String(body.mimeType || 'image/jpeg');
+
+          if (!imageUrl && !imageBase64) {
+            return jsonResponse({ success: false, error: 'رابط صورة الكارت أو محتواها مطلوب' }, 400, corsHeaders);
+          }
+
+          // Fetch active platform categories from Turso to provide authoritative taxonomy context
+          let categoriesList = [];
+          try {
+            const catRows = (await createTursoDB(env).prepare(`
+              SELECT id, name, slug FROM categories WHERE is_active = 1 OR is_active IS NULL ORDER BY sort_order ASC, name ASC LIMIT 100
+            `).all()).results || [];
+            categoriesList = catRows.map(c => ({ id: c.slug || c.id, name: c.name }));
+          } catch (cErr) {
+            console.warn('[scan-business-card] Turso categories fetch notice:', cErr?.message);
+          }
+
+          // Fallback / standard core categories list if database was empty or unreachable
+          if (categoriesList.length === 0) {
+            categoriesList = [
+              { id: 'restaurant', name: 'مطاعم وكافيهات' },
+              { id: 'clothing-store', name: 'ملابس وأزياء' },
+              { id: 'shoes-bags', name: 'أحذية وشنط' },
+              { id: 'doctor', name: 'أطباء وعيادات' },
+              { id: 'pharmacy', name: 'صيدليات' },
+              { id: 'phones', name: 'هواتف وصيانة موبايل' },
+              { id: 'supermarket', name: 'سوبر ماركت وبقالة' },
+              { id: 'bakery', name: 'مخبز وحلواني' },
+              { id: 'electronics', name: 'أجهزة كهربائية وإلكترونيات' },
+              { id: 'carpentry-furniture', name: 'نجارة وموبيليا وأثاث' },
+              { id: 'decor-finishing', name: 'تشطيبات وديكور ودهانات' },
+              { id: 'plumbing-drainage', name: 'سباكة وصرف صحي' },
+              { id: 'electrical', name: 'كهرباء وصيانة' },
+              { id: 'hvac-refrigeration', name: 'تكييف وتبريد' },
+              { id: 'automotive-vehicles', name: 'سيارات ومركبات وصيانة' },
+              { id: 'wedding-halls', name: 'قاعات أفراح ومناسبات' },
+              { id: 'perfumes-cosmetics', name: 'عطور ومستحضرات تجميل' },
+              { id: 'dry-cleaning-laundry', name: 'مغسلة ودراي كلين' },
+              { id: 'gold-jewelry', name: 'ذهب ومجوهرات' },
+              { id: 'educational-center', name: 'مراكز تعليمية وكورسات' }
+            ];
+          }
+
+          const categoriesContextStr = categoriesList.map(c => `- ID: "${c.id}" => Name: "${c.name}"`).join('\n');
+
+          const prompt = `أنت خبير فحص وقراءة كروت المحلات والشركات المصرية واستخراج بياناتها للدليل الرقمي.
+المطلوب منك فحص صورة كارت المحل بدقة متناهية واستخراج جميع بياناته في كائن JSON نقي وفق الحقول التالية بدقة ودون أي اختلاق:
+
+{
+  "is_business_card": true, // false فقط إذا كانت الصورة لا علاقة لها بكارت محل أو لافتة نشاط أو غير قابلة للقراءة
+  "business_name_ar": "", // اسم المحل أو النشاط أو الدكتور/المهندس كما هو مكتوب في الكارت بالضبط دون تعديل
+  "business_name_en": "", // الاسم الإنجليزي إذا كان مكتوباً في الكارت؛ وإذا لم يكن مكتوباً، قم بتوليد اسم إنجليزي تجاري قياسي مناسب (Transliteration/Translation) مثل: "محلات غنيم للأحذية" -> "Ghoneim Shoes"
+  "owner_name": "", // اسم صاحب المحل أو الإدارة أو المسؤول إذا وجد (مثال: إدارة م/ محمد حماد)
+  "category_id": "", // معرّف التصنيف الأكثر مطابقة من القائمة المحددة أدناه (يجب أن يكون ID مطابقاً حرفياً من القائمة، أو فارغاً إذا تعذر)
+  "category_name": "", // اسم التصنيف المطابق
+  "subcategory_id": "", // المهنة أو التخصص الدقيق إن وجد (مثل: plumber, electrician, painter, ac-technician, etc.)
+  "category_confidence": "high", // "high" | "medium" | "low"
+  "phones": [], // مصفوفة بجميع أرقام الهواتف المقروءة بصيغة مصرية موحدة (مثل: "01012345678", "01234567890", "0507xxxxxx")
+  "whatsapp": "", // رقم الواتساب المخصص أو رقم الموبايل الأساسي
+  "landlines": [], // أرقام الهواتف الأرضية (مثل كود الدقهلية 050)
+  "address": "", // العنوان المكتوب في الكارت بالتفصيل والشارع وأقرب علامة مميزة
+  "area": "", // القرية أو الحي أو المنطقة في المنزلة/المطرية إن ذُكرت (المنزلة، العزيزة، الأحمدية، العصافرة، البصراط، الروضة، النسايمة، الحوتة، الجمالية، إلخ)
+  "city": "المنزلة", // المدينة
+  "governorate": "الدقهلية",
+  "facebook": "", // رابط أو اسم صفحة فيسبوك
+  "instagram": "", // حساب إنستجرام
+  "tiktok": "", // حساب تيك توك
+  "website": "", // رابط الموقع الإلكتروني
+  "email": "", // البريد الإلكتروني
+  "description": "", // وصف تسويقي احترافي وموجز للمحل وسنوات الخبرة والخدمات المتوفرة بناءً على ما جاء في الكارت
+  "services": [], // مصفوفة بالكلمات المفتاحية والخدمات والمنتجات المكتوبة في الكارت (من 3 إلى 10 عناصر نصية واضحة)
+  "working_hours_text": "", // مواعيد العمل إن كانت مذكورة في الكارت
+  "confidence": {
+    "name": "high",
+    "phones": "high",
+    "category": "high",
+    "address": "medium"
+  },
+  "missing_fields": [] // قائمة الحقول الضرورية التي لم تكن موجودة بالكارت (مثل: "address", "working_hours")
+}
+
+قائمة التصنيفات المعتمدة في النظام (اختر category_id من هذه القائمة فقط):
+${categoriesContextStr}
+
+أعد كائن JSON فقط بدون نصوص تمهيدية وبدون علامات باك تيك (markdown).`;
+
+          const aiResponse = await callOpenRouterVisionWithAccountFailover({
+            imageUrl,
+            imageBase64,
+            mimeType,
+            prompt
+          }, env);
+
+          let rawContent = aiResponse.content.trim();
+          // Strip any markdown code blocks ```json ... ```
+          if (rawContent.startsWith('```')) {
+            rawContent = rawContent.replace(/^```[a-zA-Z]*\s*/, '').replace(/\s*```$/, '').trim();
+          }
+
+          let parsed = null;
+          try {
+            parsed = JSON.parse(rawContent);
+          } catch (parseErr) {
+            // Try extracting first { ... } block
+            const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              parsed = JSON.parse(jsonMatch[0]);
+            } else {
+              throw new Error('فشل تفسير نتيجة الذكاء الاصطناعي كبيانات كارت صالحة');
+            }
+          }
+
+          // Clean and normalize phone numbers
+          const cleanPhones = Array.isArray(parsed.phones) ? parsed.phones.map(p => String(p).replace(/[^\d+]/g, '').trim()).filter(p => p.length >= 7) : [];
+          const primaryPhone = cleanPhones[0] || '';
+          let whatsapp = parsed.whatsapp ? String(parsed.whatsapp).replace(/[^\d+]/g, '').trim() : '';
+          if (!whatsapp && primaryPhone.startsWith('01')) {
+            whatsapp = primaryPhone;
+          }
+
+          // Normalize category_id to ensure it matches one of our valid IDs
+          let matchedCatId = parsed.category_id || null;
+          if (matchedCatId && !categoriesList.some(c => c.id === matchedCatId)) {
+            // Try matching by name
+            const byName = categoriesList.find(c => c.name.includes(parsed.category_name || '') || (parsed.category_name && c.name.includes(parsed.category_name)));
+            matchedCatId = byName ? byName.id : null;
+          }
+
+          const cardData = {
+            isBusinessCard: parsed.is_business_card !== false,
+            businessNameAr: (parsed.business_name_ar || '').trim(),
+            businessNameEn: (parsed.business_name_en || '').trim(),
+            ownerName: (parsed.owner_name || '').trim(),
+            categoryId: matchedCatId,
+            categoryName: parsed.category_name || '',
+            subcategoryId: parsed.subcategory_id || '',
+            categoryConfidence: parsed.category_confidence || 'medium',
+            phone: primaryPhone,
+            phones: cleanPhones,
+            whatsapp: whatsapp,
+            landlines: Array.isArray(parsed.landlines) ? parsed.landlines : [],
+            address: (parsed.address || '').trim(),
+            area: (parsed.area || '').trim(),
+            city: (parsed.city || 'المنزلة').trim(),
+            governorate: (parsed.governorate || 'الدقهلية').trim(),
+            social: normalizeSocialLinksWorker({
+              facebook: (parsed.facebook || '').trim(),
+              instagram: (parsed.instagram || '').trim(),
+              tiktok: (parsed.tiktok || '').trim(),
+              website: (parsed.website || '').trim(),
+              email: (parsed.email || '').trim()
+            }),
+            description: (parsed.description || '').trim(),
+            services: Array.isArray(parsed.services) ? parsed.services.map(s => String(s).trim()).filter(Boolean) : [],
+            workingHoursText: (parsed.working_hours_text || '').trim(),
+            confidence: parsed.confidence || {},
+            missingFields: Array.isArray(parsed.missing_fields) ? parsed.missing_fields : [],
+            modelUsed: aiResponse.model,
+            accountId: aiResponse.accountId
+          };
+
+          return jsonResponse({
+            success: true,
+            cardData
+          }, 200, corsHeaders);
+
+        } catch (err) {
+          console.error('[scan-business-card Error]:', err?.message || err);
+          return jsonResponse({
+            success: false,
+            error: err?.message || 'تعذر قراءة الكارت تلقائياً حالياً. يمكنك إدخال البيانات يدوياً ولن تفقد أي بيانات.',
+            code: 'VISION_SCAN_FAILED'
+          }, 500, corsHeaders);
+        }
+      }
+
       // ── AI Multi-Account Diagnostic Test (GET or POST /api/ai/test-accounts) ──
       if (url.pathname === '/api/ai/test-accounts') {
         const diagnostics = await testAllOpenRouterAccounts(env);
@@ -3777,6 +3979,155 @@ async function callOpenRouterAI(prompt, env, options = {}) {
   return result || '';
 }
 
+/**
+ * CENTRALIZED OPENROUTER VISION MODELS CONFIGURATION
+ * Multi-model cascade for image-to-text / business-card OCR extraction.
+ */
+const VISION_OPENROUTER_MODELS = [
+  'google/gemini-2.0-flash-001',
+  'google/gemini-2.0-flash-lite-preview-02-05:free',
+  'qwen/qwen2.5-vl-72b-instruct',
+  'meta-llama/llama-3.2-11b-vision-instruct:free',
+  'google/gemini-flash-1.5'
+];
+
+// Account cooldown map to prevent repeated retries of exhausted keys within 60 seconds
+const _visionAccountCooldowns = new Map();
+
+/**
+ * Executes a Vision-capable OpenRouter request with Level-1 Model Cascade
+ * and Level-2 Sequential Account Failover (#1 -> #2 -> #3 -> #4).
+ *
+ * @param {Object} options
+ * @param {string} [options.imageUrl] - Public R2 image URL or Base64 Data URL
+ * @param {string} [options.imageBase64] - Optional direct base64 image data
+ * @param {string} [options.mimeType] - Mime type for base64 image
+ * @param {string} options.prompt - Prompt text describing extraction
+ * @param {string} [options.systemPrompt] - System prompt instructions
+ * @param {string} [options.primaryModel] - Preferred Vision model
+ * @param {string[]} [options.fallbackModels] - Fallback Vision models
+ * @param {number} [options.timeoutMs] - Request timeout (default 25000ms)
+ * @param {Object} env - Cloudflare Worker environment / secrets
+ * @returns {Promise<{ content: string, model: string, accountId: number }>}
+ */
+async function callOpenRouterVisionWithAccountFailover(options, env) {
+  const imageUrl = options?.imageUrl || '';
+  const prompt = options?.prompt || '';
+  if (!imageUrl && !options?.imageBase64) {
+    throw new Error('Image URL or Base64 is required for Vision analysis');
+  }
+
+  const configuredAccounts = getConfiguredOpenRouterAccounts(env);
+  if (configuredAccounts.length === 0) {
+    throw new Error('No configured OpenRouter API keys found in environment (OPENROUTER_API_KEY_1..4)');
+  }
+
+  const visionModels = [
+    ...(options.primaryModel ? [options.primaryModel] : []),
+    ...(Array.isArray(options.fallbackModels) && options.fallbackModels.length > 0 ? options.fallbackModels : VISION_OPENROUTER_MODELS)
+  ];
+  const resolvedVisionModels = [...new Set(visionModels.filter(Boolean))].slice(0, 4);
+  const primaryModel = resolvedVisionModels[0] || 'google/gemini-2.0-flash-001';
+
+  const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 25000;
+  const systemPrompt = options.systemPrompt || 'You are an expert OCR and Egyptian Business Directory assistant specializing in analyzing Egyptian business cards (كروت المحلات والشركات). You extract commercial details with maximum precision and return ONLY strict valid JSON.';
+
+  const formattedImageUrl = options.imageBase64
+    ? (options.imageBase64.startsWith('data:') ? options.imageBase64 : `data:${options.mimeType || 'image/jpeg'};base64,${options.imageBase64}`)
+    : imageUrl;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        {
+          type: 'image_url',
+          image_url: {
+            url: formattedImageUrl
+          }
+        }
+      ]
+    }
+  ];
+
+  const requestBody = JSON.stringify({
+    model: primaryModel,
+    models: resolvedVisionModels,
+    messages,
+    temperature: 0.1,
+    max_tokens: 1500
+  });
+
+  const now = Date.now();
+  let lastError = null;
+
+  for (let i = 0; i < configuredAccounts.length; i++) {
+    const account = configuredAccounts[i];
+    const isLastAccount = i === configuredAccounts.length - 1;
+    const cooldownUntil = _visionAccountCooldowns.get(account.id) || 0;
+
+    // Check if account is in cooldown (unless all configured accounts are in cooldown, in which case we retry anyway)
+    if (cooldownUntil > now && configuredAccounts.some(a => (_visionAccountCooldowns.get(a.id) || 0) <= now)) {
+      console.log(`[OpenRouter Vision] Skipping Account #${account.id} (in cooldown for ${Math.round((cooldownUntil - now)/1000)}s)...`);
+      continue;
+    }
+
+    try {
+      console.log(`[OpenRouter Vision] Account #${account.id} attempting vision extraction with model ${primaryModel}...`);
+
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${account.key.trim()}`,
+          'HTTP-Referer': 'https://dalilmanzala.com',
+          'X-Title': 'Dalil El Manzala Business Card Scanner'
+        },
+        body: requestBody,
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        // Quota, Rate-Limit (429), Insufficient Credits (402), or Provider Unavailable (503) -> cooldown & rotate
+        if (res.status === 429 || res.status === 402 || res.status === 503 || errText.includes('quota') || errText.includes('credit')) {
+          _visionAccountCooldowns.set(account.id, Date.now() + 60000); // 60s cooldown
+        }
+        lastError = new Error(`Account #${account.id} failed with HTTP ${res.status}: ${errText.slice(0, 150)}`);
+        console.warn(`[OpenRouter Vision] ${lastError.message}${!isLastAccount ? ', failing over to next account...' : ''}`);
+        continue;
+      }
+
+      const data = await res.json().catch(() => null);
+      const content = data?.choices?.[0]?.message?.content;
+      if (typeof content !== 'string' || !content.trim()) {
+        lastError = new Error(`Account #${account.id} returned empty content`);
+        console.warn(`[OpenRouter Vision] ${lastError.message}${!isLastAccount ? ', failing over to next account...' : ''}`);
+        continue;
+      }
+
+      // Success! Clear any cooldown for this account
+      _visionAccountCooldowns.delete(account.id);
+      console.log(`[OpenRouter Vision] Account #${account.id} successfully processed image (Model: ${data.model || primaryModel})`);
+      return {
+        content: content.trim(),
+        model: data.model || primaryModel,
+        accountId: account.id
+      };
+
+    } catch (err) {
+      const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
+      lastError = isTimeout ? new Error(`Account #${account.id} timeout after ${timeoutMs}ms`) : err;
+      console.warn(`[OpenRouter Vision] ${lastError.message}${!isLastAccount ? ', failing over to next account...' : ''}`);
+    }
+  }
+
+  console.error(`[OpenRouter Vision] All ${configuredAccounts.length} OpenRouter accounts failed for Vision request.`);
+  throw new Error(`All ${configuredAccounts.length} Vision AI accounts failed. ${lastError ? lastError.message : ''}`);
+}
+
 function jsonResponse(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -3919,6 +4270,69 @@ async function ensureNewSchemaColumnsInTurso(env) {
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at)").run().catch(() => {});
   } catch (err) {
     console.warn('[ensureNewSchemaColumnsInTurso] Notice:', err.message);
+  }
+}
+
+let _hasSanitizedData = false;
+async function ensureDataSanitizedInTurso(env) {
+  if (_hasSanitizedData) return;
+  _hasSanitizedData = true;
+  try {
+    const db = createTursoDB(env);
+
+    // 1. Wipe dummy 00000000000 phone numbers and WhatsApp links across all places
+    await db.prepare("UPDATE places SET phone = NULL WHERE phone = '00000000000' OR phone LIKE '0000%' OR phone = '0'").run().catch(() => {});
+    await db.prepare("UPDATE places SET whatsapp = NULL WHERE whatsapp = '00000000000' OR whatsapp LIKE '0000%' OR whatsapp = '0'").run().catch(() => {});
+
+    // 2. Fix Haddad main place (Gam'e Gadeed) - Clean description, category to electronics store
+    await db.prepare(`
+      UPDATE places 
+      SET name = 'شركة الحداد للأجهزة الكهربائية / فرع الجامع الجديد',
+          category_id = 'electronics',
+          address = 'المنزلة - شارع الجلاء بجوار الجامع الجديد',
+          description = 'معرض شركة الحداد للأجهزة الكهربائية والمنزلية (الفرع الرئيسي) بشارع الجلاء بجوار الجامع الجديد بالمنزلة. يقدم تشكيلة من الشاشات، الثلاجات، الغسالات، والأجهزة المنزلية.'
+      WHERE id = 'p_1789068276873_4uyxl7'
+    `).run().catch(() => {});
+
+    // 3. Fix Haddad branch 1 (Eman Radiology) - Separate accurate description and address
+    await db.prepare(`
+      UPDATE places 
+      SET name = 'شركة الحداد للأجهزة الكهربائية / فرع الإيمان للأشعة',
+          category_id = 'electronics',
+          address = 'المنزلة - شارع أمن الدولة - بجوار الإيمان للأشعة',
+          description = 'معرض شركة الحداد للأجهزة الكهربائية والمنزلية بشارع أمن الدولة بجوار الإيمان للأشعة بالمنزلة. يقدم تشكيلة من الأجهزة الكهربائية والشاشات.'
+      WHERE id = 'br_1789068276844_pp5v'
+    `).run().catch(() => {});
+
+    // 4. Fix Haddad branch 2 (Sahab Mobile) - Separate accurate description and address
+    await db.prepare(`
+      UPDATE places 
+      SET name = 'شركة الحداد للأجهزة الكهربائية / فرع السحاب',
+          category_id = 'electronics',
+          address = 'المنزلة - شارع أمن الدولة - بجوار السحاب لخدمات المحمول',
+          description = 'معرض شركة الحداد للأجهزة الكهربائية بشارع أمن الدولة بجوار السحاب لخدمات المحمول بالمنزلة.'
+      WHERE id = 'br_1789068276844_dvdt'
+    `).run().catch(() => {});
+
+    // 5. Clean El-Ezaby Shoes name (strip excess forward slash artifacts)
+    await db.prepare(`
+      UPDATE places
+      SET name = 'محل العزبي للأحذية والشنط (فرع شارع عمر أفندي)',
+          phone = NULL,
+          whatsapp = NULL
+      WHERE id = 'p_1789067565887_vxfkl7'
+    `).run().catch(() => {});
+
+    await db.prepare(`
+      UPDATE places
+      SET name = 'محل العزبي للأحذية والشنط (فرع شارع أمن الدولة)',
+          phone = NULL,
+          whatsapp = NULL
+      WHERE id = 'br_1789067565861_swwo'
+    `).run().catch(() => {});
+
+  } catch (err) {
+    console.warn('[ensureDataSanitizedInTurso] Notice:', err.message);
   }
 }
 
@@ -4276,3 +4690,107 @@ function parseJson(value, fallback) {
     return fallback;
   }
 }
+
+function normalizeSocialLinkWorker(platform = '', input = '') {
+  if (!input || typeof input !== 'string') return '';
+  const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+  let raw = String(input).replace(/[٠-٩]/g, d => arabicDigits.indexOf(d)).trim();
+  if (!raw) return '';
+
+  const plat = String(platform || '').toLowerCase().trim();
+  const p = plat === 'twitter' ? 'x' : plat;
+
+  const hasProtocol = /^https?:\/\//i.test(raw);
+  let urlCandidate = hasProtocol ? raw : '';
+
+  if (!hasProtocol) {
+    if (/^(www\.)?(facebook\.com|fb\.com|fb\.me|instagram\.com|instagr\.am|tiktok\.com|vm\.tiktok\.com|twitter\.com|x\.com|threads\.net|youtube\.com|youtu\.be|t\.me|snapchat\.com)/i.test(raw)) {
+      urlCandidate = 'https://' + raw;
+    } else if (p === 'website' && /^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(raw)) {
+      urlCandidate = 'https://' + raw;
+    }
+  }
+
+  if (urlCandidate) {
+    try {
+      if (urlCandidate.startsWith('http://') && p !== 'website') {
+        urlCandidate = 'https://' + urlCandidate.slice(7);
+      }
+      if (p === 'facebook' || urlCandidate.includes('facebook.com') || urlCandidate.includes('fb.com') || urlCandidate.includes('fb.me')) {
+        urlCandidate = urlCandidate
+          .replace(/https?:\/\/(m|web|touch|mbasic)\.facebook\.com/i, 'https://www.facebook.com')
+          .replace(/https?:\/\/facebook\.com/i, 'https://www.facebook.com')
+          .replace(/https?:\/\/(www\.)?fb\.(com|me)/i, 'https://www.facebook.com');
+      }
+      if (p === 'instagram' || urlCandidate.includes('instagram.com') || urlCandidate.includes('instagr.am')) {
+        urlCandidate = urlCandidate
+          .replace(/https?:\/\/(www\.)?instagr\.am/i, 'https://www.instagram.com')
+          .replace(/https?:\/\/instagram\.com/i, 'https://www.instagram.com');
+      }
+      if (p === 'tiktok' || urlCandidate.includes('tiktok.com')) {
+        urlCandidate = urlCandidate.replace(/https?:\/\/tiktok\.com/i, 'https://www.tiktok.com');
+      }
+      if (p === 'youtube' || urlCandidate.includes('youtube.com')) {
+        urlCandidate = urlCandidate.replace(/https?:\/\/youtube\.com/i, 'https://www.youtube.com');
+      }
+      if (p === 'threads' || urlCandidate.includes('threads.net')) {
+        urlCandidate = urlCandidate.replace(/https?:\/\/threads\.net/i, 'https://www.threads.net');
+      }
+      if (p === 'x' && urlCandidate.includes('twitter.com')) {
+        urlCandidate = urlCandidate.replace(/https?:\/\/(www\.)?twitter\.com/i, 'https://x.com');
+      }
+
+      const url = new URL(urlCandidate);
+      const trackingKeys = ['igsh', 'igshid', 'mibextid', 'fbclid', '_rdr', '_r', '_t', 'utm_source', 'utm_medium', 'utm_campaign', 'feature', 'si'];
+      trackingKeys.forEach(k => url.searchParams.delete(k));
+      let clean = url.toString();
+      if (clean.endsWith('/') && !clean.includes('/share/')) {
+        if (url.pathname === '/' && !url.search && !url.hash) clean = clean.slice(0, -1);
+        else if (url.pathname.length > 1 && !url.search && !url.hash) clean = clean.slice(0, -1);
+      }
+      return clean;
+    } catch (_) {
+      return urlCandidate;
+    }
+  }
+
+  let handle = raw.replace(/^["'`]|["'`]$/g, '').trim().replace(/^[@/]+/, '').trim();
+  if (!handle) return '';
+
+  switch (p) {
+    case 'instagram': return `https://www.instagram.com/${handle.replace(/[/?#].*$/, '').replace(/^@+/, '')}`;
+    case 'facebook': {
+      if (handle.startsWith('profile.php') || handle.startsWith('pages/') || handle.startsWith('share/')) return `https://www.facebook.com/${handle}`;
+      return `https://www.facebook.com/${handle.replace(/^@+/, '')}`;
+    }
+    case 'tiktok': return `https://www.tiktok.com/@${handle.replace(/^@+/, '')}`;
+    case 'x':
+    case 'twitter': return `https://x.com/${handle.replace(/[/?#].*$/, '').replace(/^@+/, '')}`;
+    case 'threads': return `https://www.threads.net/@${handle.replace(/[/?#].*$/, '').replace(/^@+/, '')}`;
+    case 'youtube': {
+      if (handle.startsWith('c/') || handle.startsWith('channel/') || handle.startsWith('user/')) return `https://www.youtube.com/${handle}`;
+      return `https://www.youtube.com/@${handle.replace(/^@+/, '')}`;
+    }
+    case 'website': return handle.includes('.') ? `https://${handle}` : `https://${handle}.com`;
+    default: return `https://${handle}`;
+  }
+}
+
+function normalizeSocialLinksWorker(socialObj = {}) {
+  if (!socialObj || typeof socialObj !== 'object') return {};
+  const normalized = {};
+  const platforms = ['facebook', 'instagram', 'tiktok', 'x', 'twitter', 'threads', 'youtube', 'website'];
+  platforms.forEach(plat => {
+    const rawVal = socialObj[plat] || (plat === 'x' ? socialObj.twitter : '') || (plat === 'twitter' ? socialObj.x : '');
+    if (rawVal) {
+      const clean = normalizeSocialLinkWorker(plat, rawVal);
+      if (clean) {
+        normalized[plat] = clean;
+        if (plat === 'x') normalized.twitter = clean;
+        if (plat === 'twitter') normalized.x = clean;
+      }
+    }
+  });
+  return normalized;
+}
+

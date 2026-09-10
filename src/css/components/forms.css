@@ -338,3 +338,535 @@
 @media (max-width: 640px) {
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Business Card AI Scanner & Autofill
+   ═══════════════════════════════════════════════════════════ */
+.bcs-container {
+  width: 100%;
+  margin-bottom: var(--space-5, 1.25rem);
+}
+
+.bcs-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(27, 79, 114, 0.03) 0%, rgba(243, 156, 18, 0.06) 100%);
+  border: 1.5px dashed rgba(41, 128, 185, 0.4);
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.25rem;
+  transition: all var(--transition-base, 0.2s ease);
+  box-sizing: border-box;
+}
+
+.bcs-card:hover {
+  border-color: var(--primary, #1B4F72);
+  box-shadow: 0 4px 20px rgba(27, 79, 114, 0.08);
+}
+
+.bcs-card--preview {
+  background: var(--surface, #ffffff);
+  border: 1.5px solid var(--border-strong, #c8d4df);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+}
+
+.bcs-card--processing {
+  background: var(--surface, #ffffff);
+  border: 1.5px solid var(--primary-light, #2980B9);
+  box-shadow: 0 6px 24px rgba(41, 128, 185, 0.1);
+}
+
+.bcs-card--success {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1.5px solid #10b981;
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.12);
+}
+
+.bcs-card--error {
+  background: #fef2f2;
+  border: 1.5px solid #ef4444;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.1);
+}
+
+.bcs-badge-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bcs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.bcs-content-box {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.bcs-icon-circle {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 14px;
+  background: rgba(27, 79, 114, 0.1);
+  color: var(--primary, #1B4F72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 2px 6px rgba(27, 79, 114, 0.08);
+}
+
+.bcs-text-group {
+  flex: 1;
+}
+
+.bcs-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  margin: 0 0 4px 0;
+}
+
+.bcs-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary, #334155);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.bcs-actions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bcs-btn-main {
+  flex: 1;
+  min-width: 180px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary, #1B4F72), var(--primary-light, #2980B9));
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(27, 79, 114, 0.25);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bcs-btn-main:active {
+  transform: scale(0.98);
+}
+
+.bcs-btn-sub {
+  flex: 1;
+  min-width: 180px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-strong, #c8d4df);
+  background: var(--surface, #ffffff);
+  color: var(--text-primary, #0f172a);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bcs-btn-sub:hover {
+  background: var(--surface-2, #f8f9fa);
+  border-color: var(--primary-light, #2980B9);
+}
+
+.bcs-footer-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted, #475569);
+  padding-top: 10px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+/* Preview State */
+.bcs-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border, #e8edf2);
+}
+
+.bcs-preview-media-box {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0f172a;
+  border: 1px solid var(--border, #e8edf2);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 280px;
+}
+
+.bcs-preview-img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  display: block;
+}
+
+.bcs-preview-overlay-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+  color: #ffffff;
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.bcs-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bcs-btn-confirm {
+  flex: 2;
+  min-width: 200px;
+  font-weight: 800;
+}
+
+.bcs-btn-retake {
+  flex: 1;
+  min-width: 120px;
+}
+
+.bcs-btn-cancel {
+  min-width: 70px;
+}
+
+/* Processing Stepper */
+.bcs-processing-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border, #e8edf2);
+}
+
+.bcs-stepper-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface-2, #f8f9fa);
+  border-radius: 12px;
+  border: 1px solid var(--border, #e8edf2);
+}
+
+.bcs-step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0.45;
+  transition: all 0.3s ease;
+}
+
+.bcs-step-item.active {
+  opacity: 1;
+  font-weight: 700;
+}
+
+.bcs-step-item.completed {
+  opacity: 0.95;
+  font-weight: 600;
+}
+
+.bcs-step-dot {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--surface-3, #eef2f7);
+  color: var(--text-secondary, #334155);
+  border: 1.5px solid var(--border-strong, #c8d4df);
+  transition: all 0.3s ease;
+}
+
+.bcs-step-item.active .bcs-step-dot {
+  background: var(--primary, #1B4F72);
+  color: #ffffff;
+  border-color: var(--primary, #1B4F72);
+  box-shadow: 0 0 0 4px rgba(27, 79, 114, 0.15);
+}
+
+.bcs-step-item.completed .bcs-step-dot {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+}
+
+.bcs-step-label {
+  font-size: 13px;
+  color: var(--text-primary, #0f172a);
+}
+
+/* Success & Checklist */
+.bcs-success-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.bcs-success-icon {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.bcs-checklist-card {
+  background: #ffffff;
+  border: 1px solid #d1fae5;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.06);
+}
+
+.bcs-checklist-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #065f46;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bcs-checklist-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.bcs-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.bcs-checklist-item.required-field {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+  font-weight: 700;
+}
+
+.bcs-chk-icon {
+  font-size: 14px;
+}
+
+.bcs-chk-label {
+  flex: 1;
+}
+
+.bcs-chk-req {
+  font-size: 10.5px;
+  color: #e11d48;
+}
+
+.bcs-chk-opt {
+  font-size: 10.5px;
+  color: var(--text-muted, #475569);
+}
+
+.bcs-success-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Camera Overlay Viewfinder */
+.bcs-camera-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+}
+
+.bcs-camera-dialog {
+  background: #111827;
+  border-radius: 20px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.bcs-camera-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #1f2937;
+}
+
+.bcs-camera-close {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.bcs-camera-close:hover {
+  color: #ffffff;
+}
+
+.bcs-camera-viewfinder {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  background: #000000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#bcs-video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bcs-guide-frame {
+  position: absolute;
+  width: 82%;
+  height: 72%;
+  border: 2px dashed rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 10px;
+}
+
+.bcs-frame-hint {
+  background: rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+.bcs-frame-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: #38bdf8;
+  border-style: solid;
+}
+.bcs-frame-corner.top-right { top: -2px; right: -2px; border-width: 3px 3px 0 0; }
+.bcs-frame-corner.top-left { top: -2px; left: -2px; border-width: 3px 0 0 3px; }
+.bcs-frame-corner.bottom-right { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; }
+.bcs-frame-corner.bottom-left { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; }
+
+.bcs-camera-bottombar {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f2937;
+}
+
+.bcs-shutter-btn {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 4px solid var(--primary-light, #2980B9);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.bcs-shutter-btn:hover {
+  transform: scale(1.06);
+}
+
+.bcs-shutter-btn:active {
+  transform: scale(0.92);
+}
+
+.bcs-shutter-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #e5e7eb;
+}

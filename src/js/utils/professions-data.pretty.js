@@ -1087,13 +1087,35 @@ export function resolvePlaceProfession(place) {
     if (matched) return matched;
   }
 
-  // 2. Exact match in name or custom category
-  const textToScan = `${place.name || ''} ${place.customCategory || ''} ${place.categoryName || ''} ${(Array.isArray(place.services) ? place.services.join(' ') : '')}`;
+  // Exclude retail and commercial stores from being categorized as craftsmen
+  const categoryId = String(place.categoryId || place.category_id || '').toLowerCase();
+  const RETAIL_CATEGORIES = new Set([
+    'electronics', 'home-appliances', 'phones', 'supermarket', 'grocery', 
+    'clothing', 'shoes', 'pharmacy', 'optics'
+  ]);
+  if (RETAIL_CATEGORIES.has(categoryId)) {
+    return null;
+  }
+
+  const nameNorm = normalizeArabic(place.name || '');
+  const RETAIL_EXCLUSION_WORDS = ['معرض', 'شركة', 'توكيل', 'ستور', 'مول', 'هايبر', 'متجر', 'تجارة', 'سنترال', 'سوبرماركت'];
+  const isRetailStore = RETAIL_EXCLUSION_WORDS.some(w => {
+    const nw = normalizeArabic(w);
+    return nameNorm.split(/\s+/).includes(nw) || nameNorm.startsWith(nw + ' ') || nameNorm.includes(' ' + nw + ' ');
+  });
+  if (isRetailStore) {
+    return null;
+  }
+
+  // 2. Whole-word match in name or custom category
+  const textToScan = `${place.name || ''} ${place.customCategory || ''} ${(Array.isArray(place.services) ? place.services.join(' ') : '')}`;
   const normText = normalizeArabic(textToScan);
+  const words = normText.split(/\s+/).filter(Boolean);
 
   for (const prof of ALL_PROFESSIONS) {
     const profNorm = normalizeArabic(prof.name);
-    if (normText.includes(profNorm)) {
+    // Whole-word or complete phrase match only
+    if (words.includes(profNorm) || normText.includes(` ${profNorm} `) || normText.startsWith(`${profNorm} `) || normText.endsWith(` ${profNorm}`)) {
       return prof;
     }
   }

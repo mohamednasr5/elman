@@ -10,6 +10,7 @@ import { normalizeArabic } from '../utils/arabic.js';
 import { isAtmPlace } from '../utils/atm.js';
 import { WORKER_URL } from '../core/firebase.js';
 import { getIdToken } from '../core/auth.js';
+import { isValidPhoneNumber } from '../utils/phone.js';
 
 export async function validatePlaceUniqueness({ name, phone, excludePlaceId = null, categoryId = '', placeData = null }) {
   const isAtm = isAtmPlace(placeData || { categoryId, name });
@@ -17,7 +18,9 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
   const cleanPhoneNum = (phone || '').replace(/\D/g, '');
   if (!normName) throw new Error(isAtm ? 'يرجى إدخال اسم البنك' : 'اسم المكان مطلوب');
   if (isAtm) return;
-  if (!cleanPhoneNum || cleanPhoneNum.length < 4 || cleanPhoneNum.length > 15) throw new Error('يرجى إدخال رقم هاتف صحيح للمكان (موبايل، أرضي، أو رقم موحد مثل 17555)');
+  if (!isValidPhoneNumber(phone)) {
+    throw new Error('يرجى إدخال رقم هاتف مصري صحيح ومفعل (موبايل 11 رقم أو أرضي أو رقم موحد)، ولا يُقبل تسجيل أرقام غير صالحة أو أصفار.');
+  }
   const allPlaces = (await getPublishedPlaces({ limit: 1000 })) || [];
   const matchingPhonePlaces = [];
   for (const p of allPlaces) {

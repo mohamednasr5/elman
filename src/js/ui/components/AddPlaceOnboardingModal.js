@@ -191,9 +191,16 @@ export function showAddPlaceOnboardingModal(force = false) {
           <span>لا تعرض هذه النصائح الإرشادية مرة أخرى</span>
         </label>
 
-        <button type="button" class="btn btn-primary btn-lg btn-onboarding-start" id="btn-start-adding-place">
-          <span>فهمت، ابدأ إضافة مكاني الآن 🚀</span>
-        </button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;width:100%;justify-content:center;margin-top:8px">
+          <button type="button" class="btn btn-lg" id="btn-onboarding-scan-card" style="background:linear-gradient(135deg,#F59E0B 0%,#D97706 100%);color:#fff;border:none;font-weight:900;box-shadow:0 4px 14px rgba(245,158,11,0.35);padding:12px 24px;border-radius:12px;display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+            <span style="font-size:18px">📸</span>
+            <span>تصوير كارت المحل بالـ AI (تعبئة فورية)</span>
+          </button>
+
+          <button type="button" class="btn btn-primary btn-lg btn-onboarding-start" id="btn-start-adding-place" style="border-radius:12px">
+            <span>البدء وإدخال البيانات 🚀</span>
+          </button>
+        </div>
       </div>
 
     </div>
@@ -216,6 +223,13 @@ export function showAddPlaceOnboardingModal(force = false) {
       document.body.style.overflow = '';
     }, 300);
   };
+
+  overlay.querySelector('#btn-onboarding-scan-card')?.addEventListener('click', () => {
+    closeOnboarding();
+    setTimeout(() => {
+      document.getElementById('bcs-btn-take-photo')?.click();
+    }, 350);
+  });
 
   overlay.querySelector('#btn-close-onboarding-top').addEventListener('click', closeOnboarding);
   overlay.querySelector('#btn-start-adding-place').addEventListener('click', closeOnboarding);

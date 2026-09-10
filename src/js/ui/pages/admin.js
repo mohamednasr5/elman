@@ -19,6 +19,7 @@ import { normalizePhoneNumber } from '../../utils/phone.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { ALL_PROFESSIONS } from '../../utils/professions-data.js';
+import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js';
 
 // ── In-Memory Cache Store for 0ms Tab Switching ──
 const adminCache = {
@@ -5577,32 +5578,32 @@ window.editPlaceAdmin = async (placeId) => {
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
             <div class="form-group">
               <label class="form-label" style="font-size:11px">📘 Facebook</label>
-              <input type="url" id="aep-social-facebook" class="form-input" placeholder="https://facebook.com/..." value="${escAttr(place.social?.facebook || '')}" style="direction:ltr" />
+              <input type="text" inputmode="url" id="aep-social-facebook" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://..." value="${escAttr(place.social?.facebook || '')}" style="direction:ltr" autocomplete="off" />
             </div>
             <div class="form-group">
               <label class="form-label" style="font-size:11px">✖️ X (Twitter)</label>
-              <input type="url" id="aep-social-x" class="form-input" placeholder="https://x.com/..." value="${escAttr(place.social?.x || place.social?.twitter || '')}" style="direction:ltr" />
+              <input type="text" inputmode="url" id="aep-social-x" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://..." value="${escAttr(place.social?.x || place.social?.twitter || '')}" style="direction:ltr" autocomplete="off" />
             </div>
             <div class="form-group">
               <label class="form-label" style="font-size:11px">📷 Instagram</label>
-              <input type="url" id="aep-social-instagram" class="form-input" placeholder="https://instagram.com/..." value="${escAttr(place.social?.instagram || '')}" style="direction:ltr" />
+              <input type="text" inputmode="url" id="aep-social-instagram" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://..." value="${escAttr(place.social?.instagram || '')}" style="direction:ltr" autocomplete="off" />
             </div>
             <div class="form-group">
               <label class="form-label" style="font-size:11px">🎵 TikTok</label>
-              <input type="url" id="aep-social-tiktok" class="form-input" placeholder="https://tiktok.com/@..." value="${escAttr(place.social?.tiktok || '')}" style="direction:ltr" />
+              <input type="text" inputmode="url" id="aep-social-tiktok" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://..." value="${escAttr(place.social?.tiktok || '')}" style="direction:ltr" autocomplete="off" />
             </div>
             <div class="form-group">
               <label class="form-label" style="font-size:11px">🧵 Threads</label>
-              <input type="url" id="aep-social-threads" class="form-input" placeholder="https://threads.net/@..." value="${escAttr(place.social?.threads || '')}" style="direction:ltr" />
+              <input type="text" inputmode="url" id="aep-social-threads" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://..." value="${escAttr(place.social?.threads || '')}" style="direction:ltr" autocomplete="off" />
             </div>
             <div class="form-group">
               <label class="form-label" style="font-size:11px">▶️ YouTube</label>
-              <input type="url" id="aep-social-youtube" class="form-input" placeholder="https://youtube.com/@..." value="${escAttr(place.social?.youtube || '')}" style="direction:ltr" />
+              <input type="text" inputmode="url" id="aep-social-youtube" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://..." value="${escAttr(place.social?.youtube || '')}" style="direction:ltr" autocomplete="off" />
             </div>
           </div>
           <div class="form-group" style="margin-top:8px">
             <label class="form-label" style="font-size:11px">🌍 الموقع الإلكتروني الرسمي (Website)</label>
-            <input type="url" id="aep-social-website" class="form-input" placeholder="https://..." value="${escAttr(place.social?.website || '')}" style="direction:ltr" />
+            <input type="text" inputmode="url" id="aep-social-website" class="form-input" placeholder="yoursite.com أو https://..." value="${escAttr(place.social?.website || '')}" style="direction:ltr" autocomplete="off" />
           </div>
         </div>
 
@@ -5647,14 +5648,14 @@ window.editPlaceAdmin = async (placeId) => {
             description: document.getElementById('aep-description')?.value.trim() || '',
             services: servicesArr,
             social: {
-              facebook: document.getElementById('aep-social-facebook')?.value.trim() || '',
-              x: document.getElementById('aep-social-x')?.value.trim() || '',
-              twitter: document.getElementById('aep-social-x')?.value.trim() || '',
-              instagram: document.getElementById('aep-social-instagram')?.value.trim() || '',
-              tiktok: document.getElementById('aep-social-tiktok')?.value.trim() || '',
-              threads: document.getElementById('aep-social-threads')?.value.trim() || '',
-              youtube: document.getElementById('aep-social-youtube')?.value.trim() || '',
-              website: document.getElementById('aep-social-website')?.value.trim() || ''
+              facebook: normalizeSocialLink('facebook', document.getElementById('aep-social-facebook')?.value),
+              x: normalizeSocialLink('x', document.getElementById('aep-social-x')?.value),
+              twitter: normalizeSocialLink('x', document.getElementById('aep-social-x')?.value),
+              instagram: normalizeSocialLink('instagram', document.getElementById('aep-social-instagram')?.value),
+              tiktok: normalizeSocialLink('tiktok', document.getElementById('aep-social-tiktok')?.value),
+              threads: normalizeSocialLink('threads', document.getElementById('aep-social-threads')?.value),
+              youtube: normalizeSocialLink('youtube', document.getElementById('aep-social-youtube')?.value),
+              website: normalizeSocialLink('website', document.getElementById('aep-social-website')?.value)
             },
             updatedAt: serverTimestamp()
           };
@@ -5705,6 +5706,11 @@ window.editPlaceAdmin = async (placeId) => {
         closeOnClick: true
       }
     ]
+  });
+
+  ['facebook', 'x', 'instagram', 'tiktok', 'threads', 'youtube', 'website'].forEach(plat => {
+    const el = document.getElementById(`aep-social-${plat}`);
+    if (el) attachSmartSocialInput(el, plat);
   });
 
   document.getElementById('aep-area')?.addEventListener('change', (e) => {

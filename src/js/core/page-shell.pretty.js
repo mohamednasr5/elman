@@ -291,6 +291,200 @@ function _pwaBannerHTML() {
 }
 
 /* ─────────────────────────────────────────────────────────
+   SITE-WIDE 1:1 ADS BANNER PLACEMENT CONTROLLER
+───────────────────────────────────────────────────────── */
+/**
+ * Resolves the display placement for the wide ads banner:
+ * - 'none': Do not show banner (or hide if existing)
+ * - 'home': Dedicated homepage placement in index.html (inside home template)
+ * - 'top': Placed at the top of the page (below header, before page content)
+ * - 'bottom': Placed at the bottom of the page (after page content, before footer)
+ */
+export function getAdsBannerPlacement(activeFile = '', section = '') {
+  const file = String(activeFile || '').toLowerCase();
+  const path = (typeof window !== 'undefined' && window.location ? window.location.pathname.toLowerCase() : '');
+  const search = (typeof window !== 'undefined' && window.location ? window.location.search : '');
+  const sec = String(section || (search ? new URLSearchParams(search).get('section') : '') || '').toLowerCase();
+
+  // 1. NEVER SHOW BANNER ('none'):
+  // - Place detail page: place.html, /p/*, /place/*
+  if (file.includes('place.html') || file === 'place' || file.startsWith('/p/') || file.includes('/p/') || file.includes('/place/') ||
+      path.includes('place.html') || path.startsWith('/p/') || path.includes('/place/')) {
+    return 'none';
+  }
+
+  // - Admin panel: admin.html, admin/index.html, /admin/*
+  if (file.includes('admin') || path.includes('admin.html') || path.includes('/admin')) {
+    return 'none';
+  }
+
+  // - Quran, Quran search, Surah, and Hadith: quran.html, quran-surah.html, quran-search.html, hadith.html
+  if (file.includes('quran') || file.includes('hadith') || path.includes('quran') || path.includes('hadith')) {
+    return 'none';
+  }
+
+  // - Contact page: contact.html
+  if (file.includes('contact.html') || path.includes('contact.html')) {
+    return 'none';
+  }
+
+  // - Login / Register page: login.html, /login
+  if (file.includes('login') || path.includes('login.html') || path.includes('/login') || path.endsWith('login.html')) {
+    return 'none';
+  }
+
+  // - User Dashboard (dashboard.html, /dashboard):
+  // User rule: For the entire user dashboard, ads MUST BE AT THE BOTTOM, NEVER TOP!
+  // - Add / Edit place: never show banner
+  if (file.includes('dashboard') || path.includes('dashboard.html') || path.includes('/dashboard')) {
+    if (sec === 'add' || sec === 'add-place' || sec === 'edit' || sec === 'edit-place') {
+      return 'none';
+    }
+    return 'bottom';
+  }
+
+  // 2. HOMEPAGE ('home'): current position in index.html
+  if (file === 'index.html' || file === 'home' || path === '/' || path.endsWith('/index.html') || path.endsWith('/')) {
+    return 'home';
+  }
+
+  // 3. TOP OF PAGE ('top'):
+  // - Places catalog page: places.html (place.html already matched as 'none' above)
+  if (file.includes('places.html') || path.includes('places.html')) {
+    return 'top';
+  }
+
+  // - Categories: categories.html, category.html, /category/*
+  if (file.includes('categories.html') || file.includes('category.html') || path.includes('categories.html') || path.includes('category.html') || path.includes('/category/')) {
+    return 'top';
+  }
+
+  // - Offers: offers.html
+  if (file.includes('offers.html') || path.includes('offers.html')) {
+    return 'top';
+  }
+
+  // - Happening Now: now.html
+  if (file.includes('now.html') || path.includes('now.html')) {
+    return 'top';
+  }
+
+  // - Around Me standalone page: around-me.html
+  if (file.includes('around-me.html') || path.includes('around-me.html')) {
+    return 'top';
+  }
+
+  // 4. BOTTOM OF PAGE ('bottom'):
+  // - Advanced Search: search.html
+  // - Popular: popular.html
+  // - Dashboard overview (لوحتي): dashboard.html with sec=overview or no sec
+  // - Dashboard notifications: dashboard.html with sec=notifications
+  // - Dashboard loyalty: dashboard.html with sec=loyalty
+  // - All other pages on the site not mentioned
+  return 'bottom';
+}
+
+export function updateAdsBannerPlacement(activeFile = '', section = '') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  const placement = getAdsBannerPlacement(activeFile, section);
+  let banner = document.getElementById('wide-ads-banner');
+
+  if (placement === 'none') {
+    if (banner) {
+      banner.style.display = 'none';
+    }
+    return;
+  }
+
+  if (placement === 'home') {
+    // Dedicated in-page container managed by home.js
+    const pollHomeBanner = (attempts = 0) => {
+      const b = document.getElementById('wide-ads-banner');
+      if (b && !b.dataset.wideAdsMounted) {
+        import('../ui/components/WideAdsBanner.js')
+          .then(({ mountWideAdsBanner }) => mountWideAdsBanner(b))
+          .catch(() => {});
+      } else if (!b && attempts < 25) {
+        setTimeout(() => pollHomeBanner(attempts + 1), 100);
+      }
+    };
+    pollHomeBanner();
+    return;
+  }
+
+  // Create banner container if it does not yet exist
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'wide-ads-banner';
+    banner.className = 'container';
+  }
+
+  banner.style.display = '';
+
+  if (placement === 'top') {
+    banner.className = 'container wide-ads-banner-page-top';
+    banner.style.marginTop = 'calc(var(--header-height, 64px) + 20px)';
+    banner.style.marginBottom = '20px';
+
+    const header = document.getElementById('site-header') || document.getElementById('header-slot');
+    const pageContainer = document.getElementById('page-container') || document.querySelector('main') || document.getElementById('app');
+
+    if (pageContainer && pageContainer.parentNode) {
+      if (banner.nextSibling !== pageContainer || banner.parentNode !== pageContainer.parentNode) {
+        pageContainer.parentNode.insertBefore(banner, pageContainer);
+      }
+    } else if (header && header.nextSibling && header.parentNode) {
+      if (banner.previousSibling !== header) {
+        header.parentNode.insertBefore(banner, header.nextSibling);
+      }
+    } else if (!document.body.contains(banner)) {
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+  } else if (placement === 'bottom') {
+    banner.className = 'container wide-ads-banner-page-bottom';
+    banner.style.marginTop = '28px';
+    banner.style.marginBottom = '28px';
+
+    const pwaSlot = document.getElementById('pwa-slot');
+    const footerSlot = document.getElementById('footer-slot');
+    const navSlot = document.getElementById('nav-slot');
+    const pageContainer = document.getElementById('page-container') || document.querySelector('main');
+
+    // Position before pwaSlot / footerSlot / navSlot or after pageContainer
+    if (pwaSlot && pwaSlot.parentNode) {
+      if (banner.nextSibling !== pwaSlot || banner.parentNode !== pwaSlot.parentNode) {
+        pwaSlot.parentNode.insertBefore(banner, pwaSlot);
+      }
+    } else if (footerSlot && footerSlot.parentNode) {
+      if (banner.nextSibling !== footerSlot || banner.parentNode !== footerSlot.parentNode) {
+        footerSlot.parentNode.insertBefore(banner, footerSlot);
+      }
+    } else if (navSlot && navSlot.parentNode) {
+      if (banner.nextSibling !== navSlot || banner.parentNode !== navSlot.parentNode) {
+        navSlot.parentNode.insertBefore(banner, navSlot);
+      }
+    } else if (pageContainer && pageContainer.nextSibling && pageContainer.parentNode) {
+      pageContainer.parentNode.insertBefore(banner, pageContainer.nextSibling);
+    } else if (!document.body.contains(banner)) {
+      document.body.appendChild(banner);
+    }
+  }
+
+  // Mount contents if not already mounted
+  if (!banner.dataset.wideAdsMounted) {
+    import('../ui/components/WideAdsBanner.js')
+      .then(({ mountWideAdsBanner }) => mountWideAdsBanner(banner))
+      .catch(() => {});
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.updateAdsBannerPlacement = updateAdsBannerPlacement;
+  window.getAdsBannerPlacement = getAdsBannerPlacement;
+}
+
+/* ─────────────────────────────────────────────────────────
    MAIN INIT — called from every page
 ───────────────────────────────────────────────────────── */
 export async function initPage(activeFile = '') {
@@ -299,58 +493,12 @@ export async function initPage(activeFile = '') {
 
   /* 2. Inject shared layout blocks */
   _inject('header-slot',  _headerHTML(activeFile));
-  const isHomePage = activeFile === 'index.html' || activeFile === 'home' || (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname.endsWith('/index.html') || window.location.pathname.endsWith('/')));
-  const isPlaceDetailPage = activeFile === 'place.html' || activeFile === 'place' || (typeof window !== 'undefined' && (window.location.pathname.includes('place.html') || window.location.pathname.startsWith('/p/')));
-
-  if (isPlaceDetailPage) {
-    const existing = document.getElementById('wide-ads-banner');
-    if (existing) existing.remove();
-  } else if (!isHomePage) {
-    let banner = document.getElementById('wide-ads-banner');
-    if (!banner) {
-      banner = document.createElement('div');
-      banner.id = 'wide-ads-banner';
-      banner.className = 'container wide-ads-banner-page-top';
-      banner.style.marginTop = 'calc(var(--header-height, 64px) + 22px)';
-      banner.style.marginBottom = '24px';
-
-      const header = document.getElementById('site-header');
-      const pageMain = document.getElementById('page-container') || document.querySelector('main') || document.querySelector('#admin-container') || document.querySelector('.admin-layout') || document.querySelector('#app') || document.body;
-
-      if (header && header.nextSibling) {
-        header.parentNode.insertBefore(banner, header.nextSibling);
-      } else if (pageMain && pageMain.firstChild) {
-        pageMain.insertBefore(banner, pageMain.firstChild);
-      } else if (pageMain) {
-        pageMain.appendChild(banner);
-      } else {
-        document.body.appendChild(banner);
-      }
-    }
-    if (banner) {
-      setTimeout(() => {
-        import('../ui/components/WideAdsBanner.js')
-          .then(({ mountWideAdsBanner }) => mountWideAdsBanner(banner))
-          .catch(() => {});
-      }, 50);
-    }
-  } else {
-    // For homepage: home.js handles placement right after "محتاج إيه دلوقتي؟"
-    const pollHomeBanner = (attempts = 0) => {
-      const banner = document.getElementById('wide-ads-banner');
-      if (banner && !banner.dataset.wideAdsMounted) {
-        import('../ui/components/WideAdsBanner.js')
-          .then(({ mountWideAdsBanner }) => mountWideAdsBanner(banner))
-          .catch(() => {});
-      } else if (!banner && attempts < 25) {
-        setTimeout(() => pollHomeBanner(attempts + 1), 100);
-      }
-    };
-    pollHomeBanner();
-  }
   _inject('footer-slot',  _footerHTML());
   _inject('nav-slot',     _bottomNavHTML(activeFile));
   _inject('pwa-slot',     _pwaBannerHTML());
+
+  /* 3. Site-Wide 1:1 Ads Banner Placement */
+  updateAdsBannerPlacement(activeFile);
 
   /* 4. Check standalone APK/PWA environment to hide APK download button */
   _checkApkPwaEnvironment();
@@ -573,6 +721,7 @@ function _renderUser(user) {
           <div class="header__dropdown" id="usr-dd" role="menu">
             <a href="dashboard.html"                          class="header__dropdown-item" role="menuitem">🏠 لوحتي</a>
             <a href="dashboard.html?section=notifications"    class="header__dropdown-item" role="menuitem">🔔 الإشعارات والزيارات</a>
+            <a href="dashboard.html?section=add&action=scan"  class="header__dropdown-item" role="menuitem" style="color:#059669;font-weight:700">📸 تصوير كارت المحل (AI)</a>
             <a href="dashboard.html?section=add"              class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>
             ${isAdmin(user)
               ? '<a href="admin.html" class="header__dropdown-item" style="color:var(--secondary,#F5A623);font-weight:bold" role="menuitem">⚙️ لوحة الإدارة</a>'
@@ -660,6 +809,13 @@ export async function openDashboardMoreModal(user = null) {
         <span class="more-section-badge">إدارة الأنشطة</span>
       </div>
       <div class="more-menu-grid">
+        <a href="dashboard.html?section=add&action=scan" class="more-menu-tile" style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #10b981;" data-dash-nav="scan">
+          <span class="tile-icon" style="background:rgba(16,185,129,0.2)">📸</span>
+          <div class="tile-info">
+            <span class="tile-title" style="color:#065f46;font-weight:800">تصوير كارت المحل</span>
+            <span class="tile-sub" style="color:#047857">إضافة تلقائية بالذكاء الاصطناعي ✨</span>
+          </div>
+        </a>
         <a href="dashboard.html?section=places" class="more-menu-tile" data-dash-nav="places">
           <span class="tile-icon">🏬</span>
           <div class="tile-info">
@@ -670,7 +826,7 @@ export async function openDashboardMoreModal(user = null) {
         <a href="dashboard.html?section=add" class="more-menu-tile more-menu-tile--green" data-dash-nav="add">
           <span class="tile-icon" style="background:rgba(16,185,129,0.15)">➕</span>
           <div class="tile-info">
-            <span class="tile-title">إضافة مكان</span>
+            <span class="tile-title">إضافة مكان يدوياً</span>
             <span class="tile-sub">أضف نشاطك مجاناً</span>
           </div>
         </a>

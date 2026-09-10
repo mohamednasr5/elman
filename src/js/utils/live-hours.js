@@ -4,13 +4,14 @@
  */
 
 export function getPlaceLiveStatus(openHours = null) {
-  if (!openHours) {
+  if (!openHours || (typeof openHours === 'object' && Object.keys(openHours).length === 0)) {
     return {
-      isOpen: true,
-      badgeText: 'مفتوح للزوار',
-      badgeClass: 'status-open-neutral',
-      color: '#10B981',
-      details: 'متاح للزيارة والتواصل'
+      isOpen: false,
+      isUnknown: true,
+      badgeText: 'المواعيد غير مؤكدة',
+      badgeClass: 'status-unknown',
+      color: '#64748B',
+      details: 'لم يتم تحديد جدول مواعيد العمل'
     };
   }
 

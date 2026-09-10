@@ -45,6 +45,8 @@ import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { formatDate } from '../../utils/date.js';
 import { getUserLoyaltyProfile, getLoyaltyLevelInfo, redeemPointsForVerification, claimDailyBonus, LOYALTY_LEVELS, POINTS_RULES, VERIFICATION_POINTS_COST } from '../../services/loyalty.service.js';
+import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=bcs_scanner_v2';
+import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=bcs_scanner_v2';
 
 let _dashUser = null;
 let _dashPlacesCache = null;
@@ -97,8 +99,13 @@ export async function renderDashboard($container, { user, section = 'overview', 
           <a href="dashboard.html?section=loyalty" data-section="loyalty" class="dashboard-nav-item ${section === 'loyalty' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">🎁</span> نادي الولاء والنقاط
           </a>
-          <a href="dashboard.html?section=add" data-section="add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}" style="background:rgba(16,185,129,0.1);color:#059669;font-weight:800;border:1.5px solid rgba(16,185,129,0.3)">
-            <span class="dashboard-nav-item__icon" style="color:#10B981">➕</span> إضافة مكان جديد
+          <a href="dashboard.html?section=add&action=scan" data-section="add-scan" class="dashboard-nav-item" style="background:linear-gradient(135deg,rgba(16,185,129,0.14) 0%,rgba(5,150,105,0.18) 100%);color:#047857;font-weight:900;border:1.5px solid rgba(16,185,129,0.45);box-shadow:0 2px 8px rgba(16,185,129,0.15)">
+            <span class="dashboard-nav-item__icon" style="font-size:18px">📸</span>
+            <span>تصوير كارت المحل (AI)</span>
+            <span class="badge" style="background:#10B981;color:#fff;font-size:10px;margin-right:auto;padding:2px 7px;font-weight:800;border-radius:6px">جديد ✨</span>
+          </a>
+          <a href="dashboard.html?section=add" data-section="add" class="dashboard-nav-item ${section === 'add' || section === 'add-place' ? 'active' : ''}" style="background:rgba(16,185,129,0.06);color:#059669;font-weight:700;border:1px solid rgba(16,185,129,0.25)">
+            <span class="dashboard-nav-item__icon" style="color:#10B981">➕</span> إضافة مكان يدوياً
           </a>
           <a href="dashboard.html?section=notifications" data-section="notifications" class="dashboard-nav-item ${section === 'notifications' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">🔔</span> الإشعارات والزيارات
@@ -170,6 +177,11 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
     }
   }
 
+  // Update site-wide ads banner placement for this dashboard section
+  if (typeof window !== 'undefined' && typeof window.updateAdsBannerPlacement === 'function') {
+    window.updateAdsBannerPlacement('dashboard.html', section);
+  }
+
   try {
     if (section === 'overview') {
       await renderOverviewSection($mainArea, _dashUser);
@@ -224,7 +236,16 @@ function setupDashboardNavigation() {
           e.preventDefault();
           const section = url.searchParams.get('section') || 'overview';
           const placeId = url.searchParams.get('id') || null;
-          switchDashboardSection(section, placeId, true);
+          const action = url.searchParams.get('action') || null;
+          if (action) {
+            history.pushState(null, '', url.href);
+          }
+          switchDashboardSection(section, placeId, !action);
+          if (action === 'scan') {
+            setTimeout(() => {
+              document.getElementById('bcs-btn-take-photo')?.click();
+            }, 600);
+          }
         }
       }
     });
@@ -292,6 +313,23 @@ async function renderOverviewSection($container, user) {
       </div>
     </div>
 
+    <!-- Business Card Scanner Feature Promo Banner in Overview -->
+    <div class="bcs-overview-promo-card animate-fade-in-up" style="background:linear-gradient(135deg,rgba(27,79,114,0.05) 0%,rgba(243,156,18,0.1) 100%);border:1.5px dashed var(--primary-light,#2980B9);border-radius:var(--radius-lg,16px);padding:18px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:48px;height:48px;min-width:48px;border-radius:14px;background:linear-gradient(135deg,var(--primary,#1B4F72),var(--primary-light,#2980B9));color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 12px rgba(27,79,114,0.25)">📸</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+            <strong style="font-size:15.5px;color:var(--text-primary,#0F172A)">معاك كارت المحل؟ 📸</strong>
+            <span class="badge" style="background:#F59E0B;color:#fff;font-size:11px;font-weight:700">جديد بالذكاء الاصطناعي ✨</span>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary,#334155);margin:0">صوّره وهيسهّل عليك ملء البيانات كتير. التقط صورة واضحة لكارت المحل والـ AI هيملأ بيانات نشاطك فوراً.</p>
+        </div>
+      </div>
+      <a href="dashboard.html?section=add&action=scan" class="btn btn-primary" style="font-weight:800;padding:10px 20px;border-radius:10px;box-shadow:0 4px 14px rgba(27,79,114,0.25);white-space:nowrap;display:inline-flex;align-items:center;gap:8px">
+        <span>📸 تصوير كارت المحل والبدء</span>
+      </a>
+    </div>
+
     <!-- Stats Grid -->
     <div class="stats-grid animate-fade-in-up">
       <div class="stat-card">
@@ -352,13 +390,33 @@ async function renderPlacesSection($container, user) {
         <div class="dashboard-header__subtitle">تحكم في بيانات الأماكن، الفروع، العروض، والمنتجات</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <a href="dashboard.html?section=add&action=scan" class="btn" style="background:linear-gradient(135deg,#10B981 0%,#059669 100%);color:#fff;border:none;font-weight:800;box-shadow:0 4px 14px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:6px">
+          <span style="font-size:17px">📸</span> تصوير كارت جديد (AI)
+        </a>
         <a href="dashboard.html?section=analytics" class="btn btn-outline" style="background:#fff;border-color:var(--primary);color:var(--primary);font-weight:700;display:inline-flex;align-items:center;gap:6px">
           <span>📊</span> التقارير والإحصائيات
         </a>
-        <a href="dashboard.html?section=add" class="btn" style="background:linear-gradient(135deg,#10B981 0%,#059669 100%);color:#fff;border:none;font-weight:800;box-shadow:0 4px 14px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:6px">
-          <span style="font-size:16px">➕</span> إضافة مكان جديد
+        <a href="dashboard.html?section=add" class="btn btn-outline" style="font-weight:700;display:inline-flex;align-items:center;gap:6px">
+          <span>➕</span> إضافة يدوية
         </a>
       </div>
+    </div>
+
+    <!-- Business Card Scanner Promo in Places List -->
+    <div class="bcs-overview-promo-card animate-fade-in-up" style="background:linear-gradient(135deg,rgba(16,185,129,0.08) 0%,rgba(5,150,105,0.14) 100%);border:1.5px dashed #10B981;border-radius:16px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:46px;height:46px;min-width:46px;border-radius:12px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 12px rgba(16,185,129,0.28)">📸</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+            <strong style="font-size:15px;color:#065F46">معاك كارت محل أو نشاط؟ 📸</strong>
+            <span class="badge" style="background:#10B981;color:#fff;font-size:10px;font-weight:700">تعبئة ذكية فورية ✨</span>
+          </div>
+          <p style="font-size:12.5px;color:#047857;margin:0">صوّر كارت المحل بالكاميرا، والذكاء الاصطناعي هيملأ الاسم والهاتف والتصنيف والعنوان بدقة متناهية.</p>
+        </div>
+      </div>
+      <a href="dashboard.html?section=add&action=scan" class="btn btn-primary" style="background:#10B981;border-color:#059669;font-weight:800;padding:9px 18px;border-radius:10px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px">
+        <span>📸 تصوير كارت المحل الآن</span>
+      </a>
     </div>
 
     ${renderPlacesListHTML(places)}
@@ -374,7 +432,12 @@ function renderPlacesListHTML(places) {
         <div class="empty-state__icon">🏪</div>
         <h2 class="empty-state__title">لم تقم بإضافة أي مكان بعد</h2>
         <p class="empty-state__text">أضف محلك التجاري أو عيادتك أو خدمتك للظهور أمام آلاف المستخدمين في المنزلة</p>
-        <a href="dashboard.html?section=add" class="btn btn-primary btn-lg">➕ أضف مكانك الأول الآن</a>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+          <a href="dashboard.html?section=add&action=scan" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,#10B981 0%,#059669 100%);border:none;font-weight:800;box-shadow:0 4px 14px rgba(16,185,129,0.35);display:inline-flex;align-items:center;gap:8px">
+            <span>📸 تصوير كارت المحل بالـ AI (تعبئة فورية)</span>
+          </a>
+          <a href="dashboard.html?section=add" class="btn btn-outline btn-lg">➕ كتابة البيانات يدوياً</a>
+        </div>
       </div>
     `;
   }
@@ -1134,6 +1197,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
     <form id="place-form" class="animate-fade-in-up">
       
+      <!-- Business Card AI Autofill Section Slot -->
+      <div id="business-card-scanner-container" style="margin-bottom:var(--space-5)"></div>
+
       <!-- Basic Info -->
       <div class="form-section">
         <h2 class="form-section__title"><span>📍</span> المعلومات الأساسية</h2>
@@ -1649,49 +1715,49 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       <!-- Social Media & Website Links -->
       <div class="form-section" id="p-social-section">
         <h2 class="form-section__title"><span>🌐</span> وسائل التواصل الاجتماعي والموقع</h2>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-3)">
-          أضف روابط حساباتك الرسمية، وسيتم عرض الأيقونات الأصلية للأشياء المكتوبة فقط في صفحة المكان:
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-3);line-height:1.6">
+          يدعم النظام الذكي إضافة اسم الحساب فقط (مثل: <code style="direction:ltr;display:inline-block;padding:1px 5px;background:var(--surface-sunken);border-radius:4px">djmrpoop</code> أو <code style="direction:ltr;display:inline-block;padding:1px 5px;background:var(--surface-sunken);border-radius:4px">@djmrpoop</code>) أو الرابط كاملاً، وسيتم تحويله تلقائياً لرابط رسمي وتفعيل الأيقونة في صفحة المكان:
         </p>
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">📘 رابط صفحة Facebook</label>
-            <input type="url" id="p-social-facebook" class="form-input" placeholder="https://facebook.com/yourpage" value="${escAttr(place?.social?.facebook || '')}" style="direction:ltr;text-align:left" />
+            <label class="form-label">📘 رابط أو يوزر Facebook</label>
+            <input type="text" inputmode="url" id="p-social-facebook" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://facebook.com/..." value="${escAttr(place?.social?.facebook || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
           </div>
 
           <div class="form-group">
-            <label class="form-label">✖️ رابط حساب منصة X (تويتر)</label>
-            <input type="url" id="p-social-x" class="form-input" placeholder="https://x.com/yourhandle" value="${escAttr(place?.social?.x || place?.social?.twitter || '')}" style="direction:ltr;text-align:left" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">📷 رابط حساب Instagram</label>
-            <input type="url" id="p-social-instagram" class="form-input" placeholder="https://instagram.com/yourprofile" value="${escAttr(place?.social?.instagram || '')}" style="direction:ltr;text-align:left" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">🎵 رابط حساب TikTok</label>
-            <input type="url" id="p-social-tiktok" class="form-input" placeholder="https://tiktok.com/@youraccount" value="${escAttr(place?.social?.tiktok || '')}" style="direction:ltr;text-align:left" />
+            <label class="form-label">✖️ رابط أو يوزر منصة X (تويتر)</label>
+            <input type="text" inputmode="url" id="p-social-x" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://x.com/..." value="${escAttr(place?.social?.x || place?.social?.twitter || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">🧵 رابط حساب Threads</label>
-            <input type="url" id="p-social-threads" class="form-input" placeholder="https://threads.net/@youraccount" value="${escAttr(place?.social?.threads || '')}" style="direction:ltr;text-align:left" />
+            <label class="form-label">📷 رابط أو يوزر Instagram</label>
+            <input type="text" inputmode="url" id="p-social-instagram" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://instagram.com/..." value="${escAttr(place?.social?.instagram || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
           </div>
 
           <div class="form-group">
-            <label class="form-label">▶️ رابط قناة YouTube</label>
-            <input type="url" id="p-social-youtube" class="form-input" placeholder="https://youtube.com/@yourchannel" value="${escAttr(place?.social?.youtube || '')}" style="direction:ltr;text-align:left" />
+            <label class="form-label">🎵 رابط أو يوزر TikTok</label>
+            <input type="text" inputmode="url" id="p-social-tiktok" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://tiktok.com/@..." value="${escAttr(place?.social?.tiktok || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">🧵 رابط أو يوزر Threads</label>
+            <input type="text" inputmode="url" id="p-social-threads" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://threads.net/@..." value="${escAttr(place?.social?.threads || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">▶️ رابط أو يوزر YouTube</label>
+            <input type="text" inputmode="url" id="p-social-youtube" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://youtube.com/@..." value="${escAttr(place?.social?.youtube || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">🌍 رابط الموقع الإلكتروني الرسمي (Website)</label>
-          <input type="url" id="p-social-website" class="form-input" placeholder="https://www.yourwebsite.com" value="${escAttr(place?.social?.website || '')}" style="direction:ltr;text-align:left" />
+          <input type="text" inputmode="url" id="p-social-website" class="form-input" placeholder="yoursite.com أو https://..." value="${escAttr(place?.social?.website || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
         </div>
       </div>
 
@@ -1707,6 +1773,22 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   `;
 
   // ── Handlers ──
+
+  // ── Mount Business Card AI Autofill Scanner ──
+  const $scannerMount = document.getElementById('business-card-scanner-container');
+  if ($scannerMount) {
+    try {
+      $scannerMount.innerHTML = '';
+      $scannerMount.appendChild(createBusinessCardScanner());
+      if (new URLSearchParams(location.search).get('action') === 'scan') {
+        setTimeout(() => {
+          document.getElementById('bcs-btn-take-photo')?.click();
+        }, 400);
+      }
+    } catch (scannerErr) {
+      console.warn('[BusinessCardScanner] Mount error:', scannerErr);
+    }
+  }
 
   // Dynamic Branch Rows Controller
   const branchesToggle = document.getElementById('has-branches-toggle');
@@ -2750,6 +2832,12 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     document.getElementById('p-area-search-input')?.addEventListener('input', queueDedupeCheck);
   }
 
+  // Attach smart auto-normalization to all social input fields (handles @handle, handle, or full URL)
+  ['facebook', 'x', 'instagram', 'tiktok', 'threads', 'youtube', 'website'].forEach(plat => {
+    const el = document.getElementById(`p-social-${plat}`);
+    if (el) attachSmartSocialInput(el, plat);
+  });
+
   // Form Submit
   document.getElementById('place-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -2849,14 +2937,14 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         workingHours,
         services,
         social: {
-          facebook: document.getElementById('p-social-facebook')?.value.trim() || '',
-          x: document.getElementById('p-social-x')?.value.trim() || '',
-          twitter: document.getElementById('p-social-x')?.value.trim() || '',
-          instagram: document.getElementById('p-social-instagram')?.value.trim() || '',
-          tiktok: document.getElementById('p-social-tiktok')?.value.trim() || '',
-          threads: document.getElementById('p-social-threads')?.value.trim() || '',
-          youtube: document.getElementById('p-social-youtube')?.value.trim() || '',
-          website: document.getElementById('p-social-website')?.value.trim() || ''
+          facebook: normalizeSocialLink('facebook', document.getElementById('p-social-facebook')?.value),
+          x: normalizeSocialLink('x', document.getElementById('p-social-x')?.value),
+          twitter: normalizeSocialLink('x', document.getElementById('p-social-x')?.value),
+          instagram: normalizeSocialLink('instagram', document.getElementById('p-social-instagram')?.value),
+          tiktok: normalizeSocialLink('tiktok', document.getElementById('p-social-tiktok')?.value),
+          threads: normalizeSocialLink('threads', document.getElementById('p-social-threads')?.value),
+          youtube: normalizeSocialLink('youtube', document.getElementById('p-social-youtube')?.value),
+          website: normalizeSocialLink('website', document.getElementById('p-social-website')?.value)
         },
         availabilityStatus: document.getElementById('p-availability-status')?.value || 'available',
         branches: (() => {

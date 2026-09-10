@@ -30,6 +30,14 @@ function injectStylesOnce() {
   const style = document.createElement('style');
   style.id = 'wide-ads-banner-styles';
   style.textContent = `
+    .wide-ads-banner-page-top {
+      margin-top: calc(var(--header-height, 64px) + 20px) !important;
+      margin-bottom: 20px !important;
+    }
+    .wide-ads-banner-page-bottom {
+      margin-top: 28px !important;
+      margin-bottom: 28px !important;
+    }
     .wide-ads-banner-wrap {
       width: 100%;
       margin: 14px 0 22px;

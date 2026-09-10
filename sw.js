@@ -27,7 +27,7 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v3.1.3-pwa-instant-sync';
+const CACHE_VERSION = 'v3.2.0-bcs-refresh-v1';
 const STATIC_CACHE = 'manzala-static-' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'manzala-dynamic-' + CACHE_VERSION;
 const IMAGE_CACHE = 'manzala-images-' + CACHE_VERSION;
@@ -109,6 +109,12 @@ self.addEventListener('fetch', event => {
 
   if (url.hostname.includes('r2.dev') || url.pathname.match(/\.(webp|jpg|jpeg|png|gif|svg|avif)$/i)) {
     event.respondWith(cacheFirstStrategy(request, IMAGE_CACHE));
+    return;
+  }
+
+  // App scripts and styles: network-first when online to guarantee immediate updates in PWA
+  if (url.origin === self.location.origin && url.pathname.match(/\.(js|css)$/i)) {
+    event.respondWith(networkFirstStrategy(request));
     return;
   }
 

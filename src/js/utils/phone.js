@@ -26,6 +26,52 @@ export function normalizePhoneNumber(raw = '') {
 }
 
 /**
+ * Validates whether a phone number is a realistic, non-dummy number.
+ * Filters out dummy numbers (e.g. 00000000000, 11111111111, 01000000000).
+ */
+export function isValidPhoneNumber(raw = '') {
+  if (!raw) return false;
+  const norm = normalizePhoneNumber(raw);
+  if (!norm || norm.length < 4 || norm.length > 15) return false;
+
+  // Rejects all zeros (00000000000)
+  if (/^0+$/.test(norm)) return false;
+
+  // Rejects single repeated digit (99999999999, 11111111111, 01111111111)
+  const rawDigits = String(raw).replace(/\D/g, '');
+  if (/^(\d)\1+$/.test(rawDigits) || /^0?(\d)\1+$/.test(rawDigits)) return false;
+  if (/^01[0125](\d)\1{7}$/.test(norm)) return false;
+
+  // Rejects common dummy sequences
+  if (/^01\d00000000$/.test(norm)) return false;
+  if (/^01[0125](\d)\1{7}$/.test(norm)) return false;
+  if (norm === '12345678' || norm === '123456789' || norm === '01234567890') return false;
+
+  // Egyptian Hotline: 4-5 digits (15xxx, 16xxx, 17xxx, 19xxx)
+  if (/^1[5-9]\d{3,4}$/.test(norm)) return true;
+
+  // Egyptian Mobile: 010, 011, 012, 015 + 8 digits = 11 digits
+  if (/^01[0125]\d{8}$/.test(norm)) return true;
+
+  // Egyptian Landline: 050, 057, 02, 03, etc.
+  if (/^0[2-9]\d{6,9}$/.test(norm)) return true;
+
+  // General valid international number
+  if (norm.length >= 8 && norm.length <= 15 && !/^(\d)\1+$/.test(norm)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Returns normalized phone number if valid, or empty string if invalid/dummy
+ */
+export function cleanValidPhone(raw = '') {
+  return isValidPhoneNumber(raw) ? normalizePhoneNumber(raw) : '';
+}
+
+/**
  * Detects if a search query is intended as a phone number:
  * - Starts with '01' (mobile) or '05' (landline) with at least 3 digits.
  * - Or unified hotline short numbers (e.g. 17555, 19xxx, 16xxx - 4 to 5 digits starting with 1).
