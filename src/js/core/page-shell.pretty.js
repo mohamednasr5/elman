@@ -297,15 +297,27 @@ export async function initPage(activeFile = '') {
 
   /* 2. Inject shared layout blocks */
   _inject('header-slot',  _headerHTML(activeFile));
-  if (!activeFile.includes('admin/') && activeFile !== 'dashboard.html') {
+  const isHomePage = activeFile === 'index.html' || activeFile === 'home' || (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname.endsWith('/index.html') || window.location.pathname.endsWith('/')));
+
+  if (!isHomePage) {
     let banner = document.getElementById('wide-ads-banner');
-    if (!banner && activeFile !== 'index.html' && activeFile !== '') {
-      const mainContainer = document.getElementById('page-container') || document.querySelector('main');
-      if (mainContainer) {
-        banner = document.createElement('div');
-        banner.id = 'wide-ads-banner';
-        banner.className = 'container';
-        mainContainer.insertAdjacentElement('afterend', banner);
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'wide-ads-banner';
+      banner.className = 'container wide-ads-banner-page-top';
+      banner.style.margin = '14px auto';
+
+      const header = document.getElementById('site-header');
+      const pageMain = document.getElementById('page-container') || document.querySelector('main') || document.querySelector('#admin-container') || document.querySelector('.admin-layout') || document.querySelector('#app') || document.body;
+
+      if (header && header.nextSibling) {
+        header.parentNode.insertBefore(banner, header.nextSibling);
+      } else if (pageMain && pageMain.firstChild) {
+        pageMain.insertBefore(banner, pageMain.firstChild);
+      } else if (pageMain) {
+        pageMain.appendChild(banner);
+      } else {
+        document.body.appendChild(banner);
       }
     }
     if (banner) {
@@ -313,8 +325,21 @@ export async function initPage(activeFile = '') {
         import('../ui/components/WideAdsBanner.js')
           .then(({ mountWideAdsBanner }) => mountWideAdsBanner(banner))
           .catch(() => {});
-      }, 100);
+      }, 50);
     }
+  } else {
+    // For homepage: home.js handles placement right after "محتاج إيه دلوقتي؟"
+    const pollHomeBanner = (attempts = 0) => {
+      const banner = document.getElementById('wide-ads-banner');
+      if (banner && !banner.dataset.wideAdsMounted) {
+        import('../ui/components/WideAdsBanner.js')
+          .then(({ mountWideAdsBanner }) => mountWideAdsBanner(banner))
+          .catch(() => {});
+      } else if (!banner && attempts < 25) {
+        setTimeout(() => pollHomeBanner(attempts + 1), 100);
+      }
+    };
+    pollHomeBanner();
   }
   _inject('footer-slot',  _footerHTML());
   _inject('nav-slot',     _bottomNavHTML(activeFile));

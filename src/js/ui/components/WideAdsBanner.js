@@ -214,7 +214,8 @@ const DEFAULT_FALLBACK_AD = {
 
 export async function mountWideAdsBanner(target = 'wide-ads-banner') {
   const container = typeof target === 'string' ? document.getElementById(target) : target;
-  if (!container) return;
+  if (!container || container.dataset.wideAdsMounted === 'true') return;
+  container.dataset.wideAdsMounted = 'true';
 
   injectStylesOnce();
 

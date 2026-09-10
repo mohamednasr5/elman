@@ -109,6 +109,11 @@ export async function renderHomePage($main, { user } = {}) {
     renderOffers(offers || []);
     renderDeliveryServices(allPlaces.filter(p => p.categoryId?.includes('delivery') || p.deliveryType));
     renderAds(ads || []);
+    try {
+      import('../components/WideAdsBanner.js')
+        .then(({ mountWideAdsBanner }) => mountWideAdsBanner('wide-ads-banner'))
+        .catch(() => {});
+    } catch (_) {}
 
     // Setup hero search
     setupHeroSearch(categories || []);
@@ -1219,6 +1224,9 @@ function getHomeHTML() {
       </div>
     </section>
 
+    <!-- Dedicated 1:1 Wide Advertisement Showcase (Immediately after "محتاج إيه دلوقتي؟") -->
+    <div id="wide-ads-banner" class="container" style="min-height:0;margin:14px auto"></div>
+
     <!-- Trust Strip -->
     <section class="trust-strip" aria-label="لماذا دليل المنزلة والمطرية؟">
       <div class="container trust-strip__inner">
@@ -1229,8 +1237,6 @@ function getHomeHTML() {
       </div>
     </section>
 
-    <!-- Dedicated Advertisement Showcase (Native placement, no layout shift) -->
-    <div id="wide-ads-banner" class="container" style="min-height:0"></div>
     <div id="ads-container" class="container" style="min-height:0"></div>
 
     <!-- Towns & Villages Directory Section -->
