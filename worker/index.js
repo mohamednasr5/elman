@@ -2034,32 +2034,22 @@ try {
 
     try {
       let query = `
-        SELECT r.id, r.place_id, r.user_id, r.user_name, r.user_photo, r.rating, r.comment,
-               r.is_admin_generated, r.edit_count, r.created_at, r.updated_at,
-               COALESCE(r.place_name, p.name) as place_name, 
-               COALESCE(r.place_slug, p.slug) as place_slug
-        FROM reviews r
-        LEFT JOIN places p ON (r.place_id = p.id OR r.place_id = p.slug)
+        SELECT id, place_id, user_id, user_name, user_photo, rating, comment,
+               is_admin_generated, edit_count, created_at, updated_at,
+               place_name, place_slug
+        FROM reviews
       `;
       const params = [];
       const hammadAliases = ['almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lqj1o', 'p_1788742873778_6k8a9v', 'p_1788659645122_beff63'];
       const isHammad = hammadAliases.includes(placeId.toLowerCase()) || hammadAliases.includes(rawSlug.toLowerCase());
 
       if (isHammad) {
-        query += ` WHERE (
-          r.place_id IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63')
-          OR r.place_slug IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63')
-          OR p.slug IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63')
-          OR p.id IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63')
-          OR r.comment LIKE '%محمد حماد%'
-        ) `;
+        query += ` WHERE place_id IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63') OR place_slug IN ('almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o') `;
       } else if (placeId || rawSlug) {
-        const id1 = placeId || rawSlug;
-        const id2 = rawSlug || placeId;
-        query += ` WHERE (r.place_id = ? OR r.place_slug = ? OR p.slug = ? OR p.id = ? OR r.place_id = ? OR r.place_slug = ? OR p.slug = ? OR p.id = ?) `;
-        params.push(id1, id1, id1, id1, id2, id2, id2, id2);
+        query += ` WHERE place_id = ? OR place_slug = ? `;
+        params.push(placeId || rawSlug, rawSlug || placeId);
       }
-      query += ` ORDER BY r.created_at DESC LIMIT ? `;
+      query += ` ORDER BY created_at DESC LIMIT ? `;
       params.push(reqLimit);
 
       const stmt = createTursoDB(env).prepare(query);
@@ -2067,7 +2057,7 @@ try {
 
       return jsonResponse({ success: true, data: result.results || [] }, 200, {
         ...corsHeaders,
-        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
       });
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
@@ -3900,6 +3890,9 @@ async function ensureNewSchemaColumnsInTurso(env) {
     await db.prepare("ALTER TABLE places ADD COLUMN availability_status TEXT DEFAULT 'available'").run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_places_parent_id ON places(parent_id)").run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_places_availability ON places(availability_status)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_place_id ON reviews(place_id)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_place_slug ON reviews(place_slug)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at)").run().catch(() => {});
   } catch (err) {
     console.warn('[ensureNewSchemaColumnsInTurso] Notice:', err.message);
   }

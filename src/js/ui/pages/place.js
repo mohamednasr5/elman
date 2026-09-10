@@ -147,6 +147,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
     // ── Initial Reviews / Ratings Summary (0ms) ──
     let safeReviews = Array.isArray(place.reviews) ? place.reviews : [];
+    if (!safeReviews.length) {
+      const fastCached = getCached(`reviews_${placeId}`) || (isHammad ? (getCached('reviews_p_1788742873778_6k8a9v') || getCached('reviews_almhnds-mhmd-hmad')) : null);
+      if (Array.isArray(fastCached) && fastCached.length > 0) {
+        safeReviews = fastCached;
+      }
+    }
     let totalReviews = safeReviews.length || Number(place.reviewCount) || Number(place.review_count) || Number(place.reviewsCount) || Number(place.ratingCount) || Number(place.stats?.reviewCount) || Number(place.stats?.reviewsCount) || 0;
     if (totalReviews === 0 && (place.slug === 'almhnds-mhmd-hmad' || place.slug === 'mhnds-mhmd-hmad-5lQJ1o' || place.id === 'p_1788742873778_6k8a9v' || isHammad)) {
       totalReviews = 500;
@@ -858,12 +864,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       }).catch(() => {});
     }
 
-    // 3. Hydrate Live Reviews in background
+    // 3. Hydrate Live Reviews in background (SWR + Realtime Sync)
     if (!isAtm) {
-      reviewsFetchPromise.then(liveReviews => {
-        const list = Array.isArray(liveReviews) ? liveReviews : [];
+      const applyReviewsData = (list) => {
+        if (!Array.isArray(list) || !list.length) return;
         safeReviews = list;
-        totalReviews = safeReviews.length || Number(place.reviewCount) || Number(place.review_count) || (isHammad ? 500 : 0);
+        totalReviews = safeReviews.length;
         let rSum = 0;
         safeReviews.forEach(r => { rSum += (Number(r.rating) || 5); });
         avgRating = totalReviews > 0 ? (safeReviews.length > 0 ? Math.round((rSum / safeReviews.length) * 10) / 10 : (Number(place.rating) || 5.0)) : (Number(place.rating) || 0.0);
@@ -883,7 +889,43 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : 'جديد'})</span>
           `;
         }
-      }).catch(() => {});
+      };
+
+      // Fallback timer: If reviews take > 3.5s on slow mobile, show graceful retry
+      const loadingFallbackTimer = setTimeout(() => {
+        const ind = document.getElementById('reviews-loading-indicator');
+        if (ind && !safeReviews.length) {
+          ind.innerHTML = `
+            <div style="color:var(--text-muted);font-size:13px;margin-bottom:8px">تعذر جلب باقي التعليقات مؤقتاً لبطء الاتصال.</div>
+            <button type="button" id="btn-retry-reviews" class="btn btn-sm btn-outline" style="font-size:12px;border-radius:var(--radius-full);padding:4px 14px">
+              إعادة المحاولة 🔄
+            </button>
+          `;
+          document.getElementById('btn-retry-reviews')?.addEventListener('click', () => {
+            ind.innerHTML = `<div class="spinner" style="width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;margin:0 auto 8px;animation:spin .8s linear infinite"></div>جاري التحميل...`;
+            getPlaceReviews(placeId, place.slug).then(applyReviewsData);
+          });
+        }
+      }, 3500);
+
+      reviewsFetchPromise.then(liveReviews => {
+        clearTimeout(loadingFallbackTimer);
+        if (Array.isArray(liveReviews) && liveReviews.length > 0) {
+          applyReviewsData(liveReviews);
+        }
+      }).catch(() => {
+        clearTimeout(loadingFallbackTimer);
+      });
+
+      // Listen for background SWR fresh reviews event
+      window.addEventListener('reviews:fresh_data', (e) => {
+        const { targetId, effectiveSlug, reviews: freshList } = e.detail || {};
+        if (freshList && freshList.length > 0) {
+          if (targetId === placeId || targetId === place.id || effectiveSlug === place.slug || effectiveSlug === slug || isHammad) {
+            applyReviewsData(freshList);
+          }
+        }
+      });
 
       // Listen for revalidation fresh data
       window.addEventListener('place:fresh_data', (e) => {

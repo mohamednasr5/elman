@@ -1879,8 +1879,8 @@ export const HAMMAD_TESTIMONIALS = [
   { name: 'Ahmed Abdullah', rating: 5, comment: 'Excellent work, creative ideas, professional execution, and very good customer support.' }
 ];
 
-/** Get all reviews for a place */
-export async function getPlaceReviews(placeId, slug = '') {
+/** Get all reviews for a place with 0ms SWR (IndexedDB + Memory + Edge Cache) */
+export async function getPlaceReviews(placeId, slug = '', options = {}) {
   if (!placeId && !slug) return [];
   const rawTargetId = placeId || slug;
   const isHammad = HAMMAD_PLACE_SLUGS.includes(rawTargetId) || HAMMAD_PLACE_SLUGS.includes(slug);
@@ -1888,16 +1888,38 @@ export async function getPlaceReviews(placeId, slug = '') {
   const effectiveSlug = isHammad ? 'almhnds-mhmd-hmad' : slug;
 
   const cacheKey = `reviews_${targetId}`;
-  const cached = getCached(cacheKey, 600000);
-  if (Array.isArray(cached) && cached.length > 0) {
-    return cached;
+  
+  // 1. In-Memory Cache (0.01ms instant)
+  const memCached = getCached(cacheKey, 3600000);
+  if (Array.isArray(memCached) && memCached.length > 0) {
+    if (!options.skipBackgroundRevalidate) {
+      setTimeout(() => _fetchAndStoreReviews(targetId, effectiveSlug, rawTargetId, cacheKey), 50);
+    }
+    return memCached;
   }
 
+  // 2. Persistent IndexedDB Cache (0.5ms - Works instantly on PWA cold start and offline!)
+  try {
+    const idbCached = await idbGetMeta(cacheKey);
+    if (Array.isArray(idbCached) && idbCached.length > 0) {
+      setCache(cacheKey, idbCached);
+      if (!options.skipBackgroundRevalidate) {
+        setTimeout(() => _fetchAndStoreReviews(targetId, effectiveSlug, rawTargetId, cacheKey), 50);
+      }
+      return idbCached;
+    }
+  } catch (_) {}
+
+  // 3. Network Fetch
+  return await _fetchAndStoreReviews(targetId, effectiveSlug, rawTargetId, cacheKey);
+}
+
+async function _fetchAndStoreReviews(targetId, effectiveSlug, rawTargetId, cacheKey) {
   try {
     const querySlug = effectiveSlug && effectiveSlug !== targetId ? `&slug=${encodeURIComponent(effectiveSlug)}` : '';
-    const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(targetId)}${querySlug}&limit=5000&_=${Date.now()}`, {
-      signal: AbortSignal.timeout(15000),
-      cache: 'no-store'
+    const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(targetId)}${querySlug}&limit=500`, {
+      signal: AbortSignal.timeout(6000),
+      cache: 'default'
     });
     if (!res.ok) throw new Error(`Reviews Worker HTTP ${res.status}`);
     const data = await res.json();
@@ -1907,10 +1929,22 @@ export async function getPlaceReviews(placeId, slug = '') {
       setCache(cacheKey, list);
       if (rawTargetId !== targetId) setCache(`reviews_${rawTargetId}`, list);
       if (effectiveSlug) setCache(`reviews_${effectiveSlug}`, list);
+
+      // Persist in IndexedDB for 0ms instant loads next time & PWA
+      idbSetMeta(cacheKey, list).catch(() => {});
+      if (rawTargetId !== targetId) idbSetMeta(`reviews_${rawTargetId}`, list).catch(() => {});
+      if (effectiveSlug) idbSetMeta(`reviews_${effectiveSlug}`, list).catch(() => {});
+
+      // Dispatch event to update UI live if component is mounted
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('reviews:fresh_data', {
+          detail: { targetId, effectiveSlug, reviews: list }
+        }));
+      }
     }
     return list;
   } catch (err) {
-    console.warn('[getPlaceReviews] Turso error:', err?.message || err);
+    console.warn('[_fetchAndStoreReviews] Notice:', err?.message || err);
     return getCached(cacheKey) || [];
   }
 }
