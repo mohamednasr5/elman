@@ -5,7 +5,7 @@ import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js'
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=c1cf1c7c';
+import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=c1cf1c7c';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
@@ -221,7 +221,20 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       ]);
     } catch (_) {}
 
-    // Working hours status
+    // Working hours status (with intelligent parent inheritance for branches)
+    const isBranchPlace = Boolean(place.parentId || place.parent_id);
+    const hasOwnHours = place.workingHours && typeof place.workingHours === 'object' && Object.keys(place.workingHours).length > 0;
+    if (isBranchPlace && (!hasOwnHours || place.same_as_main_hours || place.sameAsMainHours)) {
+      try {
+        const parentPlace = await getPlace(place.parentId || place.parent_id);
+        if (parentPlace && (parentPlace.workingHours || parentPlace.working_hours)) {
+          place.workingHours = parentPlace.workingHours || parentPlace.working_hours;
+          if (parentPlace.alwaysOpen) place.alwaysOpen = true;
+          if (parentPlace.alwaysOpenExcept) place.alwaysOpenExcept = true;
+        }
+      } catch (_) {}
+    }
+
     const isOpen = isPlaceOpen(place.workingHours);
     const workingHoursList = formatWorkingHours(place.workingHours);
 
@@ -653,22 +666,38 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         const branchWhatsapp = b.whatsapp || place.whatsapp || '';
         const bStatus = b.availability_status || b.availabilityStatus || 'available';
         const isMain = b.is_main;
+        const isSameAsMain = b.same_as_main_hours !== false && b.sameAsMainHours !== false;
+        const bHours = (b.working_hours && typeof b.working_hours === 'object' && Object.keys(b.working_hours).length > 0)
+          ? b.working_hours
+          : (b.workingHours && typeof b.workingHours === 'object' && Object.keys(b.workingHours).length > 0)
+            ? b.workingHours
+            : (place.workingHours || place.working_hours || {});
+        const liveStatus = getPlaceLiveStatus(bHours);
         return `
           <div class="branch-card" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;justify-content:space-between;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
             <div>
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-                <span class="badge ${isMain ? 'badge--primary' : 'badge--secondary'}" style="font-size:11px">
-                  ${isMain ? '🏢 المقر الرئيسي' : '📍 فرع'}
-                </span>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span class="badge ${isMain ? 'badge--primary' : 'badge--secondary'}" style="font-size:11px">
+                    ${isMain ? '🏢 المقر الرئيسي' : '📍 فرع'}
+                  </span>
+                  <span class="badge" style="font-size:11px;font-weight:700;${liveStatus.isOpen ? 'background:#DCFCE7;color:#166534;border:1px solid #BBF7D0' : 'background:#FEE2E2;color:#991B1B;border:1px solid #FECACA'}">
+                    ${liveStatus.isOpen ? '🟢 ' + liveStatus.badgeText : '🔴 ' + liveStatus.badgeText}
+                  </span>
+                </div>
                 ${renderAvailabilityBadge(bStatus)}
               </div>
               <h4 style="font-size:15px;font-weight:700;margin:0 0 6px 0;color:var(--text-primary)">
                 ${escHtml(b.name || place.name)}
               </h4>
-              <p style="font-size:12.5px;color:var(--text-secondary);margin:0;display:flex;align-items:center;gap:5px">
+              <p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 6px 0;display:flex;align-items:center;gap:5px">
                 <span>📍</span>
                 <span>${escHtml(b.address || b.area || place.address || '')}</span>
               </p>
+              <div style="font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:5px">
+                <span>⏰</span>
+                <span>${isSameAsMain ? 'نفس مواعيد عمل المقر الرئيسي' : (liveStatus.details || 'مواعيد العمل محددة')}</span>
+              </div>
             </div>
 
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px dashed var(--border)">

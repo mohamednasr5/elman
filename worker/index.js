@@ -731,6 +731,15 @@ try {
         result.review_count = Number(reviewStats?.review_count || 0);
         result.rating = Number(reviewStats?.avg_rating || 0);
 
+        if (result.parent_id && (!result.working_hours_json || result.working_hours_json === '{}' || result.working_hours_json === 'null')) {
+          try {
+            const parentRow = await createTursoDB(env).prepare('SELECT working_hours_json FROM places WHERE id = ? LIMIT 1').bind(result.parent_id).first();
+            if (parentRow?.working_hours_json && parentRow.working_hours_json !== '{}') {
+              result.working_hours_json = parentRow.working_hours_json;
+            }
+          } catch (_) {}
+        }
+
         const place = {
           ...result,
           services: parseJson(result.services_json, []),
@@ -906,47 +915,71 @@ try {
       // Fetch all sibling places and parent (excluding the currently viewed place)
       const result = await db.prepare(`
         SELECT id, name, slug, address, area, phone, whatsapp, logo_url, cover_image_url,
-               availability_status, is_verified, parent_id, stats_json
+               availability_status, is_verified, parent_id, stats_json, working_hours_json
         FROM places
         WHERE (id = ? OR parent_id = ?) AND id != ? AND status = 'published'
         ORDER BY is_verified DESC, updated_at DESC
       `).bind(rootId, rootId, place.id).all().catch(() => ({ results: [] }));
 
-      let branches = (result.results || []).map(b => ({
-        id: b.id,
-        name: b.name,
-        slug: b.slug,
-        address: b.address,
-        area: b.area,
-        phone: b.phone,
-        whatsapp: b.whatsapp,
-        logo_url: b.logo_url || place.logo_url,
-        cover_image_url: b.cover_image_url || place.cover_image_url,
-        availability_status: b.availability_status || 'available',
-        availabilityStatus: b.availability_status || 'available',
-        is_verified: Boolean(b.is_verified),
-        is_main: b.id === rootId
-      }));
+      const mainWorkingHours = parseJson(place.working_hours_json, {});
+
+      let branches = (result.results || []).map(b => {
+        const bHours = parseJson(b.working_hours_json, {});
+        const hasCustomHours = bHours && Object.keys(bHours).length > 0;
+        const effectiveHours = hasCustomHours ? bHours : mainWorkingHours;
+        return {
+          id: b.id,
+          name: b.name,
+          slug: b.slug,
+          address: b.address,
+          area: b.area,
+          phone: b.phone,
+          whatsapp: b.whatsapp,
+          logo_url: b.logo_url || place.logo_url,
+          cover_image_url: b.cover_image_url || place.cover_image_url,
+          availability_status: b.availability_status || 'available',
+          availabilityStatus: b.availability_status || 'available',
+          is_verified: Boolean(b.is_verified),
+          is_main: b.id === rootId,
+          working_hours: effectiveHours,
+          workingHours: effectiveHours,
+          same_as_main_hours: !hasCustomHours,
+          sameAsMainHours: !hasCustomHours
+        };
+      });
 
       // Fallback: If no DB sibling rows were found, but branches_json on parent exists
       if (branches.length === 0 && place.branches_json) {
         const jsonBranches = parseJson(place.branches_json, []);
         if (Array.isArray(jsonBranches) && jsonBranches.length > 0) {
-          branches = jsonBranches.map((b, idx) => ({
-            id: b.id || `br_${place.id}_${idx + 1}`,
-            name: b.name || `${place.name} - فرع`,
-            slug: b.slug || `${place.slug}-branch-${idx + 1}`,
-            address: b.address || place.address,
-            area: b.area || place.area,
-            phone: b.phone || place.phone,
-            whatsapp: b.whatsapp || place.whatsapp,
-            logo_url: place.logo_url,
-            cover_image_url: place.cover_image_url,
-            availability_status: b.availability_status || 'available',
-            availabilityStatus: b.availability_status || 'available',
-            is_verified: Boolean(place.is_verified),
-            is_main: false
-          }));
+          branches = jsonBranches.map((b, idx) => {
+            const isSameAsMain = b.same_as_main_hours !== false && b.sameAsMainHours !== false;
+            const bHours = (b.working_hours && typeof b.working_hours === 'object' && Object.keys(b.working_hours).length > 0)
+              ? b.working_hours
+              : (b.workingHours && typeof b.workingHours === 'object' && Object.keys(b.workingHours).length > 0)
+                ? b.workingHours
+                : (typeof b.working_hours === 'string' ? parseJson(b.working_hours, {}) : null);
+            const effectiveHours = (!isSameAsMain && bHours && Object.keys(bHours).length > 0) ? bHours : mainWorkingHours;
+            return {
+              id: b.id || `br_${place.id}_${idx + 1}`,
+              name: b.name || `${place.name} - فرع`,
+              slug: b.slug || `${place.slug}-branch-${idx + 1}`,
+              address: b.address || place.address,
+              area: b.area || place.area,
+              phone: b.phone || place.phone,
+              whatsapp: b.whatsapp || place.whatsapp,
+              logo_url: place.logo_url,
+              cover_image_url: place.cover_image_url,
+              availability_status: b.availability_status || b.availabilityStatus || 'available',
+              availabilityStatus: b.availability_status || b.availabilityStatus || 'available',
+              is_verified: Boolean(place.is_verified),
+              is_main: false,
+              same_as_main_hours: isSameAsMain,
+              sameAsMainHours: isSameAsMain,
+              working_hours: effectiveHours,
+              workingHours: effectiveHours
+            };
+          });
         }
       }
 

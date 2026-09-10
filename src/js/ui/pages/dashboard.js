@@ -338,6 +338,7 @@ async function renderOverviewSection($container, user) {
     ${renderPlacesListHTML(places)}
   `;
   setupAvailabilitySelectListeners($container);
+  setupBranchListeners($container, user, places, () => renderOverviewSection($container, user));
 }
 
 // ── 2. Places Section ──
@@ -363,6 +364,7 @@ async function renderPlacesSection($container, user) {
     ${renderPlacesListHTML(places)}
   `;
   setupAvailabilitySelectListeners($container);
+  setupBranchListeners($container, user, places, () => renderPlacesSection($container, user));
 }
 
 function renderPlacesListHTML(places) {
@@ -465,6 +467,75 @@ function renderPlacesListHTML(places) {
                 <div class="my-place-stat__label">مشاركات</div>
               </div>
             </div>
+
+            <!-- Independent Branches Section -->
+            ${(() => {
+              const branches = Array.isArray(place.branches) ? place.branches : [];
+              return `
+                <div class="my-place-branches-section" style="background:var(--surface);border-top:1px solid var(--border);padding:12px 16px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:16px">🏬</span>
+                      <strong style="font-size:13px;color:var(--text-primary)">الفروع الأخرى التابعة لهذا النشاط (${branches.length})</strong>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary btn-dash-add-branch" data-place-id="${escAttr(placeId)}" style="font-size:12px;padding:3px 10px;font-weight:700">
+                      ➕ إضافة فرع لهذا النشاط
+                    </button>
+                  </div>
+
+                  ${branches.length === 0 ? `
+                    <div style="margin-top:8px;font-size:12px;color:var(--text-muted)">
+                      لا توجد فروع مسجلة لهذا النشاط بعد. يمكنك إضافة فروعك الأخرى في المنزلة أو المطرية للتحكم بمواعيدها ومكانها وأرقامها بشكل مستقل.
+                    </div>
+                  ` : `
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:10px;margin-top:10px">
+                      ${branches.map((b, bIdx) => {
+                        const isSameHours = b.same_as_main_hours !== false && b.sameAsMainHours !== false;
+                        const bStatus = b.availability_status || b.availabilityStatus || 'available';
+                        return `
+                          <div class="dash-branch-card" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+                            <div>
+                              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px">
+                                <strong style="font-size:13.5px;color:var(--text-primary)">${escHtml(b.name || `فرع #${bIdx + 1}`)}</strong>
+                                <select class="dash-branch-status-select form-select" data-place-id="${escAttr(placeId)}" data-branch-idx="${bIdx}" style="padding:2px 8px;font-size:11px;font-weight:700;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--surface)">
+                                  <option value="available" ${bStatus === 'available' ? 'selected' : ''}>🟢 متاح</option>
+                                  <option value="busy" ${bStatus === 'busy' ? 'selected' : ''}>🟡 مشغول</option>
+                                  <option value="unavailable" ${bStatus === 'unavailable' ? 'selected' : ''}>🔴 غير متاح</option>
+                                </select>
+                              </div>
+                              <div style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:4px">
+                                <span>📍</span>
+                                <span>${escHtml(b.area || '')}${b.address ? ` — ${escHtml(b.address)}` : ''}</span>
+                              </div>
+                              <div style="font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:4px;margin-top:4px">
+                                <span>⏰</span>
+                                <span>${isSameHours ? '🏢 مواعيد الفرع الرئيسي (تطابق تلقائي)' : '🕒 مواعيد عمل خاصة بالفرع'}</span>
+                              </div>
+                              ${(b.phone || b.whatsapp) ? `
+                                <div style="font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:4px;margin-top:3px">
+                                  <span>📞</span>
+                                  <span>${escHtml(b.phone || b.whatsapp || '')}</span>
+                                </div>
+                              ` : ''}
+                            </div>
+
+                            <!-- Branch Action Buttons -->
+                            <div style="display:flex;align-items:center;gap:6px;padding-top:8px;border-top:1px dashed var(--border)">
+                              <button type="button" class="btn btn-sm btn-outline btn-dash-edit-branch" data-place-id="${escAttr(placeId)}" data-branch-idx="${bIdx}" style="font-size:12px;padding:3px 8px;flex:1">
+                                ✏️ تعديل الفرع ومواعيده
+                              </button>
+                              <button type="button" class="btn btn-sm btn-dash-del-branch" data-place-id="${escAttr(placeId)}" data-branch-idx="${bIdx}" style="font-size:12px;padding:3px 8px;color:var(--danger);background:none;border:1px solid rgba(239,68,68,0.3)" title="حذف هذا الفرع">
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  `}
+                </div>
+              `;
+            })()}
           </div>
         `;
       }).join('')}
@@ -484,6 +555,304 @@ function setupAvailabilitySelectListeners($container) {
         toast.error('فشل تحديث الحالة: ' + err.message);
       }
     });
+  });
+}
+
+function setupBranchListeners($container, user, places, onRefresh = null) {
+  if (!$container || !Array.isArray(places)) return;
+
+  $container.querySelectorAll('.btn-dash-add-branch').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = btn.getAttribute('data-place-id');
+      const place = places.find(p => (p.id || p._key) === pid);
+      if (!place) return;
+      openBranchModal({ place, branchIndex: -1, user, onSave: onRefresh });
+    });
+  });
+
+  $container.querySelectorAll('.btn-dash-edit-branch').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = btn.getAttribute('data-place-id');
+      const bIdx = parseInt(btn.getAttribute('data-branch-idx'), 10);
+      const place = places.find(p => (p.id || p._key) === pid);
+      if (!place) return;
+      openBranchModal({ place, branchIndex: bIdx, user, onSave: onRefresh });
+    });
+  });
+
+  $container.querySelectorAll('.btn-dash-del-branch').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = btn.getAttribute('data-place-id');
+      const bIdx = parseInt(btn.getAttribute('data-branch-idx'), 10);
+      const place = places.find(p => (p.id || p._key) === pid);
+      if (!place || !Array.isArray(place.branches) || !place.branches[bIdx]) return;
+      const bName = place.branches[bIdx].name || 'الفرع';
+
+      showConfirm(`هل أنت متأكد من حذف (${bName}) نهائياً؟`, async () => {
+        try {
+          place.branches.splice(bIdx, 1);
+          await updatePlace(pid, { branches: place.branches });
+          clearDbCache();
+          toast.success('تم حذف الفرع بنجاح');
+          if (typeof onRefresh === 'function') onRefresh();
+        } catch (err) {
+          toast.error('فشل حذف الفرع: ' + err.message);
+        }
+      });
+    });
+  });
+
+  $container.querySelectorAll('.dash-branch-status-select').forEach(sel => {
+    sel.addEventListener('change', async (e) => {
+      e.stopPropagation();
+      const pid = sel.getAttribute('data-place-id');
+      const bIdx = parseInt(sel.getAttribute('data-branch-idx'), 10);
+      const place = places.find(p => (p.id || p._key) === pid);
+      if (!place || !Array.isArray(place.branches) || !place.branches[bIdx]) return;
+      const newStatus = e.target.value;
+      place.branches[bIdx].availability_status = newStatus;
+      place.branches[bIdx].availabilityStatus = newStatus;
+      try {
+        await updatePlace(pid, { branches: place.branches });
+        clearDbCache();
+        toast.success(`تم تحديث حالة (${place.branches[bIdx].name}) بنجاح ✨`);
+      } catch (err) {
+        toast.error('فشل تحديث حالة الفرع: ' + err.message);
+      }
+    });
+  });
+}
+
+function openBranchModal({ place, branchIndex = -1, user, onSave = null }) {
+  const branches = Array.isArray(place.branches) ? [...place.branches] : [];
+  const isNew = branchIndex < 0 || !branches[branchIndex];
+  const branch = isNew ? {} : branches[branchIndex];
+
+  const isSameHours = branch.same_as_main_hours !== false && branch.sameAsMainHours !== false;
+  const bHours = branch.working_hours || branch.workingHours || {};
+  const is24 = Boolean(bHours.is24 || bHours.is24Hours);
+  const openTime = bHours.open || '09:00';
+  const closeTime = bHours.close || '23:00';
+  const offDay = ['friday', 'saturday', 'sunday', 'thursday'].find(d => bHours[d]?.closed) || 'none';
+  const bStatus = branch.availability_status || branch.availabilityStatus || 'available';
+
+  const modalHtml = `
+    <form id="branch-quick-modal-form" style="display:flex;flex-direction:column;gap:14px;padding:6px 0">
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" style="font-size:12.5px;font-weight:700">اسم الفرع <span class="required">*</span></label>
+          <input type="text" id="bm-name" class="form-input" placeholder="مثال: فرع المطرية، فرع المحطة" value="${escAttr(branch.name || '')}" required />
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label" style="font-size:12.5px;font-weight:700">المنطقة أو المدينة</label>
+          <input type="text" id="bm-area" class="form-input" placeholder="مثال: المطرية، المنزلة" value="${escAttr(branch.area || '')}" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="font-size:12.5px;font-weight:700">عنوان الفرع بالتفصيل</label>
+        <input type="text" id="bm-address" class="form-input" placeholder="مثال: شارع بورسعيد، بجوار البنك الأهلي" value="${escAttr(branch.address || '')}" />
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin:-4px 0">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--primary)">
+          <input type="checkbox" id="bm-same-phone" />
+          <span>استخدام نفس أرقام الفرع الرئيسي (${escHtml(place.name)})</span>
+        </label>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" style="font-size:12px;font-weight:700">هاتف الفرع</label>
+          <input type="tel" id="bm-phone" class="form-input" placeholder="01012345678" value="${escAttr(branch.phone || '')}" style="direction:ltr;text-align:right" />
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label" style="font-size:12px;font-weight:700">واتساب الفرع</label>
+          <input type="tel" id="bm-whatsapp" class="form-input" placeholder="01012345678" value="${escAttr(branch.whatsapp || '')}" style="direction:ltr;text-align:right" />
+        </div>
+      </div>
+
+      <!-- Working Hours Box with "مثل الفرع الرئيسي" -->
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--primary);margin:0">
+            <input type="checkbox" id="bm-same-hours" ${isSameHours ? 'checked' : ''} />
+            <span>⏰ مثل الفرع الرئيسي (تطابق مواعيد العمل تلقائياً)</span>
+          </label>
+          <span id="bm-matched-badge" class="badge badge--success" style="font-size:11px;${isSameHours ? '' : 'display:none'}">
+            🏢 متطابق تلقائياً
+          </span>
+        </div>
+        <p id="bm-hours-desc" style="font-size:12px;color:var(--text-muted);margin:6px 0 0 0;${isSameHours ? '' : 'display:none'}">
+          عند تفعيل هذا الخيار، سيتم تطبيق مواعيد المقر الرئيسي (${escHtml(place.name)}) تلقائياً على هذا الفرع ولن يظهر مغلقاً في أي وقت يكون المقر فيه مفتوحاً.
+        </p>
+
+        <div id="bm-custom-hours-box" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);${isSameHours ? 'display:none' : 'display:block'}">
+          <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px">
+            🕒 مواعيد العمل المخصصة لهذا الفرع:
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:700">
+              <input type="checkbox" id="bm-hours-24" ${is24 ? 'checked' : ''} />
+              <span>مفتوح 24 ساعة يومياً 🟢</span>
+            </label>
+          </div>
+          <div id="bm-time-range-row" style="display:flex;gap:10px;flex-wrap:wrap;${is24 ? 'display:none' : 'display:flex'}">
+            <div style="flex:1;min-width:120px">
+              <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">يفتح من الساعة</label>
+              <input type="time" id="bm-time-open" class="form-input" value="${escAttr(openTime)}" />
+            </div>
+            <div style="flex:1;min-width:120px">
+              <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">يغلق الساعة</label>
+              <input type="time" id="bm-time-close" class="form-input" value="${escAttr(closeTime)}" />
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">يوم العطلة الأسبوعية</label>
+              <select id="bm-off-day" class="form-select">
+                <option value="none" ${offDay === 'none' ? 'selected' : ''}>طوال أيام الأسبوع (لا يوجد عطلة)</option>
+                <option value="friday" ${offDay === 'friday' ? 'selected' : ''}>الجمعة</option>
+                <option value="saturday" ${offDay === 'saturday' ? 'selected' : ''}>السبت</option>
+                <option value="sunday" ${offDay === 'sunday' ? 'selected' : ''}>الأحد</option>
+                <option value="thursday" ${offDay === 'thursday' ? 'selected' : ''}>الخميس</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="font-size:12.5px;font-weight:700">حالة التوافر للفرع</label>
+        <select id="bm-status" class="form-select">
+          <option value="available" ${bStatus === 'available' ? 'selected' : ''}>🟢 متاح الآن للعملاء</option>
+          <option value="busy" ${bStatus === 'busy' ? 'selected' : ''}>🟡 مشغول حالياً</option>
+          <option value="unavailable" ${bStatus === 'unavailable' ? 'selected' : ''}>🔴 غير متاح حالياً / مغلق مؤقتاً</option>
+        </select>
+      </div>
+    </form>
+  `;
+
+  const modal = showModal({
+    title: isNew ? '➕ إضافة فرع جديد' : `✏️ تعديل بيانات ومواعيد (${branch.name || 'الفرع'})`,
+    content: modalHtml,
+    size: 'lg',
+    buttons: [
+      {
+        label: '💾 حفظ بيانات ومواعيد الفرع',
+        type: 'primary',
+        closeOnClick: false,
+        onClick: async (e, btn) => {
+          const name = document.getElementById('bm-name')?.value.trim();
+          if (!name) {
+            toast.warning('يرجى كتابة اسم الفرع');
+            return;
+          }
+          const area = document.getElementById('bm-area')?.value.trim() || '';
+          const address = document.getElementById('bm-address')?.value.trim() || '';
+          const phone = document.getElementById('bm-phone')?.value.trim() || '';
+          const whatsapp = document.getElementById('bm-whatsapp')?.value.trim() || '';
+          const sameHours = document.getElementById('bm-same-hours')?.checked ?? true;
+          const is24Checked = document.getElementById('bm-hours-24')?.checked ?? false;
+          const openT = document.getElementById('bm-time-open')?.value || '09:00';
+          const closeT = document.getElementById('bm-time-close')?.value || '23:00';
+          const offD = document.getElementById('bm-off-day')?.value || 'none';
+          const status = document.getElementById('bm-status')?.value || 'available';
+
+          let working_hours = {};
+          if (!sameHours) {
+            if (is24Checked) {
+              working_hours = { is24: true, open: '00:00', close: '23:59' };
+              ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'].forEach(d => {
+                working_hours[d] = { open: '00:00', close: '23:59', closed: false };
+              });
+            } else {
+              working_hours = { open: openT, close: closeT };
+              ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'].forEach(d => {
+                working_hours[d] = { open: openT, close: closeT, closed: (d === offD) };
+              });
+            }
+          }
+
+          const updatedBranch = {
+            id: branch.id || ('br_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+            name,
+            area,
+            address,
+            phone,
+            whatsapp,
+            same_as_main_hours: sameHours,
+            sameAsMainHours: sameHours,
+            working_hours,
+            workingHours: working_hours,
+            availability_status: status,
+            availabilityStatus: status
+          };
+
+          if (isNew) {
+            branches.push(updatedBranch);
+          } else {
+            branches[branchIndex] = updatedBranch;
+          }
+
+          try {
+            if (btn) {
+              btn.disabled = true;
+              btn.textContent = 'جاري الحفظ... ⏳';
+            }
+            const placeId = place.id || place._key;
+            await updatePlace(placeId, { branches });
+            place.branches = branches;
+            clearDbCache();
+            toast.success('تم حفظ وتحديث بيانات ومواعيد الفرع بنجاح! 🎉');
+            modal.close();
+            if (typeof onSave === 'function') onSave();
+          } catch (err) {
+            toast.error('فشل حفظ بيانات الفرع: ' + err.message);
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = '💾 حفظ بيانات ومواعيد الفرع';
+            }
+          }
+        }
+      },
+      { label: 'إلغاء', type: 'ghost', closeOnClick: true }
+    ]
+  });
+
+  // Modal interactions
+  const samePhoneCb = document.getElementById('bm-same-phone');
+  const phoneInp = document.getElementById('bm-phone');
+  const waInp = document.getElementById('bm-whatsapp');
+  samePhoneCb?.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      if (phoneInp) phoneInp.value = place.phone || '';
+      if (waInp) waInp.value = place.whatsapp || '';
+      if (phoneInp) phoneInp.disabled = true;
+      if (waInp) waInp.disabled = true;
+    } else {
+      if (phoneInp) phoneInp.disabled = false;
+      if (waInp) waInp.disabled = false;
+    }
+  });
+
+  const sameHoursCb = document.getElementById('bm-same-hours');
+  const customHoursBox = document.getElementById('bm-custom-hours-box');
+  const matchedBadge = document.getElementById('bm-matched-badge');
+  const hoursDesc = document.getElementById('bm-hours-desc');
+  const hours24Cb = document.getElementById('bm-hours-24');
+  const timeRangeRow = document.getElementById('bm-time-range-row');
+
+  sameHoursCb?.addEventListener('change', (e) => {
+    const checked = e.target.checked;
+    if (customHoursBox) customHoursBox.style.display = checked ? 'none' : 'block';
+    if (matchedBadge) matchedBadge.style.display = checked ? '' : 'none';
+    if (hoursDesc) hoursDesc.style.display = checked ? '' : 'none';
+  });
+
+  hours24Cb?.addEventListener('change', (e) => {
+    if (timeRangeRow) timeRangeRow.style.display = e.target.checked ? 'none' : 'flex';
   });
 }
 
@@ -1330,7 +1699,16 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     const row = document.createElement('div');
     row.className = 'branch-form-row animate-fade-in';
     row.setAttribute('data-branch-id', initialData?.id || '');
-    row.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px';
+    row.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:12px';
+
+    const isSameHours = initialData ? (initialData.same_as_main_hours !== false && initialData.sameAsMainHours !== false) : true;
+    const bHours = initialData?.working_hours || initialData?.workingHours || {};
+    const is24 = Boolean(bHours.is24 || bHours.is24Hours);
+    const openTime = bHours.open || '09:00';
+    const closeTime = bHours.close || '23:00';
+    const offDay = ['friday', 'saturday', 'sunday', 'thursday'].find(d => bHours[d]?.closed) || 'none';
+    const bStatus = initialData?.availability_status || initialData?.availabilityStatus || 'available';
+
     row.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:6px">
         <span style="font-size:13px;font-weight:700;color:var(--primary)">📍 الفرع #${idx}</span>
@@ -1366,6 +1744,66 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           <input type="tel" class="form-input b-whatsapp" placeholder="01012345678" value="${escAttr(initialData?.whatsapp || '')}" style="direction:ltr;text-align:right" />
         </div>
       </div>
+
+      <!-- Working Hours Section for Branch -->
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--primary);margin:0">
+            <input type="checkbox" class="b-same-hours-cb" ${isSameHours ? 'checked' : ''} />
+            <span>⏰ تطابق مواعيد العمل مع الفرع الرئيسي (مثل الفرع الرئيسي)</span>
+          </label>
+          <span class="badge badge--success b-hours-matched-badge" style="font-size:11px;${isSameHours ? '' : 'display:none'}">
+            🏢 متطابق تلقائياً
+          </span>
+        </div>
+        <p class="b-hours-desc" style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0 0;${isSameHours ? '' : 'display:none'}">
+          يرث هذا الفرع نفس مواعيد المقر الرئيسي، ولا يظهر مغلقاً في أي وقت يكون المقر فيه مفتوحاً.
+        </p>
+
+        <!-- Custom Branch Hours Box -->
+        <div class="b-custom-hours-box" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);${isSameHours ? 'display:none' : 'display:block'}">
+          <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:8px">
+            🕒 مواعيد العمل الخاصة بهذا الفرع:
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:700">
+              <input type="checkbox" class="b-hours-24-cb" ${is24 ? 'checked' : ''} />
+              <span>مفتوح 24 ساعة يومياً 🟢</span>
+            </label>
+          </div>
+          <div class="b-time-range-row" style="display:flex;gap:10px;flex-wrap:wrap;${is24 ? 'display:none' : 'display:flex'}">
+            <div style="flex:1;min-width:120px">
+              <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">يفتح من الساعة</label>
+              <input type="time" class="form-input b-time-open" value="${escAttr(openTime)}" />
+            </div>
+            <div style="flex:1;min-width:120px">
+              <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">يغلق الساعة</label>
+              <input type="time" class="form-input b-time-close" value="${escAttr(closeTime)}" />
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">يوم العطلة الأسبوعية</label>
+              <select class="form-select b-off-day">
+                <option value="none" ${offDay === 'none' ? 'selected' : ''}>طوال أيام الأسبوع (لا يوجد عطلة)</option>
+                <option value="friday" ${offDay === 'friday' ? 'selected' : ''}>الجمعة</option>
+                <option value="saturday" ${offDay === 'saturday' ? 'selected' : ''}>السبت</option>
+                <option value="sunday" ${offDay === 'sunday' ? 'selected' : ''}>الأحد</option>
+                <option value="thursday" ${offDay === 'thursday' ? 'selected' : ''}>الخميس</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" style="font-size:12px;font-weight:700">حالة التوافر للفرع</label>
+          <select class="form-select b-status">
+            <option value="available" ${bStatus === 'available' ? 'selected' : ''}>🟢 متاح الآن للعملاء</option>
+            <option value="busy" ${bStatus === 'busy' ? 'selected' : ''}>🟡 مشغول حالياً</option>
+            <option value="unavailable" ${bStatus === 'unavailable' ? 'selected' : ''}>🔴 غير متاح حالياً / مغلق مؤقتاً</option>
+          </select>
+        </div>
+      </div>
     `;
 
     row.querySelector('.btn-remove-branch').addEventListener('click', () => {
@@ -1385,6 +1823,24 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         phoneInput.disabled = false;
         waInput.disabled = false;
       }
+    });
+
+    const sameHoursCb = row.querySelector('.b-same-hours-cb');
+    const customHoursBox = row.querySelector('.b-custom-hours-box');
+    const matchedBadge = row.querySelector('.b-hours-matched-badge');
+    const hoursDesc = row.querySelector('.b-hours-desc');
+    const is24Cb = row.querySelector('.b-hours-24-cb');
+    const timeRangeRow = row.querySelector('.b-time-range-row');
+
+    sameHoursCb?.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      if (customHoursBox) customHoursBox.style.display = checked ? 'none' : 'block';
+      if (matchedBadge) matchedBadge.style.display = checked ? '' : 'none';
+      if (hoursDesc) hoursDesc.style.display = checked ? '' : 'none';
+    });
+
+    is24Cb?.addEventListener('change', (e) => {
+      if (timeRangeRow) timeRangeRow.style.display = e.target.checked ? 'none' : 'flex';
     });
 
     branchesListEl.appendChild(row);
@@ -2393,8 +2849,43 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             const bPhone = row.querySelector('.b-phone')?.value.trim() || '';
             const bWhatsapp = row.querySelector('.b-whatsapp')?.value.trim() || '';
             const bId = row.getAttribute('data-branch-id') || '';
+            const isSameHours = row.querySelector('.b-same-hours-cb')?.checked ?? true;
+            const is24Checked = row.querySelector('.b-hours-24-cb')?.checked ?? false;
+            const openT = row.querySelector('.b-time-open')?.value || '09:00';
+            const closeT = row.querySelector('.b-time-close')?.value || '23:00';
+            const offD = row.querySelector('.b-off-day')?.value || 'none';
+            const bStatus = row.querySelector('.b-status')?.value || 'available';
+
+            let bHours = {};
+            if (!isSameHours) {
+              if (is24Checked) {
+                bHours = { is24: true, open: '00:00', close: '23:59' };
+                ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'].forEach(d => {
+                  bHours[d] = { open: '00:00', close: '23:59', closed: false };
+                });
+              } else {
+                bHours = { open: openT, close: closeT };
+                ['saturday','sunday','monday','tuesday','wednesday','thursday','friday'].forEach(d => {
+                  bHours[d] = { open: openT, close: closeT, closed: (d === offD) };
+                });
+              }
+            }
+
             if (bName || bAddress || bPhone) {
-              res.push({ id: bId, name: bName, address: bAddress, area: bArea, phone: bPhone, whatsapp: bWhatsapp });
+              res.push({
+                id: bId || ('br_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+                name: bName,
+                address: bAddress,
+                area: bArea,
+                phone: bPhone,
+                whatsapp: bWhatsapp,
+                same_as_main_hours: isSameHours,
+                sameAsMainHours: isSameHours,
+                working_hours: bHours,
+                workingHours: bHours,
+                availability_status: bStatus,
+                availabilityStatus: bStatus
+              });
             }
           });
           return res;
