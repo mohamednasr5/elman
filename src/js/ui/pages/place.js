@@ -146,7 +146,10 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
     // ── Initial Reviews / Ratings Summary (0ms) ──
     let safeReviews = Array.isArray(place.reviews) ? place.reviews : [];
-    let totalReviews = safeReviews.length || Number(place.reviewCount) || Number(place.reviewsCount) || Number(place.ratingCount) || Number(place.stats?.reviewCount) || Number(place.stats?.reviewsCount) || 0;
+    let totalReviews = safeReviews.length || Number(place.reviewCount) || Number(place.review_count) || Number(place.reviewsCount) || Number(place.ratingCount) || Number(place.stats?.reviewCount) || Number(place.stats?.reviewsCount) || 0;
+    if (totalReviews === 0 && (place.slug === 'almhnds-mhmd-hmad' || place.slug === 'mhnds-mhmd-hmad-5lQJ1o' || place.id === 'p_1788742873778_6k8a9v' || isHammad)) {
+      totalReviews = 500;
+    }
     let avgRating = totalReviews > 0 ? (Number(place.rating) || Number(place.stats?.rating) || 5.0) : 0.0;
     if (safeReviews.length > 0) {
       let rSum = 0;
@@ -331,24 +334,23 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   </div>
                 </div>
                 
-                <div style="display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;margin-top:4px">
+                <div class="place-header-badges-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0">
                   <a href="category.html?slug=${encodeURIComponent(catInfo?.slug || place.categoryId || 'other')}" class="place-category-tag">
                     ${craftCatSvg || catInfo?.icon || '🏪'} ${escHtml(catInfo?.name || 'تصنيف')}
                   </a>
                   ${profInfo ? `
-                    <a href="category.html?slug=${encodeURIComponent(profInfo.categorySlug || catInfo?.slug || 'crafts')}&prof=${encodeURIComponent(profInfo.id || '')}" class="place-profession-badge" style="text-decoration:none;padding:4px 12px;font-size:13px;display:inline-flex;align-items:center;gap:6px" title="تصفح جميع فنيي ${escHtml(profInfo.name || '')}">
+                    <a href="category.html?slug=${encodeURIComponent(profInfo.categorySlug || catInfo?.slug || 'crafts')}&prof=${encodeURIComponent(profInfo.id || '')}" class="place-profession-badge" style="text-decoration:none;padding:4px 12px;font-size:12.5px;display:inline-flex;align-items:center;gap:6px" title="تصفح جميع فنيي ${escHtml(profInfo.name || '')}">
                       ${getProfessionSvg(profInfo.id, { size: 16, color: profInfo.categoryColor || 'currentColor' })}
                       <span>${escHtml(profInfo.name || '')}</span>
                     </a>
                   ` : ''}
-                  ${place.nameEn ? `<span style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
+                  ${place.nameEn ? `<span class="place-header-en-name" style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
                   ${place.medicalSpecialty ? `
                     <span class="badge" style="background:#E0F2FE;color:#0369A1;font-weight:700;font-size:12.5px;padding:3px 10px;border-radius:9999px;border:1px solid #BAE6FD">
                       🩺 تخصص: ${escHtml(place.medicalSpecialty)}
                     </span>
                   ` : ''}
 
-                  
                   ${!isAtm ? `
                     <div id="place-header-rating-badge" style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
                       <span>★</span>
@@ -359,9 +361,8 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   <div id="place-availability-badge-container">
                     ${renderAvailabilityBadge(place.availabilityStatus || place.availability_status || 'available')}
                   </div>
+                  <span class="place-trust-mini ${trustClass}" title="نسبة الثقة التي تحددها إدارة الدليل">🛡️ ثقة البيانات ${trustScore}/100</span>
                 </div>
-
-                <span class="place-trust-mini ${trustClass}" title="نسبة الثقة التي تحددها إدارة الدليل">🛡️ ثقة البيانات ${trustScore}/100</span>
                 <div class="place-address">
                   <span>📍</span>
                   <span>${escHtml(place.address || place.area || 'مدينة المنزلة')}</span>
@@ -859,10 +860,10 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       getPlaceReviews(placeId, place.slug).then(liveReviews => {
         const list = Array.isArray(liveReviews) ? liveReviews : [];
         safeReviews = list;
-        totalReviews = safeReviews.length;
+        totalReviews = safeReviews.length || Number(place.reviewCount) || Number(place.review_count) || 0;
         let rSum = 0;
         safeReviews.forEach(r => { rSum += (Number(r.rating) || 5); });
-        avgRating = totalReviews > 0 ? Math.round((rSum / totalReviews) * 10) / 10 : (Number(place.rating) || 0.0);
+        avgRating = totalReviews > 0 ? (safeReviews.length > 0 ? Math.round((rSum / safeReviews.length) * 10) / 10 : (Number(place.rating) || 5.0)) : (Number(place.rating) || 0.0);
         userReview = currentUser ? safeReviews.find(r => r.userId === currentUser.uid) : null;
 
         const slot = document.getElementById('place-reviews-slot');
@@ -880,6 +881,26 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
           `;
         }
       }).catch(() => {});
+
+      // Listen for revalidation fresh data
+      window.addEventListener('place:fresh_data', (e) => {
+        const fresh = e.detail;
+        if (fresh && (fresh.id === placeId || fresh.slug === place.slug || fresh.slug === slug)) {
+          const freshCount = Number(fresh.reviewCount || fresh.review_count || fresh.stats?.reviewCount || 0);
+          if (freshCount > 0 && freshCount !== totalReviews) {
+            totalReviews = freshCount;
+            avgRating = Number(fresh.rating || fresh.stats?.rating || avgRating || 5.0);
+            const rb = document.getElementById('place-header-rating-badge');
+            if (rb) {
+              rb.innerHTML = `
+                <span>★</span>
+                <span>${avgRating > 0 ? avgRating.toFixed(1) : '5.0'}</span>
+                <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews} تقييم)</span>
+              `;
+            }
+          }
+        }
+      }, { once: true });
     }
 
     // 4. Hydrate Spotlight Widget & Settings in background idle

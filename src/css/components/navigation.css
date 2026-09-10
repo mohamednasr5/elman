@@ -897,7 +897,7 @@
 .more-menu-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 12px;
 }
 .more-menu-tile {
@@ -907,30 +907,50 @@
   padding: 10px 12px;
   background: var(--surface-2, #F8FAFC);
   border: 1px solid var(--border, #E2E8F0);
-  border-radius: 12px;
+  border-radius: 14px;
   text-decoration: none;
   color: var(--text-primary, #0F172A);
-  font-size: 0.88rem;
-  font-weight: 600;
-  transition: all 0.15s ease;
-  min-height: 48px;
+  transition: all 0.18s ease;
+  min-height: 56px;
+  box-sizing: border-box;
 }
 .more-menu-tile:hover, .more-menu-tile:active {
   background: var(--surface, #FFFFFF);
   border-color: var(--primary, #1B4F72);
   color: var(--primary, #1B4F72);
   transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 .more-menu-tile .tile-icon {
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.more-menu-tile .tile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 .more-menu-tile .tile-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--text-primary, #0F172A);
+  white-space: normal;
+  word-break: break-word;
+}
+.more-menu-tile .tile-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted, #64748B);
+  line-height: 1.25;
+  white-space: normal;
+  word-break: break-word;
 }
 .more-menu-row {
   display: flex;

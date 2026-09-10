@@ -77,13 +77,13 @@ export async function renderPopularPage($container, { filter = 'views', category
         <div style="font-weight:800;font-size:13.5px;margin-bottom:8px;color:var(--text-secondary);display:flex;align-items:center;gap:6px">
           <span>🎯 ترتيب وترشيح الأنشطة حسب:</span>
         </div>
-        <div class="filter-pills-bar" id="popular-filter-pills" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch">
+        <div class="filter-pills-bar" id="popular-filter-pills" style="display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
           ${POPULAR_FILTERS.map(f => `
             <button 
               type="button" 
               class="btn-popular-filter ${currentFilter === f.id ? 'active' : ''}" 
               data-filter="${f.id}"
-              style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s;border:1px solid var(--border);background:${currentFilter === f.id ? 'var(--primary)' : 'var(--surface)'};color:${currentFilter === f.id ? '#fff' : 'var(--text-primary)'};box-shadow:${currentFilter === f.id ? '0 3px 10px rgba(2,132,199,0.3)' : 'none'}"
+              style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:9999px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.2s;border:1px solid var(--border);background:${currentFilter === f.id ? 'var(--primary)' : 'var(--surface)'};color:${currentFilter === f.id ? '#fff' : 'var(--text-primary)'};box-shadow:${currentFilter === f.id ? '0 3px 10px rgba(2,132,199,0.3)' : 'none'}"
             >
               ${f.label}
             </button>
@@ -93,26 +93,26 @@ export async function renderPopularPage($container, { filter = 'views', category
 
       <!-- Trending Chips Bar -->
       <div style="margin-bottom:1.5rem;background:var(--surface-2);padding:12px 14px;border-radius:var(--radius-lg);border:1px solid var(--border)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
           <div style="font-weight:800;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
             <span>⚡ رائج ومطلوب الآن:</span>
           </div>
           <!-- Area Filter Select -->
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:12px;color:var(--text-muted)">المنطقة:</span>
-            <select id="popular-area-select" class="form-select" style="padding:4px 10px;font-size:12px;font-weight:700;border-radius:var(--radius-sm);max-width:140px">
+          <div class="popular-area-wrapper" style="display:inline-flex;align-items:center;gap:6px;flex-shrink:0">
+            <span style="font-size:12px;font-weight:700;color:var(--text-muted);white-space:nowrap">المنطقة:</span>
+            <select id="popular-area-select" style="padding:4px 10px;font-size:12px;font-weight:700;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text-primary);width:auto;min-width:130px;max-width:160px;cursor:pointer">
               <option value="">🏙️ كل المناطق</option>
               ${MANZALA_VILLAGES_LIST.map(a => `<option value="${escAttr(a)}" ${currentArea === a ? 'selected' : ''}>${a}</option>`).join('')}
             </select>
           </div>
         </div>
-        <div class="trending-chips-bar" id="popular-trending-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">
+        <div class="trending-chips-bar" id="popular-trending-chips" style="display:flex;gap:6px;overflow-x:auto;padding:2px 2px 6px 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
           ${TRENDING_CHIPS.map(c => `
             <button 
               type="button" 
               class="chip-trending ${currentCategory === c.id ? 'active' : ''}" 
               data-cat="${c.id}"
-              style="display:inline-flex;align-items:center;padding:5px 12px;border-radius:var(--radius-full);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid ${currentCategory === c.id ? 'var(--primary)' : 'var(--border)'};background:${currentCategory === c.id ? 'var(--primary)' : 'var(--surface)'};color:${currentCategory === c.id ? '#fff' : 'var(--text-secondary)'}"
+              style="display:inline-flex;align-items:center;padding:6px 14px;border-radius:var(--radius-full);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;border:1px solid ${currentCategory === c.id ? 'var(--primary)' : 'var(--border)'};background:${currentCategory === c.id ? 'var(--primary)' : 'var(--surface)'};color:${currentCategory === c.id ? '#fff' : 'var(--text-secondary)'}"
             >
               ${c.label}
             </button>

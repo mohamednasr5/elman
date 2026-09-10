@@ -781,7 +781,15 @@ export async function getPlaceBySlug(slug) {
       tursoFetch('/api/places?slug=' + encodeURIComponent(localPlace.slug || raw)).then(data => {
         if (data?.success && data.data) {
           const fresh = normalizeTursoPlace(data.data);
-          if (fresh) idbPut(STORES.PLACES, fresh).catch(() => {});
+          if (fresh) {
+            idbPut(STORES.PLACES, fresh).catch(() => {});
+            try {
+              sessionStorage.setItem('instant_place_' + clean, JSON.stringify(fresh));
+            } catch (_) {}
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('place:fresh_data', { detail: fresh }));
+            }
+          }
         }
       }).catch(() => {});
       return localPlace;
@@ -1815,7 +1823,8 @@ export async function getPlaceAnalyticsReport(placeId) {
 //  REVIEWS & RATINGS SYSTEM (Google-Style)
 // ─────────────────────────────────────────────
 
-export const HAMMAD_PLACE_SLUG = 'mhnds-mhmd-hmad-5lQJ1o';
+export const HAMMAD_PLACE_SLUG = 'almhnds-mhmd-hmad';
+export const HAMMAD_PLACE_SLUGS = ['almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788742873778_6k8a9v'];
 
 export const HAMMAD_TESTIMONIALS = [
   { name: 'أحمد محمود', rating: 5, comment: 'تعامل ممتاز جدًا، والنتيجة النهائية للإعلان بالذكاء الاصطناعي كانت احترافية ومبهرة.' },
@@ -1876,8 +1885,9 @@ export async function getPlaceReviews(placeId, slug = '') {
   const targetId = placeId || slug;
   try {
     const querySlug = slug && slug !== targetId ? `&slug=${encodeURIComponent(slug)}` : '';
-    const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(targetId)}${querySlug}&limit=5000`, {
-      signal: AbortSignal.timeout(8000)
+    const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(targetId)}${querySlug}&limit=5000&_=${Date.now()}`, {
+      signal: AbortSignal.timeout(8000),
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Reviews Worker HTTP ${res.status}`);
     const data = await res.json();
