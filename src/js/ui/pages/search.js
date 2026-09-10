@@ -1,22 +1,21 @@
 /**
- * المنزلة وناسها — Search Page
- * Smart Arabic text search with normalization, synonyms, instant caching,
- * and AI Semantic Search integration.
+ * المنزلة وناسها — Search Page (Advanced High-Speed Search)
+ * Ultra-fast local-first search with fuzzy Arabic NLP, synonyms, instant filters,
+ * background Turso Edge synchronization, and AI Semantic Search.
  */
 
 import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers, searchPlacesTurso } from '../../core/db.js';
-import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
-import { mountSponsoredShowcase, isPlaceSponsored } from '../components/SponsoredShowcase.js';
-import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent, arabicMatch } from '../../utils/arabic.js';
+import { isPlaceSponsored } from '../components/SponsoredShowcase.js';
+import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent } from '../../utils/arabic.js';
 import { isAtmPlace, isAtmReadyAndOperational } from '../../utils/atm.js';
-import { aiSearch, aiSmartSearch } from '../../services/ai.service.js';
+import { aiSmartSearch } from '../../services/ai.service.js';
 import { mountVoiceSearchButton } from '../../services/voice.service.js';
-import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
-import { isPhoneSearchQuery, normalizePhoneNumber, matchPlaceByPhone, formatPhoneNumberForDisplay, extractPlacePhoneNumbers } from '../../utils/phone.js';
+import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../utils/maps.js';
+import { isPhoneSearchQuery, normalizePhoneNumber, matchPlaceByPhone, formatPhoneNumberForDisplay } from '../../utils/phone.js';
 import { toast } from '../components/Toast.js';
-import { getPlaceLiveStatus } from '../../services/live-hours.js';
+import { getPlaceLiveStatus } from '../../utils/live-hours.js';
 
 let _searchUserLocation = null;
 
@@ -36,7 +35,9 @@ const SEARCH_CATEGORY_SYNONYMS = {
   mechanic: ['ميكانيكي', 'سيارات', 'صيانة سيارات', 'زيوت', 'قطع غيار', 'كاوتش', 'ميكانيكيه']
 };
 
-export async function renderSearchPage($container, { q = '', user }) {
+export async function renderSearchPage($container, { q = '', user } = {}) {
+  const initialQ = (q || '').trim();
+
   $container.innerHTML = `
     <div class="container" style="padding-top:var(--space-3)">
       <div class="page-back-bar">
@@ -50,83 +51,142 @@ export async function renderSearchPage($container, { q = '', user }) {
         <nav class="page-breadcrumbs" aria-label="مسار التنقل">
           <a href="index.html">الرئيسية</a>
           <span class="breadcrumb-sep">/</span>
-          <span class="breadcrumb-current">البحث</span>
+          <span class="breadcrumb-current">البحث المتقدم</span>
         </nav>
       </div>
     </div>
 
+    <!-- Search Hero Header -->
     <div class="search-page-header">
       <div class="container text-center">
-        <h1 style="font-size:var(--font-size-3xl);font-weight:800;color:#fff;margin-bottom:var(--space-4)">
-          البحث في دليل المنزلة والمطرية الرقمي
+        <h1 style="font-size:1.85rem;font-weight:900;color:#fff;margin-bottom:8px">
+          🔍 البحث الذكي في دليل المنزلة والمطرية
         </h1>
+        <p style="color:rgba(255,255,255,0.85);font-size:0.92rem;margin-bottom:20px;max-width:600px;margin-left:auto;margin-right:auto">
+          ابحث بالاسم، النشاط التجاري، التخصص الطبي، الصنايعية والحرفيين، أو برقم الهاتف في كافة المدن والقرى
+        </p>
         
-        <!-- Search Form -->
-        <div style="max-width:680px;margin:0 auto">
-          <div class="hero-search" style="box-shadow:var(--shadow-xl)">
+        <!-- Search Input Form -->
+        <div style="max-width:700px;margin:0 auto">
+          <div class="hero-search" style="box-shadow:0 12px 36px rgba(0,0,0,0.25);position:relative">
             <input
               type="search"
               id="search-page-input"
               class="hero-search__input"
-              placeholder="ابحث عن مكان، دكتور، صيدلية، سباك، محل، أو برقم الهاتف (01... / 05...)..."
-              value="${escAttr(q)}"
+              placeholder="ابحث عن مكان، دكتور، صيدلية، مطعم، سباك، أو برقم الهاتف..."
+              value="${escAttr(initialQ)}"
               autocomplete="off"
             />
-            <button class="hero-search__btn" id="search-page-btn">
+            <button type="button" id="btn-search-clear" aria-label="مسح البحث" style="position:absolute;left:85px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted,#64748B);font-size:18px;cursor:pointer;padding:6px;display:${initialQ ? 'block' : 'none'};z-index:2">
+              ✕
+            </button>
+            <button class="hero-search__btn" id="search-page-btn" style="z-index:2">
               <span>🔍</span> بحث
             </button>
           </div>
 
-          <!-- Smart AI Button & Quick Filter Chips -->
-          <div style="margin-top:var(--space-3);display:flex;align-items:center;justify-content:center;gap:var(--space-2);flex-wrap:wrap">
-            <button class="btn btn-sm btn-outline" id="btn-ai-search" style="border-color:rgba(255,255,255,0.4);color:#fff">
+          <!-- Smart Action Bar -->
+          <div style="margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm btn-outline" id="btn-ai-search" style="border-color:rgba(255,255,255,0.5);color:#fff;font-weight:700;background:rgba(255,255,255,0.1)">
               ✨ بحث ذكي بالذكاء الاصطناعي
             </button>
-            <span style="color:rgba(255,255,255,0.7);font-size:var(--font-size-xs)">|</span>
-            <span style="color:rgba(255,255,255,0.8);font-size:var(--font-size-xs)">المدن والقرى:</span>
-            <button class="chip" onclick="searchFor('المنزلة')" style="cursor:pointer">🏙️ المنزلة</button>
-            <button class="chip" onclick="searchFor('المطرية')" style="cursor:pointer">🌊 المطرية</button>
-            <button class="chip" onclick="searchFor('العصافرة')" style="cursor:pointer">🌾 العصافرة</button>
-            <button class="chip" onclick="searchFor('الجمالية')" style="cursor:pointer">🏛️ الجمالية</button>
-            <button class="chip" onclick="searchFor('ميت سلسيل')" style="cursor:pointer">🏢 ميت سلسيل</button>
-            <button class="chip" onclick="searchFor('البصراط')" style="cursor:pointer">🏡 البصراط</button>
-            <button class="chip" onclick="searchFor('العزيزة')" style="cursor:pointer">🌴 العزيزة</button>
-            <button class="chip" onclick="searchFor('الأحمدية')" style="cursor:pointer">🌾 الأحمدية</button>
-            <button class="chip" onclick="searchFor('الروضة')" style="cursor:pointer">🌺 الروضة</button>
-            <button class="chip" onclick="searchFor('الحوتة')" style="cursor:pointer">🐟 الحوتة</button>
-            <button class="chip" onclick="searchFor('النسايمة')" style="cursor:pointer">🌳 النسايمة</button>
-            <button class="chip" onclick="searchFor('ميت خضير')" style="cursor:pointer">🏘️ ميت خضير</button>
-            <button class="chip" onclick="searchFor('ميت شريف')" style="cursor:pointer">🏡 ميت شريف</button>
+            <span style="color:rgba(255,255,255,0.5);font-size:12px">|</span>
+            <span style="color:rgba(255,255,255,0.8);font-size:12px">مدن سريعة:</span>
+            <button type="button" class="chip" data-quick-area="المنزلة" style="cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">🏙️ المنزلة</button>
+            <button type="button" class="chip" data-quick-area="المطرية" style="cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">🌊 المطرية</button>
+            <button type="button" class="chip" data-quick-area="العصافرة" style="cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">🌾 العصافرة</button>
+            <button type="button" class="chip" data-quick-area="الجمالية" style="cursor:pointer;background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)">🏛️ الجمالية</button>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="container section">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-4)">
-        <div class="search-results-meta" id="search-meta" style="margin:0">
-          ${q ? `نتائج البحث عن: "<strong>${escHtml(q)}</strong>"` : 'أدخل كلمة البحث للبدء'}
+    <!-- Filters & Results Container -->
+    <div class="container section" style="padding-top:0">
+      
+      <!-- Modern Filter Card -->
+      <div class="search-filter-card">
+        <div class="search-filters-bar">
+          <!-- 1. Category Filter -->
+          <div class="search-filter-select-wrap">
+            <label class="search-filter-label" for="search-category-select">📂 القسم / النشاط</label>
+            <select id="search-category-select" class="search-filter-select">
+              <option value="all">كافة التصنيفات والأنشطة</option>
+              <option value="restaurants">🍔 مطاعم ومأكولات</option>
+              <option value="cafes">☕ كافيهات ومقاهي</option>
+              <option value="doctors">🩺 أطباء وعيادات</option>
+              <option value="pharmacies">💊 صيدليات ومستلزمات طبية</option>
+              <option value="supermarkets">🛒 سوبر ماركت ومواد غذائية</option>
+              <option value="bakeries">🥖 مخابز وحلواني</option>
+              <option value="crafts">🛠️ صنايعية ومهن حرفية</option>
+              <option value="clothing">👗 ملابس وأزياء</option>
+              <option value="electronics">📱 إلكترونيات وموبايلات</option>
+              <option value="services">🏢 بنوك وماكينات ATM وخدمات</option>
+              <option value="automotive">🚗 سيارات وصيانة</option>
+            </select>
+          </div>
+
+          <!-- 2. Area Filter -->
+          <div class="search-filter-select-wrap">
+            <label class="search-filter-label" for="search-area-select">📍 المدينة / القرية</label>
+            <select id="search-area-select" class="search-filter-select">
+              <option value="all">كافة المدن والقرى</option>
+              <option value="المنزلة">🏙️ المنزلة (المدينة)</option>
+              <option value="المطرية">🌊 المطرية (دقهلية)</option>
+              <option value="العصافرة">🌾 العصافرة</option>
+              <option value="الجمالية">🏛️ الجمالية</option>
+              <option value="ميت سلسيل">🏢 ميت سلسيل</option>
+              <option value="البصراط">🏡 البصراط</option>
+              <option value="العزيزة">🌴 العزيزة</option>
+              <option value="الأحمدية">🌾 الأحمدية</option>
+              <option value="الروضة">🌺 الروضة</option>
+              <option value="الحوتة">🐟 الحوتة</option>
+              <option value="النسايمة">🌳 النسايمة</option>
+              <option value="ميت خضير">🏘️ ميت خضير</option>
+              <option value="ميت شريف">🏡 ميت شريف</option>
+            </select>
+          </div>
+
+          <!-- 3. Sort Filter -->
+          <div class="search-filter-select-wrap">
+            <label class="search-filter-label" for="search-sort-select">⚡ ترتيب النتائج</label>
+            <select id="search-sort-select" class="search-filter-select">
+              <option value="relevance">🎯 الأكثر مطابقة</option>
+              <option value="nearest">📍 الأقرب إليّ (GPS)</option>
+              <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
+              <option value="most-reviews">💬 الأكثر تقييماً</option>
+              <option value="newest">🆕 الأحدث إضافة</option>
+            </select>
+          </div>
         </div>
-        <select id="search-sort-filter" class="form-select" style="max-width:210px;margin:0">
-          <option value="relevance">🎯 الأكثر مطابقة</option>
-          <option value="nearest">📍 الأقرب إليّ (حسب موقعي GPS)</option>
-          <option value="highest-rating">★ الأعلى تقييماً (5.0 → 1.0)</option>
-          <option value="most-reviews">💬 الأكثر تقييماً</option>
-          <option value="negative">⚠️ التقييمات الأقل / سلبية</option>
-        </select>
-      </div>
-      <div class="search-smart-filters" id="search-smart-filters" aria-label="فلاتر سريعة">
-        <button type="button" class="search-smart-filter is-active" data-smart-filter="all">✨ الكل</button>
-        <button type="button" class="search-smart-filter" data-smart-filter="open">🟢 مفتوح الآن</button>
-        <button type="button" class="search-smart-filter" data-smart-filter="verified">🛡️ موثق</button>
-        <button type="button" class="search-smart-filter" data-smart-filter="top">⭐ 4.5+</button>
-        <button type="button" class="search-smart-filter" data-smart-filter="nearby">📍 قريب مني</button>
+
+        <!-- Smart Quick Filter Pills -->
+        <div class="search-smart-filters" id="search-smart-filters" aria-label="فلاتر سريعة">
+          <button type="button" class="search-smart-filter is-active" data-smart-filter="all">✨ الكل</button>
+          <button type="button" class="search-smart-filter" data-smart-filter="open">🟢 مفتوح الآن</button>
+          <button type="button" class="search-smart-filter" data-smart-filter="verified">🛡️ موثق فقط</button>
+          <button type="button" class="search-smart-filter" data-smart-filter="top">⭐ تقييم 4.5+</button>
+          <button type="button" class="search-smart-filter" data-smart-filter="nearby">📍 الأقرب إليّ</button>
+          <button type="button" class="search-smart-filter" data-smart-filter="offers">🏷️ به عروض</button>
+        </div>
       </div>
 
+      <!-- Results Meta Summary -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        <div class="search-results-meta" id="search-meta" style="margin:0;font-size:0.95rem;font-weight:700">
+          جاري البحث...
+        </div>
+        <button type="button" id="btn-reset-filters" class="btn btn-sm btn-outline" style="border-radius:10px;font-size:12px;display:none">
+          🔄 إعادة ضبط الفلاتر
+        </button>
+      </div>
+
+      <!-- Results Grid -->
       <div class="places-grid" id="search-results-grid">
-        ${q ? Array(4).fill(renderPlaceCardSkeleton()).join('') : ''}
+        ${Array(4).fill(renderPlaceCardSkeleton()).join('')}
       </div>
 
+      <!-- Pagination / Load More -->
       <div id="search-pagination-container" style="text-align:center;margin-top:var(--space-6);display:none">
         <button id="btn-load-more-search" class="btn btn-outline" style="padding:10px 28px;border-radius:12px;font-size:14px;font-weight:700">
           عرض المزيد من النتائج ⬇️
@@ -137,437 +197,402 @@ export async function renderSearchPage($container, { q = '', user }) {
 
   const searchInput = document.getElementById('search-page-input');
   const searchBtn = document.getElementById('search-page-btn');
-  const searchSort = document.getElementById('search-sort-filter');
+  const searchClearBtn = document.getElementById('btn-search-clear');
+  const categorySelect = document.getElementById('search-category-select');
+  const areaSelect = document.getElementById('search-area-select');
+  const sortSelect = document.getElementById('search-sort-select');
   const aiSearchBtn = document.getElementById('btn-ai-search');
+  const resetFiltersBtn = document.getElementById('btn-reset-filters');
   const metaEl = document.getElementById('search-meta');
   const gridEl = document.getElementById('search-results-grid');
 
   let allPlaces = [];
-  let allProductsList = [];
-  let allOffersList = [];
+  let activeSmartFilter = 'all';
+  let currentUser = getCurrentUser() || user;
 
-  // Turso Edge Search is the primary path. Keep the page lightweight and hydrate
-  // the full local index only when AI/local fallback actually needs it.
+  // 1. Ensure Local In-Memory Cache (0ms response)
   async function ensureLocalPlaces() {
-    if (allPlaces.length) return allPlaces;
+    if (allPlaces.length > 0) return allPlaces;
     try {
-      allPlaces = await getPublishedPlaces({ limit: 250 });
-    } catch (_) { allPlaces = []; }
+      allPlaces = await getPublishedPlaces({ limit: 400 });
+    } catch (_) {
+      allPlaces = [];
+    }
     return allPlaces;
   }
 
-  const currentUser = getCurrentUser() || user;
-  const paginationContainer = document.getElementById('search-pagination-container');
-  const loadMoreBtn = document.getElementById('btn-load-more-search');
+  // Pre-hydrate in background immediately
+  ensureLocalPlaces().then(() => {
+    if (!initialQ && searchInput && !searchInput.value.trim()) {
+      applyFiltersAndRender();
+    }
+  });
 
-  let currentQuery = '';
-  let currentPage = 1;
-  let hasMoreResults = false;
-  let isSearching = false;
+  // Apply all active filters & sort on places
+  async function applyFiltersAndRender() {
+    const q = (searchInput?.value || '').trim();
+    const cat = categorySelect?.value || 'all';
+    const area = areaSelect?.value || 'all';
+    const sortBy = sortSelect?.value || 'relevance';
 
-  async function performSearch(queryText, isAi = false, page = 1) {
-    const query = (queryText || '').trim();
-    if (!query) {
-      if (metaEl) metaEl.innerHTML = 'يرجى إدخال كلمة أو رقم هاتف للبحث';
-      if (gridEl) gridEl.innerHTML = '';
-      if (paginationContainer) paginationContainer.style.display = 'none';
+    // Show reset button if any filter is non-default
+    if (resetFiltersBtn) {
+      resetFiltersBtn.style.display = (cat !== 'all' || area !== 'all' || activeSmartFilter !== 'all' || q) ? 'inline-flex' : 'none';
+    }
+
+    if (searchClearBtn) {
+      searchClearBtn.style.display = q ? 'block' : 'none';
+    }
+
+    // If query looks like a phone number, run phone search
+    if (isPhoneSearchQuery(q)) {
+      await handlePhoneSearch(q);
       return;
     }
 
-    if (page === 1) {
-      saveSearchHistory(query);
-      currentQuery = query;
-      currentPage = 1;
-    }
+    await ensureLocalPlaces();
+    let places = [...allPlaces];
 
-    // ── Dedicated Phone Number Search (01... mobile or 05... landline) ──
-    if (isPhoneSearchQuery(query)) {
-      if (paginationContainer) paginationContainer.style.display = 'none';
-      const qPhone = normalizePhoneNumber(query);
-      const displayPhone = formatPhoneNumberForDisplay(qPhone);
-      let matched = [];
-      try {
-        await ensureLocalPlaces();
-        matched = allPlaces.filter(p => matchPlaceByPhone(p, qPhone) && (!isAtmPlace(p) || isAtmReadyAndOperational(p, 15)));
-      } catch (_) {}
-      if (!matched.length && allPlaces.length === 0) {
-        try {
-          const phoneSearchResult = await searchPlacesTurso(query, { limit: 20, offset: 0 });
-          matched = (phoneSearchResult?.places || []).filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
-        } catch (_) {}
-      }
+    // Text search scoring
+    if (q) {
+      const rawClean = extractSearchKeywords(q);
+      const normalQ = normalizeArabic(rawClean);
+      const queryIntents = expandArabicSearchIntent(q);
 
-      if (matched.length > 0) {
-        toast.success(`تم العثور على (${matched.length}) نشاط مرتبط برقم الهاتف 📞`);
-        const meta = `📞 تم العثور على <strong>${matched.length}</strong> نشاط تجاري مرتبط برقم الهاتف: <span style="direction:ltr;display:inline-block;font-weight:900;color:var(--primary);font-size:15px">${escHtml(displayPhone)}</span>`;
-        await renderResults(matched, meta, false);
-      } else {
-        toast.warning(`لا يوجد أي نشاط تجاري مرتبط برقم الهاتف (${displayPhone})`);
-        if (metaEl) {
-          metaEl.innerHTML = `
-            <div style="display:inline-flex;align-items:center;gap:8px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:10px;padding:8px 16px;font-size:13.5px;font-weight:700">
-              <span>⚠️</span>
-              <span>لا يوجد أي نشاط تجاري مسجل مرتبط برقم الهاتف:</span>
-              <span style="direction:ltr;font-family:monospace;font-size:14px;color:#B45309">${escHtml(displayPhone)}</span>
-            </div>
-          `;
-        }
-        if (gridEl) {
-          gridEl.innerHTML = `
-            <div class="empty-state phone-empty-state animate-fade-in" style="grid-column:1/-1;background:var(--surface);border:1.5px solid #F59E0B;border-radius:20px;padding:40px 24px;text-align:center;box-shadow:0 12px 36px rgba(245,158,11,0.08);max-width:640px;margin:1.5rem auto">
-              <div style="width:76px;height:76px;border-radius:50%;background:rgba(245,158,11,0.14);color:#D97706;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 16px auto;border:2px solid rgba(245,158,11,0.3)">
-                📞
-              </div>
-              <h2 style="font-size:1.4rem;font-weight:900;color:var(--text-primary);margin-bottom:8px">
-                لا يوجد نشاط مرتبط برقم الهاتف
-              </h2>
-              <div style="display:inline-block;background:rgba(2,132,199,0.08);color:#0284C7;font-weight:900;font-size:16px;padding:6px 20px;border-radius:9999px;margin-bottom:14px;direction:ltr">
-                ${escHtml(displayPhone)}
-              </div>
-              <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin:0 0 24px 0">
-                لم نعثر على أي مكان أو دكتور أو محل أو ورشة مسجلة برقم الهاتف هذا في دليل المنزلة والمطرية الرقمي. إذا كنت صاحب هذا الرقم أو النشاط، يمكنك إضافته الآن مجاناً ليظهر لآلاف الزوار.
-              </p>
-              <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
-                <a href="dashboard.html?section=add&phone=${encodeURIComponent(qPhone)}" class="btn btn-primary" style="padding:10px 22px;border-radius:12px;font-size:13.5px;gap:8px">
-                  <span>➕</span> إضافة هذا النشاط للدليل الآن
-                </a>
-                <button type="button" class="btn btn-outline" id="btn-phone-clear-search" style="padding:10px 20px;border-radius:12px;font-size:13.5px">
-                  🔍 البحث باسم أو نشاط آخر
-                </button>
-              </div>
-            </div>
-          `;
-          document.getElementById('btn-phone-clear-search')?.addEventListener('click', () => {
-            if (searchInput) {
-              searchInput.value = '';
-              searchInput.focus();
+      const scored = places.map(place => {
+        const nameScore = Math.max(arabicScore(place.name || '', q), arabicScore(place.name || '', rawClean));
+        const nameEnScore = place.nameEn ? (place.nameEn.toLowerCase().includes(q.toLowerCase()) ? 90 : 0) : 0;
+
+        let categorySynonymScore = 0;
+        const placeCatKey = (place.categoryId || '').toLowerCase();
+        const placeCatName = normalizeArabic((place.customCategory || '') + ' ' + (place.categoryName || '')).toLowerCase();
+        const placeNameNorm = normalizeArabic(place.name || '').toLowerCase();
+
+        for (const [cKey, syns] of Object.entries(SEARCH_CATEGORY_SYNONYMS)) {
+          if (placeCatKey.includes(cKey) || placeCatName.includes(cKey) || placeNameNorm.includes(cKey)) {
+            if (syns.some(s => normalQ.includes(s) || s.includes(normalQ) || queryIntents.includes(s))) {
+              categorySynonymScore = 95;
+              break;
             }
+          }
+        }
+
+        let specialtyScore = 0;
+        if (place.medicalSpecialty) {
+          const specNorm = normalizeArabic(place.medicalSpecialty);
+          if (specNorm.includes(normalQ) || normalQ.includes(specNorm)) specialtyScore = 95;
+        }
+
+        let serviceScore = 0;
+        if (Array.isArray(place.services)) {
+          place.services.forEach(s => {
+            const ns = normalizeArabic(s);
+            if (ns.includes(normalQ) || normalQ.includes(ns)) serviceScore = Math.max(serviceScore, 90);
           });
         }
-      }
-      return;
+
+        const addressScore = place.address ? Math.max(arabicScore(place.address, q), arabicScore(place.address, rawClean)) * 0.9 : 0;
+        const areaScore = Math.max(arabicScore(place.area || '', q), arabicScore(place.area || '', rawClean)) * 0.85;
+
+        const total = Math.max(nameScore, nameEnScore, categorySynonymScore, specialtyScore, serviceScore, addressScore, areaScore);
+        return { place, total };
+      })
+      .filter(item => item.total > 0 && (!isAtmPlace(item.place) || isAtmReadyAndOperational(item.place, 15)))
+      .sort((a, b) => b.total - a.total)
+      .map(item => item.place);
+
+      places = scored;
     }
 
-    if (isAi) {
-      await ensureLocalPlaces();
-      if (metaEl) metaEl.innerHTML = `✨ جاري التحليل الذكي للبحث عن "<strong>${escHtml(query)}</strong>"...`;
-      if (paginationContainer) paginationContainer.style.display = 'none';
-      aiSmartSearch(query, allPlaces).then(async (aiRes) => {
-        if (aiRes && aiRes.results && aiRes.results.length > 0) {
-          const matchedIds = new Set(aiRes.results.map(r => r.id));
-          const results = allPlaces.filter(p => matchedIds.has(p._key || p.id));
-          await renderResults(results, `✨ نتائج ذكية مقترحة لـ "<strong>${escHtml(query)}</strong>" (${results.length})`, false);
-        } else {
-          await executeSearch(query, page);
-        }
-      }).catch(async () => await executeSearch(query, page));
-    } else {
-      await executeSearch(query, page);
-    }
-  }
-
-  async function executeSearch(query, page = 1) {
-    if (page === 1 && gridEl) {
-      gridEl.innerHTML = Array(4).fill(renderPlaceCardSkeleton()).join('');
-    }
-
-    // Local-first: after IndexedDB hydration, live typing/search stays entirely
-    // in the browser instead of issuing a Turso scan for every query.
-    try {
-      await ensureLocalPlaces();
-      if (allPlaces.length > 0) {
-        await localSearch(query);
-        if (paginationContainer) paginationContainer.style.display = 'none';
-        return;
-      }
-    } catch (_) {}
-
-    // Cold-cache fallback only.
-    try {
-      const offset = (page - 1) * 20;
-      const tursoRes = await searchPlacesTurso(query, { limit: 20, offset });
-      if (tursoRes && Array.isArray(tursoRes.places)) {
-        hasMoreResults = Boolean(tursoRes.pagination && tursoRes.pagination.hasMore);
-        const places = tursoRes.places.filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
-        const finalResults = sortSearchPlaces(places, currentUser?.uid);
-        const countText = hasMoreResults ? `أول ${finalResults.length} مكان (صفحة ${page})` : `${finalResults.length} مكان`;
-        await renderResults(finalResults, `تم العثور على <strong>${countText}</strong> لـ "<strong>${escHtml(query)}</strong>"`, page > 1);
-        if (paginationContainer) paginationContainer.style.display = hasMoreResults ? 'block' : 'none';
-        return;
-      }
-    } catch (tursoErr) {
-      console.warn('[Search] Turso search unavailable; using local fallback:', tursoErr);
-    }
-
-    await localSearch(query);
-    if (paginationContainer) paginationContainer.style.display = 'none';
-  }
-
-  async function localSearch(query) {
-    await ensureLocalPlaces();
-    // Local fallback is rare; hydrate products/offers only when Turso search is unavailable.
-    if (!allProductsList.length) allProductsList = await getAllProducts().catch(() => []);
-    if (!allOffersList.length) allOffersList = await getActiveOffers().catch(() => []);
-    const rawClean = extractSearchKeywords(query);
-    const normalQ = normalizeArabic(rawClean);
-    const queryIntents = expandArabicSearchIntent(query);
-
-    const scored = allPlaces.map(place => {
-      // 1. Name & NameEn Match
-      const nameScore = Math.max(arabicScore(place.name || '', query), arabicScore(place.name || '', rawClean));
-      const nameEnScore = place.nameEn ? (place.nameEn.toLowerCase().includes(query.toLowerCase()) ? 90 : 0) : 0;
-
-      // 2. Category Synonyms Match (e.g. صيدليه / صيدلية / علاج / بنك / atm / مطعم)
-      let categorySynonymScore = 0;
-      const placeCatKey = (place.categoryId || '').toLowerCase();
-      const placeCatName = normalizeArabic((place.customCategory || '') + ' ' + (place.categoryName || '')).toLowerCase();
-      const placeNameNorm = normalizeArabic(place.name || '').toLowerCase();
-
-      for (const [cKey, syns] of Object.entries(SEARCH_CATEGORY_SYNONYMS)) {
-        if (placeCatKey.includes(cKey) || placeCatName.includes(cKey) || placeNameNorm.includes(cKey)) {
-          if (syns.some(s => normalQ.includes(s) || s.includes(normalQ) || queryIntents.includes(s))) {
-            categorySynonymScore = 95;
-            break;
-          }
-        }
-        if (syns.some(s => normalQ === s || normalQ.includes(s))) {
-          if (placeCatKey.includes(cKey) || placeCatName.includes(cKey) || placeNameNorm.includes(cKey)) {
-            categorySynonymScore = 95;
-            break;
-          }
-        }
-      }
-
-      // 3. Medical Specialty Match
-      let specialtyScore = 0;
-      if (place.medicalSpecialty) {
-        const specNorm = normalizeArabic(place.medicalSpecialty);
-        if (specNorm.includes(normalQ) || normalQ.includes(specNorm)) {
-          specialtyScore = 95;
-        } else if (queryIntents.some(intent => specNorm.includes(intent) || intent.includes(specNorm))) {
-          specialtyScore = 90;
-        }
-      }
-
-      // 4. Services Match
-      let serviceScore = 0;
-      if (place.services && Array.isArray(place.services)) {
-        place.services.forEach(s => {
-          const ns = normalizeArabic(s);
-          if (ns.includes(normalQ) || normalQ.includes(ns)) serviceScore = Math.max(serviceScore, 90);
-          if (queryIntents.some(intent => ns.includes(intent) || intent.includes(ns))) {
-            serviceScore = Math.max(serviceScore, 80);
-          }
-        });
-      }
-
-      // 5. Products Match
-      let productScore = 0;
-      const placeProducts = (allProductsList || []).filter(prod => prod.placeId === (place.id || place.slug));
-      for (const prod of placeProducts) {
-        const prodNameNorm = normalizeArabic(prod.name || '').toLowerCase();
-        if (prodNameNorm.includes(normalQ) || normalQ.includes(prodNameNorm) || queryIntents.some(i => prodNameNorm.includes(i) || i.includes(prodNameNorm))) {
-          productScore = 95;
-          break;
-        }
-      }
-
-      // 6. Offers Match
-      let offerScore = 0;
-      const placeOffers = (allOffersList || []).filter(off => off.placeId === (place.id || place.slug));
-      for (const off of placeOffers) {
-        const offTitleNorm = normalizeArabic(off.title || '').toLowerCase();
-        if (offTitleNorm.includes(normalQ) || normalQ.includes(offTitleNorm) || queryIntents.some(i => offTitleNorm.includes(i) || i.includes(offTitleNorm))) {
-          offerScore = 90;
-          break;
-        }
-      }
-
-      // 7. Address & Area Match
-      const addressScore = place.address ? Math.max(arabicScore(place.address, query), arabicScore(place.address, rawClean)) * 0.9 : 0;
-      const areaScore = Math.max(arabicScore(place.area || '', query), arabicScore(place.area || '', rawClean)) * 0.85;
-
-      // 8. Category Text Match
-      let catScore = 0;
-      const catVal = normalizeArabic(`${place.customCategory || ''} ${place.categoryName || ''} ${place.categoryId || ''}`);
-      if (catVal.includes(normalQ) || normalQ.includes(catVal)) {
-        catScore = 85;
-      } else if (queryIntents.some(intent => catVal.includes(intent) || intent.includes(catVal))) {
-        catScore = 75;
-      }
-
-      // 9. Description Match
-      const descScore = place.description ? Math.max(arabicScore(place.description, query), arabicScore(place.description, rawClean)) * 0.75 : 0;
-
-      // 10. Semantic Cross-field Match
-      let semanticScore = 0;
-      const fullPlaceIndex = normalizeArabic(
-        `${place.name || ''} ${place.nameEn || ''} ${place.medicalSpecialty || ''} ${(place.services || []).join(' ')} ${place.address || ''} ${place.area || ''} ${place.categoryName || ''} ${place.customCategory || ''} ${place.categoryId || ''} ${place.description || ''}`
-      );
-
-      queryIntents.forEach(intent => {
-        if (intent && intent.length >= 2 && fullPlaceIndex.includes(intent)) {
-          semanticScore = Math.max(semanticScore, 70);
-        }
+    // Filter by Category Select
+    if (cat !== 'all') {
+      places = places.filter(p => {
+        const pCat = (p.categoryId || '').toLowerCase();
+        const pCustom = (p.customCategory || '').toLowerCase();
+        const pName = (p.categoryName || '').toLowerCase();
+        if (cat === 'restaurants') return pCat.includes('restaurant') || pCat.includes('food') || pCustom.includes('مطعم') || pName.includes('مطعم');
+        if (cat === 'cafes') return pCat.includes('cafe') || pCustom.includes('كافيه') || pName.includes('كافيه') || pCustom.includes('قهوة');
+        if (cat === 'doctors') return pCat.includes('doctor') || pCat.includes('clinic') || pCustom.includes('طبيب') || pCustom.includes('دكتور');
+        if (cat === 'pharmacies') return pCat.includes('pharmacy') || pCustom.includes('صيدلية');
+        if (cat === 'supermarkets') return pCat.includes('supermarket') || pCat.includes('grocery') || pCustom.includes('سوبر') || pCustom.includes('ماركت');
+        if (cat === 'bakeries') return pCat.includes('bakery') || pCustom.includes('مخبز') || pCustom.includes('حلواني');
+        if (cat === 'crafts') return pCat.includes('craft') || pCat.includes('plumbing') || pCat.includes('carpenter') || pCustom.includes('سباك') || pCustom.includes('نجار') || pCustom.includes('كهربائي');
+        if (cat === 'clothing') return pCat.includes('clothing') || pCat.includes('fashion') || pCustom.includes('ملابس');
+        if (cat === 'electronics') return pCat.includes('electronic') || pCat.includes('mobile') || pCustom.includes('موبايل') || pCustom.includes('كمبيوتر');
+        if (cat === 'services') return pCat.includes('atm') || pCat.includes('bank') || pCat.includes('service') || pCustom.includes('بنك');
+        if (cat === 'automotive') return pCat.includes('car') || pCat.includes('auto') || pCat.includes('mechanic') || pCustom.includes('سيارات');
+        return pCat === cat || pCustom.includes(cat);
       });
-
-      // 11. Phone Match
-      let phoneScore = 0;
-      if (matchPlaceByPhone(place, query)) {
-        phoneScore = 120;
-      }
-
-      const total = Math.max(
-        nameScore, 
-        nameEnScore, 
-        categorySynonymScore,
-        specialtyScore, 
-        serviceScore, 
-        productScore,
-        offerScore,
-        addressScore, 
-        areaScore, 
-        catScore, 
-        descScore, 
-        semanticScore,
-        phoneScore
-      );
-
-      return { place, total };
-    })
-    .filter(item => item.total > 0 && (!isAtmPlace(item.place) || isAtmReadyAndOperational(item.place, 15)))
-    .sort((a, b) => b.total - a.total)
-    .map(item => item.place);
-
-    const finalResults = sortSearchPlaces(scored, currentUser?.uid);
-    await renderResults(finalResults, `تم العثور على <strong>${finalResults.length}</strong> مكان لـ "<strong>${escHtml(query)}</strong>"`);
-  }
-
-  let currentResults = [];
-  let currentMeta = '';
-  let smartFilter = 'all';
-
-  async function renderResults(places, metaText, append = false) {
-    if (append) {
-      currentResults = [...currentResults, ...places];
-    } else {
-      currentResults = places;
     }
 
-    if (metaText) currentMeta = metaText;
-    if (metaEl) metaEl.innerHTML = currentMeta;
+    // Filter by Area Select
+    if (area !== 'all') {
+      places = places.filter(p => {
+        const pArea = (p.area || '').toLowerCase();
+        const pAddress = (p.address || '').toLowerCase();
+        return pArea.includes(area.toLowerCase()) || pAddress.includes(area.toLowerCase());
+      });
+    }
 
-    const sortBy = searchSort?.value || 'relevance';
-    let sorted = [...currentResults];
-
-    if (smartFilter === 'verified') sorted = sorted.filter(p => Boolean(p.isVerified));
-    if (smartFilter === 'top') sorted = sorted.filter(p => Number(p.rating || 0) >= 4.5);
-    if (smartFilter === 'open') sorted = sorted.filter(p => {
-      const live = getPlaceLiveStatus(p.openHours || p.workingHours || p.working_hours);
-      return live.isOpen === true;
-    });
-    if (smartFilter === 'nearby') {
+    // Filter by Smart Pills
+    if (activeSmartFilter === 'verified') {
+      places = places.filter(p => Boolean(p.isVerified));
+    } else if (activeSmartFilter === 'top') {
+      places = places.filter(p => Number(p.rating || 0) >= 4.5);
+    } else if (activeSmartFilter === 'open') {
+      places = places.filter(p => {
+        const live = getPlaceLiveStatus(p.openHours || p.workingHours || p.working_hours);
+        return live.isOpen === true;
+      });
+    } else if (activeSmartFilter === 'offers') {
+      places = places.filter(p => Number(p.offer_count || p.offerCount || 0) > 0);
+    } else if (activeSmartFilter === 'nearby') {
       if (!_searchUserLocation) {
         try { _searchUserLocation = await getUserLocation(); } catch (_) { _searchUserLocation = MANZALA_CENTER; }
       }
-      sorted = sortPlacesByDistance(sorted, _searchUserLocation).slice(0, 20);
+      places = sortPlacesByDistance(places, _searchUserLocation);
     }
 
+    // Sorting
     if (sortBy === 'nearest') {
       if (!_searchUserLocation) {
-        toast.info('جاري تحديد موقعك الجغرافي لترتيب النتائج بالأقرب إليك... 📍');
         try {
           _searchUserLocation = await getUserLocation();
-          toast.success('تم تحديد موقعك! تم ترتيب الأماكن حسب الأقرب لموقعك 📍');
-        } catch (err) {
-          if (err.code === 1) {
-            toast.warning('يرجى السماح للمتصفح بالوصول للموقع (Allow Location) في شريط العنوان 📍');
-          } else {
-            toast.info('تم الترتيب حسب المسافة من مركز المنزلة 📍');
-          }
+          toast.success('تم تحديد موقعك وترتيب الأماكن حسب الأقرب لك 📍');
+        } catch (_) {
           _searchUserLocation = MANZALA_CENTER;
         }
       }
-      sorted = sortPlacesByDistance(sorted, _searchUserLocation);
+      places = sortPlacesByDistance(places, _searchUserLocation);
     } else if (sortBy === 'highest-rating') {
-      sorted.sort((a, b) => (Number(b.rating) || 5.0) - (Number(a.rating) || 5.0));
+      places.sort((a, b) => (Number(b.rating) || 5.0) - (Number(a.rating) || 5.0));
     } else if (sortBy === 'most-reviews') {
-      sorted.sort((a, b) => (Number(b.reviewCount) || 0) - (Number(a.reviewCount) || 0));
-    } else if (sortBy === 'negative') {
-      sorted.sort((a, b) => (Number(a.rating) || 5.0) - (Number(b.rating) || 5.0));
+      places.sort((a, b) => (Number(b.reviewCount || b.review_count) || 0) - (Number(a.reviewCount || a.review_count) || 0));
+    } else if (sortBy === 'newest') {
+      places.sort((a, b) => (b.created_at || b.updated_at || 0) - (a.created_at || a.updated_at || 0));
     }
 
+    renderResultsToDOM(places, q);
+  }
+
+  function renderResultsToDOM(places, q) {
     if (!gridEl) return;
 
-    if (sorted.length === 0) {
+    if (metaEl) {
+      if (q) {
+        metaEl.innerHTML = `تم العثور على <strong style="color:var(--primary);font-size:1.1rem">${places.length}</strong> مكان لـ: "<strong>${escHtml(q)}</strong>" <span style="background:rgba(16,185,129,0.12);color:#059669;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;margin-right:6px">⚡ فوري</span>`;
+      } else {
+        metaEl.innerHTML = `عرض <strong style="color:var(--primary);font-size:1.1rem">${places.length}</strong> مكان في الدليل`;
+      }
+    }
+
+    if (places.length === 0) {
       gridEl.innerHTML = `
-        <div class="empty-state" style="grid-column:1/-1">
-          <div class="empty-state__icon">🔍</div>
-          <h3 class="empty-state__title">لم نعثر على نتائج</h3>
-          <p class="empty-state__text">تأكد من كتابة الكلمات بشكل صحيح أو جرب كلمات أخرى</p>
+        <div class="empty-state" style="grid-column:1/-1;background:var(--surface);border:1px dashed var(--border);border-radius:20px;padding:48px 20px;text-align:center">
+          <div style="font-size:3.5rem;margin-bottom:12px">🔍</div>
+          <h3 style="font-size:1.3rem;font-weight:800;color:var(--text-primary);margin-bottom:8px">لم نعثر على أماكن مطابقة</h3>
+          <p style="color:var(--text-muted);font-size:0.95rem;max-width:500px;margin:0 auto 20px auto">
+            جرّب تغيير كلمات البحث أو إعادة ضبط الفلاتر (التصنيف أو المنطقة).
+          </p>
+          <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-empty-reset" style="padding:8px 20px;border-radius:10px;font-weight:700">
+              🔄 إعادة ضبط الفلاتر
+            </button>
+            <a href="dashboard.html?section=add" class="btn btn-outline btn-sm" style="padding:8px 20px;border-radius:10px;font-weight:700">
+              ➕ إضافة هذا المكان للدليل
+            </a>
+          </div>
+          <div style="margin-top:20px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--text-muted)">اقتراحات شائعة:</span>
+            <button class="chip" onclick="searchFor('مطاعم')">🍔 مطاعم</button>
+            <button class="chip" onclick="searchFor('صيدلية')">💊 صيدلية</button>
+            <button class="chip" onclick="searchFor('دكتور')">🩺 دكتور</button>
+            <button class="chip" onclick="searchFor('سباك')">🛠️ سباك</button>
+            <button class="chip" onclick="searchFor('المطرية')">🌊 المطرية</button>
+          </div>
         </div>
       `;
+      document.getElementById('btn-empty-reset')?.addEventListener('click', resetAllFilters);
     } else {
-      gridEl.innerHTML = sorted.map(p => renderPlaceCard(p)).join('');
+      gridEl.innerHTML = places.map(p => renderPlaceCard(p)).join('');
     }
   }
 
-  loadMoreBtn?.addEventListener('click', async () => {
-    if (isSearching || !hasMoreResults || !currentQuery) return;
-    isSearching = true;
-    const origText = loadMoreBtn.innerHTML;
-    loadMoreBtn.innerHTML = 'جاري التحميل... ⏳';
-    loadMoreBtn.disabled = true;
+  async function handlePhoneSearch(query) {
+    const qPhone = normalizePhoneNumber(query);
+    const displayPhone = formatPhoneNumberForDisplay(qPhone);
+    await ensureLocalPlaces();
+    let matched = allPlaces.filter(p => matchPlaceByPhone(p, qPhone) && (!isAtmPlace(p) || isAtmReadyAndOperational(p, 15)));
 
-    try {
-      currentPage += 1;
-      await executeSearch(currentQuery, currentPage);
-    } catch (err) {
-      toast.error('تعذر جلب باقي النتائج');
-    } finally {
-      isSearching = false;
-      loadMoreBtn.innerHTML = origText;
-      loadMoreBtn.disabled = false;
+    if (matched.length > 0) {
+      toast.success(`تم العثور على (${matched.length}) نشاط مرتبط برقم الهاتف 📞`);
+      if (metaEl) {
+        metaEl.innerHTML = `📞 تم العثور على <strong>${matched.length}</strong> نشاط مرتبط بالرقم: <span style="direction:ltr;display:inline-block;font-weight:900;color:var(--primary);font-size:15px">${escHtml(displayPhone)}</span>`;
+      }
+      if (gridEl) gridEl.innerHTML = matched.map(p => renderPlaceCard(p)).join('');
+    } else {
+      if (metaEl) {
+        metaEl.innerHTML = `⚠️ لا يوجد نشاط تجاري مرتبط برقم الهاتف: <span style="direction:ltr;font-weight:800;color:#B45309">${escHtml(displayPhone)}</span>`;
+      }
+      if (gridEl) {
+        gridEl.innerHTML = `
+          <div class="empty-state phone-empty-state animate-fade-in" style="grid-column:1/-1;background:var(--surface);border:1.5px solid #F59E0B;border-radius:20px;padding:40px 24px;text-align:center;max-width:640px;margin:1.5rem auto">
+            <div style="width:70px;height:70px;border-radius:50%;background:rgba(245,158,11,0.14);color:#D97706;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px auto">
+              📞
+            </div>
+            <h2 style="font-size:1.35rem;font-weight:900;color:var(--text-primary);margin-bottom:8px">
+              لا يوجد نشاط مسجل برقم الهاتف هذا
+            </h2>
+            <div style="display:inline-block;background:rgba(2,132,199,0.08);color:#0284C7;font-weight:900;font-size:16px;padding:6px 20px;border-radius:9999px;margin-bottom:14px;direction:ltr">
+              ${escHtml(displayPhone)}
+            </div>
+            <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin:0 0 20px 0">
+              لم نعثر على أي نشاط أو محل أو دكتور مسجل بهذا الرقم. إذا كنت صاحب هذا النشاط، يمكنك إضافته مجاناً ليظهر للآلاف فوراً.
+            </p>
+            <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+              <a href="dashboard.html?section=add&phone=${encodeURIComponent(qPhone)}" class="btn btn-primary" style="padding:10px 22px;border-radius:12px;font-size:13.5px">
+                ➕ إضافة هذا النشاط للدليل
+              </a>
+              <button type="button" class="btn btn-outline" id="btn-phone-clear-search" style="padding:10px 20px;border-radius:12px;font-size:13.5px">
+                🔍 البحث باسم آخر
+              </button>
+            </div>
+          </div>
+        `;
+        document.getElementById('btn-phone-clear-search')?.addEventListener('click', () => {
+          if (searchInput) {
+            searchInput.value = '';
+            applyFiltersAndRender();
+            searchInput.focus();
+          }
+        });
+      }
+    }
+  }
+
+  function resetAllFilters() {
+    if (searchInput) searchInput.value = '';
+    if (categorySelect) categorySelect.value = 'all';
+    if (areaSelect) areaSelect.value = 'all';
+    if (sortSelect) sortSelect.value = 'relevance';
+    activeSmartFilter = 'all';
+    document.querySelectorAll('.search-smart-filter').forEach(b => {
+      b.classList.toggle('is-active', b.dataset.smartFilter === 'all');
+    });
+    applyFiltersAndRender();
+  }
+
+  // Live Instant Debounce
+  let _liveSearchTimer = null;
+  let _edgeSyncTimer = null;
+
+  searchInput?.addEventListener('input', (e) => {
+    clearTimeout(_liveSearchTimer);
+    clearTimeout(_edgeSyncTimer);
+    const val = e.target.value;
+
+    // Fast local filter (immediate 40ms)
+    _liveSearchTimer = setTimeout(() => {
+      applyFiltersAndRender();
+    }, 40);
+
+    // Deep Edge search sync after 300ms if query >= 2 chars
+    if (val.trim().length >= 2) {
+      _edgeSyncTimer = setTimeout(async () => {
+        try {
+          const tursoRes = await searchPlacesTurso(val.trim(), {
+            category: categorySelect?.value !== 'all' ? categorySelect?.value : '',
+            area: areaSelect?.value !== 'all' ? areaSelect?.value : '',
+            limit: 30
+          });
+          if (tursoRes && Array.isArray(tursoRes.places) && tursoRes.places.length > 0) {
+            const existingKeys = new Set(allPlaces.map(p => p.id || p.slug));
+            let addedNew = false;
+            tursoRes.places.forEach(tp => {
+              if (!existingKeys.has(tp.id) && !existingKeys.has(tp.slug)) {
+                allPlaces.push(tp);
+                existingKeys.add(tp.id || tp.slug);
+                addedNew = true;
+              }
+            });
+            if (addedNew) {
+              applyFiltersAndRender();
+            }
+          }
+        } catch (_) {}
+      }, 300);
     }
   });
 
-  searchSort?.addEventListener('change', async () => {
-    if (currentResults.length > 0) {
-      await renderResults(currentResults, null, false);
+  searchClearBtn?.addEventListener('click', () => {
+    if (searchInput) {
+      searchInput.value = '';
+      applyFiltersAndRender();
+      searchInput.focus();
     }
   });
 
+  searchBtn?.addEventListener('click', () => {
+    applyFiltersAndRender();
+  });
+
+  searchInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      applyFiltersAndRender();
+    }
+  });
+
+  categorySelect?.addEventListener('change', () => applyFiltersAndRender());
+  areaSelect?.addEventListener('change', () => applyFiltersAndRender());
+  sortSelect?.addEventListener('change', () => applyFiltersAndRender());
+  resetFiltersBtn?.addEventListener('click', resetAllFilters);
+
+  // Smart Pills Click
   document.querySelectorAll('.search-smart-filter').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', () => {
       document.querySelectorAll('.search-smart-filter').forEach(b => b.classList.remove('is-active'));
       btn.classList.add('is-active');
-      smartFilter = btn.dataset.smartFilter || 'all';
-      await renderResults(currentResults, null, false);
+      activeSmartFilter = btn.dataset.smartFilter || 'all';
+      applyFiltersAndRender();
     });
   });
 
-  window.searchFor = (keyword) => {
-    if (searchInput) searchInput.value = keyword;
-    performSearch(keyword, false);
-  };
-
-  searchBtn?.addEventListener('click', () => performSearch(searchInput?.value || '', false));
-  
-  // Instant Live Search as you type
-  let _searchDebounce = null;
-  searchInput?.addEventListener('input', (e) => {
-    clearTimeout(_searchDebounce);
-    const val = e.target.value;
-    if (!val.trim()) {
-      if (gridEl) gridEl.innerHTML = '';
-      if (metaEl) metaEl.innerHTML = 'أدخل كلمة البحث للبدء';
-      return;
-    }
-    _searchDebounce = setTimeout(() => {
-      performSearch(val, false);
-    }, 60);
+  // Quick Area Chips Click
+  document.querySelectorAll('[data-quick-area]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const area = chip.getAttribute('data-quick-area');
+      if (areaSelect) areaSelect.value = area;
+      applyFiltersAndRender();
+    });
   });
 
+  // AI Smart Search Button
+  aiSearchBtn?.addEventListener('click', async () => {
+    const q = searchInput?.value?.trim() || 'أفضل الأماكن';
+    await ensureLocalPlaces();
+    if (metaEl) metaEl.innerHTML = `✨ جاري التحليل الذكي للبحث عن: "<strong>${escHtml(q)}</strong>"...`;
+    try {
+      const aiRes = await aiSmartSearch(q, allPlaces);
+      if (aiRes && aiRes.results && aiRes.results.length > 0) {
+        const matchedIds = new Set(aiRes.results.map(r => r.id));
+        const results = allPlaces.filter(p => matchedIds.has(p._key || p.id));
+        renderResultsToDOM(results, q);
+        if (metaEl) metaEl.innerHTML = `✨ نتائج ذكية مقترحة بالذكاء الاصطناعي لـ: "<strong>${escHtml(q)}</strong>" (${results.length})`;
+      } else {
+        applyFiltersAndRender();
+      }
+    } catch (_) {
+      applyFiltersAndRender();
+    }
+  });
+
+  // Global helper for quick search
+  window.searchFor = (keyword) => {
+    if (searchInput) searchInput.value = keyword;
+    applyFiltersAndRender();
+  };
+
+  // Back button
   document.getElementById('btn-search-back')?.addEventListener('click', () => {
     if (window.history.length > 1 && document.referrer && !document.referrer.includes('login')) {
       window.history.back();
@@ -576,62 +601,21 @@ export async function renderSearchPage($container, { q = '', user }) {
     }
   });
 
-  searchInput?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      clearTimeout(_searchDebounce);
-      performSearch(searchInput?.value || '', false);
-    }
-  });
-
-  aiSearchBtn?.addEventListener('click', () => performSearch(searchInput?.value || 'أفضل الأماكن', true));
-
-  // Initialize Voice Search
-  mountVoiceSearchButton({
-    inputEl: searchInput,
-    onSearch: (spokenText) => {
-      performSearch(spokenText, false);
-    }
-  });
-
-  // Initial trigger if q is present
-  if (q) {
-    performSearch(q, false);
-  }
-}
-
-function sortSearchPlaces(places, currentUid = null) {
-  const seen = new Set();
-  const sponsored = [];
-  const verified = [];
-  const userOwned = [];
-  const others = [];
-
-  places.forEach(place => {
-    const key = place.id || place._key || place.slug;
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-
-    const isSpons = isPlaceSponsored(place);
-    if (isSpons) {
-      sponsored.push(place);
-    } else if (place.isVerified) {
-      verified.push(place);
-    } else if (currentUid && place.ownerId === currentUid) {
-      userOwned.push(place);
-    } else {
-      others.push(place);
-    }
-  });
-
-  return [...sponsored, ...verified, ...userOwned, ...others];
-}
-
-function saveSearchHistory(q) {
+  // Initialize Voice Search Button
   try {
-    const list = JSON.parse(localStorage.getItem('recent-searches') || '[]');
-    const updated = [q, ...list.filter(item => item !== q)].slice(0, 8);
-    localStorage.setItem('recent-searches', JSON.stringify(updated));
-  } catch {}
+    mountVoiceSearchButton({
+      inputEl: searchInput,
+      onSearch: (spokenText) => {
+        if (searchInput) searchInput.value = spokenText;
+        applyFiltersAndRender();
+      }
+    });
+  } catch (_) {}
+
+  // Trigger initial search if q was passed in URL
+  if (initialQ) {
+    applyFiltersAndRender();
+  }
 }
 
 function escHtml(str) {

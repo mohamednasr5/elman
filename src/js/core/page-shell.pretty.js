@@ -631,14 +631,15 @@ export async function openDashboardMoreModal(user = null) {
   const content = isLoggedIn ? `
     <div class="more-menu-container" style="direction:rtl;text-align:right">
       <!-- User Info Card -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:var(--surface-2,#F8FAFC);border-radius:14px;margin-bottom:12px;border:1px solid var(--border,#E2E8F0)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surface-2,#F8FAFC);border-radius:14px;margin-bottom:12px;border:1px solid var(--border,#E2E8F0)">
         <div style="display:flex;align-items:center;gap:12px">
-          <img src="${_a(userPhoto)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${_h(userName)}" onerror="this.src='./icons/icon-72x72.png'"/>
+          <img src="${_a(userPhoto)}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${_h(userName)}" onerror="this.src='./icons/icon-72x72.png'"/>
           <div>
             <div style="font-weight:800;font-size:0.98rem;color:var(--text-primary,#0F172A)">${_h(userName)}</div>
             <div style="font-size:0.8rem;color:var(--text-muted,#64748B)">${isUserAdmin ? 'مدير المنصة ⭐' : 'صاحب حساب تجاري'}</div>
           </div>
         </div>
+        <a href="dashboard.html?section=overview" class="btn btn-sm btn-outline" data-dash-nav="overview" style="border-radius:10px;font-weight:700;font-size:12px">لوحة التحكم 📊</a>
       </div>
 
       <!-- Golden Verification Card -->
@@ -653,75 +654,155 @@ export async function openDashboardMoreModal(user = null) {
         </div>
       </a>
 
-      <!-- Dashboard Sections Grid -->
-      <div style="font-weight:800;font-size:0.88rem;color:var(--text-muted,#64748B);margin-bottom:8px">أقسام لوحة التحكم</div>
+      <!-- 1. لوحة التحكم وإدارة الأعمال -->
+      <div class="more-section-header">
+        <span class="more-section-title"><span>💼</span> لوحة التحكم والأعمال</span>
+        <span class="more-section-badge">إدارة الأنشطة</span>
+      </div>
       <div class="more-menu-grid">
-        <a href="dashboard.html?section=overview" class="more-menu-tile" data-dash-nav="overview">
-          <span class="tile-icon">📊</span>
-          <span class="tile-title">نظرة عامة</span>
-        </a>
         <a href="dashboard.html?section=places" class="more-menu-tile" data-dash-nav="places">
-          <span class="tile-icon">🏪</span>
-          <span class="tile-title">أماكني</span>
+          <span class="tile-icon">🏬</span>
+          <div class="tile-info">
+            <span class="tile-title">أماكني</span>
+            <span class="tile-sub">إدارة وتعديل الأنشطة</span>
+          </div>
         </a>
-        <a href="dashboard.html?section=add" class="more-menu-tile" data-dash-nav="add" style="background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.3);color:#059669">
-          <span class="tile-icon">➕</span>
-          <span class="tile-title">إضافة مكان</span>
+        <a href="dashboard.html?section=add" class="more-menu-tile more-menu-tile--green" data-dash-nav="add">
+          <span class="tile-icon" style="background:rgba(16,185,129,0.15)">➕</span>
+          <div class="tile-info">
+            <span class="tile-title">إضافة مكان</span>
+            <span class="tile-sub">أضف نشاطك مجاناً</span>
+          </div>
         </a>
         <a href="dashboard.html?section=offers" class="more-menu-tile" data-dash-nav="offers">
           <span class="tile-icon">🏷️</span>
-          <span class="tile-title">إدارة العروض</span>
+          <div class="tile-info">
+            <span class="tile-title">إدارة العروض</span>
+            <span class="tile-sub">الخصومات والتخفيضات</span>
+          </div>
         </a>
         <a href="dashboard.html?section=products" class="more-menu-tile" data-dash-nav="products">
           <span class="tile-icon">📦</span>
-          <span class="tile-title">المنتجات</span>
+          <div class="tile-info">
+            <span class="tile-title">المنتجات</span>
+            <span class="tile-sub">قائمة والكتالوج</span>
+          </div>
         </a>
-        <a href="dashboard.html?section=notifications" class="more-menu-tile" data-dash-nav="notifications">
-          <span class="tile-icon">🔔</span>
-          <span class="tile-title">الإشعارات</span>
+        <a href="dashboard.html?section=overview" class="more-menu-tile" data-dash-nav="overview">
+          <span class="tile-icon">📊</span>
+          <div class="tile-info">
+            <span class="tile-title">نظرة عامة</span>
+            <span class="tile-sub">الإحصائيات والأداء</span>
+          </div>
+        </a>
+        <a href="dashboard.html?section=loyalty" class="more-menu-tile more-menu-tile--gold" data-dash-nav="loyalty">
+          <span class="tile-icon" style="background:rgba(245,158,11,0.15)">🎁</span>
+          <div class="tile-info">
+            <span class="tile-title">نادي الولاء</span>
+            <span class="tile-sub">المكافآت والتوثيق</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- 2. حسابي ونشاطي -->
+      <div class="more-section-header">
+        <span class="more-section-title"><span>👤</span> حسابي وتفاعلي</span>
+        <span class="more-section-badge">شخصي</span>
+      </div>
+      <div class="more-menu-grid">
+        <a href="favorites.html" class="more-menu-tile">
+          <span class="tile-icon">❤️</span>
+          <div class="tile-info">
+            <span class="tile-title">المفضلة</span>
+            <span class="tile-sub">أماكني المحفوظة</span>
+          </div>
         </a>
         <a href="dashboard.html?section=following" class="more-menu-tile" data-dash-nav="following">
           <span class="tile-icon">⭐</span>
-          <span class="tile-title">متابعاتي</span>
+          <div class="tile-info">
+            <span class="tile-title">متابعاتي</span>
+            <span class="tile-sub">المحلات المتابعة</span>
+          </div>
         </a>
-        <a href="dashboard.html?section=loyalty" class="more-menu-tile" data-dash-nav="loyalty">
-          <span class="tile-icon">🎁</span>
-          <span class="tile-title">نادي الولاء</span>
+        <a href="dashboard.html?section=notifications" class="more-menu-tile" data-dash-nav="notifications">
+          <span class="tile-icon">🔔</span>
+          <div class="tile-info">
+            <span class="tile-title">الإشعارات</span>
+            <span class="tile-sub">التنبيهات والرسائل</span>
+          </div>
         </a>
-        <a href="around-me.html" class="more-menu-tile">
-          <span class="tile-icon">🧭</span>
-          <span class="tile-title">بالقرب مني</span>
+        <a href="around-me.html" class="more-menu-tile more-menu-tile--blue">
+          <span class="tile-icon" style="background:rgba(2,132,199,0.15)">🧭</span>
+          <div class="tile-info">
+            <span class="tile-title">بالقرب مني</span>
+            <span class="tile-sub">أماكن حسب موقعك GPS</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- 3. استكشاف الدليل والخدمات -->
+      <div class="more-section-header">
+        <span class="more-section-title"><span>✨</span> استكشاف الدليل</span>
+      </div>
+      <div class="more-menu-grid">
+        <a href="search.html" class="more-menu-tile">
+          <span class="tile-icon">🔍</span>
+          <div class="tile-info">
+            <span class="tile-title">البحث المتقدم</span>
+            <span class="tile-sub">بحث ذكي وسريع</span>
+          </div>
         </a>
         <a href="popular.html" class="more-menu-tile">
           <span class="tile-icon">🔥</span>
-          <span class="tile-title">الأكثر شعبية</span>
+          <div class="tile-info">
+            <span class="tile-title">الأكثر شعبية</span>
+            <span class="tile-sub">الأعلى تقييماً وزيارة</span>
+          </div>
         </a>
-        <a href="favorites.html" class="more-menu-tile">
-          <span class="tile-icon">❤️</span>
-          <span class="tile-title">المفضلة</span>
+        <a href="categories.html" class="more-menu-tile">
+          <span class="tile-icon">📑</span>
+          <div class="tile-info">
+            <span class="tile-title">التصنيفات</span>
+            <span class="tile-sub">جميع الأنشطة والمهن</span>
+          </div>
         </a>
-        ${isUserAdmin ? `
-          <a href="admin.html" class="more-menu-tile" style="grid-column:1 / -1;background:rgba(27,79,114,0.08);border-color:rgba(27,79,114,0.3);color:var(--primary)">
-            <span class="tile-icon">⚙️</span>
-            <span class="tile-title">لوحة تحكم الإدارة الشاملة</span>
-          </a>
-        ` : ''}
+        <a href="now.html" class="more-menu-tile">
+          <span class="tile-icon">⚡</span>
+          <div class="tile-info">
+            <span class="tile-title">يحدث الآن</span>
+            <span class="tile-sub">تحديثات وعروض مباشرة</span>
+          </div>
+        </a>
       </div>
 
-      <!-- Quick Services -->
-      <div style="font-weight:800;font-size:0.88rem;color:var(--text-muted,#64748B);margin-bottom:6px;margin-top:4px">روابط سريعة</div>
+      ${isUserAdmin ? `
+        <div style="margin-top:10px">
+          <a href="admin.html" class="more-menu-tile" style="background:linear-gradient(135deg, rgba(27,79,114,0.1) 0%, rgba(40,116,166,0.15) 100%);border-color:rgba(27,79,114,0.35);color:var(--primary);min-height:56px">
+            <span class="tile-icon" style="background:rgba(27,79,114,0.15);font-size:22px">⚙️</span>
+            <div class="tile-info">
+              <span class="tile-title" style="font-size:0.95rem">لوحة تحكم الإدارة الشاملة (Admin)</span>
+              <span class="tile-sub">إدارة الأماكن، التوثيق، الإعلانات، والمستخدمين</span>
+            </div>
+          </a>
+        </div>
+      ` : ''}
+
+      <!-- 4. خدمات وتطبيقات -->
+      <div class="more-section-header" style="margin-top:16px">
+        <span class="more-section-title"><span>📱</span> خدمات وتطبيقات الدليل</span>
+      </div>
       <div style="display:flex;flex-direction:column;gap:4px">
-        <a href="contact.html" class="more-menu-row">
-          <span style="font-size:18px">💬</span>
-          <span>تواصل مع الإدارة والدعم الفني</span>
-        </a>
         <a href="quran.html" class="more-menu-row">
-          <span style="font-size:18px">📖</span>
-          <span>القرآن الكريم والأذكار</span>
+          <span style="font-size:18px">🕌</span>
+          <span>القرآن الكريم والأذكار وأوقات الصلاة</span>
         </a>
         <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="more-menu-row">
           <span style="font-size:18px">📥</span>
-          <span>تحميل تطبيق الأندرويد APK</span>
+          <span>تحميل تطبيق الأندرويد APK المباشر</span>
+        </a>
+        <a href="contact.html" class="more-menu-row">
+          <span style="font-size:18px">💬</span>
+          <span>تواصل مع الإدارة والدعم الفني</span>
         </a>
       </div>
 
@@ -764,7 +845,7 @@ export async function openDashboardMoreModal(user = null) {
           ادخل بحساب جوجل بضغطة زر
         </div>
         <div style="font-size:0.86rem;color:var(--text-muted,#475569);margin-bottom:14px;line-height:1.5">
-          ينتظرك العديد من المميزات والعروض
+          ينتظرك العديد من المميزات والعروض وإضافة مكانك
         </div>
 
         <button type="button" class="btn btn-block" id="more-modal-google-login-btn" style="background:#ffffff;color:#0F172A;border:1.5px solid #CBD5E1;font-weight:800;font-size:0.92rem;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 16px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,0.07);cursor:pointer;width:100%;transition:transform 0.15s ease">
@@ -776,42 +857,72 @@ export async function openDashboardMoreModal(user = null) {
           </svg>
           <span>تسجيل الدخول السريع بحساب Google</span>
         </button>
-
-        <div style="margin-top:14px;padding-top:10px;border-top:1px dashed rgba(245,158,11,0.3);display:flex;flex-direction:column;gap:3px">
-          <div style="font-weight:900;font-size:0.92rem;color:var(--primary,#1B4F72)">دليل المنزلة والمطرية الرقمي</div>
-          <div style="font-size:0.8rem;color:#D97706;font-weight:700">الدليل الأول فى المنطقة ⭐</div>
-        </div>
       </div>
 
       <!-- Quick Links for Guests -->
-      <div style="font-weight:800;font-size:0.88rem;color:var(--text-muted,#64748B);margin-bottom:8px">روابط تهمك</div>
+      <div class="more-section-header">
+        <span class="more-section-title"><span>🧭</span> استكشاف الدليل</span>
+      </div>
       <div class="more-menu-grid" style="margin-bottom:10px">
-        <a href="around-me.html" class="more-menu-tile">
-          <span class="tile-icon">🧭</span>
-          <span class="tile-title">بالقرب مني</span>
+        <a href="search.html" class="more-menu-tile">
+          <span class="tile-icon">🔍</span>
+          <div class="tile-info">
+            <span class="tile-title">البحث المتقدم</span>
+            <span class="tile-sub">بحث سريع بالأماكن</span>
+          </div>
+        </a>
+        <a href="around-me.html" class="more-menu-tile more-menu-tile--blue">
+          <span class="tile-icon" style="background:rgba(2,132,199,0.15)">🧭</span>
+          <div class="tile-info">
+            <span class="tile-title">بالقرب مني</span>
+            <span class="tile-sub">أقرب الأماكن إليك</span>
+          </div>
         </a>
         <a href="popular.html" class="more-menu-tile">
           <span class="tile-icon">🔥</span>
-          <span class="tile-title">الأكثر شعبية</span>
+          <div class="tile-info">
+            <span class="tile-title">الأكثر شعبية</span>
+            <span class="tile-sub">الأعلى زيارة وتقييماً</span>
+          </div>
+        </a>
+        <a href="categories.html" class="more-menu-tile">
+          <span class="tile-icon">📑</span>
+          <div class="tile-info">
+            <span class="tile-title">التصنيفات</span>
+            <span class="tile-sub">دليل الأنشطة والمهن</span>
+          </div>
         </a>
         <a href="favorites.html" class="more-menu-tile">
           <span class="tile-icon">❤️</span>
-          <span class="tile-title">المفضلة</span>
+          <div class="tile-info">
+            <span class="tile-title">المفضلة</span>
+            <span class="tile-sub">قائمتك المفضلة</span>
+          </div>
+        </a>
+        <a href="now.html" class="more-menu-tile">
+          <span class="tile-icon">⚡</span>
+          <div class="tile-info">
+            <span class="tile-title">يحدث الآن</span>
+            <span class="tile-sub">أحدث التطورات</span>
+          </div>
         </a>
       </div>
 
+      <div class="more-section-header" style="margin-top:14px">
+        <span class="more-section-title"><span>📱</span> خدمات وتطبيقات</span>
+      </div>
       <div style="display:flex;flex-direction:column;gap:4px">
-        <a href="contact.html" class="more-menu-row">
-          <span style="font-size:18px">💬</span>
-          <span>تواصل مع الإدارة والدعم الفني</span>
-        </a>
         <a href="quran.html" class="more-menu-row">
-          <span style="font-size:18px">📖</span>
-          <span>القرآن الكريم والأذكار</span>
+          <span style="font-size:18px">🕌</span>
+          <span>القرآن الكريم والأذكار وأوقات الصلاة</span>
         </a>
         <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="more-menu-row">
           <span style="font-size:18px">📥</span>
-          <span>تحميل تطبيق الأندرويد APK</span>
+          <span>تحميل تطبيق الأندرويد APK المباشر</span>
+        </a>
+        <a href="contact.html" class="more-menu-row">
+          <span style="font-size:18px">💬</span>
+          <span>تواصل مع الإدارة والدعم الفني</span>
         </a>
       </div>
     </div>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
@@ -96,9 +96,24 @@
 
   import { initPage } from './src/js/core/page-shell.js';
   import { renderSearchPage } from './src/js/ui/pages/search.js';
-  await initPage('');
-  const q = new URLSearchParams(location.search).get('q') || '';
-  await renderSearchPage(document.getElementById('page-container'), { q });
+  try {
+    await initPage('search.html');
+    const q = new URLSearchParams(location.search).get('q') || '';
+    await renderSearchPage(document.getElementById('page-container'), { q });
+  } catch (err) {
+    console.error('[SearchPage] Load error:', err);
+    const container = document.getElementById('page-container');
+    if (container) {
+      container.innerHTML = `
+        <div class="container" style="padding:4rem 1rem;text-align:center">
+          <div style="font-size:3.5rem;margin-bottom:1rem">🔍</div>
+          <h2 style="font-size:1.5rem;font-weight:800;color:var(--text-primary);margin-bottom:0.5rem">صفحة البحث</h2>
+          <p style="color:var(--text-muted);margin-bottom:1.5rem;font-size:0.95rem">حدث خطأ غير متوقع أثناء تحميل الصفحة. اضغط بالأسفل للبحث مباشرة.</p>
+          <button class="btn btn-primary" onclick="location.reload()" style="padding:10px 24px;border-radius:12px;font-weight:700">إعادة المحاولة 🔄</button>
+        </div>
+      `;
+    }
+  }
 </script>
 </body>
 </html>

@@ -4209,8 +4209,14 @@ async function renderLoyaltySection($container, user) {
     getPlacesByOwner(user.uid).catch(() => [])
   ]);
 
-  const levelInfo = getLoyaltyLevelInfo(loyalty?.points || 0);
+  const userPts = Number(loyalty?.points || 0);
+  const totalEarnedPts = Number(loyalty?.totalEarned || 0);
+  const levelInfo = getLoyaltyLevelInfo(userPts);
   const unverifiedPlaces = (userPlaces || []).filter(p => !p.isVerified);
+
+  // Egypt Time (UTC+3)
+  const egyptToday = new Date(Date.now() + (3 * 3600 * 1000)).toISOString().slice(0, 10);
+  const isDailyClaimed = loyalty.lastDailyBonusDate === egyptToday;
 
   $container.innerHTML = `
     <div class="admin-fade-in" style="max-width:960px;margin:0 auto">
@@ -4233,19 +4239,25 @@ async function renderLoyaltySection($container, user) {
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px">
           <div>
             <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-bottom:6px">رصيد نقاطك الحالي:</div>
-            <div style="font-size:2.6rem;font-weight:800;color:#F5A623;line-height:1;display:flex;align-items:center;gap:10px">
-              <span>${(levelInfo.points || 0).toLocaleString('ar-EG')}</span>
-              <span style="font-size:1.1rem;color:#fff;font-weight:600">نقطة</span>
+            <div style="font-size:2.6rem;font-weight:900;color:#F5A623;line-height:1;display:flex;align-items:center;gap:10px;font-family:system-ui,-apple-system,sans-serif">
+              <span id="loyalty-display-pts">${userPts.toLocaleString('en-US')}</span>
+              <span style="font-size:1.1rem;color:#fff;font-weight:700;font-family:var(--font-family,'Cairo',sans-serif)">نقطة</span>
             </div>
             <div style="font-size:12.5px;color:rgba(255,255,255,0.7);margin-top:6px">
-              إجمالي ما جمعته: ${(loyalty.totalEarned || 0).toLocaleString('ar-EG')} نقطة
+              إجمالي ما جمعته: <strong style="color:#F5A623">${totalEarnedPts.toLocaleString('en-US')}</strong> نقطة
             </div>
           </div>
 
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <button type="button" id="btn-claim-daily-bonus" class="btn" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;font-weight:800;border-radius:12px;padding:10px 18px;font-size:13px">
-              <span>☀️</span> استلام مكافأة الدخول اليومي (+10 نقاط)
-            </button>
+            ${isDailyClaimed ? `
+              <button type="button" id="btn-claim-daily-bonus" class="btn" style="background:rgba(16,185,129,0.2);border:1.5px solid rgba(16,185,129,0.45);color:#6EE7B7;font-weight:800;border-radius:12px;padding:10px 20px;font-size:13.5px;cursor:default" disabled>
+                <span>✅</span> تم استلام مكافأة اليوم (عد غداً +10)
+              </button>
+            ` : `
+              <button type="button" id="btn-claim-daily-bonus" class="btn" style="background:linear-gradient(135deg,#F5A623 0%,#D97706 100%);color:#0B1E30;font-weight:800;border-radius:12px;padding:10px 22px;font-size:13.5px;box-shadow:0 4px 16px rgba(245,166,35,0.45);border:none;cursor:pointer">
+                <span>☀️</span> استلام مكافأة الدخول اليومي (+10 نقاط)
+              </button>
+            `}
           </div>
         </div>
 
@@ -4253,15 +4265,15 @@ async function renderLoyaltySection($container, user) {
         <div style="margin-top:20px;background:rgba(0,0,0,0.2);padding:14px 16px;border-radius:12px">
           <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;margin-bottom:8px">
             <span>الهدف الذهبي: <strong>توثيق المكان الرسمي (5,000 نقطة)</strong></span>
-            <span style="color:#F5A623;font-weight:800">${Math.min(100, Math.round((levelInfo.points / 5000) * 100))}%</span>
+            <span style="color:#F5A623;font-weight:800;font-family:sans-serif">${Math.min(100, Math.round((userPts / 5000) * 100))}%</span>
           </div>
           <div style="width:100%;height:10px;background:rgba(255,255,255,0.15);border-radius:9999px;overflow:hidden">
-            <div style="width:${Math.min(100, Math.round((levelInfo.points / 5000) * 100))}%;height:100%;background:linear-gradient(90deg,#F5A623,#10B981);border-radius:9999px;transition:width 0.4s ease"></div>
+            <div style="width:${Math.min(100, Math.round((userPts / 5000) * 100))}%;height:100%;background:linear-gradient(90deg,#F5A623,#10B981);border-radius:9999px;transition:width 0.4s ease"></div>
           </div>
           <div style="font-size:11.5px;color:rgba(255,255,255,0.8);margin-top:6px">
             ${levelInfo.canRedeemVerification 
               ? '🎉 مبروك! لقد جمعت 5,000 نقطة ويمكنك الآن توثيق نشاطك مجاناً!' 
-              : `متبقي لك <strong>${levelInfo.pointsToVerification.toLocaleString('ar-EG')} نقطة</strong> للحصول على التوثيق المجاني!`
+              : `متبقي لك <strong style="color:#F5A623">${Math.max(0, 5000 - userPts).toLocaleString('en-US')} نقطة</strong> للحصول على التوثيق المجاني!`
             }
           </div>
         </div>
@@ -4308,8 +4320,8 @@ async function renderLoyaltySection($container, user) {
                 <span style="color:var(--text-muted)">
                   🔒 الزر سيتفعل تلقائياً فور وصول رصيدك إلى <strong>5,000 نقطة</strong>
                 </span>
-                <span style="font-weight:700;color:#0284C7">
-                  رصيدك: ${levelInfo.points} / 5,000
+                <span style="font-weight:800;color:#0284C7;font-family:sans-serif">
+                  رصيدك: ${userPts.toLocaleString('en-US')} / 5,000
                 </span>
               </div>
             `}
@@ -4341,17 +4353,21 @@ async function renderLoyaltySection($container, user) {
         </h3>
         ${loyalty.history && loyalty.history.length > 0 ? `
           <div style="display:flex;flex-direction:column;gap:8px">
-            ${loyalty.history.map(item => `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border,#e2e8f0)">
-                <div>
-                  <div style="font-weight:700;font-size:13px;color:var(--text-primary,#0F2B48)">${escHtml(item.label)}</div>
-                  <div style="font-size:11.5px;color:var(--text-muted)">${formatDate(item.createdAt || Date.now())}</div>
+            ${loyalty.history.map(item => {
+              const amt = Number(item.amount || item.pointsDelta || 0);
+              const dateVal = item.created_at || item.createdAt || Date.now();
+              return `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border,#e2e8f0)">
+                  <div>
+                    <div style="font-weight:700;font-size:13px;color:var(--text-primary,#0F2B48)">${escHtml(item.label || item.rule_key || 'تفاعل بالدليل')}</div>
+                    <div style="font-size:11.5px;color:var(--text-muted)">${formatDate(dateVal)}</div>
+                  </div>
+                  <span style="font-weight:800;font-size:14px;font-family:sans-serif;color:${amt >= 0 ? '#10B981' : '#EF4444'}">
+                    ${amt > 0 ? '+' : ''}${amt} نقطة
+                  </span>
                 </div>
-                <span style="font-weight:800;font-size:14px;color:${item.pointsDelta > 0 ? '#10B981' : '#EF4444'}">
-                  ${item.amount} نقطة
-                </span>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         ` : `
           <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">
@@ -4365,15 +4381,24 @@ async function renderLoyaltySection($container, user) {
   // Daily Bonus Listener
   document.getElementById('btn-claim-daily-bonus')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-claim-daily-bonus');
-    if (btn) btn.disabled = true;
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> جاري الاستلام...';
+    }
     const res = await claimDailyBonus(user.uid);
     if (res.success) {
-      toast.success('🎉 حصلت على +10 نقاط مكافأة تسجيل الدخول اليومي!');
+      toast.success('🎉 تهانينا! حصلت على +10 نقاط مكافأة تسجيل الدخول اليومي!');
       await renderLoyaltySection($container, user);
     } else if (res.reason === 'already_claimed') {
       toast.info('لقد استلمت مكافأة اليوم بالفعل، عد غداً للحصول على 10 نقاط جديدة! ☀️');
+      await renderLoyaltySection($container, user);
+    } else {
+      toast.error(res.message || 'تعذر استلام المكافأة اليوم');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>☀️</span> استلام مكافأة الدخول اليومي (+10 نقاط)';
+      }
     }
-    if (btn) btn.disabled = false;
   });
 
   // Verification Redemption Listener

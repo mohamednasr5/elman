@@ -1,4 +1,4 @@
-import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmin as _,getCurrentUser as P,getClientIp as j,signInWithGoogle as G}from"./auth.js";import{toast as c}from"../ui/components/Toast.js";function K(e){return`
+import{initAuth as W,onAuthStateChange as N,signOut as $,waitForAuth as R,isAdmin as _,getCurrentUser as M,getClientIp as j,signInWithGoogle as G}from"./auth.js";import{toast as d}from"../ui/components/Toast.js";function K(e){return`
 <header class="header" id="site-header" role="banner">
   <div class="container header__inner">
     <a href="index.html" class="header__logo" aria-label="\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A">
@@ -39,7 +39,7 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
     </div>
 
     <nav class="header__nav" aria-label="\u0627\u0644\u062A\u0646\u0642\u0644 \u0627\u0644\u0631\u0626\u064A\u0633\u064A">
-      ${[["index.html","\u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629"],["popular.html","\u0627\u0644\u0623\u0643\u062B\u0631 \u0634\u0639\u0628\u064A\u0629 \u{1F525}"],["places.html","\u0627\u0644\u0623\u0645\u0627\u0643\u0646"],["categories.html","\u0627\u0644\u062A\u0635\u0646\u064A\u0641\u0627\u062A"],["offers.html","\u0627\u0644\u0639\u0631\u0648\u0636"],["now.html","\u064A\u062D\u062F\u062B \u0627\u0644\u0622\u0646 \u{1F525}"],["around-me.html","\u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u064A \u{1F9ED}"],["favorites.html","\u2764\uFE0F \u0627\u0644\u0645\u0641\u0636\u0644\u0629"]].map(([i,o])=>`<a href="${i}" class="header__nav-link${i===e?" active":""}">${o}</a>`).join("")}
+      ${[["index.html","\u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629"],["popular.html","\u0627\u0644\u0623\u0643\u062B\u0631 \u0634\u0639\u0628\u064A\u0629 \u{1F525}"],["places.html","\u0627\u0644\u0623\u0645\u0627\u0643\u0646"],["categories.html","\u0627\u0644\u062A\u0635\u0646\u064A\u0641\u0627\u062A"],["offers.html","\u0627\u0644\u0639\u0631\u0648\u0636"],["now.html","\u064A\u062D\u062F\u062B \u0627\u0644\u0622\u0646 \u{1F525}"],["around-me.html","\u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u064A \u{1F9ED}"],["favorites.html","\u2764\uFE0F \u0627\u0644\u0645\u0641\u0636\u0644\u0629"]].map(([o,s])=>`<a href="${o}" class="header__nav-link${o===e?" active":""}">${s}</a>`).join("")}
     </nav>
     
     <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="\u062A\u0628\u062F\u064A\u0644 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0644\u064A\u0644\u064A \u0648\u0627\u0644\u0646\u0647\u0627\u0631\u064A" title="\u062A\u0628\u062F\u064A\u0644 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0644\u064A\u0644\u064A / \u0627\u0644\u0641\u0627\u062A\u062D">
@@ -235,7 +235,7 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
       <button type="button" class="pwa-banner__rect-close" id="pwa-banner-close" aria-label="\u0625\u063A\u0644\u0627\u0642 \u0627\u0644\u062A\u0646\u0628\u064A\u0647" title="\u0625\u063A\u0644\u0627\u0642">\u2715</button>
     </div>
   </div>
-</div>`}export async function initPage(e=""){J(),y("header-slot",K(e));const n=e==="index.html"||e==="home"||typeof window<"u"&&(window.location.pathname==="/"||window.location.pathname.endsWith("/index.html")||window.location.pathname.endsWith("/"));if(e==="place.html"||e==="place"||typeof window<"u"&&(window.location.pathname.includes("place.html")||window.location.pathname.startsWith("/p/"))){const t=document.getElementById("wide-ads-banner");t&&t.remove()}else if(n){const t=(l=0)=>{const r=document.getElementById("wide-ads-banner");r&&!r.dataset.wideAdsMounted?import("../ui/components/WideAdsBanner.js").then(({mountWideAdsBanner:m})=>m(r)).catch(()=>{}):!r&&l<25&&setTimeout(()=>t(l+1),100)};t()}else{let t=document.getElementById("wide-ads-banner");if(!t){t=document.createElement("div"),t.id="wide-ads-banner",t.className="container wide-ads-banner-page-top",t.style.marginTop="calc(var(--header-height, 64px) + 22px)",t.style.marginBottom="24px";const l=document.getElementById("site-header"),r=document.getElementById("page-container")||document.querySelector("main")||document.querySelector("#admin-container")||document.querySelector(".admin-layout")||document.querySelector("#app")||document.body;l&&l.nextSibling?l.parentNode.insertBefore(t,l.nextSibling):r&&r.firstChild?r.insertBefore(t,r.firstChild):r?r.appendChild(t):document.body.appendChild(t)}t&&setTimeout(()=>{import("../ui/components/WideAdsBanner.js").then(({mountWideAdsBanner:l})=>l(t)).catch(()=>{})},50)}y("footer-slot",O()),y("nav-slot",V(e)),y("pwa-slot",Y()),Q(),X();try{import("../services/voice.service.js").then(({bindGlobalVoiceAssistantFab:t})=>t()).catch(t=>console.warn("[initPage] voice FAB init failed:",t))}catch(t){console.warn("[initPage] voice FAB import failed:",t)}const o=document.getElementById("site-header"),a=document.getElementById("scroll-to-top-btn");window.addEventListener("scroll",()=>{const t=window.scrollY||window.pageYOffset||0;o?.classList.toggle("scrolled",t>8),a?.classList.toggle("visible",t>300)},{passive:!0}),a?.addEventListener("click",()=>{window.scrollTo({top:0,behavior:"smooth"})});try{re()}catch(t){console.warn("[initPage] header search init failed:",t)}document.addEventListener("click",t=>{(t.target.closest("#bottom-nav-more-btn")||t.target.closest("#dash-bottom-more-btn"))&&(t.preventDefault(),openDashboardMoreModal())});const s=t=>{"requestIdleCallback"in window?requestIdleCallback(t,{timeout:2500}):setTimeout(t,0)};s(async()=>{try{const{ensureFirebaseReady:t}=await import("./firebase.js");(await t(2500))?.auth&&W()}catch{}try{await le()}catch{}try{const[{initLiveNotificationSubscriber:t},{initFcmMessaging:l}]=await Promise.all([import("../services/notification.service.js"),import("../services/fcm.service.js")]);N(r=>{ee(r),t(r?.uid),l(r)})}catch{}try{const{getSettings:t}=await import("./db.js"),r=(await t())?.contact?.whatsappLink;r&&document.querySelectorAll("[data-wa]").forEach(m=>{m.href=r})}catch{}});try{ne()}catch(t){console.warn("[initPage] PWA setup failed:",t)}"serviceWorker"in navigator&&s(()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));try{["manzala_fast_places_cache","manzala_live_news_store_v2","manzala_global_broadcast_notifs_cache"].forEach(l=>localStorage.removeItem(l))}catch{}s(()=>{import("../services/realtime-sync.service.js").then(({initRealtimePwaSyncBus:t})=>t()).catch(()=>{}),import("../utils/mobile-tooltip.js").then(({initUniversalMobileTouchTooltips:t})=>t()).catch(()=>{});try{Z()}catch{}try{ie()}catch{}})}function Q(){try{(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches||window.matchMedia&&window.matchMedia("(display-mode: fullscreen)").matches||window.matchMedia&&window.matchMedia("(display-mode: minimal-ui)").matches||window.navigator.standalone===!0||document.referrer&&document.referrer.includes("android-app://")||navigator.userAgent&&(navigator.userAgent.includes("wv")||navigator.userAgent.includes("Android")&&navigator.userAgent.includes("Version/"))||new URLSearchParams(window.location.search).get("source")==="apk"||new URLSearchParams(window.location.search).get("source")==="pwa")&&document.querySelectorAll("#footer-apk-container, .footer__apk-download, .apk-pro-download-btn").forEach(n=>{n.style.display="none"})}catch{}}function J(){const e=localStorage.getItem("elmanzala-theme")||(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");A(e)}function X(){document.querySelectorAll("#theme-toggle-btn, .theme-toggle-btn").forEach(e=>{e.addEventListener("click",()=>{const i=(document.documentElement.getAttribute("data-theme")||"light")==="dark"?"light":"dark";A(i),localStorage.setItem("elmanzala-theme",i),c.info(i==="dark"?"\u062A\u0645 \u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0644\u064A\u0644\u064A \u{1F319}":"\u062A\u0645 \u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0646\u0647\u0627\u0631\u064A \u2600\uFE0F")})})}function A(e){document.documentElement.setAttribute("data-theme",e),document.body&&(document.body.classList.toggle("dark-theme",e==="dark"),document.body.classList.toggle("light-theme",e==="light"));const n=document.querySelector('meta[name="theme-color"]');n&&n.setAttribute("content",e==="dark"?"#0F172A":"#1B4F72")}function Z(){const e=new Set,n=a=>{if(a)try{const s=new URL(a,location.href);if(s.origin===location.origin&&!e.has(s.href)){e.add(s.href);const t=document.createElement("link");t.rel="prefetch",t.href=s.href,document.head.appendChild(t)}}catch{}};document.addEventListener("mouseover",a=>{const s=a.target.closest("a[href]");s&&n(s.href)},{passive:!0}),document.addEventListener("touchstart",a=>{const s=a.target.closest("a[href]");s&&n(s.href)},{passive:!0});const i=["index.html","popular.html","places.html","categories.html","offers.html","search.html"],o=()=>{i.forEach(a=>n(a))};"requestIdleCallback"in window?window.requestIdleCallback(o,{timeout:1500}):setTimeout(o,800)}export{R as waitForAuth,_ as isAdmin};function y(e,n){const i=document.getElementById(e);if(!i)return;const o=document.createElement("div");o.innerHTML=n.trim(),i.replaceWith(o.firstElementChild)}function ee(e){const n=document.getElementById("header-user-section");if(n)if(e){n.innerHTML=`
+</div>`}export async function initPage(e=""){Q(),y("header-slot",K(e));const n=e==="index.html"||e==="home"||typeof window<"u"&&(window.location.pathname==="/"||window.location.pathname.endsWith("/index.html")||window.location.pathname.endsWith("/"));if(e==="place.html"||e==="place"||typeof window<"u"&&(window.location.pathname.includes("place.html")||window.location.pathname.startsWith("/p/"))){const t=document.getElementById("wide-ads-banner");t&&t.remove()}else if(n){const t=(l=0)=>{const r=document.getElementById("wide-ads-banner");r&&!r.dataset.wideAdsMounted?import("../ui/components/WideAdsBanner.js").then(({mountWideAdsBanner:m})=>m(r)).catch(()=>{}):!r&&l<25&&setTimeout(()=>t(l+1),100)};t()}else{let t=document.getElementById("wide-ads-banner");if(!t){t=document.createElement("div"),t.id="wide-ads-banner",t.className="container wide-ads-banner-page-top",t.style.marginTop="calc(var(--header-height, 64px) + 22px)",t.style.marginBottom="24px";const l=document.getElementById("site-header"),r=document.getElementById("page-container")||document.querySelector("main")||document.querySelector("#admin-container")||document.querySelector(".admin-layout")||document.querySelector("#app")||document.body;l&&l.nextSibling?l.parentNode.insertBefore(t,l.nextSibling):r&&r.firstChild?r.insertBefore(t,r.firstChild):r?r.appendChild(t):document.body.appendChild(t)}t&&setTimeout(()=>{import("../ui/components/WideAdsBanner.js").then(({mountWideAdsBanner:l})=>l(t)).catch(()=>{})},50)}y("footer-slot",O()),y("nav-slot",V(e)),y("pwa-slot",Y()),J(),X();try{import("../services/voice.service.js").then(({bindGlobalVoiceAssistantFab:t})=>t()).catch(t=>console.warn("[initPage] voice FAB init failed:",t))}catch(t){console.warn("[initPage] voice FAB import failed:",t)}const s=document.getElementById("site-header"),a=document.getElementById("scroll-to-top-btn");window.addEventListener("scroll",()=>{const t=window.scrollY||window.pageYOffset||0;s?.classList.toggle("scrolled",t>8),a?.classList.toggle("visible",t>300)},{passive:!0}),a?.addEventListener("click",()=>{window.scrollTo({top:0,behavior:"smooth"})});try{re()}catch(t){console.warn("[initPage] header search init failed:",t)}document.addEventListener("click",t=>{(t.target.closest("#bottom-nav-more-btn")||t.target.closest("#dash-bottom-more-btn"))&&(t.preventDefault(),openDashboardMoreModal())});const i=t=>{"requestIdleCallback"in window?requestIdleCallback(t,{timeout:2500}):setTimeout(t,0)};i(async()=>{try{const{ensureFirebaseReady:t}=await import("./firebase.js");(await t(2500))?.auth&&W()}catch{}try{await le()}catch{}try{const[{initLiveNotificationSubscriber:t},{initFcmMessaging:l}]=await Promise.all([import("../services/notification.service.js"),import("../services/fcm.service.js")]);N(r=>{ee(r),t(r?.uid),l(r)})}catch{}try{const{getSettings:t}=await import("./db.js"),r=(await t())?.contact?.whatsappLink;r&&document.querySelectorAll("[data-wa]").forEach(m=>{m.href=r})}catch{}});try{ne()}catch(t){console.warn("[initPage] PWA setup failed:",t)}"serviceWorker"in navigator&&i(()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));try{["manzala_fast_places_cache","manzala_live_news_store_v2","manzala_global_broadcast_notifs_cache"].forEach(l=>localStorage.removeItem(l))}catch{}i(()=>{import("../services/realtime-sync.service.js").then(({initRealtimePwaSyncBus:t})=>t()).catch(()=>{}),import("../utils/mobile-tooltip.js").then(({initUniversalMobileTouchTooltips:t})=>t()).catch(()=>{});try{Z()}catch{}try{oe()}catch{}})}function J(){try{(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches||window.matchMedia&&window.matchMedia("(display-mode: fullscreen)").matches||window.matchMedia&&window.matchMedia("(display-mode: minimal-ui)").matches||window.navigator.standalone===!0||document.referrer&&document.referrer.includes("android-app://")||navigator.userAgent&&(navigator.userAgent.includes("wv")||navigator.userAgent.includes("Android")&&navigator.userAgent.includes("Version/"))||new URLSearchParams(window.location.search).get("source")==="apk"||new URLSearchParams(window.location.search).get("source")==="pwa")&&document.querySelectorAll("#footer-apk-container, .footer__apk-download, .apk-pro-download-btn").forEach(n=>{n.style.display="none"})}catch{}}function Q(){const e=localStorage.getItem("elmanzala-theme")||(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");A(e)}function X(){document.querySelectorAll("#theme-toggle-btn, .theme-toggle-btn").forEach(e=>{e.addEventListener("click",()=>{const o=(document.documentElement.getAttribute("data-theme")||"light")==="dark"?"light":"dark";A(o),localStorage.setItem("elmanzala-theme",o),d.info(o==="dark"?"\u062A\u0645 \u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0644\u064A\u0644\u064A \u{1F319}":"\u062A\u0645 \u062A\u0641\u0639\u064A\u0644 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0646\u0647\u0627\u0631\u064A \u2600\uFE0F")})})}function A(e){document.documentElement.setAttribute("data-theme",e),document.body&&(document.body.classList.toggle("dark-theme",e==="dark"),document.body.classList.toggle("light-theme",e==="light"));const n=document.querySelector('meta[name="theme-color"]');n&&n.setAttribute("content",e==="dark"?"#0F172A":"#1B4F72")}function Z(){const e=new Set,n=a=>{if(a)try{const i=new URL(a,location.href);if(i.origin===location.origin&&!e.has(i.href)){e.add(i.href);const t=document.createElement("link");t.rel="prefetch",t.href=i.href,document.head.appendChild(t)}}catch{}};document.addEventListener("mouseover",a=>{const i=a.target.closest("a[href]");i&&n(i.href)},{passive:!0}),document.addEventListener("touchstart",a=>{const i=a.target.closest("a[href]");i&&n(i.href)},{passive:!0});const o=["index.html","popular.html","places.html","categories.html","offers.html","search.html"],s=()=>{o.forEach(a=>n(a))};"requestIdleCallback"in window?window.requestIdleCallback(s,{timeout:1500}):setTimeout(s,800)}export{R as waitForAuth,_ as isAdmin};function y(e,n){const o=document.getElementById(e);if(!o)return;const s=document.createElement("div");s.innerHTML=n.trim(),o.replaceWith(s.firstElementChild)}function ee(e){const n=document.getElementById("header-user-section");if(n)if(e){n.innerHTML=`
       <div style="display:flex;align-items:center;gap:10px">
         <a href="dashboard.html?section=notifications" class="header-notif-btn" title="\u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062A \u0648\u0627\u0644\u0632\u064A\u0627\u0631\u0627\u062A" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);color:var(--text-primary);text-decoration:none;font-size:16px;transition:all 0.2s">
           <span>\u{1F514}</span>
@@ -244,7 +244,7 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
 
         <div style="position:relative">
           <button class="header__user-btn" id="usr-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="${D(e.photoURL||"./icons/icon-72x72.png")}"
+            <img src="${F(e.photoURL||"./icons/icon-72x72.png")}"
                  class="header__avatar" width="32" height="32"
                  onerror="this.src='./icons/icon-72x72.png'"
                  alt="${x(e.name)}"/>
@@ -261,17 +261,18 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
             <button class="header__dropdown-item" id="logout-btn" role="menuitem" style="color:var(--danger)">\u{1F6AA} \u062E\u0631\u0648\u062C</button>
           </div>
         </div>
-      </div>`;const i=document.getElementById("usr-btn"),o=document.getElementById("usr-dd");i&&o&&(i.addEventListener("click",a=>{if(a.preventDefault(),a.stopPropagation(),window.innerWidth<769){openDashboardMoreModal(e);return}const s=o.classList.contains("open");o.classList.toggle("open",!s),i.setAttribute("aria-expanded",s?"false":"true")}),document.addEventListener("click",a=>{!a.target.closest("#usr-btn")&&!a.target.closest("#usr-dd")&&(o.classList.remove("open"),i.setAttribute("aria-expanded","false"))})),document.getElementById("logout-btn")?.addEventListener("click",async()=>{await M(),c.success("\u062A\u0645 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C \u0628\u0646\u062C\u0627\u062D"),location.reload()})}else n.innerHTML='<a href="login.html" class="btn btn-primary btn-sm"><span>\u{1F511}</span> \u062F\u062E\u0648\u0644</a>'}export async function openDashboardMoreModal(e=null){const n=e||P(),i=!!(n&&(n.uid||n.id)),o=i&&_(n),a=i?n.name||n.displayName||"\u0635\u0627\u062D\u0628 \u0627\u0644\u0646\u0634\u0627\u0637":"\u0632\u0627\u0626\u0631 \u0643\u0631\u064A\u0645",s=i&&n.photoURL||"./icons/icon-72x72.png",t=typeof window<"u"&&(window.location.pathname.endsWith("dashboard.html")||window.location.pathname.endsWith("/dashboard.html")),l=i?`
+      </div>`;const o=document.getElementById("usr-btn"),s=document.getElementById("usr-dd");o&&s&&(o.addEventListener("click",a=>{if(a.preventDefault(),a.stopPropagation(),window.innerWidth<769){openDashboardMoreModal(e);return}const i=s.classList.contains("open");s.classList.toggle("open",!i),o.setAttribute("aria-expanded",i?"false":"true")}),document.addEventListener("click",a=>{!a.target.closest("#usr-btn")&&!a.target.closest("#usr-dd")&&(s.classList.remove("open"),o.setAttribute("aria-expanded","false"))})),document.getElementById("logout-btn")?.addEventListener("click",async()=>{await $(),d.success("\u062A\u0645 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C \u0628\u0646\u062C\u0627\u062D"),location.reload()})}else n.innerHTML='<a href="login.html" class="btn btn-primary btn-sm"><span>\u{1F511}</span> \u062F\u062E\u0648\u0644</a>'}export async function openDashboardMoreModal(e=null){const n=e||M(),o=!!(n&&(n.uid||n.id)),s=o&&_(n),a=o?n.name||n.displayName||"\u0635\u0627\u062D\u0628 \u0627\u0644\u0646\u0634\u0627\u0637":"\u0632\u0627\u0626\u0631 \u0643\u0631\u064A\u0645",i=o&&n.photoURL||"./icons/icon-72x72.png",t=typeof window<"u"&&(window.location.pathname.endsWith("dashboard.html")||window.location.pathname.endsWith("/dashboard.html")),l=o?`
     <div class="more-menu-container" style="direction:rtl;text-align:right">
       <!-- User Info Card -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:var(--surface-2,#F8FAFC);border-radius:14px;margin-bottom:12px;border:1px solid var(--border,#E2E8F0)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surface-2,#F8FAFC);border-radius:14px;margin-bottom:12px;border:1px solid var(--border,#E2E8F0)">
         <div style="display:flex;align-items:center;gap:12px">
-          <img src="${D(s)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${x(a)}" onerror="this.src='./icons/icon-72x72.png'"/>
+          <img src="${F(i)}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${x(a)}" onerror="this.src='./icons/icon-72x72.png'"/>
           <div>
             <div style="font-weight:800;font-size:0.98rem;color:var(--text-primary,#0F172A)">${x(a)}</div>
-            <div style="font-size:0.8rem;color:var(--text-muted,#64748B)">${o?"\u0645\u062F\u064A\u0631 \u0627\u0644\u0645\u0646\u0635\u0629 \u2B50":"\u0635\u0627\u062D\u0628 \u062D\u0633\u0627\u0628 \u062A\u062C\u0627\u0631\u064A"}</div>
+            <div style="font-size:0.8rem;color:var(--text-muted,#64748B)">${s?"\u0645\u062F\u064A\u0631 \u0627\u0644\u0645\u0646\u0635\u0629 \u2B50":"\u0635\u0627\u062D\u0628 \u062D\u0633\u0627\u0628 \u062A\u062C\u0627\u0631\u064A"}</div>
           </div>
         </div>
+        <a href="dashboard.html?section=overview" class="btn btn-sm btn-outline" data-dash-nav="overview" style="border-radius:10px;font-weight:700;font-size:12px">\u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645 \u{1F4CA}</a>
       </div>
 
       <!-- Golden Verification Card -->
@@ -286,75 +287,155 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
         </div>
       </a>
 
-      <!-- Dashboard Sections Grid -->
-      <div style="font-weight:800;font-size:0.88rem;color:var(--text-muted,#64748B);margin-bottom:8px">\u0623\u0642\u0633\u0627\u0645 \u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645</div>
+      <!-- 1. \u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645 \u0648\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0623\u0639\u0645\u0627\u0644 -->
+      <div class="more-section-header">
+        <span class="more-section-title"><span>\u{1F4BC}</span> \u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645 \u0648\u0627\u0644\u0623\u0639\u0645\u0627\u0644</span>
+        <span class="more-section-badge">\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0623\u0646\u0634\u0637\u0629</span>
+      </div>
       <div class="more-menu-grid">
-        <a href="dashboard.html?section=overview" class="more-menu-tile" data-dash-nav="overview">
-          <span class="tile-icon">\u{1F4CA}</span>
-          <span class="tile-title">\u0646\u0638\u0631\u0629 \u0639\u0627\u0645\u0629</span>
-        </a>
         <a href="dashboard.html?section=places" class="more-menu-tile" data-dash-nav="places">
-          <span class="tile-icon">\u{1F3EA}</span>
-          <span class="tile-title">\u0623\u0645\u0627\u0643\u0646\u064A</span>
+          <span class="tile-icon">\u{1F3EC}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0623\u0645\u0627\u0643\u0646\u064A</span>
+            <span class="tile-sub">\u0625\u062F\u0627\u0631\u0629 \u0648\u062A\u0639\u062F\u064A\u0644 \u0627\u0644\u0623\u0646\u0634\u0637\u0629</span>
+          </div>
         </a>
-        <a href="dashboard.html?section=add" class="more-menu-tile" data-dash-nav="add" style="background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.3);color:#059669">
-          <span class="tile-icon">\u2795</span>
-          <span class="tile-title">\u0625\u0636\u0627\u0641\u0629 \u0645\u0643\u0627\u0646</span>
+        <a href="dashboard.html?section=add" class="more-menu-tile more-menu-tile--green" data-dash-nav="add">
+          <span class="tile-icon" style="background:rgba(16,185,129,0.15)">\u2795</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0625\u0636\u0627\u0641\u0629 \u0645\u0643\u0627\u0646</span>
+            <span class="tile-sub">\u0623\u0636\u0641 \u0646\u0634\u0627\u0637\u0643 \u0645\u062C\u0627\u0646\u0627\u064B</span>
+          </div>
         </a>
         <a href="dashboard.html?section=offers" class="more-menu-tile" data-dash-nav="offers">
           <span class="tile-icon">\u{1F3F7}\uFE0F</span>
-          <span class="tile-title">\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0648\u0636</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0648\u0636</span>
+            <span class="tile-sub">\u0627\u0644\u062E\u0635\u0648\u0645\u0627\u062A \u0648\u0627\u0644\u062A\u062E\u0641\u064A\u0636\u0627\u062A</span>
+          </div>
         </a>
         <a href="dashboard.html?section=products" class="more-menu-tile" data-dash-nav="products">
           <span class="tile-icon">\u{1F4E6}</span>
-          <span class="tile-title">\u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u0645\u0646\u062A\u062C\u0627\u062A</span>
+            <span class="tile-sub">\u0642\u0627\u0626\u0645\u0629 \u0648\u0627\u0644\u0643\u062A\u0627\u0644\u0648\u062C</span>
+          </div>
         </a>
-        <a href="dashboard.html?section=notifications" class="more-menu-tile" data-dash-nav="notifications">
-          <span class="tile-icon">\u{1F514}</span>
-          <span class="tile-title">\u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062A</span>
+        <a href="dashboard.html?section=overview" class="more-menu-tile" data-dash-nav="overview">
+          <span class="tile-icon">\u{1F4CA}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0646\u0638\u0631\u0629 \u0639\u0627\u0645\u0629</span>
+            <span class="tile-sub">\u0627\u0644\u0625\u062D\u0635\u0627\u0626\u064A\u0627\u062A \u0648\u0627\u0644\u0623\u062F\u0627\u0621</span>
+          </div>
+        </a>
+        <a href="dashboard.html?section=loyalty" class="more-menu-tile more-menu-tile--gold" data-dash-nav="loyalty">
+          <span class="tile-icon" style="background:rgba(245,158,11,0.15)">\u{1F381}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0646\u0627\u062F\u064A \u0627\u0644\u0648\u0644\u0627\u0621</span>
+            <span class="tile-sub">\u0627\u0644\u0645\u0643\u0627\u0641\u0622\u062A \u0648\u0627\u0644\u062A\u0648\u062B\u064A\u0642</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- 2. \u062D\u0633\u0627\u0628\u064A \u0648\u0646\u0634\u0627\u0637\u064A -->
+      <div class="more-section-header">
+        <span class="more-section-title"><span>\u{1F464}</span> \u062D\u0633\u0627\u0628\u064A \u0648\u062A\u0641\u0627\u0639\u0644\u064A</span>
+        <span class="more-section-badge">\u0634\u062E\u0635\u064A</span>
+      </div>
+      <div class="more-menu-grid">
+        <a href="favorites.html" class="more-menu-tile">
+          <span class="tile-icon">\u2764\uFE0F</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u0645\u0641\u0636\u0644\u0629</span>
+            <span class="tile-sub">\u0623\u0645\u0627\u0643\u0646\u064A \u0627\u0644\u0645\u062D\u0641\u0648\u0638\u0629</span>
+          </div>
         </a>
         <a href="dashboard.html?section=following" class="more-menu-tile" data-dash-nav="following">
           <span class="tile-icon">\u2B50</span>
-          <span class="tile-title">\u0645\u062A\u0627\u0628\u0639\u0627\u062A\u064A</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0645\u062A\u0627\u0628\u0639\u0627\u062A\u064A</span>
+            <span class="tile-sub">\u0627\u0644\u0645\u062D\u0644\u0627\u062A \u0627\u0644\u0645\u062A\u0627\u0628\u0639\u0629</span>
+          </div>
         </a>
-        <a href="dashboard.html?section=loyalty" class="more-menu-tile" data-dash-nav="loyalty">
-          <span class="tile-icon">\u{1F381}</span>
-          <span class="tile-title">\u0646\u0627\u062F\u064A \u0627\u0644\u0648\u0644\u0627\u0621</span>
+        <a href="dashboard.html?section=notifications" class="more-menu-tile" data-dash-nav="notifications">
+          <span class="tile-icon">\u{1F514}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u0625\u0634\u0639\u0627\u0631\u0627\u062A</span>
+            <span class="tile-sub">\u0627\u0644\u062A\u0646\u0628\u064A\u0647\u0627\u062A \u0648\u0627\u0644\u0631\u0633\u0627\u0626\u0644</span>
+          </div>
         </a>
-        <a href="around-me.html" class="more-menu-tile">
-          <span class="tile-icon">\u{1F9ED}</span>
-          <span class="tile-title">\u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u064A</span>
+        <a href="around-me.html" class="more-menu-tile more-menu-tile--blue">
+          <span class="tile-icon" style="background:rgba(2,132,199,0.15)">\u{1F9ED}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u064A</span>
+            <span class="tile-sub">\u0623\u0645\u0627\u0643\u0646 \u062D\u0633\u0628 \u0645\u0648\u0642\u0639\u0643 GPS</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- 3. \u0627\u0633\u062A\u0643\u0634\u0627\u0641 \u0627\u0644\u062F\u0644\u064A\u0644 \u0648\u0627\u0644\u062E\u062F\u0645\u0627\u062A -->
+      <div class="more-section-header">
+        <span class="more-section-title"><span>\u2728</span> \u0627\u0633\u062A\u0643\u0634\u0627\u0641 \u0627\u0644\u062F\u0644\u064A\u0644</span>
+      </div>
+      <div class="more-menu-grid">
+        <a href="search.html" class="more-menu-tile">
+          <span class="tile-icon">\u{1F50D}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u0628\u062D\u062B \u0627\u0644\u0645\u062A\u0642\u062F\u0645</span>
+            <span class="tile-sub">\u0628\u062D\u062B \u0630\u0643\u064A \u0648\u0633\u0631\u064A\u0639</span>
+          </div>
         </a>
         <a href="popular.html" class="more-menu-tile">
           <span class="tile-icon">\u{1F525}</span>
-          <span class="tile-title">\u0627\u0644\u0623\u0643\u062B\u0631 \u0634\u0639\u0628\u064A\u0629</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u0623\u0643\u062B\u0631 \u0634\u0639\u0628\u064A\u0629</span>
+            <span class="tile-sub">\u0627\u0644\u0623\u0639\u0644\u0649 \u062A\u0642\u064A\u064A\u0645\u0627\u064B \u0648\u0632\u064A\u0627\u0631\u0629</span>
+          </div>
         </a>
-        <a href="favorites.html" class="more-menu-tile">
-          <span class="tile-icon">\u2764\uFE0F</span>
-          <span class="tile-title">\u0627\u0644\u0645\u0641\u0636\u0644\u0629</span>
+        <a href="categories.html" class="more-menu-tile">
+          <span class="tile-icon">\u{1F4D1}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u062A\u0635\u0646\u064A\u0641\u0627\u062A</span>
+            <span class="tile-sub">\u062C\u0645\u064A\u0639 \u0627\u0644\u0623\u0646\u0634\u0637\u0629 \u0648\u0627\u0644\u0645\u0647\u0646</span>
+          </div>
         </a>
-        ${o?`
-          <a href="admin.html" class="more-menu-tile" style="grid-column:1 / -1;background:rgba(27,79,114,0.08);border-color:rgba(27,79,114,0.3);color:var(--primary)">
-            <span class="tile-icon">\u2699\uFE0F</span>
-            <span class="tile-title">\u0644\u0648\u062D\u0629 \u062A\u062D\u0643\u0645 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0634\u0627\u0645\u0644\u0629</span>
-          </a>
-        `:""}
+        <a href="now.html" class="more-menu-tile">
+          <span class="tile-icon">\u26A1</span>
+          <div class="tile-info">
+            <span class="tile-title">\u064A\u062D\u062F\u062B \u0627\u0644\u0622\u0646</span>
+            <span class="tile-sub">\u062A\u062D\u062F\u064A\u062B\u0627\u062A \u0648\u0639\u0631\u0648\u0636 \u0645\u0628\u0627\u0634\u0631\u0629</span>
+          </div>
+        </a>
       </div>
 
-      <!-- Quick Services -->
-      <div style="font-weight:800;font-size:0.88rem;color:var(--text-muted,#64748B);margin-bottom:6px;margin-top:4px">\u0631\u0648\u0627\u0628\u0637 \u0633\u0631\u064A\u0639\u0629</div>
+      ${s?`
+        <div style="margin-top:10px">
+          <a href="admin.html" class="more-menu-tile" style="background:linear-gradient(135deg, rgba(27,79,114,0.1) 0%, rgba(40,116,166,0.15) 100%);border-color:rgba(27,79,114,0.35);color:var(--primary);min-height:56px">
+            <span class="tile-icon" style="background:rgba(27,79,114,0.15);font-size:22px">\u2699\uFE0F</span>
+            <div class="tile-info">
+              <span class="tile-title" style="font-size:0.95rem">\u0644\u0648\u062D\u0629 \u062A\u062D\u0643\u0645 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0634\u0627\u0645\u0644\u0629 (Admin)</span>
+              <span class="tile-sub">\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0623\u0645\u0627\u0643\u0646\u060C \u0627\u0644\u062A\u0648\u062B\u064A\u0642\u060C \u0627\u0644\u0625\u0639\u0644\u0627\u0646\u0627\u062A\u060C \u0648\u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645\u064A\u0646</span>
+            </div>
+          </a>
+        </div>
+      `:""}
+
+      <!-- 4. \u062E\u062F\u0645\u0627\u062A \u0648\u062A\u0637\u0628\u064A\u0642\u0627\u062A -->
+      <div class="more-section-header" style="margin-top:16px">
+        <span class="more-section-title"><span>\u{1F4F1}</span> \u062E\u062F\u0645\u0627\u062A \u0648\u062A\u0637\u0628\u064A\u0642\u0627\u062A \u0627\u0644\u062F\u0644\u064A\u0644</span>
+      </div>
       <div style="display:flex;flex-direction:column;gap:4px">
-        <a href="contact.html" class="more-menu-row">
-          <span style="font-size:18px">\u{1F4AC}</span>
-          <span>\u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0648\u0627\u0644\u062F\u0639\u0645 \u0627\u0644\u0641\u0646\u064A</span>
-        </a>
         <a href="quran.html" class="more-menu-row">
-          <span style="font-size:18px">\u{1F4D6}</span>
-          <span>\u0627\u0644\u0642\u0631\u0622\u0646 \u0627\u0644\u0643\u0631\u064A\u0645 \u0648\u0627\u0644\u0623\u0630\u0643\u0627\u0631</span>
+          <span style="font-size:18px">\u{1F54C}</span>
+          <span>\u0627\u0644\u0642\u0631\u0622\u0646 \u0627\u0644\u0643\u0631\u064A\u0645 \u0648\u0627\u0644\u0623\u0630\u0643\u0627\u0631 \u0648\u0623\u0648\u0642\u0627\u062A \u0627\u0644\u0635\u0644\u0627\u0629</span>
         </a>
         <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="more-menu-row">
           <span style="font-size:18px">\u{1F4E5}</span>
-          <span>\u062A\u062D\u0645\u064A\u0644 \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0623\u0646\u062F\u0631\u0648\u064A\u062F APK</span>
+          <span>\u062A\u062D\u0645\u064A\u0644 \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0623\u0646\u062F\u0631\u0648\u064A\u062F APK \u0627\u0644\u0645\u0628\u0627\u0634\u0631</span>
+        </a>
+        <a href="contact.html" class="more-menu-row">
+          <span style="font-size:18px">\u{1F4AC}</span>
+          <span>\u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0648\u0627\u0644\u062F\u0639\u0645 \u0627\u0644\u0641\u0646\u064A</span>
         </a>
       </div>
 
@@ -397,7 +478,7 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
           \u0627\u062F\u062E\u0644 \u0628\u062D\u0633\u0627\u0628 \u062C\u0648\u062C\u0644 \u0628\u0636\u063A\u0637\u0629 \u0632\u0631
         </div>
         <div style="font-size:0.86rem;color:var(--text-muted,#475569);margin-bottom:14px;line-height:1.5">
-          \u064A\u0646\u062A\u0638\u0631\u0643 \u0627\u0644\u0639\u062F\u064A\u062F \u0645\u0646 \u0627\u0644\u0645\u0645\u064A\u0632\u0627\u062A \u0648\u0627\u0644\u0639\u0631\u0648\u0636
+          \u064A\u0646\u062A\u0638\u0631\u0643 \u0627\u0644\u0639\u062F\u064A\u062F \u0645\u0646 \u0627\u0644\u0645\u0645\u064A\u0632\u0627\u062A \u0648\u0627\u0644\u0639\u0631\u0648\u0636 \u0648\u0625\u0636\u0627\u0641\u0629 \u0645\u0643\u0627\u0646\u0643
         </div>
 
         <button type="button" class="btn btn-block" id="more-modal-google-login-btn" style="background:#ffffff;color:#0F172A;border:1.5px solid #CBD5E1;font-weight:800;font-size:0.92rem;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 16px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,0.07);cursor:pointer;width:100%;transition:transform 0.15s ease">
@@ -409,46 +490,76 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
           </svg>
           <span>\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0627\u0644\u0633\u0631\u064A\u0639 \u0628\u062D\u0633\u0627\u0628 Google</span>
         </button>
-
-        <div style="margin-top:14px;padding-top:10px;border-top:1px dashed rgba(245,158,11,0.3);display:flex;flex-direction:column;gap:3px">
-          <div style="font-weight:900;font-size:0.92rem;color:var(--primary,#1B4F72)">\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A</div>
-          <div style="font-size:0.8rem;color:#D97706;font-weight:700">\u0627\u0644\u062F\u0644\u064A\u0644 \u0627\u0644\u0623\u0648\u0644 \u0641\u0649 \u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u2B50</div>
-        </div>
       </div>
 
       <!-- Quick Links for Guests -->
-      <div style="font-weight:800;font-size:0.88rem;color:var(--text-muted,#64748B);margin-bottom:8px">\u0631\u0648\u0627\u0628\u0637 \u062A\u0647\u0645\u0643</div>
+      <div class="more-section-header">
+        <span class="more-section-title"><span>\u{1F9ED}</span> \u0627\u0633\u062A\u0643\u0634\u0627\u0641 \u0627\u0644\u062F\u0644\u064A\u0644</span>
+      </div>
       <div class="more-menu-grid" style="margin-bottom:10px">
-        <a href="around-me.html" class="more-menu-tile">
-          <span class="tile-icon">\u{1F9ED}</span>
-          <span class="tile-title">\u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u064A</span>
+        <a href="search.html" class="more-menu-tile">
+          <span class="tile-icon">\u{1F50D}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u0628\u062D\u062B \u0627\u0644\u0645\u062A\u0642\u062F\u0645</span>
+            <span class="tile-sub">\u0628\u062D\u062B \u0633\u0631\u064A\u0639 \u0628\u0627\u0644\u0623\u0645\u0627\u0643\u0646</span>
+          </div>
+        </a>
+        <a href="around-me.html" class="more-menu-tile more-menu-tile--blue">
+          <span class="tile-icon" style="background:rgba(2,132,199,0.15)">\u{1F9ED}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u064A</span>
+            <span class="tile-sub">\u0623\u0642\u0631\u0628 \u0627\u0644\u0623\u0645\u0627\u0643\u0646 \u0625\u0644\u064A\u0643</span>
+          </div>
         </a>
         <a href="popular.html" class="more-menu-tile">
           <span class="tile-icon">\u{1F525}</span>
-          <span class="tile-title">\u0627\u0644\u0623\u0643\u062B\u0631 \u0634\u0639\u0628\u064A\u0629</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u0623\u0643\u062B\u0631 \u0634\u0639\u0628\u064A\u0629</span>
+            <span class="tile-sub">\u0627\u0644\u0623\u0639\u0644\u0649 \u0632\u064A\u0627\u0631\u0629 \u0648\u062A\u0642\u064A\u064A\u0645\u0627\u064B</span>
+          </div>
+        </a>
+        <a href="categories.html" class="more-menu-tile">
+          <span class="tile-icon">\u{1F4D1}</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u062A\u0635\u0646\u064A\u0641\u0627\u062A</span>
+            <span class="tile-sub">\u062F\u0644\u064A\u0644 \u0627\u0644\u0623\u0646\u0634\u0637\u0629 \u0648\u0627\u0644\u0645\u0647\u0646</span>
+          </div>
         </a>
         <a href="favorites.html" class="more-menu-tile">
           <span class="tile-icon">\u2764\uFE0F</span>
-          <span class="tile-title">\u0627\u0644\u0645\u0641\u0636\u0644\u0629</span>
+          <div class="tile-info">
+            <span class="tile-title">\u0627\u0644\u0645\u0641\u0636\u0644\u0629</span>
+            <span class="tile-sub">\u0642\u0627\u0626\u0645\u062A\u0643 \u0627\u0644\u0645\u0641\u0636\u0644\u0629</span>
+          </div>
+        </a>
+        <a href="now.html" class="more-menu-tile">
+          <span class="tile-icon">\u26A1</span>
+          <div class="tile-info">
+            <span class="tile-title">\u064A\u062D\u062F\u062B \u0627\u0644\u0622\u0646</span>
+            <span class="tile-sub">\u0623\u062D\u062F\u062B \u0627\u0644\u062A\u0637\u0648\u0631\u0627\u062A</span>
+          </div>
         </a>
       </div>
 
+      <div class="more-section-header" style="margin-top:14px">
+        <span class="more-section-title"><span>\u{1F4F1}</span> \u062E\u062F\u0645\u0627\u062A \u0648\u062A\u0637\u0628\u064A\u0642\u0627\u062A</span>
+      </div>
       <div style="display:flex;flex-direction:column;gap:4px">
+        <a href="quran.html" class="more-menu-row">
+          <span style="font-size:18px">\u{1F54C}</span>
+          <span>\u0627\u0644\u0642\u0631\u0622\u0646 \u0627\u0644\u0643\u0631\u064A\u0645 \u0648\u0627\u0644\u0623\u0630\u0643\u0627\u0631 \u0648\u0623\u0648\u0642\u0627\u062A \u0627\u0644\u0635\u0644\u0627\u0629</span>
+        </a>
+        <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="more-menu-row">
+          <span style="font-size:18px">\u{1F4E5}</span>
+          <span>\u062A\u062D\u0645\u064A\u0644 \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0623\u0646\u062F\u0631\u0648\u064A\u062F APK \u0627\u0644\u0645\u0628\u0627\u0634\u0631</span>
+        </a>
         <a href="contact.html" class="more-menu-row">
           <span style="font-size:18px">\u{1F4AC}</span>
           <span>\u062A\u0648\u0627\u0635\u0644 \u0645\u0639 \u0627\u0644\u0625\u062F\u0627\u0631\u0629 \u0648\u0627\u0644\u062F\u0639\u0645 \u0627\u0644\u0641\u0646\u064A</span>
         </a>
-        <a href="quran.html" class="more-menu-row">
-          <span style="font-size:18px">\u{1F4D6}</span>
-          <span>\u0627\u0644\u0642\u0631\u0622\u0646 \u0627\u0644\u0643\u0631\u064A\u0645 \u0648\u0627\u0644\u0623\u0630\u0643\u0627\u0631</span>
-        </a>
-        <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="more-menu-row">
-          <span style="font-size:18px">\u{1F4E5}</span>
-          <span>\u062A\u062D\u0645\u064A\u0644 \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0623\u0646\u062F\u0631\u0648\u064A\u062F APK</span>
-        </a>
       </div>
     </div>
-  `,{showModal:r}=await import("../ui/components/Modal.js"),m=r({title:i?"\u2630 \u0627\u0644\u0642\u0627\u0626\u0645\u0629 \u0648\u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645":"\u2630 \u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629",content:l,sheet:!0,closeable:!0,size:"sm"}),b=document.querySelector(".modal");return b&&(b.querySelectorAll("[data-dash-nav]").forEach(f=>{f.addEventListener("click",p=>{const d=f.getAttribute("data-dash-nav");t&&typeof window.switchDashboardSection=="function"?(p.preventDefault(),m.close(),window.switchDashboardSection(d,null,!0)):m.close()})}),document.getElementById("more-modal-logout-btn")?.addEventListener("click",async()=>{m.close(),await M(),c.success("\u062A\u0645 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C \u0628\u0646\u062C\u0627\u062D"),window.location.reload()}),document.getElementById("more-modal-google-login-btn")?.addEventListener("click",async f=>{f.preventDefault();const p=f.currentTarget,d=p.innerHTML;try{p.disabled=!0,p.style.opacity="0.7",p.innerHTML="<span>\u062C\u0627\u0631\u064A \u0641\u062A\u062D \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644...</span>";const h=await G();h?(m.close(),c.success(`\u0623\u0647\u0644\u0627\u064B \u0628\u0643 ${h.displayName||h.name||""} \u{1F44B}`),window.location.reload()):(p.disabled=!1,p.style.opacity="1",p.innerHTML=d)}catch(h){p.disabled=!1,p.style.opacity="1",p.innerHTML=d,console.error("[MoreModal GoogleSignIn] error:",h),h?.code!=="auth/popup-closed-by-user"&&c.error("\u062A\u0639\u0630\u0631 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644: "+(h?.message||"\u064A\u0631\u062C\u0649 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629 \u0645\u0631\u0629 \u0623\u062E\u0631\u0649"))}})),m}typeof window<"u"&&(window.openDashboardMoreModal=openDashboardMoreModal);let g=typeof window<"u"&&window.__deferredPwaPrompt?window.__deferredPwaPrompt:null;typeof window<"u"&&(window.addEventListener("beforeinstallprompt",e=>{e.preventDefault(),g=e,window.__deferredPwaPrompt=e}),window.addEventListener("appinstalled",()=>{try{localStorage.setItem("pwa-installed","true")}catch{}g=null,typeof window<"u"&&(window.__deferredPwaPrompt=null),v()}));function te(){return typeof window>"u"?!1:!!(window.matchMedia("(display-mode: standalone)").matches||window.matchMedia("(display-mode: window-controls-overlay)").matches||window.navigator.standalone||document.referrer.includes("android-app://")||localStorage.getItem("pwa-installed")==="true")}function ae(){try{const e=localStorage.getItem("pwa-dismissed");if(!e)return!1;const n=parseInt(e,10);return isNaN(n)?!1:Date.now()-n<7200*1e3}catch{return!1}}function I(){if(te()||ae())return!1;try{if(sessionStorage.getItem("pwa_session_shown")==="true")return!1}catch{}return!0}function ne(){const e=!localStorage.getItem("manzala_voice_guide_seen");e&&setTimeout(()=>{S()},2e3);const n=e?12e3:5e3,i=()=>{(g||typeof window<"u"&&window.__deferredPwaPrompt)&&I()&&!document.getElementById("voice-guide-callout")&&oe()};I()&&(g||typeof window<"u"&&window.__deferredPwaPrompt?setTimeout(i,n):typeof window<"u"&&window.addEventListener("beforeinstallprompt",()=>{setTimeout(i,n)},{once:!0})),document.addEventListener("click",o=>{if(o.target.closest("#pwa-banner-close")||o.target.closest("#pwa-banner-later")){o.preventDefault(),v();return}if(o.target.closest("#pwa-install-btn")){o.preventDefault(),se();return}if(o.target.closest("#desktop-voice-fab")){o.preventDefault();try{import("../services/voice.service.js").then(({openManzalaVoiceAssistantModal:a})=>a()).catch(()=>{})}catch{}return}})}function oe(){if(!I())return;const e=document.getElementById("pwa-banner");if(e){try{sessionStorage.setItem("pwa_session_shown","true")}catch{}e.hidden=!1,e.style.display="block",requestAnimationFrame(()=>{e.classList.add("visible")})}}function v(){const e=document.getElementById("pwa-banner");e&&(e.classList.remove("visible"),setTimeout(()=>{e.hidden=!0,e.style.display="none"},350));try{localStorage.setItem("pwa-dismissed",Date.now().toString()),sessionStorage.setItem("pwa_session_shown","true")}catch{}S()}async function se(){const e=g||(typeof window<"u"?window.__deferredPwaPrompt:null);if(e)try{e.prompt();const{outcome:n}=await e.userChoice;if(n==="accepted"){try{localStorage.setItem("pwa-installed","true")}catch{}v(),c.success("\u062A\u0645 \u062A\u062B\u0628\u064A\u062A \u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0628\u0646\u062C\u0627\u062D! \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \u0634\u0627\u0634\u0629 \u062A\u0637\u0628\u064A\u0642\u0627\u062A \u0647\u0627\u062A\u0641\u0643 \u{1F389}"),setTimeout(()=>S(),1200)}else v()}catch{v()}finally{g=null,typeof window<"u"&&(window.__deferredPwaPrompt=null)}else v()}function S(){if(!(typeof document>"u")){try{if(localStorage.getItem("manzala_voice_guide_seen")==="true")return;localStorage.setItem("manzala_voice_guide_seen","true")}catch{return}setTimeout(()=>{const e=window.innerWidth>=769;let n=null;if(e?n=document.getElementById("desktop-voice-fab")||document.getElementById("global-voice-assistant-fab"):n=document.getElementById("global-voice-assistant-fab")||document.querySelector(".bottom-nav__fab-btn")||document.querySelector(".bottom-nav__fab"),!n)return;document.getElementById("voice-guide-callout")?.remove();const i=document.getElementById("pwa-banner");i&&i.classList.contains("visible")&&(i.classList.remove("visible"),i.style.display="none",i.hidden=!0);const o=document.createElement("div");o.className="voice-guide-callout",o.id="voice-guide-callout",o.setAttribute("role","tooltip"),o.innerHTML=`
+  `,{showModal:r}=await import("../ui/components/Modal.js"),m=r({title:o?"\u2630 \u0627\u0644\u0642\u0627\u0626\u0645\u0629 \u0648\u0644\u0648\u062D\u0629 \u0627\u0644\u062A\u062D\u0643\u0645":"\u2630 \u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629",content:l,sheet:!0,closeable:!0,size:"sm"}),b=document.querySelector(".modal");return b&&(b.querySelectorAll("[data-dash-nav]").forEach(f=>{f.addEventListener("click",p=>{const c=f.getAttribute("data-dash-nav");t&&typeof window.switchDashboardSection=="function"?(p.preventDefault(),m.close(),window.switchDashboardSection(c,null,!0)):m.close()})}),document.getElementById("more-modal-logout-btn")?.addEventListener("click",async()=>{m.close(),await $(),d.success("\u062A\u0645 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C \u0628\u0646\u062C\u0627\u062D"),window.location.reload()}),document.getElementById("more-modal-google-login-btn")?.addEventListener("click",async f=>{f.preventDefault();const p=f.currentTarget,c=p.innerHTML;try{p.disabled=!0,p.style.opacity="0.7",p.innerHTML="<span>\u062C\u0627\u0631\u064A \u0641\u062A\u062D \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644...</span>";const h=await G();h?(m.close(),d.success(`\u0623\u0647\u0644\u0627\u064B \u0628\u0643 ${h.displayName||h.name||""} \u{1F44B}`),window.location.reload()):(p.disabled=!1,p.style.opacity="1",p.innerHTML=c)}catch(h){p.disabled=!1,p.style.opacity="1",p.innerHTML=c,console.error("[MoreModal GoogleSignIn] error:",h),h?.code!=="auth/popup-closed-by-user"&&d.error("\u062A\u0639\u0630\u0631 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644: "+(h?.message||"\u064A\u0631\u062C\u0649 \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0629 \u0645\u0631\u0629 \u0623\u062E\u0631\u0649"))}})),m}typeof window<"u"&&(window.openDashboardMoreModal=openDashboardMoreModal);let v=typeof window<"u"&&window.__deferredPwaPrompt?window.__deferredPwaPrompt:null;typeof window<"u"&&(window.addEventListener("beforeinstallprompt",e=>{e.preventDefault(),v=e,window.__deferredPwaPrompt=e}),window.addEventListener("appinstalled",()=>{try{localStorage.setItem("pwa-installed","true")}catch{}v=null,typeof window<"u"&&(window.__deferredPwaPrompt=null),g()}));function te(){return typeof window>"u"?!1:!!(window.matchMedia("(display-mode: standalone)").matches||window.matchMedia("(display-mode: window-controls-overlay)").matches||window.navigator.standalone||document.referrer.includes("android-app://")||localStorage.getItem("pwa-installed")==="true")}function ae(){try{const e=localStorage.getItem("pwa-dismissed");if(!e)return!1;const n=parseInt(e,10);return isNaN(n)?!1:Date.now()-n<7200*1e3}catch{return!1}}function I(){if(te()||ae())return!1;try{if(sessionStorage.getItem("pwa_session_shown")==="true")return!1}catch{}return!0}function ne(){const e=!localStorage.getItem("manzala_voice_guide_seen");e&&setTimeout(()=>{S()},2e3);const n=e?12e3:5e3,o=()=>{(v||typeof window<"u"&&window.__deferredPwaPrompt)&&I()&&!document.getElementById("voice-guide-callout")&&se()};I()&&(v||typeof window<"u"&&window.__deferredPwaPrompt?setTimeout(o,n):typeof window<"u"&&window.addEventListener("beforeinstallprompt",()=>{setTimeout(o,n)},{once:!0})),document.addEventListener("click",s=>{if(s.target.closest("#pwa-banner-close")||s.target.closest("#pwa-banner-later")){s.preventDefault(),g();return}if(s.target.closest("#pwa-install-btn")){s.preventDefault(),ie();return}if(s.target.closest("#desktop-voice-fab")){s.preventDefault();try{import("../services/voice.service.js").then(({openManzalaVoiceAssistantModal:a})=>a()).catch(()=>{})}catch{}return}})}function se(){if(!I())return;const e=document.getElementById("pwa-banner");if(e){try{sessionStorage.setItem("pwa_session_shown","true")}catch{}e.hidden=!1,e.style.display="block",requestAnimationFrame(()=>{e.classList.add("visible")})}}function g(){const e=document.getElementById("pwa-banner");e&&(e.classList.remove("visible"),setTimeout(()=>{e.hidden=!0,e.style.display="none"},350));try{localStorage.setItem("pwa-dismissed",Date.now().toString()),sessionStorage.setItem("pwa_session_shown","true")}catch{}S()}async function ie(){const e=v||(typeof window<"u"?window.__deferredPwaPrompt:null);if(e)try{e.prompt();const{outcome:n}=await e.userChoice;if(n==="accepted"){try{localStorage.setItem("pwa-installed","true")}catch{}g(),d.success("\u062A\u0645 \u062A\u062B\u0628\u064A\u062A \u0627\u0644\u062A\u0637\u0628\u064A\u0642 \u0628\u0646\u062C\u0627\u062D! \u0633\u062A\u062C\u062F\u0647 \u0641\u064A \u0634\u0627\u0634\u0629 \u062A\u0637\u0628\u064A\u0642\u0627\u062A \u0647\u0627\u062A\u0641\u0643 \u{1F389}"),setTimeout(()=>S(),1200)}else g()}catch{g()}finally{v=null,typeof window<"u"&&(window.__deferredPwaPrompt=null)}else g()}function S(){if(!(typeof document>"u")){try{if(localStorage.getItem("manzala_voice_guide_seen")==="true")return;localStorage.setItem("manzala_voice_guide_seen","true")}catch{return}setTimeout(()=>{const e=window.innerWidth>=769;let n=null;if(e?n=document.getElementById("desktop-voice-fab")||document.getElementById("global-voice-assistant-fab"):n=document.getElementById("global-voice-assistant-fab")||document.querySelector(".bottom-nav__fab-btn")||document.querySelector(".bottom-nav__fab"),!n)return;document.getElementById("voice-guide-callout")?.remove();const o=document.getElementById("pwa-banner");o&&o.classList.contains("visible")&&(o.classList.remove("visible"),o.style.display="none",o.hidden=!0);const s=document.createElement("div");s.className="voice-guide-callout",s.id="voice-guide-callout",s.setAttribute("role","tooltip"),s.innerHTML=`
       <div class="voice-guide-callout__bubble" id="voice-guide-bubble">
         <button type="button" class="voice-guide-callout__close" id="voice-guide-callout-close" aria-label="\u0625\u063A\u0644\u0627\u0642 \u0627\u0644\u062A\u0644\u0645\u064A\u062D" title="\u0625\u063A\u0644\u0627\u0642">\u2715</button>
         <div class="voice-guide-callout__body">
@@ -462,8 +573,8 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
           <polyline points="19 12 12 19 5 12"></polyline>
         </svg>
       </div>
-    `,document.body.appendChild(o),n.classList.add("voice-mic-highlighted");const a=()=>{o.classList.add("fade-out"),n?.classList.remove("voice-mic-highlighted"),setTimeout(()=>o.remove(),350)};o.querySelector("#voice-guide-callout-close")?.addEventListener("click",t=>{t.stopPropagation(),a()}),o.querySelector("#voice-guide-bubble")?.addEventListener("click",t=>{if(!t.target.closest("#voice-guide-callout-close")){a();try{import("../services/voice.service.js").then(({openManzalaVoiceAssistantModal:l})=>l()).catch(()=>{})}catch{}}}),n.addEventListener("click",a,{once:!0});const s=t=>{!o.contains(t.target)&&!n.contains(t.target)&&(a(),document.removeEventListener("click",s))};setTimeout(()=>{document.addEventListener("click",s)},400),setTimeout(()=>{document.body.contains(o)&&(a(),document.removeEventListener("click",s))},9e3)},500)}}function x(e){return e?String(e).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"):""}function D(e){return e?String(e).replace(/"/g,"&quot;").replace(/'/g,"&#39;"):""}function ie(){if(typeof window>"u")return;const e=new Date().getFullYear(),n=()=>{try{console.log(`%c\xA9 \u062C\u0645\u064A\u0639 \u0627\u0644\u0623\u0645\u0627\u0643\u0646 \u0648\u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0627\u0644\u062D\u0642\u0648\u0642 \u0645\u062D\u0641\u0648\u0638\u0629 \u0644\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A (${e}).`,"background: linear-gradient(135deg, #0B2239, #153A5C); color: #F5A623; font-size: 16px; font-weight: 800; padding: 12px 20px; border-radius: 8px; border: 2px solid #F5A623; font-family: Cairo, Tahoma, sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.5);"),console.log(`%c\u26A0\uFE0F \u062A\u062D\u0630\u064A\u0631 \u0642\u0627\u0646\u0648\u0646\u064A \u0631\u0633\u0645\u064A:
-\u0643\u0627\u0641\u0629 \u0627\u0644\u0645\u062D\u062A\u0648\u064A\u0627\u062A \u0648\u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0642\u0648\u0627\u0639\u062F \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0645\u0646\u0634\u0648\u0631\u0629 \u0645\u0633\u062C\u0644\u0629 \u0648\u0645\u062D\u0645\u064A\u0629 \u0631\u0642\u0645\u064A\u0627\u064B\u060C \u0648\u0644\u0627 \u064A\u0645\u0643\u0646 \u0646\u0642\u0644\u0647\u0627 \u0623\u0648 \u0646\u0633\u062E\u0647\u0627 \u062D\u062A\u0649 \u0644\u0627 \u064A\u062A\u0645 \u0645\u0633\u0627\u0621\u0644\u062A\u0643 \u0642\u0627\u0646\u0648\u0646\u064A\u0627\u064B \u0623\u0645\u0627\u0645 \u0627\u0644\u0645\u062D\u0627\u0643\u0645 \u0628\u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629.`,"color: #EF4444; font-size: 13px; font-weight: 700; line-height: 1.8; font-family: Cairo, Tahoma, sans-serif;"),console.log("%c\u0631\u0627\u0628\u0637 \u0627\u0644\u0628\u0648\u0627\u0628\u0629 \u0627\u0644\u0631\u0633\u0645\u064A\u0629: %chttps://dalilmanzala.com/","color: #64748B; font-size: 11px; font-family: Cairo, sans-serif;","color: #0284C7; font-size: 11px; font-weight: 700; text-decoration: underline;"),console.log("%c\u{1F4AC} \u0644\u0644\u0627\u0633\u062A\u0641\u0633\u0627\u0631\u0627\u062A \u0648\u0627\u0644\u0627\u0642\u062A\u0631\u0627\u062D\u0627\u062A: %chttps://wa.me/wasendernew","color: #64748B; font-size: 11px; font-family: Cairo, sans-serif;","color: #10B981; font-size: 11px; font-weight: 700; text-decoration: underline;")}catch{}};n();let i=window.outerWidth-window.innerWidth,o=window.outerHeight-window.innerHeight;window.addEventListener("resize",()=>{const a=window.outerWidth-window.innerWidth,s=window.outerHeight-window.innerHeight;(a!==i||s!==o)&&(i=a,o=s,n())},{passive:!0}),document.addEventListener("contextmenu",a=>{const s=a.target.tagName.toLowerCase();s==="input"||s==="textarea"||a.target.isContentEditable||(a.preventDefault(),typeof c<"u"&&c.info&&c.info("\u{1F6E1}\uFE0F \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0648\u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0645\u062D\u0645\u064A\u0629 \u0642\u0627\u0646\u0648\u0646\u064A\u0627\u064B \u2014 \u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0646\u0633\u062E \u0623\u0648 \u0646\u0642\u0644 \u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u062F\u0644\u064A\u0644."))}),document.addEventListener("copy",a=>{const s=a.target.tagName?a.target.tagName.toLowerCase():"";s==="input"||s==="textarea"||a.target.isContentEditable||(a.preventDefault(),a.clipboardData&&a.clipboardData.setData("text/plain",`\xA9 \u062C\u0645\u064A\u0639 \u0627\u0644\u0623\u0645\u0627\u0643\u0646 \u0648\u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0627\u0644\u062D\u0642\u0648\u0642 \u0645\u062D\u0641\u0648\u0638\u0629 \u0644\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A (${e}). https://dalilmanzala.com/`),typeof c<"u"&&c.warning&&c.warning("\u26A0\uFE0F \u062A\u0645 \u062D\u0641\u0638 \u062D\u0642\u0648\u0642 \u0627\u0644\u0645\u0644\u0643\u064A\u0629: \u0644\u0627 \u064A\u062C\u0648\u0632 \u0646\u0633\u062E \u0623\u0648 \u0627\u0642\u062A\u0628\u0627\u0633 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062F\u0644\u064A\u0644."))}),document.addEventListener("cut",a=>{const s=a.target.tagName?a.target.tagName.toLowerCase():"";s==="input"||s==="textarea"||a.target.isContentEditable||a.preventDefault()}),document.addEventListener("keydown",a=>{const s=a.target.tagName?a.target.tagName.toLowerCase():"",t=s==="input"||s==="textarea"||a.target.isContentEditable;(a.key==="F12"||a.ctrlKey&&a.shiftKey&&(a.key==="I"||a.key==="i"||a.key==="J"||a.key==="j"||a.key==="C"||a.key==="c"))&&n(),a.ctrlKey&&(a.key==="u"||a.key==="U"||a.key==="s"||a.key==="S"||a.key==="p"||a.key==="P")&&(a.preventDefault(),typeof c<"u"&&c.warning&&c.warning("\u{1F512} \u0645\u0635\u062F\u0631 \u0648\u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062F\u0644\u064A\u0644 \u0645\u062D\u0645\u064A\u0629 \u0628\u0645\u0648\u062C\u0628 \u0642\u0627\u0646\u0648\u0646 \u0627\u0644\u0645\u0644\u0643\u064A\u0629 \u0627\u0644\u0641\u0643\u0631\u064A\u0629.")),a.ctrlKey&&(a.key==="c"||a.key==="C")&&!t&&(window.getSelection?window.getSelection().toString():"").length>0&&(a.preventDefault(),typeof c<"u"&&c.warning&&c.warning("\u{1F6E1}\uFE0F \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0645\u062D\u0645\u064A: \u0644\u0627 \u064A\u0645\u0643\u0646 \u0627\u0644\u0646\u0633\u062E \u0644\u0645\u0646\u0639 \u0627\u0644\u062A\u0639\u062F\u064A \u0627\u0644\u0642\u0627\u0646\u0648\u0646\u064A."))})}async function le(){try{const e=P();if(e&&_(e))return;if(e&&e.status==="suspended"){F("\u062A\u0645 \u0625\u064A\u0642\u0627\u0641 \u062D\u0633\u0627\u0628\u0643 \u0645\u0646 \u0642\u0628\u0644 \u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0645\u0646\u0635\u0629 \u0644\u0645\u062E\u0627\u0644\u0641\u0629 \u0627\u0644\u0634\u0631\u0648\u0637.");return}const n=await j();if(n){const{isIpBanned:i}=await import("./db.js"),o=await i(n);if(o){const a=o.reason||"\u0645\u062E\u0627\u0644\u0641\u0629 \u0645\u0639\u0627\u064A\u064A\u0631 \u0648\u0633\u064A\u0627\u0633\u0627\u062A \u0627\u0644\u0645\u0646\u0635\u0629",s=o.bannedUntil?new Date(o.bannedUntil).toLocaleDateString("ar-EG"):null,t=o.isPermanent?`\u062A\u0645 \u062D\u0638\u0631 \u0639\u0646\u0648\u0627\u0646 \u062C\u0647\u0627\u0632\u0643 (${n}) \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u0645\u0646 \u062F\u062E\u0648\u0644 \u0627\u0644\u0645\u0646\u0635\u0629 \u0628\u0633\u0628\u0628: ${a}`:`\u062A\u0645 \u062D\u0638\u0631 \u0639\u0646\u0648\u0627\u0646 \u062C\u0647\u0627\u0632\u0643 (${n}) \u062D\u062A\u0649 ${s} \u0628\u0633\u0628\u0628: ${a}`;F(t)}}}catch(e){console.debug("[_enforceBanGuard] notice:",e)}}function F(e){document.body.innerHTML=`
+    `,document.body.appendChild(s),n.classList.add("voice-mic-highlighted");const a=()=>{s.classList.add("fade-out"),n?.classList.remove("voice-mic-highlighted"),setTimeout(()=>s.remove(),350)};s.querySelector("#voice-guide-callout-close")?.addEventListener("click",t=>{t.stopPropagation(),a()}),s.querySelector("#voice-guide-bubble")?.addEventListener("click",t=>{if(!t.target.closest("#voice-guide-callout-close")){a();try{import("../services/voice.service.js").then(({openManzalaVoiceAssistantModal:l})=>l()).catch(()=>{})}catch{}}}),n.addEventListener("click",a,{once:!0});const i=t=>{!s.contains(t.target)&&!n.contains(t.target)&&(a(),document.removeEventListener("click",i))};setTimeout(()=>{document.addEventListener("click",i)},400),setTimeout(()=>{document.body.contains(s)&&(a(),document.removeEventListener("click",i))},9e3)},500)}}function x(e){return e?String(e).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"):""}function F(e){return e?String(e).replace(/"/g,"&quot;").replace(/'/g,"&#39;"):""}function oe(){if(typeof window>"u")return;const e=new Date().getFullYear(),n=()=>{try{console.log(`%c\xA9 \u062C\u0645\u064A\u0639 \u0627\u0644\u0623\u0645\u0627\u0643\u0646 \u0648\u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0627\u0644\u062D\u0642\u0648\u0642 \u0645\u062D\u0641\u0648\u0638\u0629 \u0644\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A (${e}).`,"background: linear-gradient(135deg, #0B2239, #153A5C); color: #F5A623; font-size: 16px; font-weight: 800; padding: 12px 20px; border-radius: 8px; border: 2px solid #F5A623; font-family: Cairo, Tahoma, sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.5);"),console.log(`%c\u26A0\uFE0F \u062A\u062D\u0630\u064A\u0631 \u0642\u0627\u0646\u0648\u0646\u064A \u0631\u0633\u0645\u064A:
+\u0643\u0627\u0641\u0629 \u0627\u0644\u0645\u062D\u062A\u0648\u064A\u0627\u062A \u0648\u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0642\u0648\u0627\u0639\u062F \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0645\u0646\u0634\u0648\u0631\u0629 \u0645\u0633\u062C\u0644\u0629 \u0648\u0645\u062D\u0645\u064A\u0629 \u0631\u0642\u0645\u064A\u0627\u064B\u060C \u0648\u0644\u0627 \u064A\u0645\u0643\u0646 \u0646\u0642\u0644\u0647\u0627 \u0623\u0648 \u0646\u0633\u062E\u0647\u0627 \u062D\u062A\u0649 \u0644\u0627 \u064A\u062A\u0645 \u0645\u0633\u0627\u0621\u0644\u062A\u0643 \u0642\u0627\u0646\u0648\u0646\u064A\u0627\u064B \u0623\u0645\u0627\u0645 \u0627\u0644\u0645\u062D\u0627\u0643\u0645 \u0628\u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629.`,"color: #EF4444; font-size: 13px; font-weight: 700; line-height: 1.8; font-family: Cairo, Tahoma, sans-serif;"),console.log("%c\u0631\u0627\u0628\u0637 \u0627\u0644\u0628\u0648\u0627\u0628\u0629 \u0627\u0644\u0631\u0633\u0645\u064A\u0629: %chttps://dalilmanzala.com/","color: #64748B; font-size: 11px; font-family: Cairo, sans-serif;","color: #0284C7; font-size: 11px; font-weight: 700; text-decoration: underline;"),console.log("%c\u{1F4AC} \u0644\u0644\u0627\u0633\u062A\u0641\u0633\u0627\u0631\u0627\u062A \u0648\u0627\u0644\u0627\u0642\u062A\u0631\u0627\u062D\u0627\u062A: %chttps://wa.me/wasendernew","color: #64748B; font-size: 11px; font-family: Cairo, sans-serif;","color: #10B981; font-size: 11px; font-weight: 700; text-decoration: underline;")}catch{}};n();let o=window.outerWidth-window.innerWidth,s=window.outerHeight-window.innerHeight;window.addEventListener("resize",()=>{const a=window.outerWidth-window.innerWidth,i=window.outerHeight-window.innerHeight;(a!==o||i!==s)&&(o=a,s=i,n())},{passive:!0}),document.addEventListener("contextmenu",a=>{const i=a.target.tagName.toLowerCase();i==="input"||i==="textarea"||a.target.isContentEditable||(a.preventDefault(),typeof d<"u"&&d.info&&d.info("\u{1F6E1}\uFE0F \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0648\u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0645\u062D\u0645\u064A\u0629 \u0642\u0627\u0646\u0648\u0646\u064A\u0627\u064B \u2014 \u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0646\u0633\u062E \u0623\u0648 \u0646\u0642\u0644 \u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u062F\u0644\u064A\u0644."))}),document.addEventListener("copy",a=>{const i=a.target.tagName?a.target.tagName.toLowerCase():"";i==="input"||i==="textarea"||a.target.isContentEditable||(a.preventDefault(),a.clipboardData&&a.clipboardData.setData("text/plain",`\xA9 \u062C\u0645\u064A\u0639 \u0627\u0644\u0623\u0645\u0627\u0643\u0646 \u0648\u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A \u0648\u0627\u0644\u062D\u0642\u0648\u0642 \u0645\u062D\u0641\u0648\u0638\u0629 \u0644\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A (${e}). https://dalilmanzala.com/`),typeof d<"u"&&d.warning&&d.warning("\u26A0\uFE0F \u062A\u0645 \u062D\u0641\u0638 \u062D\u0642\u0648\u0642 \u0627\u0644\u0645\u0644\u0643\u064A\u0629: \u0644\u0627 \u064A\u062C\u0648\u0632 \u0646\u0633\u062E \u0623\u0648 \u0627\u0642\u062A\u0628\u0627\u0633 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062F\u0644\u064A\u0644."))}),document.addEventListener("cut",a=>{const i=a.target.tagName?a.target.tagName.toLowerCase():"";i==="input"||i==="textarea"||a.target.isContentEditable||a.preventDefault()}),document.addEventListener("keydown",a=>{const i=a.target.tagName?a.target.tagName.toLowerCase():"",t=i==="input"||i==="textarea"||a.target.isContentEditable;(a.key==="F12"||a.ctrlKey&&a.shiftKey&&(a.key==="I"||a.key==="i"||a.key==="J"||a.key==="j"||a.key==="C"||a.key==="c"))&&n(),a.ctrlKey&&(a.key==="u"||a.key==="U"||a.key==="s"||a.key==="S"||a.key==="p"||a.key==="P")&&(a.preventDefault(),typeof d<"u"&&d.warning&&d.warning("\u{1F512} \u0645\u0635\u062F\u0631 \u0648\u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062F\u0644\u064A\u0644 \u0645\u062D\u0645\u064A\u0629 \u0628\u0645\u0648\u062C\u0628 \u0642\u0627\u0646\u0648\u0646 \u0627\u0644\u0645\u0644\u0643\u064A\u0629 \u0627\u0644\u0641\u0643\u0631\u064A\u0629.")),a.ctrlKey&&(a.key==="c"||a.key==="C")&&!t&&(window.getSelection?window.getSelection().toString():"").length>0&&(a.preventDefault(),typeof d<"u"&&d.warning&&d.warning("\u{1F6E1}\uFE0F \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0645\u062D\u0645\u064A: \u0644\u0627 \u064A\u0645\u0643\u0646 \u0627\u0644\u0646\u0633\u062E \u0644\u0645\u0646\u0639 \u0627\u0644\u062A\u0639\u062F\u064A \u0627\u0644\u0642\u0627\u0646\u0648\u0646\u064A."))})}async function le(){try{const e=M();if(e&&_(e))return;if(e&&e.status==="suspended"){D("\u062A\u0645 \u0625\u064A\u0642\u0627\u0641 \u062D\u0633\u0627\u0628\u0643 \u0645\u0646 \u0642\u0628\u0644 \u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0645\u0646\u0635\u0629 \u0644\u0645\u062E\u0627\u0644\u0641\u0629 \u0627\u0644\u0634\u0631\u0648\u0637.");return}const n=await j();if(n){const{isIpBanned:o}=await import("./db.js"),s=await o(n);if(s){const a=s.reason||"\u0645\u062E\u0627\u0644\u0641\u0629 \u0645\u0639\u0627\u064A\u064A\u0631 \u0648\u0633\u064A\u0627\u0633\u0627\u062A \u0627\u0644\u0645\u0646\u0635\u0629",i=s.bannedUntil?new Date(s.bannedUntil).toLocaleDateString("ar-EG"):null,t=s.isPermanent?`\u062A\u0645 \u062D\u0638\u0631 \u0639\u0646\u0648\u0627\u0646 \u062C\u0647\u0627\u0632\u0643 (${n}) \u0646\u0647\u0627\u0626\u064A\u0627\u064B \u0645\u0646 \u062F\u062E\u0648\u0644 \u0627\u0644\u0645\u0646\u0635\u0629 \u0628\u0633\u0628\u0628: ${a}`:`\u062A\u0645 \u062D\u0638\u0631 \u0639\u0646\u0648\u0627\u0646 \u062C\u0647\u0627\u0632\u0643 (${n}) \u062D\u062A\u0649 ${i} \u0628\u0633\u0628\u0628: ${a}`;D(t)}}}catch(e){console.debug("[_enforceBanGuard] notice:",e)}}function D(e){document.body.innerHTML=`
     <div style="min-height:100vh;background:#06101E;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,sans-serif;direction:rtl;text-align:center">
       <div style="max-width:540px;background:#0F273D;border:1px solid rgba(239,68,68,0.4);border-radius:20px;padding:36px 24px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
         <div style="font-size:64px;margin-bottom:16px">\u{1F6AB}</div>
@@ -480,16 +591,16 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
         </a>
       </div>
     </div>
-  `}function re(){const e=document.getElementById("header-search-container"),n=document.getElementById("header-search-pill"),i=document.getElementById("header-search-trigger"),o=document.getElementById("header-search-input"),a=document.getElementById("header-search-clear"),s=document.getElementById("header-live-dropdown"),t=document.getElementById("header-live-list"),l=document.getElementById("header-live-count"),r=document.getElementById("header-live-all-btn");if(!o)return;let m=null,b=0;const f=()=>{n?.classList.add("expanded"),o.focus(),o.value.trim().length>=1&&s?.classList.add("visible")},p=()=>{n?.classList.remove("expanded"),s?.classList.remove("visible")};i?.addEventListener("click",d=>{d.stopPropagation(),n?.classList.contains("expanded")&&o.value.trim()?window.location.href=`search.html?q=${encodeURIComponent(o.value.trim())}`:f()}),o.addEventListener("focus",()=>{n?.classList.add("expanded"),o.value.trim().length>=1&&t?.children.length>0&&s?.classList.add("visible")}),a?.addEventListener("click",d=>{d.stopPropagation(),o.value="",a.classList.remove("visible"),s?.classList.remove("visible"),t&&(t.innerHTML=""),o.focus()}),o.addEventListener("keydown",d=>{d.key==="Enter"&&o.value.trim()?window.location.href=`search.html?q=${encodeURIComponent(o.value.trim())}`:d.key==="Escape"&&p()}),o.addEventListener("input",()=>{const d=o.value.trim();if(a?.classList.toggle("visible",d.length>0),r&&(r.href=`search.html?q=${encodeURIComponent(d)}`),!d){s?.classList.remove("visible"),t&&(t.innerHTML="");return}clearTimeout(m),m=setTimeout(async()=>{const h=++b;try{const{executeFastSearch:E}=await import("../services/search-engine.service.js"),w=await E(d,{limit:6});if(h!==b||!s||!t)return;if(!w||w.length===0){l&&(l.textContent="0"),t.innerHTML=`
+  `}function re(){const e=document.getElementById("header-search-container"),n=document.getElementById("header-search-pill"),o=document.getElementById("header-search-trigger"),s=document.getElementById("header-search-input"),a=document.getElementById("header-search-clear"),i=document.getElementById("header-live-dropdown"),t=document.getElementById("header-live-list"),l=document.getElementById("header-live-count"),r=document.getElementById("header-live-all-btn");if(!s)return;let m=null,b=0;const f=()=>{n?.classList.add("expanded"),s.focus(),s.value.trim().length>=1&&i?.classList.add("visible")},p=()=>{n?.classList.remove("expanded"),i?.classList.remove("visible")};o?.addEventListener("click",c=>{c.stopPropagation(),n?.classList.contains("expanded")&&s.value.trim()?window.location.href=`search.html?q=${encodeURIComponent(s.value.trim())}`:f()}),s.addEventListener("focus",()=>{n?.classList.add("expanded"),s.value.trim().length>=1&&t?.children.length>0&&i?.classList.add("visible")}),a?.addEventListener("click",c=>{c.stopPropagation(),s.value="",a.classList.remove("visible"),i?.classList.remove("visible"),t&&(t.innerHTML=""),s.focus()}),s.addEventListener("keydown",c=>{c.key==="Enter"&&s.value.trim()?window.location.href=`search.html?q=${encodeURIComponent(s.value.trim())}`:c.key==="Escape"&&p()}),s.addEventListener("input",()=>{const c=s.value.trim();if(a?.classList.toggle("visible",c.length>0),r&&(r.href=`search.html?q=${encodeURIComponent(c)}`),!c){i?.classList.remove("visible"),t&&(t.innerHTML="");return}clearTimeout(m),m=setTimeout(async()=>{const h=++b;try{const{executeFastSearch:E}=await import("../services/search-engine.service.js"),w=await E(c,{limit:6});if(h!==b||!i||!t)return;if(!w||w.length===0){l&&(l.textContent="0"),t.innerHTML=`
             <div class="header-live-empty">
               <div class="header-live-empty__icon">\u{1F50D}</div>
               <div class="header-live-empty__title">\u0644\u0645 \u064A\u062A\u0645 \u0627\u0644\u0639\u062B\u0648\u0631 \u0639\u0644\u0649 \u0623\u0645\u0627\u0643\u0646 \u0645\u0637\u0627\u0628\u0642\u0629</div>
               <div class="header-live-empty__desc">\u062C\u0631\u0628 \u0643\u0644\u0645\u0629 \u0623\u062E\u0631\u0649 \u0645\u062B\u0644 (\u0635\u064A\u062F\u0644\u064A\u0629\u060C \u062F\u0643\u062A\u0648\u0631\u060C \u0645\u0637\u0639\u0645\u060C \u0646\u062C\u0627\u0631)</div>
             </div>
-          `,s.classList.add("visible");return}l&&(l.textContent=String(w.length)),t.innerHTML=w.map(L=>{const u=L.raw||L,B=u.name||"\u0645\u0643\u0627\u0646 \u0628\u0627\u0644\u062F\u0644\u064A\u0644",z=u.categoryName||L.category||"",H=u.area||u.address||"\u0645\u062F\u064A\u0646\u0629 \u0627\u0644\u0645\u0646\u0632\u0644\u0629",q=u.slug||u.id||"",C=u.photoURL||u.logo||u.coverURL||"",U=u.isVerified||!1,T=u.isOpen!==void 0?u.isOpen:!0,$=(B.trim()[0]||"\u0645").toUpperCase();return`
+          `,i.classList.add("visible");return}l&&(l.textContent=String(w.length)),t.innerHTML=w.map(L=>{const u=L.raw||L,B=u.name||"\u0645\u0643\u0627\u0646 \u0628\u0627\u0644\u062F\u0644\u064A\u0644",C=u.categoryName||L.category||"",H=u.area||u.address||"\u0645\u062F\u064A\u0646\u0629 \u0627\u0644\u0645\u0646\u0632\u0644\u0629",q=u.slug||u.id||"",z=u.photoURL||u.logo||u.coverURL||"",U=u.isVerified||!1,P=u.isOpen!==void 0?u.isOpen:!0,T=(B.trim()[0]||"\u0645").toUpperCase();return`
             <a href="/place.html?slug=${encodeURIComponent(q)}" class="header-live-dropdown__item" role="option">
               <div class="header-live-avatar">
-                ${C?`<img src="${C}" alt="${k(B)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'header-live-avatar-fallback\\'>${$}</div>'"/>`:`<div class="header-live-avatar-fallback">${$}</div>`}
+                ${z?`<img src="${z}" alt="${k(B)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'header-live-avatar-fallback\\'>${T}</div>'"/>`:`<div class="header-live-avatar-fallback">${T}</div>`}
               </div>
               <div class="header-live-content">
                 <div class="header-live-title-row">
@@ -497,12 +608,12 @@ import{initAuth as W,onAuthStateChange as N,signOut as M,waitForAuth as R,isAdmi
                   ${U?'<span class="header-live-verified" title="\u0645\u0643\u0627\u0646 \u0645\u0648\u062B\u0642">\u2713</span>':""}
                 </div>
                 <div class="header-live-meta-row">
-                  ${z?`<span class="header-live-cat">${k(z)}</span>`:""}
+                  ${C?`<span class="header-live-cat">${k(C)}</span>`:""}
                   <span class="header-live-area">${k(H)}</span>
-                  <span class="${T?"header-live-status-open":"header-live-status-closed"}">
-                    ${T?"\u0645\u0641\u062A\u0648\u062D \u0627\u0644\u0622\u0646":"\u0645\u063A\u0644\u0642"}
+                  <span class="${P?"header-live-status-open":"header-live-status-closed"}">
+                    ${P?"\u0645\u0641\u062A\u0648\u062D \u0627\u0644\u0622\u0646":"\u0645\u063A\u0644\u0642"}
                   </span>
                 </div>
               </div>
             </a>
-          `}).join(""),s.classList.add("visible")}catch(E){console.warn("[HeaderLiveSearch] search error:",E)}},120)}),document.addEventListener("click",d=>{e?.contains(d.target)||(s?.classList.remove("visible"),window.innerWidth<=767&&n?.classList.remove("expanded"))})}function k(e){return String(e||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+          `}).join(""),i.classList.add("visible")}catch(E){console.warn("[HeaderLiveSearch] search error:",E)}},120)}),document.addEventListener("click",c=>{e?.contains(c.target)||(i?.classList.remove("visible"),window.innerWidth<=767&&n?.classList.remove("expanded"))})}function k(e){return String(e||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}

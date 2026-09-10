@@ -2474,8 +2474,16 @@ try {
     const db = createTursoDB(env);
 
     if (request.method === 'GET') {
-      const user = await db.prepare('SELECT points,total_earned,last_daily_bonus_date,last_redemption_at FROM users WHERE id=? LIMIT 1').bind(uid).first();
-      if (!user) return jsonResponse({success:false,error:'المستخدم غير موجود'},404,corsHeaders);
+      let user = await db.prepare('SELECT points,total_earned,last_daily_bonus_date,last_redemption_at FROM users WHERE id=? LIMIT 1').bind(uid).first();
+      if (!user) {
+        const now = Date.now();
+        await db.prepare(`
+          INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+          VALUES (?, ?, ?, 'user', 'active', 0, 0, ?, ?)
+          ON CONFLICT(id) DO NOTHING
+        `).bind(uid, auth.user.name || 'مستخدم', (auth.user.email || '').toLowerCase(), now, now).run().catch(() => {});
+        user = await db.prepare('SELECT points,total_earned,last_daily_bonus_date,last_redemption_at FROM users WHERE id=? LIMIT 1').bind(uid).first() || { points: 0, total_earned: 0, last_daily_bonus_date: null, last_redemption_at: null };
+      }
       const history = (await db.prepare('SELECT id,type,rule_key,amount,label,place_id,place_name,meta_json,created_at FROM loyalty_history WHERE user_id=? ORDER BY created_at DESC LIMIT 200').bind(uid).all()).results || [];
       return jsonResponse({success:true,data:{points:Number(user.points||0),totalEarned:Number(user.total_earned||0),lastDailyBonusDate:user.last_daily_bonus_date||null,lastRedemptionAt:user.last_redemption_at||null,history}},200,{...corsHeaders,'Cache-Control':'no-store'});
     }
@@ -2486,20 +2494,32 @@ try {
 
     if (action === 'award' || action === 'daily') {
       if (auth.user.uid !== uid && !auth.user.isAdmin) return jsonResponse({success:false,error:'غير مصرح'},403,corsHeaders);
+      // Auto-provision user in Turso if not present
+      await db.prepare(`
+        INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+        VALUES (?, ?, ?, 'user', 'active', 0, 0, ?, ?)
+        ON CONFLICT(id) DO NOTHING
+      `).bind(uid, auth.user.name || 'مستخدم', (auth.user.email || '').toLowerCase(), Date.now(), Date.now()).run().catch(() => {});
+
       const amount = action === 'daily' ? 10 : Math.max(1,Math.min(1000,Number(body.amount)||10));
       const ruleKey = action === 'daily' ? 'DAILY_LOGIN' : String(body.ruleKey || 'INTERACTION').slice(0,80);
-      const today = new Date().toISOString().slice(0,10);
+      // Egypt timezone date (UTC+3)
+      const egyptTimeMs = Date.now() + (3 * 3600 * 1000);
+      const today = new Date(egyptTimeMs).toISOString().slice(0,10);
+
       if (action === 'daily') {
-        const upd = await db.prepare('UPDATE users SET points=COALESCE(points,0)+10,total_earned=COALESCE(total_earned,0)+10,last_daily_bonus_date=?,updated_at=? WHERE id=? AND (last_daily_bonus_date IS NULL OR last_daily_bonus_date<>?)')
-          .bind(today,Date.now(),uid,today).run();
-        if (Number(upd?.meta?.changes||0) !== 1) return jsonResponse({success:false,reason:'already_claimed'},409,corsHeaders);
+        const existing = await db.prepare('SELECT last_daily_bonus_date FROM users WHERE id=?').bind(uid).first();
+        if (existing && existing.last_daily_bonus_date === today) {
+          return jsonResponse({success:false,reason:'already_claimed'},409,corsHeaders);
+        }
+        await db.prepare('UPDATE users SET points=COALESCE(points,0)+10,total_earned=COALESCE(total_earned,0)+10,last_daily_bonus_date=?,updated_at=? WHERE id=?')
+          .bind(today,Date.now(),uid).run();
       } else {
-        const upd = await db.prepare('UPDATE users SET points=COALESCE(points,0)+?,total_earned=COALESCE(total_earned,0)+?,updated_at=? WHERE id=?').bind(amount,amount,Date.now(),uid).run();
-        if (Number(upd?.meta?.changes||0) !== 1) return jsonResponse({success:false,error:'المستخدم غير موجود'},404,corsHeaders);
+        await db.prepare('UPDATE users SET points=COALESCE(points,0)+?,total_earned=COALESCE(total_earned,0)+?,updated_at=? WHERE id=?').bind(amount,amount,Date.now(),uid).run();
       }
       const id='lh_'+crypto.randomUUID();
       await db.prepare('INSERT INTO loyalty_history (id,user_id,type,rule_key,amount,label,meta_json,created_at) VALUES (?,?,?,?,?,?,?,?)')
-        .bind(id,uid,'earn',ruleKey,amount,String(body.label||ruleKey).slice(0,200),JSON.stringify(body.meta||{}),Date.now()).run();
+        .bind(id,uid,'earn',ruleKey,amount,String(body.label||ruleKey).slice(0,200),JSON.stringify(body.meta||{}),Date.now()).run().catch(() => {});
       const user=await db.prepare('SELECT points,total_earned,last_daily_bonus_date FROM users WHERE id=?').bind(uid).first();
       return jsonResponse({success:true,newPoints:Number(user?.points||0),awarded:amount},200,corsHeaders);
     }
@@ -2543,7 +2563,7 @@ try {
     }
     try {
       const user = await createTursoDB(env).prepare(
-        `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
+        `SELECT id, name, email, photo_url, phone, role, status, points, total_earned, last_daily_bonus_date, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
       ).bind(userId).first();
       if (!user) return jsonResponse({ success: false, error: 'User not found' }, 404, corsHeaders);
       return jsonResponse({ success: true, data: user }, 200, corsHeaders);

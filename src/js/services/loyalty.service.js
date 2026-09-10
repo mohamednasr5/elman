@@ -67,40 +67,109 @@ export function getLoyaltyLevelInfo(points = 0) {
 export async function getUserLoyaltyProfile(uid) {
   if (!uid) return { points:0,totalEarned:0,history:[],lastDailyBonusDate:null };
   try {
-    const { getIdToken } = await import('../core/auth.js'); const token=await getIdToken();
-    const res=await fetch(WORKER_URL + '/api/loyalty/'+encodeURIComponent(uid),{headers:token?{Authorization:'Bearer '+token}:{}});
-    const data=await res.json().catch(()=>({}));
-    if(!res.ok||!data.success) throw new Error(data.error||'تعذر تحميل رصيد النقاط');
-    return data.data;
-  } catch(err) { console.debug('[LoyaltyService] Turso read failed:',err); return {points:0,totalEarned:0,history:[],lastDailyBonusDate:null}; }
+    const { getIdToken } = await import('../core/auth.js');
+    const token = await getIdToken();
+    const base = WORKER_URL || '';
+    const res = await fetch(`${base}/api/loyalty/${encodeURIComponent(uid)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'تعذر تحميل رصيد النقاط');
+    return {
+      points: Number(data.data?.points || 0),
+      totalEarned: Number(data.data?.totalEarned || 0),
+      lastDailyBonusDate: data.data?.lastDailyBonusDate || null,
+      lastRedemptionAt: data.data?.lastRedemptionAt || null,
+      history: Array.isArray(data.data?.history) ? data.data.history : []
+    };
+  } catch(err) {
+    console.warn('[LoyaltyService] Profile fetch failed:', err);
+    return { points:0, totalEarned:0, history:[], lastDailyBonusDate:null };
+  }
 }
 
-export async function awardPoints(uid,ruleKey,customMeta={}) {
-  if(!uid) return null;
-  const amount=Math.max(1,Math.min(1000,Number(customMeta.pointsOverride||POINTS_RULES[ruleKey]?.points||10)));
+export async function awardPoints(uid, ruleKey, customMeta = {}) {
+  if (!uid) return null;
+  const amount = Math.max(1, Math.min(1000, Number(customMeta.pointsOverride || POINTS_RULES[ruleKey]?.points || 10)));
   try {
-    const {getIdToken}=await import('../core/auth.js'); const token=await getIdToken();
-    const res=await fetch('/api/loyalty/'+encodeURIComponent(uid),{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({action:'award',ruleKey,amount,label:customMeta.label||POINTS_RULES[ruleKey]?.label||'مكافأة تفاعل',meta:customMeta})});
-    const data=await res.json().catch(()=>({})); if(!res.ok||!data.success) throw new Error(data.error||'تعذر إضافة النقاط');
-    playNotificationSound(); return {success:true,newPoints:Number(data.newPoints||0),awarded:amount};
-  } catch(err) { return {success:false,error:err}; }
+    const { getIdToken } = await import('../core/auth.js');
+    const token = await getIdToken();
+    const base = WORKER_URL || '';
+    const res = await fetch(`${base}/api/loyalty/${encodeURIComponent(uid)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        action: 'award',
+        ruleKey,
+        amount,
+        label: customMeta.label || POINTS_RULES[ruleKey]?.label || 'مكافأة تفاعل',
+        meta: customMeta
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || 'تعذر إضافة النقاط');
+    playNotificationSound();
+    return { success: true, newPoints: Number(data.newPoints || 0), awarded: amount };
+  } catch(err) {
+    return { success: false, error: err };
+  }
 }
 
 export async function claimDailyBonus(uid) {
-  if(!uid) return {success:false,reason:'no_uid'};
-  const {getIdToken}=await import('../core/auth.js'); const token=await getIdToken();
-  const res=await fetch('/api/loyalty/'+encodeURIComponent(uid),{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({action:'daily'})});
-  const data=await res.json().catch(()=>({})); if(res.status===409) return {success:false,reason:'already_claimed'};
-  if(!res.ok||!data.success) return {success:false,reason:'error',message:data.error||'تعذر صرف المكافأة'};
-  playNotificationSound(); return {success:true,newPoints:Number(data.newPoints||0),awarded:10};
+  if (!uid) return { success: false, reason: 'no_uid' };
+  try {
+    const { getIdToken } = await import('../core/auth.js');
+    const token = await getIdToken();
+    const base = WORKER_URL || '';
+    const res = await fetch(`${base}/api/loyalty/${encodeURIComponent(uid)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ action: 'daily' })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 409 || data.reason === 'already_claimed') {
+      return { success: false, reason: 'already_claimed' };
+    }
+    if (!res.ok || !data.success) {
+      return { success: false, reason: 'error', message: data.error || 'تعذر صرف المكافأة' };
+    }
+    playNotificationSound();
+    return { success: true, newPoints: Number(data.newPoints || 0), awarded: Number(data.awarded || 10) };
+  } catch(err) {
+    return { success: false, reason: 'error', message: err.message };
+  }
 }
 
-export async function redeemPointsForVerification(uid,placeId,placeName='') {
-  if(!uid||!placeId) return {success:false,message:'بيانات غير مكتملة'};
+export async function redeemPointsForVerification(uid, placeId, placeName = '') {
+  if (!uid || !placeId) return { success: false, message: 'بيانات غير مكتملة' };
   try {
-    const {getIdToken}=await import('../core/auth.js'); const token=await getIdToken();
-    const res=await fetch('/api/loyalty/'+encodeURIComponent(uid),{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({action:'redeem_verification',placeId,placeName})});
-    const data=await res.json().catch(()=>({})); if(!res.ok||!data.success) return {success:false,message:data.error||'حدث خطأ أثناء استبدال النقاط'};
-    playNotificationSound(); return {success:true,newPoints:Number(data.newPoints||0),verifiedUntil:data.verifiedUntil,message:'تهانينا! تم توثيق مكانك ('+(placeName||placeId)+') رسمياً لمدة عام كامل! 🌟'};
-  } catch(err) { return {success:false,message:err.message||'حدث خطأ أثناء استبدال النقاط'}; }
+    const { getIdToken } = await import('../core/auth.js');
+    const token = await getIdToken();
+    const base = WORKER_URL || '';
+    const res = await fetch(`${base}/api/loyalty/${encodeURIComponent(uid)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ action: 'redeem_verification', placeId, placeName })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) return { success: false, message: data.error || 'حدث خطأ أثناء استبدال النقاط' };
+    playNotificationSound();
+    return {
+      success: true,
+      newPoints: Number(data.newPoints || 0),
+      verifiedUntil: data.verifiedUntil,
+      message: `تهانينا! تم توثيق مكانك (${placeName || placeId}) رسمياً لمدة عام كامل! 🌟`
+    };
+  } catch(err) {
+    return { success: false, message: err.message || 'حدث خطأ أثناء استبدال النقاط' };
+  }
 }
