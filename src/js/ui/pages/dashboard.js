@@ -988,7 +988,20 @@ async function renderAnalyticsSection($container, user, targetPlaceId = null) {
         loadReport(e.target.value);
       });
     } catch (err) {
-      content.innerHTML = `<div class="empty-state"><p style="color:var(--danger)">فشل تحميل التقرير: ${err.message}</p></div>`;
+      console.warn('[Dashboard Analytics] loadReport notice:', err);
+      content.innerHTML = `
+        <div class="empty-state" style="padding:2.5rem 1rem;text-align:center">
+          <div style="font-size:36px;margin-bottom:10px">📊</div>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:6px">تعذر جلب التقرير المباشر حالياً</h3>
+          <p style="color:var(--text-muted);font-size:13px;max-width:380px;margin:0 auto 16px;line-height:1.6">
+            ${escHtml(err?.message || 'يرجى التحقق من الاتصال بالإنترنت وإعادة المحاولة.')}
+          </p>
+          <div style="display:flex;gap:10px;justify-content:center">
+            <button id="btn-retry-report" class="btn btn-primary btn-sm">🔄 إعادة المحاولة</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('btn-retry-report')?.addEventListener('click', () => loadReport(pid));
     }
   }
 

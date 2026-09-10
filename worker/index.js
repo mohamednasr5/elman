@@ -1052,38 +1052,62 @@ try {
       if (!place) {
         return jsonResponse({ error: 'المكان غير موجود' }, 404, corsHeaders);
       }
-      if (!auth.user.isAdmin && place.owner_id !== auth.user.uid && String(place.owner_email || '').toLowerCase() !== auth.user.email) {
+
+      const userEmail = String(auth.user?.email || '').trim().toLowerCase();
+      const placeOwnerEmail = String(place.owner_email || '').trim().toLowerCase();
+      const isOwner = (place.owner_id && place.owner_id === auth.user?.uid) || (userEmail && placeOwnerEmail && userEmail === placeOwnerEmail);
+      if (!auth.user?.isAdmin && !isOwner) {
         return jsonResponse({ error: 'غير مصرح لك بعرض إحصائيات هذا المكان' }, 403, corsHeaders);
       }
-      const reviewStats = await db.prepare(`
-        SELECT COUNT(*) AS count, ROUND(AVG(rating), 1) AS avg_rating
-        FROM reviews WHERE place_id = ?
-      `).bind(place.id).first().catch(() => ({ count: 0, avg_rating: 0 }));
 
-      const stats = parseJson(place.stats_json, {});
-      const rawKeywords = stats.topKeywords || {};
+      let reviewStats = { count: 0, avg_rating: 0 };
+      try {
+        const rRow = await db.prepare(`
+          SELECT COUNT(*) AS count, ROUND(AVG(rating), 1) AS avg_rating
+          FROM reviews WHERE place_id = ? OR (place_slug = ? AND place_slug != '')
+        `).bind(place.id, place.slug || '').first();
+        if (rRow) {
+          reviewStats = {
+            count: Number(rRow.count) || 0,
+            avg_rating: Number(rRow.avg_rating) || 0
+          };
+        }
+      } catch (rErr) {
+        console.warn('[/api/places/stats] Reviews query notice:', rErr?.message || rErr);
+      }
+
+      let stats = parseJson(place.stats_json, {});
+      if (!stats || typeof stats !== 'object' || Array.isArray(stats)) {
+        stats = {};
+      }
+      let rawKeywords = stats.topKeywords;
+      if (!rawKeywords || typeof rawKeywords !== 'object' || Array.isArray(rawKeywords)) {
+        rawKeywords = {};
+      }
       const keywords = Object.entries(rawKeywords)
-        .map(([keyword, count]) => ({ keyword, count: Number(count) || 0 }))
+        .map(([keyword, count]) => ({ keyword: String(keyword || ''), count: Number(count) || 0 }))
+        .filter(item => item.keyword.trim().length > 0)
         .sort((a, b) => b.count - a.count)
         .slice(0, 30);
 
       const report = {
         placeId: place.id,
-        placeName: place.name,
-        views: Number(stats.views || 0),
+        placeName: place.name || 'النشاط',
+        views: Number(stats.views || stats.totalViews || 0),
         phoneClicks: Number(stats.phoneClicks || 0),
         whatsappClicks: Number(stats.whatsappClicks || 0),
         directionsClicks: Number(stats.directionsClicks || 0),
         shareClicks: Number(stats.shareClicks || 0),
         favoriteClicks: Number(stats.favoriteClicks || 0),
-        reviewsCount: Number(reviewStats?.count || 0),
-        rating: Number(reviewStats?.avg_rating || 0),
+        reviewsCount: Number(reviewStats.count || 0),
+        rating: Number(reviewStats.avg_rating || 0),
         topKeywords: keywords
       };
 
       return jsonResponse({ success: true, report }, 200, corsHeaders);
     } catch (err) {
-      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+      console.error('[/api/places/stats] Error:', err?.message || err);
+      return jsonResponse({ success: false, error: err?.message || 'Internal Server Error' }, 500, corsHeaders);
     }
   }
 
@@ -4246,7 +4270,8 @@ function parseJson(value, fallback) {
   if (!value) return fallback;
 
   try {
-    return JSON.parse(value);
+    const res = JSON.parse(value);
+    return (res !== null && res !== undefined) ? res : fallback;
   } catch {
     return fallback;
   }
