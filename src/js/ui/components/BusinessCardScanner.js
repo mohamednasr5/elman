@@ -334,7 +334,8 @@ export function createBusinessCardScanner({ onAutofillComplete = null } = {}) {
     } catch (err) {
       console.error('[BusinessCardScanner] Pipeline failed:', err);
       isProcessing = false;
-      renderErrorState(err.message);
+      toast.warning('نعتذر، هناك ضغط كبير على الدليل وخدمات الذكاء الاصطناعي (AI) حالياً. تم تحويلك للإدخال اليدوي المباشر.');
+      hideScannerAndFocusManual();
     } finally {
       isProcessing = false;
     }
@@ -587,16 +588,16 @@ export function createBusinessCardScanner({ onAutofillComplete = null } = {}) {
         <div style="display:flex;align-items:flex-start;gap:12px">
           <span style="font-size:26px">⚠️</span>
           <div>
-            <h4 style="margin:0 0 6px 0;font-size:15px;color:#991B1B;font-weight:800">تعذر استخراج بيانات الكارت تلقائيًا</h4>
+            <h4 style="margin:0 0 6px 0;font-size:15px;color:#991B1B;font-weight:800">ضغط كبير على خدمات الذكاء الاصطناعي (AI)</h4>
             <p style="margin:0 0 12px 0;font-size:13px;color:#B91C1C;line-height:1.5">
-              ${escapeHtmlText(errorMessage || 'تعذر قراءة الكارت تلقائياً حالياً. يمكنك إدخال البيانات يدوياً، ولن تفقد أي بيانات.')}
+              ${escapeHtmlText(errorMessage || 'نعتذر، هناك ضغط كبير على الدليل وخدمات الذكاء الاصطناعي (AI) حالياً. يرجى إدخال بيانات المحل يدوياً وبسهولة.')}
             </p>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button type="button" class="btn btn-primary btn-sm" id="bcs-btn-try-again">
-                <span>🔄 إعادة المحاولة</span>
-              </button>
-              <button type="button" class="btn btn-outline btn-sm" id="bcs-btn-fill-manually">
+              <button type="button" class="btn btn-primary btn-sm" id="bcs-btn-fill-manually">
                 <span>✍️ المتابعة وإدخال البيانات يدوياً</span>
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="bcs-btn-try-again">
+                <span>🔄 محاولة أخرى</span>
               </button>
             </div>
           </div>
@@ -609,9 +610,26 @@ export function createBusinessCardScanner({ onAutofillComplete = null } = {}) {
     });
 
     $wrapper.querySelector('#bcs-btn-fill-manually')?.addEventListener('click', () => {
-      $wrapper.style.display = 'none';
-      document.querySelector('#p-name')?.focus();
+      hideScannerAndFocusManual();
     });
+  }
+
+  function hideScannerAndFocusManual() {
+    $wrapper.style.transition = 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+    $wrapper.style.opacity = '0';
+    $wrapper.style.transform = 'translateY(-10px)';
+    $wrapper.style.maxHeight = '0';
+    $wrapper.style.overflow = 'hidden';
+    $wrapper.style.margin = '0';
+    $wrapper.style.padding = '0';
+    setTimeout(() => {
+      $wrapper.style.display = 'none';
+      const nameInput = document.querySelector('#p-name') || document.querySelector('#place-form input');
+      if (nameInput) {
+        nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        nameInput.focus();
+      }
+    }, 350);
   }
 
   function escapeHtmlText(str) {

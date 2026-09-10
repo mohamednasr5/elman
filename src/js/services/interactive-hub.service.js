@@ -1,4 +1,4 @@
-﻿/**
+/**
  * interactive-hub.service.js
  * Client service for Interactive Services (محتاج خدمة, مين متاح الآن, تصويت القرى, وحجز المواعيد)
  */
@@ -13,7 +13,9 @@ export async function fetchServiceRequests(params = {}) {
   if (params.limit) query.set('limit', String(params.limit));
 
   try {
-    const res = await tursoFetch(/api/service-requests?);
+    const qs = query.toString();
+    const url = qs ? `/api/service-requests?${qs}` : '/api/service-requests';
+    const res = await tursoFetch(url);
     return Array.isArray(res?.data) ? res.data : [];
   } catch (err) {
     console.warn('[InteractiveHub] fetchServiceRequests error:', err);
@@ -29,7 +31,7 @@ export async function createServiceRequest(payload) {
 }
 
 export async function closeServiceRequest(id) {
-  return await tursoFetch(/api/service-requests//close, {
+  return await tursoFetch(`/api/service-requests/${encodeURIComponent(id)}/close`, {
     method: 'POST'
   });
 }
@@ -40,7 +42,9 @@ export async function fetchLiveCraftsmen(params = {}) {
   if (params.village) query.set('village', params.village);
 
   try {
-    const res = await tursoFetch(/api/craftsmen/live?);
+    const qs = query.toString();
+    const url = qs ? `/api/craftsmen/live?${qs}` : '/api/craftsmen/live';
+    const res = await tursoFetch(url);
     return Array.isArray(res?.data) ? res.data : [];
   } catch (err) {
     console.warn('[InteractiveHub] fetchLiveCraftsmen error:', err);
@@ -57,7 +61,8 @@ export async function toggleCraftsmanLive(payload) {
 
 export async function fetchVillagePolls(villageId) {
   try {
-    const res = await tursoFetch(/api/villages/polls?village=);
+    const url = `/api/villages/polls?village=${encodeURIComponent(villageId || '')}`;
+    const res = await tursoFetch(url);
     return res || { polls: [], totalVotes: 0 };
   } catch (err) {
     console.warn('[InteractiveHub] fetchVillagePolls error:', err);

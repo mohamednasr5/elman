@@ -27,13 +27,14 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v3.3.0-branch-phone-sharing-v1';
+const CACHE_VERSION = 'v3.4.1-interactive-fix-v1';
 const STATIC_CACHE = 'manzala-static-' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'manzala-dynamic-' + CACHE_VERSION;
 const IMAGE_CACHE = 'manzala-images-' + CACHE_VERSION;
 
 const STATIC_ASSETS = [
   './offline.html',
+  './place.html',
   './src/css/main.css',
   './src/css/islamic-hub.css',
   './src/js/ui/pages/islamic-hub.js',
@@ -103,6 +104,11 @@ self.addEventListener('fetch', event => {
   }
 
   if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+    // Instant App-Shell for Place details page (0ms mobile / PWA subsecond transition)
+    if (url.pathname === '/place.html' || url.pathname.endsWith('/place.html')) {
+      event.respondWith(appShellStrategy(request));
+      return;
+    }
     event.respondWith(networkFirstStrategy(request));
     return;
   }
@@ -141,6 +147,23 @@ async function networkFirstStrategy(request) {
     }
     return new Response('Network Error / Offline', {status:503, statusText:'Offline'});
   }
+}
+
+async function appShellStrategy(request) {
+  try {
+    const cached = (await caches.match('./place.html')) || (await caches.match('/place.html')) || (await caches.match(request));
+    if (cached) {
+      // Revalidate in background to keep shell up to date without blocking
+      fetch(request).then(async (res) => {
+        if (res?.status === 200) {
+          const cache = await caches.open(STATIC_CACHE);
+          await cache.put('./place.html', res.clone());
+        }
+      }).catch(() => {});
+      return cached;
+    }
+  } catch (_) {}
+  return networkFirstStrategy(request);
 }
 
 async function cacheFirstStrategy(request, cacheName) {

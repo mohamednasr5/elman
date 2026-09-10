@@ -106,6 +106,21 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       return;
     }
 
+    // Silent background revalidation when served from instant cache
+    if (initialPlace || window.__INSTANT_PLACE__) {
+      getPlaceBySlug(slug).then(freshPlace => {
+        if (freshPlace) {
+          try {
+            const ser = JSON.stringify(freshPlace);
+            sessionStorage.setItem('instant_place_' + cleanSlug, ser);
+            sessionStorage.setItem('instant_place_latest', ser);
+            localStorage.setItem('instant_place_' + cleanSlug, ser);
+            localStorage.setItem('instant_place_latest', ser);
+          } catch (_) {}
+        }
+      }).catch(() => {});
+    }
+
     const currentUser = getCurrentUser() || user;
     const isOwner = currentUser && currentUser.uid === place.ownerId;
     const isUserAdmin = currentUser && isAdmin(currentUser);
@@ -445,7 +460,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   <span>إدارة وتعديل المكان</span>
                 </a>
               ` : ''}
-              ${!isAtm ? `
+              ${(!isAtm && (place.allowAppointments === true || (place.allowAppointments !== false && (place.categoryId === 'doctor' || place.categoryId?.includes('clinic') || place.categoryId === 'health')))) ? `
                 <button type="button" class="btn btn-outline btn--full-mobile" id="btn-book-appointment" style="border-color:#0284c7;color:#0284c7;font-weight:800;gap:6px">
                   <span>📅</span>
                   <span>طلب حجز موعد / استشارة</span>

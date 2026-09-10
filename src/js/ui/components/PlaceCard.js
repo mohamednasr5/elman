@@ -25,11 +25,15 @@ if (typeof window !== 'undefined') {
       }
     }
     const clean = String(slug || '').toLowerCase().trim();
-    const p = window._placesRegistry.get(clean) || window._placesRegistry.get(String(slug || '').trim());
+    const p = window._placesRegistry?.get(clean) || window._placesRegistry?.get(String(slug || '').trim());
     if (p) {
       try {
-        sessionStorage.setItem('instant_place_' + clean, JSON.stringify(p));
-        sessionStorage.setItem('instant_place_latest', JSON.stringify(p));
+        const serialized = JSON.stringify(p);
+        sessionStorage.setItem('instant_place_' + clean, serialized);
+        sessionStorage.setItem('instant_place_latest', serialized);
+        localStorage.setItem('instant_place_' + clean, serialized);
+        localStorage.setItem('instant_place_latest', serialized);
+        window.__INSTANT_PLACE__ = p;
       } catch (_) {}
     }
     window.location.href = `/place.html?slug=${encodeURIComponent(slug)}`;
@@ -37,14 +41,17 @@ if (typeof window !== 'undefined') {
 
   window.__prefetchPlaceCard = function(slug) {
     const clean = String(slug || '').toLowerCase().trim();
-    const p = window._placesRegistry.get(clean) || window._placesRegistry.get(String(slug || '').trim());
+    const p = window._placesRegistry?.get(clean) || window._placesRegistry?.get(String(slug || '').trim());
     if (p) {
       try {
-        sessionStorage.setItem('instant_place_' + clean, JSON.stringify(p));
-        sessionStorage.setItem('instant_place_latest', JSON.stringify(p));
+        const serialized = JSON.stringify(p);
+        sessionStorage.setItem('instant_place_' + clean, serialized);
+        sessionStorage.setItem('instant_place_latest', serialized);
+        localStorage.setItem('instant_place_' + clean, serialized);
+        localStorage.setItem('instant_place_latest', serialized);
       } catch (_) {}
     }
-    // Dynamic prefetch of the HTML document
+    // Dynamic prefetch of the HTML document for instant sub-second transition
     if (!document.querySelector(`link[rel="prefetch"][href*="${encodeURIComponent(slug)}"]`)) {
       const link = document.createElement('link');
       link.rel = 'prefetch';
@@ -195,6 +202,7 @@ export function renderPlaceCard(place) {
     <article class="${cardClasses}" 
              role="article"
              onclick="window.__openPlaceCard(this, '${escAttr(targetSlug)}', event)"
+             ontouchstart="window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
              onpointerdown="window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
              onmouseenter="window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
              data-place-id="${escAttr(place._key || place.id)}"
