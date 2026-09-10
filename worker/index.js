@@ -2027,7 +2027,9 @@ try {
 
   // ── Turso: Reviews (GET /api/reviews?place_id=... & POST /api/reviews) ──
   if (url.pathname === '/api/reviews' && request.method === 'GET') {
-    const placeId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || url.searchParams.get('slug') || '').trim();
+    const rawPlaceId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || '').trim();
+    const rawSlug = (url.searchParams.get('slug') || '').trim();
+    const placeId = rawPlaceId || rawSlug;
     const reqLimit = Math.min(5000, Math.max(1, parseInt(url.searchParams.get('limit') || '5000', 10)));
 
     try {
@@ -2040,9 +2042,22 @@ try {
         LEFT JOIN places p ON (r.place_id = p.id OR r.place_id = p.slug)
       `;
       const params = [];
-      if (placeId) {
-        query += ` WHERE (r.place_id = ? OR r.place_slug = ? OR p.slug = ? OR p.id = ?) `;
-        params.push(placeId, placeId, placeId, placeId);
+      const hammadAliases = ['almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lqj1o', 'p_1788742873778_6k8a9v', 'p_1788659645122_beff63'];
+      const isHammad = hammadAliases.includes(placeId.toLowerCase()) || hammadAliases.includes(rawSlug.toLowerCase());
+
+      if (isHammad) {
+        query += ` WHERE (
+          r.place_id IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63')
+          OR r.place_slug IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63')
+          OR p.slug IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63')
+          OR p.id IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63')
+          OR r.comment LIKE '%محمد حماد%'
+        ) `;
+      } else if (placeId || rawSlug) {
+        const id1 = placeId || rawSlug;
+        const id2 = rawSlug || placeId;
+        query += ` WHERE (r.place_id = ? OR r.place_slug = ? OR p.slug = ? OR p.id = ? OR r.place_id = ? OR r.place_slug = ? OR p.slug = ? OR p.id = ?) `;
+        params.push(id1, id1, id1, id1, id2, id2, id2, id2);
       }
       query += ` ORDER BY r.created_at DESC LIMIT ? `;
       params.push(reqLimit);

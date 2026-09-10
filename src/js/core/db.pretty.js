@@ -1882,20 +1882,36 @@ export const HAMMAD_TESTIMONIALS = [
 /** Get all reviews for a place */
 export async function getPlaceReviews(placeId, slug = '') {
   if (!placeId && !slug) return [];
-  const targetId = placeId || slug;
+  const rawTargetId = placeId || slug;
+  const isHammad = HAMMAD_PLACE_SLUGS.includes(rawTargetId) || HAMMAD_PLACE_SLUGS.includes(slug);
+  const targetId = isHammad ? 'p_1788742873778_6k8a9v' : rawTargetId;
+  const effectiveSlug = isHammad ? 'almhnds-mhmd-hmad' : slug;
+
+  const cacheKey = `reviews_${targetId}`;
+  const cached = getCached(cacheKey, 600000);
+  if (Array.isArray(cached) && cached.length > 0) {
+    return cached;
+  }
+
   try {
-    const querySlug = slug && slug !== targetId ? `&slug=${encodeURIComponent(slug)}` : '';
+    const querySlug = effectiveSlug && effectiveSlug !== targetId ? `&slug=${encodeURIComponent(effectiveSlug)}` : '';
     const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(targetId)}${querySlug}&limit=5000&_=${Date.now()}`, {
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(15000),
       cache: 'no-store'
     });
     if (!res.ok) throw new Error(`Reviews Worker HTTP ${res.status}`);
     const data = await res.json();
     const list = Array.isArray(data.data) ? data.data.map(r => normalizeReviewFromTurso(r, targetId)).filter(Boolean) : [];
-    return list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    if (list.length > 0) {
+      setCache(cacheKey, list);
+      if (rawTargetId !== targetId) setCache(`reviews_${rawTargetId}`, list);
+      if (effectiveSlug) setCache(`reviews_${effectiveSlug}`, list);
+    }
+    return list;
   } catch (err) {
     console.warn('[getPlaceReviews] Turso error:', err?.message || err);
-    return [];
+    return getCached(cacheKey) || [];
   }
 }
 
