@@ -4,7 +4,7 @@
  * Initializes Firebase, Auth, Theme, Floating Voice Assistant, Realtime Live Sync, and FCM.
  */
 
-import { initAuth, onAuthStateChange, signOut, waitForAuth, isAdmin, getCurrentUser, getClientIp } from './auth.js';
+import { initAuth, onAuthStateChange, signOut, waitForAuth, isAdmin, getCurrentUser, getClientIp, signInWithGoogle } from './auth.js';
 import { toast } from '../ui/components/Toast.js';
 
 /* ─────────────────────────────────────────────────────────
@@ -596,7 +596,7 @@ export async function openDashboardMoreModal(user = null) {
   const userPhoto = isLoggedIn ? (currentUser.photoURL || './icons/icon-72x72.png') : './icons/icon-72x72.png';
   const isDashboardPage = typeof window !== 'undefined' && (window.location.pathname.endsWith('dashboard.html') || window.location.pathname.endsWith('/dashboard.html'));
 
-  const content = `
+  const content = isLoggedIn ? `
     <div class="more-menu-container" style="direction:rtl;text-align:right">
       <!-- User Info Card -->
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:var(--surface-2,#F8FAFC);border-radius:14px;margin-bottom:12px;border:1px solid var(--border,#E2E8F0)">
@@ -604,12 +604,9 @@ export async function openDashboardMoreModal(user = null) {
           <img src="${_a(userPhoto)}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${_h(userName)}" onerror="this.src='./icons/icon-72x72.png'"/>
           <div>
             <div style="font-weight:800;font-size:0.98rem;color:var(--text-primary,#0F172A)">${_h(userName)}</div>
-            <div style="font-size:0.8rem;color:var(--text-muted,#64748B)">${isLoggedIn ? (isUserAdmin ? 'مدير المنصة ⭐' : 'صاحب حساب تجاري') : 'دليل المنزلة والمطرية'}</div>
+            <div style="font-size:0.8rem;color:var(--text-muted,#64748B)">${isUserAdmin ? 'مدير المنصة ⭐' : 'صاحب حساب تجاري'}</div>
           </div>
         </div>
-        ${!isLoggedIn ? `
-          <a href="login.html" class="btn btn-primary btn-sm" style="font-weight:700;padding:6px 14px"><span>🔑</span> دخول</a>
-        ` : ''}
       </div>
 
       <!-- Golden Verification Card -->
@@ -692,19 +689,97 @@ export async function openDashboardMoreModal(user = null) {
         </a>
       </div>
 
-      ${isLoggedIn ? `
-        <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border,#E2E8F0)">
-          <button type="button" class="btn btn-outline btn-block" id="more-modal-logout-btn" style="color:var(--danger,#EF4444);border-color:rgba(239,68,68,0.3);font-weight:700">
-            <span>🚪</span> تسجيل الخروج
-          </button>
+      <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border,#E2E8F0)">
+        <button type="button" class="btn btn-outline btn-block" id="more-modal-logout-btn" style="color:var(--danger,#EF4444);border-color:rgba(239,68,68,0.3);font-weight:700">
+          <span>🚪</span> تسجيل الخروج
+        </button>
+      </div>
+    </div>
+  ` : `
+    <div class="more-menu-container" style="direction:rtl;text-align:right">
+      <!-- Guest User Header Card -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surface-2,#F8FAFC);border-radius:14px;margin-bottom:12px;border:1px solid var(--border,#E2E8F0)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg, #1B4F72 0%, #2E86C1 100%);display:flex;align-items:center;justify-content:center;color:#ffffff;font-size:22px;border:2px solid var(--primary,#1B4F72);box-shadow:0 3px 10px rgba(0,0,0,0.1);flex-shrink:0">
+            👤
+          </div>
+          <div>
+            <div style="font-weight:900;font-size:1.02rem;color:var(--text-primary,#0F172A)">زائر كريم</div>
+            <div style="font-size:0.8rem;color:var(--text-muted,#64748B)">دليل المنزلة والمطرية</div>
+          </div>
         </div>
-      ` : ''}
+        <a href="login.html" class="btn btn-primary btn-sm" style="font-weight:800;padding:7px 18px;border-radius:10px;display:inline-flex;align-items:center;gap:6px">
+          <span>🔑</span> دخول
+        </a>
+      </div>
+
+      <!-- Google Sign-in Interactive Promo Card -->
+      <div class="guest-login-promo-card" style="background:linear-gradient(145deg, rgba(27,79,114,0.05) 0%, rgba(245,158,11,0.12) 100%);border:1.5px solid rgba(245,158,11,0.45);border-radius:16px;padding:18px 14px;margin-bottom:14px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.03)">
+        <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#ffffff;box-shadow:0 4px 12px rgba(0,0,0,0.08);margin-bottom:10px">
+          <svg width="24" height="24" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.97 0 12s.45 3.84 1.25 5.42l4.03-3.15z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+          </svg>
+        </div>
+
+        <div style="font-weight:900;font-size:1.02rem;color:var(--text-primary,#0F172A);margin-bottom:6px;line-height:1.4">
+          ادخل بحساب جوجل بضغطة زر
+        </div>
+        <div style="font-size:0.86rem;color:var(--text-muted,#475569);margin-bottom:14px;line-height:1.5">
+          ينتظرك العديد من المميزات والعروض
+        </div>
+
+        <button type="button" class="btn btn-block" id="more-modal-google-login-btn" style="background:#ffffff;color:#0F172A;border:1.5px solid #CBD5E1;font-weight:800;font-size:0.92rem;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 16px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,0.07);cursor:pointer;width:100%;transition:transform 0.15s ease">
+          <svg width="20" height="20" viewBox="0 0 24 24" style="flex-shrink:0">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.97 0 12s.45 3.84 1.25 5.42l4.03-3.15z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+          </svg>
+          <span>تسجيل الدخول السريع بحساب Google</span>
+        </button>
+
+        <div style="margin-top:14px;padding-top:10px;border-top:1px dashed rgba(245,158,11,0.3);display:flex;flex-direction:column;gap:3px">
+          <div style="font-weight:900;font-size:0.92rem;color:var(--primary,#1B4F72)">دليل المنزلة والمطرية الرقمي</div>
+          <div style="font-size:0.8rem;color:#D97706;font-weight:700">الدليل الأول فى المنطقة ⭐</div>
+        </div>
+      </div>
+
+      <!-- Quick Links for Guests -->
+      <div style="font-weight:800;font-size:0.88rem;color:var(--text-muted,#64748B);margin-bottom:8px">روابط تهمك</div>
+      <div class="more-menu-grid" style="margin-bottom:10px">
+        <a href="around-me.html" class="more-menu-tile">
+          <span class="tile-icon">🧭</span>
+          <span class="tile-title">بالقرب مني</span>
+        </a>
+        <a href="favorites.html" class="more-menu-tile">
+          <span class="tile-icon">❤️</span>
+          <span class="tile-title">المفضلة</span>
+        </a>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <a href="contact.html" class="more-menu-row">
+          <span style="font-size:18px">💬</span>
+          <span>تواصل مع الإدارة والدعم الفني</span>
+        </a>
+        <a href="quran.html" class="more-menu-row">
+          <span style="font-size:18px">📖</span>
+          <span>القرآن الكريم والأذكار</span>
+        </a>
+        <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="more-menu-row">
+          <span style="font-size:18px">📥</span>
+          <span>تحميل تطبيق الأندرويد APK</span>
+        </a>
+      </div>
     </div>
   `;
 
   const { showModal } = await import('../ui/components/Modal.js');
   const modal = showModal({
-    title: '☰ القائمة ولوحة التحكم',
+    title: isLoggedIn ? '☰ القائمة ولوحة التحكم' : '☰ دليل المنزلة والمطرية',
     content,
     sheet: true,
     closeable: true,
@@ -731,6 +806,35 @@ export async function openDashboardMoreModal(user = null) {
       await signOut();
       toast.success('تم تسجيل الخروج بنجاح');
       window.location.reload();
+    });
+
+    document.getElementById('more-modal-google-login-btn')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const btn = e.currentTarget;
+      const originalHTML = btn.innerHTML;
+      try {
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        btn.innerHTML = '<span>جاري فتح تسجيل الدخول...</span>';
+        const signedUser = await signInWithGoogle();
+        if (signedUser) {
+          modal.close();
+          toast.success(`أهلاً بك ${signedUser.displayName || signedUser.name || ''} 👋`);
+          window.location.reload();
+        } else {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          btn.innerHTML = originalHTML;
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.innerHTML = originalHTML;
+        console.error('[MoreModal GoogleSignIn] error:', err);
+        if (err?.code !== 'auth/popup-closed-by-user') {
+          toast.error('تعذر تسجيل الدخول: ' + (err?.message || 'يرجى المحاولة مرة أخرى'));
+        }
+      }
     });
   }
   return modal;
