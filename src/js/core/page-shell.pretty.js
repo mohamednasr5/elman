@@ -300,14 +300,19 @@ export async function initPage(activeFile = '') {
   /* 2. Inject shared layout blocks */
   _inject('header-slot',  _headerHTML(activeFile));
   const isHomePage = activeFile === 'index.html' || activeFile === 'home' || (typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname.endsWith('/index.html') || window.location.pathname.endsWith('/')));
+  const isPlaceDetailPage = activeFile === 'place.html' || activeFile === 'place' || (typeof window !== 'undefined' && (window.location.pathname.includes('place.html') || window.location.pathname.startsWith('/p/')));
 
-  if (!isHomePage) {
+  if (isPlaceDetailPage) {
+    const existing = document.getElementById('wide-ads-banner');
+    if (existing) existing.remove();
+  } else if (!isHomePage) {
     let banner = document.getElementById('wide-ads-banner');
     if (!banner) {
       banner = document.createElement('div');
       banner.id = 'wide-ads-banner';
       banner.className = 'container wide-ads-banner-page-top';
-      banner.style.margin = '14px auto';
+      banner.style.marginTop = 'calc(var(--header-height, 64px) + 22px)';
+      banner.style.marginBottom = '24px';
 
       const header = document.getElementById('site-header');
       const pageMain = document.getElementById('page-container') || document.querySelector('main') || document.querySelector('#admin-container') || document.querySelector('.admin-layout') || document.querySelector('#app') || document.body;

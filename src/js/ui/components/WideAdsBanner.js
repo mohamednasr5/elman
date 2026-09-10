@@ -176,27 +176,47 @@ function injectStylesOnce() {
       line-height: 1;
     }
 
-    /* ── Mobile Horizontal Snap-Scroll ── */
-    @media (max-width: 640px) {
+    .wide-ads-banner-page-top {
+      margin-top: calc(var(--header-height, 64px) + 22px) !important;
+      margin-bottom: 24px !important;
+      position: relative;
+      z-index: 5;
+      clear: both;
+    }
+
+    /* ── Tablet 3-Column Grid ── */
+    @media (min-width: 769px) and (max-width: 1024px) {
       .wide-ads-banner-grid {
-        display: flex !important;
-        overflow-x: auto !important;
-        scroll-snap-type: x mandatory;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 8px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    /* ── Mobile 2-Column Grid (2 by 2 Stacked, No Horizontal Scroll) ── */
+    @media (max-width: 768px) {
+      .wide-ads-banner-page-top {
+        margin-top: calc(var(--header-height, 64px) + 16px) !important;
+        margin-bottom: 18px !important;
+      }
+      .wide-ads-banner-wrap {
+        margin: 8px 0 16px;
+      }
+      .wide-ads-banner-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         gap: 10px !important;
+        overflow-x: visible !important;
       }
-      .wide-ads-banner-grid::-webkit-scrollbar {
-        height: 4px;
+      .wide-ads-banner-grid .wide-ad-card {
+        width: 100% !important;
+        aspect-ratio: 1 / 1 !important;
+        flex: none !important;
+        border-radius: 14px !important;
       }
-      .wide-ads-banner-grid::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.18);
-        border-radius: 4px;
-      }
-      .wide-ad-card {
-        flex: 0 0 135px !important;
-        scroll-snap-align: start;
-        border-radius: 14px;
+      .wide-ads-banner-grid .wide-ad-card:last-child:nth-child(odd) {
+        grid-column: 1 / -1 !important;
+        justify-self: center !important;
+        width: calc(50% - 5px) !important;
+        max-width: 100% !important;
       }
     }
   `;
