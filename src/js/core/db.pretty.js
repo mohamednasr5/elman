@@ -1041,39 +1041,43 @@ export async function getAllBannedIps() {
 export function normalizeTursoPlace(p) {
   if (!p) return null;
   const id = String(p.id || p._key || p._id || '');
-  return {
-    ...p,
-    id,
-    _key: id,
-    slug: p.slug || id,
-    name: p.name || 'بدون اسم',
-    categoryId: p.categoryId || p.category_id || '',
-    customCategory: p.customCategory || p.custom_category || '',
-    categoryName: p.categoryName || p.category_name || p.customCategory || p.custom_category || '',
-    logoUrl: p.logoUrl || p.logo_url || null,
-    coverImageUrl: p.coverImageUrl || p.cover_image_url || null,
-    isVerified: Boolean(p.isVerified || p.is_verified || p.verified),
-    verified: Boolean(p.isVerified || p.is_verified || p.verified),
-    isSponsored: Boolean(p.isSponsored || p.is_sponsored || p.isFeatured || p.is_featured),
-    isFeatured: Boolean(p.isFeatured || p.is_featured),
-    sponsoredUntil: p.sponsoredUntil || p.sponsored_until || null,
-    createdAt: Number(p.createdAt || p.created_at || 0),
-    updatedAt: Number(p.updatedAt || p.updated_at || 0),
-    ownerId: p.ownerId || p.owner_id || '',
-    ownerEmail: p.ownerEmail || p.owner_email || p.owner_email_d1 || '',
-    ownerName: p.ownerName || p.owner_name || p.ownerEmail || p.owner_email || p.owner_email_d1 || '',
-    mapsLink: p.mapsLink || p.maps_link || '',
-    workingHours: p.workingHours || p.working_hours || {},
-    services: Array.isArray(p.services) ? p.services : (typeof p.services_json === 'string' ? JSON.parse(p.services_json || '[]') : []),
-    social: typeof p.social === 'object' ? p.social : (typeof p.social_json === 'string' ? JSON.parse(p.social_json || '{}') : {}),
-    atmPoll: typeof p.atmPoll === 'object' ? p.atmPoll : (typeof p.atm_poll_json === 'string' ? (()=>{try{return JSON.parse(p.atm_poll_json||'{}')}catch(_){return {}}})() : {}),
-    reviewCount: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
-    review_count: Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : 0)),
-    rating: Number(p.rating != null ? p.rating : 0.0),
-    trustScore: (p.trustScore != null ? Number(p.trustScore) : (p.trust_score != null ? Number(p.trust_score) : undefined)),
-    trust_score: (p.trust_score != null ? Number(p.trust_score) : (p.trustScore != null ? Number(p.trustScore) : undefined))
-  };
-}
+    const statsObj = p.stats || (typeof p.stats_json === 'string' ? (()=>{try{return JSON.parse(p.stats_json||'{}')}catch(_){return {}}})() : (p.stats_json || {}));
+    const rCount = Number(p.reviewCount != null ? p.reviewCount : (p.review_count != null ? p.review_count : (statsObj.reviewCount ?? statsObj.reviewsCount ?? (Array.isArray(p.reviews) ? p.reviews.length : 0))));
+    const rRating = Number(p.rating != null ? p.rating : (statsObj.rating ?? 0.0));
+    return {
+      ...p,
+      id,
+      _key: id,
+      slug: p.slug || id,
+      name: p.name || 'بدون اسم',
+      categoryId: p.categoryId || p.category_id || '',
+      customCategory: p.customCategory || p.custom_category || '',
+      categoryName: p.categoryName || p.category_name || p.customCategory || p.custom_category || '',
+      logoUrl: p.logoUrl || p.logo_url || null,
+      coverImageUrl: p.coverImageUrl || p.cover_image_url || null,
+      isVerified: Boolean(p.isVerified || p.is_verified || p.verified),
+      verified: Boolean(p.isVerified || p.is_verified || p.verified),
+      isSponsored: Boolean(p.isSponsored || p.is_sponsored || p.isFeatured || p.is_featured),
+      isFeatured: Boolean(p.isFeatured || p.is_featured),
+      sponsoredUntil: p.sponsoredUntil || p.sponsored_until || null,
+      createdAt: Number(p.createdAt || p.created_at || 0),
+      updatedAt: Number(p.updatedAt || p.updated_at || 0),
+      ownerId: p.ownerId || p.owner_id || '',
+      ownerEmail: p.ownerEmail || p.owner_email || p.owner_email_d1 || '',
+      ownerName: p.ownerName || p.owner_name || p.ownerEmail || p.owner_email || p.owner_email_d1 || '',
+      mapsLink: p.mapsLink || p.maps_link || '',
+      workingHours: p.workingHours || p.working_hours || {},
+      services: Array.isArray(p.services) ? p.services : (typeof p.services_json === 'string' ? JSON.parse(p.services_json || '[]') : []),
+      social: typeof p.social === 'object' ? p.social : (typeof p.social_json === 'string' ? JSON.parse(p.social_json || '{}') : {}),
+      stats: statsObj,
+      atmPoll: typeof p.atmPoll === 'object' ? p.atmPoll : (typeof p.atm_poll_json === 'string' ? (()=>{try{return JSON.parse(p.atm_poll_json||'{}')}catch(_){return {}}})() : {}),
+      reviewCount: rCount,
+      review_count: rCount,
+      rating: rRating,
+      trustScore: (p.trustScore != null ? Number(p.trustScore) : (p.trust_score != null ? Number(p.trust_score) : undefined)),
+      trust_score: (p.trust_score != null ? Number(p.trust_score) : (p.trustScore != null ? Number(p.trustScore) : undefined))
+    };
+  }
 
 export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFresh = false } = {}) {
   const cacheKey = `published_${limit}_${lastKey || ''}`;
@@ -1972,11 +1976,24 @@ export async function recalculatePlaceRating(placeId) {
     } else if (count > 0) {
       const sum = reviews.reduce((acc, cur) => acc + (Number(cur.rating) || 5), 0);
       avg = Math.round((sum / count) * 10) / 10;
+    } else {
+      avg = 0.0;
     }
+
+    const currentStats = place?.stats || (typeof place?.stats_json === 'string' ? (()=>{try{return JSON.parse(place.stats_json||'{}')}catch(_){return {}}})() : (place?.stats_json || {}));
+    const updatedStats = {
+      ...currentStats,
+      reviewCount: count,
+      reviewsCount: count,
+      rating: avg
+    };
 
     await dbUpdate(`places/${placeId}`, {
       rating: avg,
-      reviewCount: count
+      reviewCount: count,
+      reviewsCount: count,
+      stats: updatedStats,
+      stats_json: JSON.stringify(updatedStats)
     });
     return { rating: avg, reviewCount: count };
   } catch (err) {
@@ -1996,7 +2013,7 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   const normName = userName.trim().toLowerCase();
 
   // Strict Rule: Check if user or name already reviewed this place
-  const existingReviews = await getPlaceReviews(placeId);
+  const existingReviews = await getPlaceReviews(placeId, placeSlug);
   const userExisting = existingReviews.find(r => 
     r.userId === user.uid ||
     (normName && (r.userName || '').trim().toLowerCase() === normName)
@@ -2025,8 +2042,6 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   };
 
   // Single authoritative write: Frontend → Worker → Turso.
-  // Do not silently ignore a Turso failure; the user only sees "published"
-  // after the review has actually been persisted.
   await dbSet(`places/${placeId}/reviews/${reviewId}`, {
     ...reviewData,
     place_id: placeId,
@@ -2034,10 +2049,9 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     place_slug: placeSlug || ''
   });
 
-  // Review persistence is intentionally isolated from notifications.
-  // The review is considered successful as soon as Turso confirms the write.
-  // Notifications are handled by separate server-side flows and must never
-  // participate in the user's submit transaction.
+  await recalculatePlaceRating(placeId);
+  await invalidateLocalPlaceCache(placeId, placeSlug);
+  clearDbCache();
 
   return reviewData;
 }

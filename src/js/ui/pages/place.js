@@ -146,8 +146,8 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
     // ── Initial Reviews / Ratings Summary (0ms) ──
     let safeReviews = Array.isArray(place.reviews) ? place.reviews : [];
-    let totalReviews = safeReviews.length || Number(place.ratingCount) || Number(place.reviewsCount) || 0;
-    let avgRating = totalReviews > 0 ? (Number(place.rating) || 5.0) : 0.0;
+    let totalReviews = safeReviews.length || Number(place.reviewCount) || Number(place.reviewsCount) || Number(place.ratingCount) || Number(place.stats?.reviewCount) || Number(place.stats?.reviewsCount) || 0;
+    let avgRating = totalReviews > 0 ? (Number(place.rating) || Number(place.stats?.rating) || 5.0) : 0.0;
     if (safeReviews.length > 0) {
       let rSum = 0;
       safeReviews.forEach(r => { rSum += (Number(r.rating) || 5); });
@@ -339,8 +339,8 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   ${!isAtm ? `
                     <div id="place-header-rating-badge" style="display:inline-flex;align-items:center;gap:4px;color:#F59E0B;font-weight:700;font-size:12.5px;background:rgba(245,158,11,0.08);padding:3px 8px;border-radius:var(--radius-sm)">
                       <span>★</span>
-                      <span>${avgRating.toFixed(1)}</span>
-                      <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : '0.0'})</span>
+                      <span>${avgRating > 0 ? avgRating.toFixed(1) : (totalReviews > 0 ? '5.0' : '0.0')}</span>
+                      <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : 'جديد'})</span>
                     </div>
                   ` : ''}
                   <div id="place-availability-badge-container">
@@ -828,28 +828,27 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     // 3. Hydrate Live Reviews in background
     if (!isAtm) {
       getPlaceReviews(placeId, place.slug).then(liveReviews => {
-        if (Array.isArray(liveReviews) && liveReviews.length > 0) {
-          safeReviews = liveReviews;
-          totalReviews = safeReviews.length;
-          let rSum = 0;
-          safeReviews.forEach(r => { rSum += (Number(r.rating) || 5); });
-          avgRating = totalReviews > 0 ? Math.round((rSum / totalReviews) * 10) / 10 : 0.0;
-          userReview = currentUser ? safeReviews.find(r => r.userId === currentUser.uid) : null;
+        const list = Array.isArray(liveReviews) ? liveReviews : [];
+        safeReviews = list;
+        totalReviews = safeReviews.length;
+        let rSum = 0;
+        safeReviews.forEach(r => { rSum += (Number(r.rating) || 5); });
+        avgRating = totalReviews > 0 ? Math.round((rSum / totalReviews) * 10) / 10 : (Number(place.rating) || 0.0);
+        userReview = currentUser ? safeReviews.find(r => r.userId === currentUser.uid) : null;
 
-          const slot = document.getElementById('place-reviews-slot');
-          if (slot) {
-            slot.innerHTML = renderReviewsSectionHTML({ placeId, placeName: place.name, safeReviews, totalReviews, currentUser, userReview, isHammad });
-            bindReviewsEvents(place, currentUser, safeReviews, userReview, $container, slug);
-          }
+        const slot = document.getElementById('place-reviews-slot');
+        if (slot) {
+          slot.innerHTML = renderReviewsSectionHTML({ placeId, placeName: place.name, safeReviews, totalReviews, currentUser, userReview, isHammad });
+          bindReviewsEvents(place, currentUser, safeReviews, userReview, $container, slug);
+        }
 
-          const ratingBadge = document.getElementById('place-header-rating-badge');
-          if (ratingBadge) {
-            ratingBadge.innerHTML = `
-              <span>★</span>
-              <span>${avgRating.toFixed(1)}</span>
-              <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : '0.0'})</span>
-            `;
-          }
+        const ratingBadge = document.getElementById('place-header-rating-badge');
+        if (ratingBadge) {
+          ratingBadge.innerHTML = `
+            <span>★</span>
+            <span>${avgRating > 0 ? avgRating.toFixed(1) : (totalReviews > 0 ? '5.0' : '0.0')}</span>
+            <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : 'جديد'})</span>
+          `;
         }
       }).catch(() => {});
     }
@@ -1418,8 +1417,34 @@ function openReviewModal(place, user, existingReview, onDone) {
             }
             modal.close();
 
-            // Refresh the page after the modal is closed, but keep a refresh
-            // failure completely separate from the already successful review.
+            // Refresh live reviews on this page immediately
+            try {
+              const freshReviews = await getPlaceReviews(place.id || place._key, place.slug);
+              safeReviews = Array.isArray(freshReviews) ? freshReviews : [];
+              totalReviews = safeReviews.length;
+              let rSum = 0;
+              safeReviews.forEach(r => { rSum += (Number(r.rating) || 5); });
+              avgRating = totalReviews > 0 ? Math.round((rSum / totalReviews) * 10) / 10 : 0.0;
+              userReview = user ? safeReviews.find(r => r.userId === user.uid) : null;
+
+              const slot = document.getElementById('place-reviews-slot');
+              if (slot) {
+                slot.innerHTML = renderReviewsSectionHTML({ placeId: place.id || place._key, placeName: place.name, safeReviews, totalReviews, currentUser: user, userReview, isHammad });
+                bindReviewsEvents(place, user, safeReviews, userReview, $container, slug);
+              }
+
+              const ratingBadge = document.getElementById('place-header-rating-badge');
+              if (ratingBadge) {
+                ratingBadge.innerHTML = `
+                  <span>★</span>
+                  <span>${avgRating > 0 ? avgRating.toFixed(1) : (totalReviews > 0 ? '5.0' : '0.0')}</span>
+                  <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : 'جديد'})</span>
+                `;
+              }
+            } catch (syncErr) {
+              console.warn('[Review] immediate UI sync error:', syncErr);
+            }
+
             if (onDone) {
               Promise.resolve().then(() => onDone()).catch(refreshErr => {
                 console.error('[Review] refresh after successful submit failed:', refreshErr);
@@ -1730,6 +1755,13 @@ function setupReviewsSentimentFilter() {
           } else {
             card.style.display = 'none';
           }
+        } else if (['1', '2', '3', '4', '5'].includes(sentiment)) {
+          if (stars === parseInt(sentiment, 10)) {
+            card.style.display = 'block';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+          }
         }
       });
 
@@ -1859,8 +1891,8 @@ function renderReviewsSectionHTML({ placeId, placeName, safeReviews, totalReview
         </div>
       </div>
 
-      <!-- Reviews Sentiment Filter Tabs -->
-      <div class="reviews-sentiment-tabs" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <!-- Reviews Sentiment Filter Tabs & Star Filters -->
+      <div class="reviews-sentiment-tabs" style="display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap">
         <button type="button" class="btn btn-sm btn-outline review-filter-tab active" data-sentiment="all" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);background:var(--primary-alpha);font-weight:700">
           الكل (${totalReviews})
         </button>
@@ -1869,6 +1901,21 @@ function renderReviewsSectionHTML({ placeId, placeName, safeReviews, totalReview
         </button>
         <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="negative" style="font-size:12px;padding:4px 12px;border-radius:var(--radius-full);color:var(--danger);border-color:rgba(239,68,68,0.3)">
           👎 سلبي 1-2 نجوم (${safeReviews.filter(r => (Number(r.rating) || 5) <= 2).length})
+        </button>
+        <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="5" style="font-size:11.5px;padding:3px 10px;border-radius:var(--radius-full);border-color:rgba(245,158,11,0.4);color:#D97706">
+          ★ 5 (${safeReviews.filter(r => (Number(r.rating) || 5) === 5).length})
+        </button>
+        <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="4" style="font-size:11.5px;padding:3px 10px;border-radius:var(--radius-full);border-color:rgba(245,158,11,0.4);color:#D97706">
+          ★ 4 (${safeReviews.filter(r => (Number(r.rating) || 5) === 4).length})
+        </button>
+        <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="3" style="font-size:11.5px;padding:3px 10px;border-radius:var(--radius-full);border-color:rgba(245,158,11,0.4);color:#D97706">
+          ★ 3 (${safeReviews.filter(r => (Number(r.rating) || 5) === 3).length})
+        </button>
+        <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="2" style="font-size:11.5px;padding:3px 10px;border-radius:var(--radius-full);border-color:rgba(239,68,68,0.3);color:#DC2626">
+          ★ 2 (${safeReviews.filter(r => (Number(r.rating) || 5) === 2).length})
+        </button>
+        <button type="button" class="btn btn-sm btn-outline review-filter-tab" data-sentiment="1" style="font-size:11.5px;padding:3px 10px;border-radius:var(--radius-full);border-color:rgba(239,68,68,0.3);color:#DC2626">
+          ★ 1 (${safeReviews.filter(r => (Number(r.rating) || 5) === 1).length})
         </button>
       </div>
 

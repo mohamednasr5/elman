@@ -226,13 +226,13 @@ export function renderPlaceCard(place) {
             ${deliveryBadge}
           </div>
           ${(() => {
-            const rCount = Number(place.reviewCount != null ? place.reviewCount : (place.reviews ? Object.keys(place.reviews).length : (place.stats?.reviewsCount || 0)));
-            const rScore = rCount > 0 ? Number(place.rating || 0).toFixed(1) : '0.0';
+            const rCount = Number(place.reviewCount != null ? place.reviewCount : (place.review_count != null ? place.review_count : (place.reviews ? (Array.isArray(place.reviews) ? place.reviews.length : Object.keys(place.reviews).length) : (place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0))));
+            const rScore = rCount > 0 ? Number(place.rating || place.stats?.rating || 5.0).toFixed(1) : '0.0';
             return `
               <div style="display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:#F59E0B;font-weight:700;background:rgba(245,158,11,0.08);padding:2px 7px;border-radius:var(--radius-sm)">
                 <span>★</span>
-                <span>${rScore}</span>
-                <span style="color:var(--text-muted);font-weight:normal;font-size:10px">(${rCount > 0 ? `${rCount} تقييم` : '0.0'})</span>
+                <span>${rCount > 0 ? rScore : '0.0'}</span>
+                <span style="color:var(--text-muted);font-weight:normal;font-size:10px">(${rCount > 0 ? `${rCount} تقييم` : 'جديد'})</span>
               </div>
             `;
           })()}
