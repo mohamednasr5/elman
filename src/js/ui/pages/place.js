@@ -127,6 +127,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     let categories = getCached('categories_all') || [];
     let category = categories.find(c => c._key === place.categoryId || c.slug === place.categoryId);
     let catInfo = resolvePlaceCategoryInfo(place, category);
+    const isAtm = isAtmPlace(place, category);
 
     // Asynchronously resolve & update category metadata if not present in instant cache
     if (!categories.length) {
@@ -244,7 +245,6 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     const isOpen = isPlaceOpen(place.workingHours);
     const workingHoursList = formatWorkingHours(place.workingHours);
 
-    const isAtm = isAtmPlace(place, category);
     const defaultAssets = getDefaultPlaceAssets(place, category);
     const rawCover = place.coverImageUrl || (isAtm ? ATM_UNIFIED_COVER : defaultAssets.coverImageUrl);
     const rawLogo = place.logoUrl || (isAtm ? ATM_UNIFIED_LOGO : defaultAssets.logoUrl);
