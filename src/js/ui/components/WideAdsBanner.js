@@ -148,6 +148,34 @@ function injectStylesOnce() {
       }
     }
 
+    /* ── Luxury Badge on Square Ads ── */
+    .wide-ad-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3.5px;
+      padding: 3px 8px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.95) 100%);
+      color: #FBBF24;
+      border: 1px solid rgba(245, 158, 11, 0.8);
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 8px rgba(245, 158, 11, 0.35);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 4;
+      pointer-events: none;
+      user-select: none;
+    }
+    .wide-ad-badge-star {
+      font-size: 10.5px;
+      line-height: 1;
+    }
+
     /* ── Mobile Horizontal Snap-Scroll ── */
     @media (max-width: 640px) {
       .wide-ads-banner-grid {
@@ -224,6 +252,10 @@ export async function mountWideAdsBanner(target = 'wide-ads-banner') {
               <a href="${esc(ad.link)}" target="_blank" rel="noopener noreferrer sponsored" aria-label="${esc(ad.title || 'إعلان')}"
                  class="wide-ad-card" data-ad-id="${esc(ad.id || ad._id || '')}"
                  style="--ad-index: ${idx}">
+                <span class="wide-ad-badge" aria-label="إعلان مميز">
+                  <span class="wide-ad-badge-star" aria-hidden="true">⭐</span>
+                  <span>مميز</span>
+                </span>
                 <img src="${esc(ad.imageUrl)}" alt="${esc(ad.title || 'إعلان')}" loading="lazy" decoding="async"
                      class="wide-ad-img"
                      onerror="this.closest('a')?.remove()">

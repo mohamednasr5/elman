@@ -849,15 +849,44 @@ export async function getPlaceBySlug(slug) {
 
     // 3.2 Known aliases mapping (e.g. dktwr-ahmd-hmad -> p_1788904946234_ggxkgg)
     const KNOWN_ALIASES = {
+      // Dr. Ahmed Hammad
       'dktwr-ahmd-hmad': 'p_1788904946234_ggxkgg',
       'dr-ahmed-hammad': 'p_1788904946234_ggxkgg',
+      'p_1788904946234_ggxkgg': 'p_1788904946234_ggxkgg',
+
+      // Emy Kitchen
       'mtbkh-eyma-llaakl': 'p_1788801925745_vuxmjs',
       'mtbkh-eymy-llaakl-albyty': 'p_1788801925745_vuxmjs',
+      'mtbkh-eyma-llaakl-albyty': 'p_1788801925745_vuxmjs',
+      'p_1788801925745_vuxmjs': 'p_1788801925745_vuxmjs',
+
+      // Sheikh Elhasan Mustafa Abuzayd
       'alshykh-alhsan-mstfa-abwzyd': 'p_1788654913797_l7g6nr',
+      'alshaykh-alhasan-mustafa-abuzayd': 'p_1788654913797_l7g6nr',
+      'p_1788654913797_l7g6nr': 'p_1788654913797_l7g6nr',
+
+      // Elhasan Mobile Repair
       'alhsan-lsyana-alhwataf-almhmwla': '-P03LX9MledW_z7QfyHO',
+      'alhasan-mobile-repair': '-P03LX9MledW_z7QfyHO',
+      '-p03lx9mledw_z7qfyho': '-P03LX9MledW_z7QfyHO',
+
+      // Eng. Mohamed Hammad
       'almhnds-mhmd-hmad': 'p_1788742873778_6k8a9v',
+      'p_1788742873778_6k8a9v': 'p_1788742873778_6k8a9v',
+      'p_1788659645122_beff63': 'p_1788742873778_6k8a9v',
+
+      // Ghoneim Shoes
       'mhlat-ghnym-llahzya': 'p_1788893499969_pk4iay',
+      'mhlat-anym-llahzya': 'p_1788893499969_pk4iay',
+      'p_1788893499969_pk4iay': 'p_1788893499969_pk4iay',
+
+      // Center Elasban / Elghadban
       'sntr-alghdban-llmlabs-algahza': '-P0XRSq2etJxs31mul5O',
+      'sntr-alghdban-llmlabs-algahza-1mul5o': '-P0XRSq2etJxs31mul5O',
+      'sntr-alasban-llmlabs-algahza': '-P0XRSq2etJxs31mul5O',
+      '-p0xrsq2etjxs31mul5o': '-P0XRSq2etJxs31mul5O',
+
+      // Dr. PC
       'dktwr-by-sy-lkhdmat-alkmbywtr-walantrnt': '-P0hhX-OTkLMFSSYzWIp'
     };
     if (KNOWN_ALIASES[clean]) {
@@ -866,7 +895,15 @@ export async function getPlaceBySlug(slug) {
       if (match) return match;
     }
 
-    // 3.3 Exact clean base slug match (for places with random ID suffix appended, e.g. foo-6pUaTG)
+    // 3.3a When requested slug has an ID suffix (e.g. sntr-alghdban-llmlabs-algahza-1mul5O)
+    const cleanSuffixMatch = clean.match(/^(.*?)-([a-z0-9_]{5,7})$/i);
+    if (cleanSuffixMatch) {
+      const baseClean = cleanSuffixMatch[1];
+      match = places.find(p => String(p?.slug || '').toLowerCase() === baseClean);
+      if (match) return match;
+    }
+
+    // 3.3b Exact clean base slug match (for places in DB with random ID suffix appended, e.g. foo-6pUaTG)
     match = places.find(p => {
       const pSlug = String(p?.slug || '').toLowerCase();
       const m = pSlug.match(/^(.*?)-([a-z0-9_]{5,7})$/i);

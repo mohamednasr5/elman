@@ -3287,15 +3287,44 @@ function slugifyWorker(text) {
  * Known Place Slug/ID mapping for deterministic zero-latency resolution
  */
 const KNOWN_PLACE_ALIASES = {
+  // Dr. Ahmed Hammad
   'dktwr-ahmd-hmad': 'p_1788904946234_ggxkgg',
   'dr-ahmed-hammad': 'p_1788904946234_ggxkgg',
+  'p_1788904946234_ggxkgg': 'p_1788904946234_ggxkgg',
+
+  // Emy Kitchen
   'mtbkh-eyma-llaakl': 'p_1788801925745_vuxmjs',
   'mtbkh-eymy-llaakl-albyty': 'p_1788801925745_vuxmjs',
+  'mtbkh-eyma-llaakl-albyty': 'p_1788801925745_vuxmjs',
+  'p_1788801925745_vuxmjs': 'p_1788801925745_vuxmjs',
+
+  // Sheikh Elhasan Mustafa Abuzayd
   'alshykh-alhsan-mstfa-abwzyd': 'p_1788654913797_l7g6nr',
+  'alshaykh-alhasan-mustafa-abuzayd': 'p_1788654913797_l7g6nr',
+  'p_1788654913797_l7g6nr': 'p_1788654913797_l7g6nr',
+
+  // Elhasan Mobile Repair
   'alhsan-lsyana-alhwataf-almhmwla': '-P03LX9MledW_z7QfyHO',
+  'alhasan-mobile-repair': '-P03LX9MledW_z7QfyHO',
+  '-p03lx9mledw_z7qfyho': '-P03LX9MledW_z7QfyHO',
+
+  // Eng. Mohamed Hammad
   'almhnds-mhmd-hmad': 'p_1788742873778_6k8a9v',
+  'p_1788742873778_6k8a9v': 'p_1788742873778_6k8a9v',
+  'p_1788659645122_beff63': 'p_1788742873778_6k8a9v',
+
+  // Ghoneim Shoes
   'mhlat-ghnym-llahzya': 'p_1788893499969_pk4iay',
+  'mhlat-anym-llahzya': 'p_1788893499969_pk4iay',
+  'p_1788893499969_pk4iay': 'p_1788893499969_pk4iay',
+
+  // Center Elasban / Elghadban
   'sntr-alghdban-llmlabs-algahza': '-P0XRSq2etJxs31mul5O',
+  'sntr-alghdban-llmlabs-algahza-1mul5o': '-P0XRSq2etJxs31mul5O',
+  'sntr-alasban-llmlabs-algahza': '-P0XRSq2etJxs31mul5O',
+  '-p0xrsq2etjxs31mul5o': '-P0XRSq2etJxs31mul5O',
+
+  // Dr. PC
   'dktwr-by-sy-lkhdmat-alkmbywtr-walantrnt': '-P0hhX-OTkLMFSSYzWIp'
 };
 
@@ -3318,6 +3347,26 @@ async function ensureSlugsHealedInTurso(env) {
     for (const [cleanSlug, id] of updates) {
       await db.prepare("UPDATE places SET slug = ? WHERE id = ? AND (slug = id OR slug LIKE 'p_%' OR slug LIKE '-P0%')").bind(cleanSlug, id).run().catch(() => {});
     }
+
+    // Auto-heal Ad links to canonical clean /place.html?slug= URLs
+    const adLinkFixes = [
+      ['/place.html?slug=sntr-alghdban-llmlabs-algahza', '-P0XRSq2etJxs31mul5O'],
+      ['/place.html?slug=mtbkh-eyma-llaakl', 'p_1788801925745_vuxmjs'],
+      ['/place.html?slug=almhnds-mhmd-hmad', 'p_1788742873778_6k8a9v'],
+      ['/place.html?slug=alhsan-lsyana-alhwataf-almhmwla', '-P03LX9MledW_z7QfyHO'],
+      ['/place.html?slug=alshykh-alhsan-mstfa-abwzyd', 'p_1788654913797_l7g6nr'],
+      ['/place.html?slug=dktwr-ahmd-hmad', 'p_1788904946234_ggxkgg'],
+      ['/place.html?slug=mhlat-ghnym-llahzya', 'p_1788893499969_pk4iay']
+    ];
+    for (const [canonicalLink, placeId] of adLinkFixes) {
+      await db.prepare("UPDATE ads SET link = ? WHERE place_id = ?").bind(canonicalLink, placeId).run().catch(() => {});
+    }
+
+    // Ensure any ad link starting with 'place.html' gets the leading '/'
+    await db.prepare("UPDATE ads SET link = '/' || link WHERE link LIKE 'place.html%'").run().catch(() => {});
+
+    // Deactivate obsolete duplicate ads with empty image
+    await db.prepare("UPDATE ads SET is_active = 0 WHERE image_url = '' OR image_url IS NULL").run().catch(() => {});
   } catch (err) {
     console.warn('[ensureSlugsHealedInTurso] Notice:', err.message);
   }
@@ -3327,7 +3376,7 @@ async function ensureSlugsHealedInTurso(env) {
  * Universal Deterministic Place Finder across all URL formats:
  * - Tier 1: Exact match on slug OR id (case-insensitive)
  * - Tier 2: Direct alias dictionary for historical / social links
- * - Tier 3: Exact base slug match (for slugs with unique ID hash suffixes)
+ * - Tier 3: Exact base slug match (for slugs with unique ID hash suffixes or reverse query suffixes)
  * - Tier 4: Exact transliterated business name match (slugify(p.name) === query)
  *
  * NOTE: NEVER do loose prefix matching (LIKE ? || '%') or substring matching,
@@ -3371,8 +3420,22 @@ async function findPlaceInTurso(env, rawQuery) {
     }
   }
 
-  // 3. Exact clean base slug match (for places whose slug has a unique ID suffix, e.g. 'foo-bar-6pUaTG')
-  // We match ONLY when cand.slug is `${query}-${id_suffix}` where id_suffix matches the place ID!
+  // 3. Exact clean base slug match
+  // 3a. When query has an ID suffix (e.g. 'foo-bar-1mul5o'), check base query
+  const suffixMatch = query.match(/^(.*?)-([a-z0-9_]{5,7})$/i);
+  if (suffixMatch) {
+    const baseQuery = suffixMatch[1];
+    try {
+      const row = await db.prepare(`
+        SELECT p.* FROM places p
+        WHERE (LOWER(p.slug) = ? OR LOWER(p.id) = ?)
+        LIMIT 1
+      `).bind(baseQuery, baseQuery).first();
+      if (row) return row;
+    } catch (_) {}
+  }
+
+  // 3b. When DB cand.slug has an ID suffix (e.g. cand.slug is 'foo-bar-6pUaTG') and query is 'foo-bar'
   try {
     const candidates = (await db.prepare(`
       SELECT p.* FROM places p

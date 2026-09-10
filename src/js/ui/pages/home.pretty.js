@@ -1,9 +1,10 @@
-﻿/**
+/**
  * المنزلة وناسها — Home Page
  * Full homepage with hero, search, categories, places, offers, delivery
  */
 
 import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings } from '../../core/db.js';
+import { WORKER_URL } from '../../core/firebase.js';
 import { appState } from '../../core/state.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
 import { isAtmPlace } from '../../utils/atm.js';
@@ -451,12 +452,48 @@ function renderAds(ads) {
   const container = document.getElementById('ads-container');
   if (!container || !ads || !ads.length) return;
 
-  container.innerHTML = ads.map(ad => `
-    <a href="${escAttr(ad.link || '#')}" class="ad-banner" target="_blank" rel="noopener noreferrer">
-      <span class="ad-banner__label">إعلان</span>
-      ${ad.imageUrl ? `<img src="${escAttr(ad.imageUrl)}" alt="${escAttr(ad.title || 'إعلان')}" />` : ''}
-    </a>
-  `).join('');
+  const validAds = ads.filter(ad => ad && (ad.imageUrl || ad.image_url));
+  if (!validAds.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = validAds.map(ad => {
+    let link = (ad.link || '#').trim();
+    if (link.startsWith('place.html')) {
+      link = '/' + link;
+    }
+    const adId = ad.id || ad._id || '';
+    const title = ad.title || 'إعلان مميز';
+    const img = ad.imageUrl || ad.image_url || '';
+
+    return `
+      <a href="${escAttr(link)}" class="ad-banner" target="_blank" rel="noopener noreferrer sponsored" aria-label="${escAttr(title)}" data-ad-id="${escAttr(adId)}">
+        <span class="ad-banner__label" aria-label="إعلان مميز">
+          <span class="ad-banner__star" aria-hidden="true">⭐</span>
+          <span class="ad-banner__text">إعلان مميز</span>
+        </span>
+        <img src="${escAttr(img)}" alt="${escAttr(title)}" loading="lazy" decoding="async" />
+      </a>
+    `;
+  }).join('');
+
+  // Click tracking
+  container.querySelectorAll('.ad-banner').forEach(linkEl => {
+    linkEl.addEventListener('click', () => {
+      const adId = linkEl.getAttribute('data-ad-id');
+      if (adId && WORKER_URL) {
+        try {
+          fetch(`${WORKER_URL}/api/ads/track-click`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: adId }),
+            keepalive: true
+          }).catch(() => {});
+        } catch (_) {}
+      }
+    });
+  });
 }
 
 /**
