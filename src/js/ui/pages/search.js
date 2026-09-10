@@ -56,40 +56,499 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
       </div>
     </div>
 
+    <!-- Embedded Luxury Search CSS to guarantee 100% immediate rendering -->
+    <style id="search-page-luxury-styles">
+      .search-page-hero-luxury {
+        position: relative !important;
+        overflow: hidden !important;
+        background: linear-gradient(135deg, #0A192F 0%, #0F2D59 50%, #0369A1 100%) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 0 0 32px 32px !important;
+        box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.45) !important;
+        padding: 44px 16px 40px 16px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-bottom: 20px !important;
+      }
+      [data-theme="dark"] .search-page-hero-luxury {
+        background: radial-gradient(120% 120% at 50% 0%, #0A192F 0%, #061529 60%, #020813 100%) !important;
+      }
+      .search-hero-orb {
+        position: absolute !important;
+        border-radius: 50% !important;
+        pointer-events: none !important;
+        filter: blur(50px) !important;
+        z-index: 1 !important;
+      }
+      .search-hero-orb-1 {
+        top: -60px !important;
+        right: 10% !important;
+        width: 320px !important;
+        height: 320px !important;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.35) 0%, rgba(56, 189, 248, 0) 70%) !important;
+        animation: heroOrbFloat1 8s ease-in-out infinite alternate !important;
+      }
+      .search-hero-orb-2 {
+        bottom: -80px !important;
+        left: 8% !important;
+        width: 380px !important;
+        height: 380px !important;
+        background: radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, rgba(168, 85, 247, 0) 70%) !important;
+        animation: heroOrbFloat2 10s ease-in-out infinite alternate !important;
+      }
+      @keyframes heroOrbFloat1 {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-25px, 20px) scale(1.1); }
+        100% { transform: translate(20px, -15px) scale(0.95); }
+      }
+      @keyframes heroOrbFloat2 {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(30px, -25px) scale(1.08); }
+        100% { transform: translate(-20px, 15px) scale(0.92); }
+      }
+      .search-hero-badge-wrap {
+        display: flex !important;
+        justify-content: center !important;
+        margin-bottom: 14px !important;
+      }
+      .search-hero-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 6px 18px !important;
+        border-radius: 9999px !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        color: #E0F2FE !important;
+        font-size: 0.82rem !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18) !important;
+      }
+      .search-hero-badge-icon {
+        font-size: 15px !important;
+        display: inline-block !important;
+        animation: heroIconPulse 2s ease-in-out infinite !important;
+      }
+      @keyframes heroIconPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.25); }
+      }
+      .search-hero-title {
+        font-size: clamp(1.6rem, 3.8vw, 2.35rem) !important;
+        font-weight: 900 !important;
+        color: #FFFFFF !important;
+        margin: 0 0 10px 0 !important;
+        line-height: 1.35 !important;
+        letter-spacing: -0.5px !important;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4) !important;
+      }
+      .search-hero-title-icon {
+        display: inline-block !important;
+        margin-left: 6px !important;
+        animation: heroIconWiggle 3.5s ease-in-out infinite !important;
+      }
+      @keyframes heroIconWiggle {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        25% { transform: rotate(-8deg) scale(1.08); }
+        75% { transform: rotate(8deg) scale(1.08); }
+      }
+      .search-hero-title-gradient {
+        background: linear-gradient(135deg, #38BDF8 0%, #60A5FA 50%, #93C5FD 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        display: inline-block !important;
+      }
+      .search-hero-subtitle {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: clamp(0.85rem, 2vw, 0.96rem) !important;
+        margin: 0 auto 24px auto !important;
+        max-width: 660px !important;
+        line-height: 1.65 !important;
+        font-weight: 500 !important;
+      }
+      .search-hero-input-stage {
+        max-width: 740px !important;
+        margin: 0 auto !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .search-pill-glow-wrap {
+        position: relative !important;
+        border-radius: 9999px !important;
+        padding: 3px !important;
+        background: linear-gradient(135deg, #38BDF8, #818CF8, #38BDF8) !important;
+        box-shadow: 
+          0 0 0 2px rgba(255, 255, 255, 0.85),
+          0 0 16px 3px #0284C7,
+          0 0 28px 6px rgba(2, 132, 199, 0.45),
+          0 8px 24px rgba(0, 0, 0, 0.3) !important;
+        animation: searchNeonPulse 3s ease-in-out infinite alternate !important;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+      }
+      @keyframes searchNeonPulse {
+        0% {
+          box-shadow: 
+            0 0 0 2px rgba(255, 255, 255, 0.85),
+            0 0 12px 2px #0284C7,
+            0 0 22px 4px rgba(2, 132, 199, 0.4),
+            0 6px 20px rgba(0, 0, 0, 0.25);
+        }
+        100% {
+          box-shadow: 
+            0 0 0 2.5px #FFFFFF,
+            0 0 18px 4px #38BDF8,
+            0 0 34px 8px rgba(56, 189, 248, 0.65),
+            0 10px 28px rgba(0, 0, 0, 0.35);
+        }
+      }
+      .search-pill-glow-wrap:hover,
+      .search-pill-glow-wrap:focus-within {
+        box-shadow: 
+          0 0 0 2.5px #FFFFFF,
+          0 0 22px 6px #38BDF8,
+          0 0 42px 10px rgba(56, 189, 248, 0.75),
+          0 12px 32px rgba(0, 0, 0, 0.4) !important;
+        transform: translateY(-2px) !important;
+      }
+      .search-pill-inner {
+        position: relative !important;
+        z-index: 2 !important;
+        display: flex !important;
+        align-items: center !important;
+        background: #FFFFFF !important;
+        border-radius: 9999px !important;
+        height: 60px !important;
+        padding: 5px 8px !important;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+      }
+      [data-theme="dark"] .search-pill-inner {
+        background: #0F172A !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      }
+      .search-pill-btn-submit {
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4) !important;
+        transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        flex-shrink: 0 !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .search-pill-btn-submit:hover {
+        transform: scale(1.08) rotate(-5deg) !important;
+        box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6) !important;
+      }
+      .search-pill-btn-submit:active {
+        transform: scale(0.92) !important;
+      }
+      .search-pill-btn-submit svg {
+        width: 22px !important;
+        height: 22px !important;
+        stroke: #FFFFFF !important;
+      }
+      .search-pill-field {
+        flex: 1 1 auto !important;
+        min-width: 80px !important;
+        width: 100% !important;
+        border: none !important;
+        background: transparent !important;
+        color: #0F172A !important;
+        font-family: 'Cairo', var(--font-arabic, sans-serif) !important;
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        padding: 0 14px !important;
+        outline: none !important;
+        box-shadow: none !important;
+        direction: rtl !important;
+        text-align: right !important;
+        -webkit-appearance: none !important;
+        appearance: none !important;
+      }
+      [data-theme="dark"] .search-pill-field {
+        color: #FFFFFF !important;
+      }
+      .search-pill-field::placeholder {
+        color: #64748B !important;
+        font-weight: 500 !important;
+        font-size: 14px !important;
+      }
+      [data-theme="dark"] .search-pill-field::placeholder {
+        color: #94A3B8 !important;
+      }
+      .search-pill-clear {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        border-radius: 50% !important;
+        border: none !important;
+        background: rgba(148, 163, 184, 0.2) !important;
+        color: #64748B !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        outline: none !important;
+        margin: 0 4px !important;
+        flex-shrink: 0 !important;
+      }
+      .search-pill-clear:hover {
+        background: rgba(239, 68, 68, 0.2) !important;
+        color: #EF4444 !important;
+        transform: scale(1.12) !important;
+      }
+      .search-pill-sep {
+        width: 1px !important;
+        height: 28px !important;
+        background: #CBD5E1 !important;
+        margin: 0 6px !important;
+        flex-shrink: 0 !important;
+      }
+      [data-theme="dark"] .search-pill-sep {
+        background: #334155 !important;
+      }
+      .search-pill-voice-slot {
+        display: flex !important;
+        align-items: center !important;
+        flex-shrink: 0 !important;
+        margin-left: 2px !important;
+      }
+      .search-pill-voice-slot .btn-voice-search {
+        position: static !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #0284C7 0%, #0EA5E9 100%) !important;
+        border: none !important;
+        color: #FFFFFF !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 1.18rem !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35) !important;
+        transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        outline: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .search-pill-voice-slot .btn-voice-search:hover {
+        transform: scale(1.08) !important;
+        background: linear-gradient(135deg, #0369A1 0%, #0284C7 100%) !important;
+        box-shadow: 0 6px 18px rgba(2, 132, 199, 0.5) !important;
+      }
+      .search-pill-voice-slot .btn-voice-search:active {
+        transform: scale(0.92) !important;
+      }
+      .search-hero-actions-bar {
+        margin-top: 20px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 12px !important;
+        flex-wrap: wrap !important;
+      }
+      .search-ai-magic-btn {
+        position: relative !important;
+        overflow: hidden !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 8px 20px !important;
+        border-radius: 9999px !important;
+        background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%) !important;
+        border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+        color: #FFFFFF !important;
+        font-size: 13.5px !important;
+        font-weight: 800 !important;
+        cursor: pointer !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        box-shadow: 0 4px 18px rgba(124, 58, 237, 0.4) !important;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        outline: none !important;
+      }
+      .search-ai-magic-btn:hover {
+        transform: translateY(-2px) scale(1.04) !important;
+        box-shadow: 0 8px 26px rgba(124, 58, 237, 0.6) !important;
+        border-color: #C084FC !important;
+      }
+      .search-ai-magic-btn:active {
+        transform: scale(0.96) !important;
+      }
+      .ai-sparkle-icon {
+        font-size: 15px !important;
+        display: inline-block !important;
+        animation: aiSparkleRotate 3s ease-in-out infinite !important;
+      }
+      @keyframes aiSparkleRotate {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        50% { transform: rotate(15deg) scale(1.2); }
+      }
+      .search-hero-actions-sep {
+        color: rgba(255, 255, 255, 0.35) !important;
+        font-size: 14px !important;
+        user-select: none !important;
+      }
+      .search-hero-actions-label {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+        user-select: none !important;
+      }
+      .search-hero-chips-wrap {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        flex-wrap: wrap !important;
+      }
+      .search-quick-city-chip {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 6px 15px !important;
+        border-radius: 9999px !important;
+        background: rgba(255, 255, 255, 0.16) !important;
+        border: 1.5px solid rgba(255, 255, 255, 0.28) !important;
+        color: #FFFFFF !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15) !important;
+        outline: none !important;
+      }
+      .search-quick-city-chip:hover {
+        transform: translateY(-2px) scale(1.05) !important;
+        background: #FFFFFF !important;
+        border-color: #FFFFFF !important;
+        color: #0284C7 !important;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
+      }
+      .search-quick-city-chip:active {
+        transform: scale(0.95) !important;
+      }
+      .search-quick-city-chip.is-active {
+        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
+        border-color: #38BDF8 !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 16px rgba(2, 132, 199, 0.5) !important;
+      }
+      @media (max-width: 640px) {
+        .search-page-hero-luxury {
+          padding: 30px 14px 26px 14px !important;
+          border-radius: 0 0 24px 24px !important;
+        }
+        .search-hero-title {
+          font-size: 1.55rem !important;
+        }
+        .search-hero-subtitle {
+          font-size: 0.85rem !important;
+          margin-bottom: 20px !important;
+        }
+        .search-pill-inner {
+          height: 54px !important;
+          padding: 4px 6px !important;
+        }
+        .search-pill-btn-submit {
+          width: 42px !important;
+          height: 42px !important;
+          min-width: 42px !important;
+        }
+        .search-pill-btn-submit svg {
+          width: 20px !important;
+          height: 20px !important;
+        }
+        .search-pill-voice-slot .btn-voice-search {
+          width: 40px !important;
+          height: 40px !important;
+          min-width: 40px !important;
+          font-size: 1.05rem !important;
+        }
+        .search-pill-field {
+          font-size: 14.5px !important;
+          padding: 0 10px !important;
+        }
+        .search-hero-actions-bar {
+          gap: 8px !important;
+        }
+        .search-ai-magic-btn {
+          width: 100% !important;
+          justify-content: center !important;
+          padding: 9px 16px !important;
+        }
+        .search-hero-actions-sep {
+          display: none !important;
+        }
+        .search-hero-actions-label {
+          width: 100% !important;
+          text-align: center !important;
+        }
+        .search-hero-chips-wrap {
+          justify-content: center !important;
+        }
+        .search-quick-city-chip {
+          padding: 5px 12px !important;
+          font-size: 12px !important;
+        }
+      }
+    </style>
+
     <!-- Search Hero Header (Luxury 2026 Redesign) -->
-    <div class="search-page-hero-luxury">
+    <div class="search-page-hero-luxury" style="background:linear-gradient(135deg,#0A192F 0%,#0F2D59 50%,#0369A1 100%);color:#FFFFFF;padding:44px 16px 40px 16px;border-radius:0 0 32px 32px;position:relative;overflow:hidden">
       <!-- Ambient Glowing Backdrop Orbs -->
       <div class="search-hero-orb search-hero-orb-1" aria-hidden="true"></div>
       <div class="search-hero-orb search-hero-orb-2" aria-hidden="true"></div>
 
       <div class="container text-center" style="position:relative;z-index:2">
         <!-- Floating Shimmer Tag Badge -->
-        <div class="search-hero-badge-wrap">
-          <span class="search-hero-badge">
+        <div class="search-hero-badge-wrap" style="display:flex;justify-content:center;margin-bottom:14px">
+          <span class="search-hero-badge" style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;border-radius:9999px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#E0F2FE;font-size:0.82rem;font-weight:700">
             <span class="search-hero-badge-icon">⚡</span>
             <span>البحث الفوري فائق السرعة بالذكاء الاصطناعي 2026</span>
           </span>
         </div>
 
         <!-- Main Title -->
-        <h1 class="search-hero-title">
+        <h1 class="search-hero-title" style="font-size:clamp(1.6rem,3.8vw,2.35rem);font-weight:900;color:#FFFFFF;margin:0 0 10px 0">
           <span class="search-hero-title-icon" aria-hidden="true">🔍</span>
           <span>البحث الذكي في </span>
           <span class="search-hero-title-gradient">دليل المنزلة والمطرية</span>
         </h1>
 
         <!-- Subtitle -->
-        <p class="search-hero-subtitle">
+        <p class="search-hero-subtitle" style="color:rgba(255,255,255,0.9);font-size:clamp(0.85rem,2vw,0.96rem);margin:0 auto 24px auto;max-width:660px;line-height:1.65;font-weight:500">
           ابحث بالاسم، النشاط التجاري، التخصص الطبي، الصنايعية والحرفيين، أو برقم الهاتف في كافة المدن والقرى
         </p>
 
         <!-- Search Input Stage (Neon Glow Aura Pill) -->
-        <div class="search-hero-input-stage">
-          <div class="search-pill-glow-wrap" id="search-pill-glow-wrap">
-            <div class="search-pill-inner" role="search">
+        <div class="search-hero-input-stage" style="max-width:740px;margin:0 auto;width:100%">
+          <div class="search-pill-glow-wrap" id="search-pill-glow-wrap" style="border-radius:9999px;padding:3px;background:linear-gradient(135deg,#38BDF8,#818CF8,#38BDF8);width:100%">
+            <div class="search-pill-inner" role="search" style="background:#FFFFFF;border-radius:9999px;height:60px;display:flex;align-items:center;padding:5px 8px;width:100%;box-sizing:border-box">
               <!-- Right Circular Search Submit Button (First in RTL) -->
-              <button class="search-pill-btn-submit" id="search-page-btn" aria-label="تنفيذ البحث" title="ابحث الآن">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <button class="search-pill-btn-submit" id="search-page-btn" aria-label="تنفيذ البحث" title="ابحث الآن" style="width:48px;height:48px;min-width:48px;border-radius:50%;background:linear-gradient(135deg,#0284C7 0%,#0369A1 100%);color:#FFFFFF;border:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;stroke:#FFFFFF">
                   <circle cx="11" cy="11" r="7"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
@@ -104,39 +563,40 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
                 value="${escAttr(initialQ)}"
                 autocomplete="off"
                 aria-label="اكتب ما تبحث عنه"
+                style="flex:1 1 auto;width:100%;min-width:80px;border:none;background:transparent;color:#0F172A;font-size:16px;font-weight:700;padding:0 14px;outline:none;direction:rtl;text-align:right"
               />
 
               <!-- Smooth Clear Button -->
-              <button type="button" class="search-pill-clear" id="btn-search-clear" aria-label="مسح البحث" title="مسح النص" style="display:${initialQ ? 'inline-flex' : 'none'}">
+              <button type="button" class="search-pill-clear" id="btn-search-clear" aria-label="مسح البحث" title="مسح النص" style="display:${initialQ ? 'inline-flex' : 'none'};width:32px;height:32px;min-width:32px;border-radius:50%;border:none;background:rgba(148,163,184,0.2);color:#64748B;align-items:center;justify-content:center;cursor:pointer;font-size:13px;font-weight:800;margin:0 4px">
                 ✕
               </button>
 
               <!-- Divider -->
-              <div class="search-pill-sep" aria-hidden="true"></div>
+              <div class="search-pill-sep" aria-hidden="true" style="width:1px;height:28px;background:#CBD5E1;margin:0 6px;flex-shrink:0"></div>
 
               <!-- Dedicated Voice Search Slot -->
-              <div class="search-pill-voice-slot" id="search-page-voice-slot">
+              <div class="search-pill-voice-slot" id="search-page-voice-slot" style="display:flex;align-items:center;flex-shrink:0">
                 <!-- Voice button mounted cleanly via mountVoiceSearchButton -->
               </div>
             </div>
           </div>
 
           <!-- Quick Actions & Cities Row -->
-          <div class="search-hero-actions-bar">
-            <button type="button" class="search-ai-magic-btn" id="btn-ai-search" title="تحليل نية البحث واقتراح أفضل النتائج بالذكاء الاصطناعي">
+          <div class="search-hero-actions-bar" style="margin-top:20px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap">
+            <button type="button" class="search-ai-magic-btn" id="btn-ai-search" title="تحليل نية البحث واقتراح أفضل النتائج بالذكاء الاصطناعي" style="display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:9999px;background:linear-gradient(135deg,#7C3AED 0%,#4F46E5 100%);border:1.5px solid rgba(255,255,255,0.35);color:#FFFFFF;font-size:13.5px;font-weight:800;cursor:pointer">
               <span class="ai-sparkle-icon">✨</span>
               <span>بحث ذكي بالذكاء الاصطناعي</span>
             </button>
 
-            <span class="search-hero-actions-sep" aria-hidden="true">|</span>
-            <span class="search-hero-actions-label">📍 مدن سريعة:</span>
+            <span class="search-hero-actions-sep" aria-hidden="true" style="color:rgba(255,255,255,0.35);font-size:14px">|</span>
+            <span class="search-hero-actions-label" style="color:rgba(255,255,255,0.9);font-size:13.5px;font-weight:700">📍 مدن سريعة:</span>
 
-            <div class="search-hero-chips-wrap">
-              <button type="button" class="search-quick-city-chip" data-quick-area="المنزلة">🏙️ المنزلة</button>
-              <button type="button" class="search-quick-city-chip" data-quick-area="المطرية">🌊 المطرية</button>
-              <button type="button" class="search-quick-city-chip" data-quick-area="العصافرة">🌾 العصافرة</button>
-              <button type="button" class="search-quick-city-chip" data-quick-area="الجمالية">🏛️ الجمالية</button>
-              <button type="button" class="search-quick-city-chip" data-quick-area="ميت سلسيل">🏢 ميت سلسيل</button>
+            <div class="search-hero-chips-wrap" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button type="button" class="search-quick-city-chip" data-quick-area="المنزلة" style="display:inline-flex;align-items:center;gap:6px;padding:6px 15px;border-radius:9999px;background:rgba(255,255,255,0.16);border:1.5px solid rgba(255,255,255,0.28);color:#FFFFFF;font-size:13px;font-weight:700;cursor:pointer">🏙️ المنزلة</button>
+              <button type="button" class="search-quick-city-chip" data-quick-area="المطرية" style="display:inline-flex;align-items:center;gap:6px;padding:6px 15px;border-radius:9999px;background:rgba(255,255,255,0.16);border:1.5px solid rgba(255,255,255,0.28);color:#FFFFFF;font-size:13px;font-weight:700;cursor:pointer">🌊 المطرية</button>
+              <button type="button" class="search-quick-city-chip" data-quick-area="العصافرة" style="display:inline-flex;align-items:center;gap:6px;padding:6px 15px;border-radius:9999px;background:rgba(255,255,255,0.16);border:1.5px solid rgba(255,255,255,0.28);color:#FFFFFF;font-size:13px;font-weight:700;cursor:pointer">🌾 العصافرة</button>
+              <button type="button" class="search-quick-city-chip" data-quick-area="الجمالية" style="display:inline-flex;align-items:center;gap:6px;padding:6px 15px;border-radius:9999px;background:rgba(255,255,255,0.16);border:1.5px solid rgba(255,255,255,0.28);color:#FFFFFF;font-size:13px;font-weight:700;cursor:pointer">🏛️ الجمالية</button>
+              <button type="button" class="search-quick-city-chip" data-quick-area="ميت سلسيل" style="display:inline-flex;align-items:center;gap:6px;padding:6px 15px;border-radius:9999px;background:rgba(255,255,255,0.16);border:1.5px solid rgba(255,255,255,0.28);color:#FFFFFF;font-size:13px;font-weight:700;cursor:pointer">🏢 ميت سلسيل</button>
             </div>
           </div>
         </div>
