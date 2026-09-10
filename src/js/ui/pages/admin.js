@@ -4203,7 +4203,27 @@ async function renderAdminAds($container) {
               `).join('')}
             </div>
           </div>
-        ` : ''}
+        ` : `
+          <!-- Default Fallback Preview -->
+          <div style="margin-bottom:16px;padding:14px;background:var(--surface-2);border-radius:12px;border:1.5px dashed rgba(245,158,11,0.5)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <span style="font-size:12px;font-weight:800;color:var(--text-primary);display:inline-flex;align-items:center;gap:6px">
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#F59E0B"></span>
+                المظهر الافتراضي الحالي على الموقع (عند عدم إضافة إعلانات مخصصة):
+              </span>
+              <a href="https://dalilmanzala.com/contact.html" target="_blank" style="font-size:11px;color:var(--primary);font-weight:700;text-decoration:underline">رابط التوجيه: اتصل بنا ↗</a>
+            </div>
+            <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:6px">
+              ${[0,1,2,3,4].map(idx => `
+                <a href="https://dalilmanzala.com/contact.html" target="_blank" class="wide-ad-card" style="width:84px;height:84px;flex-shrink:0;aspect-ratio:1/1;border-radius:12px;position:relative;overflow:hidden;background:#0F172A;box-shadow:0 3px 12px rgba(0,0,0,0.12);border:1.5px solid rgba(245,158,11,0.5);display:block;--ad-index:${idx}">
+                  <span class="wide-ad-badge" style="font-size:9px;padding:2px 6px">📢 أعلن هنا</span>
+                  <img src="/assets/images/default-ad-square.webp" alt="مساحة إعلانية" style="width:100%;height:100%;object-fit:cover" />
+                  <span class="wide-ad-shimmer"></span>
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `}
 
         <div class="dashboard-table-wrapper">
           <table class="dashboard-table">
@@ -4221,13 +4241,16 @@ async function renderAdminAds($container) {
               ${wideStripAds.length === 0 ? `
                 <tr>
                   <td colspan="6" class="text-center" style="padding:32px 14px">
-                    <div style="font-size:32px;margin-bottom:8px">🖼️</div>
-                    <div style="font-weight:800;font-size:14px;color:var(--text-primary);margin-bottom:6px">لا توجد إعلانات مخصصة في الشريط المربع حالياً</div>
+                    <div style="width:68px;height:68px;aspect-ratio:1/1;border-radius:12px;overflow:hidden;margin:0 auto 12px;border:2px solid #F59E0B;box-shadow:0 4px 14px rgba(0,0,0,0.15)">
+                      <img src="/assets/images/default-ad-square.webp" alt="مساحة إعلانية" style="width:100%;height:100%;object-fit:cover" />
+                    </div>
+                    <div style="font-weight:800;font-size:14px;color:var(--text-primary);margin-bottom:6px">يتم عرض الصورة الافتراضية "مساحة إعلانية - أعلن هنا" تلقائياً</div>
                     <div style="font-size:12px;color:var(--text-muted);max-width:540px;margin:0 auto 16px">
-                      يقوم الموقع حالياً بعرض البانرات العامة تلقائياً كبديل مؤقت. اضغط على الزر بالأسفل لرفع صورة مربعة 1:1 ورابط توجيه مخصص لإعلانات هذا الشريط بشكل منفصل.
+                      الرابط الافتراضي الحالي يوجّه الزوار مباشرة إلى صفحة التواصل: <strong>https://dalilmanzala.com/contact.html</strong>.<br>
+                      اضغط على الزر بالأسفل إذا أردت رفع إعلان مخصص لعميل معين بصورة 1:1 ورابط مخصص.
                     </div>
                     <button class="btn btn-warning" onclick="window.showAddWideStripAdModalAction()" style="background:#F59E0B;color:#0F172A;font-weight:800">
-                      ✨ إضافة أول إعلان للشريط المربع (1:1)
+                      ✨ إضافة إعلان مخصص للشريط المربع (1:1)
                     </button>
                   </td>
                 </tr>

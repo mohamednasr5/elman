@@ -203,6 +203,15 @@ function injectStylesOnce() {
   document.head.appendChild(style);
 }
 
+const DEFAULT_FALLBACK_AD = {
+  id: 'default-wide-strip-ad',
+  title: 'مساحة إعلانية - أعلن هنا',
+  imageUrl: '/assets/images/default-ad-square.webp',
+  link: 'https://dalilmanzala.com/contact.html',
+  placement: 'wide_strip',
+  isDefault: true
+};
+
 export async function mountWideAdsBanner(target = 'wide-ads-banner') {
   const container = typeof target === 'string' ? document.getElementById(target) : target;
   if (!container) return;
@@ -220,11 +229,24 @@ export async function mountWideAdsBanner(target = 'wide-ads-banner') {
 
     // Prioritize dedicated 1:1 wide_strip ads configured in Admin Dashboard
     const wideStripAds = active.filter(a => a.placement === 'wide_strip');
-    const pool = wideStripAds.length > 0 ? wideStripAds : active;
+    let pool = wideStripAds.length > 0 ? [...wideStripAds] : [...active];
 
-    if (!pool.length) {
-      container.hidden = true;
-      return;
+    const hasRealAds = pool.length > 0;
+
+    // If no ads exist, or fewer than 5, use the default fallback ad with user's image and contact link
+    if (!hasRealAds) {
+      pool = Array.from({ length: 5 }, (_, idx) => ({
+        ...DEFAULT_FALLBACK_AD,
+        id: `default-ad-${idx + 1}`
+      }));
+    } else if (pool.length < 5) {
+      const fillCount = 5 - pool.length;
+      for (let i = 0; i < fillCount; i++) {
+        pool.push({
+          ...DEFAULT_FALLBACK_AD,
+          id: `default-ad-${i + 1}`
+        });
+      }
     }
 
     container.hidden = false;
@@ -247,28 +269,28 @@ export async function mountWideAdsBanner(target = 'wide-ads-banner') {
             </strong>
             <span class="wide-ads-banner-line" aria-hidden="true"></span>
           </div>
-          <div class="wide-ads-banner-grid" style="${group.length < 5 ? `grid-template-columns: repeat(${group.length}, minmax(0, 1fr))` : ''}">
+          <div class="wide-ads-banner-grid">
             ${group.map((ad, idx) => `
-              <a href="${esc(ad.link)}" target="_blank" rel="noopener noreferrer sponsored" aria-label="${esc(ad.title || 'إعلان')}"
+              <a href="${esc(ad.link || DEFAULT_FALLBACK_AD.link)}" target="_blank" rel="noopener noreferrer ${ad.isDefault ? '' : 'sponsored'}" aria-label="${esc(ad.title || 'مساحة إعلانية')}"
                  class="wide-ad-card" data-ad-id="${esc(ad.id || ad._id || '')}"
                  style="--ad-index: ${idx}">
-                <span class="wide-ad-badge" aria-label="إعلان مميز">
-                  <span class="wide-ad-badge-star" aria-hidden="true">⭐</span>
-                  <span>مميز</span>
+                <span class="wide-ad-badge" aria-label="${ad.isDefault ? 'مساحة إعلانية' : 'إعلان مميز'}">
+                  <span class="wide-ad-badge-star" aria-hidden="true">${ad.isDefault ? '📢' : '⭐'}</span>
+                  <span>${ad.isDefault ? 'أعلن هنا' : 'مميز'}</span>
                 </span>
-                <img src="${esc(ad.imageUrl)}" alt="${esc(ad.title || 'إعلان')}" loading="lazy" decoding="async"
+                <img src="${esc(ad.imageUrl || DEFAULT_FALLBACK_AD.imageUrl)}" alt="${esc(ad.title || 'إعلان')}" loading="lazy" decoding="async"
                      class="wide-ad-img"
-                     onerror="this.closest('a')?.remove()">
+                     onerror="if(this.src!=='${DEFAULT_FALLBACK_AD.imageUrl}'){this.src='${DEFAULT_FALLBACK_AD.imageUrl}';}else{this.closest('a')?.remove();}">
                 <span class="wide-ad-shimmer" aria-hidden="true"></span>
               </a>`).join('')}
           </div>
         </section>`;
 
-      // Click tracking
+      // Click tracking (skip for default ads)
       container.querySelectorAll('.wide-ad-card').forEach(link => {
         link.addEventListener('click', () => {
           const adId = link.getAttribute('data-ad-id');
-          if (adId && WORKER_URL) {
+          if (adId && !adId.startsWith('default-') && WORKER_URL) {
             try {
               fetch(`${WORKER_URL}/api/ads/track-click`, {
                 method: 'POST',
@@ -284,7 +306,7 @@ export async function mountWideAdsBanner(target = 'wide-ads-banner') {
 
     render();
 
-    if (ordered.length > 5) {
+    if (hasRealAds && ordered.length > 5) {
       const timer = setInterval(() => {
         ordered = shuffle(pool);
         groupIndex = (groupIndex + 1) % Math.ceil(ordered.length / 5);
