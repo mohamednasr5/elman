@@ -78,8 +78,8 @@
        ═══════════════════════════════════════════════════════════ -->
   <style>
     /* Hero section — reserve space immediately to prevent CLS */
-    .hero{position:relative;background:linear-gradient(145deg,#154360 0%,#1B4F72 50%,#2980B9 100%);min-height:clamp(440px,58vh,510px);display:flex;align-items:center;justify-content:center;padding:clamp(2.5rem,5vw,4rem) 1rem clamp(3rem,6vw,5rem);box-sizing:border-box;overflow:hidden}
-    .hero__inner{max-width:800px;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1rem;position:relative;z-index:2}
+    .hero{position:relative;z-index:30;background:linear-gradient(145deg,#154360 0%,#1B4F72 50%,#2980B9 100%);min-height:clamp(440px,58vh,510px);display:flex;align-items:center;justify-content:center;padding:clamp(2.5rem,5vw,4rem) 1rem clamp(3rem,6vw,5rem);box-sizing:border-box;overflow:visible}
+    .hero__inner{max-width:800px;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1rem;position:relative;z-index:10}
     .hero__eyebrow{display:inline-flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:9999px;padding:.35rem 1rem;font-size:.85rem;font-weight:600;color:rgba(255,255,255,.9);white-space:nowrap;min-height:28px}
     .hero__title{font-family:"Cairo","Tajawal",-apple-system,sans-serif;font-weight:800;line-height:1.3;color:#fff;margin:0;font-size:clamp(1.5rem,5vw,2.25rem);text-align:center}
     .hero__title-line1{display:block}
@@ -91,17 +91,19 @@
     @keyframes tw-blink{0%,to{opacity:1}50%{opacity:0}}
     .hero__subtitle{font-size:clamp(.8rem,2vw,1rem);color:rgba(255,255,255,.75);max-width:640px;line-height:1.7;margin:0}
     /* Search pill — reserve exact height to prevent CLS */
-    .hero__search{width:100%;max-width:640px}
+    .hero__search{width:100%;max-width:640px;position:relative;z-index:100}
+    .hero-search-wrapper{position:relative;z-index:100;width:100%}
     .hero-search-glow-wrap{position:relative;min-height:56px}
     .hero-search-pill{display:flex;align-items:center;background:#fff;border-radius:9999px;box-shadow:0 0 18px 4px rgba(0,153,255,.4),0 4px 24px rgba(0,0,0,.18);overflow:hidden;min-height:56px}
     .hero-search-pill-input{flex:1;border:none;outline:none;background:transparent;font-size:1rem;padding:.75rem 1rem;font-family:inherit;direction:rtl;color:#1B4F72}
     .hero-voice-btn{background:linear-gradient(135deg,#1B4F72,#2980B9);color:#fff;border:none;border-radius:9999px;padding:.5rem 1rem;font-size:.75rem;cursor:pointer;display:flex;align-items:center;gap:.25rem;font-family:inherit;white-space:nowrap;min-width:48px;min-height:40px}
     .hero-search-btn-trigger{background:linear-gradient(135deg,#1B4F72,#2980B9);color:#fff;border:none;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-left:.5rem;margin-right:.35rem;flex-shrink:0}
     .hero-search-btn-trigger svg,.hero-voice-btn svg{width:18px;height:18px;stroke-width:2.2}
+    .hero-live-dropdown{position:absolute;z-index:99999 !important}
     /* Quick cats — reserve height to prevent CLS */
     .hero__quick-cats{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;min-height:40px}
     /* Stats bar — reserve height */
-    .stats-bar{min-height:72px}
+    .stats-bar{min-height:72px;position:relative;z-index:5}
     /* Skeleton shimmer */
     @keyframes shimmer{0%{background-position:-200% 0}to{background-position:200% 0}}
     .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.18) 25%,rgba(255,255,255,.28) 50%,rgba(255,255,255,.18) 75%);background-size:200% 100%;animation:shimmer 1.5s ease-in-out infinite;border-radius:8px}

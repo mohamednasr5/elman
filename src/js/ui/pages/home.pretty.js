@@ -922,9 +922,48 @@ function setupHeroSearch(categories) {
     input.focus();
   });
 
+  function showHeroSuggestions() {
+    if (!dropdown || !resultsList) return;
+    countBadge && (countBadge.textContent = 'مقترحات');
+    resultsList.innerHTML = `
+      <div class="hero-live-suggestions">
+        <div class="hero-live-suggestions__title">⚡ مقترحات سريعة ومطلوبة الآن:</div>
+        <div class="hero-live-suggestions__chips">
+          <button type="button" class="hero-live-suggestion-chip" data-q="صيدلية">💊 صيدليات وطوارئ</button>
+          <button type="button" class="hero-live-suggestion-chip" data-q="دكتور عيادة">🩺 أطباء وعيادات</button>
+          <button type="button" class="hero-live-suggestion-chip" data-q="سباك">🔧 سباكين وأعطال</button>
+          <button type="button" class="hero-live-suggestion-chip" data-q="كهربائي">⚡ فنيين كهرباء</button>
+          <button type="button" class="hero-live-suggestion-chip" data-q="مطعم">🍔 مطاعم ودليفري</button>
+          <button type="button" class="hero-live-suggestion-chip" data-q="سوبر ماركت">🛒 بقالة وسوبر ماركت</button>
+          <button type="button" class="hero-live-suggestion-chip" data-q="مستشفى">🏥 مستشفيات وإسعاف</button>
+          <button type="button" class="hero-live-suggestion-chip" data-q="حماد">⭐ حماد</button>
+        </div>
+      </div>
+    `;
+    resultsList.querySelectorAll('.hero-live-suggestion-chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const q = chip.getAttribute('data-q') || '';
+        input.value = q;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+      });
+    });
+    dropdown.classList.add('visible');
+  }
+
   input.addEventListener('focus', () => {
     if (input.value.trim().length >= 1 && resultsList?.children.length > 0) {
       dropdown?.classList.add('visible');
+    } else if (!input.value.trim()) {
+      showHeroSuggestions();
+    }
+  });
+
+  input.addEventListener('click', () => {
+    if (!input.value.trim()) {
+      showHeroSuggestions();
     }
   });
 
@@ -970,6 +1009,16 @@ function setupHeroSearch(categories) {
 
         countBadge && (countBadge.textContent = String(results.length));
 
+        function highlightMatch(text, q) {
+          if (!text) return '';
+          if (!q) return escHtml(text);
+          const words = q.trim().split(/\s+/).filter(Boolean);
+          if (!words.length) return escHtml(text);
+          const escapedWords = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+          const regex = new RegExp(`(${escapedWords.join('|')})`, 'gi');
+          return escHtml(text).replace(regex, '<span class="search-highlight">$1</span>');
+        }
+
         resultsList.innerHTML = results.map(doc => {
           const p = doc.raw || doc;
           const name = p.name || 'مكان بالدليل';
@@ -980,6 +1029,31 @@ function setupHeroSearch(categories) {
           const isVerified = p.isVerified || false;
           const isOpen = p.isOpen !== undefined ? p.isOpen : true;
           const letter = (name.trim()[0] || 'م').toUpperCase();
+
+          const phone = (p.phone || '').trim();
+          const rawWa = (p.whatsapp || p.phone || '').trim();
+          const cleanWa = rawWa ? rawWa.replace(/[^0-9]/g, '') : '';
+          const waLink = cleanWa ? (cleanWa.startsWith('2') ? cleanWa : (cleanWa.startsWith('0') ? '2' + cleanWa : '20' + cleanWa)) : '';
+
+          let actionsHtml = '';
+          if (phone || waLink) {
+            actionsHtml = `
+              <div class="hero-live-actions" onclick="event.stopPropagation()">
+                ${phone ? `
+                  <a href="tel:${escAttr(phone)}" class="hero-live-action-btn hero-live-action-btn--call" title="اتصال هاتفي مباشر" onclick="event.stopPropagation()">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <span class="action-btn-text">اتصال</span>
+                  </a>
+                ` : ''}
+                ${waLink ? `
+                  <a href="https://wa.me/${escAttr(waLink)}" target="_blank" rel="noopener" class="hero-live-action-btn hero-live-action-btn--wa" title="محادثة واتساب فورية" onclick="event.stopPropagation()">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm5.79 14.07c-.24.67-1.39 1.28-1.92 1.35-.49.07-1.12.1-3.26-.79-2.73-1.14-4.5-3.89-4.63-4.07-.14-.18-1.1-1.46-1.1-2.79 0-1.33.7-1.98.95-2.25.24-.26.54-.33.72-.33.18 0 .36.002.52.01.17.01.39-.06.61.47.24.58.8 1.95.87 2.09.07.15.12.32.02.52-.09.21-.14.33-.29.5-.14.17-.3.38-.43.51-.15.15-.3.32-.13.62.18.3.78 1.29 1.68 2.09 1.15 1.03 2.12 1.35 2.42 1.5.3.15.48.13.66-.08.18-.21.78-.91.99-1.22.21-.31.42-.26.7-.15.28.11 1.79.84 2.1 1 .3.15.51.23.58.36.08.13.08.76-.16 1.43z"/></svg>
+                    <span class="action-btn-text">واتساب</span>
+                  </a>
+                ` : ''}
+              </div>
+            `;
+          }
 
           if (typeof window !== 'undefined' && window._placesRegistry && slug) {
             const cleanSlug = String(slug).toLowerCase().trim();
@@ -1005,23 +1079,24 @@ function setupHeroSearch(categories) {
                onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(slug)}', this)">
               <div class="hero-live-avatar">
                 ${photo
-                  ? `<img src="${escAttr(photo)}" alt="${escAttr(name)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'hero-live-avatar-fallback\\'>${letter}</div>'"/>`
+                  ? `<img src="${escAttr(photo)}" alt="${escAttr(name)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\\'hero-live-avatar-fallback\\\'>${letter}</div>'"/>`
                   : `<div class="hero-live-avatar-fallback">${letter}</div>`
                 }
               </div>
               <div class="hero-live-content">
                 <div class="hero-live-title-row">
-                  <span class="hero-live-name">${escHtml(name)}</span>
+                  <span class="hero-live-name">${highlightMatch(name, query)}</span>
                   ${isVerified ? '<span class="hero-live-verified" title="مكان موثق">✓</span>' : ''}
                 </div>
                 <div class="hero-live-meta-row">
-                  ${cat ? `<span class="hero-live-cat">${escHtml(cat)}</span>` : ''}
+                  ${cat ? `<span class="hero-live-cat">${highlightMatch(cat, query)}</span>` : ''}
                   <span class="hero-live-area">${escHtml(area)}</span>
                   <span class="${isOpen ? 'hero-live-status-open' : 'hero-live-status-closed'}">
                     ${isOpen ? 'مفتوح الآن' : 'مغلق'}
                   </span>
                 </div>
               </div>
+              ${actionsHtml}
             </a>
           `;
         }).join('');
