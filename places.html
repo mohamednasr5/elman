@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"/>
@@ -64,15 +64,46 @@
   <!-- Header injected by JS -->
   <div id="header-slot"></div>
 
-  <!-- Page Content: Instant Skeleton -->
+  <!-- Page Content -->
   <main class="page-main" id="page-container" role="main">
     <div class="container" style="padding:1.5rem 1rem;max-width:var(--container-xl, 1200px);margin:0 auto;">
-      <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;overflow-x:auto;padding-bottom:.5rem;">
-        <div class="skeleton" style="height:38px;width:90px;border-radius:20px;flex-shrink:0;"></div>
-        <div class="skeleton" style="height:38px;width:110px;border-radius:20px;flex-shrink:0;"></div>
-        <div class="skeleton" style="height:38px;width:100px;border-radius:20px;flex-shrink:0;"></div>
-        <div class="skeleton" style="height:38px;width:95px;border-radius:20px;flex-shrink:0;"></div>
-      </div>
+      
+      <!-- Crawlable Semantic SEO Header -->
+      <header style="margin-bottom:1.5rem">
+        <h1 style="font-size:clamp(1.4rem, 3.2vw, 1.9rem);font-weight:900;color:var(--text-primary,#0f172a);margin:0 0 0.5rem">
+          دليل الأماكن والمحلات والمهن في المنزلة والمطرية
+        </h1>
+        <p style="color:var(--text-secondary,#475569);font-size:0.92rem;line-height:1.6;margin:0 0 1rem;max-width:850px">
+          تصفح دليلك الأكبر لجميع المحلات، الأطباء، العيادات، الصيدليات، الحرفيين والصنايعية، والأنشطة الخدمية في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، والقرى المجاورة بمحافظة الدقهلية.
+        </p>
+
+        <!-- Crawlable Quick Filters & Local Categories -->
+        <nav aria-label="أقسام الدليل السريعة" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
+          <a href="/categories.html" style="font-size:0.85rem;font-weight:700;padding:6px 14px;border-radius:9999px;background:rgba(2,132,199,0.12);color:#0284c7;text-decoration:none">
+            📂 جميع التصنيفات
+          </a>
+          <a href="/manzala.html" style="font-size:0.85rem;font-weight:700;padding:6px 14px;border-radius:9999px;background:rgba(16,185,129,0.12);color:#059669;text-decoration:none">
+            📍 محلات المنزلة
+          </a>
+          <a href="/matariya.html" style="font-size:0.85rem;font-weight:700;padding:6px 14px;border-radius:9999px;background:rgba(16,185,129,0.12);color:#059669;text-decoration:none">
+            📍 محلات المطرية
+          </a>
+          <a href="/category/restaurants-and-cafes" style="font-size:0.85rem;font-weight:700;padding:6px 14px;border-radius:9999px;background:var(--surface,#f1f5f9);color:var(--text-primary,#334155);text-decoration:none;border:1px solid rgba(0,0,0,0.08)">
+            🍽️ مطاعم وكافيهات
+          </a>
+          <a href="/category/doctor" style="font-size:0.85rem;font-weight:700;padding:6px 14px;border-radius:9999px;background:var(--surface,#f1f5f9);color:var(--text-primary,#334155);text-decoration:none;border:1px solid rgba(0,0,0,0.08)">
+            👨‍⚕️ أطباء وعيادات
+          </a>
+          <a href="/category/pharmacy" style="font-size:0.85rem;font-weight:700;padding:6px 14px;border-radius:9999px;background:var(--surface,#f1f5f9);color:var(--text-primary,#334155);text-decoration:none;border:1px solid rgba(0,0,0,0.08)">
+            💊 صيدليات
+          </a>
+          <a href="/category/clothing-store" style="font-size:0.85rem;font-weight:700;padding:6px 14px;border-radius:9999px;background:var(--surface,#f1f5f9);color:var(--text-primary,#334155);text-decoration:none;border:1px solid rgba(0,0,0,0.08)">
+            👔 محلات ملابس
+          </a>
+        </nav>
+      </header>
+
+      <!-- Instant Skeleton Loader (hydrated seamlessly by JS) -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">
         <div class="skeleton" style="height:190px;border-radius:16px;"></div>
         <div class="skeleton" style="height:190px;border-radius:16px;"></div>

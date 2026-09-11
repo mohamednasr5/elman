@@ -54,22 +54,20 @@
         // Case A: /place/:slug or /places/:slug
         if ((firstSeg === 'place' || firstSeg === 'places') && parts[1]) {
           var slug = parts.slice(1).join('/');
-          var prefix = search ? (search + '&') : '?';
-          window.location.replace('/place.html' + prefix + 'slug=' + encodeURIComponent(slug) + hash);
+          window.location.replace('/place/' + encodeURIComponent(slug) + search + hash);
           return;
         }
 
-        // Case B: /place (with query like ?slug=...)
+        // Case B: /place (without slug)
         if (firstSeg === 'place' && parts.length === 1) {
-          window.location.replace('/place.html' + search + hash);
+          window.location.replace('/places.html' + search + hash);
           return;
         }
 
         // Case C: /category/:slug or /categories/:slug
         if ((firstSeg === 'category' || firstSeg === 'categories') && parts[1]) {
           var catSlug = parts.slice(1).join('/');
-          var prefixCat = search ? (search + '&') : '?';
-          window.location.replace('/category.html' + prefixCat + 'slug=' + encodeURIComponent(catSlug) + hash);
+          window.location.replace('/category/' + encodeURIComponent(catSlug) + search + hash);
           return;
         }
 
@@ -84,11 +82,7 @@
             !candidateSlug.includes('.') && 
             !isStaticDir && 
             !pageMap[candidateSlug.toLowerCase()]) {
-          var targetUrl = '/place.html?slug=' + encodeURIComponent(candidateSlug);
-          if (search) {
-            targetUrl += '&' + search.replace(/^\?/, '');
-          }
-          targetUrl += hash;
+          var targetUrl = '/place/' + encodeURIComponent(candidateSlug) + search + hash;
           window.location.replace(targetUrl);
           return;
         }

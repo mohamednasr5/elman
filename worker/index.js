@@ -4546,9 +4546,24 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         }
       }
 
-      // ── 12. Dynamic OpenGraph / Social Media Share Preview (GET /p/:slug or /p or /api/og) ──
-      if ((url.pathname.startsWith('/p/') || url.pathname === '/p' || url.pathname === '/api/og') && request.method === 'GET') {
-        const slug = url.pathname.startsWith('/p/') ? url.pathname.replace('/p/', '') : (url.searchParams.get('slug') || url.searchParams.get('id') || '');
+      // ── 12. Dynamic OpenGraph / Social Media Share Preview & Place SSR (GET /place/:slug, /p/:slug or /api/og) ──
+      if ((url.pathname.startsWith('/place/') || url.pathname.startsWith('/p/') || url.pathname === '/p' || url.pathname === '/api/og') && request.method === 'GET') {
+        const slug = url.pathname.startsWith('/place/')
+          ? url.pathname.replace('/place/', '').replace(/\/+$/, '')
+          : url.pathname.startsWith('/p/')
+            ? url.pathname.replace('/p/', '').replace(/\/+$/, '')
+            : (url.searchParams.get('slug') || url.searchParams.get('id') || '');
+
+        // For /place/:slug, first try serving static pre-rendered file from Pages origin
+        if (url.pathname.startsWith('/place/')) {
+          try {
+            const originRes = await fetch(request);
+            if (originRes.status === 200) {
+              return originRes;
+            }
+          } catch (_) {}
+        }
+
         return handleDynamicOpenGraph(slug, request, env);
       }
 
@@ -5485,6 +5500,7 @@ async function findPlaceInTurso(env, rawQuery) {
  * Dynamic OpenGraph / Social Media Crawler Preview & Fast Redirect
  */
 async function handleDynamicOpenGraph(slug, request, env) {
+  const url = new URL(request.url);
   const cleanSlug = decodeURIComponent(slug || '').trim();
 
   if (!cleanSlug) {
@@ -5569,16 +5585,13 @@ async function handleDynamicOpenGraph(slug, request, env) {
   const placeTargetSlug = canonicalSlug || place.slug || cleanSlug;
 
   // ============================================================
-  // 5. الرابط القانوني للمشاركة
+  // 5. الرابط القانوني للمشاركة والصفحة النظيفة
   // ============================================================
   const shareUrl =
-    `${canonicalBase}/p/${encodeURIComponent(placeTargetSlug)}`;
+    `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
 
-  // ============================================================
-  // 6. صفحة المكان الحقيقية على GitHub Pages
-  // ============================================================
   const destinationUrl =
-    `${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`;
+    `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
 
 const userAgent = request.headers.get('user-agent') || '';
 
@@ -5682,8 +5695,10 @@ const html = `<!DOCTYPE html>
 
 </body>
 </html>`;
-if (!isCrawler) {
-  return Response.redirect(destinationUrl, 302);
+if (url.pathname.startsWith('/p/')) {
+  if (!isCrawler) {
+    return Response.redirect(destinationUrl, 301);
+  }
 }
   return new Response(html, {
     status: 200,

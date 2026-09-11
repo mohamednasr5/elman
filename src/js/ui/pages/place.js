@@ -305,16 +305,13 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         canonicalSlug = cleanTranslit || place.id;
       }
 
-      const placeCanonical = `https://dalilmanzala.com/p/${encodeURIComponent(canonicalSlug)}`;
+      const placeCanonical = `https://dalilmanzala.com/place/${encodeURIComponent(canonicalSlug)}`;
 
       // Seamless URL normalization in browser address bar (SEO & user experience)
       try {
         if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-          const currentUrl = new URL(window.location.href);
-          const currentSlugParam = currentUrl.searchParams.get('slug');
-          if (currentSlugParam && isIdLike(currentSlugParam) && canonicalSlug && !isIdLike(canonicalSlug)) {
-            currentUrl.searchParams.set('slug', canonicalSlug);
-            window.history.replaceState(null, '', currentUrl.toString());
+          if (canonicalSlug && !isIdLike(canonicalSlug) && (window.location.pathname.includes('place.html') || window.location.pathname.startsWith('/p/'))) {
+            window.history.replaceState(null, '', `/place/${encodeURIComponent(canonicalSlug)}`);
           }
         }
       } catch (_) {}
@@ -331,7 +328,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       setBreadcrumbSchema([
         { name: 'الرئيسية', url: 'https://dalilmanzala.com/' },
         { name: 'الأماكن', url: 'https://dalilmanzala.com/places.html' },
-        { name: catInfo.name || 'القسم', url: `https://dalilmanzala.com/category.html?slug=${catInfo.slug || ''}` },
+        { name: catInfo.name || 'القسم', url: `https://dalilmanzala.com/category/${encodeURIComponent(catInfo.slug || '')}` },
         { name: place.name, url: placeCanonical }
       ]);
     } catch (_) {}

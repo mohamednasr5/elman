@@ -7,7 +7,23 @@
   <meta name="description" content="دليل المنزلة والمطرية — تصفح أرقام الهاتف والواتساب، مواعيد وساعات العمل، العنوان بالتفصيل على الخريطة، العروض الحصرية، والتقييمات للأنشطة والمحلات والأطباء والحرفيين بالمنزلة والمطرية"/>
   <meta name="keywords" content="دليل المنزلة والمطرية الرقمي, المنزلة, المطرية دقهلية, العصافرة, الجمالية, ميت سلسيل, البصراط, العزيزة, الأحمدية, الروضة, الحوتة, النسايمة, ميت خضير, ميت شريف, محلات, أطباء, حرفيين, خدمات الدقهلية"/>
   <meta name="robots" content="index,follow"/>
-  <link rel="canonical" href="https://dalilmanzala.com/place.html"/>
+  <link rel="canonical" id="place-canonical" href="https://dalilmanzala.com/places.html"/>
+  <script>
+    (function() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var s = (params.get('slug') || params.get('id') || '').trim();
+        if (s && s !== 'undefined' && s !== 'null') {
+          var clean = encodeURIComponent(s);
+          var canonical = document.getElementById('place-canonical');
+          if (canonical) canonical.href = 'https://dalilmanzala.com/place/' + clean;
+          if (window.location.pathname.endsWith('place.html')) {
+            window.history.replaceState(null, '', '/place/' + clean + (window.location.hash || ''));
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
   
   <!-- Open Graph / WhatsApp / Facebook -->
   <meta property="og:type" content="website"/>

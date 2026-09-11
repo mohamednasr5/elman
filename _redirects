@@ -1,16 +1,14 @@
 # ── Cloudflare Pages Clean URLs & Static Routes ──
 # Canonical redirect: /index.html → / (prevents duplicate content)
 /index.html  /  301
+
+# Static Pages Clean Routing
 /admin              /admin.html         200
 /admin/             /admin.html         200
 /places             /places.html        200
 /places/            /places.html        200
-/place              /place.html         200
-/place/             /place.html         200
 /categories         /categories.html    200
 /categories/        /categories.html    200
-/category           /category.html      200
-/category/          /category.html      200
 /search             /search.html        200
 /search/            /search.html        200
 /dashboard          /dashboard.html     200
@@ -51,8 +49,18 @@
 /matariya/          /matariya.html      200
 /about              /manzala.html       200
 /about/             /manzala.html       200
-# Dynamic parameterized splat routes
+
+# Directory roots redirect to listing pages
+/place              /places.html        301
+/place/             /places.html        301
+/category           /categories.html    301
+/category/          /categories.html    301
+
+# Legacy route normalization to canonical clean URLs
+/p/*                /place/:splat       301
+/places/*           /place/:splat       301
+/categories/*       /category/:splat    301
+
+# Dynamic parameterized fallback routes (only triggered if static pre-rendered file does not exist)
 /place/*            /place.html?slug=:splat 200
-/places/*           /place.html?slug=:splat 200
 /category/*         /category.html?slug=:splat 200
-/categories/*       /category.html?slug=:splat 200

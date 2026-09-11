@@ -1,5 +1,4 @@
 import fs from 'fs';
-import https from 'https';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -26,35 +25,46 @@ function escapeXml(str) {
 }
 
 async function run() {
-  console.log('Fetching places from Turso via Worker...');
+  console.log('Fetching places from Turso via Worker for Sitemap...');
   const places = await fetchPlaces();
   console.log(`Found ${places.length} published places.`);
 
   const today = new Date().toISOString().split('T')[0];
 
+  // Core indexable static pages (strictly excludes /admin, /dashboard, /login, /search, /favorites)
   const staticPages = [
     { loc: 'https://dalilmanzala.com/', priority: '1.0', changefreq: 'daily' },
     { loc: 'https://dalilmanzala.com/places.html', priority: '0.9', changefreq: 'daily' },
-    { loc: 'https://dalilmanzala.com/categories.html', priority: '0.8', changefreq: 'weekly' },
-    { loc: 'https://dalilmanzala.com/search.html', priority: '0.8', changefreq: 'daily' },
+    { loc: 'https://dalilmanzala.com/categories.html', priority: '0.9', changefreq: 'weekly' },
+    { loc: 'https://dalilmanzala.com/manzala.html', priority: '0.9', changefreq: 'weekly' },
+    { loc: 'https://dalilmanzala.com/matariya.html', priority: '0.9', changefreq: 'weekly' },
     { loc: 'https://dalilmanzala.com/offers.html', priority: '0.8', changefreq: 'daily' },
-    { loc: 'https://dalilmanzala.com/emergency.html', priority: '0.9', changefreq: 'monthly' },
+    { loc: 'https://dalilmanzala.com/now.html', priority: '0.8', changefreq: 'hourly' },
+    { loc: 'https://dalilmanzala.com/emergency.html', priority: '0.8', changefreq: 'monthly' },
+    { loc: 'https://dalilmanzala.com/around-me.html', priority: '0.7', changefreq: 'weekly' },
+    { loc: 'https://dalilmanzala.com/products.html', priority: '0.7', changefreq: 'daily' },
     { loc: 'https://dalilmanzala.com/about.html', priority: '0.5', changefreq: 'monthly' },
     { loc: 'https://dalilmanzala.com/contact.html', priority: '0.5', changefreq: 'monthly' },
     { loc: 'https://dalilmanzala.com/privacy.html', priority: '0.3', changefreq: 'yearly' },
-    { loc: 'https://dalilmanzala.com/terms.html', priority: '0.3', changefreq: 'yearly' },
-      { loc: 'https://dalilmanzala.com/manzala.html', priority: '0.9', changefreq: 'weekly' },
-      { loc: 'https://dalilmanzala.com/matariya.html', priority: '0.9', changefreq: 'weekly' },
-      { loc: 'https://dalilmanzala.com/now.html', priority: '0.7', changefreq: 'hourly' },
-      { loc: 'https://dalilmanzala.com/around-me.html', priority: '0.7', changefreq: 'weekly' },
-      { loc: 'https://dalilmanzala.com/products.html', priority: '0.7', changefreq: 'daily' }
+    { loc: 'https://dalilmanzala.com/terms.html', priority: '0.3', changefreq: 'yearly' }
   ];
 
+  // Collect unique category slugs from places
+  const categorySet = new Set();
+  for (const place of places) {
+    const rawCat = place.customCategory || place.category || place.categoryId || place.category_id || '';
+    if (rawCat) {
+      const slug = String(rawCat).toLowerCase().replace(/\s+/g, '-');
+      categorySet.add(slug);
+    }
+  }
+
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-          xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
+  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
   xml += '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"\n';
   xml += '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n\n';
 
+  // 1. Static Pages
   for (const p of staticPages) {
     xml += '  <url>\n';
     xml += `    <loc>${p.loc}</loc>\n`;
@@ -64,13 +74,22 @@ async function run() {
     xml += '  </url>\n';
   }
 
+  // 2. Category Landing Pages
+  for (const catSlug of categorySet) {
+    const catUrl = `https://dalilmanzala.com/category/${encodeURIComponent(catSlug)}`;
+    xml += '  <url>\n';
+    xml += `    <loc>${catUrl}</loc>\n`;
+    xml += `    <lastmod>${today}</lastmod>\n`;
+    xml += '    <changefreq>daily</changefreq>\n';
+    xml += '    <priority>0.85</priority>\n';
+    xml += '  </url>\n';
+  }
+
+  // 3. Business Profile Pages (Clean canonical /place/:slug URLs)
   for (const place of places) {
     let slug = place.slug || place.id;
     if (!slug) continue;
-    // Strip random hash suffix if it exists to generate the cleanest canonical short slug
-    const cleanShortSlug = String(slug).replace(/-[a-z0-9_]{5,7}$/i, '');
-    const finalSlug = cleanShortSlug && cleanShortSlug.length >= 3 ? cleanShortSlug : slug;
-    const placeUrl = `https://dalilmanzala.com/${encodeURIComponent(finalSlug)}`;
+    const placeUrl = `https://dalilmanzala.com/place/${encodeURIComponent(slug)}`;
     const lastMod = place.updatedAt ? new Date(place.updatedAt).toISOString().split('T')[0] : today;
 
     xml += '  <url>\n';
@@ -79,9 +98,8 @@ async function run() {
     xml += '    <changefreq>weekly</changefreq>\n';
     xml += '    <priority>0.9</priority>\n';
 
-    let img = place.coverImageUrl || place.logoUrl;
+    let img = place.coverImageUrl || place.cover_image_url || place.logoUrl || place.logo_url;
     if (img) {
-      // Ensure Google sitemap images are full absolute URLs (must start with https://)
       if (!img.startsWith('http://') && !img.startsWith('https://')) {
         img = `https://dalilmanzala.com/${img.replace(/^\/+/, '')}`;
       }
@@ -101,7 +119,8 @@ async function run() {
 
   const sitemapPath = path.join(__dirname, 'sitemap.xml');
   fs.writeFileSync(sitemapPath, xml, 'utf8');
-  console.log(`Successfully generated ${sitemapPath} with ${staticPages.length + places.length} total URLs.`);
+  const totalUrls = staticPages.length + categorySet.size + places.length;
+  console.log(`Successfully generated ${sitemapPath} with ${totalUrls} canonical URLs (${places.length} places, ${categorySet.size} categories, ${staticPages.length} core pages).`);
 }
 
 run().catch(console.error);

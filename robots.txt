@@ -3,10 +3,16 @@
 User-agent: *
 Allow: /
 
-# Private / administrative pages
+# Private / administrative / internal search pages
 Disallow: /admin.html
+Disallow: /admin/
 Disallow: /dashboard.html
+Disallow: /dashboard/
 Disallow: /login.html
+Disallow: /login/
+Disallow: /search.html
+Disallow: /favorites.html
+Disallow: /api/
 
 # AI crawlers
 User-agent: GPTBot

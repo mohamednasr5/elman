@@ -85,65 +85,12 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
   setOrCreateMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
 }
 
-export function setPlaceSchema(place, category) {
-  const rawSlug = place.slug || place.id || '';
-  const placeSlug = String(rawSlug).replace(/-[a-z0-9_]{5,7}$/i, '') || rawSlug;
-  const cleanFriendlyUrl = `${SITE_URL}/${placeSlug}`;
-  const schema = {
-    '@context': 'https://schema.org',
-    '@type': mapCategoryToSchema(category?.nameEn || category?.slug || 'LocalBusiness'),
-    name: place.name,
-    description: place.description || `${place.name} في مدينة ${place.area || 'المنزلة والمطرية'} — العنوان وأرقام الهواتف ومواعيد العمل والتقييمات`,
-    image: place.coverImageUrl || place.logoUrl || DEFAULT_IMAGE,
-    url: cleanFriendlyUrl,
-    telephone: place.phone || undefined,
-    areaServed: REGIONAL_COVERAGE_AREAS,
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: place.address || '',
-      addressLocality: place.area || 'المنزلة والمطرية',
-      addressRegion: 'الدقهلية (Dakahlia)',
-      addressCountry: 'EG'
-    },
-    containedInPlace: {
-      '@type': 'Place',
-      name: place.area || 'المنزلة والمطرية',
-      containedInPlace: {
-        '@type': 'AdministrativeArea',
-        name: 'محافظة الدقهلية',
-        containedInPlace: {
-          '@type': 'Country',
-          name: 'مصر'
-        }
-      }
-    },
-    geo: place.location?.lat ? {
-      '@type': 'GeoCoordinates',
-      latitude: Number(place.location.lat),
-      longitude: Number(place.location.lng)
-    } : {
-      '@type': 'GeoCoordinates',
-      latitude: 31.1585,
-      longitude: 31.9360
-    },
-    openingHoursSpecification: buildOpeningHours(place.workingHours),
-    sameAs: [
-      place.social?.facebook,
-      place.social?.instagram,
-      place.social?.whatsapp ? `https://wa.me/2${place.social.whatsapp.replace(/\D/g, '')}` : null,
-      place.social?.website
-    ].filter(Boolean),
-    priceRange: '$$',
-    aggregateRating: place.rating ? {
-      '@type': 'AggregateRating',
-      ratingValue: Number(place.rating).toFixed(1),
-      reviewCount: Math.max(1, Number(place.reviewCount) || 1),
-      bestRating: '5',
-      worstRating: '1'
-    } : undefined
-  };
+import { generateBusinessSEO } from './seo-entity.js';
 
-  injectSchema('place-schema', schema);
+export function setPlaceSchema(place, category) {
+  const seo = generateBusinessSEO(place);
+  if (!seo || !seo.schemas || !seo.schemas[0]) return;
+  injectSchema('place-schema', seo.schemas[0]);
 }
 
 export function setBreadcrumbSchema(items) {

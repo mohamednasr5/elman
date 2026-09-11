@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
@@ -17,7 +17,23 @@
   <meta name="description" content="تصفح الأماكن ومقدمي الخدمات في هذا التصنيف بالمنزلة، المطرية، والقرى المجاورة"/>
   <meta name="keywords" content="دليل المنزلة والمطرية الرقمي, المنزلة, المطرية دقهلية, العصافرة, الجمالية, ميت سلسيل, البصراط, العزيزة, الأحمدية, الروضة, الحوتة, النسايمة, ميت خضير, ميت شريف, محلات, أطباء, حرفيين, خدمات الدقهلية"/>
   <meta name="robots" content="index,follow"/>
-  <link rel="canonical" href="https://dalilmanzala.com/category.html"/>
+  <link rel="canonical" id="category-canonical" href="https://dalilmanzala.com/categories.html"/>
+  <script>
+    (function() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var s = (params.get('slug') || '').trim();
+        if (s) {
+          var clean = encodeURIComponent(s);
+          var canonical = document.getElementById('category-canonical');
+          if (canonical) canonical.href = 'https://dalilmanzala.com/category/' + clean;
+          if (window.location.pathname.endsWith('category.html')) {
+            window.history.replaceState(null, '', '/category/' + clean + (window.location.hash || ''));
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
   
   <!-- Open Graph / WhatsApp / Facebook -->
   <meta property="og:type" content="website"/>

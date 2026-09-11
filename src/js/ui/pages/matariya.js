@@ -201,6 +201,24 @@ export async function renderMatariyaPage($container) {
           </div>
         </section>
 
+        <!-- Local Directory Category Hub -->
+        <section style="margin:40px 0;padding:28px 24px;background:var(--surface,#fff);border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.08)">
+          <h3 style="font-size:1.35rem;font-weight:900;margin-bottom:12px;color:var(--text-primary,#0f172a)">
+            🐟 تصفح دليل محلات وخدمات مدينة وقرى المطرية
+          </h3>
+          <p style="color:var(--text-secondary,#475569);font-size:0.95rem;margin-bottom:20px;line-height:1.6">
+            ابحث عن أسواق الأسماك، المطاعم، الأطباء، الصيدليات، والورش الحرفية في المطرية والعصارة والقرى المجاورة:
+          </p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+            <a href="/category/fish-shop" style="padding:12px 16px;border-radius:12px;background:var(--bg,#f8fafc);border:1px solid rgba(0,0,0,0.08);color:#0284c7;font-weight:700;text-decoration:none">🐟 أسماك وفسخاني المطرية</a>
+            <a href="/category/restaurants-and-cafes" style="padding:12px 16px;border-radius:12px;background:var(--bg,#f8fafc);border:1px solid rgba(0,0,0,0.08);color:#0284c7;font-weight:700;text-decoration:none">🍽️ مطاعم المطرية</a>
+            <a href="/category/doctor" style="padding:12px 16px;border-radius:12px;background:var(--bg,#f8fafc);border:1px solid rgba(0,0,0,0.08);color:#0284c7;font-weight:700;text-decoration:none">👨‍⚕️ عيادات وأطباء المطرية</a>
+            <a href="/category/pharmacy" style="padding:12px 16px;border-radius:12px;background:var(--bg,#f8fafc);border:1px solid rgba(0,0,0,0.08);color:#0284c7;font-weight:700;text-decoration:none">💊 صيدليات المطرية</a>
+            <a href="/category/clothing-store" style="padding:12px 16px;border-radius:12px;background:var(--bg,#f8fafc);border:1px solid rgba(0,0,0,0.08);color:#0284c7;font-weight:700;text-decoration:none">👔 محلات ملابس المطرية</a>
+            <a href="/category/building-construction" style="padding:12px 16px;border-radius:12px;background:var(--bg,#f8fafc);border:1px solid rgba(0,0,0,0.08);color:#0284c7;font-weight:700;text-decoration:none">🏗️ مقاولات وبناء وتشطيبات</a>
+          </div>
+        </section>
+
         <!-- CTA Box -->
         <div class="city-guide-cta-box" style="background:linear-gradient(135deg,#003554 0%,#006494 100%)">
           <h3 style="color:#fff;font-size:1.5rem;font-weight:800;margin-bottom:12px">
