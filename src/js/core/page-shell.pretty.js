@@ -17,7 +17,7 @@ function _headerHTML(active) {
     ['places.html',     'الأماكن'],
     ['categories.html', 'التصنيفات'],
     ['offers.html',     'العروض'],
-    ['now.html',        'يحدث الآن 🔥'],
+    ['now.html',        'طلبات أهالينا 🤝'],
     ['around-me.html',  'بالقرب مني 🧭'],
     ['favorites.html',  '❤️ المفضلة'],
   ];
@@ -923,10 +923,10 @@ export async function openDashboardMoreModal(user = null) {
           </div>
         </a>
         <a href="now.html" class="more-menu-tile">
-          <span class="tile-icon">⚡</span>
+          <span class="tile-icon">🤝</span>
           <div class="tile-info">
-            <span class="tile-title">يحدث الآن</span>
-            <span class="tile-sub">تحديثات وعروض مباشرة</span>
+            <span class="tile-title">طلبات أهالينا</span>
+            <span class="tile-sub">مين فاضي ييجي وطلبات الخدمات</span>
           </div>
         </a>
       </div>
@@ -1056,10 +1056,10 @@ export async function openDashboardMoreModal(user = null) {
           </div>
         </a>
         <a href="now.html" class="more-menu-tile">
-          <span class="tile-icon">⚡</span>
+          <span class="tile-icon">🤝</span>
           <div class="tile-info">
-            <span class="tile-title">يحدث الآن</span>
-            <span class="tile-sub">أحدث التطورات</span>
+            <span class="tile-title">طلبات أهالينا</span>
+            <span class="tile-sub">مين فاضي ييجي وطلبات الخدمات</span>
           </div>
         </a>
       </div>

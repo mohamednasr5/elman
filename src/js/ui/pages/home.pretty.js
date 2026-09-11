@@ -1445,8 +1445,8 @@ function getHomeHTML() {
             <span class="command-card__body"><strong>مفتوح الآن</strong><small>خدمات وأماكن متاحة</small></span><span class="command-card__arrow">←</span>
           </a>
           <a class="command-card command-card--live" href="now.html">
-            <span class="command-card__orb"></span><span class="command-card__icon">⚡</span>
-            <span class="command-card__body"><strong>يحدث الآن</strong><small>آخر المستجدات المحلية</small></span><span class="command-card__arrow">←</span>
+            <span class="command-card__orb"></span><span class="command-card__icon">🤝</span>
+            <span class="command-card__body"><strong>طلبات أهالينا</strong><small>مين فاضي ييجي وطلبات الخدمات</small></span><span class="command-card__arrow">←</span>
           </a>
           <a class="command-card command-card--offers" href="offers.html">
             <span class="command-card__orb"></span><span class="command-card__icon">🏷️</span>
@@ -1531,7 +1531,7 @@ function getHomeHTML() {
     </div>
 
     <!-- 📢 قسم طلبات الخدمات (سجل احتياجك / عروض الفنيين المباشرة) -->
-    <div class="container section" style="padding-top:0;padding-bottom:0">
+    <div class="container section" style="padding-top:0;padding-bottom:0;margin-top:1.5rem">
       <div id="home-service-requests-container"></div>
     </div>
 

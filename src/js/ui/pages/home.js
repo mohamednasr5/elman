@@ -389,8 +389,8 @@ import{getCategories as G,getPublishedPlaces as J,getActiveOffers as K,getAds as
             <span class="command-card__body"><strong>\u0645\u0641\u062A\u0648\u062D \u0627\u0644\u0622\u0646</strong><small>\u062E\u062F\u0645\u0627\u062A \u0648\u0623\u0645\u0627\u0643\u0646 \u0645\u062A\u0627\u062D\u0629</small></span><span class="command-card__arrow">\u2190</span>
           </a>
           <a class="command-card command-card--live" href="now.html">
-            <span class="command-card__orb"></span><span class="command-card__icon">\u26A1</span>
-            <span class="command-card__body"><strong>\u064A\u062D\u062F\u062B \u0627\u0644\u0622\u0646</strong><small>\u0622\u062E\u0631 \u0627\u0644\u0645\u0633\u062A\u062C\u062F\u0627\u062A \u0627\u0644\u0645\u062D\u0644\u064A\u0629</small></span><span class="command-card__arrow">\u2190</span>
+            <span class="command-card__orb"></span><span class="command-card__icon">\u{1F91D}</span>
+            <span class="command-card__body"><strong>\u0637\u0644\u0628\u0627\u062A \u0623\u0647\u0627\u0644\u064A\u0646\u0627</strong><small>\u0645\u064A\u0646 \u0641\u0627\u0636\u064A \u064A\u064A\u062C\u064A \u0648\u0637\u0644\u0628\u0627\u062A \u0627\u0644\u062E\u062F\u0645\u0627\u062A</small></span><span class="command-card__arrow">\u2190</span>
           </a>
           <a class="command-card command-card--offers" href="offers.html">
             <span class="command-card__orb"></span><span class="command-card__icon">\u{1F3F7}\uFE0F</span>
@@ -466,7 +466,7 @@ import{getCategories as G,getPublishedPlaces as J,getActiveOffers as K,getAds as
     </div>
 
     <!-- \u{1F4E2} \u0642\u0633\u0645 \u0637\u0644\u0628\u0627\u062A \u0627\u0644\u062E\u062F\u0645\u0627\u062A (\u0633\u062C\u0644 \u0627\u062D\u062A\u064A\u0627\u062C\u0643 / \u0639\u0631\u0648\u0636 \u0627\u0644\u0641\u0646\u064A\u064A\u0646 \u0627\u0644\u0645\u0628\u0627\u0634\u0631\u0629) -->
-    <div class="container section" style="padding-top:0;padding-bottom:0">
+    <div class="container section" style="padding-top:0;padding-bottom:0;margin-top:1.5rem">
       <div id="home-service-requests-container"></div>
     </div>
 

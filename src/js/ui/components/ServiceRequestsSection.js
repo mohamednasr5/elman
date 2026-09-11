@@ -25,7 +25,7 @@ export async function renderServiceRequestsSection($container, { limit = 6, show
             <div>
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
                 <h3 style="font-size:1.35rem;font-weight:900;margin:0;color:#fff">
-                  طلبات أهالي المدينة (اطلب صنايعي أو فني)
+                  طلبات أهالينا (اطلب صنايعي أو خدمة)
                 </h3>
                 <span style="font-size:0.75rem;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.5);color:#fef08a;padding:2px 10px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px">
                   <span style="width:6px;height:6px;border-radius:50%;background:#f59e0b;display:inline-block"></span>
@@ -96,7 +96,7 @@ export async function renderServiceRequestsSection($container, { limit = 6, show
       ${isCompact ? `
         <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px;flex-wrap:wrap">
           <a href="now.html" class="btn btn-outline btn-sm" style="border-radius:12px;font-weight:800;padding:8px 18px">
-            <span>عرض كافة طلبات الأهالي في صفحة يحدث الآن</span>
+            <span>عرض كافة طلبات أهالينا والفنيين المتاحين</span>
             <span style="margin-right:4px">←</span>
           </a>
           <a href="categories.html" class="btn btn-outline btn-sm" style="border-radius:12px;font-weight:800;padding:8px 18px">
@@ -129,9 +129,9 @@ async function loadRequests(container, limit = 6) {
       $grid.innerHTML = `
         <div style="grid-column:1/-1;background:var(--surface-2, #f8fafc);border:1.5px solid var(--border, #e2e8f0);border-radius:20px;padding:28px 18px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.02)">
           <div style="font-size:2.4rem;margin-bottom:8px">🤝</div>
-          <p style="margin:0 0 6px;font-weight:900;font-size:1.15rem;color:var(--text-primary)">تمت تلبية جميع طلبات أهالي المدينة السابقة بنجاح!</p>
+          <p style="margin:0 0 6px;font-weight:900;font-size:1.15rem;color:var(--text-primary)">تمت تلبية جميع طلبات أهالينا السابقة بنجاح!</p>
           <p style="margin:0 0 16px;font-size:0.9rem;color:var(--text-muted);max-width:540px;margin-inline:auto;line-height:1.6">
-            لا توجد طلبات جارية مفتوحة من المواطنين في هذه اللحظة. هل تبحث عن فني أو خدمة فورية؟ تواصل مباشرة مع أمهر الفنيين المعتمدين في دليلك:
+            لا توجد طلبات جارية مفتوحة من أهالينا في هذه اللحظة. هل تبحث عن فني أو خدمة فورية؟ تواصل مباشرة مع أمهر الفنيين المعتمدين في دليلك:
           </p>
 
           <!-- Quick Service Categories Chips -->
@@ -336,6 +336,9 @@ async function loadRequests(container, limit = 6) {
           btn.disabled = false;
           btn.textContent = '🗑️ حذف';
         }
+      });
+    });
+
     // Attach reaction listeners (لايك، ديسلايك، إبلاغ)
     $grid.querySelectorAll('.btn-req-vote').forEach(btn => {
       btn.addEventListener('click', async (e) => {
