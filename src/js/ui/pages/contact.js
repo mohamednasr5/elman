@@ -3,7 +3,7 @@
  * With Typewriter Slogans & Fair Placement Algorithm Live Showcase
  */
 
-import { getSettings, dbPush, serverTimestamp, getPublishedPlaces } from '../../core/db.js';
+import { getSettings, dbPush, serverTimestamp, getPublishedPlaces, sendTelegramAdminNotification } from '../../core/db.js';
 import { toast } from '../components/Toast.js';
 import { MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 
@@ -765,6 +765,15 @@ export async function renderContactPage($container, { user } = {}) {
           ...payload
         })
       });
+
+      sendTelegramAdminNotification('contact_message', {
+        name,
+        contact: `${phone} | ${email}`,
+        email,
+        phone,
+        message: `[${topicLabel}] ${messageVal}\nالمكان: ${placeName}\nالمنطقة: ${areaVal}`
+      }).catch(() => {});
+
       form.style.display = 'none';
       success.style.display = 'block';
     } catch (err) {

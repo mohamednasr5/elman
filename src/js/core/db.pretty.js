@@ -743,12 +743,23 @@ export async function getPlaceBySlug(slug) {
         return reg;
       }
 
-      const rawSession = sessionStorage.getItem('instant_place_' + clean) || sessionStorage.getItem('instant_place_latest');
+      const rawSession = sessionStorage.getItem('instant_place_' + clean) || sessionStorage.getItem('instant_place_latest') || localStorage.getItem('instant_place_' + clean) || localStorage.getItem('instant_place_latest');
       if (rawSession) {
         const p = JSON.parse(rawSession);
         if (p && (String(p.slug || '').toLowerCase() === clean || String(p.id || '').toLowerCase() === clean || String(p._key || '').toLowerCase() === clean || String(p.slug || '') === raw || String(p.id || '') === raw)) {
           if (!isPlaceBanned(p)) {
             return p;
+          }
+        }
+      }
+
+      const rawShowcase = localStorage.getItem('manzala_verified_showcase_v1');
+      if (rawShowcase) {
+        const showcaseList = JSON.parse(rawShowcase);
+        if (Array.isArray(showcaseList)) {
+          const match = showcaseList.find(item => item && (String(item.slug || '').toLowerCase() === clean || String(item.id || '').toLowerCase() === clean || String(item.slug || '') === raw || String(item.id || '') === raw));
+          if (match && !isPlaceBanned(match)) {
+            return match;
           }
         }
       }
@@ -2115,6 +2126,15 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   await invalidateLocalPlaceCache(placeId, placeSlug);
   clearDbCache();
 
+  sendTelegramAdminNotification('new_review', {
+    placeId,
+    placeSlug: placeSlug || '',
+    placeName: placeName || 'المكان',
+    userName,
+    rating: numRating,
+    comment: cleanComment
+  }).catch(() => {});
+
   return reviewData;
 }
 
@@ -2132,7 +2152,7 @@ export async function sendTelegramAdminNotification(type, payload) {
     if (res.ok) return;
   } catch (_) {}
 
-  // 2. Direct Browser-to-Telegram Fallback via Firebase Settings
+  // 2. Direct Browser-to-Telegram Fallback via Settings
   try {
     const settings = await getSettings();
     const botToken = settings?.telegram?.botToken;
@@ -2142,15 +2162,23 @@ export async function sendTelegramAdminNotification(type, payload) {
     let text = '';
     if (type === 'new_review') {
       const starStr = '⭐'.repeat(Math.min(5, Math.max(1, payload.rating || 5)));
-      text = `🔔 *تعليق جديد على مكان في المنزلة!*\n\n🏢 *المكان / * ${payload.placeName || 'المكان'}\n👤 *صاحب التعليق / * ${payload.userName || 'عميل'}\n⭐ *التقييم / * ${payload.rating || 5} ${starStr}\n💬 *نص التعليق / *\n"${payload.comment || ''}"`;
+      text = `⭐ <b>تعليق وتقييم جديد على مكان!</b>\n\n🏢 <b>المكان:</b> ${payload.placeName || 'المكان'}\n👤 <b>صاحب التعليق:</b> ${payload.userName || 'عميل'}\n⭐ <b>التقييم:</b> ${payload.rating || 5} من 5 ${starStr}\n💬 <b>نص التعليق:</b>\n<i>"${payload.comment || ''}"</i>`;
+    } else if (type === 'service_request') {
+      text = `📢 <b>طلب خدمة جديد (طلبات الخدمات)!</b>\n\n🔧 <b>نوع الخدمة:</b> ${payload.category || 'عام'}\n📌 <b>العنوان:</b> ${payload.title || ''}\n📍 <b>المنطقة:</b> ${payload.village || 'المنزلة'}\n⏰ <b>التوقيت:</b> ${payload.timing || 'الآن'}\n👤 <b>العميل:</b> ${payload.userName || 'مواطن'}\n📞 <b>الهاتف:</b> <code>${payload.userPhone || ''}</code>\n📝 <i>"${payload.description || ''}"</i>`;
+    } else if (type === 'craftsman_live') {
+      text = `🟢 <b>فني أعلن عن توفره الفوري للعمل الآن!</b>\n\n👷‍♂️ <b>الفني:</b> ${payload.craftsmanName}\n🔨 <b>المهنة:</b> ${payload.professionName}\n📞 <b>الهاتف:</b> <code>${payload.phone}</code>\n💬 <b>واتساب:</b> <code>${payload.whatsapp || payload.phone}</code>\n⏳ <b>ساعات التوفر:</b> ${payload.hours || 3} ساعات\n🚗 <b>الوصول:</b> ${payload.etaMinutes || 30} دقيقة`;
     } else if (type === 'review_reported') {
-      text = `🚩 *تم الإبلاغ عن تعليق كمسيء!*\n\n🏢 *المكان / * ${payload.placeName || 'المكان'}\n👤 *كاتب التعليق / * ${payload.userName || 'عميل'}\n💬 *التعليق / * "${payload.comment || ''}"\n⚠️ *سبب الإبلاغ / * ${payload.reason || 'محتوى غير لائق'}\n👤 *المُبلّغ / * ${payload.reporterName || 'مستخدم'}`;
+      text = `🚩 <b>تم الإبلاغ عن تعليق كمسيء!</b>\n\n🏢 <b>المكان:</b> ${payload.placeName || 'المكان'}\n👤 <b>كاتب التعليق:</b> ${payload.userName || 'عميل'}\n💬 <b>التعليق:</b> <i>"${payload.comment || ''}"</i>\n⚠️ <b>السبب:</b> ${payload.reason || 'محتوى غير لائق'}\n👤 <b>المُبلّغ:</b> ${payload.reporterName || 'مستخدم'}`;
     } else if (type === 'new_place') {
-      text = `🏢 *تمت إضافة مكان جديد للمنصة:*\n\n📌 *الاسم:* ${payload.name}\n📂 *التصنيف:* ${payload.categoryName || 'عام'}\n📞 *الهاتف:* \`${payload.phone || 'غير مسجل'}\`\n📍 *المنطقة:* ${payload.area || 'المنزلة'}`;
+      text = `🏢 <b>تمت إضافة مكان جديد للمنصة:</b>\n\n📌 <b>الاسم:</b> ${payload.name}\n📂 <b>التصنيف:</b> ${payload.categoryName || 'عام'}\n📞 <b>الهاتف:</b> <code>${payload.phone || 'غير مسجل'}</code>\n📍 <b>المنطقة:</b> ${payload.area || 'المنزلة'}`;
     } else if (type === 'verification_request') {
-      text = `🛡️ *طلب توثيق جديد ورد الآن!*\n\n🏢 *المكان:* ${payload.placeName}\n👤 *مقدم الطلب:* ${payload.requesterName || payload.requesterEmail}\n📞 *الهاتف:* \`${payload.phone || 'غير مسجل'}\``;
+      text = `🛡️ <b>طلب توثيق جديد ورد الآن!</b>\n\n🏢 <b>المكان:</b> ${payload.placeName}\n👤 <b>مقدم الطلب:</b> ${payload.requesterName || payload.requesterEmail}\n📞 <b>الهاتف:</b> <code>${payload.phone || 'غير مسجل'}</code>\n💬 <i>"${payload.notes || 'طلب التوثيق'}"</i>`;
+    } else if (type === 'appointment_booking') {
+      text = `📅 <b>طلب حجز موعد جديد!</b>\n\n🏢 <b>المكان:</b> ${payload.placeName}\n👤 <b>العميل:</b> ${payload.clientName}\n📞 <b>الهاتف:</b> <code>${payload.clientPhone}</code>\n🗓️ <b>الموعد:</b> ${payload.preferredDate} (${payload.preferredTime || 'مسائي'})\n🩺 <b>الخدمة:</b> ${payload.serviceNeeded || 'عام'}`;
+    } else if (type === 'contact_message') {
+      text = `📩 <b>رسالة جديدة من نموذج التواصل!</b>\n\n👤 <b>الاسم:</b> ${payload.name}\n📞 <b>التواصل:</b> <code>${payload.contact || payload.phone || ''}</code>\n📝 <i>"${payload.message || ''}"</i>`;
     } else {
-      text = `📢 *إشعار من المنصة:*\n\n${JSON.stringify(payload, null, 2)}`;
+      text = `📢 <b>إشعار من المنصة:</b>\n\n<pre>${JSON.stringify(payload, null, 2)}</pre>`;
     }
 
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -2159,7 +2187,7 @@ export async function sendTelegramAdminNotification(type, payload) {
       body: JSON.stringify({
         chat_id: chatId,
         text: text,
-        parse_mode: 'Markdown'
+        parse_mode: 'HTML'
       })
     });
   } catch (_) {}

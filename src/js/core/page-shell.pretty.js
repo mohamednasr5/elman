@@ -1707,14 +1707,34 @@ function _setupHeaderSearch() {
           const cat = p.categoryName || doc.category || '';
           const area = p.area || p.address || 'مدينة المنزلة';
           const slug = p.slug || p.id || '';
-          const photo = p.photoURL || p.logo || p.coverURL || '';
+          const photo = p.photoURL || p.logo || p.coverURL || p.coverImageUrl || p.logoUrl || '';
           const isVerified = p.isVerified || false;
           const isOpen = p.isOpen !== undefined ? p.isOpen : true;
+
+          if (typeof window !== 'undefined' && window._placesRegistry && slug) {
+            const cleanSlug = String(slug).toLowerCase().trim();
+            window._placesRegistry.set(cleanSlug, p);
+            if (p.slug) window._placesRegistry.set(String(p.slug).toLowerCase().trim(), p);
+            if (p.id) window._placesRegistry.set(String(p.id).toLowerCase().trim(), p);
+          }
 
           const letter = (name.trim()[0] || 'م').toUpperCase();
 
           return `
-            <a href="/place.html?slug=${encodeURIComponent(slug)}" class="header-live-dropdown__item" role="option">
+            <a href="/place.html?slug=${encodeURIComponent(slug)}" class="header-live-dropdown__item" role="option"
+               data-place-id="${_esc(p.id || slug)}"
+               data-place-slug="${_esc(slug)}"
+               data-name="${_esc(name)}"
+               data-phone="${_esc(p.phone || '')}"
+               data-whatsapp="${_esc(p.whatsapp || '')}"
+               data-area="${_esc(area)}"
+               data-address="${_esc(p.address || '')}"
+               data-cover="${_esc(p.coverImageUrl || photo)}"
+               data-logo="${_esc(p.logoUrl || photo)}"
+               data-category="${_esc(cat)}"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${_esc(slug)}', event) : null"
+               ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${_esc(slug)}', this)"
+               onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${_esc(slug)}', this)">
               <div class="header-live-avatar">
                 ${photo
                   ? `<img src="${photo}" alt="${_esc(name)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'header-live-avatar-fallback\\'>${letter}</div>'"/>`

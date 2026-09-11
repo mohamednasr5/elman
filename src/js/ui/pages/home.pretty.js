@@ -252,8 +252,12 @@ const FALLBACK_VERIFIED_PLACES = [
     slug: 'mtam-basl-wbaha-llmakwlat-albhrya',
     name: 'مطعم باسل وباهى للمأكولات البحرية',
     area: 'المطرية دقهلية',
+    address: 'المطرية - ش الثورة',
+    phone: '01062944644',
+    whatsapp: '01062944644',
     category: 'مطاعم وأسماك',
     cover: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=180&q=75',
+    coverImageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=180&q=75',
     isSponsored: true
   },
   {
@@ -261,8 +265,12 @@ const FALLBACK_VERIFIED_PLACES = [
     slug: '-P03LX9MledW_z7QfyHO',
     name: 'الحسن لصيانة الهواتف المحمولة',
     area: 'المنزلة - شارع البحر',
+    address: 'المنزلة - شارع البحر أمام البنك',
+    phone: '01026046049',
+    whatsapp: '01026046049',
     category: 'صيانة وموبايل',
     cover: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=300&h=180&q=75',
+    coverImageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=300&h=180&q=75',
     isSponsored: true
   },
   {
@@ -270,8 +278,12 @@ const FALLBACK_VERIFIED_PLACES = [
     slug: 'mtbkh-eyma-llaakl-albyty',
     name: 'مطبخ إيمى للأكل البيتي',
     area: 'المنزلة - طريق المنصورة',
+    address: 'المنزلة - طريق المنصورة الرئيسي',
+    phone: '01090123456',
+    whatsapp: '01090123456',
     category: 'أكل بيتي وحلويات',
     cover: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=300&h=180&q=75',
+    coverImageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=300&h=180&q=75',
     isSponsored: false
   },
   {
@@ -279,8 +291,12 @@ const FALLBACK_VERIFIED_PLACES = [
     slug: 'kwafyr-mnh-asad',
     name: 'كوافير منه أسعد',
     area: 'المنزلة - حي السلام',
+    address: 'المنزلة - حي السلام',
+    phone: '01099887766',
+    whatsapp: '01099887766',
     category: 'بيوتي وكوافير',
     cover: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&h=180&q=75',
+    coverImageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&h=180&q=75',
     isSponsored: false
   }
 ];
@@ -302,15 +318,21 @@ function initHomeVerifiedShowcase(allPlaces = null) {
     }
   } catch (_) {}
 
-  // 2. If places provided from DB / Worker, process and update cache
+  // 2. If places provided from DB / Worker, process and update cache with COMPLETE fields
   if (Array.isArray(allPlaces) && allPlaces.length > 0) {
     const extracted = allPlaces
       .filter(p => p && p.isVerified && !isAtmPlace(p))
       .map(p => ({
+        ...p,
         id: p.id || p._key,
         slug: p.slug || p.id,
         name: p.name,
         area: p.area || 'المنزلة والمطرية',
+        address: p.address || '',
+        phone: p.phone || '',
+        whatsapp: p.whatsapp || '',
+        logoUrl: p.logoUrl || '',
+        coverImageUrl: p.coverImageUrl || (p.gallery && p.gallery[0]) || '',
         category: p.categoryName || p.customCategory || p.categoryId || 'نشاط تجاري',
         cover: p.coverImageUrl || p.logoUrl || (p.gallery && p.gallery[0]) || '/assets/images/og-whatsapp.jpg',
         isSponsored: Boolean(p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > Date.now()))
@@ -330,6 +352,20 @@ function initHomeVerifiedShowcase(allPlaces = null) {
     }
   }
 
+  // Synchronously seed places registry for 0ms transitions
+  if (typeof window !== 'undefined' && Array.isArray(_homeVerifiedPool)) {
+    window._placesRegistry = window._placesRegistry || new Map();
+    for (const p of _homeVerifiedPool) {
+      if (!p) continue;
+      const s = String(p.slug || p.id || '').toLowerCase().trim();
+      if (s) {
+        window._placesRegistry.set(s, p);
+        if (p.slug) window._placesRegistry.set(String(p.slug).toLowerCase().trim(), p);
+        if (p.id) window._placesRegistry.set(String(p.id).toLowerCase().trim(), p);
+      }
+    }
+  }
+
   const rankLabels = [
     '🥇 الصدارة #1',
     '🥈 الصدارة #2',
@@ -342,13 +378,24 @@ function initHomeVerifiedShowcase(allPlaces = null) {
       const targetSlug = p.slug || p.id || '';
       return `
       <article class="fair-place-card" data-card-index="${index}"
+               data-place-id="${escAttr(p.id || '')}"
+               data-place-slug="${escAttr(targetSlug)}"
+               data-name="${escAttr(p.name || '')}"
+               data-phone="${escAttr(p.phone || '')}"
+               data-whatsapp="${escAttr(p.whatsapp || '')}"
+               data-area="${escAttr(p.area || '')}"
+               data-address="${escAttr(p.address || '')}"
+               data-cover="${escAttr(p.coverImageUrl || p.cover || '')}"
+               data-logo="${escAttr(p.logoUrl || p.logo || '')}"
+               data-category="${escAttr(p.category || '')}"
                onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')"
-               onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
-               onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
+               ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
+               onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
+               onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
                style="cursor:pointer">
         <span class="fair-place-card__rank">${rankLabels[index] || `🎖️ الصدارة #${index + 1}`}</span>
         <div class="fair-place-card__cover">
-          <img src="${escAttr(p.cover)}" alt="${escAttr(p.name)}" loading="lazy" onerror="this.src='/assets/images/og-whatsapp.jpg'">
+          <img src="${escAttr(p.coverImageUrl || p.cover)}" alt="${escAttr(p.name)}" loading="lazy" onerror="this.src='/assets/images/og-whatsapp.jpg'">
           <div class="fair-place-card__badges">
             ${p.isSponsored ? '<span class="fair-badge-sponsored">⭐ إعلان مميز</span>' : ''}
             <span class="fair-badge-verified">✓ موثق رسمياً</span>
@@ -449,9 +496,13 @@ function renderOffers(offers) {
 
     return `
       <article class="offer-card"
+               data-place-slug="${escAttr(offer.placeSlug || '')}"
+               data-name="${escAttr(offer.placeName || offer.title || '')}"
+               data-cover="${escAttr(offer.imageUrl || '')}"
                onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(offer.placeSlug || '')}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(offer.placeSlug || '')}')"
-               onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(offer.placeSlug || '')}')"
-               onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(offer.placeSlug || '')}')"
+               ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(offer.placeSlug || '')}', this)"
+               onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(offer.placeSlug || '')}', this)"
+               onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(offer.placeSlug || '')}', this)"
                style="cursor:pointer">
         <div class="offer-card__image">
           ${offer.imageUrl
@@ -507,9 +558,18 @@ function renderDeliveryServices(places) {
     const targetSlug = place.slug || place._key || place.id || '';
     return `
     <a href="/place.html?slug=${encodeURIComponent(targetSlug)}" class="delivery-card"
+       data-place-id="${escAttr(place.id || place._key || '')}"
+       data-place-slug="${escAttr(targetSlug)}"
+       data-name="${escAttr(place.name || '')}"
+       data-phone="${escAttr(place.phone || '')}"
+       data-whatsapp="${escAttr(place.whatsapp || '')}"
+       data-area="${escAttr(place.area || '')}"
+       data-cover="${escAttr(place.coverImageUrl || '')}"
+       data-logo="${escAttr(place.logoUrl || '')}"
        onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')"
-       onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
-       onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}')">
+       ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
+       onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
+       onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)">
       <div class="delivery-card__icon">${deliveryIcons[place.deliveryType] || '🚀'}</div>
       <div class="delivery-card__info">
         <div class="delivery-card__name">${escHtml(place.name)}</div>
@@ -879,13 +939,33 @@ function setupHeroSearch(categories) {
           const cat = p.categoryName || doc.category || '';
           const area = p.area || p.address || 'مدينة المنزلة';
           const slug = p.slug || p.id || '';
-          const photo = p.photoURL || p.logo || p.coverURL || '';
+          const photo = p.photoURL || p.logo || p.coverURL || p.coverImageUrl || p.logoUrl || '';
           const isVerified = p.isVerified || false;
           const isOpen = p.isOpen !== undefined ? p.isOpen : true;
           const letter = (name.trim()[0] || 'م').toUpperCase();
 
+          if (typeof window !== 'undefined' && window._placesRegistry && slug) {
+            const cleanSlug = String(slug).toLowerCase().trim();
+            window._placesRegistry.set(cleanSlug, p);
+            if (p.slug) window._placesRegistry.set(String(p.slug).toLowerCase().trim(), p);
+            if (p.id) window._placesRegistry.set(String(p.id).toLowerCase().trim(), p);
+          }
+
           return `
-            <a href="/place.html?slug=${encodeURIComponent(slug)}" class="hero-live-dropdown__item" role="option">
+            <a href="/place.html?slug=${encodeURIComponent(slug)}" class="hero-live-dropdown__item" role="option"
+               data-place-id="${escAttr(p.id || slug)}"
+               data-place-slug="${escAttr(slug)}"
+               data-name="${escAttr(name)}"
+               data-phone="${escAttr(p.phone || '')}"
+               data-whatsapp="${escAttr(p.whatsapp || '')}"
+               data-area="${escAttr(area)}"
+               data-address="${escAttr(p.address || '')}"
+               data-cover="${escAttr(p.coverImageUrl || photo)}"
+               data-logo="${escAttr(p.logoUrl || photo)}"
+               data-category="${escAttr(cat)}"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(slug)}', event) : null"
+               ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(slug)}', this)"
+               onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(slug)}', this)">
               <div class="hero-live-avatar">
                 ${photo
                   ? `<img src="${escAttr(photo)}" alt="${escAttr(name)}" loading="lazy" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'hero-live-avatar-fallback\\'>${letter}</div>'"/>`

@@ -1412,6 +1412,20 @@ try {
 
       bumpDataVersion(env, ctx);
 
+      if (!existingPlace) {
+        ctx.waitUntil(sendAdminPushNotification('new_place', {
+          id: placeId,
+          name: name || body.name || body.nameAr || '',
+          categoryName: categoryName || body.categoryName || body.category || 'عام',
+          phone: phone || body.phone || '',
+          area: area || body.area || '',
+          address: address || body.address || '',
+          ownerName: auth.user.name || auth.user.displayName || body.ownerName || '',
+          ownerEmail: auth.user.email || body.ownerEmail || '',
+          slug: slug || placeId
+        }, env).catch(err => console.warn('[Telegram new_place Error]:', err)));
+      }
+
       // Cache Invalidation for this place
       try {
         const cache = caches.default;
@@ -1852,6 +1866,15 @@ try {
     await createTursoDB(env).prepare('UPDATE places SET offer_count = COALESCE(offer_count,0) + 1, updated_at = ? WHERE id = ?')
       .bind(now,placeId).run();
     bumpDataVersion(env,ctx);
+    ctx.waitUntil(sendAdminPushNotification('new_offer', {
+      id,
+      placeId,
+      placeName: place.name || 'المكان',
+      title: String(body.title || '').trim(),
+      description: String(body.description || ''),
+      discount: Number(body.discountPercent ?? body.discount_percent ?? 0),
+      price: Number(body.newPrice ?? body.new_price ?? 0)
+    }, env).catch(err => console.warn('[Telegram new_offer Error]:', err)));
     return jsonResponse({success:true,id,message:'تم حفظ العرض بنجاح'},201,corsHeaders);
   }
 
@@ -1963,6 +1986,13 @@ try {
     ).run();
     await createTursoDB(env).prepare('UPDATE places SET product_count=COALESCE(product_count,0)+1,updated_at=? WHERE id=?').bind(now,placeId).run();
     bumpDataVersion(env,ctx);
+    ctx.waitUntil(sendAdminPushNotification('new_product', {
+      id,
+      placeId,
+      placeName: place.name || 'المكان',
+      title: String(body.name || '').trim(),
+      price: Number(body.price || 0)
+    }, env).catch(err => console.warn('[Telegram new_product Error]:', err)));
     return jsonResponse({success:true,id,message:approved?'تم نشر المنتج':'تم إرسال المنتج للمراجعة'},201,corsHeaders);
   }
 
@@ -2279,6 +2309,15 @@ try {
         cPlaceId,
         cPlaceSlug
       ).run();
+
+      ctx.waitUntil(sendAdminPushNotification('new_review', {
+        placeId: cPlaceId,
+        placeSlug: cPlaceSlug,
+        placeName: cPlaceName,
+        userName,
+        rating,
+        comment
+      }, env).catch(err => console.warn('[Telegram new_review Error]:', err)));
 
       return jsonResponse({
         success: true,
@@ -2606,6 +2645,17 @@ try {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', 0, ?, ?)`
     ).bind(id, category, title, village, timing, description, photoUrl, userId, userName, userPhone, now, expiresAt).run();
 
+    ctx.waitUntil(sendAdminPushNotification('service_request', {
+      id,
+      category,
+      title,
+      village,
+      timing,
+      description,
+      userName,
+      userPhone
+    }, env).catch(err => console.warn('[Telegram service_request Error]:', err)));
+
     return jsonResponse({ success: true, id, message: 'تم نشر طلبك بنجاح وسيتواصل معك الفنيون المناسبون' }, 201, corsHeaders);
   }
 
@@ -2767,6 +2817,19 @@ try {
       inspectionFee, etaMinutes, phone, whatsapp, availableUntil, now
     ).run();
 
+    if (isAvailable) {
+      ctx.waitUntil(sendAdminPushNotification('craftsman_live', {
+        craftsmanName,
+        professionName,
+        phone,
+        whatsapp,
+        coverageVillages,
+        inspectionFee,
+        etaMinutes,
+        hours
+      }, env).catch(err => console.warn('[Telegram craftsman_live Error]:', err)));
+    }
+
     return jsonResponse({
       success: true,
       id,
@@ -2916,6 +2979,17 @@ try {
       `INSERT INTO appointment_requests (id, place_id, place_name, client_name, client_phone, preferred_date, preferred_time, service_needed, status, user_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
     ).bind(id, placeId, placeName, clientName, clientPhone, preferredDate, preferredTime, serviceNeeded, authUser?.uid || null, now).run();
+
+    ctx.waitUntil(sendAdminPushNotification('appointment_booking', {
+      id,
+      placeId,
+      placeName,
+      clientName,
+      clientPhone,
+      preferredDate,
+      preferredTime,
+      serviceNeeded
+    }, env).catch(err => console.warn('[Telegram appointment_booking Error]:', err)));
 
     return jsonResponse({ success: true, id, message: 'تم إرسال طلب الحجز بنجاح' }, 201, corsHeaders);
   }
@@ -3328,6 +3402,17 @@ try {
         INSERT INTO verification_requests (id, place_id, place_name, owner_id, owner_name, owner_email, phone, notes, status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
       `).bind(id, placeId, placeName, ownerId, ownerName, ownerEmail, phone, notes, now).run();
+
+      ctx.waitUntil(sendAdminPushNotification('verification_request', {
+        placeId,
+        placeName,
+        requestId: id,
+        requesterName: ownerName,
+        requesterEmail: ownerEmail,
+        phone,
+        notes
+      }, env).catch(err => console.warn('[Telegram verification_request Error]:', err)));
+
       return jsonResponse({ success: true, id, message: 'تم إرسال طلب التوثيق' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
@@ -3949,9 +4034,17 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
       // ── 10. Instant Push Notification (POST /api/notify) ──
       if (url.pathname === '/api/notify' && request.method === 'POST') {
-        const auth = await requireAdmin(request, env);
-        if (auth.response) return auth.response
         const body = await request.json().catch(() => ({}));
+        const allowedPublicTypes = new Set([
+          'new_review', 'service_request', 'craftsman_live', 'verification_request',
+          'contact_message', 'appointment_booking', 'review_reported', 'new_offer', 'new_product'
+        ]);
+
+        if (!allowedPublicTypes.has(body.type)) {
+          const auth = await requireAdmin(request, env);
+          if (auth.response) return auth.response;
+        }
+
         const res = await sendAdminPushNotification(body.type, body.data || body.payload || body, env);
         return jsonResponse({ success: true, result: res }, 200, corsHeaders);
       }

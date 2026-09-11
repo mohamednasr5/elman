@@ -5,6 +5,7 @@
 
 import { createAppointment } from '../../services/interactive-hub.service.js';
 import { getCurrentUser } from '../../core/auth.js';
+import { sendTelegramAdminNotification } from '../../core/db.js';
 import { showModal } from './Modal.js';
 import { toast } from './Toast.js';
 
@@ -93,6 +94,16 @@ export function openAppointmentModal(place) {
         preferredTime: time,
         serviceNeeded: service
       });
+
+      sendTelegramAdminNotification('appointment_booking', {
+        placeId: place.id,
+        placeName: place.name,
+        clientName: name,
+        clientPhone: phone,
+        preferredDate: date,
+        preferredTime: time,
+        serviceNeeded: service
+      }).catch(() => {});
 
       toast.success('تم تسجيل طلب حجزك بنجاح!');
       document.querySelector('.modal-overlay')?.remove();

@@ -85,16 +85,51 @@
               }
             } catch (_) {}
           }
+          if (!cached) {
+            try {
+              var rawPool = localStorage.getItem('manzala_verified_showcase_v1');
+              if (rawPool) {
+                var pool = JSON.parse(rawPool);
+                if (Array.isArray(pool)) {
+                  for (var i = 0; i < pool.length; i++) {
+                    var itm = pool[i];
+                    if (itm && (String(itm.slug || '').toLowerCase() === clean || String(itm.id || '').toLowerCase() === clean)) {
+                      cached = itm;
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+          if (!cached) {
+            try {
+              var rawCachedPlaces = localStorage.getItem('dalil_cache_published_100_') || localStorage.getItem('published_100_') || localStorage.getItem('published_1000_');
+              if (rawCachedPlaces) {
+                var cList = JSON.parse(rawCachedPlaces);
+                if (Array.isArray(cList)) {
+                  for (var j = 0; j < cList.length; j++) {
+                    var itm2 = cList[j];
+                    if (itm2 && (String(itm2.slug || '').toLowerCase() === clean || String(itm2.id || '').toLowerCase() === clean)) {
+                      cached = itm2;
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
           if (cached) {
             window.__INSTANT_PLACE__ = cached;
             document.documentElement.classList.add('has-instant-place');
             if (cached.name) document.title = cached.name + ' | دليل المنزلة والمطرية الرقمي';
-          } else {
-            // Dispatches parallel to stylesheet & module download
-            window.__PLACE_PREFETCH_PROMISE__ = fetch('/api/places?slug=' + encodeURIComponent(slug), {
-              headers: { 'Accept': 'application/json' }
-            }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
           }
+
+          // Dispatches parallel to stylesheet & module download
+          window.__PLACE_PREFETCH_PROMISE__ = fetch('/api/places?slug=' + encodeURIComponent(slug), {
+            headers: { 'Accept': 'application/json' }
+          }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
         }
       } catch (_) {}
     })();
@@ -381,11 +416,12 @@
         if (!container) return;
 
         var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
-        var cover = p.coverImageUrl || p.cover_image_url || '';
-        var logo = p.logoUrl || p.logo_url || '';
+        var cover = p.coverImageUrl || p.cover_image_url || p.cover || '';
+        var logo = p.logoUrl || p.logo_url || p.logo || '';
         var name = esc(p.name);
         var area = esc(p.area || 'المنزلة والمطرية');
         var address = esc(p.address || '');
+        var category = esc(p.categoryName || p.customCategory || p.categoryId || p.category || '');
         var phone = String(p.phone || '').trim();
         var whatsapp = String(p.whatsapp || '').trim();
         var isValidPh = phone && !/^0+$/.test(phone.replace(/\D/g,'')) && phone.replace(/\D/g,'').length >= 7;
@@ -405,8 +441,9 @@
                 </div>
                 <div style="flex:1;min-width:0">
                   <h1 style="margin:0 0 4px 0;font-size:1.35rem;font-weight:900;color:var(--text-primary,#0f172a);line-height:1.3">${name}</h1>
-                  <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary,#64748b)">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary,#64748b);flex-wrap:wrap">
                     <span>📍 ${area}${address ? ' — ' + address : ''}</span>
+                    ${category ? `<span style="display:inline-flex;padding:2px 8px;border-radius:6px;background:rgba(27,79,114,0.08);color:#1B4F72;font-size:11px;font-weight:700">${category}</span>` : ''}
                   </div>
                 </div>
               </div>

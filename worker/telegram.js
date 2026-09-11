@@ -32,8 +32,45 @@ function mapVerificationRow(r) {
   return {_id:r.id,id:r.id,placeId:r.place_id,placeName:r.place_name,requesterName:r.owner_name,
     requesterEmail:r.owner_email,phone:r.phone,notes:r.notes,status:r.status,verifiedUntil:r.verified_until,createdAt:r.created_at};
 }
+let _cachedTelegramCreds = null;
+let _cachedTelegramCredsTime = 0;
+
 export async function resolveTelegramCredentials(env) {
-  return {token:env?.TELEGRAM_BOT_TOKEN,adminId:env?.TELEGRAM_ADMIN_ID};
+  let token = env?.TELEGRAM_BOT_TOKEN;
+  let adminId = env?.TELEGRAM_ADMIN_ID;
+
+  if (token && adminId) {
+    return { token: String(token).trim(), adminId: String(adminId).trim() };
+  }
+
+  const now = Date.now();
+  if (_cachedTelegramCreds && (now - _cachedTelegramCredsTime < 60000)) {
+    return {
+      token: token || _cachedTelegramCreds.token,
+      adminId: adminId || _cachedTelegramCreds.adminId
+    };
+  }
+
+  try {
+    const row = await tursoFirst(env, "SELECT value_json FROM app_settings WHERE key = 'telegram' LIMIT 1");
+    if (row?.value_json) {
+      const data = typeof row.value_json === 'string' ? JSON.parse(row.value_json) : row.value_json;
+      const dbToken = data?.botToken || data?.token || data?.bot_token;
+      const dbAdminId = data?.adminChatId || data?.adminId || data?.chatId || data?.admin_chat_id;
+      if (dbToken || dbAdminId) {
+        _cachedTelegramCreds = { token: dbToken, adminId: dbAdminId };
+        _cachedTelegramCredsTime = now;
+        return {
+          token: token || dbToken,
+          adminId: adminId || dbAdminId
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[Telegram] Could not read credentials from app_settings:', err?.message || err);
+  }
+
+  return { token, adminId };
 }
 
 /**
@@ -120,6 +157,48 @@ async function handleMessage(msg, env) {
   // Command: /verifications
   if (text.startsWith('/verifications') || text === '🛡️ طلبات التوثيق') {
     await sendVerificationRequests(chatId, env);
+    return;
+  }
+
+  // Command: /services
+  if (text.startsWith('/services') || text === '📢 طلبات الخدمات' || text === 'طلبات الخدمات') {
+    await sendTelegramServiceRequests(chatId, env);
+    return;
+  }
+
+  // Command: /available
+  if (text.startsWith('/available') || text === '🟢 مين متاح' || text === 'المتاحين' || text === 'مين متاح') {
+    await sendTelegramAvailableCraftsmen(chatId, env);
+    return;
+  }
+
+  // Command: /reviews
+  if (text.startsWith('/reviews') || text === '⭐ التعليقات' || text === 'التعليقات') {
+    await sendTelegramRecentReviews(chatId, env);
+    return;
+  }
+
+  // Command: /help
+  if (text.startsWith('/help') || text === 'مساعدة' || text === 'الأوامر') {
+    await telegramApi('sendMessage', {
+      chat_id: chatId,
+      text: `🤖 <b>أوامر بوت دليل المنزلة والمطرية:</b>\n\n` +
+        `• /start أو /menu - عرض القائمة الرئيسية التفاعلية\n` +
+        `• /stats - عرض الإحصائيات الشاملة للمنصة\n` +
+        `• /verifications - استعراض طلبات التوثيق المعلقة\n` +
+        `• /services - عرض أحدث طلبات الخدمات المفتوحة\n` +
+        `• /available - عرض قائمة الحرفيين المتاحين الآن\n` +
+        `• /reviews - عرض أحدث تقييمات وتعليقات العملاء\n` +
+        `• /offers - استعراض العروض والخصومات النشطة\n` +
+        `• /sponsored - استعراض الأماكن المثبتة في الإعلانات\n` +
+        `• /search &lt;كلمة&gt; - البحث الفوري عن أي مكان\n` +
+        `• /verify &lt;كود&gt; - توثيق مكان فوراً\n` +
+        `• /unverify &lt;كود&gt; - إلغاء توثيق مكان\n` +
+        `• /promote &lt;كود&gt; - تبديل ظهور مكان كإعلان مميز\n` +
+        `• /edit &lt;كود&gt; &lt;الحقل&gt; &lt;القيمة&gt; - تعديل بيانات مكان\n` +
+        `• /addplace - إضافة مكان جديد سريعاً`,
+      parse_mode: 'HTML'
+    }, env);
     return;
   }
 
@@ -222,6 +301,12 @@ async function handleCallbackQuery(cb, env) {
     await sendStats(chatId, env, messageId);
   } else if (data === 'menu_verifications') {
     await sendVerificationRequests(chatId, env, messageId);
+  } else if (data === 'menu_services') {
+    await sendTelegramServiceRequests(chatId, env, messageId);
+  } else if (data === 'menu_available') {
+    await sendTelegramAvailableCraftsmen(chatId, env, messageId);
+  } else if (data === 'menu_reviews') {
+    await sendTelegramRecentReviews(chatId, env, messageId);
   } else if (data === 'menu_offers') {
     await sendActiveOffers(chatId, env, messageId);
   } else if (data === 'menu_sponsored') {
@@ -247,7 +332,7 @@ async function handleCallbackQuery(cb, env) {
  * Main Interactive Menu
  */
 async function sendMainMenu(chatId, name, env, editMessageId = null) {
-  const text = `👋 *أهلاً بك يا ${name} في لوحة تحكم المنزلة وناسها عبر تليجرام!*\n\nيمكنك إدارة المنصة بالكامل، متابعة الإحصائيات، التوثيق، الإعلانات، وتعديل أي مكان مباشرة من هنا.`;
+  const text = `👋 *أهلاً بك يا ${name} في لوحة تحكم دليل المنزلة والمطرية الرقمي عبر تليجرام!*\n\nيمكنك إدارة المنصة بالكامل، متابعة الإحصائيات، التوثيق، طلبات الخدمات، الحرفيين المتاحين، والتعليقات مباشرة من هنا.`;
 
   const keyboard = {
     inline_keyboard: [
@@ -256,11 +341,16 @@ async function sendMainMenu(chatId, name, env, editMessageId = null) {
         { text: '🛡️ طلبات التوثيق', callback_data: 'menu_verifications' }
       ],
       [
-        { text: '🌟 الإعلانات المميزة', callback_data: 'menu_sponsored' },
-        { text: '🔥 العروض والخصومات', callback_data: 'menu_offers' }
+        { text: '📢 طلبات الخدمات الجارية', callback_data: 'menu_services' },
+        { text: '🟢 مين متاح دلوقتي', callback_data: 'menu_available' }
       ],
       [
-        { text: '🌐 فتح المنصة مباشرة', url: 'https://elmanzla.web.app' }
+        { text: '⭐ أحدث التعليقات والآراء', callback_data: 'menu_reviews' },
+        { text: '🔥 العروض النشطة', callback_data: 'menu_offers' }
+      ],
+      [
+        { text: '🌟 الإعلانات المميزة', callback_data: 'menu_sponsored' },
+        { text: '🌐 فتح المنصة مباشرة', url: 'https://dalilmanzala.com' }
       ]
     ]
   };
@@ -785,87 +875,326 @@ async function sendSponsoredShowcase(chatId, env, editMessageId = null) {
 }
 
 /**
+ * Send Service Requests List to Admin
+ */
+async function sendTelegramServiceRequests(chatId, env, editMessageId = null) {
+  try {
+    const rows = await tursoRows(env, "SELECT * FROM service_requests WHERE status = 'open' ORDER BY created_at DESC LIMIT 10");
+    if (!rows.length) {
+      const msg = '📢 <b>طلبات الخدمات الجارية:</b>\n\nلا توجد طلبات خدمات مفتوحة حالياً.';
+      const kb = { inline_keyboard: [[{ text: '🔙 الرئيسية', callback_data: 'menu_main' }]] };
+      if (editMessageId) {
+        await telegramApi('editMessageText', { chat_id: chatId, message_id: editMessageId, text: msg, parse_mode: 'HTML', reply_markup: kb }, env);
+      } else {
+        await telegramApi('sendMessage', { chat_id: chatId, text: msg, parse_mode: 'HTML', reply_markup: kb }, env);
+      }
+      return;
+    }
+
+    let report = `📢 <b>أحدث طلبات الخدمات المفتوحة (${rows.length} طلب):</b>\n\n`;
+    rows.forEach((r, i) => {
+      report += `${i + 1}. <b>${tgEscape(r.title)}</b> (${tgEscape(r.category || 'عام')})\n` +
+        `   📍 ${tgEscape(r.village || 'المنزلة')} | ⏰ ${tgEscape(r.timing || 'الآن')}\n` +
+        `   👤 العميل: ${tgEscape(r.user_name || 'مواطن')} (<code>${tgEscape(r.user_phone)}</code>)\n` +
+        (r.description ? `   📝 "${tgEscape(r.description)}"\n` : '') +
+        `\n`;
+    });
+
+    const kb = {
+      inline_keyboard: [
+        [{ text: '🔄 تحديث', callback_data: 'menu_services' }, { text: '🔙 الرئيسية', callback_data: 'menu_main' }]
+      ]
+    };
+
+    if (editMessageId) {
+      await telegramApi('editMessageText', { chat_id: chatId, message_id: editMessageId, text: report, parse_mode: 'HTML', reply_markup: kb }, env);
+    } else {
+      await telegramApi('sendMessage', { chat_id: chatId, text: report, parse_mode: 'HTML', reply_markup: kb }, env);
+    }
+  } catch (err) {
+    await telegramApi('sendMessage', { chat_id: chatId, text: '❌ خطأ: ' + err.message }, env);
+  }
+}
+
+/**
+ * Send Live Available Craftsmen List to Admin
+ */
+async function sendTelegramAvailableCraftsmen(chatId, env, editMessageId = null) {
+  try {
+    const now = Date.now();
+    const rows = await tursoRows(env, 'SELECT * FROM craftsman_presence WHERE is_available_now = 1 AND available_until > ? ORDER BY available_until DESC LIMIT 15', now);
+    if (!rows.length) {
+      const msg = '🟢 <b>طوارئ الحرفيين (مين متاح دلوقتي):</b>\n\nلا يوجد حرفيون مفعلون كـ "متاح الآن" في الوقت الحالي.';
+      const kb = { inline_keyboard: [[{ text: '🔙 الرئيسية', callback_data: 'menu_main' }]] };
+      if (editMessageId) {
+        await telegramApi('editMessageText', { chat_id: chatId, message_id: editMessageId, text: msg, parse_mode: 'HTML', reply_markup: kb }, env);
+      } else {
+        await telegramApi('sendMessage', { chat_id: chatId, text: msg, parse_mode: 'HTML', reply_markup: kb }, env);
+      }
+      return;
+    }
+
+    let report = `🟢 <b>الحرفيون المتاحون للعمل الفوري الآن (${rows.length}):</b>\n\n`;
+    rows.forEach((c, i) => {
+      const remMins = Math.max(0, Math.round((Number(c.available_until) - now) / 60000));
+      let coverage = [];
+      try { coverage = JSON.parse(c.coverage_villages_json || '[]'); } catch (_) {}
+      report += `${i + 1}. 👷‍♂️ <b>${tgEscape(c.craftsman_name)}</b> — ${tgEscape(c.profession_name)}\n` +
+        `   📞 هاتف: <code>${tgEscape(c.phone)}</code>\n` +
+        `   ⏳ متبقي: ${remMins} دقيقة | 🚗 وصول: ${c.eta_minutes || 30} دقيقة\n` +
+        `   📍 تغطية: ${tgEscape(coverage.join('، ') || 'المنزلة')}\n\n`;
+    });
+
+    const kb = {
+      inline_keyboard: [
+        [{ text: '🔄 تحديث', callback_data: 'menu_available' }, { text: '🔙 الرئيسية', callback_data: 'menu_main' }]
+      ]
+    };
+
+    if (editMessageId) {
+      await telegramApi('editMessageText', { chat_id: chatId, message_id: editMessageId, text: report, parse_mode: 'HTML', reply_markup: kb }, env);
+    } else {
+      await telegramApi('sendMessage', { chat_id: chatId, text: report, parse_mode: 'HTML', reply_markup: kb }, env);
+    }
+  } catch (err) {
+    await telegramApi('sendMessage', { chat_id: chatId, text: '❌ خطأ: ' + err.message }, env);
+  }
+}
+
+/**
+ * Send Recent Customer Reviews List to Admin
+ */
+async function sendTelegramRecentReviews(chatId, env, editMessageId = null) {
+  try {
+    const rows = await tursoRows(env, 'SELECT * FROM reviews ORDER BY created_at DESC LIMIT 8');
+    if (!rows.length) {
+      const msg = '⭐ <b>أحدث التعليقات والآراء:</b>\n\nلا توجد تعليقات مسجلة حالياً.';
+      const kb = { inline_keyboard: [[{ text: '🔙 الرئيسية', callback_data: 'menu_main' }]] };
+      if (editMessageId) {
+        await telegramApi('editMessageText', { chat_id: chatId, message_id: editMessageId, text: msg, parse_mode: 'HTML', reply_markup: kb }, env);
+      } else {
+        await telegramApi('sendMessage', { chat_id: chatId, text: msg, parse_mode: 'HTML', reply_markup: kb }, env);
+      }
+      return;
+    }
+
+    let report = `⭐ <b>أحدث التعليقات على الأماكن (${rows.length}):</b>\n\n`;
+    rows.forEach((r, i) => {
+      const starStr = '⭐'.repeat(Math.min(5, Math.max(1, Math.round(Number(r.rating) || 5))));
+      report += `${i + 1}. 🏢 <b>${tgEscape(r.place_name || 'المكان')}</b>\n` +
+        `   👤 ${tgEscape(r.user_name || 'عميل')} ${starStr} (${r.rating}/5)\n` +
+        `   💬 <i>"${tgEscape(r.comment || 'بدون نص')}"</i>\n\n`;
+    });
+
+    const kb = {
+      inline_keyboard: [
+        [{ text: '🔄 تحديث', callback_data: 'menu_reviews' }, { text: '🔙 الرئيسية', callback_data: 'menu_main' }]
+      ]
+    };
+
+    if (editMessageId) {
+      await telegramApi('editMessageText', { chat_id: chatId, message_id: editMessageId, text: report, parse_mode: 'HTML', reply_markup: kb }, env);
+    } else {
+      await telegramApi('sendMessage', { chat_id: chatId, text: report, parse_mode: 'HTML', reply_markup: kb }, env);
+    }
+  } catch (err) {
+    await telegramApi('sendMessage', { chat_id: chatId, text: '❌ خطأ: ' + err.message }, env);
+  }
+}
+
+function tgEscape(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function getCairoFormattedTime() {
+  try {
+    return new Date().toLocaleString('ar-EG', {
+      timeZone: 'Africa/Cairo',
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+  } catch (_) {
+    return new Date().toISOString();
+  }
+}
+
+/**
  * Send Instant Push Notification to Admin Telegram
  */
 export async function sendAdminPushNotification(type, payload, env) {
-  const { adminId: chatId } = await resolveTelegramCredentials(env);
-  if (!chatId) return { ok: false, error: 'No admin chat ID configured in Worker env nor in Firebase settings/telegram' };
+  const { adminId: chatId, token } = await resolveTelegramCredentials(env);
+  if (!chatId || !token) {
+    return { ok: false, error: 'No admin chat ID or bot token configured in Worker env nor in Turso app_settings' };
+  }
 
+  const timeStr = getCairoFormattedTime();
   let text = '';
   let keyboard = null;
 
   if (type === 'new_place') {
-    text = `🏢 *تمت إضافة مكان جديد للمنصة:*\n\n` +
-      `📌 *الاسم:* ${payload.name}\n` +
-      `📂 *التصنيف:* ${payload.categoryName || payload.customCategory || 'عام'}\n` +
-      `📞 *الهاتف:* ${payload.phone || 'غير مسجل'}\n` +
-      `📍 *المنطقة:* ${payload.area || 'المنزلة'}\n` +
-      `👤 *المالك:* ${payload.ownerName || payload.ownerEmail || 'بدون'}\n` +
-      `🆔 *الكود:* \`${payload.id || payload._id}\``;
+    text = `🏢 <b>مكان جديد تم تسجيله في دليل المنزلة والمطرية!</b>\n\n` +
+      `📌 <b>اسم المكان:</b> ${tgEscape(payload.name)}\n` +
+      `📂 <b>التصنيف:</b> ${tgEscape(payload.categoryName || payload.customCategory || 'عام')}\n` +
+      `📞 <b>الهاتف:</b> <code>${tgEscape(payload.phone || 'غير مسجل')}</code>\n` +
+      `📍 <b>المنطقة / العنوان:</b> ${tgEscape(payload.area || 'المنزلة')}${payload.address ? ' - ' + tgEscape(payload.address) : ''}\n` +
+      `👤 <b>المسؤول / المالك:</b> ${tgEscape(payload.ownerName || 'بدون')} ${payload.ownerEmail ? '(' + tgEscape(payload.ownerEmail) + ')' : ''}\n` +
+      `🆔 <b>كود المكان:</b> <code>${tgEscape(payload.id || payload._id)}</code>\n` +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
 
+    const placeSlug = encodeURIComponent(payload.slug || payload.id || payload._id || '');
     keyboard = {
       inline_keyboard: [
         [
           { text: '🛡️ توثيق فوري', callback_data: `verify_accept:${payload.id || payload._id}` },
           { text: '🌟 جعله إعلان', callback_data: `toggle_sponsored:${payload.id || payload._id}` }
+        ],
+        [
+          { text: '🌐 عرض في الموقع', url: `https://dalilmanzala.com/place.html?slug=${placeSlug}` }
         ]
       ]
     };
   } else if (type === 'verification_request') {
-    text = `🛡️ *طلب توثيق جديد ورد الآن!*\n\n` +
-      `🏢 *المكان:* ${payload.placeName}\n` +
-      `👤 *مقدم الطلب:* ${payload.requesterName || payload.requesterEmail}\n` +
-      `📞 *الهاتف:* \`${payload.phone || 'غير مسجل'}\`\n` +
-      `💬 *الرسالة:* ${payload.notes || 'طلب تفعيل الشارة الموثقة'}`;
+    text = `🛡️ <b>طلب توثيق جديد ورد الآن!</b>\n\n` +
+      `🏢 <b>المكان:</b> ${tgEscape(payload.placeName)}\n` +
+      `👤 <b>مقدم الطلب:</b> ${tgEscape(payload.requesterName || payload.ownerName || 'مالك المكان')}\n` +
+      `📧 <b>البريد:</b> ${tgEscape(payload.requesterEmail || payload.ownerEmail || 'غير مسجل')}\n` +
+      `📞 <b>الهاتف للتواصل:</b> <code>${tgEscape(payload.phone || 'غير مسجل')}</code>\n` +
+      `💬 <b>الملاحظات / نص الطلب:</b>\n<i>"${tgEscape(payload.notes || 'طلب تفعيل شارة التوثيق المعتمدة للمكان')}"</i>\n` +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
 
+    const placeSlug = encodeURIComponent(payload.placeSlug || payload.placeId || '');
     keyboard = {
       inline_keyboard: [
         [
           { text: '✅ قبول وتوثيق المكان', callback_data: `verify_accept:${payload.placeId}` },
           { text: '❌ رفض', callback_data: `verify_reject:${payload.requestId || payload.placeId}` }
+        ],
+        [
+          { text: '🌐 صفحة المكان', url: `https://dalilmanzala.com/place.html?slug=${placeSlug}` }
         ]
       ]
     };
-  } else if (type === 'new_offer') {
-    text = `🔥 *تم نشر عرض جديد على المنصة!*\n\n` +
-      `🏷️ *العرض:* ${payload.title}\n` +
-      `🏢 *المكان:* ${payload.placeName}\n` +
-      `💰 *الخصم/السعر:* ${payload.discount || payload.price || 'عرض خاص'}`;
-  } else if (type === 'new_review') {
-    const starStr = '⭐'.repeat(Math.min(5, Math.max(1, payload.rating || 5)));
-    text = `🔔 *تعليق جديد على مكان في المنزلة!*\n\n` +
-      `🏢 *المكان / * ${payload.placeName || 'المكان'}\n` +
-      `👤 *صاحب التعليق / * ${payload.userName || 'عميل'}\n` +
-      `⭐ *عدد النجوم / * ${payload.rating || 5} ${starStr}\n` +
-      `💬 *نص التعليق / *\n"${payload.comment || ''}"`;
+  } else if (type === 'service_request') {
+    text = `📢 <b>طلب خدمة جديد ورد الآن (طلبات الخدمات)!</b>\n\n` +
+      `🔧 <b>نوع الخدمة:</b> ${tgEscape(payload.category || 'خدمة عامة')}\n` +
+      `📌 <b>عنوان الطلب:</b> ${tgEscape(payload.title)}\n` +
+      `📍 <b>المنطقة / القرية:</b> ${tgEscape(payload.village || 'المنزلة')}\n` +
+      `⏰ <b>التوقيت المفضل:</b> ${tgEscape(payload.timing || 'خلال اليوم')}\n` +
+      `👤 <b>اسم العميل:</b> ${tgEscape(payload.userName || 'أحد أهالي المدينة')}\n` +
+      `📞 <b>رقم الهاتف:</b> <code>${tgEscape(payload.userPhone || 'غير مسجل')}</code>\n` +
+      `📝 <b>التفاصيل:</b>\n<i>"${tgEscape(payload.description || 'لا توجد تفاصيل إضافية')}"</i>\n` +
+      `⏰ <b>توقيت النشر:</b> ${timeStr}`;
 
     keyboard = {
       inline_keyboard: [
         [
-          { text: '🌐 عرض في صفحة المكان', url: `https://elmanzla.web.app/place.html?slug=${payload.placeSlug || payload.placeId}` }
+          { text: '⚡ عرض طلبات الخدمات', url: 'https://dalilmanzala.com/now.html#service-requests' }
         ]
       ]
     };
+  } else if (type === 'craftsman_live') {
+    text = `🟢 <b>فني أعلن عن توفره الفوري للعمل الآن!</b>\n\n` +
+      `👷‍♂️ <b>اسم الفني:</b> ${tgEscape(payload.craftsmanName)}\n` +
+      `🔨 <b>المهنة / التخصص:</b> ${tgEscape(payload.professionName)}\n` +
+      `📞 <b>الهاتف:</b> <code>${tgEscape(payload.phone || 'غير مسجل')}</code>\n` +
+      `💬 <b>واتساب:</b> <code>${tgEscape(payload.whatsapp || payload.phone || 'غير مسجل')}</code>\n` +
+      `⏳ <b>ساعات التوفر:</b> متاح لمدة ${payload.hours || 3} ساعات\n` +
+      `🚗 <b>وقت الوصول المقدر:</b> ${payload.etaMinutes || 30} دقيقة\n` +
+      `💵 <b>كشفية المعاينة:</b> ${tgEscape(payload.inspectionFee || 'كشفية رمزية')}\n` +
+      `📍 <b>مناطق التغطية:</b> ${tgEscape(Array.isArray(payload.coverageVillages) ? payload.coverageVillages.join('، ') : (payload.coverageVillages || 'المنزلة ومحيطها'))}\n` +
+      `⏰ <b>توقيت التفعيل:</b> ${timeStr}`;
+
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🟢 عرض المتاحين الآن', url: 'https://dalilmanzala.com/now.html#who-is-available' }
+        ]
+      ]
+    };
+  } else if (type === 'new_review') {
+    const starStr = '⭐'.repeat(Math.min(5, Math.max(1, payload.rating || 5)));
+    text = `⭐ <b>تعليق وتقييم جديد على مكان!</b>\n\n` +
+      `🏢 <b>اسم المكان:</b> ${tgEscape(payload.placeName || 'مكان بالدليل')}\n` +
+      `👤 <b>اسم الشخص:</b> ${tgEscape(payload.userName || 'عميل مسجل')}\n` +
+      `⭐ <b>التقييم:</b> ${payload.rating || 5} من 5 ${starStr}\n` +
+      `💬 <b>نص التعليق:</b>\n<i>"${tgEscape(payload.comment || 'بدون نص')}"</i>\n` +
+      `⏰ <b>توقيت التعليق:</b> ${timeStr}`;
+
+    const placeSlug = encodeURIComponent(payload.placeSlug || payload.placeId || '');
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🌐 عرض في صفحة المكان', url: `https://dalilmanzala.com/place.html?slug=${placeSlug}#reviews` }
+        ]
+      ]
+    };
+  } else if (type === 'new_offer') {
+    text = `🔥 <b>عرض وخصم جديد تم نشره!</b>\n\n` +
+      `🏷️ <b>العرض:</b> ${tgEscape(payload.title)}\n` +
+      `🏢 <b>المكان:</b> ${tgEscape(payload.placeName)}\n` +
+      `💰 <b>الخصم / السعر:</b> ${tgEscape(payload.discount ? payload.discount + '%' : (payload.price ? payload.price + ' ج.م' : 'تخفيض خاص'))}\n` +
+      (payload.description ? `📝 <b>التفاصيل:</b> ${tgEscape(payload.description)}\n` : '') +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
+
+    keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🔥 تصفح العروض', url: 'https://dalilmanzala.com/offers.html' }
+        ]
+      ]
+    };
+  } else if (type === 'new_product') {
+    text = `🛍️ <b>منتج جديد تم إضافته لمتجر!</b>\n\n` +
+      `📦 <b>اسم المنتج:</b> ${tgEscape(payload.title || payload.name)}\n` +
+      `🏢 <b>المتجر / المكان:</b> ${tgEscape(payload.placeName || '')}\n` +
+      `💰 <b>السعر:</b> ${tgEscape(payload.price ? payload.price + ' ج.م' : 'حسب الطلب')}\n` +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
+  } else if (type === 'appointment_booking') {
+    text = `📅 <b>طلب حجز موعد جديد ورد الآن!</b>\n\n` +
+      `🏢 <b>اسم المكان / العيادة:</b> ${tgEscape(payload.placeName)}\n` +
+      `👤 <b>اسم العميل:</b> ${tgEscape(payload.clientName)}\n` +
+      `📞 <b>هاتف العميل:</b> <code>${tgEscape(payload.clientPhone)}</code>\n` +
+      `🗓️ <b>التاريخ المفضل:</b> ${tgEscape(payload.preferredDate)}\n` +
+      `🕐 <b>الفترة:</b> ${tgEscape(payload.preferredTime || 'مسائي')}\n` +
+      `🩺 <b>الخدمة المطلوبة:</b> ${tgEscape(payload.serviceNeeded || 'عام')}\n` +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
+
+    const cleanPhone = String(payload.clientPhone || '').replace(/[^0-9+]/g, '');
+    if (cleanPhone) {
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '📞 اتصال بالعميل', url: `tel:${cleanPhone}` }
+          ]
+        ]
+      };
+    }
   } else if (type === 'review_reported') {
-    text = `🚩 *تم الإبلاغ عن تعليق كمسيء!*\n\n` +
-      `🏢 *المكان / * ${payload.placeName || 'المكان'}\n` +
-      `👤 *كاتب التعليق / * ${payload.userName || 'عميل'}\n` +
-      `💬 *التعليق / * "${payload.comment || ''}"\n` +
-      `⚠️ *سبب الإبلاغ / * ${payload.reason || 'محتوى غير لائق'}\n` +
-      `👤 *مُقدّم البلاغ / * ${payload.reporterName || 'مستخدم'}`;
+    text = `🚩 <b>تم الإبلاغ عن تعليق غير لائق!</b>\n\n` +
+      `🏢 <b>المكان:</b> ${tgEscape(payload.placeName || 'المكان')}\n` +
+      `👤 <b>كاتب التعليق:</b> ${tgEscape(payload.userName || 'عميل')}\n` +
+      `💬 <b>التعليق:</b> <i>"${tgEscape(payload.comment || '')}"</i>\n` +
+      `⚠️ <b>سبب الإبلاغ:</b> ${tgEscape(payload.reason || 'محتوى غير لائق')}\n` +
+      `👤 <b>مُقدّم البلاغ:</b> ${tgEscape(payload.reporterName || 'مستخدم')}\n` +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
   } else if (type === 'contact_message') {
-    text = `📩 *رسالة جديدة من صفحة تواصل معنا!*\n\n` +
-      `👤 *الاسم:* ${payload.name}\n` +
-      `📞 *الهاتف/الإيميل:* ${payload.contact}\n` +
-      `📝 *الرسالة:* ${payload.message}`;
+    text = `📩 <b>رسالة جديدة من صفحة تواصل معنا!</b>\n\n` +
+      `👤 <b>الاسم:</b> ${tgEscape(payload.name)}\n` +
+      `📞 <b>الهاتف / وسيلة التواصل:</b> <code>${tgEscape(payload.contact || payload.phone || '')}</code>\n` +
+      (payload.email ? `📧 <b>البريد:</b> ${tgEscape(payload.email)}\n` : '') +
+      `📝 <b>الرسالة والموضوع:</b>\n<i>"${tgEscape(payload.message)}"</i>\n` +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
   } else {
-    text = `📢 *إشعار من المنصة:*\n\n${JSON.stringify(payload, null, 2)}`;
+    text = `📢 <b>إشعار جديد من منصة المنزلة وناسها:</b>\n\n<pre>${tgEscape(JSON.stringify(payload, null, 2))}</pre>\n⏰ ${timeStr}`;
   }
 
   return await telegramApi('sendMessage', {
     chat_id: chatId,
     text: text,
-    parse_mode: 'Markdown',
+    parse_mode: 'HTML',
     reply_markup: keyboard
   }, env);
 }

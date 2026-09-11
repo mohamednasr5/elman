@@ -68,6 +68,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     if (window._placesRegistry) {
       place = window._placesRegistry.get(cleanSlug) || window._placesRegistry.get(String(slug || '').trim());
     }
+    if (!place && window.__INSTANT_PLACE__) {
+      const ip = window.__INSTANT_PLACE__;
+      if (ip && (String(ip.slug || '').toLowerCase() === cleanSlug || String(ip.id || '').toLowerCase() === cleanSlug || !cleanSlug)) {
+        place = ip;
+      }
+    }
     if (!place) {
       try {
         const raw = sessionStorage.getItem('instant_place_' + cleanSlug) || sessionStorage.getItem('instant_place_latest');
@@ -79,6 +85,32 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             !cleanSlug
           )) {
             place = parsed;
+          }
+        }
+      } catch (_) {}
+    }
+    if (!place) {
+      try {
+        const raw = localStorage.getItem('instant_place_' + cleanSlug) || localStorage.getItem('instant_place_latest');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && (
+            String(parsed.slug || '').toLowerCase() === cleanSlug ||
+            String(parsed.id || '').toLowerCase() === cleanSlug ||
+            !cleanSlug
+          )) {
+            place = parsed;
+          }
+        }
+      } catch (_) {}
+    }
+    if (!place) {
+      try {
+        const rawPool = localStorage.getItem('manzala_verified_showcase_v1');
+        if (rawPool) {
+          const pool = JSON.parse(rawPool);
+          if (Array.isArray(pool)) {
+            place = pool.find(item => item && (String(item.slug || '').toLowerCase() === cleanSlug || String(item.id || '').toLowerCase() === cleanSlug));
           }
         }
       } catch (_) {}
@@ -98,7 +130,17 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
   try {
     if (!place) {
-      place = await getPlaceBySlug(slug);
+      if (typeof window !== 'undefined' && window.__PLACE_PREFETCH_PROMISE__) {
+        try {
+          const preRes = await window.__PLACE_PREFETCH_PROMISE__;
+          if (preRes && (preRes.data || preRes.name)) {
+            place = preRes.data || preRes;
+          }
+        } catch (_) {}
+      }
+      if (!place) {
+        place = await getPlaceBySlug(slug);
+      }
     }
 
     if (!place) {
@@ -107,9 +149,11 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     }
 
     // Silent background revalidation when served from instant cache
-    if (initialPlace || window.__INSTANT_PLACE__) {
-      getPlaceBySlug(slug).then(freshPlace => {
-        if (freshPlace) {
+    if (initialPlace || window.__INSTANT_PLACE__ || place) {
+      const revalPromise = (typeof window !== 'undefined' && window.__PLACE_PREFETCH_PROMISE__) ? window.__PLACE_PREFETCH_PROMISE__ : getPlaceBySlug(slug);
+      Promise.resolve(revalPromise).then(res => {
+        const freshPlace = (res && res.data) ? res.data : res;
+        if (freshPlace && freshPlace.name) {
           try {
             const ser = JSON.stringify(freshPlace);
             sessionStorage.setItem('instant_place_' + cleanSlug, ser);

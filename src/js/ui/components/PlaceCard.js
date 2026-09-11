@@ -18,6 +18,36 @@ import { isValidPhoneNumber } from '../../utils/phone.js';
 if (typeof window !== 'undefined') {
   window._placesRegistry = window._placesRegistry || new Map();
 
+  function _extractPlaceFromEl(el, slug) {
+    if (!el) return null;
+    const root = el.closest ? (el.closest('[data-place-slug], [data-slug], .place-card, .fair-place-card, [data-name]') || el) : el;
+    const name = root.getAttribute ? (root.getAttribute('data-name') || root.querySelector?.('.place-card__name, .fair-place-card__title, h3')?.textContent?.trim()) : '';
+    if (!name && !slug) return null;
+
+    const targetSlug = String(root.getAttribute?.('data-place-slug') || root.getAttribute?.('data-slug') || slug || '').trim();
+    const phone = root.getAttribute?.('data-phone') || root.querySelector?.('a[href^="tel:"]')?.getAttribute('href')?.replace('tel:', '')?.trim() || '';
+    const whatsapp = root.getAttribute?.('data-whatsapp') || root.querySelector?.('a[href*="wa.me"]')?.getAttribute('href')?.match(/wa\.me\/(\d+)/)?.[1]?.trim() || '';
+    const area = root.getAttribute?.('data-area') || '';
+    const address = root.getAttribute?.('data-address') || '';
+    const cover = root.getAttribute?.('data-cover') || root.querySelector?.('.place-card__cover img, .fair-place-card__cover img, img')?.src || '';
+    const logo = root.getAttribute?.('data-logo') || root.querySelector?.('.place-card__logo img, .fair-place-card__body img')?.src || '';
+    const category = root.getAttribute?.('data-category') || '';
+    const id = root.getAttribute?.('data-place-id') || targetSlug;
+
+    return {
+      id: id,
+      slug: targetSlug,
+      name: name || 'مكان بالدليل',
+      phone: phone,
+      whatsapp: whatsapp,
+      area: area || 'المنزلة والمطرية',
+      address: address,
+      coverImageUrl: cover,
+      logoUrl: logo,
+      categoryName: category
+    };
+  }
+
   window.__openPlaceCard = function(el, slug, event) {
     if (event) {
       if (event.target.closest('a[href^="tel:"], a[href^="https://wa.me"], button, .place-favorite-btn, .place-card__action-btn')) {
@@ -25,7 +55,11 @@ if (typeof window !== 'undefined') {
       }
     }
     const clean = String(slug || '').toLowerCase().trim();
-    const p = window._placesRegistry?.get(clean) || window._placesRegistry?.get(String(slug || '').trim());
+    let p = window._placesRegistry?.get(clean) || window._placesRegistry?.get(String(slug || '').trim());
+    if (!p) {
+      p = _extractPlaceFromEl(el, slug);
+    }
+
     if (p) {
       try {
         const serialized = JSON.stringify(p);
@@ -34,14 +68,23 @@ if (typeof window !== 'undefined') {
         localStorage.setItem('instant_place_' + clean, serialized);
         localStorage.setItem('instant_place_latest', serialized);
         window.__INSTANT_PLACE__ = p;
+        if (window._placesRegistry) {
+          window._placesRegistry.set(clean, p);
+          if (p.slug) window._placesRegistry.set(String(p.slug).toLowerCase().trim(), p);
+          if (p.id) window._placesRegistry.set(String(p.id).toLowerCase().trim(), p);
+        }
       } catch (_) {}
     }
-    window.location.href = `/place.html?slug=${encodeURIComponent(slug)}`;
+    const finalSlug = (p && p.slug) ? p.slug : (slug || '');
+    window.location.href = `/place.html?slug=${encodeURIComponent(finalSlug)}`;
   };
 
-  window.__prefetchPlaceCard = function(slug) {
+  window.__prefetchPlaceCard = function(slug, el = null) {
     const clean = String(slug || '').toLowerCase().trim();
-    const p = window._placesRegistry?.get(clean) || window._placesRegistry?.get(String(slug || '').trim());
+    let p = window._placesRegistry?.get(clean) || window._placesRegistry?.get(String(slug || '').trim());
+    if (!p && el) {
+      p = _extractPlaceFromEl(el, slug);
+    }
     if (p) {
       try {
         const serialized = JSON.stringify(p);
@@ -49,13 +92,19 @@ if (typeof window !== 'undefined') {
         sessionStorage.setItem('instant_place_latest', serialized);
         localStorage.setItem('instant_place_' + clean, serialized);
         localStorage.setItem('instant_place_latest', serialized);
+        if (window._placesRegistry) {
+          window._placesRegistry.set(clean, p);
+          if (p.slug) window._placesRegistry.set(String(p.slug).toLowerCase().trim(), p);
+          if (p.id) window._placesRegistry.set(String(p.id).toLowerCase().trim(), p);
+        }
       } catch (_) {}
     }
     // Dynamic prefetch of the HTML document for instant sub-second transition
-    if (!document.querySelector(`link[rel="prefetch"][href*="${encodeURIComponent(slug)}"]`)) {
+    const targetSlug = (p && p.slug) ? p.slug : slug;
+    if (targetSlug && !document.querySelector(`link[rel="prefetch"][href*="${encodeURIComponent(targetSlug)}"]`)) {
       const link = document.createElement('link');
       link.rel = 'prefetch';
-      link.href = `/place.html?slug=${encodeURIComponent(slug)}`;
+      link.href = `/place.html?slug=${encodeURIComponent(targetSlug)}`;
       document.head.appendChild(link);
     }
   };
@@ -202,11 +251,19 @@ export function renderPlaceCard(place) {
     <article class="${cardClasses}" 
              role="article"
              onclick="window.__openPlaceCard(this, '${escAttr(targetSlug)}', event)"
-             ontouchstart="window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
-             onpointerdown="window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
-             onmouseenter="window.__prefetchPlaceCard('${escAttr(targetSlug)}')"
+             ontouchstart="window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
+             onpointerdown="window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
+             onmouseenter="window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
              data-place-id="${escAttr(place._key || place.id)}"
              data-place-slug="${escAttr(targetSlug)}"
+             data-name="${escAttr(place.name || '')}"
+             data-phone="${escAttr(place.phone || '')}"
+             data-whatsapp="${escAttr(place.whatsapp || '')}"
+             data-area="${escAttr(place.area || '')}"
+             data-address="${escAttr(place.address || '')}"
+             data-cover="${escAttr(finalCover || rawCover || '')}"
+             data-logo="${escAttr(finalLogo || rawLogo || '')}"
+             data-category="${escAttr(place.categoryName || place.customCategory || place.categoryId || '')}"
              style="cursor:pointer">
       ${sponsoredTag}
       <div class="place-card__cover">
