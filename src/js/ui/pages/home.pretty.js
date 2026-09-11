@@ -166,7 +166,7 @@ export async function renderHomePage($main, { user } = {}) {
       // Service Requests — قسم طلبات الخدمات الجارية
       import('../components/ServiceRequestsSection.js').then(({ renderServiceRequestsSection }) => {
         const reqBox = document.getElementById('home-service-requests-container');
-        if (reqBox) renderServiceRequestsSection(reqBox, { limit: 4, showHero: true, isCompact: true });
+        if (reqBox) renderServiceRequestsSection(reqBox, { limit: 4, showHero: false, isCompact: true });
       }).catch(() => {});
 
       // AroundMeRadar — GPS nearby section

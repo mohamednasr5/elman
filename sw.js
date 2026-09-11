@@ -27,7 +27,7 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v3.9.0-instant-0ms-places-pwa-v1';
+const CACHE_VERSION = 'v4.0.0-talabat-ahlyna-live-v1';
 const STATIC_CACHE = 'manzala-static-' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'manzala-dynamic-' + CACHE_VERSION;
 const IMAGE_CACHE = 'manzala-images-' + CACHE_VERSION;

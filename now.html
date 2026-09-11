@@ -93,11 +93,15 @@
 
 <!-- Page Module -->
 <script type="module">
+  import { initPage } from './src/js/core/page-shell.js?v=20260911_ahlyna1';
+  import { renderNowPage } from './src/js/ui/pages/now.js?v=20260911_ahlyna1';
 
-  import { initPage } from './src/js/core/page-shell.js';
-  import { renderNowPage } from './src/js/ui/pages/now.js';
-  await initPage('now.html');
-  await renderNowPage(document.getElementById('page-container'));
+  const pc = document.getElementById('page-container');
+  initPage('now.html').catch(err => console.warn('[PageShell Error]:', err));
+  renderNowPage(pc).catch(err => {
+    console.error('[NowPage Error]:', err);
+    if (pc) pc.innerHTML = '<div style="text-align:center;padding:40px 16px;color:#ef4444">حدث خطأ أثناء تحميل الصفحة. يرجى إعادة المحاولة.</div>';
+  });
 </script>
 </body>
 </html>

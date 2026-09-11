@@ -65,7 +65,8 @@ export async function renderServiceRequestsSection($container, { limit = 6, show
             </div>
             <div>
               <h3 style="margin:0;font-size:1.25rem;font-weight:900;color:var(--text-primary);display:flex;align-items:center;gap:8px">
-                <span>طلبات الخدمات الجارية</span>
+                <span>📢</span>
+                <span>طلبات أهالينا الجارية</span>
                 <span style="font-size:0.75rem;background:rgba(245,158,11,0.15);color:#d97706;padding:2px 8px;border-radius:10px;font-weight:700">محدث لحظياً</span>
               </h3>
               <p style="margin:2px 0 0;font-size:0.82rem;color:var(--text-muted)">
