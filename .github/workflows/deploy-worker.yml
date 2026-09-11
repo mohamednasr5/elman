@@ -38,10 +38,29 @@ jobs:
         run: npm ci --include=prod
 
       - name: Verify Turso dependency
-        run: node -e "import('@tursodatabase/serverless').then(()=>console.log('Turso dependency OK')).catch(err=>{console.error(err);process.exit(1)})"
+        run: node -e "import('@tursodatabase/serverless').then(() => console.log('Turso dependency verified successfully')).catch(err => { console.error(err); process.exit(1); })"
 
       - name: Validate Worker bundle
         run: npx wrangler@latest deploy --dry-run
 
+      - name: Check Cloudflare authentication credentials
+        id: auth_check
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+            echo "Cloudflare authentication token detected in GitHub Secrets. Proceeding with deployment."
+          else
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error title=Deployment Failed::CLOUDFLARE_API_TOKEN is not configured in GitHub repository secrets. Deployment cannot proceed."
+              exit 1
+            else
+              echo "::notice title=Cloudflare Deployment Skipped::CLOUDFLARE_API_TOKEN secret is not configured in GitHub repository. Bundle validation succeeded, but live deployment was skipped to protect CI."
+            fi
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
       - name: Deploy Worker
+        if: steps.auth_check.outputs.has_token == 'true'
         run: npx wrangler@latest deploy
