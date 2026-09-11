@@ -1112,6 +1112,10 @@ async function renderAdminPlaces($container) {
       if (typeof window.savePlaceTrustScore === 'function') window.savePlaceTrustScore(id, score);
     } else if (action === 'analytics') {
       if (typeof window.viewPlaceAnalyticsAdmin === 'function') window.viewPlaceAnalyticsAdmin(id);
+    } else if (action === 'add-reviews') {
+      openAdminBulkReviewsModal(allPlaces, () => {
+        toast.success('تمت إضافة التقييمات بنجاح للمكان');
+      }, id);
     }
   });
 
@@ -1211,6 +1215,7 @@ function renderAdminPlacesTableRows(places) {
             <button type="button" class="btn btn-xs" data-action="transfer" data-id="${escAttr(p._id)}" style="background:#8B5CF6;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="نقل ملكية هذا المكان لمستخدم مسجل"><span style="pointer-events:none;display:inline-flex">${ICONS.users}</span><span>نقل</span></button>
             <button type="button" class="btn btn-xs" data-action="edit" data-id="${escAttr(p._id)}" style="background:#0284C7;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="تعديل كافة بيانات المكان أو الشخص"><span style="pointer-events:none;display:inline-flex">${ICONS.edit}</span></button>
             <a href="${getPlaceUrl(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="عرض صفحة المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.eye}</span></a>
+            <button type="button" class="btn btn-xs" data-action="add-reviews" data-id="${escAttr(p._id || p.id)}" data-name="${escAttr(p.name)}" style="background:#F59E0B;color:#0B1E30;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:3px" title="إضافة وتوليد تعليقات وتقييمات للمكان"><span style="pointer-events:none">💬⭐</span></button>
             <button type="button" class="btn btn-xs" data-action="delete" data-id="${escAttr(p._id)}" style="background:#EF4444;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="حذف المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.trash}</span></button>
           </div>
         </td>
@@ -2488,7 +2493,7 @@ async function renderAdminReviews($container) {
     });
   }
 
-  function openAdminBulkReviewsModal(places, onSuccess) {
+  function openAdminBulkReviewsModal(places, onSuccess, preselectedPlaceId = null) {
     let currentParsed = [];
 
     const modal = showModal({
@@ -2517,10 +2522,13 @@ async function renderAdminReviews($container) {
             <select id="bulk-rev-place" class="form-select" required style="border-radius:10px;font-weight:600">
               <option value="">-- اختر المكان من القائمة (${places.length} مكان) --</option>
               ${places.map(p => {
-                const isHammad = (p.slug === HAMMAD_PLACE_SLUG || p.name?.includes('محمد حماد'));
+                const pid = String(p.id || p._id || '');
+                const isSelected = preselectedPlaceId
+                  ? (pid === String(preselectedPlaceId))
+                  : (p.slug === HAMMAD_PLACE_SLUG || p.name?.includes('محمد حماد'));
                 return `
-                  <option value="${escAttr(p.id)}" ${isHammad ? 'selected' : ''} data-name="${escAttr(p.name)}" data-slug="${escAttr(p.slug || '')}" data-cat="${escAttr(p.categoryName || p.categoryId || '')}" data-area="${escAttr(p.area || 'المنزلة')}" data-phone="${escAttr(p.phone || '')}" data-img="${escAttr(p.coverImageUrl || p.logoUrl || '')}">
-                    ${escHtml(p.name)} ${isHammad ? '⭐ (مهندس محمد حماد)' : `(${escHtml(p.categoryName || p.categoryId || 'عام')} - ${escHtml(p.area || 'المنزلة')})`} ${p.phone ? '📞 ' + escHtml(p.phone) : ''}
+                  <option value="${escAttr(pid)}" ${isSelected ? 'selected' : ''} data-name="${escAttr(p.name)}" data-slug="${escAttr(p.slug || '')}" data-cat="${escAttr(p.categoryName || p.categoryId || '')}" data-area="${escAttr(p.area || 'المنزلة')}" data-phone="${escAttr(p.phone || '')}" data-img="${escAttr(p.coverImageUrl || p.logoUrl || '')}">
+                    ${escHtml(p.name)} ${isSelected && p.name?.includes('محمد حماد') && !preselectedPlaceId ? '⭐ (مهندس محمد حماد)' : `(${escHtml(p.categoryName || p.categoryId || 'عام')} - ${escHtml(p.area || 'المنزلة')})`} ${p.phone ? '📞 ' + escHtml(p.phone) : ''}
                   </option>
                 `;
               }).join('')}
@@ -2745,13 +2753,26 @@ async function renderAdminReviews($container) {
       previewCardId: 'bulk-rev-place-preview-card',
       totalCount: places.length,
       onSelectCallback: (selectedId) => {
-        const targetPlace = places.find(p => p.id === selectedId);
+        const targetPlace = places.find(p => String(p.id || p._id || '') === String(selectedId));
         const specInput = document.getElementById('gen-rev-specialty');
         if (targetPlace && specInput) {
-          specInput.value = targetPlace.categoryName || targetPlace.category || targetPlace.description || 'الخدمات والنشاط';
+          specInput.value = targetPlace.categoryName || targetPlace.category || targetPlace.description || targetPlace.name || 'الخدمات والنشاط';
         }
       }
     });
+
+    if (preselectedPlaceId) {
+      const targetPlace = places.find(p => String(p.id || p._id || '') === String(preselectedPlaceId));
+      const specInput = document.getElementById('gen-rev-specialty');
+      if (targetPlace && specInput) {
+        specInput.value = targetPlace.categoryName || targetPlace.category || targetPlace.description || targetPlace.name || 'الخدمات والنشاط';
+      }
+      const selectEl = document.getElementById('bulk-rev-place');
+      if (selectEl) {
+        selectEl.value = String(preselectedPlaceId);
+        selectEl.dispatchEvent(new Event('change'));
+      }
+    }
 
     // Run Generator
     document.getElementById('btn-run-synthetic-generator')?.addEventListener('click', () => {
@@ -2799,6 +2820,10 @@ async function renderAdminReviews($container) {
         toast.info('تم تحميل جدول الـ 50 تقييم الأصلية بنجاح! جاهز للإضافة ⚡');
       }
     });
+  }
+
+  if (typeof window !== 'undefined') {
+    window.openAdminBulkReviewsModal = openAdminBulkReviewsModal;
   }
 
 // ─────────────────────────────────────────────
