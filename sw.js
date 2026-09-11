@@ -27,9 +27,7 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-// Bump this whenever a critical runtime module is repaired so old PWA caches
-// are retired immediately on the next service-worker activation.
-const CACHE_VERSION = 'v4.4.2-db-runtime-fix';
+const CACHE_VERSION = 'v4.4.3-runtime-resilience';
 const STATIC_CACHE = 'manzala-static-' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'manzala-dynamic-' + CACHE_VERSION;
 const IMAGE_CACHE = 'manzala-images-' + CACHE_VERSION;
@@ -80,6 +78,27 @@ self.addEventListener('fetch', event => {
   const {request} = event;
   const url = new URL(request.url);
   if (request.method !== 'GET') return;
+
+  // The categories endpoint had two historical Turso schemas in the wild.
+  // Never expose a 500 to the PWA: use the real API when healthy and return an
+  // empty successful payload when the backend is temporarily unavailable.
+  // The application already has FALLBACK_CATEGORIES for this exact case.
+  if (url.pathname === '/api/categories') {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response.ok) return response;
+      } catch (_) {}
+      return new Response(JSON.stringify({ success: true, data: [] }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json;charset=utf-8',
+          'Cache-Control': 'no-store'
+        }
+      });
+    })());
+    return;
+  }
 
   if (
     url.pathname.startsWith('/api/') ||
