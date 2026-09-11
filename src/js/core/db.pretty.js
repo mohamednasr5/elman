@@ -1385,8 +1385,36 @@ export async function getCategories(forceFresh = false) {
   } catch (err) {
     console.warn('[getCategories] Worker error:', err?.message || err);
   }
-  return [];
+
+  // 3. Resilient Fallbacks: IDB -> Cache -> Static Default (NEVER return empty)
+  try {
+    const local = await idbGetAll(STORES.CATEGORIES);
+    if (Array.isArray(local) && local.length > 0) return setCache('categories_all', local);
+  } catch (_) {}
+  const memCached = getCached('categories_all');
+  if (Array.isArray(memCached) && memCached.length > 0) return memCached;
+
+  return FALLBACK_CATEGORIES;
 }
+
+export const FALLBACK_CATEGORIES = [
+  { id: 'doctor', slug: 'doctor', name: 'دكتور وعيادات', icon: '👨‍⚕️', color: '#0284C7', order: 1 },
+  { id: 'pharmacy', slug: 'pharmacy', name: 'صيدلية وأدوية', icon: '💊', color: '#059669', order: 2 },
+  { id: 'restaurants-and-cafes', slug: 'restaurants-and-cafes', name: 'مطاعم وكافيهات', icon: '🍽️', color: '#EA580C', order: 3 },
+  { id: 'supermarket', slug: 'supermarket', name: 'سوبر ماركت', icon: '🛒', color: '#1B4F72', order: 4 },
+  { id: 'delivery', slug: 'delivery', name: 'خدمات التوصيل والدليفري', icon: '🚀', color: '#EA580C', order: 5 },
+  { id: 'confectioner and cake shop', slug: 'confectioner and cake shop', name: 'حلواني ومخبوزات', icon: '🍰', color: '#D97706', order: 6 },
+  { id: 'butchery and meat', slug: 'butchery and meat', name: 'جزارة ولحوم', icon: '🥩', color: '#DC2626', order: 7 },
+  { id: 'electrical appliance maintenance', slug: 'electrical appliance maintenance', name: 'صيانة الأجهزة المنزلية', icon: '📺', color: '#2563EB', order: 8 },
+  { id: 'sale of computers and laptops', slug: 'sale of computers and laptops', name: 'موبايل وكمبيوتر', icon: '📱', color: '#2563EB', order: 9 },
+  { id: 'plumbing', slug: 'plumbing', name: 'سباكة وأدوات صحية', icon: '🔧', color: '#0284C7', order: 10 },
+  { id: 'electrician', slug: 'electrician', name: 'كهرباء وتأسيس', icon: '⚡', color: '#EAB308', order: 11 },
+  { id: 'wedding, engagement and evening dress atelier', slug: 'wedding, engagement and evening dress atelier', name: 'اتيلية فساتين زفاف وسهرة', icon: '👗', color: '#E11D48', order: 12 },
+  { id: 'real estate company', slug: 'real estate company', name: 'عقارات وأراضي', icon: '🏢', color: '#0F766E', order: 13 },
+  { id: 'travel and tourism', slug: 'travel and tourism', name: 'سفر وسياحة', icon: '✈️', color: '#0284C7', order: 14 },
+  { id: 'courses center', slug: 'courses center', name: 'سنتر كورسات وتعليم', icon: '🎓', color: '#7C3AED', order: 15 },
+  { id: 'cash and balance services', slug: 'cash and balance services', name: 'خدمات الكاش والرصيد', icon: '💵', color: '#16A34A', order: 16 }
+];
 
 async function _syncCategoriesInBackground() {
   try {
@@ -1443,11 +1471,15 @@ export async function getCategory(slug) {
 /** Get active offers (not expired) */
 export async function getActiveOffers(limit=20) {
   const key='offers_active_'+limit,cached=getCached(key,300000);
-  if(Array.isArray(cached))return cached;
-  try{const data=await tursoFetch('/api/offers');const now=Date.now();
+  if(Array.isArray(cached) && cached.length > 0) return cached;
+  try{
+    const data=await tursoFetch('/api/offers');
+    const now=Date.now();
     const list=(Array.isArray(data?.data)?data.data:[]).filter(o=>!o.endDate||Number(o.endDate)>now).slice(0,Math.max(0,Number(limit)||20));
     return setCache(key,list);
-  }catch(_){return [];}
+  }catch(_){
+    return cached || [];
+  }
 }
 
 export async function getPlaceOffers(placeId) {
@@ -1491,14 +1523,14 @@ export async function adminDeleteProduct(placeId,productId) {
 export async function getAds(placement = 'homepage') {
   const key = 'ads_' + (placement || 'all');
   const cached = getCached(key, 300000);
-  if (Array.isArray(cached) && cached.length) return cached;
+  if (Array.isArray(cached) && cached.length > 0) return cached;
   try {
     const data = await tursoFetch('/api/ads');
     const list = Array.isArray(data?.data) ? data.data : [];
     const filtered = list.filter(a => !placement || a.placement === placement || a.placement === 'all');
     return setCache(key, filtered);
   } catch (_) {
-    return [];
+    return cached || [];
   }
 }
 

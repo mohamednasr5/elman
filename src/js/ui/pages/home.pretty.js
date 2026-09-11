@@ -3,7 +3,7 @@
  * Full homepage with hero, search, categories, places, offers, delivery
  */
 
-import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings, getCached } from '../../core/db.js';
+import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings, getCached, FALLBACK_CATEGORIES } from '../../core/db.js';
 import { WORKER_URL } from '../../core/firebase.js';
 import { appState } from '../../core/state.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
@@ -125,42 +125,79 @@ export async function renderHomePage($main, { user } = {}) {
     }
   } catch (_) {}
 
+  let categories = [];
+  let allPlaces = [];
+  let offers = [];
+  let ads = [];
+
   try {
-    const [categories, places, offers, ads] = await Promise.all([
+    const [categoriesRes, placesRes, offersRes, adsRes] = await Promise.allSettled([
       getCategories(),
       getPublishedPlaces({ limit: 100 }),
       getActiveOffers(8),
       getAds('homepage')
     ]);
 
-    const currentUser = getCurrentUser() || user;
-    const allPlaces = places || [];
+    categories = (categoriesRes.status === 'fulfilled' && Array.isArray(categoriesRes.value) && categoriesRes.value.length)
+      ? categoriesRes.value
+      : (getCached('categories_all') || FALLBACK_CATEGORIES || []);
 
-    // Register all places in instant memory cache for 0ms transitions
-    if (typeof window !== 'undefined' && Array.isArray(allPlaces)) {
-      window._placesRegistry = window._placesRegistry || new Map();
-      for (const p of allPlaces) {
-        if (!p) continue;
-        const s = String(p.slug || p.id || p._key || '').toLowerCase().trim();
-        if (s) {
-          window._placesRegistry.set(s, p);
-          if (p.id) window._placesRegistry.set(String(p.id).toLowerCase().trim(), p);
-          if (p.slug) window._placesRegistry.set(String(p.slug).toLowerCase().trim(), p);
-        }
+    allPlaces = (placesRes.status === 'fulfilled' && Array.isArray(placesRes.value) && placesRes.value.length)
+      ? placesRes.value
+      : (getCached('published_100_') || []);
+
+    offers = (offersRes.status === 'fulfilled' && Array.isArray(offersRes.value))
+      ? offersRes.value
+      : (getCached('offers_active_8') || []);
+
+    ads = (adsRes.status === 'fulfilled' && Array.isArray(adsRes.value))
+      ? adsRes.value
+      : (getCached('ads_homepage') || []);
+  } catch (err) {
+    console.warn('[Home] Data load non-fatal warning:', err);
+    categories = getCached('categories_all') || FALLBACK_CATEGORIES || [];
+    allPlaces = getCached('published_100_') || [];
+    offers = getCached('offers_active_8') || [];
+    ads = getCached('ads_homepage') || [];
+  }
+
+  const currentUser = getCurrentUser() || user;
+
+  // Register all places in instant memory cache for 0ms transitions
+  if (typeof window !== 'undefined' && Array.isArray(allPlaces) && allPlaces.length > 0) {
+    window._placesRegistry = window._placesRegistry || new Map();
+    for (const p of allPlaces) {
+      if (!p) continue;
+      const s = String(p.slug || p.id || p._key || '').toLowerCase().trim();
+      if (s) {
+        window._placesRegistry.set(s, p);
+        if (p.id) window._placesRegistry.set(String(p.id).toLowerCase().trim(), p);
+        if (p.slug) window._placesRegistry.set(String(p.slug).toLowerCase().trim(), p);
       }
     }
+  }
 
-    // ── Render above-fold sections (synchronous) ──
-    renderCategories(categories || []);
+  // ── Render above-fold sections (Synchronous & resilient) ──
+  try {
+    if (categories && categories.length) renderCategories(categories);
+  } catch (e) { console.warn('[Home] renderCategories err:', e); }
 
-    // Verified Places: 4-Card Horizontal Rotating Showcase with SWR Caching
+  // Verified Places: 4-Card Horizontal Rotating Showcase with SWR Caching
+  try {
     initHomeVerifiedShowcase(allPlaces);
+  } catch (e) { console.warn('[Home] initHomeVerifiedShowcase err:', e); }
 
-    // Latest Places: Sponsored first ALWAYS, then newest added places
+  // Latest Places: Sponsored first ALWAYS, then newest added places
+  try {
     const latestPlaces = sortLatestPlaces(allPlaces, currentUser?.uid);
     renderLatestPlaces(latestPlaces.slice(0, 8));
+  } catch (e) { console.warn('[Home] renderLatestPlaces err:', e); }
 
-    renderOffers(offers || []);
+  try {
+    if (offers && offers.length) renderOffers(offers);
+  } catch (e) { console.warn('[Home] renderOffers err:', e); }
+
+  try {
     const deliveryPlaces = (allPlaces || []).filter(p => {
       if (!p) return false;
       if (p.deliveryType) return true;
@@ -172,61 +209,80 @@ export async function renderHomePage($main, { user } = {}) {
       }
       return false;
     });
-    renderDeliveryServices(deliveryPlaces);
-    renderAds(ads || []);
+    if (deliveryPlaces.length) renderDeliveryServices(deliveryPlaces);
+  } catch (e) { console.warn('[Home] renderDeliveryServices err:', e); }
 
-    // Stats bar
+  try {
+    if (ads && ads.length) renderAds(ads);
+  } catch (e) { console.warn('[Home] renderAds err:', e); }
+
+  // Stats bar
+  try {
     renderStatsBar((allPlaces.length || 0), (categories?.length || 31));
+  } catch (_) {}
 
-    // Warm up search engine with fresh places & categories
+  // Warm up search engine with fresh places & categories
+  try {
     warmupSearchEngine(allPlaces, categories || []);
+  } catch (_) {}
 
-    // Setup hero search
+  // Setup hero search
+  try {
     setupHeroSearch(categories || []);
+  } catch (_) {}
 
-    // Setup villages and towns quick search filter
+  // Setup villages and towns quick search filter
+  try {
     setupVillagesSearch();
+  } catch (_) {}
 
-    // ── Lazy-load below-fold sections (dynamic imports) ──
-    // These are not visible on first screen — load after critical content
-    Promise.resolve().then(() => {
-      // WhoIsAvailable (craftsmen on-call) — first below-fold section
+  // ── Lazy-load below-fold sections (dynamic imports) ──
+  // These are not visible on first screen — load after critical content
+  Promise.resolve().then(() => {
+    // WhoIsAvailable (craftsmen on-call) — first below-fold section
+    try {
       import('../components/WhoIsAvailableNow.js').then(({ renderWhoIsAvailableNow }) => {
         const craftsmenBox = document.getElementById('home-oncall-craftsmen-container');
         if (craftsmenBox) renderWhoIsAvailableNow(craftsmenBox);
-      }).catch(() => {});
+      }).catch(e => console.warn('[Home] WhoIsAvailableNow load err:', e));
+    } catch (_) {}
 
-      // Service Requests — قسم طلبات الخدمات الجارية
+    // Service Requests — قسم طلبات الخدمات الجارية
+    try {
       import('../components/ServiceRequestsSection.js').then(({ renderServiceRequestsSection }) => {
         const reqBox = document.getElementById('home-service-requests-container');
         if (reqBox) renderServiceRequestsSection(reqBox, { limit: 4, showHero: false, isCompact: true });
-      }).catch(() => {});
+      }).catch(e => console.warn('[Home] ServiceRequestsSection load err:', e));
+    } catch (_) {}
 
-      // AroundMeRadar — GPS nearby section
+    // AroundMeRadar — GPS nearby section
+    try {
       import('../components/AroundMeRadar.js').then(({ mountAroundMeRadar }) => {
         mountAroundMeRadar('home-around-me-container');
-      }).catch(() => {});
+      }).catch(e => console.warn('[Home] AroundMeRadar load err:', e));
+    } catch (_) {}
 
-      // SponsoredShowcase
+    // SponsoredShowcase
+    try {
       mountSponsoredShowcase('home-sponsored-container', allPlaces, {
         title: 'أماكن وإعلانات مميزة في المنزلة والمطرية',
         subtitle: 'أنشطة تجارية وخدمات موصى بها ومعتمدة في المدينة',
         maxVisible: 4
       });
+    } catch (e) { console.warn('[Home] SponsoredShowcase mount err:', e); }
 
-      // Wide ads banner
-      try {
-        import('../components/WideAdsBanner.js')
-          .then(({ mountWideAdsBanner }) => mountWideAdsBanner('wide-ads-banner'))
-          .catch(() => {});
-      } catch (_) {}
+    // Wide ads banner
+    try {
+      import('../components/WideAdsBanner.js')
+        .then(({ mountWideAdsBanner }) => mountWideAdsBanner('wide-ads-banner'))
+        .catch(e => console.warn('[Home] WideAdsBanner load err:', e));
+    } catch (_) {}
 
-      // First visit welcome video popup (1.mp4)
+    // First visit welcome video popup (1.mp4)
+    try {
       checkAndShowFirstVisitVideo();
-    });
-
-  } catch (err) {
-  }
+    } catch (_) {}
+  });
 }
 
 function sortLatestPlaces(places, currentUid = null, shuffleSponsored = false) {
@@ -262,9 +318,18 @@ function sortLatestPlaces(places, currentUid = null, shuffleSponsored = false) {
 
 function renderCategories(categories) {
   const grid = document.getElementById('categories-grid');
-  if (!grid || !categories) return;
+  if (!grid) return;
 
-  grid.innerHTML = categories.map(cat => {
+  const list = (Array.isArray(categories) && categories.length > 0)
+    ? categories
+    : (getCached('categories_all') || FALLBACK_CATEGORIES || []);
+
+  if (!list || !list.length) {
+    if (grid.querySelector('.category-card')) return;
+    return;
+  }
+
+  grid.innerHTML = list.map(cat => {
     const slug = cat.slug || cat._key || cat.id || '';
     const visual = getCategoryVisualMeta(cat);
     const iconHtml = renderCategoryCardIcon(cat, { size: 40 });
@@ -508,6 +573,7 @@ function renderLatestPlaces(places) {
   if (!grid) return;
 
   if (!places || !places.length) {
+    if (grid.querySelector('.fair-place-card') || grid.querySelector('.place-card')) return;
     grid.innerHTML = `
       <div class="empty-state" style="grid-column:1/-1">
         <div class="empty-state__icon">🏪</div>
@@ -527,9 +593,12 @@ function renderOffers(offers) {
   if (!scroll) return;
 
   if (!offers || !offers.length) {
-    section?.remove();
+    if (!scroll.querySelector('.offer-card')) {
+      if (section) section.style.display = 'none';
+    }
     return;
   }
+  if (section) section.style.display = '';
 
   scroll.innerHTML = offers.map(offer => {
     const discount = offer.discountPercent || calcDiscount(offer.oldPrice, offer.newPrice);
@@ -576,9 +645,12 @@ function renderDeliveryServices(places) {
   if (!grid) return;
 
   if (!places || !places.length) {
-    section?.remove();
+    if (!grid.querySelector('.delivery-card')) {
+      if (section) section.style.display = 'none';
+    }
     return;
   }
+  if (section) section.style.display = '';
 
   grid.innerHTML = places.slice(0, 8).map(place => {
     const targetSlug = place.slug || place._key || place.id || '';
@@ -910,7 +982,7 @@ function setupHeroSearch(categories) {
   const allBtn = document.getElementById('hero-live-all-btn');
 
   const quickCats = document.getElementById('hero-quick-cats');
-  if (quickCats && categories) {
+  if (quickCats && Array.isArray(categories) && categories.length > 0) {
     quickCats.innerHTML = categories.slice(0, 10).map(cat => {
       const slug = cat.slug || cat._key || cat.id || '';
       const svgIcon = getCategorySvg(slug || cat.name, 18);
