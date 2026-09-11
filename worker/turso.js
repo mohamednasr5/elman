@@ -22,6 +22,21 @@ function normalizeArgs(args) {
   return (args || []).map(value => value === undefined ? null : value);
 }
 
+function isCategoriesSortOrderError(sql, err) {
+  const text = `${err?.message || err || ''}`.toLowerCase();
+  const query = String(sql || '').toLowerCase();
+  return query.includes('categories') && query.includes('sort_order') &&
+    (/no such column|unknown column|column.*not found|does not exist/.test(text));
+}
+
+function legacyCategoriesSql(sql) {
+  // Older production databases used the quoted SQLite column "order" while
+  // the current migrations use sort_order. Keep the API compatible with both
+  // schemas until every production database has been normalized.
+  return String(sql || '')
+    .replace(/\bsort_order\b/gi, '"order"');
+}
+
 class TursoStatement {
   constructor(client, sql) {
     this.client = client;
@@ -44,6 +59,17 @@ class TursoStatement {
         return { results: rows };
       } catch (err) {
         lastErr = err;
+        if (isCategoriesSortOrderError(this.sql, err)) {
+          try {
+            const fallbackSql = legacyCategoriesSql(this.sql);
+            const rows = typeof this.client.all === 'function'
+              ? await this.client.all(fallbackSql, this.args)
+              : await (await this.client.prepare(fallbackSql)).all(this.args);
+            return { results: rows };
+          } catch (fallbackErr) {
+            lastErr = fallbackErr;
+          }
+        }
         if (attempt === 0) await new Promise(r => setTimeout(r, 60));
       }
     }
@@ -61,6 +87,17 @@ class TursoStatement {
         return row ?? null;
       } catch (err) {
         lastErr = err;
+        if (isCategoriesSortOrderError(this.sql, err)) {
+          try {
+            const fallbackSql = legacyCategoriesSql(this.sql);
+            const row = typeof this.client.get === 'function'
+              ? await this.client.get(fallbackSql, this.args)
+              : await (await this.client.prepare(fallbackSql)).get(this.args);
+            return row ?? null;
+          } catch (fallbackErr) {
+            lastErr = fallbackErr;
+          }
+        }
         if (attempt === 0) await new Promise(r => setTimeout(r, 60));
       }
     }
@@ -84,6 +121,23 @@ class TursoStatement {
         };
       } catch (err) {
         lastErr = err;
+        if (isCategoriesSortOrderError(this.sql, err)) {
+          try {
+            const fallbackSql = legacyCategoriesSql(this.sql);
+            const result = typeof this.client.run === 'function'
+              ? await this.client.run(fallbackSql, this.args)
+              : await (await this.client.prepare(fallbackSql)).run(this.args);
+            return {
+              success: true,
+              meta: {
+                changes: Number(result?.rowsAffected || 0),
+                last_row_id: result?.lastInsertRowid ?? null
+              }
+            };
+          } catch (fallbackErr) {
+            lastErr = fallbackErr;
+          }
+        }
         if (attempt === 0) await new Promise(r => setTimeout(r, 60));
       }
     }
