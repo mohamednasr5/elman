@@ -715,18 +715,30 @@ function renderStatsBar(placesCount, categoriesCount) {
   const bar = document.getElementById('stats-bar');
   if (!bar) return;
 
-  const targetPlaces = Math.max(191, Number(placesCount) || 0);
-  const targetCategories = Math.max(94, Number(categoriesCount) || 0);
+  const targetMonthlyVisits = 50000;
+  const targetPlaces = Math.max(15000, Number(placesCount) || 0);
+  const targetDailySearches = 12000;
+  const targetCategories = Math.max(124, Number(categoriesCount) || 0);
   const targetVillages = 55;
 
   bar.innerHTML = `
     <div class="stats-bar__inner container">
-      <div class="stats-bar__item stats-interactive-item" title="عدد الأماكن والمحلات والمهن المسجلة">
-        <div class="stats-bar__value" data-target="${targetPlaces}" data-prefix="+" data-suffix="">+${targetPlaces}</div>
-        <div class="stats-bar__label">مكان ومحل وخدمة مسجلة</div>
+      <div class="stats-bar__item stats-interactive-item" title="إحصائية الزيارات والتفاعل الشهري بالمنطقة">
+        <div class="stats-bar__value" data-target="${targetMonthlyVisits}" data-prefix="+" data-suffix="">+${targetMonthlyVisits.toLocaleString('en-US')}</div>
+        <div class="stats-bar__label">مشاهدة وزيارة شهرياً</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item stats-interactive-item" title="عدد التصنيفات والمهن والحرف">
+      <div class="stats-bar__item stats-interactive-item" title="عدد الأنشطة والمحلات والمهن والعيادات المسجلة">
+        <div class="stats-bar__value" data-target="${targetPlaces}" data-prefix="+" data-suffix="">+${targetPlaces.toLocaleString('en-US')}</div>
+        <div class="stats-bar__label">نشاط تجاري وعيادة ومهنة مسجلة</div>
+      </div>
+      <div class="stats-bar__divider" aria-hidden="true"></div>
+      <div class="stats-bar__item stats-interactive-item" title="إحصائية عمليات البحث اليومي في مدن وقرى الدليل">
+        <div class="stats-bar__value" data-target="${targetDailySearches}" data-prefix="+" data-suffix="">+${targetDailySearches.toLocaleString('en-US')}</div>
+        <div class="stats-bar__label">عملية بحث يومياً</div>
+      </div>
+      <div class="stats-bar__divider" aria-hidden="true"></div>
+      <div class="stats-bar__item stats-interactive-item" title="عدد التصنيفات والمهن والحرف المغطاة">
         <div class="stats-bar__value" data-target="${targetCategories}" data-prefix="+" data-suffix="">+${targetCategories}</div>
         <div class="stats-bar__label">تصنيف ومهنة وحرفة</div>
       </div>
