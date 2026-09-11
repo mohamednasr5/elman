@@ -44,7 +44,7 @@ export async function resolveTelegramCredentials(env) {
   }
 
   const now = Date.now();
-  if (_cachedTelegramCreds && (now - _cachedTelegramCredsTime < 60000)) {
+  if (_cachedTelegramCreds && (now - _cachedTelegramCredsTime < 30000)) {
     return {
       token: token || _cachedTelegramCreds.token,
       adminId: adminId || _cachedTelegramCreds.adminId
@@ -52,7 +52,10 @@ export async function resolveTelegramCredentials(env) {
   }
 
   try {
-    const row = await tursoFirst(env, "SELECT value_json FROM app_settings WHERE key = 'telegram' LIMIT 1");
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Turso timeout')), 1500));
+    const queryPromise = tursoFirst(env, "SELECT value_json FROM app_settings WHERE key = 'telegram' LIMIT 1");
+    const row = await Promise.race([queryPromise, timeoutPromise]).catch(() => null);
+
     if (row?.value_json) {
       const data = typeof row.value_json === 'string' ? JSON.parse(row.value_json) : row.value_json;
       const dbToken = data?.botToken || data?.token || data?.bot_token;
@@ -70,29 +73,43 @@ export async function resolveTelegramCredentials(env) {
     console.warn('[Telegram] Could not read credentials from app_settings:', err?.message || err);
   }
 
-  return { token, adminId };
+  // Cache absence of credentials for 30s to avoid repeated database lookups
+  _cachedTelegramCreds = { token: null, adminId: null };
+  _cachedTelegramCredsTime = now;
+
+  return { token: token || null, adminId: adminId || null };
 }
 
 /**
  * Send HTTP request to Telegram Bot API
  */
 export async function telegramApi(method, body, env) {
-  const { token } = await resolveTelegramCredentials(env);
-  if (!token) {
-    console.warn('[Telegram] TELEGRAM_BOT_TOKEN is not configured in Worker or Firebase settings.');
-    return { ok: false, description: 'Bot token not set' };
-  }
-
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    return await res.json();
+    const { token } = await resolveTelegramCredentials(env);
+    if (!token) {
+      return { ok: false, description: 'Bot token not set' };
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+      return await res.json();
+    } catch (fetchErr) {
+      console.warn(`[Telegram API fetch warning - ${method}]:`, fetchErr?.message || fetchErr);
+      return { ok: false, error: fetchErr?.message || 'Fetch failed' };
+    } finally {
+      clearTimeout(timeoutId);
+    }
   } catch (err) {
-    console.error(`[Telegram API Error - ${method}]:`, err);
-    return { ok: false, error: err.message };
+    console.warn(`[Telegram API Error - ${method}]:`, err?.message || err);
+    return { ok: false, error: err?.message || 'Telegram API Error' };
   }
 }
 
@@ -1025,10 +1042,11 @@ function getCairoFormattedTime() {
  * Send Instant Push Notification to Admin Telegram
  */
 export async function sendAdminPushNotification(type, payload, env) {
-  const { adminId: chatId, token } = await resolveTelegramCredentials(env);
-  if (!chatId || !token) {
-    return { ok: false, error: 'No admin chat ID or bot token configured in Worker env nor in Turso app_settings' };
-  }
+  try {
+    const { adminId: chatId, token } = await resolveTelegramCredentials(env);
+    if (!chatId || !token) {
+      return { ok: false, error: 'No admin chat ID or bot token configured in Worker env nor in Turso app_settings' };
+    }
 
   const timeStr = getCairoFormattedTime();
   let text = '';
@@ -1191,10 +1209,14 @@ export async function sendAdminPushNotification(type, payload, env) {
     text = `📢 <b>إشعار جديد من منصة المنزلة وناسها:</b>\n\n<pre>${tgEscape(JSON.stringify(payload, null, 2))}</pre>\n⏰ ${timeStr}`;
   }
 
-  return await telegramApi('sendMessage', {
-    chat_id: chatId,
-    text: text,
-    parse_mode: 'HTML',
-    reply_markup: keyboard
-  }, env);
+    return await telegramApi('sendMessage', {
+      chat_id: chatId,
+      text: text,
+      parse_mode: 'HTML',
+      reply_markup: keyboard
+    }, env);
+  } catch (err) {
+    console.warn(`[sendAdminPushNotification ${type} Warning]:`, err?.message || err);
+    return { ok: false, error: err?.message || 'Push notification failed' };
+  }
 }

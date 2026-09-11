@@ -13,6 +13,24 @@ const SUPERADMIN_EMAILS = new Set([
   'mohamednasrofficial@gmail.com'
 ]);
 
+function safeBackgroundNotify(type, payload, env, ctx) {
+  if (!ctx || typeof ctx.waitUntil !== 'function') {
+    sendAdminPushNotification(type, payload, env).catch(() => {});
+    return;
+  }
+  ctx.waitUntil((async () => {
+    try {
+      const timeoutPromise = new Promise(resolve => setTimeout(() => resolve({ ok: false, error: 'timeout' }), 3500));
+      await Promise.race([
+        sendAdminPushNotification(type, payload, env),
+        timeoutPromise
+      ]);
+    } catch (err) {
+      console.warn(`[safeBackgroundNotify ${type} warning]:`, err?.message || err);
+    }
+  })());
+}
+
 async function authenticateRequest(request, env) {
   const header = request.headers.get('Authorization') || '';
   const match = header.match(/^Bearer\s+(.+)$/i);
@@ -218,11 +236,6 @@ export default {
   },
 
   async fetch(request, env, ctx) {
-    if (ctx?.waitUntil) {
-      ctx.waitUntil(ensureSlugsHealedInTurso(env));
-      ctx.waitUntil(ensureNewSchemaColumnsInTurso(env));
-      ctx.waitUntil(ensureDataSanitizedInTurso(env));
-    }
     const isHead = request.method === 'HEAD';
     const effectiveRequest = isHead ? new Request(request.url, {
       method: 'GET',
@@ -1413,7 +1426,7 @@ try {
       bumpDataVersion(env, ctx);
 
       if (!existingPlace) {
-        ctx.waitUntil(sendAdminPushNotification('new_place', {
+        safeBackgroundNotify('new_place', {
           id: placeId,
           name: name || body.name || body.nameAr || '',
           categoryName: categoryName || body.categoryName || body.category || 'عام',
@@ -1423,7 +1436,7 @@ try {
           ownerName: auth.user.name || auth.user.displayName || body.ownerName || '',
           ownerEmail: auth.user.email || body.ownerEmail || '',
           slug: slug || placeId
-        }, env).catch(err => console.warn('[Telegram new_place Error]:', err)));
+        }, env, ctx);
       }
 
       // Cache Invalidation for this place
@@ -1866,7 +1879,7 @@ try {
     await createTursoDB(env).prepare('UPDATE places SET offer_count = COALESCE(offer_count,0) + 1, updated_at = ? WHERE id = ?')
       .bind(now,placeId).run();
     bumpDataVersion(env,ctx);
-    ctx.waitUntil(sendAdminPushNotification('new_offer', {
+    safeBackgroundNotify('new_offer', {
       id,
       placeId,
       placeName: place.name || 'المكان',
@@ -1874,7 +1887,7 @@ try {
       description: String(body.description || ''),
       discount: Number(body.discountPercent ?? body.discount_percent ?? 0),
       price: Number(body.newPrice ?? body.new_price ?? 0)
-    }, env).catch(err => console.warn('[Telegram new_offer Error]:', err)));
+    }, env, ctx);
     return jsonResponse({success:true,id,message:'تم حفظ العرض بنجاح'},201,corsHeaders);
   }
 
@@ -1889,23 +1902,26 @@ try {
       return jsonResponse({success:false,error:'لا تملك صلاحية تعديل هذا العرض'},403,corsHeaders);
     }
     const body = await request.json().catch(() => ({}));
+    const now = Date.now();
+    const startDate = body.startDate || body.start_date || existing.start_date;
+    const endDate = body.endDate || body.end_date || existing.end_date;
+
     await createTursoDB(env).prepare(`
-      UPDATE offers SET title=?, description=?, old_price=?, new_price=?, discount_percent=?, image_url=?,
-        start_date=?, end_date=?, status=?, updated_at=? WHERE id=?
+      UPDATE offers SET
+        title = ?, description = ?, old_price = ?, new_price = ?, discount_percent = ?,
+        image_url = ?, start_date = ?, end_date = ?, updated_at = ?
+      WHERE id = ?
     `).bind(
-      body.title !== undefined ? String(body.title).trim() : existing.title,
-      body.description !== undefined ? String(body.description) : existing.description,
-      body.oldPrice !== undefined ? Number(body.oldPrice) : existing.old_price,
-      body.newPrice !== undefined ? Number(body.newPrice) : existing.new_price,
-      body.discountPercent !== undefined ? Number(body.discountPercent) : existing.discount_percent,
-      body.imageUrl !== undefined ? String(body.imageUrl) : existing.image_url,
-      body.startDate !== undefined ? body.startDate : existing.start_date,
-      body.endDate !== undefined ? body.endDate : existing.end_date,
-      body.status !== undefined ? String(body.status) : existing.status,
-      Date.now(), id
+      String(body.title || existing.title).trim(),
+      String(body.description !== undefined ? body.description : existing.description),
+      Number(body.oldPrice !== undefined ? body.oldPrice : (body.old_price !== undefined ? body.old_price : existing.old_price)),
+      Number(body.newPrice !== undefined ? body.newPrice : (body.new_price !== undefined ? body.new_price : existing.new_price)),
+      Number(body.discountPercent !== undefined ? body.discountPercent : (body.discount_percent !== undefined ? body.discount_percent : existing.discount_percent)),
+      String(body.imageUrl !== undefined ? body.imageUrl : (body.image_url !== undefined ? body.image_url : existing.image_url)),
+      startDate, endDate, now, id
     ).run();
     bumpDataVersion(env,ctx);
-    return jsonResponse({success:true,id,message:'تم تحديث العرض'},200,corsHeaders);
+    return jsonResponse({success:true,id,message:'تم تحديث العرض بنجاح'},200,corsHeaders);
   }
 
   if (url.pathname.startsWith('/api/offers/') && request.method === 'DELETE') {
@@ -1913,15 +1929,17 @@ try {
     if (auth.response) return auth.response;
     const id = decodeURIComponent(url.pathname.replace('/api/offers/','')).trim();
     const existing = await createTursoDB(env).prepare('SELECT * FROM offers WHERE id = ? LIMIT 1').bind(id).first();
-    if (!existing) return jsonResponse({success:true},200,corsHeaders);
+    if (!existing) return jsonResponse({success:false,error:'العرض غير موجود'},404,corsHeaders);
     const place = await createTursoDB(env).prepare('SELECT owner_id, owner_email FROM places WHERE id = ? LIMIT 1').bind(existing.place_id).first();
     if (!auth.user.isAdmin && existing.owner_id !== auth.user.uid && place?.owner_id !== auth.user.uid && String(place?.owner_email || '').toLowerCase() !== auth.user.email) {
       return jsonResponse({success:false,error:'لا تملك صلاحية حذف هذا العرض'},403,corsHeaders);
     }
+    const now = Date.now();
     await createTursoDB(env).prepare('DELETE FROM offers WHERE id = ?').bind(id).run();
-    await createTursoDB(env).prepare('UPDATE places SET offer_count = MAX(COALESCE(offer_count,0)-1,0), updated_at=? WHERE id=?').bind(Date.now(),existing.place_id).run();
+    await createTursoDB(env).prepare('UPDATE places SET offer_count = MAX(0, COALESCE(offer_count,0) - 1), updated_at = ? WHERE id = ?')
+      .bind(now, existing.place_id).run();
     bumpDataVersion(env,ctx);
-    return jsonResponse({success:true,message:'تم حذف العرض'},200,corsHeaders);
+    return jsonResponse({success:true,message:'تم حذف العرض بنجاح'},200,corsHeaders);
   }
 
   if (url.pathname === '/api/offers/track-stat' && request.method === 'POST') {
@@ -1986,13 +2004,13 @@ try {
     ).run();
     await createTursoDB(env).prepare('UPDATE places SET product_count=COALESCE(product_count,0)+1,updated_at=? WHERE id=?').bind(now,placeId).run();
     bumpDataVersion(env,ctx);
-    ctx.waitUntil(sendAdminPushNotification('new_product', {
+    safeBackgroundNotify('new_product', {
       id,
       placeId,
       placeName: place.name || 'المكان',
       title: String(body.name || '').trim(),
       price: Number(body.price || 0)
-    }, env).catch(err => console.warn('[Telegram new_product Error]:', err)));
+    }, env, ctx);
     return jsonResponse({success:true,id,message:approved?'تم نشر المنتج':'تم إرسال المنتج للمراجعة'},201,corsHeaders);
   }
 
@@ -2310,14 +2328,14 @@ try {
         cPlaceSlug
       ).run();
 
-      ctx.waitUntil(sendAdminPushNotification('new_review', {
+      safeBackgroundNotify('new_review', {
         placeId: cPlaceId,
         placeSlug: cPlaceSlug,
         placeName: cPlaceName,
         userName,
         rating,
         comment
-      }, env).catch(err => console.warn('[Telegram new_review Error]:', err)));
+      }, env, ctx);
 
       return jsonResponse({
         success: true,
@@ -2645,7 +2663,7 @@ try {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', 0, ?, ?)`
     ).bind(id, category, title, village, timing, description, photoUrl, userId, userName, userPhone, now, expiresAt).run();
 
-    ctx.waitUntil(sendAdminPushNotification('service_request', {
+    safeBackgroundNotify('service_request', {
       id,
       category,
       title,
@@ -2654,7 +2672,7 @@ try {
       description,
       userName,
       userPhone
-    }, env).catch(err => console.warn('[Telegram service_request Error]:', err)));
+    }, env, ctx);
 
     return jsonResponse({ success: true, id, message: 'تم نشر طلبك بنجاح وسيتواصل معك الفنيون المناسبون' }, 201, corsHeaders);
   }
@@ -2818,7 +2836,7 @@ try {
     ).run();
 
     if (isAvailable) {
-      ctx.waitUntil(sendAdminPushNotification('craftsman_live', {
+      safeBackgroundNotify('craftsman_live', {
         craftsmanName,
         professionName,
         phone,
@@ -2827,7 +2845,7 @@ try {
         inspectionFee,
         etaMinutes,
         hours
-      }, env).catch(err => console.warn('[Telegram craftsman_live Error]:', err)));
+      }, env, ctx);
     }
 
     return jsonResponse({
@@ -2980,7 +2998,7 @@ try {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
     ).bind(id, placeId, placeName, clientName, clientPhone, preferredDate, preferredTime, serviceNeeded, authUser?.uid || null, now).run();
 
-    ctx.waitUntil(sendAdminPushNotification('appointment_booking', {
+    safeBackgroundNotify('appointment_booking', {
       id,
       placeId,
       placeName,
@@ -2989,7 +3007,7 @@ try {
       preferredDate,
       preferredTime,
       serviceNeeded
-    }, env).catch(err => console.warn('[Telegram appointment_booking Error]:', err)));
+    }, env, ctx);
 
     return jsonResponse({ success: true, id, message: 'تم إرسال طلب الحجز بنجاح' }, 201, corsHeaders);
   }
@@ -3403,7 +3421,7 @@ try {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
       `).bind(id, placeId, placeName, ownerId, ownerName, ownerEmail, phone, notes, now).run();
 
-      ctx.waitUntil(sendAdminPushNotification('verification_request', {
+      safeBackgroundNotify('verification_request', {
         placeId,
         placeName,
         requestId: id,
@@ -3411,7 +3429,7 @@ try {
         requesterEmail: ownerEmail,
         phone,
         notes
-      }, env).catch(err => console.warn('[Telegram verification_request Error]:', err)));
+      }, env, ctx);
 
       return jsonResponse({ success: true, id, message: 'تم إرسال طلب التوثيق' }, 200, corsHeaders);
     } catch (err) {
@@ -4022,13 +4040,17 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
       // ── 9b. Test Telegram Notification (POST /api/telegram/test) ──
       if (url.pathname === '/api/telegram/test' && (request.method === 'POST' || request.method === 'GET')) {
         const auth = await requireAdmin(request, env);
-        if (auth.response) return auth.response
+        if (auth.response) return auth.response;
         const body = await request.json().catch(() => ({}));
-        const testRes = await sendAdminPushNotification('contact_message', {
-          name: 'مدير المنصة (اختبار الاتصال)',
-          contact: 'لوحة التحكم',
-          message: '🔔 رسالة تجريبية لتأكيد عمل إشعارات بوت تليجرام بنجاح 100% على منصة المنزلة وناسها!'
-        }, env);
+        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve({ ok: false, error: 'Telegram dispatch timeout (3.5s limit)' }), 3500));
+        const testRes = await Promise.race([
+          sendAdminPushNotification('contact_message', {
+            name: 'مدير المنصة (اختبار الاتصال)',
+            contact: 'لوحة التحكم',
+            message: '🔔 رسالة تجريبية لتأكيد عمل إشعارات بوت تليجرام بنجاح 100% على منصة المنزلة وناسها!'
+          }, env),
+          timeoutPromise
+        ]).catch(err => ({ ok: false, error: err?.message || 'Notification error' }));
         return jsonResponse({ success: true, result: testRes }, 200, corsHeaders);
       }
 
@@ -4045,8 +4067,8 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
           if (auth.response) return auth.response;
         }
 
-        const res = await sendAdminPushNotification(body.type, body.data || body.payload || body, env);
-        return jsonResponse({ success: true, result: res }, 200, corsHeaders);
+        safeBackgroundNotify(body.type, body.data || body.payload || body, env, ctx);
+        return jsonResponse({ success: true, queued: true, message: 'تم استلام الإشعار وجدولته بنجاح' }, 200, corsHeaders);
       }
 
       // ── 11. Google Maps Short Link & Location Resolver (POST /api/maps/resolve) ──
