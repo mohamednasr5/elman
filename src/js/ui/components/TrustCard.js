@@ -11,6 +11,20 @@ export function renderTrustCard(place) {
   const isVerified = Boolean(place.is_verified || place.verified);
   const hasHours = Boolean(place.opening_hours || place.working_hours);
 
+  const rawArea = String(place.area || place.city || place.address || 'المنزلة والمطرية').trim();
+  let areaDisplay = rawArea;
+  if (!areaDisplay.startsWith('ب') && !areaDisplay.startsWith('في ') && !areaDisplay.startsWith('ف')) {
+    if (areaDisplay.startsWith('ال')) {
+      areaDisplay = `ب${areaDisplay}`;
+    } else {
+      areaDisplay = `بـ ${areaDisplay}`;
+    }
+  }
+
+  function esc(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   return `
     <div class="trust-card-container">
       <div class="trust-card-header">
@@ -48,7 +62,7 @@ export function renderTrustCard(place) {
           <div class="trust-metric-content">
             <h5>الموقع الجغرافي والفرع</h5>
             <p>
-              <span class="trust-metric-verified-tag">✓ موقع فعلي بالمنزلة</span>
+              <span class="trust-metric-verified-tag">✓ موقع فعلي ${esc(areaDisplay)}</span>
               <br />مطابق للعنوان الميداني والمعالم المحيطة
             </p>
           </div>

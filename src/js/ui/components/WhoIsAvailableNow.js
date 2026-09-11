@@ -3,7 +3,7 @@
  * «مين متاح ييجي دلوقتي؟» — Live Temporary Availability for Emergency Craftsmen
  */
 
-import { fetchLiveCraftsmen, toggleCraftsmanLive } from '../../services/interactive-hub.service.js';
+import { fetchLiveCraftsmen, toggleCraftsmanLive, voteInteractiveItem, reportInteractiveItem } from '../../services/interactive-hub.service.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { showModal } from './Modal.js';
 import { toast } from './Toast.js';
@@ -151,9 +151,116 @@ async function loadCraftsmen($container) {
               </a>
             ` : ''}
           </div>
+
+          <!-- Interactive Community Reactions: Like, Dislike & Report -->
+          <div class="oncall-reactions" style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.1);padding-top:10px;margin-top:12px;gap:6px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px">
+              <button type="button" class="btn-live-vote ${c.userVote === 'like' ? 'voted-active' : ''}" data-target-id="${c.id}" data-vote="like" title="إعجاب بالفني" style="background:${c.userVote === 'like' ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.06)'};color:${c.userVote === 'like' ? '#34d399' : '#cbd5e1'};border:1px solid ${c.userVote === 'like' ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.12)'};border-radius:8px;padding:4px 10px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:all 0.2s">
+                <span>👍</span>
+                <span class="count-val">${c.likesCount || 0}</span>
+              </button>
+              <button type="button" class="btn-live-vote ${c.userVote === 'dislike' ? 'voted-active' : ''}" data-target-id="${c.id}" data-vote="dislike" title="عدم إعجاب" style="background:${c.userVote === 'dislike' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.06)'};color:${c.userVote === 'dislike' ? '#f87171' : '#cbd5e1'};border:1px solid ${c.userVote === 'dislike' ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.12)'};border-radius:8px;padding:4px 10px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:all 0.2s">
+                <span>👎</span>
+                <span class="count-val">${c.dislikesCount || 0}</span>
+              </button>
+            </div>
+            <button type="button" class="btn-live-report" data-target-id="${c.id}" data-target-name="${(c.craftsmanName || '').replace(/"/g, '&quot;')}" title="إبلاغ عن شخص غير جاد" style="background:none;border:none;color:#94a3b8;font-size:0.75rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;transition:color 0.2s">
+              <span>🚩</span>
+              <span>إبلاغ عن غير جاد</span>
+            </button>
+          </div>
         </div>
       `;
     }).join('');
+
+    // Attach interaction listeners
+    $list.querySelectorAll('.btn-live-vote').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const user = getCurrentUser();
+        if (!user) {
+          toast.info('يجب تسجيل الدخول بحسابك أولاً للتفاعل باللايك والديسلايك');
+          return;
+        }
+        const targetId = btn.getAttribute('data-target-id');
+        const voteType = btn.getAttribute('data-vote');
+        if (!targetId || !voteType) return;
+
+        btn.disabled = true;
+        try {
+          const res = await voteInteractiveItem({ targetId, targetType: 'craftsman', voteType });
+          if (res?.deleted) {
+            toast.warning('تم حذف إعلان هذا الصنايعي فوراً لتجاوزه حد 25 ديسلايك من المجتمع');
+            const card = document.getElementById(`craftsman-${targetId}`);
+            if (card) {
+              card.style.transition = 'all 0.35s ease';
+              card.style.opacity = '0';
+              card.style.transform = 'scale(0.85)';
+              setTimeout(() => card.remove(), 350);
+            }
+            return;
+          }
+          if (res?.success) {
+            const card = document.getElementById(`craftsman-${targetId}`);
+            if (card) {
+              const likeBtn = card.querySelector('.btn-live-vote[data-vote="like"]');
+              const dislikeBtn = card.querySelector('.btn-live-vote[data-vote="dislike"]');
+              if (likeBtn) {
+                likeBtn.querySelector('.count-val').textContent = res.likesCount || 0;
+                const isL = res.userVote === 'like';
+                likeBtn.style.background = isL ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.06)';
+                likeBtn.style.color = isL ? '#34d399' : '#cbd5e1';
+                likeBtn.style.borderColor = isL ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.12)';
+              }
+              if (dislikeBtn) {
+                dislikeBtn.querySelector('.count-val').textContent = res.dislikesCount || 0;
+                const isD = res.userVote === 'dislike';
+                dislikeBtn.style.background = isD ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.06)';
+                dislikeBtn.style.color = isD ? '#f87171' : '#cbd5e1';
+                dislikeBtn.style.borderColor = isD ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.12)';
+              }
+            }
+          } else {
+            toast.error(res?.error || 'تعذر تسجيل التفاعل');
+          }
+        } catch (err) {
+          toast.error('حدث خطأ أثناء الاتصال');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    $list.querySelectorAll('.btn-live-report').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const user = getCurrentUser();
+        if (!user) {
+          toast.info('يجب تسجيل الدخول بحسابك أولاً لتقديم بلاغ');
+          return;
+        }
+        const targetId = btn.getAttribute('data-target-id');
+        const targetName = btn.getAttribute('data-target-name') || 'هذا الفني';
+        if (!targetId) return;
+
+        const reason = prompt(`إبلاغ عن عدم الجدية بخصوص (${targetName}):\nاكتب سبب الإبلاغ باختصار (مثال: شخص غير جاد، لم يرد على الهاتف، بيانات مضللة):`, 'شخص غير جاد');
+        if (reason === null) return;
+
+        btn.disabled = true;
+        try {
+          const res = await reportInteractiveItem({ targetId, targetType: 'craftsman', reason: reason.trim() || 'شخص غير جاد' });
+          if (res?.success) {
+            toast.success(res.message || 'تم تسجيل البلاغ وسيتولى فريق الإدارة مراجعته');
+          } else {
+            toast.error(res?.error || 'تعذر إرسال البلاغ');
+          }
+        } catch (err) {
+          toast.error('حدث خطأ أثناء الإبلاغ');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
 
   } catch (err) {
     console.error('[WhoIsAvailableNow] load error:', err);
@@ -179,16 +286,40 @@ export function openCraftsmanLiveToggleModal(onSuccess) {
         </div>
 
         <div>
-          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">التخصص / المهنة *</label>
-          <select id="live-profession-name" class="form-control" required style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1">
-            <option value="سباك منازل وطوارئ">سباكة وصحي منازل</option>
-            <option value="كهربائي منازل وطوارئ">كهربائي منازل وتوصيلات</option>
-            <option value="فني تكييف وتبريد">تكييف وأجهزة تبريد</option>
-            <option value="فني صيانة غسالات وبوتاجازات">صيانة أجهزة منزلية</option>
-            <option value="ونش إنقاذ وسحب سيارات">ونش إنقاذ وسيارات</option>
-            <option value="فني كاوتش وبطاريات متنقل">طوارئ كاوتش وبطاريات</option>
-            <option value="نجار طوارئ وأبواب">نجارة وأقفال أبواب</option>
-          </select>
+          <label style="display:block;font-weight:700;font-size:0.88rem;margin-bottom:6px">التخصص والنشاط / المهنة الحرة *</label>
+          <input 
+            type="text" 
+            id="live-profession-name" 
+            list="craft-professions-list" 
+            required 
+            class="form-control" 
+            placeholder="اكتب مهنتك ونشاطك بدقة (مثال: سباك منازل، فني ألوميتال، نجار موبيليا، مبلط سيراميك...)" 
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;font-size:0.9rem" 
+            autocomplete="off"
+          />
+          <datalist id="craft-professions-list">
+            <option value="سباكة وصحي منازل وطوارئ">
+            <option value="كهربائي منازل وتوصيلات">
+            <option value="تكييف وأجهزة تبريد">
+            <option value="صيانة أجهزة منزلية وغسالات">
+            <option value="نجارة موبيليا وأقفال أبواب">
+            <option value="نقاش ودهانات وديكور حديث">
+            <option value="مبلط وسيراميك وبورسلين">
+            <option value="فني ألوميتال ومطابخ وشبابيك">
+            <option value="حداد وكريتال وأبواب حديد">
+            <option value="صنايعي جبس بورد وأسقف معلقة">
+            <option value="فني دش ورسيفر وكاميرات مراقبة">
+            <option value="طوارئ كاوتش وبطاريات متنقل">
+            <option value="ونش إنقاذ وسحب سيارات">
+            <option value="ميكانيكي سيارات متنقل">
+            <option value="كهربائي سيارات وطوارئ طريق">
+            <option value="فني صيانة موتوسيكلات وتروسيكلات">
+            <option value="منجد وستائر ومفروشات">
+            <option value="أعمال عزل أسطح وخزانات">
+            <option value="فني زجاج ومرايا">
+            <option value="بناء ومحارة وترميمات">
+          </datalist>
+          <span style="font-size:0.75rem;color:#64748b;margin-top:4px;display:block">💡 يمكنك اختيار مهنة من المقترحات أو كتابة مهنتك ونشاطك الحر بأسلوبك.</span>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">

@@ -847,11 +847,28 @@ function setupHeroSearch(categories) {
   const btn = document.getElementById('hero-search-btn');
   const clearBtn = document.getElementById('hero-search-clear');
   const dropdown = document.getElementById('hero-live-dropdown');
+
+  if (!input) return;
+
+  if (dropdown && !document.getElementById('hero-live-list')) {
+    dropdown.innerHTML = `
+      <div class="hero-live-dropdown__header">
+        <span>⚡ نتائج بحث فورية في المنزلة والمطرية:</span>
+        <span class="hero-live-dropdown__count" id="hero-live-count">0</span>
+      </div>
+      <div class="hero-live-dropdown__list" id="hero-live-list"></div>
+      <div class="hero-live-dropdown__footer">
+        <a href="search.html" class="hero-live-dropdown__all-btn" id="hero-live-all-btn">
+          <span>عرض كافة النتائج في صفحة البحث المتقدم</span>
+          <span>←</span>
+        </a>
+      </div>
+    `;
+  }
+
   const resultsList = document.getElementById('hero-live-list');
   const countBadge = document.getElementById('hero-live-count');
   const allBtn = document.getElementById('hero-live-all-btn');
-
-  if (!input) return;
 
   const quickCats = document.getElementById('hero-quick-cats');
   if (quickCats && categories) {
@@ -1001,7 +1018,7 @@ function setupHeroSearch(categories) {
       } catch (err) {
         console.warn('[HeroLiveSearch] error:', err);
       }
-    }, 120);
+    }, 40);
   });
 
   // Close dropdown when clicking outside

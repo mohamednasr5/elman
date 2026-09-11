@@ -2826,7 +2826,7 @@ try {
       }
 
       const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-      const sql = `SELECT id, category, title, village, timing, description, photo_url, user_name, status, offers_count, created_at, expires_at, user_phone, user_id FROM service_requests ${whereClause} ORDER BY created_at DESC LIMIT ?`;
+      const sql = `SELECT * FROM service_requests ${whereClause} ORDER BY created_at DESC LIMIT ?`;
       args.push(limit);
 
       const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
@@ -2834,6 +2834,16 @@ try {
       // Privacy protection: mask phone numbers unless requester is authenticated owner or admin
       let clientUser = null;
       try { clientUser = await authenticateRequest(request, env); } catch (_) {}
+
+      let userVotesMap = {};
+      if (clientUser?.uid && rows.length > 0) {
+        try {
+          const ids = rows.map(r => r.id);
+          const placeholders = ids.map(() => '?').join(',');
+          const vRows = (await createTursoDB(env).prepare(`SELECT target_id, vote_type FROM interactive_votes WHERE user_id = ? AND target_id IN (${placeholders})`).bind(clientUser.uid, ...ids).all()).results || [];
+          vRows.forEach(v => { userVotesMap[v.target_id] = v.vote_type; });
+        } catch (_) {}
+      }
 
       const data = rows.map(r => {
         const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
@@ -2857,6 +2867,9 @@ try {
           isOwner: Boolean(isOwner),
           status: r.status,
           offersCount: Number(r.offers_count || 0),
+          likesCount: Number(r.likes_count || 0),
+          dislikesCount: Number(r.dislikes_count || 0),
+          userVote: userVotesMap[r.id] || null,
           createdAt: Number(r.created_at || 0),
           expiresAt: Number(r.expires_at || 0)
         };
@@ -3019,6 +3032,19 @@ try {
       const sql = `SELECT * FROM craftsman_presence ${whereClause} ORDER BY available_until DESC LIMIT 100`;
       const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
 
+      let clientUser = null;
+      try { clientUser = await authenticateRequest(request, env); } catch (_) {}
+
+      let userVotesMap = {};
+      if (clientUser?.uid && rows.length > 0) {
+        try {
+          const ids = rows.map(r => r.id);
+          const placeholders = ids.map(() => '?').join(',');
+          const vRows = (await createTursoDB(env).prepare(`SELECT target_id, vote_type FROM interactive_votes WHERE user_id = ? AND target_id IN (${placeholders})`).bind(clientUser.uid, ...ids).all()).results || [];
+          vRows.forEach(v => { userVotesMap[v.target_id] = v.vote_type; });
+        } catch (_) {}
+      }
+
       const data = rows.map(r => {
         let coverageVillages = [];
         try { coverageVillages = JSON.parse(r.coverage_villages_json || '[]'); } catch (_) {}
@@ -3036,6 +3062,9 @@ try {
           etaMinutes: Number(r.eta_minutes || 30),
           phone: r.phone,
           whatsapp: r.whatsapp,
+          likesCount: Number(r.likes_count || 0),
+          dislikesCount: Number(r.dislikes_count || 0),
+          userVote: userVotesMap[r.id] || null,
           remainingMinutes,
           availableUntil: Number(r.available_until)
         };
@@ -3170,6 +3199,120 @@ try {
     return jsonResponse({ success: true, id, message: 'تم تحديث بيانات الفني بنجاح' }, 200, corsHeaders);
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // ── INTERACTIVE COMMUNITY: LIKE / DISLIKE & REPORT ──
+  // ═══════════════════════════════════════════════════════════
+  if (url.pathname === '/api/interactive/vote' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+
+    const body = await request.json().catch(() => ({}));
+    const targetId = String(body.targetId || '').trim();
+    const targetType = String(body.targetType || '').trim(); // 'craftsman' | 'service_request'
+    const voteType = String(body.voteType || '').trim().toLowerCase(); // 'like' | 'dislike'
+
+    if (!targetId || !['craftsman', 'service_request'].includes(targetType) || !['like', 'dislike'].includes(voteType)) {
+      return jsonResponse({ success: false, error: 'بيانات التفاعل غير مكتملة أو غير صالحة' }, 400, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const userId = auth.user.uid;
+    const now = Date.now();
+
+    // Check existing vote
+    const existing = await db.prepare("SELECT id, vote_type FROM interactive_votes WHERE target_id = ? AND user_id = ?").bind(targetId, userId).first();
+    let currentVote = null;
+
+    if (existing) {
+      if (existing.vote_type === voteType) {
+        // Toggle off / cancel previous vote
+        await db.prepare("DELETE FROM interactive_votes WHERE id = ?").bind(existing.id).run();
+        currentVote = null;
+      } else {
+        // Switch vote
+        await db.prepare("UPDATE interactive_votes SET vote_type = ?, created_at = ? WHERE id = ?").bind(voteType, now, existing.id).run();
+        currentVote = voteType;
+      }
+    } else {
+      const voteId = `v_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      await db.prepare("INSERT INTO interactive_votes (id, target_id, target_type, user_id, vote_type, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(voteId, targetId, targetType, userId, voteType, now).run();
+      currentVote = voteType;
+    }
+
+    // Recalculate accurate counts
+    const lkRow = await db.prepare("SELECT COUNT(*) as c FROM interactive_votes WHERE target_id = ? AND vote_type = 'like'").bind(targetId).first();
+    const dlRow = await db.prepare("SELECT COUNT(*) as c FROM interactive_votes WHERE target_id = ? AND vote_type = 'dislike'").bind(targetId).first();
+    const likesCount = Number(lkRow?.c || 0);
+    const dislikesCount = Number(dlRow?.c || 0);
+
+    // Auto-deletion rule: 25 dislikes triggers instant removal
+    const DISLIKES_THRESHOLD = 25;
+    let isDeleted = false;
+
+    if (targetType === 'craftsman') {
+      if (dislikesCount >= DISLIKES_THRESHOLD) {
+        await db.prepare("DELETE FROM craftsman_presence WHERE id = ?").bind(targetId).run();
+        await db.prepare("DELETE FROM interactive_votes WHERE target_id = ?").bind(targetId).run().catch(() => {});
+        isDeleted = true;
+      } else {
+        await db.prepare("UPDATE craftsman_presence SET likes_count = ?, dislikes_count = ? WHERE id = ?").bind(likesCount, dislikesCount, targetId).run().catch(() => {});
+      }
+    } else if (targetType === 'service_request') {
+      if (dislikesCount >= DISLIKES_THRESHOLD) {
+        await db.prepare("DELETE FROM service_requests WHERE id = ?").bind(targetId).run();
+        await db.prepare("DELETE FROM interactive_votes WHERE target_id = ?").bind(targetId).run().catch(() => {});
+        isDeleted = true;
+      } else {
+        await db.prepare("UPDATE service_requests SET likes_count = ?, dislikes_count = ? WHERE id = ?").bind(likesCount, dislikesCount, targetId).run().catch(() => {});
+      }
+    }
+
+    return jsonResponse({
+      success: true,
+      targetId,
+      targetType,
+      likesCount: isDeleted ? 0 : likesCount,
+      dislikesCount: isDeleted ? 0 : dislikesCount,
+      userVote: isDeleted ? null : currentVote,
+      deleted: isDeleted,
+      message: isDeleted ? 'تم حذف الإعلان/الطلب فوراً لتجاوزه الحد الأقصى من عدم الإعجاب (25 ديسلايك)' : 'تم تسجيل تفاعلك بنجاح'
+    }, 200, corsHeaders);
+  }
+
+  if (url.pathname === '/api/interactive/report' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+
+    const body = await request.json().catch(() => ({}));
+    const targetId = String(body.targetId || '').trim();
+    const targetType = String(body.targetType || '').trim();
+    const reason = String(body.reason || 'شخص أو طلب غير جاد').trim();
+
+    if (!targetId || !['craftsman', 'service_request'].includes(targetType)) {
+      return jsonResponse({ success: false, error: 'بيانات الإبلاغ غير صالحة' }, 400, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const userId = auth.user.uid;
+    const userName = auth.user.name || 'مستخدم مسجل';
+    const now = Date.now();
+
+    const existing = await db.prepare("SELECT id FROM interactive_reports WHERE target_id = ? AND user_id = ?").bind(targetId, userId).first();
+    if (existing) {
+      return jsonResponse({ success: true, message: 'لقد قمت بالإبلاغ عن هذا الإعلان مسبقاً، وجاري مراجعته من الإدارة.' }, 200, corsHeaders);
+    }
+
+    const reportId = `rep_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await db.prepare("INSERT INTO interactive_reports (id, target_id, target_type, user_id, user_name, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(reportId, targetId, targetType, userId, userName, reason, now).run();
+
+    if (targetType === 'craftsman') {
+      await db.prepare("UPDATE craftsman_presence SET reports_count = COALESCE(reports_count, 0) + 1 WHERE id = ?").bind(targetId).run().catch(() => {});
+    } else if (targetType === 'service_request') {
+      await db.prepare("UPDATE service_requests SET reports_count = COALESCE(reports_count, 0) + 1 WHERE id = ?").bind(targetId).run().catch(() => {});
+    }
+
+    return jsonResponse({ success: true, message: 'شكراً لحرصك. تم تسجيل البلاغ وستتم المراجعة والإجراء فوراً.' }, 200, corsHeaders);
+  }
 
   // ═══════════════════════════════════════════════════════════
   // ── VILLAGE HUB POLLS & VOTING («تصويت خدمات القرى») ──
@@ -5099,6 +5242,35 @@ async function ensureNewSchemaColumnsInTurso(env) {
       updated_at INTEGER NOT NULL
     )`).run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_craftsman_presence_avail ON craftsman_presence(is_available_now, available_until)").run().catch(() => {});
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS interactive_votes (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      vote_type TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+    await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_votes_user_target ON interactive_votes(target_id, user_id)").run().catch(() => {});
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS interactive_reports (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      user_name TEXT,
+      reason TEXT,
+      created_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+    await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_reports_user ON interactive_reports(target_id, user_id)").run().catch(() => {});
+
+    await db.prepare("ALTER TABLE service_requests ADD COLUMN likes_count INTEGER DEFAULT 0").run().catch(() => {});
+    await db.prepare("ALTER TABLE service_requests ADD COLUMN dislikes_count INTEGER DEFAULT 0").run().catch(() => {});
+    await db.prepare("ALTER TABLE service_requests ADD COLUMN reports_count INTEGER DEFAULT 0").run().catch(() => {});
+
+    await db.prepare("ALTER TABLE craftsman_presence ADD COLUMN likes_count INTEGER DEFAULT 0").run().catch(() => {});
+    await db.prepare("ALTER TABLE craftsman_presence ADD COLUMN dislikes_count INTEGER DEFAULT 0").run().catch(() => {});
+    await db.prepare("ALTER TABLE craftsman_presence ADD COLUMN reports_count INTEGER DEFAULT 0").run().catch(() => {});
 
     await db.prepare(`CREATE TABLE IF NOT EXISTS village_polls (
       id TEXT PRIMARY KEY,

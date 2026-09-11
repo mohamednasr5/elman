@@ -1,4 +1,4 @@
-import { fetchServiceRequests, closeServiceRequest, deleteServiceRequest } from '../../services/interactive-hub.service.js';
+import { fetchServiceRequests, closeServiceRequest, deleteServiceRequest, voteInteractiveItem, reportInteractiveItem } from '../../services/interactive-hub.service.js';
 import { openNeedServiceModal } from './NeedServiceModal.js';
 import { getCurrentUser, isAdmin } from '../../core/auth.js';
 import { toast } from './Toast.js';
@@ -234,6 +234,24 @@ async function loadRequests(container, limit = 6) {
             <span><strong>رقم الهاتف:</strong> ${r.userPhone || (r.isPhoneMasked ? 'محمي بالخصوصية' : 'متاح للاتصال')}</span>
           </div>
 
+          <!-- Interactive Community Reactions: Like, Dislike & Report -->
+          <div class="need-reactions" style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border, #e2e8f0);padding-top:10px;margin-top:12px;gap:6px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px">
+              <button type="button" class="btn-req-vote ${r.userVote === 'like' ? 'voted-active' : ''}" data-target-id="${esc(r.id)}" data-vote="like" title="إعجاب بالطلب" style="background:${r.userVote === 'like' ? '#dcfce7' : '#f1f5f9'};color:${r.userVote === 'like' ? '#15803d' : '#475569'};border:1px solid ${r.userVote === 'like' ? '#86efac' : '#cbd5e1'};border-radius:8px;padding:4px 10px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:all 0.2s">
+                <span>👍</span>
+                <span class="count-val">${r.likesCount || 0}</span>
+              </button>
+              <button type="button" class="btn-req-vote ${r.userVote === 'dislike' ? 'voted-active' : ''}" data-target-id="${esc(r.id)}" data-vote="dislike" title="عدم إعجاب" style="background:${r.userVote === 'dislike' ? '#fee2e2' : '#f1f5f9'};color:${r.userVote === 'dislike' ? '#b91c1c' : '#475569'};border:1px solid ${r.userVote === 'dislike' ? '#fca5a5' : '#cbd5e1'};border-radius:8px;padding:4px 10px;font-size:0.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:all 0.2s">
+                <span>👎</span>
+                <span class="count-val">${r.dislikesCount || 0}</span>
+              </button>
+            </div>
+            <button type="button" class="btn-req-report" data-target-id="${esc(r.id)}" data-target-title="${esc(r.title)}" title="إبلاغ عن طلب غير جاد" style="background:none;border:none;color:#64748b;font-size:0.75rem;cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;transition:color 0.2s">
+              <span>🚩</span>
+              <span>إبلاغ عن غير جاد</span>
+            </button>
+          </div>
+
           ${!isClosed ? `
             <div style="display:flex;gap:8px;margin-top:auto">
               <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;border-radius:12px;font-weight:800;gap:6px">
@@ -317,6 +335,92 @@ async function loadRequests(container, limit = 6) {
           toast.error('حدث خطأ في الاتصال');
           btn.disabled = false;
           btn.textContent = '🗑️ حذف';
+        }
+    // Attach reaction listeners (لايك، ديسلايك، إبلاغ)
+    $grid.querySelectorAll('.btn-req-vote').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const user = getCurrentUser();
+        if (!user) {
+          toast.info('يجب تسجيل الدخول بحسابك أولاً للتفاعل مع الطلبات');
+          return;
+        }
+        const targetId = btn.getAttribute('data-target-id');
+        const voteType = btn.getAttribute('data-vote');
+        if (!targetId || !voteType) return;
+
+        btn.disabled = true;
+        try {
+          const res = await voteInteractiveItem({ targetId, targetType: 'service_request', voteType });
+          if (res?.deleted) {
+            toast.warning('تم حذف هذا الطلب تلقائياً لتجاوزه حد 25 ديسلايك من المجتمع');
+            const card = $grid.querySelector(`[data-req-card="${targetId}"]`);
+            if (card) {
+              card.style.transition = 'all 0.35s ease';
+              card.style.opacity = '0';
+              card.style.transform = 'scale(0.85)';
+              setTimeout(() => card.remove(), 350);
+            }
+            return;
+          }
+          if (res?.success) {
+            const card = $grid.querySelector(`[data-req-card="${targetId}"]`);
+            if (card) {
+              const likeBtn = card.querySelector('.btn-req-vote[data-vote="like"]');
+              const dislikeBtn = card.querySelector('.btn-req-vote[data-vote="dislike"]');
+              if (likeBtn) {
+                likeBtn.querySelector('.count-val').textContent = res.likesCount || 0;
+                const isL = res.userVote === 'like';
+                likeBtn.style.background = isL ? '#dcfce7' : '#f1f5f9';
+                likeBtn.style.color = isL ? '#15803d' : '#475569';
+                likeBtn.style.borderColor = isL ? '#86efac' : '#cbd5e1';
+              }
+              if (dislikeBtn) {
+                dislikeBtn.querySelector('.count-val').textContent = res.dislikesCount || 0;
+                const isD = res.userVote === 'dislike';
+                dislikeBtn.style.background = isD ? '#fee2e2' : '#f1f5f9';
+                dislikeBtn.style.color = isD ? '#b91c1c' : '#475569';
+                dislikeBtn.style.borderColor = isD ? '#fca5a5' : '#cbd5e1';
+              }
+            }
+          } else {
+            toast.error(res?.error || 'تعذر تسجيل التفاعل');
+          }
+        } catch (err) {
+          toast.error('حدث خطأ أثناء الاتصال');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    $grid.querySelectorAll('.btn-req-report').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const user = getCurrentUser();
+        if (!user) {
+          toast.info('يجب تسجيل الدخول بحسابك أولاً لتقديم بلاغ');
+          return;
+        }
+        const targetId = btn.getAttribute('data-target-id');
+        const targetTitle = btn.getAttribute('data-target-title') || 'هذا الطلب';
+        if (!targetId) return;
+
+        const reason = prompt(`إبلاغ عن عدم جدية الطلب (${targetTitle}):\nاكتب سبب الإبلاغ باختصار (مثال: طلب وهمي، رقم خاطئ، تم إنجازه ولم يغلقه):`, 'طلب غير جاد');
+        if (reason === null) return;
+
+        btn.disabled = true;
+        try {
+          const res = await reportInteractiveItem({ targetId, targetType: 'service_request', reason: reason.trim() || 'طلب غير جاد' });
+          if (res?.success) {
+            toast.success(res.message || 'تم تسجيل البلاغ وستتم المراجعة فوراً');
+          } else {
+            toast.error(res?.error || 'تعذر إرسال البلاغ');
+          }
+        } catch (err) {
+          toast.error('حدث خطأ أثناء الإبلاغ');
+        } finally {
+          btn.disabled = false;
         }
       });
     });

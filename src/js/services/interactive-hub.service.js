@@ -111,3 +111,28 @@ export async function createAppointment(payload) {
     body: JSON.stringify(payload)
   });
 }
+
+/**
+ * التصويت بلايك أو ديسلايك على الصنايعي أو طلب الخدمة
+ * @param {{ targetId: string, targetType: 'craftsman'|'service_request', voteType: 'like'|'dislike' }} payload
+ */
+export async function voteInteractiveItem({ targetId, targetType, voteType }) {
+  return await tursoFetch('/api/interactive/vote', {
+    method: 'POST',
+    requiresAuth: true,
+    body: JSON.stringify({ targetId, targetType, voteType })
+  });
+}
+
+/**
+ * إبلاغ عن شخص أو طلب غير جاد
+ * @param {{ targetId: string, targetType: 'craftsman'|'service_request', reason: string }} payload
+ */
+export async function reportInteractiveItem({ targetId, targetType, reason }) {
+  return await tursoFetch('/api/interactive/report', {
+    method: 'POST',
+    requiresAuth: true,
+    body: JSON.stringify({ targetId, targetType, reason })
+  });
+}
+
