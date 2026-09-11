@@ -2547,15 +2547,58 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     }
   });
 
-  // Upload Cover
+  // Upload Cover with Instant Local Preview & Animated Progress
   setupFileUpload('cover-upload-zone', 'p-cover-file', async (file) => {
-    const res = await uploadImage(file, 'places');
-    document.getElementById('p-cover-url').value = res.url;
     const preview = document.getElementById('cover-preview-img');
     const badge = document.getElementById('cover-status-badge');
-    if (preview) { preview.src = res.url; }
-    if (badge) { badge.textContent = '🖼️ غلاف مخصص'; }
-    toast.success('تم رفع صورة الغلاف');
+    const zone = document.getElementById('cover-upload-zone');
+    const previousSrc = preview?.src || 'assets/images/default-cover.png';
+    const previousBadgeText = badge?.textContent || '🏛️ الغلاف الافتراضي للدليل';
+
+    // 1. Instant 0ms local preview
+    let localPreviewUrl = '';
+    try {
+      localPreviewUrl = URL.createObjectURL(file);
+      if (preview) { preview.src = localPreviewUrl; }
+    } catch (_) {}
+
+    // 2. Visual uploading state & badge
+    zone?.classList.add('is-uploading');
+    if (badge) {
+      badge.textContent = '⏳ جاري المعالجة والرفع السحابي...';
+      badge.style.color = '#0284C7';
+      badge.style.background = 'rgba(2, 132, 199, 0.12)';
+    }
+
+    try {
+      const res = await uploadImage(file, 'places');
+      document.getElementById('p-cover-url').value = res.url;
+      if (preview) { preview.src = res.url; }
+      if (badge) {
+        badge.textContent = '🖼️ غلاف مخصص تم حفظه';
+        badge.style.color = '#10B981';
+        badge.style.background = 'rgba(16, 185, 129, 0.12)';
+      }
+      zone?.classList.add('is-success');
+      setTimeout(() => zone?.classList.remove('is-success'), 2500);
+      toast.success('تم رفع وحفظ صورة الغلاف بجودة عالية ✨');
+    } catch (err) {
+      console.error('[Cover Upload Error]:', err);
+      if (preview) { preview.src = previousSrc; }
+      if (badge) {
+        badge.textContent = previousBadgeText;
+        badge.style.color = '';
+        badge.style.background = '';
+      }
+      toast.error(err?.message || 'تعذر رفع صورة الغلاف، يرجى المحاولة مرة أخرى');
+    } finally {
+      zone?.classList.remove('is-uploading');
+      if (localPreviewUrl) {
+        try { URL.revokeObjectURL(localPreviewUrl); } catch (_) {}
+      }
+      const fileInput = document.getElementById('p-cover-file');
+      if (fileInput) fileInput.value = '';
+    }
   });
 
   // Reset Default Cover
@@ -2564,19 +2607,66 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     const preview = document.getElementById('cover-preview-img');
     const badge = document.getElementById('cover-status-badge');
     if (preview) { preview.src = 'assets/images/default-cover.png'; }
-    if (badge) { badge.textContent = '🏛️ الغلاف الافتراضي للدليل'; }
+    if (badge) {
+      badge.textContent = '🏛️ الغلاف الافتراضي للدليل';
+      badge.style.color = '';
+      badge.style.background = '';
+    }
     toast.info('تمت استعادة الغلاف الافتراضي للدليل');
   });
 
-  // Upload Logo
+  // Upload Logo with Instant Local Preview & Animated Progress
   setupFileUpload('logo-upload-zone', 'p-logo-file', async (file) => {
-    const res = await uploadImage(file, 'places');
-    document.getElementById('p-logo-url').value = res.url;
     const preview = document.getElementById('logo-preview-img');
     const badge = document.getElementById('logo-status-badge');
-    if (preview) { preview.src = res.url; }
-    if (badge) { badge.textContent = '📷 شعار مخصص'; }
-    toast.success('تم رفع اللوجو');
+    const zone = document.getElementById('logo-upload-zone');
+    const previousSrc = preview?.src || 'assets/images/default-logo.png';
+    const previousBadgeText = badge?.textContent || '🏛️ الشعار الافتراضي للدليل';
+
+    // 1. Instant 0ms local preview
+    let localPreviewUrl = '';
+    try {
+      localPreviewUrl = URL.createObjectURL(file);
+      if (preview) { preview.src = localPreviewUrl; }
+    } catch (_) {}
+
+    // 2. Visual uploading state & badge
+    zone?.classList.add('is-uploading');
+    if (badge) {
+      badge.textContent = '⏳ جاري الضغط والرفع...';
+      badge.style.color = '#0284C7';
+      badge.style.background = 'rgba(2, 132, 199, 0.12)';
+    }
+
+    try {
+      const res = await uploadImage(file, 'places');
+      document.getElementById('p-logo-url').value = res.url;
+      if (preview) { preview.src = res.url; }
+      if (badge) {
+        badge.textContent = '📷 شعار مخصص تم حفظه';
+        badge.style.color = '#10B981';
+        badge.style.background = 'rgba(16, 185, 129, 0.12)';
+      }
+      zone?.classList.add('is-success');
+      setTimeout(() => zone?.classList.remove('is-success'), 2500);
+      toast.success('تم رفع وحفظ شعار المكان بنجاح ✨');
+    } catch (err) {
+      console.error('[Logo Upload Error]:', err);
+      if (preview) { preview.src = previousSrc; }
+      if (badge) {
+        badge.textContent = previousBadgeText;
+        badge.style.color = '';
+        badge.style.background = '';
+      }
+      toast.error(err?.message || 'تعذر رفع الشعار، يرجى المحاولة مرة أخرى');
+    } finally {
+      zone?.classList.remove('is-uploading');
+      if (localPreviewUrl) {
+        try { URL.revokeObjectURL(localPreviewUrl); } catch (_) {}
+      }
+      const fileInput = document.getElementById('p-logo-file');
+      if (fileInput) fileInput.value = '';
+    }
   });
 
   // Reset Default Logo
@@ -2585,7 +2675,11 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     const preview = document.getElementById('logo-preview-img');
     const badge = document.getElementById('logo-status-badge');
     if (preview) { preview.src = 'assets/images/default-logo.png'; }
-    if (badge) { badge.textContent = '🏛️ الشعار الافتراضي للدليل'; }
+    if (badge) {
+      badge.textContent = '🏛️ الشعار الافتراضي للدليل';
+      badge.style.color = '';
+      badge.style.background = '';
+    }
     toast.info('تمت استعادة الشعار الافتراضي للدليل');
   });
 
@@ -4052,7 +4146,9 @@ function setupFileUpload(zoneId, inputId, onFileSelected) {
   const input = document.getElementById(inputId);
   if (!zone || !input) return;
 
-  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('click', (e) => {
+    if (e.target !== input) input.click();
+  });
 
   zone.addEventListener('dragover', (e) => {
     e.preventDefault();

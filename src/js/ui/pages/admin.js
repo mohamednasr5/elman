@@ -763,7 +763,7 @@ async function renderAdminOverview($container) {
             </a>
           </div>
 
-          <div class="dashboard-table-wrapper" style="border-radius:12px;border:1px solid rgba(255,255,255,0.08);overflow:hidden">
+          <div class="dashboard-table-wrapper" style="border-radius:12px;border:1px solid rgba(255,255,255,0.08);overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%">
             <table class="dashboard-table">
               <thead style="background:#0B1E30;color:#F8FAFC">
                 <tr>
@@ -913,9 +913,16 @@ async function renderAdminPlaces($container) {
         </div>
       </div>
 
+      <!-- Mobile Table Swipe Hint -->
+      <div class="mobile-table-hint">
+        <span>👉</span>
+        <span>يمكنك سحب الجدول لليمين واليسار للتنقل بين كافة البيانات وأزرار التحكم</span>
+        <span>👈</span>
+      </div>
+
       <!-- Places Table -->
-      <div class="dashboard-table-wrapper" style="background:#0F2B48;border-radius:14px;border:1px solid rgba(255,255,255,0.12);overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
-        <table class="dashboard-table" style="color:#FFFFFF;width:100%;border-collapse:collapse">
+      <div class="dashboard-table-wrapper" style="background:#0F2B48;border-radius:14px;border:1px solid rgba(255,255,255,0.12);overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+        <table class="dashboard-table" style="color:#FFFFFF;width:100%;min-width:980px;border-collapse:collapse">
           <thead style="background:#0B1E30;color:#F8FAFC">
             <tr>
               <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">المكان / المالك</th>
@@ -925,7 +932,7 @@ async function renderAdminPlaces($container) {
               <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">التوثيق</th>
               <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">نسبة الثقة</th>
               <th style="color:#F8FAFC;font-weight:800;padding:12px 14px">الحالة</th>
-              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px;min-width:180px">إجراءات</th>
+              <th style="color:#F8FAFC;font-weight:800;padding:12px 14px;min-width:240px;white-space:nowrap">إجراءات</th>
             </tr>
           </thead>
           <tbody id="admin-places-tbody">
@@ -1208,15 +1215,15 @@ function renderAdminPlacesTableRows(places) {
           })()}
         </td>
         <td style="padding:12px 14px">${statusBadgeHtml}</td>
-        <td style="padding:12px 14px">
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <td style="padding:10px 14px;min-width:240px;white-space:nowrap">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap">
             ${banButtonHtml}
-            <button type="button" class="btn btn-xs" data-action="analytics" data-id="${escAttr(p._id)}" style="background:#10B981;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:3px" title="تقرير النشاط والإحصائيات"><span>📊</span></button>
-            <button type="button" class="btn btn-xs" data-action="transfer" data-id="${escAttr(p._id)}" style="background:#8B5CF6;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="نقل ملكية هذا المكان لمستخدم مسجل"><span style="pointer-events:none;display:inline-flex">${ICONS.users}</span><span>نقل</span></button>
-            <button type="button" class="btn btn-xs" data-action="edit" data-id="${escAttr(p._id)}" style="background:#0284C7;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="تعديل كافة بيانات المكان أو الشخص"><span style="pointer-events:none;display:inline-flex">${ICONS.edit}</span></button>
-            <a href="${getPlaceUrl(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="عرض صفحة المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.eye}</span></a>
-            <button type="button" class="btn btn-xs" data-action="add-reviews" data-id="${escAttr(p._id || p.id)}" data-name="${escAttr(p.name)}" style="background:#F59E0B;color:#0B1E30;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:3px" title="إضافة وتوليد تعليقات وتقييمات للمكان"><span style="pointer-events:none">💬⭐</span></button>
-            <button type="button" class="btn btn-xs" data-action="delete" data-id="${escAttr(p._id)}" style="background:#EF4444;color:#fff;border:none;font-weight:800;border-radius:6px;padding:5px 8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center" title="حذف المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.trash}</span></button>
+            <button type="button" class="btn btn-xs" data-action="analytics" data-id="${escAttr(p._id)}" style="background:#10B981;color:#fff;border:none;font-weight:800;border-radius:6px;padding:6px 9px;min-height:34px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;touch-action:manipulation" title="تقرير النشاط والإحصائيات"><span>📊</span></button>
+            <button type="button" class="btn btn-xs" data-action="transfer" data-id="${escAttr(p._id)}" style="background:#8B5CF6;color:#fff;border:none;font-weight:800;border-radius:6px;padding:6px 9px;min-height:34px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;touch-action:manipulation" title="نقل ملكية هذا المكان لمستخدم مسجل"><span style="pointer-events:none;display:inline-flex">${ICONS.users}</span><span>نقل</span></button>
+            <button type="button" class="btn btn-xs" data-action="edit" data-id="${escAttr(p._id)}" style="background:#0284C7;color:#fff;border:none;font-weight:800;border-radius:6px;padding:6px 9px;min-height:34px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation" title="تعديل كافة بيانات المكان أو الشخص"><span style="pointer-events:none;display:inline-flex">${ICONS.edit}</span></button>
+            <a href="${getPlaceUrl(targetSlug)}" target="_blank" class="btn btn-xs" style="background:#334155;color:#fff;border:none;font-weight:800;border-radius:6px;padding:6px 9px;min-height:34px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation" title="عرض صفحة المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.eye}</span></a>
+            <button type="button" class="btn btn-xs" data-action="add-reviews" data-id="${escAttr(p._id || p.id)}" data-name="${escAttr(p.name)}" style="background:#F59E0B;color:#0B1E30;border:none;font-weight:800;border-radius:6px;padding:6px 9px;min-height:34px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;touch-action:manipulation" title="إضافة وتوليد تعليقات وتقييمات للمكان"><span style="pointer-events:none">💬⭐</span></button>
+            <button type="button" class="btn btn-xs" data-action="delete" data-id="${escAttr(p._id)}" style="background:#EF4444;color:#fff;border:none;font-weight:800;border-radius:6px;padding:6px 9px;min-height:34px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation" title="حذف المكان"><span style="pointer-events:none;display:inline-flex">${ICONS.trash}</span></button>
           </div>
         </td>
       </tr>
@@ -1847,8 +1854,8 @@ async function renderAdminReviews($container) {
       </div>
 
       <!-- Reviews Table with Smooth Paginated Render -->
-      <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
-        <table class="dashboard-table" style="width:100%;border-collapse:collapse">
+      <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.1);overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%">
+        <table class="dashboard-table" style="width:100%;min-width:860px;border-collapse:collapse">
           <thead>
             <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:12.5px">
               <th style="width:40px;text-align:center;padding:12px">
@@ -5583,14 +5590,33 @@ window.editPlaceAdmin = async (placeId) => {
           <p style="font-size:11.5px;color:var(--text-muted);margin-top:4px">💡 يدعم روابط خرائط Google القصيرة، أكواد Plus Codes، والعناوين النصية لتوليد الخريطة بدقة.</p>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
-          <div class="form-group">
-            <label class="form-label">رابط صورة الغلاف (Cover Image)</label>
-            <input type="url" id="aep-coverImageUrl" class="form-input" placeholder="https://..." value="${escAttr(place.coverImageUrl || '')}" />
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:8px">
+          <!-- Cover Image -->
+          <div class="form-group" style="margin-bottom:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <label class="form-label" style="margin:0">صورة الغلاف (Cover)</label>
+              <label for="aep-cover-file" class="btn btn-xs" style="background:#0284C7;color:#fff;border-radius:6px;cursor:pointer;padding:3px 8px;font-size:11px">📁 رفع صورة</label>
+              <input type="file" id="aep-cover-file" accept="image/jpeg,image/png,image/webp" style="display:none" />
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="url" id="aep-coverImageUrl" class="form-input" placeholder="https://..." value="${escAttr(place.coverImageUrl || '')}" style="font-size:12.5px" />
+              <img id="aep-cover-preview" src="${escAttr(place.coverImageUrl || 'assets/images/default-cover.png')}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.2);flex-shrink:0" />
+            </div>
+            <div id="aep-cover-status" style="font-size:11px;color:#38BDF8;margin-top:3px;min-height:16px"></div>
           </div>
-          <div class="form-group">
-            <label class="form-label">رابط اللوجو / الصورة الشخصية (Logo)</label>
-            <input type="url" id="aep-logoUrl" class="form-input" placeholder="https://..." value="${escAttr(place.logoUrl || '')}" />
+
+          <!-- Logo Image -->
+          <div class="form-group" style="margin-bottom:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <label class="form-label" style="margin:0">شعار المكان (Logo)</label>
+              <label for="aep-logo-file" class="btn btn-xs" style="background:#0284C7;color:#fff;border-radius:6px;cursor:pointer;padding:3px 8px;font-size:11px">📁 رفع لوجو</label>
+              <input type="file" id="aep-logo-file" accept="image/jpeg,image/png,image/webp" style="display:none" />
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="url" id="aep-logoUrl" class="form-input" placeholder="https://..." value="${escAttr(place.logoUrl || '')}" style="font-size:12.5px" />
+              <img id="aep-logo-preview" src="${escAttr(place.logoUrl || 'assets/images/default-logo.png')}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.2);flex-shrink:0" />
+            </div>
+            <div id="aep-logo-status" style="font-size:11px;color:#38BDF8;margin-top:3px;min-height:16px"></div>
           </div>
         </div>
 
@@ -5774,6 +5800,71 @@ window.editPlaceAdmin = async (placeId) => {
     const isOther = e.target.value === 'other';
     const customGroup = document.getElementById('aep-custom-area-group');
     if (customGroup) customGroup.style.display = isOther ? 'block' : 'none';
+  });
+
+  const coverFileInput = document.getElementById('aep-cover-file');
+  const coverUrlInput = document.getElementById('aep-coverImageUrl');
+  const coverPreview = document.getElementById('aep-cover-preview');
+  const coverStatus = document.getElementById('aep-cover-status');
+
+  coverFileInput?.addEventListener('change', async () => {
+    const file = coverFileInput.files?.[0];
+    if (!file) return;
+    let localUrl = '';
+    try {
+      localUrl = URL.createObjectURL(file);
+      if (coverPreview) coverPreview.src = localUrl;
+    } catch (_) {}
+    if (coverStatus) coverStatus.innerHTML = '⏳ جاري رفع صورة الغلاف...';
+    try {
+      const res = await uploadImage(file, 'places');
+      if (coverUrlInput) coverUrlInput.value = res.url;
+      if (coverPreview) coverPreview.src = res.url;
+      if (coverStatus) coverStatus.innerHTML = '✅ تم رفع الغلاف بنجاح';
+      toast.success('تم رفع صورة الغلاف بنجاح');
+    } catch (err) {
+      if (coverStatus) coverStatus.innerHTML = `<span style="color:#EF4444">❌ فشل الرفع: ${escHtml(err.message)}</span>`;
+      toast.error('فشل رفع صورة الغلاف: ' + err.message);
+    } finally {
+      if (localUrl) { try { URL.revokeObjectURL(localUrl); } catch (_) {} }
+      coverFileInput.value = '';
+    }
+  });
+
+  const logoFileInput = document.getElementById('aep-logo-file');
+  const logoUrlInput = document.getElementById('aep-logoUrl');
+  const logoPreview = document.getElementById('aep-logo-preview');
+  const logoStatus = document.getElementById('aep-logo-status');
+
+  logoFileInput?.addEventListener('change', async () => {
+    const file = logoFileInput.files?.[0];
+    if (!file) return;
+    let localUrl = '';
+    try {
+      localUrl = URL.createObjectURL(file);
+      if (logoPreview) logoPreview.src = localUrl;
+    } catch (_) {}
+    if (logoStatus) logoStatus.innerHTML = '⏳ جاري رفع اللوجو...';
+    try {
+      const res = await uploadImage(file, 'places');
+      if (logoUrlInput) logoUrlInput.value = res.url;
+      if (logoPreview) logoPreview.src = res.url;
+      if (logoStatus) logoStatus.innerHTML = '✅ تم رفع اللوجو بنجاح';
+      toast.success('تم رفع اللوجو بنجاح');
+    } catch (err) {
+      if (logoStatus) logoStatus.innerHTML = `<span style="color:#EF4444">❌ فشل الرفع: ${escHtml(err.message)}</span>`;
+      toast.error('فشل رفع اللوجو: ' + err.message);
+    } finally {
+      if (localUrl) { try { URL.revokeObjectURL(localUrl); } catch (_) {} }
+      logoFileInput.value = '';
+    }
+  });
+
+  coverUrlInput?.addEventListener('input', () => {
+    if (coverPreview && coverUrlInput.value.trim()) coverPreview.src = coverUrlInput.value.trim();
+  });
+  logoUrlInput?.addEventListener('input', () => {
+    if (logoPreview && logoUrlInput.value.trim()) logoPreview.src = logoUrlInput.value.trim();
   });
 };
 
@@ -7582,8 +7673,8 @@ async function renderAdminLiveNews($container) {
           <input type="text" id="admin-search-live-news" class="form-input" placeholder="🔍 بحث في الأخبار المنشورة..." style="max-width:260px;font-size:12.5px;padding:6px 12px;margin:0" />
         </div>
 
-        <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:16px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
-          <table class="dashboard-table" style="width:100%;border-collapse:collapse">
+        <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:16px;border:1px solid rgba(255,255,255,0.1);overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%">
+          <table class="dashboard-table" style="width:100%;min-width:860px;border-collapse:collapse">
             <thead>
               <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:12px">
                 <th style="padding:12px">الخبر / الحدث</th>

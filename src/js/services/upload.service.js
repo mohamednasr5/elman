@@ -17,10 +17,22 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'im
  * @param {Function} [onProgress]
  * @returns {Promise<{url: string, key: string}>}
  */
+/**
+ * Upload an image file to R2 storage
+ * @param {File|Blob} file
+ * @param {string} folder - 'places' | 'products' | 'offers' | 'ads' | 'avatars' | 'business-cards'
+ * @param {string} [customFileName]
+ * @param {Function} [onProgress]
+ * @returns {Promise<{url: string, key: string}>}
+ */
 export async function uploadImage(file, folder = 'places', customFileName = null, onProgress = null) {
   if (!file) throw new Error('يرجى اختيار ملف للصورة');
   if (file.size > MAX_FILE_SIZE) throw new Error('حجم الصورة يجب ألا يتجاوز 15 ميجابايت');
-  if (!ALLOWED_TYPES.includes((file.type || '').toLowerCase())) throw new Error('نوع الملف غير مدعوم. يرجى استخدام JPG أو PNG أو WebP أو HEIC');
+
+  const rawType = (file.type || '').toLowerCase();
+  const nameExt = ((file.name || '').split('.').pop() || '').toLowerCase();
+  const isAllowed = ALLOWED_TYPES.includes(rawType) || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'heic', 'heif'].includes(nameExt);
+  if (!isAllowed) throw new Error('نوع الملف غير مدعوم. يرجى استخدام JPG أو PNG أو WebP أو HEIC');
 
   let fileToUpload = file;
   try {
@@ -30,14 +42,7 @@ export async function uploadImage(file, folder = 'places', customFileName = null
     fileToUpload = file;
   }
 
-  // A native HEIC/HEIF blob must never reach /api/upload unchanged because the
-  // Worker intentionally stores only web-friendly formats. If conversion was
-  // unavailable, fail with a clear message instead of sending an unsupported MIME.
-  const uploadMime = (fileToUpload.type || '').toLowerCase();
-  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'].includes(uploadMime)) {
-    throw new Error('تعذر تحويل صورة الكارت إلى صيغة مدعومة. يرجى إعادة التصوير أو اختيار JPG/PNG/WebP');
-  }
-
+  const uploadMime = (fileToUpload.type || rawType || 'image/jpeg').toLowerCase();
   const token = await getIdToken();
   if (!token) throw new Error('يجب تسجيل الدخول أولاً لرفع الصور');
 
@@ -83,19 +88,42 @@ export async function deleteImage(key) {
   }
 }
 
-/** Convert image File/Blob to optimized WebP via Canvas. */
+/** Convert image File/Blob to optimized WebP via Canvas (High-Speed ObjectURL). */
 export function convertToWebP(file, maxWidth = 1400, quality = 0.85) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (file.type === 'image/webp' && file.size < 1024 * 1024) return resolve(file);
 
-    const reader = new FileReader();
-    reader.onerror = reject;
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = reject;
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
+    let objectUrl = '';
+    try {
+      objectUrl = URL.createObjectURL(file);
+    } catch (_) {
+      return resolve(file);
+    }
+
+    const img = new Image();
+
+    // Safety timeout: if decoding takes too long on mobile, proceed with original file
+    const timeout = setTimeout(() => {
+      try { URL.revokeObjectURL(objectUrl); } catch (_) {}
+      resolve(file);
+    }, 5000);
+
+    img.onerror = () => {
+      clearTimeout(timeout);
+      try { URL.revokeObjectURL(objectUrl); } catch (_) {}
+      resolve(file);
+    };
+
+    img.onload = () => {
+      clearTimeout(timeout);
+      try {
+        let width = img.width || 0;
+        let height = img.height || 0;
+        if (!width || !height) {
+          URL.revokeObjectURL(objectUrl);
+          return resolve(file);
+        }
+
         if (width > maxWidth) {
           height = Math.round((height * maxWidth) / width);
           width = maxWidth;
@@ -105,18 +133,30 @@ export function convertToWebP(file, maxWidth = 1400, quality = 0.85) {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-        if (!ctx) return reject(new Error('تعذر تهيئة معالج الصورة في المتصفح'));
+        if (!ctx) {
+          URL.revokeObjectURL(objectUrl);
+          return resolve(file);
+        }
+
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
         canvas.toBlob(blob => {
-          if (blob) return resolve(blob);
+          URL.revokeObjectURL(objectUrl);
+          if (blob && blob.size > 0) {
+            const baseName = (file.name || 'photo').replace(/\.[^.]+$/, '');
+            const converted = new File([blob], `${baseName}.webp`, { type: 'image/webp' });
+            return resolve(converted);
+          }
           resolve(file);
         }, 'image/webp', quality);
-      };
-      img.src = reader.result;
+      } catch (err) {
+        try { URL.revokeObjectURL(objectUrl); } catch (_) {}
+        resolve(file);
+      }
     };
-    reader.readAsDataURL(file);
+
+    img.src = objectUrl;
   });
 }
