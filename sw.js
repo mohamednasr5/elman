@@ -27,10 +27,11 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v4.4.3-runtime-resilience';
+const CACHE_VERSION = 'v4.4.4-api-resilience';
 const STATIC_CACHE = 'manzala-static-' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'manzala-dynamic-' + CACHE_VERSION;
 const IMAGE_CACHE = 'manzala-images-' + CACHE_VERSION;
+const API_CACHE = 'manzala-api-' + CACHE_VERSION;
 
 const STATIC_ASSETS = [
   './offline.html',
@@ -66,7 +67,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     Promise.all([
       caches.keys().then(keys => Promise.all(
-        keys.filter(key => ![STATIC_CACHE, IMAGE_CACHE, DYNAMIC_CACHE].includes(key))
+        keys.filter(key => ![STATIC_CACHE, IMAGE_CACHE, DYNAMIC_CACHE, API_CACHE].includes(key))
           .map(key => caches.delete(key))
       )),
       self.clients.claim()
@@ -75,33 +76,20 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  const {request} = event;
+  const { request } = event;
   const url = new URL(request.url);
   if (request.method !== 'GET') return;
 
-  // The categories endpoint had two historical Turso schemas in the wild.
-  // Never expose a 500 to the PWA: use the real API when healthy and return an
-  // empty successful payload when the backend is temporarily unavailable.
-  // The application already has FALLBACK_CATEGORIES for this exact case.
-  if (url.pathname === '/api/categories') {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(request);
-        if (response.ok) return response;
-      } catch (_) {}
-      return new Response(JSON.stringify({ success: true, data: [] }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json;charset=utf-8',
-          'Cache-Control': 'no-store'
-        }
-      });
-    })());
+  // Public API calls are protected from backend 5xx responses at the PWA edge.
+  // Healthy responses are cached; on 5xx/network failure the last known good
+  // response is returned. If there is no cache yet, return a successful empty
+  // JSON envelope so one broken API cannot poison the whole homepage.
+  if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) {
+    event.respondWith(resilientApiStrategy(request));
     return;
   }
 
   if (
-    url.pathname.startsWith('/api/') ||
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
     url.hostname.includes('identitytoolkit') ||
@@ -144,6 +132,49 @@ self.addEventListener('fetch', event => {
   event.respondWith(cacheFirstStrategy(request, STATIC_CACHE));
 });
 
+async function resilientApiStrategy(request) {
+  const cache = await caches.open(API_CACHE);
+  const cached = await cache.match(request);
+
+  try {
+    const response = await Promise.race([
+      fetch(request),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('API fetch timeout')), 8000))
+    ]);
+
+    if (response && response.ok) {
+      await cache.put(request, response.clone());
+      return response;
+    }
+
+    if (cached) return cached;
+
+    return apiEmptyResponse(request);
+  } catch (_) {
+    if (cached) return cached;
+    return apiEmptyResponse(request);
+  }
+}
+
+function apiEmptyResponse(request) {
+  const path = new URL(request.url).pathname;
+  let data = [];
+
+  // Categories are the only endpoint with a built-in application fallback.
+  // Returning an empty data array lets db.pretty.js select FALLBACK_CATEGORIES.
+  if (path === '/api/categories') {
+    data = [];
+  }
+
+  return new Response(JSON.stringify({ success: true, data }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json;charset=utf-8',
+      'Cache-Control': 'no-store'
+    }
+  });
+}
+
 async function networkFirstStrategy(request) {
   try {
     const response = await Promise.race([
@@ -162,7 +193,7 @@ async function networkFirstStrategy(request) {
       const offline = await caches.match(OFFLINE_PAGE);
       if (offline) return offline;
     }
-    return new Response('Network Error / Offline', {status:503, statusText:'Offline'});
+    return new Response('Network Error / Offline', { status: 503, statusText: 'Offline' });
   }
 }
 
@@ -192,7 +223,7 @@ async function cacheFirstStrategy(request, cacheName) {
     if (response?.status === 200) await cache.put(request, response.clone());
     return response;
   } catch (_) {
-    return new Response('', {status:503});
+    return new Response('', { status: 503 });
   }
 }
 
@@ -206,7 +237,7 @@ function eventlessNotification(title, body, url, payload) {
     vibrate: [200,100,200],
     tag: payload.data?.tag || ('fcm-bg-' + Date.now()),
     renotify: true,
-    data: {url, timestamp: Date.now()}
+    data: { url, timestamp: Date.now() }
   });
 }
 
@@ -215,7 +246,7 @@ self.addEventListener('push', event => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (_) {
-    data = {message: event.data?.text?.() || ''};
+    data = { message: event.data?.text?.() || '' };
   }
 
   const title = data.notification?.title || data.data?.title || data.title || 'دليل المنزلة والمطرية 🔔';
@@ -231,7 +262,7 @@ self.addEventListener('push', event => {
     vibrate: [200,100,200],
     tag: data.tag || data.data?.tag || ('manzala-pwa-push-' + Date.now()),
     renotify: true,
-    data: {url, timestamp: Date.now()}
+    data: { url, timestamp: Date.now() }
   }));
 });
 
@@ -239,7 +270,7 @@ self.addEventListener('notificationclick', event => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || './';
   event.waitUntil(
-    clients.matchAll({type:'window', includeUncontrolled:true}).then(windowClients => {
+    clients.matchAll({ type:'window', includeUncontrolled:true }).then(windowClients => {
       for (const client of windowClients) {
         if ('focus' in client) {
           client.focus();
@@ -266,7 +297,7 @@ self.addEventListener('message', event => {
       vibrate: [150,50,150,50,200],
       tag: notif.tag || 'pwa-local-push-' + Date.now(),
       renotify: true,
-      data: {url: notif.url || notif.actionUrl || './'}
+      data: { url: notif.url || notif.actionUrl || './' }
     });
   }
 });
