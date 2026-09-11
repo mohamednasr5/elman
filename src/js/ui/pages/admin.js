@@ -11,7 +11,7 @@ import { uploadImage } from '../../services/upload.service.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
-import { formatDate } from '../../utils/date.js';
+import { formatDate, formatPublishTime, formatFullDateTime } from '../../utils/date.js';
 import { 
   fetchServiceRequests, 
   updateServiceRequest, 
@@ -6951,15 +6951,16 @@ async function renderAdminServicesHub($container) {
                         </td>
                         <td>
                           <div style="color:rgba(255,255,255,0.9);font-size:12.5px">📍 ${escHtml(r.village)}</div>
-                          <div style="color:rgba(255,255,255,0.6);font-size:11.5px">⏰ ${escHtml(r.timing)}</div>
+                          <div style="color:#38BDF8;font-size:11.5px;font-weight:700">⏰ نُشر: ${formatPublishTime(r.createdAt || r.created_at)}</div>
+                          ${r.timing && r.timing !== 'الآن' ? `<div style="color:#F5A623;font-size:11px">⚡ المطلوب: ${escHtml(r.timing)}</div>` : ''}
                         </td>
                         <td>
                           <span class="badge" style="background:${r.status === 'open' ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'};color:${r.status === 'open' ? '#F5A623' : '#10B981'};border:1px solid ${r.status === 'open' ? 'rgba(245,158,11,0.4)' : 'rgba(16,185,129,0.4)'};border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800">
                             ${r.status === 'open' ? '🟢 قيد البحث' : '✓ تم الاتفاق'}
                           </span>
                         </td>
-                        <td style="font-size:11.5px;color:rgba(255,255,255,0.5)">
-                          ${formatDate(r.createdAt || Date.now())}
+                        <td style="font-size:11.5px;color:rgba(255,255,255,0.8)" title="${escAttr(formatFullDateTime(r.createdAt || r.created_at))}">
+                          ${formatPublishTime(r.createdAt || r.created_at)}
                         </td>
                         <td>
                           <div style="display:flex;gap:6px;flex-wrap:wrap">

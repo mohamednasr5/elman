@@ -130,3 +130,85 @@ export function daysUntil(timestamp) {
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
   return Math.max(0, days);
 }
+
+/**
+ * Format publication timestamp to accurate, friendly Arabic relative + clock time
+ * (e.g. "اليوم 8:31 ص (منذ 13 ساعة)", "منذ 5 دقائق (9:59 م)", "أمس الساعة 9:04 م")
+ */
+export function formatPublishTime(timestamp) {
+  if (!timestamp) return 'حديثاً';
+  const ts = Number(timestamp);
+  if (isNaN(ts) || ts <= 0) return 'حديثاً';
+
+  const timeMs = ts < 10000000000 ? ts * 1000 : ts;
+  const now = Date.now();
+  const diffMs = Math.max(0, now - timeMs);
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  const date = new Date(timeMs);
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const period = hours >= 12 ? 'م' : 'ص';
+  const hour12 = hours % 12 || 12;
+  const timeStr = `${hour12}:${minutes} ${period}`;
+
+  if (diffSec < 60) {
+    return 'الآن (منذ لحظات)';
+  }
+  if (diffMin < 60) {
+    if (diffMin === 1) return 'منذ دقيقة واحدة';
+    if (diffMin === 2) return 'منذ دقيقتين';
+    if (diffMin >= 3 && diffMin <= 10) return `منذ ${diffMin} دقائق (${timeStr})`;
+    return `منذ ${diffMin} دقيقة (${timeStr})`;
+  }
+
+  const nowDate = new Date(now);
+  const isToday = date.getDate() === nowDate.getDate() &&
+                  date.getMonth() === nowDate.getMonth() &&
+                  date.getFullYear() === nowDate.getFullYear();
+
+  if (isToday) {
+    if (diffHours === 1) return `اليوم ${timeStr} (منذ ساعة)`;
+    if (diffHours === 2) return `اليوم ${timeStr} (منذ ساعتين)`;
+    if (diffHours >= 3 && diffHours <= 10) return `اليوم ${timeStr} (منذ ${diffHours} ساعات)`;
+    return `اليوم ${timeStr} (منذ ${diffHours} ساعة)`;
+  }
+
+  const yesterday = new Date(now - 86400000);
+  const isYesterday = date.getDate() === yesterday.getDate() &&
+                      date.getMonth() === yesterday.getMonth() &&
+                      date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) {
+    return `أمس الساعة ${timeStr}`;
+  }
+
+  if (diffDays === 2) {
+    return `منذ يومين (${timeStr})`;
+  }
+
+  const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  return `${date.getDate()} ${months[date.getMonth()]} (${timeStr})`;
+}
+
+/**
+ * Format full Gregorian Arabic date and time string
+ * (e.g. "الجمعة 11 سبتمبر 2026 - الساعة 8:31 صباحاً")
+ */
+export function formatFullDateTime(timestamp) {
+  if (!timestamp) return '';
+  const ts = Number(timestamp);
+  if (isNaN(ts) || ts <= 0) return '';
+  const timeMs = ts < 10000000000 ? ts * 1000 : ts;
+  const d = new Date(timeMs);
+  const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  const hours = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  const period = hours >= 12 ? 'مساءً' : 'صباحاً';
+  const hour12 = hours % 12 || 12;
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} - الساعة ${hour12}:${minutes} ${period}`;
+}

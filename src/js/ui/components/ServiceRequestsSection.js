@@ -2,6 +2,7 @@ import { fetchServiceRequests, closeServiceRequest, deleteServiceRequest, voteIn
 import { openNeedServiceModal } from './NeedServiceModal.js';
 import { getCurrentUser, isAdmin } from '../../core/auth.js';
 import { toast } from './Toast.js';
+import { formatPublishTime, formatFullDateTime } from '../../utils/date.js';
 
 export async function renderServiceRequestsSection($container, { limit = 6, showHero = true, isCompact = false } = {}) {
   const container = typeof $container === 'string' ? document.getElementById($container) : $container;
@@ -184,6 +185,11 @@ async function loadRequests(container, limit = 6) {
         ? `https://wa.me/2${r.userPhone.replace(/[^0-9]/g,'')}?text=${waText}` 
         : `https://wa.me/201004128504?text=${waText}`;
 
+      const createdTs = Number(r.createdAt || r.created_at || (r.id && r.id.startsWith('req_') ? r.id.split('_')[1] : 0));
+      const publishTimeStr = formatPublishTime(createdTs);
+      const fullDateTimeStr = formatFullDateTime(createdTs);
+      const isVeryFresh = createdTs && (Date.now() - (createdTs < 10000000000 ? createdTs * 1000 : createdTs)) < 3600000;
+
       return `
         <article class="need-service-card" id="req-${esc(r.id)}" data-req-card="${esc(r.id)}">
           
@@ -222,8 +228,25 @@ async function loadRequests(container, limit = 6) {
 
           <div class="need-meta">
             <span class="need-meta-item">📍 <strong>${esc(r.village || 'المنزلة')}</strong></span>
-            <span class="need-meta-item">⏰ <strong>${esc(r.timing || 'خلال اليوم')}</strong></span>
+            
+            <span class="need-meta-item need-publish-time" title="تاريخ وتوقيت النشر بدقة: ${esc(fullDateTimeStr)}" style="color:#0284C7;font-weight:700;background:rgba(2,132,199,0.08);padding:3px 9px;border-radius:8px;border:1px solid rgba(2,132,199,0.2);display:inline-flex;align-items:center;gap:4px">
+              <span style="font-size:1.05em">⏰</span>
+              <span>نُشر: <strong>${esc(publishTimeStr)}</strong></span>
+            </span>
+
+            ${r.timing && r.timing !== 'الآن' ? `
+              <span class="need-meta-item" style="background:rgba(245,158,11,0.12);color:#B45309;padding:3px 9px;border-radius:8px;font-size:0.76rem;font-weight:800;border:1px solid rgba(245,158,11,0.25)">
+                <span>⚡ المطلوب:</span> <strong>${esc(r.timing)}</strong>
+              </span>
+            ` : ''}
+
             <span class="need-meta-item">👤 ${esc(r.userName || 'أحد أهالي المدينة')}</span>
+
+            ${isVeryFresh ? `
+              <span class="need-meta-item" style="background:rgba(16,185,129,0.15);color:#047857;padding:3px 8px;border-radius:8px;font-size:0.72rem;font-weight:800;border:1px solid rgba(16,185,129,0.3)">
+                🔥 جديد
+              </span>
+            ` : ''}
           </div>
 
           ${r.description ? `
