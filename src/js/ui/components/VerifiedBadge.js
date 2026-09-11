@@ -1,3 +1,5 @@
+import { resolveDeliveryVehicle } from '../../utils/delivery-vehicle.js';
+
 /**
  * Render sponsored / featured place badge
  */
@@ -54,24 +56,11 @@ export function renderStatusBadge(status) {
 /**
  * Render delivery type badge
  */
-export function renderDeliveryBadge(type) {
-  const map = {
-    motorcycle:      { text: 'موتوسيكل',        icon: '🏍️' },
-    tuktuk:          { text: 'توكتوك',          icon: '🛺' },
-    car:             { text: 'سيارة',           icon: '🚗' },
-    taxi:            { text: 'تاكسي',           icon: '🚕' },
-    bus:             { text: 'اتوبيس',          icon: '🚌' },
-    pickup_quarter:  { text: 'عربية ربع نقل',   icon: '🛻' },
-    pickup_half:     { text: 'عربية نص نقل',    icon: '🚚' },
-    truck_heavy:     { text: 'عربية نقل كبير',  icon: '🚛' },
-    cart_donkey:     { text: 'عربية بحمار',     icon: '🫏' },
-    cart_horse:      { text: 'عربية بحصان',     icon: '🐎' },
-    loader:          { text: 'لودر',            icon: '🚜' },
-    tractor_trailer: { text: 'جرار ومقطورة',    icon: '🚜' }
-  };
-  const item = map[type];
+export function renderDeliveryBadge(typeOrPlace) {
+  if (!typeOrPlace) return '';
+  const item = resolveDeliveryVehicle(typeOrPlace);
   if (!item) return '';
-  return `<span class="badge-delivery">${item.icon} ${item.text}</span>`;
+  return `<span class="badge-delivery" style="border-color: ${item.borderColor || 'rgba(0,0,0,0.1)'}; background: ${item.bgColor || 'rgba(0,0,0,0.05)'}; color: ${item.color || 'inherit'};"><span aria-hidden="true">${item.icon}</span> ${item.label}</span>`;
 }
 
 /**

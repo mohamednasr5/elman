@@ -415,7 +415,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                     <h1 class="place-title__name">${escHtml(place.name)}</h1>
                     ${(!isAtm && (place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
                     ${place.isVerified ? renderVerifiedBadge() : ''}
-                    ${(!isAtm && place.deliveryType) ? renderDeliveryBadge(place.deliveryType) : ''}
+                    ${(!isAtm && (place.deliveryType || place.categoryId === 'delivery' || place.categoryId?.includes('delivery') || /توكتوك|تاكسي|شانجي|اتوبيس|وصلي/i.test(place.name || '')) && !/صيدلية|مطعم|كشري|حلواني|سوبر\s*ماركت/i.test(place.name || '')) ? renderDeliveryBadge(place) : ''}
                     <span id="place-owner-online-container" class="place-owner-online-slot"></span>
                   </div>
 

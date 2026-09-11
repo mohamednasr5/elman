@@ -16,6 +16,7 @@ import { openManzalaVoiceAssistantModal } from '../../services/voice.service.js'
 import { executeFastSearch } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';
 import { getCategoryVisualMeta, renderCategoryCardIcon } from '../../utils/category-visual.js';
+import { resolveDeliveryVehicle } from '../../utils/delivery-vehicle.js';
 // NOTE: mountLivePulseSection, mountAroundMeRadar, renderWhoIsAvailableNow are
 // loaded lazily (dynamic import) because they render below-the-fold content.
 
@@ -142,7 +143,18 @@ export async function renderHomePage($main, { user } = {}) {
     renderLatestPlaces(latestPlaces.slice(0, 8));
 
     renderOffers(offers || []);
-    renderDeliveryServices(allPlaces.filter(p => p.categoryId?.includes('delivery') || p.deliveryType));
+    const deliveryPlaces = (allPlaces || []).filter(p => {
+      if (!p) return false;
+      if (p.deliveryType) return true;
+      if (p.categoryId?.includes('delivery')) return true;
+      const name = String(p.name || '').toLowerCase();
+      if (/توكتوك|تاكسي|شانجي|اتوبيس|توصيل|دليفري|وصلي/i.test(name)) {
+        if (/صيدلية|مطعم|كشري|حلواني|سوبر\s*ماركت|هايبر/i.test(name)) return false;
+        return true;
+      }
+      return false;
+    });
+    renderDeliveryServices(deliveryPlaces);
     renderAds(ads || []);
 
     // Stats bar
@@ -547,25 +559,14 @@ function renderDeliveryServices(places) {
     return;
   }
 
-  const deliveryIcons = {
-    motorcycle: '🏍️',
-    tuktuk: '🛺',
-    car: '🚗',
-    taxi: '🚕',
-    bus: '🚌',
-    pickup_quarter: '🛻',
-    pickup_half: '🚚',
-    truck_heavy: '🚛',
-    cart_donkey: '🫏',
-    cart_horse: '🐎',
-    loader: '🚜',
-    tractor_trailer: '🚜'
-  };
-
-  grid.innerHTML = places.slice(0, 6).map(place => {
+  grid.innerHTML = places.slice(0, 8).map(place => {
     const targetSlug = place.slug || place._key || place.id || '';
+    const vMeta = resolveDeliveryVehicle(place);
+    const locationPart = place.area ? ` • ${escHtml(place.area)}` : ' بالمنزلة';
+
     return `
     <a href="/place.html?slug=${encodeURIComponent(targetSlug)}" class="delivery-card"
+       style="--vehicle-color: ${vMeta.color}; --vehicle-bg: ${vMeta.bgColor}; --vehicle-border: ${vMeta.borderColor}; --vehicle-glow: ${vMeta.glowColor};"
        data-place-id="${escAttr(place.id || place._key || '')}"
        data-place-slug="${escAttr(targetSlug)}"
        data-name="${escAttr(place.name || '')}"
@@ -578,10 +579,15 @@ function renderDeliveryServices(places) {
        ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
        onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
        onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)">
-      <div class="delivery-card__icon">${deliveryIcons[place.deliveryType] || '🚀'}</div>
+      <div class="delivery-card__icon" aria-label="${vMeta.name}">
+        <span class="delivery-card__emoji" aria-hidden="true">${vMeta.icon}</span>
+      </div>
       <div class="delivery-card__info">
         <div class="delivery-card__name">${escHtml(place.name)}</div>
-        <div class="delivery-card__type">خدمة توصيل بالمنزلة</div>
+        <div class="delivery-card__type">
+          <span class="delivery-card__type-tag" style="color: ${vMeta.color}; font-weight: 700;">${vMeta.label}</span>
+          <span class="delivery-card__type-area">${locationPart}</span>
+        </div>
       </div>
     </a>
   `;
@@ -1850,9 +1856,12 @@ function getHomeHTML() {
     <!-- Delivery Services Section -->
     <section class="section" id="delivery-section">
       <div class="container">
-        <h2 class="section-title">
-          <span>🚀</span> خدمات التوصيل
-        </h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">
+          <h2 class="section-title">
+            <span style="display:inline-flex;align-items:center;gap:3px;font-size:1.1em;">🛺 🚗 🛵</span> خدمات التوصيل والمشاوير
+          </h2>
+          <a href="/places.html?category=delivery" class="section-link">عرض الكل ←</a>
+        </div>
         <div class="delivery-grid" id="delivery-grid"></div>
       </div>
     </section>

@@ -147,8 +147,8 @@ export function renderPlaceCard(place) {
     : `<div class="place-card__logo-placeholder">${catStyle.icon}</div>`;
 
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';
-  const verifiedBadge = place.isVerified ? renderVerifiedBadge() : '';
-  const deliveryBadge = (!isAtm && place.deliveryType) ? renderDeliveryBadge(place.deliveryType) : '';
+  const isDeliveryPlace = !isAtm && (place.deliveryType || place.categoryId === 'delivery' || place.categoryId?.includes('delivery') || /توكتوك|تاكسي|شانجي|اتوبيس|وصلي/i.test(place.name || ''));
+  const deliveryBadge = (isDeliveryPlace && !/صيدلية|مطعم|كشري|حلواني|سوبر\s*ماركت/i.test(place.name || '')) ? renderDeliveryBadge(place) : '';
   const placeUrl = `/place.html?slug=${encodeURIComponent(place.slug || place.id || place._key)}`;
   const placeId = place._key || place.id || place.slug || '';
   const hasValidPhone = isValidPhoneNumber(place.phone);
