@@ -2567,63 +2567,68 @@ try {
   // ── SERVICE REQUESTS («محتاج خدمة» - Job Dispatcher) ──
   // ═══════════════════════════════════════════════════════════
   if (url.pathname === '/api/service-requests' && request.method === 'GET') {
-    const category = (url.searchParams.get('category') || '').trim();
-    const village = (url.searchParams.get('village') || '').trim();
-    const status = (url.searchParams.get('status') || 'open').trim();
-    const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 30)));
+    try {
+      const category = (url.searchParams.get('category') || '').trim();
+      const village = (url.searchParams.get('village') || '').trim();
+      const status = (url.searchParams.get('status') || 'open').trim();
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 30)));
 
-    const where = [], args = [];
-    if (status && status !== 'all') {
-      where.push('status = ?');
-      args.push(status);
-    }
-    if (category) {
-      where.push('category = ?');
-      args.push(category);
-    }
-    if (village) {
-      where.push('village LIKE ?');
-      args.push(`%${village}%`);
-    }
-
-    const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-    const sql = `SELECT id, category, title, village, timing, description, photo_url, user_name, status, offers_count, created_at, expires_at, user_phone, user_id FROM service_requests ${whereClause} ORDER BY created_at DESC LIMIT ?`;
-    args.push(limit);
-
-    const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
-    
-    // Privacy protection: mask phone numbers unless requester is authenticated owner or admin
-    let clientUser = null;
-    try { clientUser = await authenticateRequest(request, env); } catch (_) {}
-
-    const data = rows.map(r => {
-      const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
-      let maskedPhone = null;
-      if (r.user_phone && r.user_phone.length >= 7) {
-        maskedPhone = r.user_phone.slice(0, 3) + '******' + r.user_phone.slice(-2);
+      const where = [], args = [];
+      if (status && status !== 'all') {
+        where.push('status = ?');
+        args.push(status);
       }
-      return {
-        id: r.id,
-        category: r.category,
-        title: r.title,
-        village: r.village,
-        timing: r.timing,
-        description: r.description,
-        photoUrl: r.photo_url,
-        userId: r.user_id,
-        userName: r.user_name || 'مواطن',
-        userPhone: isOwner ? r.user_phone : maskedPhone,
-        rawUserPhone: isOwner ? r.user_phone : null,
-        isPhoneMasked: !isOwner,
-        isOwner: Boolean(isOwner),
-        status: r.status,
-        offersCount: Number(r.offers_count || 0),
-        createdAt: Number(r.created_at || 0),
-        expiresAt: Number(r.expires_at || 0)
-      };
-    });
+      if (category) {
+        where.push('category = ?');
+        args.push(category);
+      }
+      if (village) {
+        where.push('village LIKE ?');
+        args.push(`%${village}%`);
+      }
 
-    return jsonResponse({ success: true, data }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+      const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+      const sql = `SELECT id, category, title, village, timing, description, photo_url, user_name, status, offers_count, created_at, expires_at, user_phone, user_id FROM service_requests ${whereClause} ORDER BY created_at DESC LIMIT ?`;
+      args.push(limit);
+
+      const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
+      
+      // Privacy protection: mask phone numbers unless requester is authenticated owner or admin
+      let clientUser = null;
+      try { clientUser = await authenticateRequest(request, env); } catch (_) {}
+
+      const data = rows.map(r => {
+        const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
+        let maskedPhone = null;
+        if (r.user_phone && r.user_phone.length >= 7) {
+          maskedPhone = r.user_phone.slice(0, 3) + '******' + r.user_phone.slice(-2);
+        }
+        return {
+          id: r.id,
+          category: r.category,
+          title: r.title,
+          village: r.village,
+          timing: r.timing,
+          description: r.description,
+          photoUrl: r.photo_url,
+          userId: r.user_id,
+          userName: r.user_name || 'مواطن',
+          userPhone: isOwner ? r.user_phone : maskedPhone,
+          rawUserPhone: isOwner ? r.user_phone : null,
+          isPhoneMasked: !isOwner,
+          isOwner: Boolean(isOwner),
+          status: r.status,
+          offersCount: Number(r.offers_count || 0),
+          createdAt: Number(r.created_at || 0),
+          expiresAt: Number(r.expires_at || 0)
+        };
+      });
+
+      return jsonResponse({ success: true, data }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+    } catch (err) {
+      console.warn('[GET /api/service-requests warning]:', err?.message || err);
+      return jsonResponse({ success: true, data: [] }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+    }
   }
 
   if (url.pathname === '/api/service-requests' && request.method === 'POST') {
@@ -2746,50 +2751,55 @@ try {
   // ── LIVE ON-CALL CRAFTSMEN («مين متاح ييجي دلوقتي؟») ──
   // ═══════════════════════════════════════════════════════════
   if (url.pathname === '/api/craftsmen/live' && request.method === 'GET') {
-    const professionId = (url.searchParams.get('profession_id') || '').trim();
-    const village = (url.searchParams.get('village') || '').trim();
-    const showAll = url.searchParams.get('all') === '1';
-    const now = Date.now();
+    try {
+      const professionId = (url.searchParams.get('profession_id') || '').trim();
+      const village = (url.searchParams.get('village') || '').trim();
+      const showAll = url.searchParams.get('all') === '1';
+      const now = Date.now();
 
-    const where = showAll ? [] : ['is_available_now = 1', 'available_until > ?'];
-    const args = showAll ? [] : [now];
+      const where = showAll ? [] : ['is_available_now = 1', 'available_until > ?'];
+      const args = showAll ? [] : [now];
 
-    if (professionId) {
-      where.push('profession_id = ?');
-      args.push(professionId);
+      if (professionId) {
+        where.push('profession_id = ?');
+        args.push(professionId);
+      }
+      if (village) {
+        where.push('coverage_villages_json LIKE ?');
+        args.push(`%${village}%`);
+      }
+
+      const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+      const sql = `SELECT * FROM craftsman_presence ${whereClause} ORDER BY available_until DESC LIMIT 100`;
+      const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
+
+      const data = rows.map(r => {
+        let coverageVillages = [];
+        try { coverageVillages = JSON.parse(r.coverage_villages_json || '[]'); } catch (_) {}
+        const remainingMs = Math.max(0, Number(r.available_until) - now);
+        const remainingMinutes = Math.round(remainingMs / 60000);
+        return {
+          id: r.id,
+          placeId: r.place_id,
+          craftsmanName: r.craftsman_name,
+          professionId: r.profession_id,
+          professionName: r.profession_name,
+          isAvailableNow: Boolean(r.is_available_now),
+          coverageVillages,
+          inspectionFee: r.inspection_fee || 'حسب الاتفاق',
+          etaMinutes: Number(r.eta_minutes || 30),
+          phone: r.phone,
+          whatsapp: r.whatsapp,
+          remainingMinutes,
+          availableUntil: Number(r.available_until)
+        };
+      });
+
+      return jsonResponse({ success: true, data }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+    } catch (err) {
+      console.warn('[GET /api/craftsmen/live warning]:', err?.message || err);
+      return jsonResponse({ success: true, data: [] }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
     }
-    if (village) {
-      where.push('coverage_villages_json LIKE ?');
-      args.push(`%${village}%`);
-    }
-
-    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const sql = `SELECT * FROM craftsman_presence ${whereClause} ORDER BY available_until DESC LIMIT 100`;
-    const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
-
-    const data = rows.map(r => {
-      let coverageVillages = [];
-      try { coverageVillages = JSON.parse(r.coverage_villages_json || '[]'); } catch (_) {}
-      const remainingMs = Math.max(0, Number(r.available_until) - now);
-      const remainingMinutes = Math.round(remainingMs / 60000);
-      return {
-        id: r.id,
-        placeId: r.place_id,
-        craftsmanName: r.craftsman_name,
-        professionId: r.profession_id,
-        professionName: r.profession_name,
-        isAvailableNow: Boolean(r.is_available_now),
-        coverageVillages,
-        inspectionFee: r.inspection_fee || 'حسب الاتفاق',
-        etaMinutes: Number(r.eta_minutes || 30),
-        phone: r.phone,
-        whatsapp: r.whatsapp,
-        remainingMinutes,
-        availableUntil: Number(r.available_until)
-      };
-    });
-
-    return jsonResponse({ success: true, data }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
   }
 
   if (url.pathname === '/api/craftsmen/live' && request.method === 'POST') {
