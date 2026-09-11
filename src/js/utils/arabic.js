@@ -233,16 +233,29 @@ export function arabicScore(haystack, needle) {
 
   if (!h || !n) return 0;
 
+  const isSingleChar = n.length === 1;
+
   if (h === n) return 100;
-  if (h.startsWith(n)) return 95;
-  if (h.includes(n)) return 85;
 
   const hNoAl = stripAl(h);
   const nNoAl = stripAl(n);
 
-  if (hNoAl === nNoAl) return 92;
-  if (hNoAl.startsWith(nNoAl)) return 88;
-  if (hNoAl.includes(nNoAl)) return 80;
+  if (hNoAl === nNoAl) return 98;
+  if (h.startsWith(n)) return 95;
+  if (hNoAl.startsWith(nNoAl)) return 92;
+
+  const hWords = h.split(/\s+/).filter(Boolean);
+  if (hWords.some(w => w.startsWith(n) || stripAl(w).startsWith(nNoAl))) {
+    return 90;
+  }
+
+  if (!isSingleChar) {
+    if (h.includes(n)) return 85;
+    if (hNoAl.includes(nNoAl)) return 80;
+  } else {
+    // For single character, inner substring match gets lower score so prefix hits dominate
+    if (h.includes(n)) return 35;
+  }
 
   const nTokens = n.split(/\s+/).filter(Boolean);
   if (nTokens.length > 0) {

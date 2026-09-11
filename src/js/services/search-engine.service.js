@@ -3,7 +3,7 @@
  * Advanced Local In-Memory Unified Search Engine with Query Deconstruction & Field-Specific Weighting
  */
 
-import { normalizeArabic } from '../utils/arabic.js';
+import { normalizeArabic, stripAl } from '../utils/arabic.js';
 import { getPublishedPlaces, getCategories } from '../core/db.js';
 import { idbGetAll, STORES } from './idb-cache.service.js';
 import { resolveDoctorSpecialty, MEDICAL_SPECIALTY_MAP } from '../utils/specialty.js';
@@ -230,7 +230,48 @@ class SearchIndex {
       });
     });
 
+    this.categories = categories || [];
     this.isReady = true;
+  }
+
+  searchCategories(query) {
+    if (!query || !query.trim() || !this.categories || this.categories.length === 0) return [];
+    const normQ = normalizeArabic(query).trim().toLowerCase();
+    const isSingleChar = normQ.length === 1;
+    const matches = [];
+
+    for (const cat of this.categories) {
+      const name = cat.name || '';
+      const nameNorm = normalizeArabic(name);
+      const nameNoAl = stripAl(nameNorm);
+      const words = nameNorm.split(/\s+/).filter(Boolean);
+      let catScore = 0;
+
+      if (nameNorm === normQ) {
+        catScore = 3500;
+      } else if (nameNorm.startsWith(normQ)) {
+        catScore = 3000;
+      } else if (nameNoAl.startsWith(normQ)) {
+        catScore = 2800;
+      } else if (words.some(w => w.startsWith(normQ) || stripAl(w).startsWith(normQ))) {
+        catScore = 2400;
+      } else if (!isSingleChar && nameNorm.includes(normQ)) {
+        catScore = 1200;
+      }
+
+      if (catScore >= 1000) {
+        matches.push({
+          id: cat.id || cat.slug || cat._key,
+          slug: cat.slug || cat.id,
+          name: cat.name,
+          icon: cat.icon || '🏪',
+          score: catScore
+        });
+      }
+    }
+
+    matches.sort((a, b) => b.score - a.score);
+    return matches.slice(0, 4);
   }
 
   search(query, options = {}) {
@@ -240,6 +281,7 @@ class SearchIndex {
 
     const { isDoctor, targetSpecialty, location, normalizedQuery: normQ } = deconstructQuery(query);
     const queryTokens = normQ.split(/\s+/).filter(Boolean);
+    const isSingleChar = normQ.length === 1;
     const results = [];
 
     const wantsOpenNow = options.wantsOpenNow || normQ.includes('فاتح') || normQ.includes('شغال') || normQ.includes('دلوقت');
@@ -256,6 +298,12 @@ class SearchIndex {
         matchedReason = '📞 مطابقة رقم الهاتف';
       }
 
+      const nameNoAl = stripAl(doc.nameNorm);
+      const catNoAl = stripAl(doc.categoryNorm);
+      const specNoAl = stripAl(doc.specialtyNorm);
+      const nameWords = doc.nameNorm.split(/\s+/).filter(Boolean);
+      const catWords = doc.categoryNorm.split(/\s+/).filter(Boolean);
+
       // ── 1. TARGET MEDICAL SPECIALTY EXACT MATCH (+2200 PTS) ──
       if (targetSpecialty && doc.docInfo.isDoctor) {
         if (doc.specialtyKey === targetSpecialty.key) {
@@ -270,44 +318,67 @@ class SearchIndex {
         }
       }
 
-      // ── 2. EXACT NAME MATCH (+1500 PTS) ──
+      // ── 2. NAME MATCHING (PREFIX-FIRST FOR INSTANT 1-CHAR & SUB-SECOND SEARCH) ──
       if (doc.nameNorm === normQ) {
-        score += 1500;
+        score += 4000;
         if (!matchedReason) matchedReason = 'مطابقة تامة لاسم المكان';
-      } else if (doc.nameNorm.includes(normQ)) {
+      } else if (doc.nameNorm.startsWith(normQ)) {
+        score += 3500;
+        if (!matchedReason) matchedReason = `يبدأ بحرف "${normQ}"`;
+      } else if (nameNoAl.startsWith(normQ)) {
+        score += 3200;
+        if (!matchedReason) matchedReason = `يبدأ بحرف "${normQ}"`;
+      } else if (nameWords.some(w => w.startsWith(normQ) || stripAl(w).startsWith(normQ))) {
+        score += 2800;
+        if (!matchedReason) matchedReason = 'إحدى كلمات الاسم تبدأ بالبحث';
+      } else if (!isSingleChar && doc.nameNorm.includes(normQ)) {
         score += 1000;
         if (!matchedReason) matchedReason = 'اسم المكان';
-      } else if (queryTokens.every(tok => doc.nameNorm.includes(tok))) {
+      } else if (!isSingleChar && queryTokens.every(tok => doc.nameNorm.includes(tok))) {
         score += 800;
         if (!matchedReason) matchedReason = 'كلمات اسم المكان';
+      } else if (isSingleChar && doc.nameNorm.includes(normQ)) {
+        // Inner character fallback for 1-char query (so prefix hits ALWAYS win)
+        score += 180;
+        if (!matchedReason) matchedReason = 'مطابقة حرف بالاسم';
       }
 
-      // ── 3. EGYPTIAN DIALECT & SYNONYM CLUSTERS (+700 PTS) ──
-      for (const [clusterKey, clusterData] of Object.entries(EGYPTIAN_DIALECT_SYNONYMS)) {
-        const isQueryInCluster = clusterData.synonyms.some(syn => {
-          const nSyn = normalizeArabic(syn);
-          return normQ === nSyn || normQ.startsWith(nSyn + ' ') || normQ.endsWith(' ' + nSyn) || normQ.includes(' ' + nSyn + ' ');
-        });
-        if (isQueryInCluster) {
-          const isDocInCluster = clusterData.synonyms.some(syn => {
-            const nSyn = normalizeArabic(syn);
-            return doc.searchText.includes(nSyn);
-          });
-          if (isDocInCluster) {
-            score += 700;
-            if (!matchedReason) matchedReason = clusterData.canonical;
-            break;
-          }
-        }
-      }
-
-      // ── 4. CATEGORY MATCH (+500 PTS) ──
-      if (isDoctor && doc.docInfo.isDoctor) {
-        score += 500;
-      }
-      if (doc.categoryNorm && (doc.categoryNorm.includes(normQ) || (normQ.length >= 3 && normQ.includes(doc.categoryNorm)))) {
+      // ── 3. CATEGORY & SPECIALTY PREFIX BOOSTS ──
+      if (doc.categoryNorm && (doc.categoryNorm.startsWith(normQ) || catNoAl.startsWith(normQ))) {
+        score += 2500;
+        if (!matchedReason) matchedReason = doc.category;
+      } else if (catWords.some(w => w.startsWith(normQ) || stripAl(w).startsWith(normQ))) {
+        score += 2200;
+        if (!matchedReason) matchedReason = doc.category;
+      } else if (doc.specialtyNorm && (doc.specialtyNorm.startsWith(normQ) || specNoAl.startsWith(normQ))) {
+        score += 2400;
+        if (!matchedReason) matchedReason = doc.specialty;
+      } else if (!isSingleChar && doc.categoryNorm && (doc.categoryNorm.includes(normQ) || (normQ.length >= 3 && normQ.includes(doc.categoryNorm)))) {
         score += 500;
         if (!matchedReason) matchedReason = doc.category;
+      } else if (isSingleChar && doc.categoryNorm && doc.categoryNorm.includes(normQ)) {
+        score += 120;
+      }
+
+      // ── 4. EGYPTIAN DIALECT & SYNONYM CLUSTERS (+700 PTS) ──
+      if (!isSingleChar) {
+        for (const [clusterKey, clusterData] of Object.entries(EGYPTIAN_DIALECT_SYNONYMS)) {
+          const isQueryInCluster = clusterData.synonyms.some(syn => {
+            const nSyn = normalizeArabic(syn);
+            return normQ === nSyn || normQ.startsWith(nSyn + ' ') || normQ.endsWith(' ' + nSyn) || normQ.includes(' ' + nSyn + ' ');
+          });
+          if (isQueryInCluster) {
+            const isDocInCluster = clusterData.synonyms.some(syn => {
+              const nSyn = normalizeArabic(syn);
+              return doc.searchText.includes(nSyn);
+            });
+            if (isDocInCluster) {
+              score += 700;
+              if (!matchedReason) matchedReason = clusterData.canonical;
+              break;
+            }
+          }
+        }
       }
 
       // ── 5. LOCATION MATCH (+400 PTS) ──
@@ -345,9 +416,9 @@ class SearchIndex {
         }
       }
 
-      // ── 10. SUBSTRING & CHAR MATCH FALLBACK (+350 pts) ──
+      // ── 10. SUBSTRING & CHAR MATCH FALLBACK (+120 / +350 pts) ──
       if (score === 0 && (doc.searchText.includes(normQ) || normQ.includes(doc.nameNorm))) {
-        score += 350;
+        score += isSingleChar ? 120 : 350;
         if (!matchedReason) matchedReason = 'مطابقة في الدليل';
       }
 
@@ -362,33 +433,47 @@ class SearchIndex {
 
     results.sort((a, b) => b.score - a.score);
     const limit = options.limit || 10;
-    return results.slice(0, limit);
+    const finalResults = results.slice(0, limit);
+    if (options.includeCategories !== false) {
+      finalResults.matchingCategories = this.searchCategories(query);
+    }
+    return finalResults;
   }
 }
 
 export const globalSearchIndex = new SearchIndex();
 
-export async function executeFastSearch(query = '', options = {}) {
-  if (!globalSearchIndex.isReady || globalSearchIndex.documents.length === 0) {
-    // 1. Try instant IndexedDB local index first (0ms)
-    try {
-      const [idbPlaces, idbCats] = await Promise.all([
-        idbGetAll(STORES.PLACES),
-        idbGetAll(STORES.CATEGORIES)
-      ]);
-      if (idbPlaces && idbPlaces.length > 0) {
-        globalSearchIndex.buildIndex(idbPlaces, idbCats || []);
-      }
-    } catch (_) {}
+export function warmupSearchEngine(places = [], categories = []) {
+  if ((Array.isArray(places) && places.length > 0) || (Array.isArray(categories) && categories.length > 0)) {
+    globalSearchIndex.buildIndex(places || [], categories || []);
+  }
+}
 
-    // 2. If index is still empty, load via getPublishedPlaces (which uses IDB + RTDB SWR)
-    if (!globalSearchIndex.isReady || globalSearchIndex.documents.length === 0) {
-      const [places, categories] = await Promise.all([
-        getPublishedPlaces({ limit: 500 }).catch(() => []),
-        getCategories().catch(() => [])
-      ]);
-      globalSearchIndex.buildIndex(places, categories);
+export async function executeFastSearch(query = '', options = {}) {
+  // Fast path: if index is already hot in memory, execute synchronously in 0ms!
+  if (globalSearchIndex.isReady && globalSearchIndex.documents.length > 0) {
+    return globalSearchIndex.search(query, options);
+  }
+
+  // 1. Try instant IndexedDB local index first (sub-millisecond)
+  try {
+    const [idbPlaces, idbCats] = await Promise.all([
+      idbGetAll(STORES.PLACES),
+      idbGetAll(STORES.CATEGORIES)
+    ]);
+    if (idbPlaces && idbPlaces.length > 0) {
+      globalSearchIndex.buildIndex(idbPlaces, idbCats || []);
+      return globalSearchIndex.search(query, options);
     }
+  } catch (_) {}
+
+  // 2. If index is still empty, load via getPublishedPlaces
+  if (!globalSearchIndex.isReady || globalSearchIndex.documents.length === 0) {
+    const [places, categories] = await Promise.all([
+      getPublishedPlaces({ limit: 500 }).catch(() => []),
+      getCategories().catch(() => [])
+    ]);
+    globalSearchIndex.buildIndex(places, categories);
   }
 
   return globalSearchIndex.search(query, options);

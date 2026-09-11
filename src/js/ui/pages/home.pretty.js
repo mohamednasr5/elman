@@ -3,7 +3,7 @@
  * Full homepage with hero, search, categories, places, offers, delivery
  */
 
-import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings } from '../../core/db.js';
+import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings, getCached } from '../../core/db.js';
 import { WORKER_URL } from '../../core/firebase.js';
 import { appState } from '../../core/state.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
@@ -13,7 +13,7 @@ import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } 
 import { daysUntil } from '../../utils/date.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { openManzalaVoiceAssistantModal } from '../../services/voice.service.js';
-import { executeFastSearch } from '../../services/search-engine.service.js';
+import { executeFastSearch, warmupSearchEngine } from '../../services/search-engine.service.js';
 import { getCategorySvg } from '../../utils/professions-data.js';
 import { getCategoryVisualMeta, renderCategoryCardIcon } from '../../utils/category-visual.js';
 import { resolveDeliveryVehicle } from '../../utils/delivery-vehicle.js';
@@ -107,6 +107,24 @@ export async function renderHomePage($main, { user } = {}) {
 
   initHomeVerifiedShowcase();
 
+  // ── ⚡ 0ms Sub-Second Instant Cache Hydration (Zero Skeleton Lag on Mobile PWA) ──
+  try {
+    const cachedCats = getCached('categories_all');
+    const cachedPlaces = getCached('published_100_');
+    if (Array.isArray(cachedCats) && cachedCats.length > 0) {
+      renderCategories(cachedCats);
+      setupHeroSearch(cachedCats);
+    }
+    if (Array.isArray(cachedPlaces) && cachedPlaces.length > 0) {
+      const cu = getCurrentUser() || user;
+      initHomeVerifiedShowcase(cachedPlaces);
+      const sorted = sortLatestPlaces(cachedPlaces, cu?.uid);
+      renderLatestPlaces(sorted.slice(0, 8));
+      renderStatsBar(cachedPlaces.length, cachedCats?.length || 31);
+      warmupSearchEngine(cachedPlaces, cachedCats || []);
+    }
+  } catch (_) {}
+
   try {
     const [categories, places, offers, ads] = await Promise.all([
       getCategories(),
@@ -159,6 +177,9 @@ export async function renderHomePage($main, { user } = {}) {
 
     // Stats bar
     renderStatsBar((allPlaces.length || 0), (categories?.length || 31));
+
+    // Warm up search engine with fresh places & categories
+    warmupSearchEngine(allPlaces, categories || []);
 
     // Setup hero search
     setupHeroSearch(categories || []);
@@ -991,6 +1012,8 @@ function setupHeroSearch(categories) {
       return;
     }
 
+    // ⚡ 0ms immediate search execution for single-character or short queries
+    const delay = query.length <= 2 ? 0 : 35;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
       const currentReq = ++activeSearchReq;
@@ -1025,7 +1048,28 @@ function setupHeroSearch(categories) {
           return escHtml(text).replace(regex, '<span class="search-highlight">$1</span>');
         }
 
-        resultsList.innerHTML = results.map(doc => {
+        let matchedCatsHtml = '';
+        if (results.matchingCategories && results.matchingCategories.length > 0) {
+          matchedCatsHtml = `
+            <div class="hero-live-matched-cats">
+              <span class="hero-live-matched-cats__label">⚡ أقسام مطابقة:</span>
+              <div class="hero-live-matched-cats__chips">
+                ${results.matchingCategories.map(cat => {
+                  const catSlug = cat.slug || cat.id || '';
+                  const svgIcon = getCategorySvg(catSlug || cat.name, 16);
+                  return `
+                    <a href="category.html?slug=${encodeURIComponent(catSlug)}" class="hero-live-matched-cat-chip" onclick="event.stopPropagation()">
+                      ${svgIcon || cat.icon || '🏪'}
+                      <span>${escHtml(cat.name)}</span>
+                    </a>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        resultsList.innerHTML = matchedCatsHtml + results.map(doc => {
           const p = doc.raw || doc;
           const name = p.name || 'مكان بالدليل';
           const cat = p.categoryName || doc.category || '';
@@ -1111,7 +1155,7 @@ function setupHeroSearch(categories) {
       } catch (err) {
         console.warn('[HeroLiveSearch] error:', err);
       }
-    }, 40);
+    }, delay);
   });
 
   // Close dropdown when clicking outside

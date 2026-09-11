@@ -102,6 +102,8 @@
     .hero-live-dropdown{position:absolute;z-index:99999 !important}
     /* Quick cats — reserve height to prevent CLS */
     .hero__quick-cats{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;min-height:40px}
+    .hero__quick-cat{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem .9rem;border-radius:9999px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:.82rem;font-weight:700;text-decoration:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:all .2s ease;white-space:nowrap}
+    .hero__quick-cat:hover{background:#fff;color:#0284C7;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.18)}
     /* Stats bar — reserve height */
     .stats-bar{min-height:72px;position:relative;z-index:5}
     /* Skeleton shimmer */
@@ -312,12 +314,16 @@
           </div>
         </div>
 
-        <!-- Quick Categories — skeleton chips, replaced by JS -->
+        <!-- Quick Categories — Pre-rendered for 0ms PWA Instant Load -->
         <div class="hero__quick-cats" id="hero-quick-cats" aria-label="تصنيفات سريعة">
-          <div class="skeleton" style="height:36px;width:90px;border-radius:9999px;"></div>
-          <div class="skeleton" style="height:36px;width:100px;border-radius:9999px;"></div>
-          <div class="skeleton" style="height:36px;width:85px;border-radius:9999px;"></div>
-          <div class="skeleton" style="height:36px;width:95px;border-radius:9999px;"></div>
+          <a href="category.html?slug=doctors" class="hero__quick-cat">🩺 أطباء وعيادات</a>
+          <a href="category.html?slug=pharmacy" class="hero__quick-cat">💊 صيدليات</a>
+          <a href="category.html?slug=restaurants" class="hero__quick-cat">🍔 مطاعم ودليفري</a>
+          <a href="category.html?slug=supermarket" class="hero__quick-cat">🛒 سوبر ماركت</a>
+          <a href="category.html?slug=plumbing" class="hero__quick-cat">🔧 سباكة</a>
+          <a href="category.html?slug=electrical" class="hero__quick-cat">⚡ كهرباء</a>
+          <a href="category.html?slug=bakery" class="hero__quick-cat">🥖 مخابز</a>
+          <a href="category.html?slug=auto_repair" class="hero__quick-cat">🚗 صيانة سيارات</a>
         </div>
       </div>
     </section>

@@ -1716,6 +1716,8 @@ function _setupHeaderSearch() {
       return;
     }
 
+    // ⚡ 0ms immediate search execution for single-character or short queries
+    const delay = query.length <= 2 ? 0 : 35;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
       const currentReq = ++activeSearchReq;
@@ -1751,7 +1753,27 @@ function _setupHeaderSearch() {
           return _esc(text).replace(regex, '<span class="search-highlight">$1</span>');
         }
 
-        resultsList.innerHTML = results.map(doc => {
+        let matchedCatsHtml = '';
+        if (results.matchingCategories && results.matchingCategories.length > 0) {
+          matchedCatsHtml = `
+            <div class="hero-live-matched-cats" style="margin-bottom:6px">
+              <span class="hero-live-matched-cats__label">⚡ تصنيفات مطابقة:</span>
+              <div class="hero-live-matched-cats__chips">
+                ${results.matchingCategories.map(cat => {
+                  const catSlug = cat.slug || cat.id || '';
+                  return `
+                    <a href="category.html?slug=${encodeURIComponent(catSlug)}" class="hero-live-matched-cat-chip" onclick="event.stopPropagation()">
+                      ${cat.icon || '🏪'}
+                      <span>${_esc(cat.name)}</span>
+                    </a>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        resultsList.innerHTML = matchedCatsHtml + results.map(doc => {
           const p = doc.raw || doc;
           const name = p.name || 'مكان بالدليل';
           const cat = p.categoryName || doc.category || '';
@@ -1771,7 +1793,7 @@ function _setupHeaderSearch() {
             actionsHtml = `
               <div class="header-live-actions" onclick="event.stopPropagation()">
                 ${phone ? `
-                  <a href="tel:${_esc(phone)}" class="header-live-action-btn header-live-action-btn--call" title="اتصال مباشر" onclick="event.stopPropagation()">
+                  <a href="tel:${_esc(phone)}" class="header-live-action-btn header-live-action-btn--call" title="اتصال هاتفي" onclick="event.stopPropagation()">
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                     <span class="action-btn-text">اتصال</span>
                   </a>
@@ -1838,7 +1860,7 @@ function _setupHeaderSearch() {
       } catch (err) {
         console.warn('[HeaderLiveSearch] search error:', err);
       }
-    }, 120);
+    }, delay);
   });
 
   // Close dropdown when clicking outside
