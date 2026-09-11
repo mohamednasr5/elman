@@ -3059,6 +3059,26 @@ function showAddCategoryModal(onDone) {
             return;
           }
 
+          const existingCats = adminCache.categories || [];
+          const normNewName = name.replace(/[\u064B-\u065F\u0670]/g, '').replace(/[إأآا]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/^(ال)/, '').replace(/\s+/g, ' ').toLowerCase().trim();
+          
+          const nameCollision = existingCats.find(c => {
+            const normC = String(c.name || '').replace(/[\u064B-\u065F\u0670]/g, '').replace(/[إأآا]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/^(ال)/, '').replace(/\s+/g, ' ').toLowerCase().trim();
+            return normC === normNewName || String(c.name || '').trim().toLowerCase() === name.toLowerCase();
+          });
+          if (nameCollision) {
+            toast.warning(`عفواً، يوجد تصنيف مسجل بهذا الاسم بالفعل ("${nameCollision.name}")`);
+            return;
+          }
+
+          if (icon && icon !== '📁') {
+            const iconCollision = existingCats.find(c => (c.icon || '').trim() === icon);
+            if (iconCollision) {
+              toast.warning(`عفواً، هذه الأيقونة (${icon}) مستخدمة بالفعل في تصنيف "${iconCollision.name}". يرجى اختيار أيقونة فريدة.`);
+              return;
+            }
+          }
+
           try {
             const newCat = {
               id: slug,
@@ -6011,6 +6031,27 @@ window.editCategoryAdmin = async (catId, currentName, currentIcon) => {
           const name = document.getElementById('edit-cat-name')?.value.trim();
           const icon = document.getElementById('edit-cat-icon')?.value.trim() || '📁';
           if (!name) return;
+
+          const existingCats = adminCache.categories || [];
+          const normNewName = name.replace(/[\u064B-\u065F\u0670]/g, '').replace(/[إأآا]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/^(ال)/, '').replace(/\s+/g, ' ').toLowerCase().trim();
+          
+          const nameCollision = existingCats.find(c => {
+            if ((c._key || c.slug || c.id) === catId) return false;
+            const normC = String(c.name || '').replace(/[\u064B-\u065F\u0670]/g, '').replace(/[إأآا]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/^(ال)/, '').replace(/\s+/g, ' ').toLowerCase().trim();
+            return normC === normNewName || String(c.name || '').trim().toLowerCase() === name.toLowerCase();
+          });
+          if (nameCollision) {
+            toast.warning(`عفواً، يوجد تصنيف آخر مسجل بهذا الاسم بالفعل ("${nameCollision.name}")`);
+            return;
+          }
+
+          if (icon && icon !== '📁') {
+            const iconCollision = existingCats.find(c => (c._key || c.slug || c.id) !== catId && (c.icon || '').trim() === icon);
+            if (iconCollision) {
+              toast.warning(`عفواً، هذه الأيقونة (${icon}) مستخدمة بالفعل في تصنيف "${iconCollision.name}". يرجى اختيار أيقونة فريدة.`);
+              return;
+            }
+          }
           try {
             const updated = {
               id: catId,

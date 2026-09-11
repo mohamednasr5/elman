@@ -1318,32 +1318,60 @@ export async function saveCategoryTurso(category) {
   const slug=String(category.slug||category.id||category._key||'').trim().toLowerCase().replace(/\s+/g,'-');
   const payload={...category,id:category.id||slug,_key:category.id||slug,slug,nameEn:category.nameEn||category.name_en||slug,icon:category.icon||'📁',order:Number(category.order??category.sort_order??0)};
   const data=await tursoFetch('/api/categories',{method:'POST',body:JSON.stringify(payload)});
-  clearDbCache('categories');clearDbCache('categories_all');return data?.data||payload;
+  clearDbCache('categories');
+  clearDbCache('categories_all');
+  try {
+    if (typeof idbClear === 'function') await idbClear(STORES.CATEGORIES);
+  } catch (_) {}
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dalil:categories_updated', { detail: payload }));
+      if (window.BroadcastChannel) {
+        new BroadcastChannel('dalil_sync_channel').postMessage({ type: 'categories_updated' });
+      }
+    }
+  } catch (_) {}
+  return data?.data||payload;
 }
 
 export async function deleteCategoryTurso(categoryId) {
   if(!categoryId)throw new Error('Category ID required');
   const data=await tursoFetch('/api/categories/'+encodeURIComponent(categoryId),{method:'DELETE'});
-  clearDbCache('categories');clearDbCache('categories_all');return data;
-}
-
-export async function getCategories() {
-  const cached = getCached('categories_all', 1800000);
-  if (Array.isArray(cached) && cached.length) return cached;
-
-  // 1. Instant IDB Cache (0ms)
+  clearDbCache('categories');
+  clearDbCache('categories_all');
   try {
-    const local = await idbGetAll(STORES.CATEGORIES);
-    if (Array.isArray(local) && local.length > 0) {
-      setCache('categories_all', local);
-      _syncCategoriesInBackground().catch(() => {});
-      return local;
+    if (typeof idbClear === 'function') await idbClear(STORES.CATEGORIES);
+  } catch (_) {}
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dalil:categories_updated', { detail: { id: categoryId } }));
+      if (window.BroadcastChannel) {
+        new BroadcastChannel('dalil_sync_channel').postMessage({ type: 'categories_updated' });
+      }
     }
   } catch (_) {}
+  return data;
+}
 
-  // 2. Network Fetch if cold start
+export async function getCategories(forceFresh = false) {
+  if (!forceFresh) {
+    const cached = getCached('categories_all', 60000); // 1 minute fresh window
+    if (Array.isArray(cached) && cached.length) return cached;
+
+    // 1. Instant IDB Cache (0ms)
+    try {
+      const local = await idbGetAll(STORES.CATEGORIES);
+      if (Array.isArray(local) && local.length > 0) {
+        setCache('categories_all', local);
+        _syncCategoriesInBackground().catch(() => {});
+        return local;
+      }
+    } catch (_) {}
+  }
+
+  // 2. Network Fetch if cold start or forced
   try {
-    const data = await tursoFetch('/api/categories');
+    const data = await tursoFetch('/api/categories?_ts=' + Date.now());
     const categories = (Array.isArray(data?.data) ? data.data : []).map(c => ({
       id: c.id || c.slug, _key: c.id || c.slug, slug: c.slug || c.id, name: c.name || '',
       nameEn: c.name_en || c.nameEn || '', icon: c.icon || '🏪', description: c.description || '',
@@ -1362,7 +1390,7 @@ export async function getCategories() {
 
 async function _syncCategoriesInBackground() {
   try {
-    const data = await tursoFetch('/api/categories');
+    const data = await tursoFetch('/api/categories?_ts=' + Date.now());
     if (Array.isArray(data?.data) && data.data.length > 0) {
       const categories = data.data.map(c => ({
         id: c.id || c.slug, _key: c.id || c.slug, slug: c.slug || c.id, name: c.name || '',
@@ -1371,11 +1399,39 @@ async function _syncCategoriesInBackground() {
         placeCount: Number(c.place_count ?? c.placeCount ?? 0)
       })).sort((a, b) => (a.order || 0) - (b.order || 0));
       if (categories.length) {
+        const oldCats = getCached('categories_all') || [];
+        const isChanged = oldCats.length !== categories.length ||
+          categories.some((c, i) => !oldCats[i] || oldCats[i].id !== c.id || oldCats[i].name !== c.name || oldCats[i].icon !== c.icon);
+
         idbPutBulk(STORES.CATEGORIES, categories).catch(() => {});
         setCache('categories_all', categories);
+
+        if (isChanged && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('dalil:categories_updated_background', { detail: categories }));
+        }
       }
     }
   } catch (_) {}
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('dalil:categories_updated', () => {
+    clearDbCache('categories');
+    clearDbCache('categories_all');
+  });
+  if (window.BroadcastChannel) {
+    try {
+      const bc = new BroadcastChannel('dalil_sync_channel');
+      bc.onmessage = (e) => {
+        if (e.data?.type === 'categories_updated') {
+          clearDbCache('categories');
+          clearDbCache('categories_all');
+          try { idbClear(STORES.CATEGORIES); } catch (_) {}
+          window.dispatchEvent(new CustomEvent('dalil:categories_updated'));
+        }
+      };
+    } catch (_) {}
+  }
 }
 
 export async function getCategory(slug) {
