@@ -7,7 +7,7 @@ try {
   importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
   firebase.initializeApp({
-    apiKey: "AIzaSyCUGCecmvBdf6b38UVIM9zcxhbbux7VSzM",
+    apiKey: "AIzaSyCUGecmvBdf6b38UVIM9zcxhbbux7VSzM",
     authDomain: "elmanzla-7402a.firebaseapp.com",
     projectId: "elmanzla-7402a",
     storageBucket: "elmanzla-7402a.firebasestorage.app",
@@ -27,7 +27,9 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v4.4.1-resilient-homepage-v1';
+// Bump this whenever a critical runtime module is repaired so old PWA caches
+// are retired immediately on the next service-worker activation.
+const CACHE_VERSION = 'v4.4.2-db-runtime-fix';
 const STATIC_CACHE = 'manzala-static-' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'manzala-dynamic-' + CACHE_VERSION;
 const IMAGE_CACHE = 'manzala-images-' + CACHE_VERSION;
@@ -79,7 +81,6 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (request.method !== 'GET') return;
 
-  // Live APIs and Firebase/Auth/notification infrastructure are never intercepted.
   if (
     url.pathname.startsWith('/api/') ||
     url.hostname.includes('firebaseio.com') ||
@@ -89,7 +90,6 @@ self.addEventListener('fetch', event => {
     url.hostname.includes('workers.dev')
   ) return;
 
-  // Quran/Hadith local datasets: cache-first after first successful load.
   if (
     url.origin === self.location.origin &&
     (url.pathname.endsWith('/quran.json') ||
@@ -104,7 +104,6 @@ self.addEventListener('fetch', event => {
   }
 
   if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
-    // Instant App-Shell for Place details page (0ms mobile / PWA subsecond transition)
     if (url.pathname === '/place.html' || url.pathname.endsWith('/place.html')) {
       event.respondWith(appShellStrategy(request));
       return;
@@ -118,7 +117,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // App scripts and styles: network-first when online to guarantee immediate updates in PWA
   if (url.origin === self.location.origin && url.pathname.match(/\.(js|css)$/i)) {
     event.respondWith(networkFirstStrategy(request));
     return;
@@ -153,7 +151,6 @@ async function appShellStrategy(request) {
   try {
     const cached = (await caches.match('./place.html')) || (await caches.match('/place.html')) || (await caches.match(request));
     if (cached) {
-      // Revalidate in background to keep shell up to date without blocking
       fetch(request).then(async (res) => {
         if (res?.status === 200) {
           const cache = await caches.open(STATIC_CACHE);
