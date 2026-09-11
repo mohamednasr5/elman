@@ -184,7 +184,7 @@ async function loadRequests(container, limit = 6) {
         : `https://wa.me/201004128504?text=${waText}`;
 
       return `
-        <article class="need-service-card" data-req-card="${esc(r.id)}">
+        <article class="need-service-card" id="req-${esc(r.id)}" data-req-card="${esc(r.id)}">
           
           ${isOwner ? `
             <div style="background:rgba(16,185,129,0.12);border:1.5px solid rgba(16,185,129,0.4);border-radius:12px;padding:8px 10px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">

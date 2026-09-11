@@ -184,6 +184,65 @@ async function sendDailyQuranReminder(env) {
   }
 }
 
+async function broadcastFcmNotification({ title, body, url, icon, tag }, env, ctx) {
+  const task = async () => {
+    try {
+      if (!env.FCM_CLIENT_EMAIL || !env.FCM_PRIVATE_KEY || !env.FCM_PROJECT_ID) {
+        return;
+      }
+      const result = await createTursoDB(env).prepare(
+        'SELECT token FROM fcm_tokens WHERE token IS NOT NULL AND token <> ""'
+      ).all();
+      const rows = result?.results || [];
+      if (!rows.length) return;
+
+      const accessToken = await getFcmAccessToken(env);
+      const endpoint = 'https://fcm.googleapis.com/v1/projects/' +
+        encodeURIComponent(env.FCM_PROJECT_ID) + '/messages:send';
+
+      for (let i = 0; i < rows.length; i += 50) {
+        await Promise.all(rows.slice(i, i + 50).map(async row => {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + accessToken,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: {
+                token: row.token,
+                notification: {
+                  title,
+                  body
+                },
+                data: {
+                  title,
+                  body,
+                  url: url || './now.html',
+                  actionUrl: url || './now.html',
+                  icon: icon || './icons/icon-192x192.png',
+                  tag: tag || ('fcm-' + Date.now())
+                }
+              }
+            })
+          });
+          if (response.status === 404 || response.status === 410) {
+            await createTursoDB(env).prepare('DELETE FROM fcm_tokens WHERE token = ?').bind(row.token).run().catch(() => {});
+          }
+        }));
+      }
+    } catch (err) {
+      console.warn('[FCM Broadcast Warning]:', err?.message || err);
+    }
+  };
+
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(task());
+  } else {
+    task().catch(() => {});
+  }
+}
+
 function b64url(bytes) {
   const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   let binary = '';
@@ -2679,6 +2738,14 @@ try {
       userPhone
     }, env, ctx);
 
+    broadcastFcmNotification({
+      title: `📢 طلب جديد: ${userName} (${title})`,
+      body: `طلب خدمة (${category}) - الموعد: ${timing} في ${village} — اضغط لمشاهدة الطلب`,
+      url: `./now.html#req-${id}`,
+      icon: photoUrl || './icons/icon-192x192.png',
+      tag: `service-req-${id}`
+    }, env, ctx);
+
     return jsonResponse({ success: true, id, message: 'تم نشر طلبك بنجاح وسيتواصل معك الفنيون المناسبون' }, 201, corsHeaders);
   }
 
@@ -2855,6 +2922,14 @@ try {
         inspectionFee,
         etaMinutes,
         hours
+      }, env, ctx);
+
+      broadcastFcmNotification({
+        title: `⚡ ${craftsmanName} متاح حالياً لأي طلب!`,
+        body: `فني (${professionName}) مستعد الآن بالمنزلة والمطرية — مشاهدة ملفه والتواصل`,
+        url: placeId ? `./place.html?id=${encodeURIComponent(placeId)}` : `./now.html#craftsman-${id}`,
+        icon: './icons/icon-192x192.png',
+        tag: `craftsman-live-${id}`
       }, env, ctx);
     }
 

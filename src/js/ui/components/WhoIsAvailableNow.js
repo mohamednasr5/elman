@@ -110,7 +110,7 @@ async function loadCraftsmen($container) {
       const waLink = waClean ? `https://wa.me/2${waClean.startsWith('0') ? waClean.slice(1) : waClean}?text=${encodeURIComponent('السلام عليكم، شفتك على دليل المنزلة متاح الآن ومحتاج زيارة فورية')}` : null;
 
       return `
-        <div class="oncall-card">
+        <div class="oncall-card" id="craftsman-${c.id || ''}">
           <div class="oncall-card-top">
             <div class="oncall-craftsman-info">
               <h4>${c.craftsmanName}</h4>
@@ -142,6 +142,12 @@ async function loadCraftsmen($container) {
               <a href="${waLink}" target="_blank" rel="noopener noreferrer" class="oncall-btn-whatsapp">
                 <span>💬</span>
                 <span>واتساب</span>
+              </a>
+            ` : ''}
+            ${c.placeId ? `
+              <a href="place.html?id=${encodeURIComponent(c.placeId)}" class="oncall-btn-view" style="display:inline-flex;align-items:center;gap:4px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.08);color:#e2e8f0;text-decoration:none;font-size:0.82rem;font-weight:700;border:1px solid rgba(255,255,255,0.15)">
+                <span>👤</span>
+                <span>مشاهدة ملفه</span>
               </a>
             ` : ''}
           </div>

@@ -4348,6 +4348,78 @@ function renderNotificationsMarkup($container, user, allNotifs) {
             `;
           }
 
+          if (n.type === 'craftsman_live') {
+            return `
+              <div class="notif-card ${isUnread ? 'notif-card--unread' : ''}" id="notif-card-${n.id}" data-notif-id="${escAttr(n.id)}" data-is-read="${n.isRead ? '1' : '0'}" style="--notif-index:${idx}">
+                ${isUnread ? '<div class="notif-card-unread-indicator"></div>' : ''}
+                <div style="width:48px;height:48px;border-radius:14px;background:rgba(245, 158, 11, 0.15);color:#D97706;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;border:1.5px solid rgba(245, 158, 11, 0.3)">
+                  ⚡
+                </div>
+                <div style="flex:1;min-width:220px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span class="badge" style="background:#FEF3C7;color:#92400E;font-weight:700;font-size:11px;padding:2px 8px;border-radius:var(--radius-full)">⚡ فني متاح الآن</span>
+                      <strong style="font-size:14px;color:var(--text-primary)">${escHtml(n.title)}</strong>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted)">⏱️ ${timeStr}</div>
+                  </div>
+                  <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;line-height:1.5">
+                    ${escHtml(n.message)}
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;align-self:center">
+                  <a href="${escAttr(n.actionUrl || './now.html')}" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
+                    <span>⚡</span> ${escHtml(n.actionText || 'مشاهدة الملف')}
+                  </a>
+                  ${isUnread ? `
+                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:6px 9px;border-radius:var(--radius-full)">
+                      ✓
+                    </button>
+                  ` : ''}
+                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="مسح وإخفاء الإشعار" style="color:var(--danger);font-size:13px;padding:6px 9px;border-radius:var(--radius-full)">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            `;
+          }
+
+          if (n.type === 'service_request') {
+            return `
+              <div class="notif-card ${isUnread ? 'notif-card--unread' : ''}" id="notif-card-${n.id}" data-notif-id="${escAttr(n.id)}" data-is-read="${n.isRead ? '1' : '0'}" style="--notif-index:${idx}">
+                ${isUnread ? '<div class="notif-card-unread-indicator"></div>' : ''}
+                <div style="width:48px;height:48px;border-radius:14px;background:rgba(16, 185, 129, 0.15);color:#059669;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;border:1.5px solid rgba(16, 185, 129, 0.3)">
+                  📢
+                </div>
+                <div style="flex:1;min-width:220px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span class="badge" style="background:#D1FAE5;color:#065F46;font-weight:700;font-size:11px;padding:2px 8px;border-radius:var(--radius-full)">📢 طلب خدمة جديد</span>
+                      <strong style="font-size:14px;color:var(--text-primary)">${escHtml(n.title)}</strong>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted)">⏱️ ${timeStr}</div>
+                  </div>
+                  <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;line-height:1.5">
+                    ${escHtml(n.message)}
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;align-self:center">
+                  <a href="${escAttr(n.actionUrl || './now.html')}" class="btn btn-sm btn-primary" style="font-size:12px;padding:6px 14px;border-radius:var(--radius-full);gap:5px;white-space:nowrap;display:inline-flex;align-items:center">
+                    <span>🤝</span> ${escHtml(n.actionText || 'مشاهدة الطلب')}
+                  </a>
+                  ${isUnread ? `
+                    <button type="button" class="btn btn-sm btn-outline btn-mark-one-read" data-notif-id="${escAttr(n.id)}" title="تحديد كمقروء" style="font-size:11px;padding:6px 9px;border-radius:var(--radius-full)">
+                      ✓
+                    </button>
+                  ` : ''}
+                  <button type="button" class="btn btn-sm btn-ghost btn-delete-one-notif" data-notif-id="${escAttr(n.id)}" title="مسح وإخفاء الإشعار" style="color:var(--danger);font-size:13px;padding:6px 9px;border-radius:var(--radius-full)">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            `;
+          }
+
           if (n.type === 'place_review') {
             const isPos = Boolean(n.isPositive || (n.rating && n.rating >= 4));
             const badgeBg = isPos ? '#D1FAE5' : '#FEE2E2';

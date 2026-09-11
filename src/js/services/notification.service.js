@@ -5,6 +5,7 @@
  */
 
 import { getPublishedPlaces } from '../core/db.js';
+import { fetchLiveCraftsmen, fetchServiceRequests } from './interactive-hub.service.js';
 
 // ── Web Audio API Synthesized Crystal Bell Chime ──
 let _audioCtx = null;
@@ -289,7 +290,57 @@ export async function fetchManagedUserNotifications(uid) {
     });
   } catch (_) {}
 
-  // 3. Personal notifications arrive through FCM/local state; no RTDB reads.
+  // 3. Synthesize active on-call craftsmen
+  try {
+    const craftsmen = await fetchLiveCraftsmen();
+    (craftsmen || []).forEach(c => {
+      if (!c || !c.isAvailableNow) return;
+      const notifId = 'notif_craftsman_' + c.id;
+      if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+        const targetUrl = c.placeId ? `/place.html?id=${encodeURIComponent(c.placeId)}` : `/now.html#craftsman-${c.id}`;
+        mergedMap[notifId] = {
+          id: notifId,
+          type: 'craftsman_live',
+          title: `⚡ (${c.craftsmanName}) متاح حالياً لأي طلب!`,
+          message: `فني (${c.professionName}) متاح الآن للتحرك والطلبات بالمنزلة والمطرية. اضغط لمشاهدة ملفه والتواصل`,
+          actionText: 'مشاهدة ملفه والتواصل 🚀',
+          actionUrl: targetUrl,
+          url: targetUrl,
+          icon: './icons/icon-192x192.png',
+          createdAt: Number(c.updatedAt || Date.now()),
+          isBroadcast: true,
+          isRead: readIds.has(notifId)
+        };
+      }
+    });
+  } catch (_) {}
+
+  // 4. Synthesize open community service requests
+  try {
+    const requests = await fetchServiceRequests({ status: 'open', limit: 25 });
+    (requests || []).forEach(r => {
+      if (!r || r.status !== 'open') return;
+      const notifId = 'notif_req_' + r.id;
+      if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+        const targetUrl = `/now.html#req-${r.id}`;
+        mergedMap[notifId] = {
+          id: notifId,
+          type: 'service_request',
+          title: `📢 طلب جديد: (${r.userName || 'أحد الأهالي'}) محتاج (${r.title})`,
+          message: `طلب خدمة (${r.category || 'عامة'}) في ${r.village || 'المنزلة'} (${r.timing || 'خلال اليوم'}) — اضغط لمشاهدة الطلب`,
+          actionText: 'مشاهدة الطلب 🤝',
+          actionUrl: targetUrl,
+          url: targetUrl,
+          icon: r.photoUrl || './icons/icon-192x192.png',
+          createdAt: Number(r.createdAt || Date.now()),
+          isBroadcast: true,
+          isRead: readIds.has(notifId)
+        };
+      }
+    });
+  } catch (_) {}
+
+  // 5. Personal notifications arrive through FCM/local state; no RTDB reads.
   const all = Object.values(mergedMap).map(n => ({
     ...n,
     isRead: Boolean(n.isRead || readIds.has(String(n.id)))
@@ -362,9 +413,11 @@ export function initLiveNotificationSubscriber(uid) {
   });
   window.addEventListener('focus', refresh);
 
-  // Lightweight reconciliation for newly-published places. The Worker/Turso
-  // endpoint is authoritative; this is not a Firebase listener.
+  // Lightweight reconciliation for places, craftsmen, and service requests.
   let previous = new Map();
+  let previousCraftsmen = new Map();
+  let previousRequests = new Map();
+
   const poll = async () => {
     try {
       const places = await getPublishedPlaces({limit:250,forceFresh:true});
@@ -393,6 +446,51 @@ export function initLiveNotificationSubscriber(uid) {
         }
       }
       previous=current;
+
+      // Reconcile Live Craftsmen
+      try {
+        const liveCraftsmen = await fetchLiveCraftsmen();
+        const currentCraftsmen = new Map((liveCraftsmen || []).filter(c => c.isAvailableNow).map(c => [String(c.id), c]));
+        if (previousCraftsmen.size) {
+          for (const [id, c] of currentCraftsmen) {
+            const updated = Number(c.updatedAt || 0);
+            if (!previousCraftsmen.has(id) || (!previousCraftsmen.get(id)?.isAvailableNow && c.isAvailableNow)) {
+              showLiveNotificationPopup({
+                id: 'notif_craftsman_' + id,
+                type: 'craftsman_live',
+                title: `⚡ (${c.craftsmanName}) متاح حالياً لأي طلب!`,
+                message: `فني (${c.professionName}) متاح الآن للتحرك والطلبات بالمنزلة والمطرية — مشاهدة ملفه والتواصل`,
+                actionUrl: c.placeId ? `/place.html?id=${encodeURIComponent(c.placeId)}` : `/now.html#craftsman-${id}`,
+                createdAt: updated || now
+              }, uid);
+            }
+          }
+        }
+        previousCraftsmen = currentCraftsmen;
+      } catch (_) {}
+
+      // Reconcile Community Service Requests
+      try {
+        const reqs = await fetchServiceRequests({ status: 'open', limit: 20 });
+        const currentReqs = new Map((reqs || []).map(r => [String(r.id), r]));
+        if (previousRequests.size) {
+          for (const [id, r] of currentReqs) {
+            const created = Number(r.createdAt || 0);
+            if (!previousRequests.has(id)) {
+              showLiveNotificationPopup({
+                id: 'notif_req_' + id,
+                type: 'service_request',
+                title: `📢 طلب جديد: (${r.userName || 'أحد الأهالي'}) محتاج (${r.title})`,
+                message: `طلب خدمة (${r.category || 'عامة'}) في ${r.village || 'المنزلة'} (${r.timing || 'اليوم'}) — مشاهدة الطلب`,
+                actionUrl: `/now.html#req-${id}`,
+                createdAt: created || now
+              }, uid);
+            }
+          }
+        }
+        previousRequests = currentReqs;
+      } catch (_) {}
+
       refresh();
     } catch (_) {}
   };
@@ -439,12 +537,34 @@ export function showLiveNotificationPopup(notification, uid) {
     document.body.appendChild(popupBox);
   }
 
+  let iconEmoji = '🎉';
+  let titleColor = '#38BDF8';
+  let borderColor = '#0284C7';
+
+  if (notification.type === 'place_verified') {
+    iconEmoji = '👑';
+    titleColor = '#FBBF24';
+    borderColor = '#EAB308';
+  } else if (notification.type === 'place_review') {
+    iconEmoji = notification.isPositive ? '⭐' : '⚠️';
+    titleColor = notification.isPositive ? '#34D399' : '#F87171';
+    borderColor = notification.isPositive ? '#10B981' : '#EF4444';
+  } else if (notification.type === 'craftsman_live') {
+    iconEmoji = '⚡';
+    titleColor = '#FBBF24';
+    borderColor = '#F59E0B';
+  } else if (notification.type === 'service_request') {
+    iconEmoji = '📢';
+    titleColor = '#34D399';
+    borderColor = '#10B981';
+  }
+
   const notifEl = document.createElement('div');
   notifEl.className = 'live-notif-toast';
   notifEl.style.cssText = `
     background: #0B1E30;
     color: #FFFFFF;
-    border: 1.5px solid #0284C7;
+    border: 1.5px solid ${borderColor};
     border-radius: 14px;
     padding: 12px 16px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
@@ -458,15 +578,12 @@ export function showLiveNotificationPopup(notification, uid) {
     text-align: right;
   `;
 
-  let iconEmoji = '🎉';
-  if (notification.type === 'place_verified') iconEmoji = '👑';
-  else if (notification.type === 'place_review') iconEmoji = notification.isPositive ? '⭐' : '⚠️';
   const targetUrl = notification.actionUrl || notification.url || 'dashboard.html?section=notifications';
 
   notifEl.innerHTML = `
     <div style="font-size:24px;flex-shrink:0">${iconEmoji}</div>
     <div style="flex:1;min-width:0">
-      <strong style="display:block;font-size:13.5px;color:${notification.type === 'place_review' ? (notification.isPositive ? '#FBBF24' : '#F87171') : '#38BDF8'}">${notification.title || 'إشعار جديد'}</strong>
+      <strong style="display:block;font-size:13.5px;color:${titleColor}">${notification.title || 'إشعار جديد'}</strong>
       <span style="font-size:12px;color:#CBD5E1;display:block;margin-top:2px">${notification.message || ''}</span>
     </div>
     <button type="button" style="background:none;border:none;color:#94A3B8;font-size:14px;cursor:pointer;padding:4px" aria-label="إغلاق">✕</button>
