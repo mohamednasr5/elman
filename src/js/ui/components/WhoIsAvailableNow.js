@@ -72,10 +72,26 @@ async function loadCraftsmen($container) {
 
     if (!craftsmen || craftsmen.length === 0) {
       $list.innerHTML = `
-        <div style="grid-column:1/-1;background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.15);border-radius:14px;padding:24px;text-align:center">
-          <div style="font-size:2rem;margin-bottom:8px">⏱️</div>
-          <p style="margin:0 0 8px;font-weight:700;color:#f1f5f9;font-size:0.95rem">لا يوجد فنيون على وضع التوفر المباشر في هذه اللحظة</p>
-          <p style="margin:0;font-size:0.82rem;color:#94a3b8">إذا كنت فني سباكة أو كهرباء أو صيانة بالمنزلة والمطرية، اضغط زر "أنا صنايعي ومتاح" لتظهر فوراً للعملاء</p>
+        <div style="grid-column:1/-1;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.2);border-radius:16px;padding:24px 18px;text-align:center">
+          <div style="font-size:2rem;margin-bottom:6px">⏱️</div>
+          <p style="margin:0 0 6px;font-weight:800;color:#f1f5f9;font-size:1.02rem">لا يوجد فنيون في وضع الطوارئ اللحظي في هذه الدقيقة</p>
+          <p style="margin:0 0 16px;font-size:0.84rem;color:#94a3b8;max-width:480px;margin-inline:auto;line-height:1.5">
+            يمكنك الاتصال المباشر بأمهر الفنيين والحرفيين المسجلين والمعتمدين في دليلك:
+          </p>
+          
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+            <a href="search.html?q=سباك" class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;border-radius:10px;font-size:0.8rem;padding:6px 12px;border:1px solid rgba(255,255,255,0.15)">🪠 سباك</a>
+            <a href="search.html?q=كهربائي" class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;border-radius:10px;font-size:0.8rem;padding:6px 12px;border:1px solid rgba(255,255,255,0.15)">⚡ كهربائي</a>
+            <a href="search.html?q=تكييف" class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;border-radius:10px;font-size:0.8rem;padding:6px 12px;border:1px solid rgba(255,255,255,0.15)">❄️ فني تكييف</a>
+            <a href="search.html?q=نجار" class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;border-radius:10px;font-size:0.8rem;padding:6px 12px;border:1px solid rgba(255,255,255,0.15)">🪚 نجار</a>
+            <a href="search.html?q=نقاش" class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;border-radius:10px;font-size:0.8rem;padding:6px 12px;border:1px solid rgba(255,255,255,0.15)">🎨 نقاش</a>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">
+            <a href="categories.html" class="btn btn-sm" style="background:rgba(2,132,199,0.3);color:#7dd3fc;border:1px solid rgba(2,132,199,0.6);border-radius:12px;font-weight:800;padding:8px 18px">
+              <span>تصفح دليل الفنيين والحرفيين المعتمدين ←</span>
+            </a>
+          </div>
         </div>
       `;
       return;

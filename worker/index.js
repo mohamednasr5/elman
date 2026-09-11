@@ -2812,7 +2812,7 @@ try {
 
     const now = Date.now();
     const availableUntil = isAvailable ? now + (hours * 3600000) : 0;
-    const id = placeId || ('craftsman_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6));
+    const id = String(body.id || body.craftsmanId || placeId || ('craftsman_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6))).trim();
 
     await createTursoDB(env).prepare(
       `INSERT INTO craftsman_presence (id, place_id, craftsman_name, profession_id, profession_name, is_available_now, coverage_villages_json, inspection_fee, eta_minutes, phone, whatsapp, available_until, updated_at)

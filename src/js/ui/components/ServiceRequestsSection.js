@@ -25,7 +25,7 @@ export async function renderServiceRequestsSection($container, { limit = 6, show
             <div>
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
                 <h3 style="font-size:1.35rem;font-weight:900;margin:0;color:#fff">
-                  طلبات الخدمات
+                  طلبات أهالي المدينة (اطلب صنايعي أو فني)
                 </h3>
                 <span style="font-size:0.75rem;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.5);color:#fef08a;padding:2px 10px;border-radius:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px">
                   <span style="width:6px;height:6px;border-radius:50%;background:#f59e0b;display:inline-block"></span>
@@ -33,15 +33,20 @@ export async function renderServiceRequestsSection($container, { limit = 6, show
                 </span>
               </div>
               <p style="margin:0;font-size:0.88rem;color:#e0e7ff;line-height:1.6">
-                محتاج سباك، كهربائي، نجار، صيانة تكييف أو أي خدمة؟ اكتب احتياجك مرة واحدة وسيصلك الفنيون المناسبون فوراً. (رقمك في أمان تام ولا يظهر للعامة).
+                محتاج سباك، كهربائي، نجار، صيانة تكييف أو أي خدمة؟ اكتب احتياجك وسيصلك الفنيون المناسبون فوراً، أو تصفح دليل الفنيين المعتمدين بالمدينة.
               </p>
             </div>
           </div>
 
-          <button type="button" class="need-service-cta-btn btn-open-service-request-modal">
-            <span style="font-size:1.15rem">➕</span>
-            <span>اطلب خدمة / صنايعي الآن</span>
-          </button>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button type="button" class="need-service-cta-btn btn-open-service-request-modal">
+              <span style="font-size:1.15rem">➕</span>
+              <span>اطلب صنايعي الآن</span>
+            </button>
+            <a href="categories.html" class="btn" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:14px;padding:10px 18px;font-weight:800;font-size:0.88rem;display:inline-flex;align-items:center;gap:6px;text-decoration:none">
+              <span>تصفح الفنيين بالدليل ←</span>
+            </a>
+          </div>
         </div>
       ` : ''}
 
@@ -69,10 +74,15 @@ export async function renderServiceRequestsSection($container, { limit = 6, show
             </div>
           </div>
 
-          <button type="button" class="need-service-cta-btn btn-open-service-request-modal" style="padding:8px 18px;font-size:0.88rem">
-            <span>➕</span>
-            <span>اطلب خدمة الآن</span>
-          </button>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button type="button" class="need-service-cta-btn btn-open-service-request-modal" style="padding:8px 18px;font-size:0.88rem">
+              <span>➕</span>
+              <span>اطلب خدمة الآن</span>
+            </button>
+            <a href="categories.html" class="btn btn-outline btn-sm" style="border-radius:12px;font-weight:800;padding:8px 14px;font-size:0.82rem">
+              <span>تصفح الفنيين</span>
+            </a>
+          </div>
         </div>
       ` : ''}
 
@@ -84,9 +94,13 @@ export async function renderServiceRequestsSection($container, { limit = 6, show
       </div>
 
       ${isCompact ? `
-        <div style="text-align:center;margin-top:14px">
-          <a href="now.html" class="btn btn-outline btn-sm" style="border-radius:12px;font-weight:800;padding:8px 20px">
-            <span>عرض كافة طلبات الخدمات في صفحة يحدث الآن</span>
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px;flex-wrap:wrap">
+          <a href="now.html" class="btn btn-outline btn-sm" style="border-radius:12px;font-weight:800;padding:8px 18px">
+            <span>عرض كافة طلبات الأهالي في صفحة يحدث الآن</span>
+            <span style="margin-right:4px">←</span>
+          </a>
+          <a href="categories.html" class="btn btn-outline btn-sm" style="border-radius:12px;font-weight:800;padding:8px 18px">
+            <span>تصفح دليل الفنيين والحرفيين المعتمدين (165+ مهنة)</span>
             <span style="margin-right:4px">←</span>
           </a>
         </div>
@@ -113,15 +127,43 @@ async function loadRequests(container, limit = 6) {
 
     if (!requests || requests.length === 0) {
       $grid.innerHTML = `
-        <div style="grid-column:1/-1;background:var(--surface-2, #f8fafc);border:1.5px dashed var(--border, #cbd5e1);border-radius:18px;padding:34px 20px;text-align:center">
-          <div style="font-size:2.2rem;margin-bottom:8px">🤝</div>
-          <p style="margin:0 0 6px;font-weight:800;font-size:1.05rem;color:var(--text-primary)">لا توجد طلبات خدمات مفتوحة حالياً</p>
-          <p style="margin:0 0 16px;font-size:0.85rem;color:var(--text-muted);max-width:440px;margin-inline:auto">
-            كن أول من يسجل احتياجه (سباكة، كهرباء، صيانة) لتصلك عروض الفنيين والحرفيين المعتمدين فوراً
+        <div style="grid-column:1/-1;background:var(--surface-2, #f8fafc);border:1.5px solid var(--border, #e2e8f0);border-radius:20px;padding:28px 18px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.02)">
+          <div style="font-size:2.4rem;margin-bottom:8px">🤝</div>
+          <p style="margin:0 0 6px;font-weight:900;font-size:1.15rem;color:var(--text-primary)">تمت تلبية جميع طلبات أهالي المدينة السابقة بنجاح!</p>
+          <p style="margin:0 0 16px;font-size:0.9rem;color:var(--text-muted);max-width:540px;margin-inline:auto;line-height:1.6">
+            لا توجد طلبات جارية مفتوحة من المواطنين في هذه اللحظة. هل تبحث عن فني أو خدمة فورية؟ تواصل مباشرة مع أمهر الفنيين المعتمدين في دليلك:
           </p>
-          <button type="button" class="btn btn-primary btn-sm btn-open-service-request-modal" style="border-radius:12px;font-weight:800;padding:8px 20px">
-            <span>➕ اطلب خدمة الآن</span>
-          </button>
+
+          <!-- Quick Service Categories Chips -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;max-width:680px;margin-inline:auto">
+            <a href="search.html?q=سباك" class="btn btn-outline btn-sm" style="border-radius:12px;font-size:0.84rem;font-weight:700;padding:7px 14px;background:var(--surface,#fff);display:inline-flex;align-items:center;gap:5px">
+              <span>🪠</span><span>سباك وأدوات صحية</span>
+            </a>
+            <a href="search.html?q=كهربائي" class="btn btn-outline btn-sm" style="border-radius:12px;font-size:0.84rem;font-weight:700;padding:7px 14px;background:var(--surface,#fff);display:inline-flex;align-items:center;gap:5px">
+              <span>⚡</span><span>كهربائي منازل</span>
+            </a>
+            <a href="search.html?q=تكييف" class="btn btn-outline btn-sm" style="border-radius:12px;font-size:0.84rem;font-weight:700;padding:7px 14px;background:var(--surface,#fff);display:inline-flex;align-items:center;gap:5px">
+              <span>❄️</span><span>صيانة تكييف وتبريد</span>
+            </a>
+            <a href="search.html?q=نجار" class="btn btn-outline btn-sm" style="border-radius:12px;font-size:0.84rem;font-weight:700;padding:7px 14px;background:var(--surface,#fff);display:inline-flex;align-items:center;gap:5px">
+              <span>🪚</span><span>نجار موبيليا وأبواب</span>
+            </a>
+            <a href="search.html?q=نقاش" class="btn btn-outline btn-sm" style="border-radius:12px;font-size:0.84rem;font-weight:700;padding:7px 14px;background:var(--surface,#fff);display:inline-flex;align-items:center;gap:5px">
+              <span>🎨</span><span>نقاش وتشطيبات</span>
+            </a>
+            <a href="search.html?q=ميكانيكي" class="btn btn-outline btn-sm" style="border-radius:12px;font-size:0.84rem;font-weight:700;padding:7px 14px;background:var(--surface,#fff);display:inline-flex;align-items:center;gap:5px">
+              <span>🚗</span><span>ميكانيكا وصيانة سيارات</span>
+            </a>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap">
+            <button type="button" class="btn btn-primary btn-open-service-request-modal" style="border-radius:14px;font-weight:800;padding:10px 22px;font-size:0.92rem;box-shadow:0 4px 15px rgba(2,132,199,0.3)">
+              <span>➕ اطلب فني / خدمة جديدة الآن</span>
+            </button>
+            <a href="categories.html" class="btn btn-outline" style="border-radius:14px;font-weight:800;padding:10px 20px;font-size:0.92rem">
+              <span>تصفح دليل كافة الفنيين (165+ مهنة) ←</span>
+            </a>
+          </div>
         </div>
       `;
 
