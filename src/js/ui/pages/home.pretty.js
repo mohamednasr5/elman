@@ -85,7 +85,15 @@ export async function renderHomePage($main, { user } = {}) {
     tempDiv.innerHTML = getHomeHTML();
     // Remove the duplicate hero from the generated HTML (hero is already in DOM)
     const dynHero = tempDiv.querySelector('.hero');
-    if (dynHero) dynHero.remove();
+    if (dynHero) {
+      if (!staticHero.querySelector('.hero-heritage-decor')) {
+        const decor = dynHero.querySelector('.hero-heritage-decor');
+        if (decor) {
+          staticHero.insertAdjacentElement('afterbegin', decor);
+        }
+      }
+      dynHero.remove();
+    }
     // Append remaining sections to $main
     while (tempDiv.firstChild) {
       $main.appendChild(tempDiv.firstChild);

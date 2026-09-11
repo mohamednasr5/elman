@@ -368,13 +368,13 @@ export function getDefaultPlaceAssets(place = {}, category = {}) {
   const pName = place.name || '';
   const asset = resolveCategoryAsset(catName, pName);
 
-  let finalCover = place.coverImageUrl || place.coverImage || place.image || place.photos?.[0] || '';
+  let finalCover = place.coverImageUrl || place.cover_image_url || place.coverImage || place.image || place.photos?.[0] || '';
   if (!finalCover || String(finalCover).includes('placeholder') || String(finalCover).length < 8) {
     // Priority: Default Directory Cover requested by user
     finalCover = DEFAULT_PLACE_COVER;
   }
 
-  let finalLogo = place.logoUrl || place.logo || place.photoURL || '';
+  let finalLogo = place.logoUrl || place.logo_url || place.logo || place.photoURL || '';
   if (!finalLogo || String(finalLogo).includes('placeholder') || String(finalLogo).length < 8) {
     // Priority: Default Directory Logo requested by user
     finalLogo = DEFAULT_PLACE_LOGO;

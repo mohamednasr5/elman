@@ -816,10 +816,19 @@ try {
 
         const place = {
           ...result,
+          logoUrl: result.logo_url || result.logoUrl || null,
+          coverImageUrl: result.cover_image_url || result.coverImageUrl || null,
+          categoryId: result.category_id || result.categoryId || '',
+          customCategory: result.custom_category || result.customCategory || '',
+          subcategoryId: result.subcategory_id || result.subcategoryId || '',
+          ownerId: result.owner_id || result.ownerId || '',
+          ownerEmail: result.owner_email || result.ownerEmail || '',
+          mapsLink: result.maps_link || result.mapsLink || '',
           services: parseJson(result.services_json, []),
           social: parseJson(result.social_json, {}),
           stats: parseJson(result.stats_json, {}),
           working_hours: parseJson(result.working_hours_json, {}),
+          workingHours: parseJson(result.working_hours_json, {}),
           parent_id: result.parent_id || null,
           parentId: result.parent_id || null,
           branches: parseJson(result.branches_json, []),
@@ -827,6 +836,8 @@ try {
           availability_status: result.availability_status || 'available',
           availabilityStatus: result.availability_status || 'available',
           is_verified: Boolean(result.is_verified),
+          isVerified: Boolean(result.is_verified),
+          verified: Boolean(result.is_verified),
           is_sponsored: Boolean(result.is_sponsored || result.is_featured),
           is_featured: Boolean(result.is_featured),
           isSponsored: Boolean(result.is_sponsored || result.is_featured),
@@ -921,7 +932,20 @@ try {
       } catch (_) {}
     }
 
-    const result = await createTursoDB(env).prepare(sql).bind(...params).all();
+    let result = { results: [] };
+    try {
+      result = await createTursoDB(env).prepare(sql).bind(...params).all();
+    } catch (err) {
+      console.warn('[GET /api/places warning]:', err?.message || err);
+      return jsonResponse({
+        success: true,
+        data: [],
+        pagination: { limit, offset, returned: 0 }
+      }, 200, {
+        ...corsHeaders,
+        'Cache-Control': 'no-store'
+      });
+    }
 
     const places = (result.results || []).map(place => {
       const stats = parseJson(place.stats_json, {});
@@ -929,16 +953,27 @@ try {
       const ratingVal = Number(place.rating ?? stats.rating ?? 0.0);
       return {
         ...place,
+        logoUrl: place.logo_url || place.logoUrl || null,
+        coverImageUrl: place.cover_image_url || place.coverImageUrl || null,
+        categoryId: place.category_id || place.categoryId || '',
+        customCategory: place.custom_category || place.customCategory || '',
+        subcategoryId: place.subcategory_id || place.subcategoryId || '',
+        ownerId: place.owner_id || place.ownerId || '',
+        ownerEmail: place.owner_email || place.ownerEmail || '',
+        mapsLink: place.maps_link || place.mapsLink || '',
         services: parseJson(place.services_json, []),
         social: parseJson(place.social_json, {}),
         stats,
         working_hours: parseJson(place.working_hours_json, {}),
+        workingHours: parseJson(place.working_hours_json, {}),
         parent_id: place.parent_id || null,
         parentId: place.parent_id || null,
         branches: parseJson(place.branches_json, []),
         availability_status: place.availability_status || 'available',
         availabilityStatus: place.availability_status || 'available',
         is_verified: Boolean(place.is_verified),
+        isVerified: Boolean(place.is_verified),
+        verified: Boolean(place.is_verified),
         is_sponsored: Boolean(place.is_sponsored || place.is_featured),
         is_featured: Boolean(place.is_featured),
         isSponsored: Boolean(place.is_sponsored || place.is_featured),
@@ -1485,17 +1520,22 @@ try {
       bumpDataVersion(env, ctx);
 
       if (!existingPlace) {
-        safeBackgroundNotify('new_place', {
-          id: placeId,
-          name: name || body.name || body.nameAr || '',
-          categoryName: categoryName || body.categoryName || body.category || 'عام',
-          phone: phone || body.phone || '',
-          area: area || body.area || '',
-          address: address || body.address || '',
-          ownerName: auth.user.name || auth.user.displayName || body.ownerName || '',
-          ownerEmail: auth.user.email || body.ownerEmail || '',
-          slug: slug || placeId
-        }, env, ctx);
+        try {
+          const safeCategoryName = String(body.categoryName || body.category_name || body.customCategory || body.custom_category || customCategory || categoryId || 'عام').trim();
+          safeBackgroundNotify('new_place', {
+            id: placeId,
+            name: name || body.name || body.nameAr || '',
+            categoryName: safeCategoryName,
+            phone: phone || body.phone || '',
+            area: area || body.area || '',
+            address: address || body.address || '',
+            ownerName: auth.user.name || auth.user.displayName || body.ownerName || '',
+            ownerEmail: auth.user.email || body.ownerEmail || '',
+            slug: slug || placeId
+          }, env, ctx);
+        } catch (notifErr) {
+          console.warn('[new_place notification error handled]:', notifErr?.message || notifErr);
+        }
       }
 
       // Cache Invalidation for this place
@@ -1893,7 +1933,8 @@ try {
       }));
       return jsonResponse({ success:true, data },200,corsHeaders);
     } catch (err) {
-      return jsonResponse({ success:false, error:err.message, data:[] },500,corsHeaders);
+      console.warn('[GET /api/offers warning]:', err?.message || err);
+      return jsonResponse({ success: true, data: [] }, 200, corsHeaders);
     }
   }
 

@@ -59,9 +59,38 @@ export function renderAvailabilityBadge(status) {
   return '';
 }
 
+export function normalizePlace(p) {
+  if (!p || typeof p !== 'object') return p;
+  const logo = p.logoUrl || p.logo_url || p.logo || null;
+  const cover = p.coverImageUrl || p.cover_image_url || p.cover || null;
+  return {
+    ...p,
+    logoUrl: logo,
+    logo_url: logo,
+    coverImageUrl: cover,
+    cover_image_url: cover,
+    categoryId: p.categoryId || p.category_id || '',
+    category_id: p.categoryId || p.category_id || '',
+    customCategory: p.customCategory || p.custom_category || '',
+    custom_category: p.customCategory || p.custom_category || '',
+    subcategoryId: p.subcategoryId || p.subcategory_id || '',
+    subcategory_id: p.subcategoryId || p.subcategory_id || '',
+    ownerId: p.ownerId || p.owner_id || '',
+    owner_id: p.ownerId || p.owner_id || '',
+    ownerEmail: p.ownerEmail || p.owner_email || '',
+    owner_email: p.ownerEmail || p.owner_email || '',
+    mapsLink: p.mapsLink || p.maps_link || '',
+    maps_link: p.mapsLink || p.maps_link || '',
+    workingHours: p.workingHours || p.working_hours || {},
+    working_hours: p.workingHours || p.working_hours || {},
+    isVerified: Boolean(p.isVerified || p.is_verified || p.verified),
+    is_verified: Boolean(p.isVerified || p.is_verified || p.verified)
+  };
+}
+
 export async function renderPlacePage($container, { slug, user, initialPlace = null }) {
   // ── Instant 0ms Place Detection ──
-  let place = initialPlace;
+  let place = initialPlace ? normalizePlace(initialPlace) : null;
   const cleanSlug = String(slug || '').toLowerCase().trim();
 
   if (!place && typeof window !== 'undefined') {
@@ -117,6 +146,10 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     }
   }
 
+  if (place) {
+    place = normalizePlace(place);
+  }
+
   // If no cached place in memory or session, display smooth skeleton while fetching
   if (!place) {
     $container.innerHTML = `
@@ -134,12 +167,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         try {
           const preRes = await window.__PLACE_PREFETCH_PROMISE__;
           if (preRes && (preRes.data || preRes.name)) {
-            place = preRes.data || preRes;
+            place = normalizePlace(preRes.data || preRes);
           }
         } catch (_) {}
       }
       if (!place) {
-        place = await getPlaceBySlug(slug);
+        place = normalizePlace(await getPlaceBySlug(slug));
       }
     }
 
@@ -152,7 +185,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     if (initialPlace || window.__INSTANT_PLACE__ || place) {
       const revalPromise = (typeof window !== 'undefined' && window.__PLACE_PREFETCH_PROMISE__) ? window.__PLACE_PREFETCH_PROMISE__ : getPlaceBySlug(slug);
       Promise.resolve(revalPromise).then(res => {
-        const freshPlace = (res && res.data) ? res.data : res;
+        const freshPlace = normalizePlace((res && res.data) ? res.data : res);
         if (freshPlace && freshPlace.name) {
           try {
             const ser = JSON.stringify(freshPlace);
@@ -290,7 +323,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         title: seoTitle,
         description: seoDesc,
         keywords: `${place.name}, ${placeSpecialty}, ${placeArea}, دليل المنزلة, دليل المطرية, رقم ${place.name}, عنوان ${place.name}, ${place.tags ? (Array.isArray(place.tags) ? place.tags.join(', ') : place.tags) : ''}`,
-        image: place.coverImageUrl || place.logoUrl,
+        image: place.coverImageUrl || place.cover_image_url || place.logoUrl || place.logo_url,
         url: placeCanonical
       });
 
@@ -321,8 +354,8 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     const workingHoursList = formatWorkingHours(place.workingHours);
 
     const defaultAssets = getDefaultPlaceAssets(place, category);
-    const rawCover = place.coverImageUrl || (isAtm ? ATM_UNIFIED_COVER : defaultAssets.coverImageUrl);
-    const rawLogo = place.logoUrl || (isAtm ? ATM_UNIFIED_LOGO : defaultAssets.logoUrl);
+    const rawCover = place.coverImageUrl || place.cover_image_url || (isAtm ? ATM_UNIFIED_COVER : defaultAssets.coverImageUrl);
+    const rawLogo = place.logoUrl || place.logo_url || (isAtm ? ATM_UNIFIED_LOGO : defaultAssets.logoUrl);
     const placeCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.MEDIUM);
     const placeLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.MEDIUM);
 
@@ -1251,7 +1284,7 @@ function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUr
     const pName = targetPlace.name || 'شخصية اليوم';
     const pCategory = targetPlace.categoryName || targetPlace.customCategory || 'نشاط موثق';
     const pArea = targetPlace.area || targetPlace.address || 'المنزلة';
-    const pImg = targetPlace.logoUrl || targetPlace.coverImageUrl || './icons/icon-72x72.png';
+    const pImg = targetPlace.logoUrl || targetPlace.logo_url || targetPlace.coverImageUrl || targetPlace.cover_image_url || './icons/icon-72x72.png';
     const pSlug = targetPlace.slug || targetPlace.id || targetPlace._key;
 
     const waMsg = encodeURIComponent('مرحباً، أود توثيق مكاني / شخصيتي في دليل المنزلة والمطرية الرقمي للظهور في مكان/شخصية اليوم');
@@ -1731,7 +1764,7 @@ function setupPlaceSharing(place) {
   const finalSlug = (canonicalSlug && canonicalSlug.length >= 3) ? canonicalSlug : rawSlug;
   // Branded official share URL via Cloudflare Worker Dynamic OpenGraph handler
   const brandedShareUrl = `https://dalilmanzala.com/p/${encodeURIComponent(finalSlug || rawSlug)}`;
-  const coverUrl = place.coverImageUrl || place.logoUrl || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
+  const coverUrl = place.coverImageUrl || place.cover_image_url || place.logoUrl || place.logo_url || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
 
   const shareTitle = `${placeName} | دليل المنزلة والمطرية الرقمي`;
   const shareText = `📍 *${placeName}*
