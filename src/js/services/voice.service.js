@@ -77,9 +77,17 @@ export async function warmUpVoiceAssistantCache() {
 // Public search cache does not depend on Firebase.
 // Firebase is reserved for authentication and push notifications.
 if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    warmUpVoiceAssistantCache().catch(() => {});
-  }, 700);
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => {
+      setTimeout(() => {
+        warmUpVoiceAssistantCache().catch(() => {});
+      }, 6000);
+    }, { timeout: 12000 });
+  } else {
+    setTimeout(() => {
+      warmUpVoiceAssistantCache().catch(() => {});
+    }, 6000);
+  }
 }
 
 export class VoiceSearch {

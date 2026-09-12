@@ -247,6 +247,8 @@ export function renderPlaceCard(place) {
     availBadge = `<span class="badge" style="background:rgba(16,185,129,0.15);color:#16A34A;border:1px solid rgba(16,185,129,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🟢</span><span>متاح للطلبات</span></span>`;
   }
 
+  const verifiedBadge = (place.isVerified || place.is_verified) ? renderVerifiedBadge() : '';
+
   return `
     <article class="${cardClasses}" 
              role="article"

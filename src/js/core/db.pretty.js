@@ -1371,7 +1371,7 @@ export async function getCategories(forceFresh = false) {
 
   // 2. Network Fetch if cold start or forced
   try {
-    const data = await tursoFetch('/api/categories?_ts=' + Date.now());
+    const data = await tursoFetch('/api/categories');
     const categories = (Array.isArray(data?.data) ? data.data : []).map(c => ({
       id: c.id || c.slug, _key: c.id || c.slug, slug: c.slug || c.id, name: c.name || '',
       nameEn: c.name_en || c.nameEn || '', icon: c.icon || '🏪', description: c.description || '',
@@ -1418,7 +1418,7 @@ export const FALLBACK_CATEGORIES = [
 
 async function _syncCategoriesInBackground() {
   try {
-    const data = await tursoFetch('/api/categories?_ts=' + Date.now());
+    const data = await tursoFetch('/api/categories');
     if (Array.isArray(data?.data) && data.data.length > 0) {
       const categories = data.data.map(c => ({
         id: c.id || c.slug, _key: c.id || c.slug, slug: c.slug || c.id, name: c.name || '',
