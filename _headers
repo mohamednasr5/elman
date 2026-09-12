@@ -1,7 +1,6 @@
 # ── Cloudflare Pages Custom Headers ──
 
 # Long-term caching for versioned static assets (?v=XXXXXX cache-busting)
-# Safe because all JS/CSS references include version query strings
 /src/css/*
   Cache-Control: public, max-age=31536000, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
@@ -9,6 +8,16 @@
 /src/js/*
   Cache-Control: public, max-age=31536000, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
+
+# Critical i18n/runtime files must revalidate so old language shells cannot persist
+/src/js/core/page-shell.js
+  Cache-Control: public, max-age=0, must-revalidate
+/src/js/core/i18n.js
+  Cache-Control: public, max-age=0, must-revalidate
+/src/js/core/i18n-runtime.js
+  Cache-Control: public, max-age=0, must-revalidate
+/src/css/i18n-layout.css
+  Cache-Control: public, max-age=0, must-revalidate
 
 /icons/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
@@ -41,14 +50,12 @@
 # Clean HTML pages (Fresh content with instant revalidation)
 /*.html
   Cache-Control: public, max-age=0, must-revalidate
-
 /
   Cache-Control: public, max-age=0, must-revalidate
 
 # Service Workers (Never cache)
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
-
 /firebase-messaging-sw.js
   Cache-Control: no-cache, no-store, must-revalidate
 
@@ -57,7 +64,6 @@
   Content-Type: text/markdown; charset=utf-8
   Access-Control-Allow-Origin: *
   Cache-Control: public, max-age=86400, s-maxage=86400
-
 /llms-full.txt
   Content-Type: text/markdown; charset=utf-8
   Access-Control-Allow-Origin: *
