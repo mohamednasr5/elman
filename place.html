@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  <base href="/" />
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
   <title>تفاصيل ومواعيد وأرقام التواصل للمكان والنشاط | دليل المنزلة والمطرية الرقمي</title>
@@ -13,6 +14,12 @@
       try {
         var params = new URLSearchParams(window.location.search);
         var s = (params.get('slug') || params.get('id') || '').trim();
+        if (!s) {
+          var m = window.location.pathname.match(/\/place\/([^\/?#]+)/);
+          if (m && m[1] && m[1] !== 'index.html' && m[1] !== 'place.html') {
+            s = decodeURIComponent(m[1]).trim();
+          }
+        }
         if (s && s !== 'undefined' && s !== 'null') {
           var clean = encodeURIComponent(s);
           var canonical = document.getElementById('place-canonical');
@@ -52,20 +59,20 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
-  <link rel="manifest" href="./manifest.webmanifest"/>
-  <link rel="icon" type="image/x-icon" href="./favicon.ico"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/>
-  <link rel="icon" type="image/png" sizes="48x48" href="./icons/icon-48x48.png"/>
-  <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png"/>
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192x192.png"/>
-  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512x512.png"/>
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180x180.png"/>
-  <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192x192.png"/>
+  <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512x512.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=c6a22863"/>
+  <link rel="stylesheet" href="/src/css/main.css?v=20260912_resilient1"/>
   <!-- Pre-Boot Instant Place Fetcher: Dispatched immediately during initial HTML parse -->
   <script>
     (function() {
@@ -508,13 +515,19 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=c6a22863';
-  import { renderPlacePage } from './src/js/ui/pages/place.js?v=c6a22863';
-  import { getCurrentUser } from './src/js/core/auth.js?v=c6a22863';
+  import { initPage } from '/src/js/core/page-shell.js?v=20260911_vehicles1';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=20260912_resilient1';
+  import { getCurrentUser } from '/src/js/core/auth.js?v=20260912_resilient1';
 
   (async () => {
     const params = new URLSearchParams(location.search);
     let slug = params.get('slug') || params.get('id') || '';
+    if (!slug) {
+      const match = location.pathname.match(/\/place\/([^\/?#]+)/);
+      if (match && match[1] && match[1] !== 'index.html' && match[1] !== 'place.html') {
+        slug = decodeURIComponent(match[1]).trim();
+      }
+    }
     if (slug === 'undefined' || slug === 'null') slug = '';
     if (!slug && !window.__INSTANT_PLACE__) {
       location.href = '/places.html';

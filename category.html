@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  <base href="/" />
   <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
   <script>
     (function() {
@@ -62,20 +63,20 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
-  <link rel="manifest" href="./manifest.webmanifest"/>
-  <link rel="icon" type="image/x-icon" href="./favicon.ico"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/>
-  <link rel="icon" type="image/png" sizes="48x48" href="./icons/icon-48x48.png"/>
-  <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png"/>
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192x192.png"/>
-  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512x512.png"/>
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180x180.png"/>
-  <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192x192.png"/>
+  <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512x512.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=0713ab0"/>
+  <link rel="stylesheet" href="/src/css/main.css?v=20260912_resilient1"/>
 </head>
 <body class="">
 <div id="app">
@@ -110,10 +111,16 @@
 <!-- Page Module -->
 <script type="module">
 
-  import { initPage } from './src/js/core/page-shell.js?v=0713ab0';
-  import { renderCategoryPage } from './src/js/ui/pages/categories.js?v=0713ab0';
+  import { initPage } from '/src/js/core/page-shell.js?v=20260911_vehicles1';
+  import { renderCategoryPage } from '/src/js/ui/pages/categories.js?v=20260912_resilient1';
   await initPage('categories.html');
-  const slug = new URLSearchParams(location.search).get('slug') || '';
+  let slug = new URLSearchParams(location.search).get('slug') || '';
+  if (!slug) {
+    const match = location.pathname.match(/\/category\/([^\/?#]+)/);
+    if (match && match[1] && match[1] !== 'index.html' && match[1] !== 'category.html') {
+      slug = decodeURIComponent(match[1]).trim();
+    }
+  }
   await renderCategoryPage(document.getElementById('page-container'), { slug });
 </script>
 </body>
