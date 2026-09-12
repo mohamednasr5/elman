@@ -61,18 +61,53 @@ export function mapCategoryToSchemaType(categoryStr = '') {
  */
 export function getArabicCategoryName(category = '') {
   if (!category) return 'نشاط وخدمة';
-  const c = String(category).trim();
+  const c = String(category).trim().toLowerCase();
 
   const map = {
+    'cash and balance services': 'خدمات كاش ورصيد',
+    'cash-and-balance-services': 'خدمات كاش ورصيد',
+    'cash and balance': 'خدمات كاش ورصيد',
+    'cash': 'خدمات كاش ورصيد',
     'restaurants and cafes': 'مطاعم وكافيهات',
+    'restaurants-and-cafes': 'مطاعم وكافيهات',
     'doctor': 'أطباء وعيادات',
     'pharmacy': 'صيدليات',
     'clothing store': 'محلات ملابس',
+    'clothing-store': 'محلات ملابس',
     'phones': 'موبايلات وهواتف',
+    'supermarket': 'سوبر ماركت',
     'atm': 'ماكينات صراف آلي ATM',
     'delivery': 'خدمات توصيل وشحن',
     'building-construction': 'مقاولات وبناء',
     'fish shop': 'أسماك ومأكولات بحرية',
+    'fish-shop': 'أسماك ومأكولات بحرية',
+    'confectioner and cake shop': 'حلويات ومخبوزات',
+    'butchery and meat': 'جزارة ولحوم',
+    'electrical appliance maintenance': 'صيانة أجهزة كهربائية',
+    'sale of computers and laptops': 'كمبيوتر ولاب توب',
+    'plumbing': 'سباكة وأدوات صحية',
+    'electrician': 'كهرباء وتجهيزات',
+    'wedding, engagement and evening dress atelier': 'أتيليه وفساتين',
+    'real estate company': 'عقارات واستثمار عقاري',
+    'travel and tourism': 'سياحة ورحلات',
+    'courses center': 'مراكز تدريب وكورسات',
+    'carpenter': 'نجارة وموبيليا',
+    'painter': 'دهانات وديكور',
+    'tiler': 'سيراميك وبلاط',
+    'blacksmith': 'حدادة وكريتال',
+    'alumital': 'ألوميتال وزجاج',
+    'gym': 'صالات رياضية وجيم',
+    'gold-and-jewelry-shops': 'ذهب ومجوهرات',
+    'gold and jewelry shops': 'ذهب ومجوهرات',
+    'haircut-and-shave': 'صالونات وحلاقة',
+    'haircut and shave': 'صالونات وحلاقة',
+    'bookstore': 'مكتبات وأدوات مدرسية',
+    'auto_repair': 'صيانة سيارات وميكانيكا',
+    'auto repair': 'صيانة سيارات وميكانيكا',
+    'bakery': 'مخابز وأفران',
+    'dentist': 'طب أسنان',
+    'pediatrician': 'أطباء أطفال',
+    'ophthalmology': 'طب وجراحة عيون',
     'roastery': 'محامص ومقالي تسالي',
     'physical therapy and nutrition center': 'علاج طبيعي وتغذية',
     'institutes and colleges': 'معاهد وكليات',
@@ -81,8 +116,10 @@ export function getArabicCategoryName(category = '') {
     'artificial intelligence engineer': 'هندسة وبرمجة وذكاء اصطناعي'
   };
 
-  if (map[c.toLowerCase()]) return map[c.toLowerCase()];
-  return c;
+  if (map[c]) return map[c];
+  if (map[c.replace(/-/g, ' ')]) return map[c.replace(/-/g, ' ')];
+  if (map[c.replace(/\s+/g, '-')]) return map[c.replace(/\s+/g, '-')];
+  return category;
 }
 
 /**

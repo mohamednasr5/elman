@@ -5,9 +5,9 @@
  * safely populates the business registration form without overwriting user data.
  */
 
-import { prepareCardImage, uploadCardImageToR2, extractCardDataWithAI, calculateMissingFields } from '../../services/card-scanner.service.js?v=63fea2cf_scanner_v2';
-import { normalizeSocialLink } from '../../utils/social.js?v=63fea2cf_scanner_v2';
-import { toast } from './Toast.js?v=63fea2cf_scanner_v2';
+import { prepareCardImage, uploadCardImageToR2, extractCardDataWithAI, calculateMissingFields } from '../../services/card-scanner.service.js?v=ebc49583_scanner_v2';
+import { normalizeSocialLink } from '../../utils/social.js?v=ebc49583_scanner_v2';
+import { toast } from './Toast.js?v=ebc49583_scanner_v2';
 
 export function createBusinessCardScanner({ onAutofillComplete = null } = {}) {
   let isProcessing = false;

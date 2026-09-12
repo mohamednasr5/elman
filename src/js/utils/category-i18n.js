@@ -1,4 +1,4 @@
-﻿export const VILLAGE_NAMES_EN = {
+export const VILLAGE_NAMES_EN = {
   'المنزلة': 'El Manzala',
   'المطرية': 'El Matariya',
   'الجمالية': 'El Gamaliya',
@@ -98,13 +98,73 @@ export const CATEGORY_NAMES_EN = {
   'atm': 'ATMs'
 };
 
+export const CATEGORY_NAMES_AR = {
+  'cash and balance services': 'خدمات كاش ورصيد',
+  'cash-and-balance-services': 'خدمات كاش ورصيد',
+  'cash and balance': 'خدمات كاش ورصيد',
+  'cash': 'خدمات كاش ورصيد',
+  'doctor': 'أطباء وعيادات',
+  'pharmacy': 'صيدليات',
+  'restaurants and cafes': 'مطاعم وكافيهات',
+  'restaurants-and-cafes': 'مطاعم وكافيهات',
+  'supermarket': 'سوبر ماركت',
+  'delivery': 'خدمات توصيل وشحن',
+  'confectioner and cake shop': 'حلويات ومخبوزات',
+  'butchery and meat': 'جزارة ولحوم',
+  'electrical appliance maintenance': 'صيانة أجهزة كهربائية',
+  'sale of computers and laptops': 'كمبيوتر ولاب توب',
+  'plumbing': 'سباكة وأدوات صحية',
+  'electrician': 'كهرباء وتجهيزات',
+  'wedding, engagement and evening dress atelier': 'أتيليه وفساتين',
+  'real estate company': 'عقارات واستثمار عقاري',
+  'travel and tourism': 'سياحة ورحلات',
+  'courses center': 'مراكز تدريب وكورسات',
+  'carpenter': 'نجارة وموبيليا',
+  'painter': 'دهانات وديكور',
+  'tiler': 'سيراميك وبلاط',
+  'blacksmith': 'حدادة وكريتال',
+  'alumital': 'ألوميتال وزجاج',
+  'gym': 'صالات رياضية وجيم',
+  'clothing-store': 'محلات ملابس',
+  'clothing store': 'محلات ملابس',
+  'gold-and-jewelry-shops': 'ذهب ومجوهرات',
+  'gold and jewelry shops': 'ذهب ومجوهرات',
+  'haircut-and-shave': 'صالونات وحلاقة',
+  'haircut and shave': 'صالونات وحلاقة',
+  'fish-shop': 'أسماك ومأكولات بحرية',
+  'fish shop': 'أسماك ومأكولات بحرية',
+  'bookstore': 'مكتبات وأدوات مدرسية',
+  'auto_repair': 'صيانة سيارات وميكانيكا',
+  'auto repair': 'صيانة سيارات وميكانيكا',
+  'bakery': 'مخابز وأفران',
+  'dentist': 'طب أسنان',
+  'pediatrician': 'أطباء أطفال',
+  'ophthalmology': 'طب وجراحة عيون',
+  'atm': 'ماكينات صراف آلي ATM',
+  'roastery': 'محامص ومقالي',
+  'physical therapy and nutrition center': 'علاج طبيعي وتغذية',
+  'institutes and colleges': 'معاهد وكليات',
+  'advertising-and-marketing-company': 'دعاية وإعلان وتصميم',
+  'henna-art-&-engraving': 'حنة وتجميل',
+  'artificial intelligence engineer': 'هندسة وبرمجة وذكاء اصطناعي'
+};
+
+export function toArabicCategory(cat = '') {
+  if (!cat) return '';
+  const key = String(cat).toLowerCase().trim();
+  return CATEGORY_NAMES_AR[key] || CATEGORY_NAMES_AR[key.replace(/\s+/g, '-')] || CATEGORY_NAMES_AR[key.replace(/-/g, ' ')] || cat;
+}
+
 export function translateArea(area = '', isEn = false) {
   if (!isEn || !area) return area || 'المنزلة';
   return VILLAGE_NAMES_EN[area] || area;
 }
 
 export function translateCategory(cat = '', isEn = false) {
-  if (!isEn || !cat) return cat || '';
+  if (!cat) return '';
   const key = String(cat).toLowerCase().trim();
-  return CATEGORY_NAMES_EN[key] || CATEGORY_NAMES_EN[cat] || cat;
+  if (isEn) {
+    return CATEGORY_NAMES_EN[key] || CATEGORY_NAMES_EN[cat] || cat;
+  }
+  return toArabicCategory(cat);
 }

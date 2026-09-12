@@ -1,19 +1,20 @@
 ﻿import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 import { isEnglish, t, localizeUrl } from '../../core/i18n.js';
+import { translateCategory, toArabicCategory } from '../../utils/category-i18n.js';
 /**
  * المنزلة وناسها — Place Detail Page
  * Full production place view with cover, logo, verified badge, working hours,
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=63fea2cf_v6';
+import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=ebc49583_v6';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
-import { submitVerificationRequest } from '../../services/places.service.js?v=63fea2cf_v6';
+import { submitVerificationRequest } from '../../services/places.service.js?v=ebc49583_v6';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
@@ -1457,6 +1458,7 @@ const SOCIAL_ICONS = {
 };
 
 export function resolvePlaceCategoryInfo(place, category = null) {
+  const isEn = isEnglish();
   const customCat = (place.customCategory || place.categoryName || '').trim();
   const catId = (place.categoryId || '').toLowerCase();
   
@@ -1468,8 +1470,10 @@ export function resolvePlaceCategoryInfo(place, category = null) {
   } else if (place.categoryName && place.categoryName !== 'أخرى' && place.categoryName !== 'عام') {
     name = place.categoryName;
   } else {
-    name = customCat || 'خدمات وأنشطة';
+    name = customCat || (isEn ? 'Services & Activities' : 'خدمات وأنشطة');
   }
+
+  name = translateCategory(name, isEn);
 
   // AI Semantic Icon Matching
   let icon = category?.icon;

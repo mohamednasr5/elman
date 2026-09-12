@@ -5,7 +5,7 @@
  * Supports Job Vacancies & Job Seekers with pulsing badges and direct WhatsApp contact.
  */
 
-import * as liveNewsService from '../../services/live-news.service.js?v=63fea2cf';
+import * as liveNewsService from '../../services/live-news.service.js?v=ebc49583';
 const { 
   getPublishedLiveNews, 
   submitLiveReport, 

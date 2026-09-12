@@ -531,7 +531,7 @@ async function run() {
     let catHtml = fs.readFileSync(catHtmlPath, 'utf8');
     const catCardsHtml = Array.from(categoryMap.entries()).map(([cName, cPlaces]) => {
       const cSlug = encodeURIComponent(String(cName).toLowerCase().replace(/\s+/g, '-'));
-      const escapedName = escapeHtml(cName);
+      const escapedName = escapeHtml(getArabicCategoryName(cName));
       return `
         <a href="/category/${cSlug}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
           <span style="font-weight:700;font-size:0.95rem;margin-bottom:0.25rem">${escapedName}</span>
