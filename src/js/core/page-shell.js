@@ -138,19 +138,102 @@ function _bottomNavHTML(active = '') {
 function _footerHTML() {
   const isEn = isEnglish();
   const homeHref = isEn ? '/en/' : '/index.html';
-  const title = isEn ? 'Dalil El Manzala & El Matariya' : 'دليل المنزلة والمطرية';
-  const tagline = isEn 
-    ? 'The official digital directory & local services platform for El Manzala, El Matariya and Dakahlia, Egypt' 
-    : 'منصة الدليل الرقمي والخدمات الأولى في المنزلة والمطرية والدقهلية';
+  const title = isEn ? 'Dalil El Manzala & El Matariya' : 'دليل المنزلة والمطرية الرقمي';
+  const tagline = isEn
+    ? 'Your digital guide to places, businesses, professionals and local services in El Manzala, El Matariya and nearby areas in Dakahlia, Egypt.'
+    : 'دليلك الرقمي الشامل لجميع الأماكن، المحلات، العيادات، الحرفيين والخدمات في المنزلة والمطرية والمناطق المجاورة بالدقهلية.';
+  const groups = isEn ? [
+    {
+      title: 'Quick Links',
+      links: [
+        ['/en/', 'Home'],
+        ['/en/popular/', 'Popular'],
+        ['/en/places/', 'Places Directory'],
+        ['/en/categories/', 'Categories'],
+        ['/en/offers/', 'Offers'],
+        ['/en/now/', 'Community Requests'],
+        ['/en/around-me/', 'Near Me']
+      ]
+    },
+    {
+      title: 'Directory & Services',
+      links: [
+        ['/en/dashboard/?section=add', 'Add a Place or Business'],
+        ['/en/dashboard/', 'Dashboard'],
+        ['/en/free-verification/', 'Free Verification'],
+        ['/en/emergency/', 'Emergency & Hotlines'],
+        ['/en/search/', 'Search Directory']
+      ]
+    },
+    {
+      title: 'Support',
+      links: [
+        ['/en/contact/', 'Contact Us'],
+        ['/en/privacy/', 'Privacy Policy'],
+        ['/en/terms/', 'Terms of Use'],
+        ['/en/legal/', 'Legal Policy & Disclaimer']
+      ]
+    }
+  ] : [
+    {
+      title: 'روابط سريعة',
+      links: [
+        ['/index.html', 'الصفحة الرئيسية'],
+        ['/places.html', 'دليل الأماكن والمهن'],
+        ['/categories.html', 'التصنيفات'],
+        ['/offers.html', 'العروض'],
+        ['/now.html', 'طلبات أهالينا'],
+        ['/around-me.html', 'اكتشف حولك'],
+        ['/favorites.html', 'المفضلة']
+      ]
+    },
+    {
+      title: 'الخدمات والدليل',
+      links: [
+        ['/dashboard.html?section=add', 'إضافة مكان أو نشاط'],
+        ['/dashboard.html', 'لوحة التحكم'],
+        ['/free-verification.html', 'التوثيق المجاني'],
+        ['/emergency.html', 'طوارئ وأرقام هامة'],
+        ['/search.html', 'البحث في الدليل']
+      ]
+    },
+    {
+      title: 'المساعدة والتواصل',
+      links: [
+        ['/contact.html', 'تواصل معنا'],
+        ['/privacy.html', 'الخصوصية'],
+        ['/terms.html', 'الشروط'],
+        ['/legal.html', 'السياسة القانونية وإخلاء المسؤولية']
+      ]
+    }
+  ];
 
   return `<footer class="footer" id="site-footer" role="contentinfo">
     <div class="container">
-      <div class="footer__brand">
-        <a href="${homeHref}" class="footer__logo">
-          <img src="/icons/icon-96x96.png" alt="${title}" width="40" height="40" onerror="this.src='/favicon-48x48.png';">
-          <span class="footer__logo-name">${title}</span>
-        </a>
-        <p class="footer__description">${tagline}</p>
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <a href="${homeHref}" class="footer__logo">
+            <img src="/icons/icon-96x96.png" alt="${title}" width="40" height="40" onerror="this.src='/favicon-48x48.png';">
+            <span class="footer__logo-name">${title}</span>
+          </a>
+          <p class="footer__description">${tagline}</p>
+        </div>
+        ${groups.map(group => `
+          <div class="footer__column">
+            <h3 class="footer__col-title">${group.title}</h3>
+            <ul class="footer__links">
+              ${group.links.map(([href, label]) => `<li><a href="${href}" class="footer__link">${label}</a></li>`).join('')}
+            </ul>
+          </div>
+        `).join('')}
+      </div>
+      <div class="footer__bottom">
+        <p class="footer__copyright">${isEn ? '© 2026 Dalil El Manzala & El Matariya. All rights reserved.' : '© 2026 دليل المنزلة والمطرية الرقمي. جميع الحقوق محفوظة.'}</p>
+        <div class="footer__bottom-links">
+          <a href="${isEn ? '/en/privacy/' : '/privacy.html'}" class="footer__bottom-link">${isEn ? 'Privacy' : 'الخصوصية'}</a>
+          <a href="${isEn ? '/en/terms/' : '/terms.html'}" class="footer__bottom-link">${isEn ? 'Terms' : 'الشروط'}</a>
+          <a href="${isEn ? '/en/contact/' : '/contact.html'}" class="footer__bottom-link">${isEn ? 'Contact' : 'تواصل'}</a>
+        </div>
       </div>
     </div>
   </footer>`;
@@ -203,8 +286,8 @@ function _setupHeaderSearch() {
         e.preventDefault();
         e.stopPropagation();
         const q = chip.getAttribute('data-q') || '';
-        const targetUrl = isEn 
-          ? `/en/search/?q=${encodeURIComponent(q)}` 
+        const targetUrl = isEn
+          ? `/en/search/?q=${encodeURIComponent(q)}`
           : `/search.html?q=${encodeURIComponent(q)}`;
         window.location.href = targetUrl;
       });
@@ -229,8 +312,8 @@ function _setupHeaderSearch() {
     e.stopPropagation();
     const val = input.value.trim();
     if (pill.classList.contains('expanded') && val) {
-      window.location.href = isEn 
-        ? `/en/search/?q=${encodeURIComponent(val)}` 
+      window.location.href = isEn
+        ? `/en/search/?q=${encodeURIComponent(val)}`
         : `/search.html?q=${encodeURIComponent(val)}`;
     } else if (pill.classList.contains('expanded') && !val) {
       closeSearch();
@@ -252,8 +335,8 @@ function _setupHeaderSearch() {
       e.preventDefault();
       const val = input.value.trim();
       if (val) {
-        window.location.href = isEn 
-          ? `/en/search/?q=${encodeURIComponent(val)}` 
+        window.location.href = isEn
+          ? `/en/search/?q=${encodeURIComponent(val)}`
           : `/search.html?q=${encodeURIComponent(val)}`;
       }
     }
@@ -315,11 +398,10 @@ export async function initPage(activeFile = '') {
   _bindThemeToggle();
   _setupHeaderSearch();
 
-  try { 
-    initAuth(); 
-    onAuthStateChange(() => {}); 
+  try {
+    initAuth();
+    onAuthStateChange(() => {});
   } catch (_) {}
 }
 
 export { waitForAuth, isAdmin };
-
