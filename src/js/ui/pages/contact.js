@@ -448,6 +448,9 @@ export async function renderContactPage($container, { user } = {}) {
           <h2 class="pillar-title">توثيق حسابك ومكانك</h2>
           <p class="pillar-desc">توثيق رسمي بالعلامة المعتمدة يعزز الثقة والمصداقية التامة.</p>
           <button type="button" class="btn btn-primary btn-block btn-select-topic" data-topic="verification">وثّق مكانك 🛡️</button>
+          <a href="free-verification.html" class="btn btn-block btn-free-verification" title="احصل على التوثيق مجاناً بنشر إعلان الدليل داخل محلك">
+            <span>🎁 عرض التوثيق المجاني لأصحاب المحلات</span>
+          </a>
         </div>
 
         <div class="pillar-card pillar-card--showcase">

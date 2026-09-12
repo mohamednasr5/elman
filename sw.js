@@ -86,6 +86,8 @@ self.addEventListener('fetch', event => {
   // response is returned. If there is no cache yet, return a successful empty
   // JSON envelope so one broken API cannot poison the whole homepage.
   if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) {
+    // Realtime sync endpoints must always hit the edge directly (bypass SW caching)
+    if (url.pathname.startsWith('/api/sync/')) return;
     event.respondWith(resilientApiStrategy(request));
     return;
   }
@@ -277,6 +279,18 @@ self.addEventListener('push', event => {
     renotify: true,
     data: { url, timestamp: Date.now() }
   }));
+
+  // Notify any open PWA client window to sync state immediately
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      windowClients.forEach(client => {
+        client.postMessage({
+          type: 'DATA_VERSION_CHANGED',
+          payload: { timestamp: Date.now() }
+        });
+      });
+    })
+  );
 });
 
 self.addEventListener('notificationclick', event => {
@@ -298,6 +312,10 @@ self.addEventListener('notificationclick', event => {
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+
+  if (event.data?.type === 'INVALIDATE_API_CACHE' || event.data?.type === 'DATA_VERSION_CHANGED') {
+    caches.delete(API_CACHE).catch(() => {});
+  }
 
   if (event.data?.type === 'SHOW_PWA_NOTIFICATION') {
     const notif = event.data.payload || {};

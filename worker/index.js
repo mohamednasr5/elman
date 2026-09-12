@@ -798,6 +798,68 @@ try {
     return finalResponse;
   }
 
+  // ── Realtime Sync Engine (PWA Instant Sync & Version Stream) ────────
+  // GET /api/sync/version
+  if (url.pathname === '/api/sync/version' && request.method === 'GET') {
+    const currentVersion = await getDataVersion(env);
+    return jsonResponse({
+      success: true,
+      version: currentVersion,
+      timestamp: Date.now()
+    }, 200, {
+      ...corsHeaders,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'X-Data-Version': currentVersion
+    });
+  }
+
+  // GET /api/sync/stream (Server-Sent Events)
+  if (url.pathname === '/api/sync/stream' && request.method === 'GET') {
+    const initialVersion = await getDataVersion(env);
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    // Send initial connected event
+    writer.write(encoder.encode(`event: connected\ndata: ${JSON.stringify({ version: initialVersion, timestamp: Date.now() })}\n\n`));
+
+    // Keep stream open with periodic ping and version check
+    let activeVersion = initialVersion;
+    let isClosed = false;
+
+    // Stream lifetime loop in background
+    ctx.waitUntil((async () => {
+      try {
+        for (let i = 0; i < 40; i++) { // ~10 minutes max connection, client auto-reconnects
+          await new Promise(r => setTimeout(r, 15000));
+          if (isClosed) break;
+
+          const latestVersion = await getDataVersion(env);
+          if (latestVersion !== activeVersion) {
+            activeVersion = latestVersion;
+            await writer.write(encoder.encode(`event: change\ndata: ${JSON.stringify({ type: 'DATA_VERSION_CHANGED', version: latestVersion, timestamp: Date.now() })}\n\n`));
+          } else {
+            // Heartbeat comment to keep connection alive
+            await writer.write(encoder.encode(`: ping\n\n`));
+          }
+        }
+      } catch (_) {
+      } finally {
+        isClosed = true;
+        try { await writer.close(); } catch (_) {}
+      }
+    })());
+
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        ...corsHeaders
+      }
+    });
+  }
+
   // ── Turso: Get Place Details (Single or List with Caching) ────────
   // GET /api/places
   if (url.pathname === '/api/places' && request.method === 'GET') {
@@ -1162,7 +1224,9 @@ try {
         if (cache) {
           const purgeUrls = [
             `https://cache.local/api/places?slug=${encodeURIComponent(place.slug.toLowerCase())}`,
-            `https://cache.local/api/places?id=${encodeURIComponent(place.id)}`
+            `https://cache.local/api/places?id=${encodeURIComponent(place.id)}`,
+            `https://cache.local/ssr/place/v4?slug=${encodeURIComponent(place.slug.toLowerCase())}`,
+            `https://cache.local/ssr/place/v4?slug=${encodeURIComponent(place.id.toLowerCase())}`
           ];
           ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)).catch(() => {}))));
         }
@@ -1571,7 +1635,9 @@ try {
         if (cache) {
           const purgeUrls = [
             `https://cache.local/api/places?slug=${encodeURIComponent((slug || placeId).toLowerCase())}`,
-            `https://cache.local/api/places?id=${encodeURIComponent(placeId)}`
+            `https://cache.local/api/places?id=${encodeURIComponent(placeId)}`,
+            `https://cache.local/ssr/place/v4?slug=${encodeURIComponent((slug || placeId).toLowerCase())}`,
+            `https://cache.local/ssr/place/v4?slug=${encodeURIComponent(placeId.toLowerCase())}`
           ];
           ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)).catch(() => {}))));
         }
@@ -1613,9 +1679,10 @@ try {
       const cache = caches.default;
       const purgeUrls = [
         `https://cache.local/api/places?slug=${encodeURIComponent(id.toLowerCase())}`,
-        `https://cache.local/api/places?id=${encodeURIComponent(id)}`
+        `https://cache.local/api/places?id=${encodeURIComponent(id)}`,
+        `https://cache.local/ssr/place/v4?slug=${encodeURIComponent(id.toLowerCase())}`
       ];
-      ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)))));
+      ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u))))).catch?.(() => {});
     }
 
     return jsonResponse({ success: true, message: 'تم حذف المكان من Turso ومسح الكاش' }, 200, corsHeaders);
@@ -3883,6 +3950,98 @@ try {
     }
   }
 
+  // ── Turso: Submit Free Verification Request with Flyer Photo (POST /api/free-verification) ──
+  if (url.pathname === '/api/free-verification' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const placeName = (body.placeName || body.place_name || '').trim();
+    const ownerName = (body.ownerName || body.owner_name || '').trim();
+    const phone = (body.phone || '').trim();
+    const whatsapp = (body.whatsapp || '').trim();
+    const address = (body.address || '').trim();
+    const flyerLocation = (body.flyerLocation || body.flyer_location || '').trim();
+    const notes = (body.notes || '').trim();
+    const photoData = body.photoData || body.photoUrl || body.photo || '';
+    const placeId = (body.placeId || body.place_id || '').trim();
+
+    if (!placeName) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال اسم المحل أو النشاط التجاري' }, 400, corsHeaders);
+    }
+    if (!phone && !whatsapp) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال رقم الهاتف أو الواتساب للتواصل' }, 400, corsHeaders);
+    }
+    if (!photoData) {
+      return jsonResponse({ success: false, error: 'يرجى إرفاق صورة واضحة للورقة معلقة داخل المحل' }, 400, corsHeaders);
+    }
+
+    let photoUrl = photoData;
+    // If base64 photo is provided, save to R2
+    if (photoData.startsWith('data:image/') && env?.elmanzala) {
+      try {
+        const matches = photoData.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
+        if (matches) {
+          const mimeExt = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+          const rawBase64 = matches[2];
+          const buffer = Uint8Array.from(atob(rawBase64), c => c.charCodeAt(0));
+          const r2Key = `free_verification/poster_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${mimeExt}`;
+          await env.elmanzala.put(r2Key, buffer, {
+            httpMetadata: { contentType: `image/${matches[1]}`, cacheControl: 'public, max-age=31536000' }
+          });
+          photoUrl = `https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/${r2Key}`;
+        }
+      } catch (uploadErr) {
+        console.warn('[FreeVerification R2 Upload Warning]:', uploadErr?.message || uploadErr);
+      }
+    }
+
+    const requestId = 'fvr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const combinedNotes = `[طلب توثيق مجاني ببوستر الدليل]\n` +
+      `📌 صورة الورقة داخل المحل: ${photoUrl}\n` +
+      `📍 مكان تعليق الورقة: ${flyerLocation || 'داخل المحل أمام الزبائن'}\n` +
+      `🏠 عنوان المحل: ${address}\n` +
+      `💬 واتساب: ${whatsapp}\n` +
+      (notes ? `📝 ملاحظات: ${notes}` : '');
+
+    try {
+      await createTursoDB(env).prepare(`
+        INSERT INTO verification_requests (id, place_id, place_name, owner_id, owner_name, owner_email, phone, notes, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+      `).bind(
+        requestId,
+        placeId || requestId,
+        placeName,
+        'free_offer',
+        ownerName || placeName,
+        '',
+        phone || whatsapp,
+        combinedNotes,
+        Date.now()
+      ).run();
+
+      safeBackgroundNotify('free_verification_request', {
+        requestId,
+        placeId: placeId || requestId,
+        placeName,
+        ownerName: ownerName || placeName,
+        phone: phone || whatsapp,
+        whatsapp,
+        address,
+        flyerLocation,
+        photoUrl,
+        notes: notes || 'طلب تفعيل شارة التوثيق المعتمدة مقابل إعلان بوستر الدليل'
+      }, env, ctx);
+
+      return jsonResponse({
+        success: true,
+        id: requestId,
+        photoUrl,
+        message: 'تم استلام طلب التوثيق المجاني بنجاح! سيتم مراجعة صورة الورقة ومطابقتها وتفعيل التوثيق خلال 24 ساعة.'
+      }, 200, corsHeaders);
+    } catch (dbErr) {
+      console.error('[/api/free-verification Error]:', dbErr);
+      return jsonResponse({ success: false, error: dbErr?.message || 'فشل حفظ الطلب' }, 500, corsHeaders);
+    }
+  }
+
   if ((url.pathname.startsWith('/api/verification-requests/') || url.pathname === '/api/verification-requests') && (request.method === 'PUT' || request.method === 'PATCH')) {
     const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response
@@ -4596,8 +4755,9 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         }
       }
 
-      // ── 12. Dynamic OpenGraph / Social Media Share Preview & Place SSR (GET /place/:slug, /p/:slug or /api/og) ──
-      if ((url.pathname.startsWith('/place/') || url.pathname.startsWith('/p/') || url.pathname === '/p' || url.pathname === '/api/og') && request.method === 'GET') {
+      // ── 12. Dynamic OpenGraph / Social Media Share Preview & Place SSR (GET /place/:slug, /p/:slug, /place.html?slug=... or /api/og) ──
+      const isPlaceRoute = (url.pathname.startsWith('/place/') || url.pathname.startsWith('/p/') || url.pathname === '/p' || url.pathname === '/api/og' || (url.pathname === '/place.html' && (url.searchParams.has('slug') || url.searchParams.has('id')))) && request.method === 'GET';
+      if (isPlaceRoute) {
         const slug = url.pathname.startsWith('/place/')
           ? url.pathname.replace('/place/', '').replace(/\/+$/, '')
           : url.pathname.startsWith('/p/')
@@ -4613,16 +4773,10 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
             const cleanTarget = slug.split('?')[0].replace(/^\/+/, '');
             return Response.redirect(`${url.origin}/${cleanTarget}`, 301);
           }
-          try {
-            const originRes = await fetch(request.url);
-            if (originRes.status === 200) {
-              return originRes;
-            }
-          } catch (_) {}
         }
 
         try {
-          return await handleDynamicOpenGraph(slug, request, env);
+          return await handleDynamicOpenGraph(slug, request, env, ctx);
         } catch (ogErr) {
           console.warn('[place route handleDynamicOpenGraph catch]:', ogErr);
           return Response.redirect(`${url.origin}/places.html`, 302);
@@ -5465,13 +5619,20 @@ async function findPlaceInTurso(env, rawQuery) {
 
   const db = createTursoDB(env);
 
-  // 1. Exact match by slug or id (case-insensitive)
+  // 1. Exact match by slug or id (hits B-Tree index with 0 scan)
   try {
-    const row = await db.prepare(`
+    let row = await db.prepare(`
       SELECT p.* FROM places p
-      WHERE (LOWER(p.slug) = ? OR LOWER(p.id) = ? OR p.slug = ? OR p.id = ?)
+      WHERE p.slug = ? OR p.id = ? OR p.slug = ? OR p.id = ?
       LIMIT 1
-    `).bind(query, query, rawQuery, rawQuery).first();
+    `).bind(rawQuery, rawQuery, query, query).first();
+    if (row) return row;
+
+    row = await db.prepare(`
+      SELECT p.* FROM places p
+      WHERE LOWER(p.slug) = ? OR LOWER(p.id) = ?
+      LIMIT 1
+    `).bind(query, query).first();
     if (row) return row;
   } catch (err) {
     console.warn('[findPlaceInTurso] Tier 1 lookup notice:', err.message);
@@ -5562,9 +5723,39 @@ async function findPlaceInTurso(env, rawQuery) {
 }
 
 /**
- * Dynamic OpenGraph / Social Media Crawler Preview & Fast Redirect
+ * In-memory cached template for place.html to avoid origin roundtrips
  */
-async function handleDynamicOpenGraph(slug, request, env) {
+let _placeHtmlTemplate = '';
+let _placeHtmlTemplateFetched = 0;
+
+async function getPlaceHtmlTemplate(request) {
+  const now = Date.now();
+  if (_placeHtmlTemplate && (now - _placeHtmlTemplateFetched < 600000)) {
+    return _placeHtmlTemplate;
+  }
+  try {
+    const tUrl = new URL('/place.html', request.url);
+    const r = await fetch(tUrl.toString(), {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml',
+        'User-Agent': 'Cloudflare-Worker-Internal'
+      }
+    });
+    if (r.ok) {
+      _placeHtmlTemplate = await r.text();
+      _placeHtmlTemplateFetched = now;
+      return _placeHtmlTemplate;
+    }
+  } catch (err) {
+    console.warn('[getPlaceHtmlTemplate error]:', err?.message || err);
+  }
+  return _placeHtmlTemplate || '';
+}
+
+/**
+ * Dynamic OpenGraph / Social Media Crawler Preview & Edge SSR Place Hydration (Instant 0ms Mobile Load)
+ */
+async function handleDynamicOpenGraph(slug, request, env, ctx) {
   const url = new URL(request.url);
   const cleanSlug = decodeURIComponent(slug || '').trim();
 
@@ -5575,19 +5766,29 @@ async function handleDynamicOpenGraph(slug, request, env) {
     });
   }
 
+  const userAgent = request.headers.get('user-agent') || '';
+  const isCrawler = /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|googlebot|bingbot|slackbot|discordbot/i.test(userAgent);
   const canonicalBase = 'https://dalilmanzala.com';
 
-  // ============================================================
-  // 1. البحث الشامل والمرن عن المكان في Turso
-  // ============================================================
+  // 0. Edge SSR Cache check for human visitors (Instant 15-30ms response from Cloudflare Edge)
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v4?slug=${encodeURIComponent(cleanSlug.toLowerCase())}`, { method: 'GET' });
+  if (!isCrawler && cache) {
+    try {
+      const cachedResponse = await cache.match(ssrCacheKey);
+      if (cachedResponse) {
+        const hitRes = new Response(cachedResponse.body, cachedResponse);
+        hitRes.headers.set('X-Edge-SSR', 'HIT');
+        return hitRes;
+      }
+    } catch (_) {}
+  }
+
+  // 1. Search for the place in Turso (Tier 1 hits B-Tree index)
   const place = await findPlaceInTurso(env, cleanSlug);
 
-  // ============================================================
-  // 2. إذا لم يوجد المكان بعد كل محاولات البحث المتقدمة
-  // ============================================================
+  // 2. If place not found
   if (!place) {
-    const userAgent = request.headers.get('user-agent') || '';
-    const isCrawler = /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|googlebot|bingbot|slackbot|discordbot/i.test(userAgent);
     if (!isCrawler) {
       return Response.redirect(`${canonicalBase}/places.html`, 302);
     }
@@ -5615,24 +5816,11 @@ async function handleDynamicOpenGraph(slug, request, env) {
     );
   }
 
-  // ============================================================
-  // 4. بيانات المكان
-  // ============================================================
-  const rawPlaceName =
-    place.name ||
-    'تفاصيل ومواعيد وأرقام التواصل';
-
-  const fullShareTitle =
-    `${rawPlaceName} | دليل المنزلة والمطرية الرقمي`;
-
-  const placeDesc =
-    place.description ||
-    `تعرف على عنوان ومواعيد وخدمات وأرقام التواصل الخاصة بـ ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`;
-
-  const placeImg =
-    place.cover_image_url ||
-    place.logo_url ||
-    'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
+  // 3. Place metadata resolution
+  const rawPlaceName = place.name || 'تفاصيل ومواعيد وأرقام التواصل';
+  const fullShareTitle = `${rawPlaceName} | دليل المنزلة والمطرية الرقمي`;
+  const placeDesc = place.description || `تعرف على عنوان ومواعيد وخدمات وأرقام التواصل الخاصة بـ ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`;
+  const placeImg = place.cover_image_url || place.logo_url || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
 
   const isIdLike = (s) => !s || s.startsWith('p_') || s.startsWith('-P0') || (s.length > 20 && /^[a-zA-Z0-9_-]+$/.test(s));
   const cleanTranslit = slugifyWorker(place.name);
@@ -5648,148 +5836,246 @@ async function handleDynamicOpenGraph(slug, request, env) {
   }
 
   const placeTargetSlug = canonicalSlug || place.slug || cleanSlug;
+  const shareUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
 
-  // ============================================================
-  // 5. الرابط القانوني للمشاركة والصفحة النظيفة
-  // ============================================================
-  const shareUrl =
-    `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
+  // 4. Human visitors: Edge SSR & Instant Data Injection (Zero Skeleton, 0ms FCP)
+  if (!isCrawler) {
+    try {
+      let baseHtml = await getPlaceHtmlTemplate(request);
 
-  const destinationUrl =
-    `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
+      if (baseHtml && baseHtml.includes('id="page-container"')) {
+        const phoneClean = (place.phone || '').replace(/[^\d+]/g, '').trim();
+        const waClean = (place.whatsapp || '').replace(/\D/g, '').replace(/^0+/, '').trim();
+        const isValidPh = phoneClean && !/^0+$/.test(phoneClean) && phoneClean.length >= 7;
+        const isValidWa = waClean && !/^0+$/.test(waClean) && waClean.length >= 7;
+        const coverImg = place.cover_image_url || '';
+        const logoImg = place.logo_url || '';
+        const placeArea = place.area || 'المنزلة والمطرية';
+        const placeAddr = place.address || '';
+        const placeCat = place.custom_category || place.category_id || '';
+        const placeRating = Number(place.rating || 0);
+        const placeReviewCount = Number(place.review_count || 0);
 
-const userAgent = request.headers.get('user-agent') || '';
+        const normalizedPlace = {
+          id: place.id,
+          _key: place.id,
+          name: rawPlaceName,
+          nameEn: place.name_en || '',
+          slug: placeTargetSlug,
+          area: placeArea,
+          address: placeAddr,
+          categoryId: place.category_id || '',
+          category_id: place.category_id || '',
+          customCategory: place.custom_category || '',
+          custom_category: place.custom_category || '',
+          categoryName: placeCat,
+          phone: place.phone || '',
+          whatsapp: place.whatsapp || '',
+          coverImageUrl: coverImg,
+          cover_image_url: coverImg,
+          logoUrl: logoImg,
+          logo_url: logoImg,
+          description: place.description || '',
+          isVerified: Boolean(place.is_verified),
+          is_verified: Boolean(place.is_verified),
+          verified: Boolean(place.is_verified),
+          isSponsored: Boolean(place.is_sponsored || place.is_featured),
+          is_sponsored: Boolean(place.is_sponsored || place.is_featured),
+          rating: placeRating,
+          reviewCount: placeReviewCount,
+          review_count: placeReviewCount,
+          workingHours: parseJson(place.working_hours_json, {}),
+          working_hours: parseJson(place.working_hours_json, {}),
+          services: parseJson(place.services_json, []),
+          social: parseJson(place.social_json, {}),
+          latitude: place.latitude || null,
+          longitude: place.longitude || null
+        };
 
-const isCrawler =
-  /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|googlebot|bingbot|slackbot|discordbot/i.test(userAgent);
+        // Working hours table for instant SSR view
+        let workingHoursHtml = '';
+        const wh = parseJson(place.working_hours_json, {});
+        if (wh && typeof wh === 'object' && Object.keys(wh).length > 0) {
+          const daysAr = {
+            saturday: 'السبت', sunday: 'الأحد', monday: 'الاثنين',
+            tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس', friday: 'الجمعة'
+          };
+          const rows = [];
+          for (const [dayKey, dayName] of Object.entries(daysAr)) {
+            const d = wh[dayKey];
+            if (d) {
+              const timeStr = d.closed ? 'مغلق' : `${d.open || ''} - ${d.close || ''}`;
+              rows.push(`<tr><td style="padding:6px 12px;font-weight:700;border-bottom:1px solid rgba(0,0,0,0.05);">${dayName}</td><td style="padding:6px 12px;direction:ltr;text-align:right;border-bottom:1px solid rgba(0,0,0,0.05);">${escapeHtml(timeStr)}</td></tr>`);
+            }
+          }
+          if (rows.length > 0) {
+            workingHoursHtml = `
+              <div style="margin-top:1rem;padding:1.25rem;background:var(--surface,#fff);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border:1px solid var(--border,rgba(0,0,0,0.06));">
+                <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 10px 0;display:flex;align-items:center;gap:6px;color:var(--text-primary,#0f172a);">
+                  <span>🕒</span> <span>مواعيد وساعات العمل</span>
+                </h2>
+                <table style="width:100%;border-collapse:collapse;font-size:0.92rem;">
+                  <tbody>${rows.join('')}</tbody>
+                </table>
+              </div>
+            `;
+          }
+        }
 
-// ============================================================
-// 7. Open Graph HTML
-// ============================================================
-const html = `<!DOCTYPE html>
+        const preRenderedContent = `
+          <!-- Edge SSR Instant Place View (0ms Perceived FCP) -->
+          <section class="place-hero animate-fade-in" style="min-height:220px;background:linear-gradient(135deg,#1B4F72 0%,#0E2F44 100%);position:relative;overflow:hidden">
+            ${coverImg ? `<img src="${escapeHtml(coverImg)}" alt="${escapeHtml(rawPlaceName)}" class="place-hero__cover" fetchpriority="high" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.85" />` : ''}
+            <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)"></div>
+          </section>
+          <div class="container" style="max-width:var(--container-xl, 1200px);margin:0 auto;padding:1rem;position:relative;z-index:10;">
+            <div class="place-header-card animate-fade-in-up" style="margin-top:-45px;padding:1.25rem;background:var(--surface,#fff);border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.08);border:1px solid var(--border,rgba(0,0,0,0.06));">
+              <div style="display:flex;align-items:center;gap:1rem;">
+                <div style="width:72px;height:72px;border-radius:50%;overflow:hidden;flex-shrink:0;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.12);background:var(--surface-2,#f1f5f9);display:flex;align-items:center;justify-content:center;font-size:28px">
+                  ${logoImg ? `<img src="${escapeHtml(logoImg)}" alt="${escapeHtml(rawPlaceName)}" style="width:100%;height:100%;object-fit:cover" loading="eager" decoding="async" />` : '📍'}
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <h1 style="margin:0 0 4px 0;font-size:1.35rem;font-weight:900;color:var(--text-primary,#0f172a);line-height:1.3">${escapeHtml(rawPlaceName)}</h1>
+                    ${place.is_verified ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,0.12);color:#16a34a;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:800">✓ موثق رسمياً</span>` : ''}
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary,#64748b);flex-wrap:wrap">
+                    <span>📍 ${escapeHtml(placeArea)}${placeAddr ? ' — ' + escapeHtml(placeAddr) : ''}</span>
+                    ${placeCat ? `<span style="display:inline-flex;padding:2px 8px;border-radius:6px;background:rgba(27,79,114,0.08);color:#1B4F72;font-size:11px;font-weight:700">${escapeHtml(placeCat)}</span>` : ''}
+                    ${placeRating > 0 ? `<span style="color:#F59E0B;font-weight:700">★ ${placeRating} (${placeReviewCount})</span>` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Instant Direct Call & WhatsApp Buttons -->
+              <div style="display:flex;gap:8px;margin-top:1.25rem;flex-wrap:wrap">
+                ${isValidPh ? `
+                  <a href="tel:${escapeHtml(phoneClean)}" class="btn btn-primary" style="flex:1;min-width:130px;justify-content:center;font-weight:800;gap:6px;text-decoration:none;display:inline-flex;align-items:center;padding:10px 16px;border-radius:12px;background:#1B4F72;color:#fff;">
+                    <span>📞</span> <span>اتصال مباشر</span>
+                  </a>
+                ` : ''}
+                ${isValidWa ? `
+                  <a href="https://wa.me/20${escapeHtml(waClean)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;min-width:130px;justify-content:center;font-weight:800;border:1.5px solid #25D366;color:#16A34A;gap:6px;text-decoration:none;display:inline-flex;align-items:center;padding:10px 16px;border-radius:12px;background:#fff;">
+                    <span>💬</span> <span>محادثة واتساب</span>
+                  </a>
+                ` : ''}
+              </div>
+            </div>
+
+            ${place.description ? `
+            <!-- Description Card -->
+            <div style="margin-top:1rem;padding:1.25rem;background:var(--surface,#fff);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border:1px solid var(--border,rgba(0,0,0,0.06));">
+              <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 8px 0;color:var(--text-primary,#0f172a);">عن المكان والنشاط</h2>
+              <p style="font-size:0.92rem;color:var(--text-secondary,#334155);line-height:1.7;margin:0;white-space:pre-line;">${escapeHtml(place.description)}</p>
+            </div>
+            ` : ''}
+
+            ${workingHoursHtml}
+          </div>
+        `;
+
+        // Inject hydrated data and pre-rendered card
+        let hydratedHtml = baseHtml;
+
+        // 1. Add class to html tag for instant CSS activation
+        hydratedHtml = hydratedHtml.replace('<html lang="ar" dir="rtl"', '<html lang="ar" dir="rtl" class="has-instant-place"');
+
+        // 2. Set title & canonical
+        hydratedHtml = hydratedHtml.replace(/<title>.*?<\/title>/i, `<title>${escapeHtml(fullShareTitle)}</title>`);
+        hydratedHtml = hydratedHtml.replace(/<link rel="canonical" id="place-canonical"[^>]*>/i, `<link rel="canonical" id="place-canonical" href="${escapeHtml(shareUrl)}"/>`);
+        hydratedHtml = hydratedHtml.replace(/<meta name="description" content="[^"]*"/i, `<meta name="description" content="${escapeHtml(placeDesc)}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta property="og:title" content="[^"]*"/i, `<meta property="og:title" content="${escapeHtml(fullShareTitle)}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta property="og:description" content="[^"]*"/i, `<meta property="og:description" content="${escapeHtml(placeDesc)}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta property="og:url" content="[^"]*"/i, `<meta property="og:url" content="${escapeHtml(shareUrl)}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta property="og:image" content="[^"]*"/i, `<meta property="og:image" content="${escapeHtml(placeImg)}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta name="twitter:title" content="[^"]*"/i, `<meta name="twitter:title" content="${escapeHtml(fullShareTitle)}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta name="twitter:description" content="[^"]*"/i, `<meta name="twitter:description" content="${escapeHtml(placeDesc)}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
+
+        // 3. Inject instant place data into <head>
+        const injectionScript = `
+  <!-- Server-Injected Place SSR Hydration -->
+  <script id="server-instant-place">
+    window.__INSTANT_PLACE__ = ${JSON.stringify(normalizedPlace)};
+    document.documentElement.classList.add('has-instant-place');
+    document.title = ${JSON.stringify(fullShareTitle)};
+  </script>`;
+        hydratedHtml = hydratedHtml.replace('</head>', `${injectionScript}\n</head>`);
+
+        // 4. Replace skeleton inside <main id="page-container">
+        hydratedHtml = hydratedHtml.replace(/<main class="page-main" id="page-container"[^>]*>[\s\S]*?<\/main>/i, `<main class="page-main" id="page-container" role="main">\n${preRenderedContent}\n  </main>`);
+
+        // 5. Suppress splash screen completely
+        hydratedHtml = hydratedHtml.replace(/<div id="splash" aria-hidden="true">/i, '<div id="splash" aria-hidden="true" style="display:none !important;">');
+
+        const ssrRes = new Response(hydratedHtml, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'public, max-age=120, s-maxage=3600, stale-while-revalidate=86400',
+            'X-Edge-SSR': 'MISS',
+            'X-Content-Type-Options': 'nosniff'
+          }
+        });
+
+        if (cache && ctx && typeof ctx.waitUntil === 'function') {
+          ctx.waitUntil(cache.put(ssrCacheKey, ssrRes.clone()).catch(() => {}));
+        }
+
+        return ssrRes;
+      }
+    } catch (ssrErr) {
+      console.warn('[handleDynamicOpenGraph SSR Error]:', ssrErr?.message || ssrErr);
+    }
+
+    return Response.redirect(`${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`, 302);
+  }
+
+  // 5. Social Media Crawlers (Open Graph HTML)
+  const destinationUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
+  const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(fullShareTitle)}</title>
-
-  <!-- Primary Meta Tags -->
-  <meta name="title"
-        content="${escapeHtml(fullShareTitle)}">
-
-  <meta name="description"
-        content="${escapeHtml(placeDesc)}">
-
-  <!-- Canonical -->
-  <link rel="canonical"
-        href="${escapeHtml(shareUrl)}">
-
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type"
-        content="business.business">
-
-  <meta property="og:url"
-        content="${escapeHtml(shareUrl)}">
-
-  <meta property="og:title"
-        content="${escapeHtml(fullShareTitle)}">
-
-  <meta property="og:description"
-        content="${escapeHtml(placeDesc)}">
-
-  <meta property="og:image"
-        content="${escapeHtml(placeImg)}">
-
-  <meta property="og:image:secure_url"
-        content="${escapeHtml(placeImg)}">
-
-  <meta property="og:image:type"
-        content="image/jpeg">
-
-  <meta property="og:image:width"
-        content="1200">
-
-  <meta property="og:image:height"
-        content="630">
-
-  <meta property="og:site_name"
-        content="دليل المنزلة والمطرية الرقمي">
-
-  <meta property="og:locale"
-        content="ar_EG">
-
-  <!-- Twitter / X -->
-  <meta name="twitter:card"
-        content="summary_large_image">
-
-  <meta name="twitter:url"
-        content="${escapeHtml(shareUrl)}">
-
-  <meta name="twitter:title"
-        content="${escapeHtml(fullShareTitle)}">
-
-  <meta name="twitter:description"
-        content="${escapeHtml(placeDesc)}">
-
-  <meta name="twitter:image"
-        content="${escapeHtml(placeImg)}">
+  <meta name="title" content="${escapeHtml(fullShareTitle)}">
+  <meta name="description" content="${escapeHtml(placeDesc)}">
+  <link rel="canonical" href="${escapeHtml(shareUrl)}">
+  <meta property="og:type" content="business.business">
+  <meta property="og:url" content="${escapeHtml(shareUrl)}">
+  <meta property="og:title" content="${escapeHtml(fullShareTitle)}">
+  <meta property="og:description" content="${escapeHtml(placeDesc)}">
+  <meta property="og:image" content="${escapeHtml(placeImg)}">
+  <meta property="og:image:secure_url" content="${escapeHtml(placeImg)}">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي">
+  <meta property="og:locale" content="ar_EG">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="${escapeHtml(shareUrl)}">
+  <meta name="twitter:title" content="${escapeHtml(fullShareTitle)}">
+  <meta name="twitter:description" content="${escapeHtml(placeDesc)}">
+  <meta name="twitter:image" content="${escapeHtml(placeImg)}">
 </head>
-
-<body style="
-  font-family:Arial,sans-serif;
-  text-align:center;
-  padding:40px;
-  direction:rtl;
-">
-
+<body style="font-family:Arial,sans-serif;text-align:center;padding:40px;direction:rtl;">
   <h1>${escapeHtml(rawPlaceName)}</h1>
-
   <p>
     <script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"LocalBusiness","name":rawPlaceName,"description":placeDesc,"image":placeImg,"url":shareUrl,"telephone":place.phone||undefined,"address":{"@type":"PostalAddress","streetAddress":place.address||undefined,"addressLocality":place.area||'المنزلة والمطرية',"addressRegion":'الدقهلية',"addressCountry":'EG'},"geo":(place.latitude&&place.longitude)?{"@type":"GeoCoordinates","latitude":place.latitude,"longitude":place.longitude}:undefined,"aggregateRating":(place.review_count>0)?{"@type":"AggregateRating","ratingValue":place.rating||0,"reviewCount":place.review_count||0}:undefined})}</script>
-جاري تحويلك إلى صفحة المكان...
+    جاري تحويلك إلى صفحة المكان...
   </p>
-
   <p>
-    <a href="${escapeHtml(destinationUrl)}">
-      اضغط هنا للانتقال إلى صفحة المكان
-    </a>
+    <a href="${escapeHtml(destinationUrl)}">اضغط هنا للانتقال إلى صفحة المكان</a>
   </p>
-
 </body>
 </html>`;
-if (url.pathname.startsWith('/p/') || url.pathname.startsWith('/place/')) {
-  if (!isCrawler) {
-    // Human visitors must receive the real interactive place application.
-    // Serve place.html while preserving the clean URL in browser address bar.
-    try {
-      const appUrl = new URL('/place.html', request.url);
-      appUrl.searchParams.set('slug', placeTargetSlug);
-      const placeAppRes = await fetch(appUrl.toString(), {
-        headers: {
-          'Accept': request.headers.get('Accept') || 'text/html,application/xhtml+xml',
-          'User-Agent': request.headers.get('User-Agent') || ''
-        }
-      });
-      if (placeAppRes && placeAppRes.status === 200) {
-        return placeAppRes;
-      }
-    } catch (serveErr) {
-      console.warn('[place route serve interactive error]:', serveErr?.message || serveErr);
-    }
-    return Response.redirect(`${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`, 302);
-  }
-}
+
   return new Response(html, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-
-      // Cache for social media crawlers (5 mins)
       'Cache-Control': 'public, max-age=300, s-maxage=300',
-
       'X-Content-Type-Options': 'nosniff'
     }
   });

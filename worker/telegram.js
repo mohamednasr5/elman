@@ -544,17 +544,38 @@ async function sendVerificationRequests(chatId, env, editMessageId = null) {
  */
 async function togglePlaceVerification(chatId, placeId, isVerified, env, editMessageId = null) {
   try {
-    const verifiedUntil = isVerified ? (Date.now() + (90 * 24 * 60 * 60 * 1000)) : null; // 3 months default
-    const result = await tursoRun(env, 'UPDATE places SET is_verified = ?, verification_status = ?, updated_at = ? WHERE id = ?', isVerified ? 1 : 0, isVerified ? 'verified' : 'unverified', Date.now(), placeId);
-    if (Number(result?.meta?.changes || 0) !== 1) throw new Error('المكان غير موجود أو لم يتم تحديثه');
+    let targetPlaceId = placeId;
+    let placeName = '';
+
+    // If placeId is a verification request ID (e.g. fvr_... or vreq_...), resolve the actual place or place name
+    if (placeId.startsWith('fvr_') || placeId.startsWith('vreq_')) {
+      const vreq = await tursoFirst(env, 'SELECT id, place_id, place_name FROM verification_requests WHERE id = ? LIMIT 1', placeId);
+      if (vreq) {
+        placeName = vreq.place_name || '';
+        if (vreq.place_id && vreq.place_id !== placeId) {
+          targetPlaceId = vreq.place_id;
+        } else if (placeName) {
+          const matchPlace = await tursoFirst(env, 'SELECT id, name FROM places WHERE name = ? LIMIT 1', placeName);
+          if (matchPlace?.id) targetPlaceId = matchPlace.id;
+        }
+      }
+    }
+
+    const verifiedUntil = isVerified ? (Date.now() + (365 * 24 * 60 * 60 * 1000)) : null; // 1 year default for free offer
+    
+    // Update verification request status
+    await tursoRun(env, 'UPDATE verification_requests SET status = ?, verified_until = ?, reviewed_at = ? WHERE (place_id = ? OR id = ?) AND status = ?', isVerified ? 'approved' : 'rejected', verifiedUntil, Date.now(), placeId, placeId, 'pending').catch(() => {});
+
+    // Update places table
+    await tursoRun(env, 'UPDATE places SET is_verified = ?, verification_status = ?, updated_at = ? WHERE id = ?', isVerified ? 1 : 0, isVerified ? 'verified' : 'unverified', Date.now(), targetPlaceId).catch(() => {});
 
     const statusText = isVerified 
-      ? `✅ تم توثيق المكان بنجاح وتفعيل العلامة الزرقاء! 🛡️` 
+      ? `✅ تم اعتماد التوثيق وتفعيل الشارة الرسمية بنجاح! 🛡️` 
       : `⚠️ تم إلغاء توثيق المكان.`;
 
     await telegramApi('sendMessage', {
       chat_id: chatId,
-      text: `${statusText}\nID: \`${placeId}\``,
+      text: `${statusText}\nالمكان: *${tgEscape(placeName || targetPlaceId)}*\nID: \`${targetPlaceId}\``,
       parse_mode: 'Markdown'
     }, env);
   } catch (err) {
@@ -1074,6 +1095,54 @@ export async function sendAdminPushNotification(type, payload, env) {
         ]
       ]
     };
+  } else if (type === 'free_verification_request' || type === 'free_verification' || (type === 'verification_request' && payload.notes && payload.notes.includes('طلب توثيق مجاني ببوستر الدليل'))) {
+    const isPhotoHttp = payload.photoUrl && String(payload.photoUrl).startsWith('http');
+    text = `🎁 <b>طلب توثيق مجاني ببوستر الدليل ورد الآن!</b>\n\n` +
+      `🏢 <b>المحل / النشاط:</b> ${tgEscape(payload.placeName)}\n` +
+      `👤 <b>صاحب المحل / المسؤول:</b> ${tgEscape(payload.ownerName || payload.requesterName || 'صاحب المحل')}\n` +
+      `📞 <b>الهاتف للتواصل:</b> <code>${tgEscape(payload.phone || 'غير مسجل')}</code>\n` +
+      (payload.whatsapp ? `💬 <b>الواتساب:</b> <code>${tgEscape(payload.whatsapp)}</code>\n` : '') +
+      `🏠 <b>العنوان:</b> ${tgEscape(payload.address || 'غير محدد')}\n` +
+      `📌 <b>مكان الورقة في المحل:</b> ${tgEscape(payload.flyerLocation || 'داخل المحل أمام الزبائن')}\n` +
+      (isPhotoHttp ? `📸 <b>رابط صورة الورقة:</b> <a href="${tgEscape(payload.photoUrl)}">اضغط هنا لفتح الصورة</a>\n` : '') +
+      (payload.notes && !payload.notes.startsWith('[طلب توثيق مجاني ببوستر الدليل]') ? `📝 <b>ملاحظات إضافية:</b>\n<i>"${tgEscape(payload.notes)}"</i>\n` : '') +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
+
+    const waNum = (payload.whatsapp || payload.phone || '').replace(/\D/g, '');
+    const fullWa = waNum.startsWith('0') ? '2' + waNum : waNum;
+
+    const row1 = [];
+    if (isPhotoHttp) {
+      row1.push({ text: '📸 فتح صورة الورقة', url: payload.photoUrl });
+    }
+    if (waNum) {
+      row1.push({ text: '💬 تواصل واتساب', url: `https://wa.me/${fullWa}` });
+    }
+
+    keyboard = {
+      inline_keyboard: [
+        ...(row1.length ? [row1] : []),
+        [
+          { text: '✅ قبول وتوثيق المكان', callback_data: `verify_accept:${payload.placeId || payload.requestId}` },
+          { text: '❌ رفض الطلب', callback_data: `verify_reject:${payload.requestId || payload.placeId}` }
+        ],
+        [
+          { text: '📋 مراجعة في لوحة التحكم', url: 'https://dalilmanzala.com/admin.html?section=verification' }
+        ]
+      ]
+    };
+
+    if (isPhotoHttp) {
+      const captionText = text.length > 1024 ? text.substring(0, 1020) + '...' : text;
+      const photoRes = await telegramApi('sendPhoto', {
+        chat_id: chatId,
+        photo: payload.photoUrl,
+        caption: captionText,
+        parse_mode: 'HTML',
+        reply_markup: keyboard
+      }, env);
+      if (photoRes?.ok) return photoRes;
+    }
   } else if (type === 'verification_request') {
     text = `🛡️ <b>طلب توثيق جديد ورد الآن!</b>\n\n` +
       `🏢 <b>المكان:</b> ${tgEscape(payload.placeName)}\n` +

@@ -331,8 +331,8 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     // Realtime Zero-Delay Live Updates (No refresh needed)
     window.addEventListener('manzala:realtime_sync', async (e) => {
       const type = e.detail?.type;
-      if (type === 'NEW_PLACE' || type === 'PLACE_UPDATED') {
-        places = await getPublishedPlaces();
+      if (type === 'NEW_PLACE' || type === 'PLACE_UPDATED' || type === 'DATA_VERSION_CHANGED') {
+        places = await getPublishedPlaces({ forceFresh: true });
         applyFilters();
       }
     });

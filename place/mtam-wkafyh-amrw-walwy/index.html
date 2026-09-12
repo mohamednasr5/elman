@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
@@ -50,7 +50,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"/>
-  <link rel="stylesheet" href="/src/css/main.css?v=2.8.1"/>
+  <link rel="stylesheet" href="/src/css/main.css?v=8f57ef0b"/>
 
   <!-- Structured Data (JSON-LD) -->
   <script type="application/ld+json">
@@ -403,9 +403,9 @@
 
 <!-- Progressive Enhancement / Hydration Module -->
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=2.8.1';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=2.8.1';
-  import { waitForAuth } from '/src/js/core/auth.js?v=2.8.1';
+  import { initPage } from '/src/js/core/page-shell.js?v=8f57ef0b';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=8f57ef0b';
+  import { waitForAuth } from '/src/js/core/auth.js?v=8f57ef0b';
 
   // Concurrently initialize shell without clearing static content
   initPage('').catch(err => console.warn('[PageShell Error]:', err));

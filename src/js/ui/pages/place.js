@@ -1,18 +1,18 @@
-import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
+﻿import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 /**
  * المنزلة وناسها — Place Detail Page
  * Full production place view with cover, logo, verified badge, working hours,
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=reviews_v6';
+import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=8f57ef0b_v6';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
-import { submitVerificationRequest } from '../../services/places.service.js?v=reviews_v6';
+import { submitVerificationRequest } from '../../services/places.service.js?v=8f57ef0b_v6';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
@@ -150,8 +150,8 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     place = normalizePlace(place);
   }
 
-  // If no cached place in memory or session, display smooth skeleton while fetching
-  if (!place) {
+  // If no cached place in memory or session, display smooth skeleton while fetching (unless already pre-rendered by SSR)
+  if (!place && !$container.querySelector('.place-header-card:not(.skeleton)')) {
     $container.innerHTML = `
       <div class="place-hero skeleton"></div>
       <div class="container" style="max-width:var(--container-xl);margin:0 auto;padding:1rem">
@@ -2554,4 +2554,43 @@ function bindReviewsEvents(place, currentUser, safeReviews, userReview, $contain
 
   // Setup Reviews Sentiment Filter Tabs and pagination
   setupReviewsSentimentFilter(place, currentUser, safeReviews, userReview, $container, slug);
+
+  // ── Universal Realtime Synchronization Listener (Live Updates Without Refresh) ──
+  const realtimeHandler = async (event) => {
+    try {
+      const type = event.detail?.type;
+      const payloadPlace = event.detail?.payload?.place;
+      const targetSlug = cleanSlug;
+      const targetId = String(place?.id || place?._key || '');
+
+      const isMatchingPlace = payloadPlace && (
+        String(payloadPlace.slug || '').toLowerCase() === targetSlug ||
+        String(payloadPlace.id || '') === targetId
+      );
+
+      if (isMatchingPlace || type === 'DATA_VERSION_CHANGED') {
+        const freshPlace = await getPlaceBySlug(targetSlug || targetId);
+        if (freshPlace) {
+          // 1. Update Availability badge reactively
+          const availBadgeContainer = document.getElementById('place-availability-badge-container');
+          if (availBadgeContainer) {
+            availBadgeContainer.innerHTML = renderAvailabilityBadge(freshPlace.availabilityStatus || freshPlace.availability_status);
+          }
+          // 2. Update verified badge if changed
+          if (freshPlace.isVerified !== place.isVerified) {
+            const verifiedBadgeEl = document.querySelector('.place-verified-badge');
+            if (verifiedBadgeEl) {
+              verifiedBadgeEl.style.display = freshPlace.isVerified ? 'inline-flex' : 'none';
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  };
+
+  if (window._currentPlaceRealtimeHandler) {
+    window.removeEventListener('manzala:realtime_sync', window._currentPlaceRealtimeHandler);
+  }
+  window._currentPlaceRealtimeHandler = realtimeHandler;
+  window.addEventListener('manzala:realtime_sync', realtimeHandler);
 }

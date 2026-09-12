@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <base href="/" />
@@ -71,12 +71,31 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="/src/css/main.css?v=20260912_resilient1"/>
+  <link rel="stylesheet" href="/src/css/main.css?v=8f57ef0b_resilient1"/>
+  <!-- Critical CSS Inline: Renders Place Card & Action Buttons Immediately (0ms FCP) -->
+  <style id="critical-place-css">
+    :root{--primary:#1B4F72;--surface:#fff;--border:rgba(0,0,0,0.08);--text-primary:#0f172a;--text-secondary:#475569}
+    body{margin:0;font-family:'Cairo',-apple-system,BlinkMacSystemFont,sans-serif;background-color:#f8fafc;color:#0f172a;direction:rtl}
+    .place-hero{position:relative;width:100%;min-height:220px;background:linear-gradient(135deg,#1B4F72 0%,#0E2F44 100%);overflow:hidden}
+    .place-hero__cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.85}
+    .place-header-card{margin-top:-45px;padding:1.25rem;background:#fff;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,.08);border:1px solid rgba(0,0,0,.06);position:relative;z-index:10}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:12px;font-weight:800;font-size:.95rem;text-decoration:none;border:none;cursor:pointer;box-sizing:border-box;transition:all .2s ease;font-family:inherit}
+    .btn-primary{background:#1B4F72;color:#fff!important}
+    .btn-outline{background:#fff;border:1.5px solid #25D366;color:#16A34A!important}
+    .animate-fade-in{animation:fadeIn .25s ease forwards}
+    .animate-fade-in-up{animation:fadeInUp .3s ease forwards}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  </style>
   <!-- Pre-Boot Instant Place Fetcher: Dispatched immediately during initial HTML parse -->
   <script>
     (function() {
       try {
+        if (window.__INSTANT_PLACE__) {
+          document.documentElement.classList.add('has-instant-place');
+          if (window.__INSTANT_PLACE__.name) document.title = window.__INSTANT_PLACE__.name + ' | دليل المنزلة والمطرية الرقمي';
+          return;
+        }
         var params = new URLSearchParams(location.search);
         var slug = (params.get('slug') || params.get('id') || '').trim();
         if (slug && slug !== 'undefined' && slug !== 'null') {
@@ -427,16 +446,18 @@
         <div class="skeleton" style="height:120px;border-radius:16px;"></div>
         <div class="skeleton" style="height:160px;border-radius:16px;"></div>
       </div>
+    </div>
   </main>
 
   <!-- Instant 0ms Synchronous DOM Hydrator for Immediate Perceived Loading (<20ms) -->
   <script>
     (function() {
       try {
-        var p = window.__INSTANT_PLACE__;
-        if (!p || !p.name) return;
         var container = document.getElementById('page-container');
         if (!container) return;
+        if (container.querySelector('.place-header-card:not(.skeleton)')) return; // Preserves Edge SSR content
+        var p = window.__INSTANT_PLACE__;
+        if (!p || !p.name) return;
 
         var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
         var cover = p.coverImageUrl || p.cover_image_url || p.cover || '';
@@ -515,9 +536,9 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=20260911_vehicles1';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=20260912_resilient1';
-  import { getCurrentUser } from '/src/js/core/auth.js?v=20260912_resilient1';
+  import { initPage } from '/src/js/core/page-shell.js?v=8f57ef0b_vehicles1';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=8f57ef0b_resilient1';
+  import { getCurrentUser } from '/src/js/core/auth.js?v=8f57ef0b_resilient1';
 
   (async () => {
     const params = new URLSearchParams(location.search);

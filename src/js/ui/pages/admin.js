@@ -1,10 +1,10 @@
-/**
+﻿/**
  * المنزلة وناسها — Admin Control Panel (Instant SPA + Sponsored Ads Edition)
  * Zero-latency navigation, in-memory caching, responsive mobile bottom-bar,
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso, getPlaceAnalyticsReport } from '../../core/db.js?v=c1cf1c7c';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso, getPlaceAnalyticsReport } from '../../core/db.js?v=8f57ef0b';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser, getIdToken } from '../../core/auth.js';
 import { uploadImage } from '../../services/upload.service.js';
@@ -2833,47 +2833,161 @@ async function renderAdminReviews($container) {
     window.openAdminBulkReviewsModal = openAdminBulkReviewsModal;
   }
 
+let _adminVerificationFilter = 'all';
+
+window.filterAdminVerifications = (filter) => {
+  _adminVerificationFilter = filter;
+  const $main = document.getElementById('admin-content') || document.querySelector('.admin-main') || document.getElementById('admin-sec-verification');
+  if ($main) renderAdminVerification($main, filter);
+};
+
+window.openAdminPhotoLightbox = (photoUrl, title) => {
+  showModal({
+    title: `📸 صورة الورقة المعلقة في المحل: ${title || ''}`,
+    size: 'lg',
+    content: `
+      <div style="text-align:center;padding:12px 6px;">
+        <div style="max-height:75vh;overflow:auto;display:flex;align-items:center;justify-content:center;background:#0f172a;border-radius:12px;padding:8px;">
+          <img src="${photoUrl}" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px;" alt="${title || 'صورة الملصق'}" />
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap;">
+          <a href="${photoUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">
+            🔍 فتح الصورة بالحجم الأصلي
+          </a>
+          <a href="${photoUrl}" download="poster-${encodeURIComponent(title || 'shop')}.jpg" class="btn btn-sm btn-outline">
+            📥 تحميل الصورة
+          </a>
+        </div>
+      </div>
+    `
+  });
+};
+
 // ─────────────────────────────────────────────
 //  3. Verification Requests
 // ─────────────────────────────────────────────
-async function renderAdminVerification($container) {
+async function renderAdminVerification($container, filter = _adminVerificationFilter) {
   if (!adminCache.verificationRequests) {
     adminCache.verificationRequests = (await getVerificationRequestsTurso()) || {};
   }
-  const reqs = Object.entries(adminCache.verificationRequests || {}).map(([id, r]) => ({ ...r, id }))
-    .sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
+  if (!adminCache.places) {
+    adminCache.places = await loadAdminPlacesMap();
+  }
+
+  const allReqs = Object.entries(adminCache.verificationRequests || {}).map(([id, r]) => {
+    const isFreeOffer = r.ownerId === 'free_offer' || (r.notes && r.notes.includes('طلب توثيق مجاني ببوستر الدليل'));
+    const photoMatch = r.notes ? r.notes.match(/صورة الورقة داخل المحل:\s*(https?:\/\/[^\s\n]+|data:image\/[^\s\n]+)/) : null;
+    const photoUrl = photoMatch ? photoMatch[1] : (r.photoUrl || '');
+    const locationMatch = r.notes ? r.notes.match(/مكان تعليق الورقة:\s*([^\n]+)/) : null;
+    const flyerLocation = locationMatch ? locationMatch[1].trim() : '';
+    const addressMatch = r.notes ? r.notes.match(/عنوان المحل:\s*([^\n]+)/) : null;
+    const address = addressMatch ? addressMatch[1].trim() : '';
+    const waMatch = r.notes ? r.notes.match(/واتساب:\s*([^\n]+)/) : null;
+    const whatsapp = waMatch ? waMatch[1].trim() : '';
+
+    return {
+      ...r,
+      id,
+      isFreeOffer,
+      photoUrl,
+      flyerLocation,
+      address,
+      whatsapp
+    };
+  }).sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
+
+  const totalCount = allReqs.length;
+  const freeCount = allReqs.filter(r => r.isFreeOffer).length;
+  const pendingCount = allReqs.filter(r => r.status === 'pending').length;
+  const approvedCount = allReqs.filter(r => r.status === 'approved').length;
+
+  let reqs = allReqs;
+  if (filter === 'free') reqs = allReqs.filter(r => r.isFreeOffer);
+  else if (filter === 'pending') reqs = allReqs.filter(r => r.status === 'pending');
+  else if (filter === 'approved') reqs = allReqs.filter(r => r.status === 'approved');
+  else if (filter === 'rejected') reqs = allReqs.filter(r => r.status === 'rejected');
 
   $container.innerHTML = `
-    <div class="admin-fade-in">
+    <div class="admin-fade-in" id="admin-sec-verification">
       <div class="dashboard-header">
         <div>
-          <h1 class="dashboard-header__title">طلبات التوثيق (${reqs.length})</h1>
-          <div class="dashboard-header__subtitle">مراجعة واعتماد طلبات توثيق الأنشطة التجارية وتحديد مدة الصلاحية</div>
+          <h1 class="dashboard-header__title">طلبات التوثيق ومراجعات البوستر (${totalCount})</h1>
+          <div class="dashboard-header__subtitle">مراجعة واعتماد طلبات توثيق الأنشطة التجارية وتدقيق صور البوستر المعلق في المحلات</div>
         </div>
+      </div>
+
+      <!-- Quick Filter Pills -->
+      <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-outline'}" onclick="window.filterAdminVerifications('all')">
+          كل الطلبات (${totalCount})
+        </button>
+        <button type="button" class="btn btn-sm ${filter === 'free' ? 'btn-success' : 'btn-outline'}" style="${filter === 'free' ? 'background:#10B981;border-color:#10B981;color:#fff' : 'color:#10B981;border-color:#10B981'}" onclick="window.filterAdminVerifications('free')">
+          🎁 عروض البوستر المجاني (${freeCount})
+        </button>
+        <button type="button" class="btn btn-sm ${filter === 'pending' ? 'btn-warning' : 'btn-outline'}" onclick="window.filterAdminVerifications('pending')">
+          ⏳ قيد المراجعة (${pendingCount})
+        </button>
+        <button type="button" class="btn btn-sm ${filter === 'approved' ? 'btn-primary' : 'btn-outline'}" onclick="window.filterAdminVerifications('approved')">
+          ✓ المعتمدة (${approvedCount})
+        </button>
+        <button type="button" class="btn btn-sm ${filter === 'rejected' ? 'btn-danger' : 'btn-outline'}" onclick="window.filterAdminVerifications('rejected')">
+          ✕ المرفوضة (${totalCount - pendingCount - approvedCount})
+        </button>
       </div>
 
       <div class="dashboard-table-wrapper">
         <table class="dashboard-table">
           <thead>
             <tr>
-              <th>اسم المكان</th>
-              <th>مقدم الطلب</th>
+              <th>المكان والنوع</th>
+              <th>صاحب المحل / التواصل</th>
+              <th>صورة البوستر المعلق</th>
+              <th>العنوان وموقع الورقة</th>
               <th>تاريخ الطلب</th>
-              <th>انتهاء الصلاحية</th>
               <th>الحالة</th>
               <th>الإجراء</th>
             </tr>
           </thead>
           <tbody>
-            ${reqs.length === 0 ? '<tr><td colspan="6" class="text-center">لا توجد طلبات توثيق حالياً</td></tr>' : reqs.map(r => `
+            ${reqs.length === 0 ? '<tr><td colspan="7" class="text-center" style="padding:2rem;">لا توجد طلبات مطابقة لهذا الفلتر</td></tr>' : reqs.map(r => {
+              const waNum = (r.whatsapp || r.phone || '').replace(/\D/g, '');
+              const fullWa = waNum.startsWith('0') ? '2' + waNum : waNum;
+              const waText = encodeURIComponent(`السلام عليكم ورحمة الله، بخصوص طلب توثيق محل (${r.placeName}) في دليل المنزلة والمطرية الرقمي...`);
+
+              return `
               <tr>
-                <td><strong>${escHtml(r.placeName)}</strong></td>
                 <td>
-                  <div style="font-weight:800">${escHtml(r.ownerName || r.ownerEmail || '')}</div>
-                  ${r.phone ? '<div style="margin-top:4px;direction:ltr;text-align:right;font-size:12px;color:var(--text-muted)">'+escHtml(r.phone)+'</div>' : '<div style="margin-top:4px;font-size:12px;color:var(--text-muted)">لا يوجد رقم</div>'}
+                  <strong>${escHtml(r.placeName)}</strong>
+                  <div>
+                    ${r.isFreeOffer 
+                      ? '<span class="badge" style="background:#10B981;color:#fff;font-weight:700;margin-top:4px;display:inline-flex;align-items:center;gap:3px">🎁 بوستر مجاني</span>'
+                      : '<span class="badge" style="background:#1B4F72;color:#fff;font-weight:600;margin-top:4px;display:inline-block">🛡️ طلب عادي</span>'}
+                  </div>
                 </td>
-                <td>${formatDate(r.requestedAt)}</td>
-                <td>${r.verifiedUntil ? formatDate(r.verifiedUntil) : '<span class="text-muted">—</span>'}</td>
+                <td>
+                  <div style="font-weight:800">${escHtml(r.ownerName || r.ownerEmail || '—')}</div>
+                  ${r.phone ? '<div style="margin-top:3px;direction:ltr;text-align:right;font-size:12px;color:var(--text-muted)">📞 '+escHtml(r.phone)+'</div>' : ''}
+                  ${r.whatsapp ? '<div style="margin-top:2px;direction:ltr;text-align:right;font-size:11px;color:#10B981">💬 واتساب: '+escHtml(r.whatsapp)+'</div>' : ''}
+                </td>
+                <td>
+                  ${r.photoUrl ? `
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <img src="${escAttr(r.photoUrl)}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:2px solid #10B981;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15)" onclick="window.openAdminPhotoLightbox('${escAttr(r.photoUrl)}', '${escAttr(r.placeName)}')" title="اضغط لتكبير الصورة" />
+                      <button type="button" class="btn btn-xs btn-outline" style="padding:4px 6px;font-size:11px" onclick="window.openAdminPhotoLightbox('${escAttr(r.photoUrl)}', '${escAttr(r.placeName)}')">
+                        🔍 معاينة
+                      </button>
+                    </div>
+                  ` : '<span class="text-muted" style="font-size:12px;">بدون صورة</span>'}
+                </td>
+                <td>
+                  ${r.flyerLocation ? '<div style="font-size:12px;font-weight:700;color:var(--text-primary)">📌 '+escHtml(r.flyerLocation)+'</div>' : ''}
+                  ${r.address ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">🏠 '+escHtml(r.address)+'</div>' : ''}
+                  ${r.notes && !r.notes.startsWith('[طلب توثيق مجاني') ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escAttr(r.notes)+'">📝 '+escHtml(r.notes)+'</div>' : ''}
+                </td>
+                <td>
+                  <div style="font-size:12px;">${formatDate(r.requestedAt)}</div>
+                  ${r.verifiedUntil ? '<div style="font-size:11px;color:#10B981;margin-top:2px;">حتى '+formatDate(r.verifiedUntil)+'</div>' : ''}
+                </td>
                 <td>
                   <span class="badge ${r.status === 'approved' ? 'badge--published' : (r.status === 'rejected' ? 'badge--rejected' : 'badge--pending')}">
                     ${r.status === 'approved' ? 'معتمد ✓' : (r.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة')}
@@ -2881,19 +2995,24 @@ async function renderAdminVerification($container) {
                 </td>
                 <td>
                   ${r.status === 'pending' ? `
-                    <div style="display:flex;gap:6px">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
                       <button class="btn btn-xs btn-success" onclick="approveVerification('${escAttr(r.id)}', '${escAttr(r.placeId)}')">
                         ${ICONS.check} اعتماد
                       </button>
-                      ${r.phone ? '<a class="btn btn-xs btn-outline" target="_blank" rel="noopener noreferrer" href="https://wa.me/'+String(r.phone).replace(/\D/g,'')+'">💬 WhatsApp</a>' : ''}
+                      ${waNum ? '<a class="btn btn-xs btn-outline" style="color:#10B981;border-color:#10B981;" target="_blank" rel="noopener noreferrer" href="https://wa.me/'+fullWa+'?text='+waText+'">💬 WhatsApp</a>' : ''}
                       <button class="btn btn-xs btn-danger" onclick="rejectVerification('${escAttr(r.id)}', '${escAttr(r.placeId)}')">
                         ${ICONS.x} رفض
                       </button>
                     </div>
-                  ` : '<span style="color:var(--text-muted);font-size:.85rem">مكتمل</span>'}
+                  ` : `
+                    <div style="display:flex;gap:6px;align-items:center;">
+                      ${waNum ? '<a class="btn btn-xs btn-outline" style="font-size:11px" target="_blank" rel="noopener noreferrer" href="https://wa.me/'+fullWa+'?text='+waText+'">💬 مراسلة</a>' : ''}
+                      <span style="color:var(--text-muted);font-size:.8rem">مكتمل</span>
+                    </div>
+                  `}
                 </td>
               </tr>
-            `).join('')}
+            `;}).join('')}
           </tbody>
         </table>
       </div>
@@ -6042,7 +6161,29 @@ window.deletePlaceAdmin = async (placeId) => {
 };
 
 window.approveVerification = async (reqId, placeId) => {
-  const months = prompt('كم شهر تريد أن يستمر هذا التوثيق؟\n(اكتب عدد الأشهر، أو اتركه فارغاً ليكون توثيق دائم)', '12');
+  let targetPlaceId = placeId;
+
+  // If placeId is a request ID or not found in adminCache.places, let admin link or confirm
+  if (targetPlaceId.startsWith('fvr_') || (adminCache.places && !adminCache.places[targetPlaceId])) {
+    const req = adminCache.verificationRequests ? adminCache.verificationRequests[reqId] : null;
+    const reqPlaceName = req?.placeName || '';
+    
+    // Attempt auto-match in adminCache.places
+    let suggestedId = '';
+    if (adminCache.places && reqPlaceName) {
+      const match = Object.values(adminCache.places).find(p => p && p.name && (p.name.includes(reqPlaceName) || reqPlaceName.includes(p.name)));
+      if (match) suggestedId = match.id || match._id;
+    }
+
+    const input = prompt(
+      `ربط التوثيق بمكان في الدليل:\nاسم المحل في الطلب: "${reqPlaceName}"\n\nأدخل كود المكان (Place ID) لتطبيق التوثيق عليه (أو اضغط حسناً للاستمرار):`,
+      suggestedId || targetPlaceId
+    );
+    if (input === null) return;
+    if (input.trim()) targetPlaceId = input.trim();
+  }
+
+  const months = prompt('كم شهر تريد أن يستمر هذا التوثيق؟\n(اكتب عدد الأشهر، أو اتركه فارغاً ليكون توثيق دائم مدى الحياة)', '12');
   if (months === null) return;
 
   const updates = {
@@ -6065,27 +6206,31 @@ window.approveVerification = async (reqId, placeId) => {
       status: 'approved',
       reviewedAt: serverTimestamp()
     }).catch(() => {});
-    await dbUpdate(`places/${placeId}`, updates);
+    
+    if (targetPlaceId && !targetPlaceId.startsWith('fvr_')) {
+      await dbUpdate(`places/${targetPlaceId}`, updates).catch(() => {});
 
-    let placeData = adminCache.places ? adminCache.places[placeId] : (await getPlace(placeId));
-    if (placeData) {
-      Object.assign(placeData, updates);
-      await syncPlaceToWorkerTurso(placeId, placeData);
-      await invalidateLocalPlaceCache(placeId, placeData.slug);
+      let placeData = adminCache.places ? adminCache.places[targetPlaceId] : (await getPlace(targetPlaceId));
+      if (placeData) {
+        Object.assign(placeData, updates);
+        await syncPlaceToWorkerTurso(targetPlaceId, placeData);
+        await invalidateLocalPlaceCache(targetPlaceId, placeData.slug);
+      }
+
+      if (adminCache.places && adminCache.places[targetPlaceId]) {
+        Object.assign(adminCache.places[targetPlaceId], updates);
+      }
+
+      if (placeData) broadcastPlaceVerifiedNotification(placeData).catch(() => {});
     }
 
     if (adminCache.verificationRequests && adminCache.verificationRequests[reqId]) {
       adminCache.verificationRequests[reqId].status = 'approved';
       adminCache.verificationRequests[reqId].verifiedUntil = updates.verifiedUntil;
     }
-    if (adminCache.places && adminCache.places[placeId]) {
-      Object.assign(adminCache.places[placeId], updates);
-    }
 
-    if (placeData) broadcastPlaceVerifiedNotification(placeData).catch(() => {});
-
-    toast.success('تم قبول طلب التوثيق وتفعيل العلامة المعتمدة وإرسال إشعار لكافة المستخدمين ✓');
-    switchAdminSection(_currentSection, false);
+    toast.success('تم قبول طلب التوثيق وتفعيل العلامة المعتمدة بنجاح ✓');
+    renderAdminVerification(document.getElementById('admin-content') || document.querySelector('.admin-main') || document.getElementById('admin-sec-verification'));
   } catch (err) {
     console.error(err);
     toast.error('فشلت العملية: ' + err.message);

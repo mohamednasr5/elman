@@ -79,19 +79,24 @@ export const EGYPTIAN_DIALECT_SYNONYMS = {
   },
   auto_repair: {
     canonical: 'صيانة سيارات وميكانيكا',
-    synonyms: ['عربيات', 'عربية', 'عربيه', 'سيارات', 'سيارة', 'ميكانيكي', 'صيانة عربيات', 'عفشة', 'كهربائي سيارات', 'سمكري', 'دوكو', 'زيوت', 'كاوتش', 'قطع غيار']
+    synonyms: ['عربيات', 'عربية', 'عربيه', 'سيارات', 'سيارة', 'ميكانيكي', 'فني ميكانيكا', 'بتاع عربيات', 'صنايعي ميكانيكا', 'صيانة عربيات', 'عفشة', 'كهربائي سيارات', 'سمكري', 'دوكو', 'زيوت', 'كاوتش', 'قطع غيار']
   },
   plumbing: {
     canonical: 'سباكة وأدوات صحية',
-    synonyms: ['سباك', 'سباكة', 'سباكه', 'ادوات صحية', 'مواسير', 'حنفيات', 'خلاطات', 'سيفون', 'تسريب مياه', 'تأسيس سباكة']
+    synonyms: ['سباك', 'سباكة', 'سباكه', 'فني سباكة', 'بتاع سباكة', 'صنايعي سباكة', 'سباك منازل', 'ادوات صحية', 'مواسير', 'حنفيات', 'خلاطات', 'سيفون', 'تسريب مياه', 'تأسيس سباكة', 'تصليح سباكة', 'فلتر مياه', 'سخان']
   },
   electrical: {
-    canonical: 'كهرباء وإنارة',
-    synonyms: ['كهربائي', 'كهربا', 'صيانة كهرباء', 'لمبات', 'ليدات', 'اسلاك', 'مفاتيح كهرباء', 'نجف', 'تأسيس كهرباء']
+    canonical: 'كهرباء وتأسيس',
+    synonyms: [
+      'كهربائي', 'كهربا', 'فني كهربا', 'فني كهرباء', 'بتاع كهربا', 'بتاع الكهربا',
+      'صنايعي كهربا', 'صنايعي كهرباء', 'كهربائي منازل', 'كهربائي سيارات', 'فني كهربائي',
+      'صيانة كهرباء', 'تصليح كهربا', 'تأسيس كهرباء', 'توصيل كهربا', 'لمبات', 'ليدات',
+      'اسلاك', 'مفاتيح كهرباء', 'نجف', 'سبوتات', 'ليد بروفايل'
+    ]
   },
   carpentry: {
     canonical: 'نجارة وأثاث',
-    synonyms: ['نجار', 'نجارة', 'نجاره', 'اثاث', 'أثاث', 'موبيليا', 'غرف نوم', 'انتريه', 'سفرة', 'ابواب', 'شبابيك', 'مطابخ خشب']
+    synonyms: ['نجار', 'نجارة', 'نجاره', 'فني نجارة', 'صنايعي نجارة', 'بتاع نجارة', 'نجار موبيليا', 'اثاث', 'أثاث', 'موبيليا', 'غرف نوم', 'انتريه', 'سفرة', 'ابواب', 'شبابيك', 'مطابخ خشب']
   },
   clothing: {
     canonical: 'ملابس وأزياء',
@@ -114,6 +119,19 @@ export const EGYPTIAN_DIALECT_SYNONYMS = {
 export function deconstructQuery(query = '') {
   const norm = normalizeArabic(query).trim().toLowerCase();
   
+  // Clean conversational prefixes (e.g. "عاوز", "عايز", "محتاج", "بدور على", "فين", "مكان")
+  let cleanQuery = norm
+    .replace(/^(عاوز|عايز|عاوزه|عايزه|محتاج|محتاجه|محتاجين|بدور على|بدور علي|ابحث عن|شوفلي|هاتلي|قولي على|قولي علي|فين|مكان|دكان|محل|معرض|رقم|تليفون)\s+/g, '')
+    .trim();
+
+  // Detect Egyptian craftsman/technician prefix ("فني", "بتاع", "صنايعي", "معلم")
+  let tradePrefix = '';
+  const tradePrefixMatch = cleanQuery.match(/^(فني|بتاع|صنايعي|معلم)\s+(.+)$/);
+  if (tradePrefixMatch) {
+    tradePrefix = tradePrefixMatch[1];
+    cleanQuery = tradePrefixMatch[2].trim();
+  }
+
   const isDoctor = norm.includes('دكتور') || norm.includes('طبيب') || norm.includes('عياد') || norm.includes('عيادة') || norm.includes('استشاري') || norm.includes('اخصائي') || norm.includes('جراح');
   
   let targetSpecialty = null;
@@ -131,11 +149,13 @@ export function deconstructQuery(query = '') {
     isDoctor,
     targetSpecialty,
     location,
-    normalizedQuery: norm
+    normalizedQuery: norm,
+    cleanQuery: cleanQuery || norm,
+    tradePrefix
   };
 }
 
-class SearchIndex {
+export class SearchIndex {
   constructor() {
     this.documents = [];
     this.tokenMap = new Map();
@@ -279,9 +299,14 @@ class SearchIndex {
       return this.documents.slice(0, options.limit || 10).map(d => ({ ...d, score: 100 }));
     }
 
-    const { isDoctor, targetSpecialty, location, normalizedQuery: normQ } = deconstructQuery(query);
-    const queryTokens = normQ.split(/\s+/).filter(Boolean);
-    const isSingleChar = normQ.length === 1;
+    const { isDoctor, targetSpecialty, location, normalizedQuery: normQ, cleanQuery, tradePrefix } = deconstructQuery(query);
+    const effectiveQuery = cleanQuery || normQ;
+    const cleanNoAl = stripAl(effectiveQuery);
+    const queryTokens = Array.from(new Set([
+      ...normQ.split(/\s+/),
+      ...effectiveQuery.split(/\s+/)
+    ])).filter(Boolean);
+    const isSingleChar = effectiveQuery.length === 1;
     const results = [];
 
     const wantsOpenNow = options.wantsOpenNow || normQ.includes('فاتح') || normQ.includes('شغال') || normQ.includes('دلوقت');
@@ -319,53 +344,58 @@ class SearchIndex {
       }
 
       // ── 2. NAME MATCHING (PREFIX-FIRST FOR INSTANT 1-CHAR & SUB-SECOND SEARCH) ──
-      if (doc.nameNorm === normQ) {
+      if (doc.nameNorm === normQ || doc.nameNorm === effectiveQuery) {
         score += 4000;
         if (!matchedReason) matchedReason = 'مطابقة تامة لاسم المكان';
-      } else if (doc.nameNorm.startsWith(normQ)) {
+      } else if (doc.nameNorm.startsWith(normQ) || doc.nameNorm.startsWith(effectiveQuery)) {
         score += 3500;
-        if (!matchedReason) matchedReason = `يبدأ بحرف "${normQ}"`;
-      } else if (nameNoAl.startsWith(normQ)) {
+        if (!matchedReason) matchedReason = `يبدأ بحرف "${effectiveQuery}"`;
+      } else if (nameNoAl.startsWith(normQ) || (cleanNoAl && nameNoAl.startsWith(cleanNoAl))) {
         score += 3200;
-        if (!matchedReason) matchedReason = `يبدأ بحرف "${normQ}"`;
-      } else if (nameWords.some(w => w.startsWith(normQ) || stripAl(w).startsWith(normQ))) {
+        if (!matchedReason) matchedReason = `يبدأ بحرف "${cleanNoAl}"`;
+      } else if (nameWords.some(w => w.startsWith(normQ) || w.startsWith(effectiveQuery) || (cleanNoAl && (stripAl(w).startsWith(cleanNoAl) || stripAl(w).startsWith(effectiveQuery))))) {
         score += 2800;
         if (!matchedReason) matchedReason = 'إحدى كلمات الاسم تبدأ بالبحث';
-      } else if (!isSingleChar && doc.nameNorm.includes(normQ)) {
+      } else if (!isSingleChar && (doc.nameNorm.includes(normQ) || doc.nameNorm.includes(effectiveQuery))) {
         score += 1000;
         if (!matchedReason) matchedReason = 'اسم المكان';
       } else if (!isSingleChar && queryTokens.every(tok => doc.nameNorm.includes(tok))) {
         score += 800;
         if (!matchedReason) matchedReason = 'كلمات اسم المكان';
-      } else if (isSingleChar && doc.nameNorm.includes(normQ)) {
+      } else if (isSingleChar && doc.nameNorm.includes(effectiveQuery)) {
         // Inner character fallback for 1-char query (so prefix hits ALWAYS win)
         score += 180;
         if (!matchedReason) matchedReason = 'مطابقة حرف بالاسم';
       }
 
       // ── 3. CATEGORY & SPECIALTY PREFIX BOOSTS ──
-      if (doc.categoryNorm && (doc.categoryNorm.startsWith(normQ) || catNoAl.startsWith(normQ))) {
+      const matchesCat = (q) => q && (doc.categoryNorm.startsWith(q) || catNoAl.startsWith(q));
+      const matchesCatWord = (q) => q && catWords.some(w => w.startsWith(q) || stripAl(w).startsWith(q));
+      const matchesSpec = (q) => q && (doc.specialtyNorm.startsWith(q) || specNoAl.startsWith(q));
+
+      if (matchesCat(normQ) || matchesCat(effectiveQuery) || matchesCat(cleanNoAl)) {
         score += 2500;
         if (!matchedReason) matchedReason = doc.category;
-      } else if (catWords.some(w => w.startsWith(normQ) || stripAl(w).startsWith(normQ))) {
+      } else if (matchesCatWord(normQ) || matchesCatWord(effectiveQuery) || matchesCatWord(cleanNoAl)) {
         score += 2200;
         if (!matchedReason) matchedReason = doc.category;
-      } else if (doc.specialtyNorm && (doc.specialtyNorm.startsWith(normQ) || specNoAl.startsWith(normQ))) {
+      } else if (matchesSpec(normQ) || matchesSpec(effectiveQuery) || matchesSpec(cleanNoAl)) {
         score += 2400;
         if (!matchedReason) matchedReason = doc.specialty;
-      } else if (!isSingleChar && doc.categoryNorm && (doc.categoryNorm.includes(normQ) || (normQ.length >= 3 && normQ.includes(doc.categoryNorm)))) {
-        score += 500;
+      } else if (!isSingleChar && doc.categoryNorm && (doc.categoryNorm.includes(effectiveQuery) || (effectiveQuery.length >= 3 && effectiveQuery.includes(doc.categoryNorm)))) {
+        score += 600;
         if (!matchedReason) matchedReason = doc.category;
-      } else if (isSingleChar && doc.categoryNorm && doc.categoryNorm.includes(normQ)) {
+      } else if (isSingleChar && doc.categoryNorm && doc.categoryNorm.includes(effectiveQuery)) {
         score += 120;
       }
 
-      // ── 4. EGYPTIAN DIALECT & SYNONYM CLUSTERS (+700 PTS) ──
+      // ── 4. EGYPTIAN DIALECT & SYNONYM CLUSTERS (+900 PTS) ──
       if (!isSingleChar) {
+        const checkPhrases = [normQ, effectiveQuery, tradePrefix ? `${tradePrefix} ${effectiveQuery}` : ''].filter(Boolean);
         for (const [clusterKey, clusterData] of Object.entries(EGYPTIAN_DIALECT_SYNONYMS)) {
           const isQueryInCluster = clusterData.synonyms.some(syn => {
             const nSyn = normalizeArabic(syn);
-            return normQ === nSyn || normQ.startsWith(nSyn + ' ') || normQ.endsWith(' ' + nSyn) || normQ.includes(' ' + nSyn + ' ');
+            return checkPhrases.some(cp => cp === nSyn || cp.startsWith(nSyn + ' ') || cp.endsWith(' ' + nSyn) || cp.includes(' ' + nSyn + ' '));
           });
           if (isQueryInCluster) {
             const isDocInCluster = clusterData.synonyms.some(syn => {
@@ -373,7 +403,8 @@ class SearchIndex {
               return doc.searchText.includes(nSyn);
             });
             if (isDocInCluster) {
-              score += 700;
+              score += 900;
+              if (tradePrefix) score += 400; // Extra boost when user explicitly said "فني" / "بتاع" / "صنايعي"
               if (!matchedReason) matchedReason = clusterData.canonical;
               break;
             }

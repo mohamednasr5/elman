@@ -221,14 +221,22 @@ body.light-theme .pillar-desc {
 .pillar-price {
   font-size: 0.95rem;
   font-weight: 900;
-  color: #FCD34D;
-  background: rgba(245, 166, 35, 0.14);
-  border: 1px solid rgba(245, 166, 35, 0.35);
+  color: #10B981;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.38);
   border-radius: 10px;
   padding: 6px 14px;
   display: inline-block;
   margin-bottom: 14px;
   width: fit-content;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+}
+
+[data-theme="light"] .pillar-price,
+body.light-theme .pillar-price {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(5, 150, 105, 0.4);
 }
 
 .pillar-kicker {
@@ -242,6 +250,48 @@ body.light-theme .pillar-desc {
   display: inline-block;
   margin-bottom: 14px;
   width: fit-content;
+}
+
+/* Free Verification Action Button */
+.btn-free-verification {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 11px 16px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #065F46 !important;
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%) !important;
+  border: 1.5px solid #10B981 !important;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .btn-free-verification,
+body.dark-theme .btn-free-verification {
+  color: #A7F3D0 !important;
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.6) 0%, rgba(6, 95, 70, 0.8) 100%) !important;
+  border-color: rgba(52, 211, 153, 0.6) !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.22);
+}
+
+.btn-free-verification:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+  border-color: #059669 !important;
+  color: #064E3B !important;
+}
+
+[data-theme="dark"] .btn-free-verification:hover,
+body.dark-theme .btn-free-verification:hover {
+  border-color: #34D399 !important;
+  color: #FFFFFF !important;
 }
 
 /* ── Live Stats Strip ── */

@@ -283,6 +283,31 @@ export async function renderHomePage($main, { user } = {}) {
       checkAndShowFirstVisitVideo();
     } catch (_) {}
   });
+
+  // ── Universal Realtime Synchronization Listener (Live Updates Without Refresh) ──
+  if (typeof window !== 'undefined' && !window._homeRealtimeSyncAttached) {
+    window._homeRealtimeSyncAttached = true;
+    window.addEventListener('manzala:realtime_sync', async (event) => {
+      try {
+        const [freshPlaces, freshOffers] = await Promise.all([
+          getPublishedPlaces({ limit: 100, forceFresh: true }).catch(() => []),
+          getActiveOffers(8).catch(() => [])
+        ]);
+        if (freshPlaces && freshPlaces.length) {
+          const user = getCurrentUser() || userArg;
+          const sorted = sortLatestPlaces(freshPlaces, user?.uid);
+          renderLatestPlaces(sorted.slice(0, 8));
+          initHomeVerifiedShowcase(freshPlaces);
+          warmupSearchEngine(freshPlaces, getCached('categories_all') || []);
+        }
+        if (freshOffers && freshOffers.length) {
+          renderOffers(freshOffers);
+        }
+      } catch (err) {
+        console.warn('[Home Realtime Sync Error]:', err);
+      }
+    });
+  }
 }
 
 function sortLatestPlaces(places, currentUid = null, shuffleSponsored = false) {

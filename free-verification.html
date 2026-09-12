@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('elmanzala-theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch(_) {}
+    })();
+  </script>
+
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <title>عرض التوثيق المجاني لأصحاب المحلات | دليل المنزلة والمطرية الرقمي</title>
+  <meta name="description" content="عرض حصري لأصحاب المحلات والأنشطة التجارية في المنزلة والمطرية: احصل على شارة التوثيق الرسمية المعتمدة مجاناً مقابل طباعة وتعليق ملصق الدليل في محلك."/>
+  <meta name="keywords" content="توثيق مجاني, توثيق المحلات, دليل المنزلة والمطرية الرقمي, إعلان المحل, المنزلة, المطرية دقهلية, إضافة محل, شارة التوثيق"/>
+  <meta name="robots" content="index,follow"/>
+  <link rel="canonical" href="https://dalilmanzala.com/free-verification.html"/>
+  
+  <!-- Open Graph / WhatsApp / Facebook -->
+  <meta property="og:type" content="website"/>
+  <meta property="og:url" content="https://dalilmanzala.com/free-verification.html"/>
+  <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي"/>
+  <meta property="og:title" content="عرض التوثيق المجاني لأصحاب المحلات | دليل المنزلة والمطرية"/>
+  <meta property="og:description" content="احصل على شارة التوثيق المعتمدة مجاناً لمكانك مقابل طباعة وإعلان بوستر الدليل داخل محلك."/>
+  <meta property="og:image" content="https://dalilmanzala.com/assets/images/dalil-free-verification-poster.jpg"/>
+  <meta property="og:image:secure_url" content="https://dalilmanzala.com/assets/images/dalil-free-verification-poster.jpg"/>
+  <meta property="og:image:type" content="image/jpeg"/>
+  <meta property="og:image:alt" content="ملصق إعلان دليل المنزلة والمطرية الرسمي"/>
+  <meta property="og:locale" content="ar_EG"/>
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:url" content="https://dalilmanzala.com/free-verification.html"/>
+  <meta name="twitter:title" content="عرض التوثيق المجاني لأصحاب المحلات | دليل المنزلة والمطرية"/>
+  <meta name="twitter:description" content="احصل على شارة التوثيق المعتمدة مجاناً لمكانك مقابل طباعة وإعلان بوستر الدليل داخل محلك."/>
+  <meta name="twitter:image" content="https://dalilmanzala.com/assets/images/dalil-free-verification-poster.jpg"/>
+
+  <link rel="image_src" href="https://dalilmanzala.com/assets/images/dalil-free-verification-poster.jpg"/>
+  <meta name="theme-color" content="#1B4F72"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
+  <link rel="manifest" href="./manifest.webmanifest"/>
+  <link rel="icon" type="image/x-icon" href="./favicon.ico"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="./icons/icon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192x192.png"/>
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512x512.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180x180.png"/>
+  <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192x192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=8f57ef0b"/>
+  <link rel="stylesheet" href="./src/css/pages/free-verification.css?v=8f57ef0b"/>
+</head>
+<body class="">
+<div id="app">
+
+  <!-- Header injected by JS -->
+  <div id="header-slot"></div>
+
+  <!-- Page Content -->
+  <main class="page-main" id="page-container" role="main">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:1rem">
+      <div class="spinner spinner-lg"></div>
+      <p style="color:var(--text-muted);font-size:.9rem">جاري التحميل...</p>
+    </div>
+  </main>
+
+  <!-- Bottom Nav injected by JS -->
+  <div id="nav-slot"></div>
+
+  <!-- PWA Banner injected by JS -->
+  <div id="pwa-slot"></div>
+
+  <!-- Footer injected by JS -->
+  <div id="footer-slot"></div>
+
+</div>
+
+<script>
+  window.ServerValue = window.ServerValue || { TIMESTAMP: Date.now() };
+</script>
+
+<!-- Page Module -->
+<script type="module">
+  import { initPage } from './src/js/core/page-shell.js?v=8f57ef0b';
+  import { renderFreeVerificationPage } from './src/js/ui/pages/free-verification.js?v=8f57ef0b';
+  import { getCurrentUser } from './src/js/core/auth.js?v=8f57ef0b';
+
+  (async () => {
+    try {
+      await initPage('free-verification.html');
+      await renderFreeVerificationPage(document.getElementById('page-container'), { user: getCurrentUser() });
+    } catch (err) {
+      console.error('[FreeVerificationBootstrap] Fatal error during page init:', err);
+      const pc = document.getElementById('page-container');
+      if (pc) {
+        pc.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:1rem;text-align:center;padding:2rem;">
+            <p style="font-size:1.1rem;color:var(--text-muted,#888);">حدث خطأ أثناء تحميل الصفحة، يرجى إعادة المحاولة</p>
+            <button onclick="location.reload()" style="padding:.6rem 1.5rem;border-radius:8px;background:#1B4F72;color:#fff;border:none;cursor:pointer;">إعادة التحميل</button>
+          </div>
+        `;
+      }
+    }
+  })();
+</script>
+</body>
+</html>
