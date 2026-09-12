@@ -30,8 +30,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify clean place route in Worker
-        run: node -e "const s = require('fs').readFileSync('index.js', 'utf8'); if (!s.includes('placeAppRes')) throw new Error('Interactive place route not found in index.js');"
+      - name: Verify place route in Worker
+        run: node -e "const s = require('fs').readFileSync('index.js', 'utf8'); if (!s.includes('isPlaceRoute')) throw new Error('Place route handler not found in index.js');"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
