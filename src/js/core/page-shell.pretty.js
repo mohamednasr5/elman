@@ -12,20 +12,23 @@ import { toast } from '../ui/components/Toast.js';
 ───────────────────────────────────────────────────────── */
 function _headerHTML(active) {
   const links = [
-    ['index.html',      'الرئيسية'],
-    ['popular.html',    'الأكثر شعبية 🔥'],
-    ['places.html',     'الأماكن'],
-    ['categories.html', 'التصنيفات'],
-    ['offers.html',     'العروض'],
-    ['now.html',        'طلبات أهالينا 🤝'],
-    ['around-me.html',  'بالقرب مني 🧭'],
-    ['favorites.html',  '❤️ المفضلة'],
+    ['/index.html',      'الرئيسية'],
+    ['/popular.html',    'الأكثر شعبية 🔥'],
+    ['/places.html',     'الأماكن'],
+    ['/categories.html', 'التصنيفات'],
+    ['/offers.html',     'العروض'],
+    ['/now.html',        'طلبات أهالينا 🤝'],
+    ['/around-me.html',  'بالقرب مني 🧭'],
+    ['/favorites.html',  '❤️ المفضلة'],
   ];
+
+  const norm = (p) => String(p || '').replace(/^\/+/, '');
+  const activeNorm = norm(active);
 
   return `
 <header class="header" id="site-header" role="banner">
   <div class="container header__inner">
-    <a href="index.html" class="header__logo" aria-label="دليل المنزلة والمطرية الرقمي">
+    <a href="/index.html" class="header__logo" aria-label="دليل المنزلة والمطرية الرقمي">
       <img src="./icons/icon-48x48.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="36" height="36" decoding="async" class="header__logo-img"/>
       <div class="header__logo-text">
         <span class="header__logo-name">دليل المنزلة والمطرية</span>
@@ -54,7 +57,7 @@ function _headerHTML(active) {
         </div>
         <div class="header-live-dropdown__list" id="header-live-list"></div>
         <div class="header-live-dropdown__footer">
-          <a href="search.html" class="header-live-dropdown__all-btn" id="header-live-all-btn">
+          <a href="/search.html" class="header-live-dropdown__all-btn" id="header-live-all-btn">
             <span>عرض كافة النتائج في صفحة البحث</span>
             <span>←</span>
           </a>
@@ -64,7 +67,7 @@ function _headerHTML(active) {
 
     <nav class="header__nav" aria-label="التنقل الرئيسي">
       ${links.map(([file, label]) =>
-        `<a href="${file}" class="header__nav-link${file === active ? ' active' : ''}">${label}</a>`
+        `<a href="${file}" class="header__nav-link${norm(file) === activeNorm ? ' active' : ''}">${label}</a>`
       ).join('')}
     </nav>
     
@@ -74,7 +77,7 @@ function _headerHTML(active) {
     </button>
 
     <div class="header__user" id="header-user-section">
-      <a href="login.html" class="btn btn-primary btn-sm"><span>🔑</span> دخول</a>
+      <a href="/login.html" class="btn btn-primary btn-sm"><span>🔑</span> دخول</a>
     </div>
   </div>
 </header>`;
@@ -145,18 +148,20 @@ function _bottomNavHTML(active) {
   }
 
   const items = [
-    ['index.html',      '🏠', 'الرئيسية'],
-    ['categories.html', '📋', 'التصنيفات'],
-    ['offers.html',     '🏷️', 'العروض'],
+    ['/index.html',      '🏠', 'الرئيسية'],
+    ['/categories.html', '📋', 'التصنيفات'],
+    ['/offers.html',     '🏷️', 'العروض'],
     ['#more',           '☰', 'المزيد'],
   ];
+  const norm = (p) => String(p || '').replace(/^\/+/, '');
+  const activeNorm = norm(active);
   return `
 <nav class="bottom-nav" id="bottom-nav" role="navigation" aria-label="تنقل سريع">
-  <a href="${items[0][0]}" class="bottom-nav__item${items[0][0]===active?' active':''}">
+  <a href="${items[0][0]}" class="bottom-nav__item${norm(items[0][0]) === activeNorm ? ' active' : ''}">
     <span class="bottom-nav__icon">${items[0][1]}</span>
     <span class="bottom-nav__label">${items[0][2]}</span>
   </a>
-  <a href="${items[1][0]}" class="bottom-nav__item${items[1][0]===active?' active':''}">
+  <a href="${items[1][0]}" class="bottom-nav__item${norm(items[1][0]) === activeNorm ? ' active' : ''}">
     <span class="bottom-nav__icon">${items[1][1]}</span>
     <span class="bottom-nav__label">${items[1][2]}</span>
   </a>
@@ -168,7 +173,7 @@ function _bottomNavHTML(active) {
       <span class="fab-mic-badge">🎙️</span>
     </button>
   </div>
-  <a href="${items[2][0]}" class="bottom-nav__item${items[2][0]===active?' active':''}">
+  <a href="${items[2][0]}" class="bottom-nav__item${norm(items[2][0]) === activeNorm ? ' active' : ''}">
     <span class="bottom-nav__icon">${items[2][1]}</span>
     <span class="bottom-nav__label">${items[2][2]}</span>
   </a>
@@ -185,7 +190,7 @@ function _footerHTML() {
   <div class="container">
     <div class="footer__grid">
       <div class="footer__brand">
-        <a href="index.html" class="footer__logo">
+        <a href="/index.html" class="footer__logo">
           <img src="./icons/icon-48x48.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="40" height="40" loading="lazy" decoding="async"/>
           <span class="footer__logo-name">دليل المنزلة والمطرية الرقمي</span>
         </a>
@@ -193,7 +198,7 @@ function _footerHTML() {
           دليلك الرقمي الشامل لجميع الأماكن، المحلات، العيادات، الحرفيين والخدمات في المنزلة، المطرية، العصافرة، الجمالية، ميت سلسيل، البصراط، العزيزة، الأحمدية، الروضة، الحوتة، النسايمة، ميت خضير، ميت شريف، وكافة القرى المجاورة بمحافظة الدقهلية.
         </p>
         <div class="footer__apk-download" id="footer-apk-container" style="margin-top:18px">
-          <a href="dalilmanzala.apk" download="dalilmanzala.apk" class="apk-pro-download-btn" id="footer-apk-download-btn" title="تحميل تطبيق دليل المنزلة والمطرية للأندرويد APK">
+          <a href="/dalilmanzala.apk" download="dalilmanzala.apk" class="apk-pro-download-btn" id="footer-apk-download-btn" title="تحميل تطبيق دليل المنزلة والمطرية للأندرويد APK">
             <div class="apk-btn-icon-box">
               <svg class="android-svg-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
                 <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.996-3.4572c.1557-.2698.0632-.6141-.2066-.7698-.2693-.1552-.6135-.0632-.7692.2066l-2.0231 3.5042c-1.4286-.6507-3.0373-1.0135-4.8786-1.0135-1.8412 0-3.45.3628-4.8785 1.0135L5.0995 5.301c-.1557-.2698-.5-.3618-.7692-.2066-.2698.1557-.3623.5-.2066.7698l1.996 3.4572C2.6806 11.2334.3333 15.1165.3333 19.6667h23.3334c0-4.5502-2.3473-8.4333-5.7867-10.3453"/>
@@ -216,31 +221,31 @@ function _footerHTML() {
       <div>
         <h3 class="footer__col-title">روابط سريعة</h3>
         <ul class="footer__links">
-          <li><a href="index.html"      class="footer__link">الرئيسية</a></li>
-          <li><a href="popular.html"    class="footer__link">🔥 الأكثر شعبية</a></li>
-          <li><a href="places.html"     class="footer__link">دليل الأماكن</a></li>
-          <li><a href="categories.html" class="footer__link">التصنيفات</a></li>
-          <li><a href="offers.html"     class="footer__link">العروض اليومية</a></li>
-          <li><a href="products.html"   class="footer__link">المنتجات</a></li>
+          <li><a href="/index.html"      class="footer__link">الرئيسية</a></li>
+          <li><a href="/popular.html"    class="footer__link">🔥 الأكثر شعبية</a></li>
+          <li><a href="/places.html"     class="footer__link">دليل الأماكن</a></li>
+          <li><a href="/categories.html" class="footer__link">التصنيفات</a></li>
+          <li><a href="/offers.html"     class="footer__link">العروض اليومية</a></li>
+          <li><a href="/products.html"   class="footer__link">المنتجات</a></li>
         </ul>
       </div>
       <div>
         <h3 class="footer__col-title">الخدمات والدليل</h3>
         <ul class="footer__links">
-          <li><a href="dashboard.html?section=add" class="footer__link">➕ إضافة مكان جديد</a></li>
-          <li><a href="dashboard.html"             class="footer__link">📊 لوحة التحكم</a></li>
-          <li><a href="search.html"                class="footer__link">🔍 البحث المتقدم</a></li>
-          <li><a href="manzala.html"               class="footer__link">🏛️ عن مدينة المنزلة</a></li>
-          <li><a href="matariya.html"              class="footer__link">⛵ عن مدينة المطرية</a></li>
+          <li><a href="/dashboard.html?section=add" class="footer__link">➕ إضافة مكان جديد</a></li>
+          <li><a href="/dashboard.html"             class="footer__link">📊 لوحة التحكم</a></li>
+          <li><a href="/search.html"                class="footer__link">🔍 البحث المتقدم</a></li>
+          <li><a href="/manzala.html"               class="footer__link">🏛️ عن مدينة المنزلة</a></li>
+          <li><a href="/matariya.html"              class="footer__link">⛵ عن مدينة المطرية</a></li>
         </ul>
       </div>
       <div>
         <h3 class="footer__col-title">تواصل معنا</h3>
         <ul class="footer__links">
-          <li><a href="contact.html"  class="footer__link">📧 تواصل معنا</a></li>
-          <li><a href="legal.html"    class="footer__link">⚖️ قانوني وإخلاء المسؤولية</a></li>
-          <li><a href="privacy.html"  class="footer__link">سياسة الخصوصية</a></li>
-          <li><a href="terms.html"    class="footer__link">شروط الاستخدام</a></li>
+          <li><a href="/contact.html"  class="footer__link">📧 تواصل معنا</a></li>
+          <li><a href="/legal.html"    class="footer__link">⚖️ قانوني وإخلاء المسؤولية</a></li>
+          <li><a href="/privacy.html"  class="footer__link">سياسة الخصوصية</a></li>
+          <li><a href="/terms.html"    class="footer__link">شروط الاستخدام</a></li>
         </ul>
       </div>
     </div>
@@ -656,7 +661,8 @@ function _setupInstantPrefetch() {
   const prefetch = (href) => {
     if (!href) return;
     try {
-      const url = new URL(href, location.href);
+      const base = document.baseURI || location.origin;
+      const url = new URL(href, base);
       if (url.origin === location.origin && !prefetched.has(url.href)) {
         prefetched.add(url.href);
         const link = document.createElement('link');
@@ -669,15 +675,15 @@ function _setupInstantPrefetch() {
 
   document.addEventListener('mouseover', (e) => {
     const a = e.target.closest('a[href]');
-    if (a) prefetch(a.href);
+    if (a) prefetch(a.getAttribute('href'));
   }, { passive: true });
 
   document.addEventListener('touchstart', (e) => {
     const a = e.target.closest('a[href]');
-    if (a) prefetch(a.href);
+    if (a) prefetch(a.getAttribute('href'));
   }, { passive: true });
 
-  const corePages = ['index.html', 'popular.html', 'places.html', 'categories.html', 'offers.html', 'search.html'];
+  const corePages = ['/index.html', '/popular.html', '/places.html', '/categories.html', '/offers.html', '/search.html'];
   const idlePrefetch = () => {
     corePages.forEach(p => prefetch(p));
   };
@@ -901,28 +907,28 @@ export async function openDashboardMoreModal(user = null) {
         <span class="more-section-title"><span>✨</span> استكشاف الدليل</span>
       </div>
       <div class="more-menu-grid">
-        <a href="search.html" class="more-menu-tile">
+        <a href="/search.html" class="more-menu-tile">
           <span class="tile-icon">🔍</span>
           <div class="tile-info">
             <span class="tile-title">البحث المتقدم</span>
             <span class="tile-sub">بحث ذكي وسريع</span>
           </div>
         </a>
-        <a href="popular.html" class="more-menu-tile">
+        <a href="/popular.html" class="more-menu-tile">
           <span class="tile-icon">🔥</span>
           <div class="tile-info">
             <span class="tile-title">الأكثر شعبية</span>
             <span class="tile-sub">الأعلى تقييماً وزيارة</span>
           </div>
         </a>
-        <a href="categories.html" class="more-menu-tile">
+        <a href="/categories.html" class="more-menu-tile">
           <span class="tile-icon">📑</span>
           <div class="tile-info">
             <span class="tile-title">التصنيفات</span>
             <span class="tile-sub">جميع الأنشطة والمهن</span>
           </div>
         </a>
-        <a href="now.html" class="more-menu-tile">
+        <a href="/now.html" class="more-menu-tile">
           <span class="tile-icon">🤝</span>
           <div class="tile-info">
             <span class="tile-title">طلبات أهالينا</span>
@@ -933,7 +939,7 @@ export async function openDashboardMoreModal(user = null) {
 
       ${isUserAdmin ? `
         <div style="margin-top:10px">
-          <a href="admin.html" class="more-menu-tile" style="background:linear-gradient(135deg, rgba(27,79,114,0.1) 0%, rgba(40,116,166,0.15) 100%);border-color:rgba(27,79,114,0.35);color:var(--primary);min-height:56px">
+          <a href="/admin.html" class="more-menu-tile" style="background:linear-gradient(135deg, rgba(27,79,114,0.1) 0%, rgba(40,116,166,0.15) 100%);border-color:rgba(27,79,114,0.35);color:var(--primary);min-height:56px">
             <span class="tile-icon" style="background:rgba(27,79,114,0.15);font-size:22px">⚙️</span>
             <div class="tile-info">
               <span class="tile-title" style="font-size:0.95rem">لوحة تحكم الإدارة الشاملة (Admin)</span>
@@ -1020,42 +1026,42 @@ export async function openDashboardMoreModal(user = null) {
         <span class="more-section-title"><span>🧭</span> استكشاف الدليل</span>
       </div>
       <div class="more-menu-grid" style="margin-bottom:10px">
-        <a href="search.html" class="more-menu-tile">
+        <a href="/search.html" class="more-menu-tile">
           <span class="tile-icon">🔍</span>
           <div class="tile-info">
             <span class="tile-title">البحث المتقدم</span>
             <span class="tile-sub">بحث سريع بالأماكن</span>
           </div>
         </a>
-        <a href="around-me.html" class="more-menu-tile more-menu-tile--blue">
+        <a href="/around-me.html" class="more-menu-tile more-menu-tile--blue">
           <span class="tile-icon" style="background:rgba(2,132,199,0.15)">🧭</span>
           <div class="tile-info">
             <span class="tile-title">بالقرب مني</span>
             <span class="tile-sub">أقرب الأماكن إليك</span>
           </div>
         </a>
-        <a href="popular.html" class="more-menu-tile">
+        <a href="/popular.html" class="more-menu-tile">
           <span class="tile-icon">🔥</span>
           <div class="tile-info">
             <span class="tile-title">الأكثر شعبية</span>
             <span class="tile-sub">الأعلى زيارة وتقييماً</span>
           </div>
         </a>
-        <a href="categories.html" class="more-menu-tile">
+        <a href="/categories.html" class="more-menu-tile">
           <span class="tile-icon">📑</span>
           <div class="tile-info">
             <span class="tile-title">التصنيفات</span>
             <span class="tile-sub">دليل الأنشطة والمهن</span>
           </div>
         </a>
-        <a href="favorites.html" class="more-menu-tile">
+        <a href="/favorites.html" class="more-menu-tile">
           <span class="tile-icon">❤️</span>
           <div class="tile-info">
             <span class="tile-title">المفضلة</span>
             <span class="tile-sub">قائمتك المفضلة</span>
           </div>
         </a>
-        <a href="now.html" class="more-menu-tile">
+        <a href="/now.html" class="more-menu-tile">
           <span class="tile-icon">🤝</span>
           <div class="tile-info">
             <span class="tile-title">طلبات أهالينا</span>

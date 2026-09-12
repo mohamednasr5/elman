@@ -3927,25 +3927,32 @@ try {
     }
 
     try {
-      // Read current stats_json, increment, and update
-      const place = await createTursoDB(env).prepare(`SELECT stats_json FROM places WHERE id = ? OR slug = ? LIMIT 1`).bind(placeId, placeId).first();
-      if (place) {
-        const stats = parseJson(place.stats_json, {});
-        if (stat) {
-          stats[stat] = (Number(stats[stat]) || 0) + 1;
-        }
-        if (keyword) {
-          stats.topKeywords = stats.topKeywords || {};
-          const cleanKw = keyword.slice(0, 50).trim();
-          if (cleanKw) {
-            stats.topKeywords[cleanKw] = (stats.topKeywords[cleanKw] || 0) + 1;
+      const db = createTursoDB(env);
+      if (db) {
+        // Read current stats_json, increment, and update
+        const place = await db.prepare(`SELECT stats_json FROM places WHERE id = ? OR slug = ? LIMIT 1`).bind(placeId, placeId).first();
+        if (place) {
+          let stats = parseJson(place.stats_json, {});
+          if (!stats || typeof stats !== 'object' || Array.isArray(stats)) {
+            stats = {};
           }
+          if (stat) {
+            stats[stat] = (Number(stats[stat]) || 0) + 1;
+          }
+          if (keyword) {
+            stats.topKeywords = (stats.topKeywords && typeof stats.topKeywords === 'object') ? stats.topKeywords : {};
+            const cleanKw = keyword.slice(0, 50).trim();
+            if (cleanKw) {
+              stats.topKeywords[cleanKw] = (stats.topKeywords[cleanKw] || 0) + 1;
+            }
+          }
+          await db.prepare(`UPDATE places SET stats_json = ?, updated_at = ? WHERE id = ? OR slug = ?`).bind(JSON.stringify(stats), Date.now(), placeId, placeId).run();
         }
-        await createTursoDB(env).prepare(`UPDATE places SET stats_json = ?, updated_at = ? WHERE id = ? OR slug = ?`).bind(JSON.stringify(stats), Date.now(), placeId, placeId).run();
       }
       return jsonResponse({ success: true }, 200, corsHeaders);
     } catch (err) {
-      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+      console.warn('[POST /api/places/track-stat notice]:', err?.message || err);
+      return jsonResponse({ success: true, tracked: false }, 200, corsHeaders);
     }
   }
 
@@ -4566,8 +4573,12 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
             ? url.pathname.replace('/p/', '').replace(/\/+$/, '')
             : (url.searchParams.get('slug') || url.searchParams.get('id') || '');
 
-        // For /place/:slug, first try serving static pre-rendered file from Pages origin
+        // For /place/:slug, first check if a root page was requested under /place/ (e.g. /place/popular.html)
         if (url.pathname.startsWith('/place/')) {
+          if (slug.endsWith('.html') || slug.includes('.html')) {
+            const cleanTarget = slug.split('?')[0].replace(/^\/+/, '');
+            return Response.redirect(`${url.origin}/${cleanTarget}`, 301);
+          }
           try {
             const originRes = await fetch(request);
             if (originRes.status === 200) {
@@ -4576,7 +4587,12 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
           } catch (_) {}
         }
 
-        return handleDynamicOpenGraph(slug, request, env);
+        try {
+          return await handleDynamicOpenGraph(slug, request, env);
+        } catch (ogErr) {
+          console.warn('[place route handleDynamicOpenGraph catch]:', ogErr);
+          return Response.redirect(`${url.origin}/places.html`, 302);
+        }
       }
 
       // ── 13. Official Municipal Facebook News Aggregator & Sync (GET /api/news/facebook-sync) ──
