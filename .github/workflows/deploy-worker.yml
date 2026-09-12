@@ -7,6 +7,9 @@ on:
     paths:
       - 'worker/**'
       - '.github/workflows/deploy-worker.yml'
+      - 'src/js/core/db.js'
+      - 'src/js/core/db.pretty.js'
+      - 'src/js/core/page-shell.js'
 
 concurrency:
   group: cloudflare-worker-production
