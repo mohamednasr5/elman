@@ -33,39 +33,58 @@ function _headerHTML(active='') {
   </div></header>`;
 }
 
+function _bottomNavHTML(active='') {
+  const items = [['/index.html','🏠','mobile_home'],['/categories.html','📋','mobile_categories'],['/offers.html','🏷️','mobile_offers'],['#more','☰','mobile_more']];
+  const norm = p => String(p || '').replace(/^\/+/, '');
+  const a = norm(active);
+  return `<nav class="bottom-nav" id="bottom-nav" role="navigation" aria-label="${t('mobile_quick_nav')}">
+    <a href="${localizeUrl(items[0][0])}" class="bottom-nav__item${norm(items[0][0])===a?' active':''}"><span class="bottom-nav__icon">${items[0][1]}</span><span class="bottom-nav__label">${t(items[0][2])}</span></a>
+    <a href="${localizeUrl(items[1][0])}" class="bottom-nav__item${norm(items[1][0])===a?' active':''}"><span class="bottom-nav__icon">${items[1][1]}</span><span class="bottom-nav__label">${t(items[1][2])}</span></a>
+    <div class="bottom-nav__fab"><button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="${isEnglish()?'Smart voice assistant':'مساعد المنزلة الصوتي الذكي'}"><span class="fab-letter-m">M</span><span class="fab-mic-badge">🎙️</span></button></div>
+    <a href="${localizeUrl(items[2][0])}" class="bottom-nav__item${norm(items[2][0])===a?' active':''}"><span class="bottom-nav__icon">${items[2][1]}</span><span class="bottom-nav__label">${t(items[2][2])}</span></a>
+    <button type="button" class="bottom-nav__item" id="bottom-nav-more-btn" aria-label="${t('mobile_more')}"><span class="bottom-nav__icon">${items[3][1]}</span><span class="bottom-nav__label">${t(items[3][2])}</span></button>
+  </nav>`;
+}
+
+function _footerHTML(){
+  return `<footer class="footer" id="site-footer" role="contentinfo"><div class="container"><div class="footer__brand"><a href="${localizeUrl('/index.html')}" class="footer__logo"><img src="/icons/icon-96x96.png" alt="${t('site_title')}" width="40" height="40"><span class="footer__logo-name">${t('site_title')}</span></a><p class="footer__description">${t('site_tagline')}</p></div></div></footer>`;
+}
+
 export async function initPage(activeFile='') {
   _inject('header-slot', _headerHTML(activeFile));
+  _inject('footer-slot', _footerHTML());
+  _inject('nav-slot', _bottomNavHTML(activeFile));
   _bindLanguageToggle();
   _bindThemeToggle();
   applyLangToDOM(getLang());
   try { initAuth(); onAuthStateChange(() => {}); } catch (_) {}
 }
 
-function _bindLanguageToggle() {
+function _bindLanguageToggle(){
   const btn = document.getElementById('lang-toggle-btn');
   if (!btn || btn.dataset.bound) return;
   btn.dataset.bound='1';
   btn.addEventListener('click', () => switchLanguage(getLang()==='ar' ? 'en' : 'ar'));
 }
 
-function _bindThemeToggle() {
-  document.querySelectorAll('#theme-toggle-btn,.theme-toggle-btn').forEach(btn => {
-    if (btn.dataset.bound) return;
+function _bindThemeToggle(){
+  document.querySelectorAll('#theme-toggle-btn,.theme-toggle-btn').forEach(btn=>{
+    if(btn.dataset.bound) return;
     btn.dataset.bound='1';
-    btn.addEventListener('click', () => {
-      const current = document.documentElement.getAttribute('data-theme') || 'light';
-      const next = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      document.body?.classList.toggle('dark-theme', next === 'dark');
-      document.body?.classList.toggle('light-theme', next === 'light');
-      localStorage.setItem('elmanzala-theme', next);
+    btn.addEventListener('click',()=>{
+      const current=document.documentElement.getAttribute('data-theme')||'light';
+      const next=current==='dark'?'light':'dark';
+      document.documentElement.setAttribute('data-theme',next);
+      document.body?.classList.toggle('dark-theme',next==='dark');
+      document.body?.classList.toggle('light-theme',next==='light');
+      localStorage.setItem('elmanzala-theme',next);
     });
   });
 }
 
-function _inject(id, html) {
+function _inject(id,html){
   const slot=document.getElementById(id);
-  if (!slot) return;
+  if(!slot)return;
   const tmp=document.createElement('div');
   tmp.innerHTML=html.trim();
   slot.replaceWith(tmp.firstElementChild);
