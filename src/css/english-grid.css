@@ -1,0 +1,58 @@
+/* English-only place grid corrections.
+   Loaded/scoped for English presentation; Arabic layout is untouched. */
+
+html[lang="en"] .places-grid,
+html[lang="en"] #category-places-grid,
+html[lang="en"] #popular-places-grid,
+html[lang="en"] #search-results-grid,
+html[lang="en"] .search-results-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  align-items: stretch;
+}
+
+html[lang="en"] .places-grid > *,
+html[lang="en"] #category-places-grid > *,
+html[lang="en"] #popular-places-grid > *,
+html[lang="en"] #search-results-grid > *,
+html[lang="en"] .search-results-grid > * {
+  min-width: 0;
+}
+
+html[lang="en"] .place-card,
+html[lang="en"] .fair-place-card {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 1199px) {
+  html[lang="en"] .places-grid,
+  html[lang="en"] #category-places-grid,
+  html[lang="en"] #popular-places-grid,
+  html[lang="en"] #search-results-grid,
+  html[lang="en"] .search-results-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 899px) {
+  html[lang="en"] .places-grid,
+  html[lang="en"] #category-places-grid,
+  html[lang="en"] #popular-places-grid,
+  html[lang="en"] #search-results-grid,
+  html[lang="en"] .search-results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 599px) {
+  html[lang="en"] .places-grid,
+  html[lang="en"] #category-places-grid,
+  html[lang="en"] #popular-places-grid,
+  html[lang="en"] #search-results-grid,
+  html[lang="en"] .search-results-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
