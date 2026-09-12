@@ -36,6 +36,9 @@ function pageHtml() {
   <meta property="og:site_name" content="Dalil El Manzala & El Matariya">
   <meta property="og:locale" content="en_EG">
   <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/src/css/main.css?v=20260913">
   <link rel="stylesheet" href="/src/css/i18n-layout.css?v=20260913">
 </head>

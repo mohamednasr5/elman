@@ -45,8 +45,8 @@ import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { formatDate } from '../../utils/date.js';
 import { getUserLoyaltyProfile, getLoyaltyLevelInfo, redeemPointsForVerification, claimDailyBonus, LOYALTY_LEVELS, POINTS_RULES, VERIFICATION_POINTS_COST } from '../../services/loyalty.service.js';
-import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=060040a2_scanner_v2';
-import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=060040a2_scanner_v2';
+import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=63fea2cf_scanner_v2';
+import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=63fea2cf_scanner_v2';
 
 let _dashUser = null;
 let _dashPlacesCache = null;

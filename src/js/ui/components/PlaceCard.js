@@ -152,7 +152,8 @@ export function renderPlaceCard(place) {
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';
   const isDeliveryPlace = !isAtm && (place.deliveryType || place.categoryId === 'delivery' || place.categoryId?.includes('delivery') || /توكتوك|تاكسي|شانجي|اتوبيس|وصلي/i.test(place.name || ''));
   const deliveryBadge = (isDeliveryPlace && !/صيدلية|مطعم|كشري|حلواني|سوبر\s*ماركت/i.test(place.name || '')) ? renderDeliveryBadge(place) : '';
-  const placeUrl = `/place.html?slug=${encodeURIComponent(place.slug || place.id || place._key)}`;
+  const targetSlug = place.slug || place.id || place._key || '';
+  const placeUrl = `/place.html?slug=${encodeURIComponent(targetSlug)}`;
   const placeId = place._key || place.id || place.slug || '';
   const hasValidPhone = isValidPhoneNumber(place.phone);
   const hasValidWhatsapp = isValidPhoneNumber(place.whatsapp);
@@ -258,8 +259,6 @@ export function renderPlaceCard(place) {
     isSponsored ? 'place-card--sponsored' : '',
     place.isVerified ? 'place-card--verified' : ''
   ].filter(Boolean).join(' ');
-
-  const targetSlug = place.slug || place.id || place._key;
 
   const availStatus = place.availabilityStatus || place.availability_status;
   let availBadge = '';

@@ -531,7 +531,7 @@ function setupLiveSearch() {
     if (e.key === 'Enter') doSearch();
   });
 
-  input.addEventListener('input', () => {
+  input.addEventListener('input', async () => {
     const val = input.value.trim();
     if (clear) clear.style.display = val ? 'inline-flex' : 'none';
 
@@ -541,7 +541,7 @@ function setupLiveSearch() {
     }
 
     try {
-      const results = executeFastSearch(val, { limit: 5 });
+      const results = await executeFastSearch(val, { limit: 5 });
       if (!results || !results.length) {
         if (dropdown) dropdown.style.display = 'none';
         return;

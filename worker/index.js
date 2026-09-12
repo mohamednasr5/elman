@@ -4982,6 +4982,7 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
             let html = await pageRes.text();
             const cleanArSuffix = url.pathname.replace(/^\/en(?:\/|$)/, '/') || '/';
             const alternateAr = `${url.origin}${cleanArSuffix.startsWith('/') ? cleanArSuffix : '/' + cleanArSuffix}`;
+            const canonicalClean = `${url.origin}${url.pathname}`;
             const alternateTags = `
   <link rel="alternate" hreflang="en" href="${canonicalClean}" />
   <link rel="alternate" hreflang="ar" href="${alternateAr}" />

@@ -3,7 +3,7 @@
  * Real, independent English routing and module invocation.
  */
 
-import { initPage } from './page-shell.js?v=060040a2';
+import { initPage } from './page-shell.js?v=63fea2cf';
 import { getCurrentUser, waitForAuth } from './auth.js';
 
 const clean = p => String(p || '/').replace(/^\/en(?:\/|$)/, '/').replace(/\/+$/, '') || '/';
