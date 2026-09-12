@@ -184,6 +184,8 @@ function _footerHTML() {
         ['/offers.html', 'العروض'],
         ['/now.html', 'طلبات أهالينا'],
         ['/around-me.html', 'اكتشف حولك'],
+        ['/manzala.html', 'عن المنزلة'],
+        ['/matariya.html', 'عن المطرية'],
         ['/favorites.html', 'المفضلة']
       ]
     },
