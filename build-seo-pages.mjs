@@ -495,6 +495,62 @@ async function run() {
   }
   console.log(`✓ Successfully pre-rendered ${generatedCats} category pages under /category/:slug/index.html`);
 
+  // 3. Inject Internal Links into places.html for Googlebot Link Discovery
+  const placesHtmlPath = path.join(__dirname, 'places.html');
+  if (fs.existsSync(placesHtmlPath)) {
+    let placesHtml = fs.readFileSync(placesHtmlPath, 'utf8');
+    const placeCardsHtml = places.map(p => {
+      const pSlug = (p.slug || p.id || '').trim();
+      const pName = escapeHtml(p.name || 'مكان في الدليل');
+      const pArea = escapeHtml(p.area || 'المنزلة والمطرية');
+      const pCat = escapeHtml(p.customCategory || p.category || 'خدمات');
+      return `
+        <article class="seo-place-preview-card" style="padding:1rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:14px">
+          <h2 style="font-size:1rem;margin:0 0 0.35rem"><a href="/place/${encodeURIComponent(pSlug)}" style="color:var(--text-primary,#0f172a);text-decoration:none">${pName}</a></h2>
+          <p style="font-size:0.82rem;color:var(--text-secondary,#64748b);margin:0 0 0.5rem">📍 ${pArea} • 📂 ${pCat}</p>
+          <a href="/place/${encodeURIComponent(pSlug)}" style="font-size:0.82rem;font-weight:700;color:var(--primary,#0284c7);text-decoration:none">عرض تفاصيل المكان ووسائل الاتصال ←</a>
+        </article>`;
+    }).join('\n');
+
+    const skeletonRegex = /<!-- Instant Skeleton Loader \(hydrated seamlessly by JS\) -->[\s\S]*?<\/div>\s*<\/div>/;
+    if (skeletonRegex.test(placesHtml)) {
+      const replacement = `<!-- Instant SEO Place Directory & Skeleton Loader (hydrated seamlessly by JS) -->
+      <div id="seo-places-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">
+        ${placeCardsHtml}
+      </div>
+    </div>`;
+      placesHtml = placesHtml.replace(skeletonRegex, replacement);
+      fs.writeFileSync(placesHtmlPath, placesHtml, 'utf8');
+      console.log(`✓ Successfully injected ${places.length} crawlable place links into places.html`);
+    }
+  }
+
+  // 4. Inject Internal Links into categories.html for Googlebot Link Discovery
+  const catHtmlPath = path.join(__dirname, 'categories.html');
+  if (fs.existsSync(catHtmlPath)) {
+    let catHtml = fs.readFileSync(catHtmlPath, 'utf8');
+    const catCardsHtml = Array.from(categoryMap.entries()).map(([cName, cPlaces]) => {
+      const cSlug = encodeURIComponent(String(cName).toLowerCase().replace(/\s+/g, '-'));
+      const escapedName = escapeHtml(cName);
+      return `
+        <a href="/category/${cSlug}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
+          <span style="font-weight:700;font-size:0.95rem;margin-bottom:0.25rem">${escapedName}</span>
+          <span style="font-size:0.8rem;color:var(--text-muted,#64748b)">${cPlaces.length} مكان</span>
+        </a>`;
+    }).join('\n');
+
+    const catSkeletonRegex = /<div style="display:grid;grid-template-columns:repeat\(auto-fill,minmax\(140px,1fr\)\);gap:1rem;">[\s\S]*?<\/div>\s*<\/div>/;
+    if (catSkeletonRegex.test(catHtml)) {
+      const catReplacement = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem;">
+        ${catCardsHtml}
+      </div>
+    </div>`;
+      catHtml = catHtml.replace(catSkeletonRegex, catReplacement);
+      fs.writeFileSync(catHtmlPath, catHtml, 'utf8');
+      console.log(`✓ Successfully injected ${categoryMap.size} crawlable category links into categories.html`);
+    }
+  }
+
   console.log('\n🌟 Static SEO pre-rendering complete!');
 }
 
