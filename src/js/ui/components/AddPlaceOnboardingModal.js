@@ -81,6 +81,10 @@ export function showAddPlaceOnboardingModal(force = false) {
 
 export function initPlaceFormWizard() {
   if (typeof document === 'undefined') return false;
+  if (!hasSeenAddPlaceOnboarding()) {
+    showAddPlaceOnboardingModal();
+    return false;
+  }
   const form = document.getElementById('place-form');
   if (!form || form.dataset.wizardReady === 'true') return false;
 
