@@ -1,4 +1,4 @@
-import { showAddPlaceOnboardingModal } from '../components/AddPlaceOnboardingModal.js';
+import { initPlaceFormWizard } from '../components/AddPlaceOnboardingModal.js';
 import { 
   fetchManagedUserNotifications, 
   getCachedManagedUserNotifications,
@@ -191,8 +191,10 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
       await renderAnalyticsSection($mainArea, _dashUser, placeId);
     } else if (section === 'add' || section === 'add-place') {
       await renderPlaceFormSection($mainArea, _dashUser, null);
+      requestAnimationFrame(() => initPlaceFormWizard());
     } else if (section === 'edit' || section === 'edit-place') {
       await renderPlaceFormSection($mainArea, _dashUser, placeId);
+      requestAnimationFrame(() => initPlaceFormWizard());
     } else if (section === 'offers' || section === 'place-offers') {
       await renderPlaceOffersSection($mainArea, _dashUser, placeId);
     } else if (section === 'products' || section === 'place-products') {
@@ -1076,12 +1078,6 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   const isEdit = !!placeId;
   let place = null;
 
-  // Show 3D Onboarding Guide for first-time place creators
-  if (!isEdit) {
-    setTimeout(() => {
-      showAddPlaceOnboardingModal(false);
-    }, 150);
-  }
 
   if (isEdit) {
     place = await getPlace(placeId);
