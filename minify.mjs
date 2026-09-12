@@ -4,7 +4,7 @@ import { execSync } from 'child_process';
 const filesToMinify = [
   { pretty: 'src/css/main.pretty.css', target: 'src/css/main.css', isCss: true },
   { pretty: 'src/js/core/db.pretty.js', target: 'src/js/core/db.js' },
-  { pretty: 'src/js/core/page-shell.pretty.js', target: 'src/js/core/page-shell.js' },
+  // page-shell.js is maintained directly because it contains the bilingual mobile shell bindings.
   { pretty: 'src/js/ui/pages/home.pretty.js', target: 'src/js/ui/pages/home.js' },
   { pretty: 'src/js/utils/category-visual.pretty.js', target: 'src/js/utils/category-visual.js' },
   { pretty: 'src/js/utils/professions-data.pretty.js', target: 'src/js/utils/professions-data.js' }
