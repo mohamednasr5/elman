@@ -1,3 +1,5 @@
+import { getCategoryBySlug, getProfessionById } from './professions-data.js';
+
 export const VILLAGE_NAMES_EN = {
   'المنزلة': 'El Manzala',
   'المطرية': 'El Matariya',
@@ -151,13 +153,92 @@ export const CATEGORY_NAMES_AR = {
   'institutes and colleges': 'معاهد وكليات',
   'advertising-and-marketing-company': 'دعاية وإعلان وتصميم',
   'henna-art-&-engraving': 'حنة وتجميل',
-  'artificial intelligence engineer': 'هندسة وبرمجة وذكاء اصطناعي'
+  'artificial intelligence engineer': 'هندسة وبرمجة وذكاء اصطناعي',
+  'chef-of-weddings-and-celebrations': 'طباخ أفراح ومناسبات',
+  'butterfly-weddings-&-events': 'فراشة أفراح ومناسبات',
+  'air-conditioner-maintenance-and-installation': 'صيانة وتركيب تكييفات',
+  'aluminum-workshop': 'ورشة ألوميتال',
+  'antiques-&-chandeliers': 'تحف ونجف',
+  'banner-and-advertising-printing': 'طباعة بنرات ودعاية وإعلان',
+  'bride\'s-supplies': 'مستلزمات العرائس',
+  'phones': 'موبايلات وهواتف',
+  'building-construction': 'مقاولات وبناء',
+  'other': 'خدمات وأنشطة متنوعة'
 };
 
+function normalizeKey(value = '') {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/_/g, '-')
+    .replace(/\s+/g, ' ');
+}
+
+function hasArabic(value = '') {
+  return /[\u0600-\u06FF]/.test(String(value || ''));
+}
+
+function resolveProfessionLabel(value = '') {
+  const profession = getProfessionById(normalizeKey(value));
+  return profession || null;
+}
+
+function resolveMainCategoryLabel(value = '') {
+  return getCategoryBySlug(normalizeKey(value)) || null;
+}
+
+/**
+ * Resolve a category from a DB/API object without losing its language-specific fields.
+ * Arabic mode always prefers the canonical Arabic field; English mode prefers nameEn.
+ */
+export function resolveCategoryLabel(category = '', isEn = false) {
+  if (!category) return '';
+
+  if (typeof category === 'object') {
+    const slug = category.slug || category.id || category._key || category.categoryId || '';
+    const arabic = category.nameAr || category.name_ar || category.arabicName || category.name || '';
+    const english = category.nameEn || category.name_en || category.englishName || '';
+
+    if (isEn) {
+      return english || CATEGORY_NAMES_EN[normalizeKey(slug)] || (hasArabic(arabic) ? '' : arabic) || normalizeKey(slug).replace(/-/g, ' ');
+    }
+
+    if (hasArabic(arabic)) return arabic;
+    return translateCategory(slug, false);
+  }
+
+  const raw = String(category).trim();
+  if (!raw) return '';
+  const key = normalizeKey(raw);
+
+  if (isEn) {
+    if (CATEGORY_NAMES_EN[key]) return CATEGORY_NAMES_EN[key];
+    const main = resolveMainCategoryLabel(key);
+    if (main?.nameEn) return main.nameEn;
+    const profession = resolveProfessionLabel(key);
+    if (profession?.nameEn) return profession.nameEn;
+    return hasArabic(raw) ? raw : key.replace(/-/g, ' ');
+  }
+
+  if (hasArabic(raw)) return raw;
+  if (CATEGORY_NAMES_AR[key]) return CATEGORY_NAMES_AR[key];
+
+  const main = resolveMainCategoryLabel(key);
+  if (main?.name) return main.name;
+
+  const profession = resolveProfessionLabel(key);
+  if (profession?.name) return profession.name;
+
+  const spaced = key.replace(/-/g, ' ');
+  if (CATEGORY_NAMES_AR[spaced]) return CATEGORY_NAMES_AR[spaced];
+
+  // Critical safety rule: never expose an English slug in Arabic UI.
+  return 'خدمات وأنشطة';
+}
+
 export function toArabicCategory(cat = '') {
-  if (!cat) return '';
-  const key = String(cat).toLowerCase().trim();
-  return CATEGORY_NAMES_AR[key] || CATEGORY_NAMES_AR[key.replace(/\s+/g, '-')] || CATEGORY_NAMES_AR[key.replace(/-/g, ' ')] || cat;
+  return resolveCategoryLabel(cat, false);
 }
 
 export function translateArea(area = '', isEn = false) {
@@ -166,10 +247,5 @@ export function translateArea(area = '', isEn = false) {
 }
 
 export function translateCategory(cat = '', isEn = false) {
-  if (!cat) return '';
-  const key = String(cat).toLowerCase().trim();
-  if (isEn) {
-    return CATEGORY_NAMES_EN[key] || CATEGORY_NAMES_EN[cat] || cat;
-  }
-  return toArabicCategory(cat);
+  return resolveCategoryLabel(cat, isEn);
 }
