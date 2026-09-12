@@ -53,22 +53,23 @@ export function toArabicCategory(cat = '') { return resolveCategoryLabel(cat, fa
 export function translateArea(area = '', isEn = false) { if (!isEn || !area) return area || 'المنزلة'; return VILLAGE_NAMES_EN[area] || area; }
 export function translateCategory(cat = '', isEn = false) { return resolveCategoryLabel(cat, isEn); }
 
-// The directory search page should advertise the platform coverage, not expose the current API result count.
-// This runs only on the Arabic search page and only targets the dedicated search summary element.
+// The directory search page should advertise platform coverage, not expose the current API result count.
 function installSearchCoverageLabelPolicy() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   if (window.__dalilSearchCoveragePolicy) return;
   window.__dalilSearchCoveragePolicy = true;
+  let lastApplied = '';
   const apply = () => {
     if (document.documentElement.lang === 'en') return;
     const el = document.getElementById('search-meta');
     if (!el) return;
     const q = new URLSearchParams(window.location.search).get('q')?.trim();
-    if (q) {
-      el.innerHTML = `نتائج البحث في دليل المنزلة والمطرية عن: <strong style="color:var(--primary);font-size:1.05rem">${String(q).replace(/[&<>\"]/g, '')}</strong>`;
-    } else {
-      el.innerHTML = 'استكشف أكثر من <strong style="color:var(--primary);font-size:1.05rem">15,000</strong> مكان وخدمة في دليل المنزلة والمطرية';
-    }
+    const next = q
+      ? `نتائج البحث في دليل المنزلة والمطرية عن: <strong style="color:var(--primary);font-size:1.05rem">${String(q).replace(/[&<>\"]/g, '')}</strong>`
+      : 'استكشف أكثر من <strong style="color:var(--primary);font-size:1.05rem">15,000</strong> مكان وخدمة في دليل المنزلة والمطرية';
+    if (lastApplied === next && el.innerHTML === next) return;
+    if (el.innerHTML !== next) el.innerHTML = next;
+    lastApplied = next;
   };
   const observer = new MutationObserver(() => apply());
   const start = () => { apply(); observer.observe(document.body, { childList: true, subtree: true }); };
