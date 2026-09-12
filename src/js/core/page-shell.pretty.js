@@ -1,16 +1,17 @@
-// i18n-aware shared shell fixes
+// Shared page shell — bilingual, responsive, and safe for dynamic content.
 import { initAuth, onAuthStateChange, waitForAuth, isAdmin } from './auth.js';
 import { t, getLang, isEnglish, localizeUrl, switchLanguage, applyLangToDOM } from './i18n.js';
+import { installI18nHardening, localizedHref } from './i18n-runtime.js';
 
 function _headerHTML(active='') {
   const links = [
     ['/index.html','nav_home',''],['/popular.html','nav_popular','🔥'],['/places.html','nav_places',''],['/categories.html','nav_categories',''],
     ['/offers.html','nav_offers',''],['/now.html','nav_now','🤝'],['/around-me.html','nav_around_me','🧭'],['/favorites.html','nav_favorites','❤️']
   ];
-  const norm = p => String(p || '').replace(/^\/+/, '');
+  const norm = p => String(p || '').replace(/^\/+/, '').replace(/\.html$/,'');
   const current = norm(active);
   return `<header class="header" id="site-header" role="banner"><div class="container header__inner">
-    <a href="${localizeUrl('/index.html')}" class="header__logo" aria-label="${t('site_title')}">
+    <a href="${localizedHref('/index.html')}" class="header__logo" aria-label="${t('site_title')}">
       <img src="/icons/icon-96x96.png" alt="${t('site_title')}" width="36" height="36" class="header__logo-img">
       <div class="header__logo-text"><span class="header__logo-name">${t('site_title')}</span></div>
     </a>
@@ -24,30 +25,30 @@ function _headerHTML(active='') {
     <div class="header-live-dropdown" id="header-live-dropdown" aria-live="polite">
       <div class="header-live-dropdown__header"><span>⚡ ${t('search_live_results')}</span><span class="header-live-dropdown__count" id="header-live-count">0</span></div>
       <div class="header-live-dropdown__list" id="header-live-list"></div>
-      <div class="header-live-dropdown__footer"><a href="${localizeUrl('/search.html')}" class="header-live-dropdown__all-btn"><span>${t('search_view_all')}</span><span>${isEnglish()?'→':'←'}</span></a></div>
+      <div class="header-live-dropdown__footer"><a href="${localizedHref('/search.html')}" class="header-live-dropdown__all-btn"><span>${t('search_view_all')}</span><span>${isEnglish()?'→':'←'}</span></a></div>
     </div></div>
-    <nav class="header__nav" aria-label="${t('nav_aria')}">${links.map(([file,key,emoji])=>`<a href="${localizeUrl(file)}" class="header__nav-link${norm(file)===current?' active':''}"><span>${t(key)}</span>${emoji?`<span class="header__nav-emoji">${emoji}</span>`:''}</a>`).join('')}</nav>
+    <nav class="header__nav" aria-label="${t('nav_aria')}">${links.map(([file,key,emoji])=>`<a href="${localizedHref(file)}" class="header__nav-link${norm(file)===current?' active':''}"><span>${t(key)}</span>${emoji?`<span class="header__nav-emoji">${emoji}</span>`:''}</a>`).join('')}</nav>
     <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" aria-label="${t('lang_aria')}" title="${t('lang_aria')}"><span class="lang-globe">🌐</span><span class="lang-name">${t('lang_toggle_label')}</span></button>
     <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="${t('theme_aria')}" title="${t('theme_aria')}"><span class="theme-icon-light">☀️</span><span class="theme-icon-dark">🌙</span></button>
-    <div class="header__user" id="header-user-section"><a href="${localizeUrl('/login.html')}" class="btn btn-primary btn-sm"><span>🔑</span> ${t('nav_login')}</a></div>
+    <div class="header__user" id="header-user-section"><a href="${localizedHref('/login.html')}" class="btn btn-primary btn-sm"><span>🔑</span> ${t('nav_login')}</a></div>
   </div></header>`;
 }
 
 function _bottomNavHTML(active='') {
   const items = [['/index.html','🏠','mobile_home'],['/categories.html','📋','mobile_categories'],['/offers.html','🏷️','mobile_offers'],['#more','☰','mobile_more']];
-  const norm = p => String(p || '').replace(/^\/+/, '');
+  const norm = p => String(p || '').replace(/^\/+/, '').replace(/\.html$/,'');
   const a = norm(active);
   return `<nav class="bottom-nav" id="bottom-nav" role="navigation" aria-label="${t('mobile_quick_nav')}">
-    <a href="${localizeUrl(items[0][0])}" class="bottom-nav__item${norm(items[0][0])===a?' active':''}"><span class="bottom-nav__icon">${items[0][1]}</span><span class="bottom-nav__label">${t(items[0][2])}</span></a>
-    <a href="${localizeUrl(items[1][0])}" class="bottom-nav__item${norm(items[1][0])===a?' active':''}"><span class="bottom-nav__icon">${items[1][1]}</span><span class="bottom-nav__label">${t(items[1][2])}</span></a>
-    <div class="bottom-nav__fab"><button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="${isEnglish()?'Smart voice assistant':'مساعد المنزلة الصوتي الذكي'}"><span class="fab-letter-m">M</span><span class="fab-mic-badge">🎙️</span></button></div>
-    <a href="${localizeUrl(items[2][0])}" class="bottom-nav__item${norm(items[2][0])===a?' active':''}"><span class="bottom-nav__icon">${items[2][1]}</span><span class="bottom-nav__label">${t(items[2][2])}</span></a>
+    <a href="${localizedHref(items[0][0])}" class="bottom-nav__item${norm(items[0][0])===a?' active':''}"><span class="bottom-nav__icon">${items[0][1]}</span><span class="bottom-nav__label">${t(items[0][2])}</span></a>
+    <a href="${localizedHref(items[1][0])}" class="bottom-nav__item${norm(items[1][0])===a?' active':''}"><span class="bottom-nav__icon">${items[1][1]}</span><span class="bottom-nav__label">${t(items[1][2])}</span></a>
+    <div class="bottom-nav__fab"><button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="${t('voice_assistant')}"><span class="fab-letter-m">M</span><span class="fab-mic-badge">🎙️</span></button></div>
+    <a href="${localizedHref(items[2][0])}" class="bottom-nav__item${norm(items[2][0])===a?' active':''}"><span class="bottom-nav__icon">${items[2][1]}</span><span class="bottom-nav__label">${t(items[2][2])}</span></a>
     <button type="button" class="bottom-nav__item" id="bottom-nav-more-btn" aria-label="${t('mobile_more')}"><span class="bottom-nav__icon">${items[3][1]}</span><span class="bottom-nav__label">${t(items[3][2])}</span></button>
   </nav>`;
 }
 
 function _footerHTML(){
-  return `<footer class="footer" id="site-footer" role="contentinfo"><div class="container"><div class="footer__brand"><a href="${localizeUrl('/index.html')}" class="footer__logo"><img src="/icons/icon-96x96.png" alt="${t('site_title')}" width="40" height="40"><span class="footer__logo-name">${t('site_title')}</span></a><p class="footer__description">${t('site_tagline')}</p></div></div></footer>`;
+  return `<footer class="footer" id="site-footer" role="contentinfo"><div class="container"><div class="footer__brand"><a href="${localizedHref('/index.html')}" class="footer__logo"><img src="/icons/icon-96x96.png" alt="${t('site_title')}" width="40" height="40"><span class="footer__logo-name">${t('site_title')}</span></a><p class="footer__description">${t('site_tagline')}</p></div></div></footer>`;
 }
 
 export async function initPage(activeFile='') {
@@ -57,6 +58,7 @@ export async function initPage(activeFile='') {
   _bindLanguageToggle();
   _bindThemeToggle();
   applyLangToDOM(getLang());
+  installI18nHardening();
   try { initAuth(); onAuthStateChange(() => {}); } catch (_) {}
 }
 
