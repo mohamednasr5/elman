@@ -1017,31 +1017,16 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
           `;
         }
       };
-
-      // Fallback timer: If reviews take > 3.5s on slow mobile, show graceful retry
-      const loadingFallbackTimer = setTimeout(() => {
-        const ind = document.getElementById('reviews-loading-indicator');
-        if (ind && !safeReviews.length) {
-          ind.innerHTML = `
-            <div style="color:var(--text-muted);font-size:13px;margin-bottom:8px">تعذر جلب باقي التعليقات مؤقتاً لبطء الاتصال.</div>
-            <button type="button" id="btn-retry-reviews" class="btn btn-sm btn-outline" style="font-size:12px;border-radius:var(--radius-full);padding:4px 14px">
-              إعادة المحاولة 🔄
-            </button>
-          `;
-          document.getElementById('btn-retry-reviews')?.addEventListener('click', () => {
-            ind.innerHTML = `<div class="spinner" style="width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;margin:0 auto 8px;animation:spin .8s linear infinite"></div>جاري التحميل...`;
-            getPlaceReviews(placeId, place.slug).then(applyReviewsData);
-          });
-        }
-      }, 3500);
+      // Reviews are rendered from cache immediately when available; never show an infinite spinner.
+      const loadingFallbackTimer = null;
 
       reviewsFetchPromise.then(liveReviews => {
-        clearTimeout(loadingFallbackTimer);
+        if (loadingFallbackTimer) clearTimeout(loadingFallbackTimer);
         if (Array.isArray(liveReviews) && liveReviews.length > 0) {
           applyReviewsData(liveReviews);
         }
       }).catch(() => {
-        clearTimeout(loadingFallbackTimer);
+        if (loadingFallbackTimer) clearTimeout(loadingFallbackTimer);
       });
 
       // Listen for background SWR fresh reviews event
