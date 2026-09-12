@@ -6146,7 +6146,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
 
   // 0. Edge SSR Cache check for human visitors (Instant 15-30ms response from Cloudflare Edge)
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v5?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
+  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v6?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
   if (!isCrawler && cache) {
     try {
       const cachedResponse = await cache.match(ssrCacheKey);
@@ -6235,7 +6235,8 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
           ? (place.area_en || (place.area === 'المطرية' ? 'El Matariya' : 'El Manzala'))
           : (place.area || 'المنزلة والمطرية');
         const placeAddr = isEn ? (place.address_en || place.address || '') : (place.address || '');
-        const placeCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
+        const rawCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
+        const placeCat = isEn ? toEnglishCategoryWorker(rawCat) : toArabicCategoryWorker(rawCat);
         const placeRating = Number(place.rating || 0);
         const placeReviewCount = Number(place.review_count || 0);
 
@@ -6254,10 +6255,10 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
           addressEn: place.address_en || '',
           categoryId: place.category_id || '',
           category_id: place.category_id || '',
-          customCategory: place.custom_category || '',
-          custom_category: place.custom_category || '',
-          customCategoryEn: place.custom_category_en || '',
-          custom_category_en: place.custom_category_en || '',
+          customCategory: isEn ? toEnglishCategoryWorker(place.custom_category_en || place.custom_category || '') : toArabicCategoryWorker(place.custom_category || ''),
+          custom_category: isEn ? toEnglishCategoryWorker(place.custom_category_en || place.custom_category || '') : toArabicCategoryWorker(place.custom_category || ''),
+          customCategoryEn: toEnglishCategoryWorker(place.custom_category_en || place.custom_category || ''),
+          custom_category_en: toEnglishCategoryWorker(place.custom_category_en || place.custom_category || ''),
           categoryName: placeCat,
           phone: place.phone || '',
           whatsapp: place.whatsapp || '',
@@ -6535,6 +6536,111 @@ function normalizeArabicText(str) {
     .replace(/[ؤ]/g, 'و')
     .replace(/[ئ]/g, 'ي')
     .replace(/\s+/g, ' ');
+}
+
+const CATEGORY_NAMES_AR_WORKER = {
+  'cash and balance services': 'خدمات كاش ورصيد',
+  'cash-and-balance-services': 'خدمات كاش ورصيد',
+  'cash and balance': 'خدمات كاش ورصيد',
+  'cash': 'خدمات كاش ورصيد',
+  'doctor': 'أطباء وعيادات',
+  'pharmacy': 'صيدليات',
+  'restaurants and cafes': 'مطاعم وكافيهات',
+  'restaurants-and-cafes': 'مطاعم وكافيهات',
+  'supermarket': 'سوبر ماركت',
+  'delivery': 'خدمات توصيل وشحن',
+  'confectioner and cake shop': 'حلويات ومخبوزات',
+  'butchery and meat': 'جزارة ولحوم',
+  'electrical appliance maintenance': 'صيانة أجهزة كهربائية',
+  'sale of computers and laptops': 'كمبيوتر ولاب توب',
+  'plumbing': 'سباكة وأدوات صحية',
+  'electrician': 'كهرباء وتجهيزات',
+  'wedding, engagement and evening dress atelier': 'أتيليه وفساتين',
+  'real estate company': 'عقارات واستثمار عقاري',
+  'travel and tourism': 'سياحة ورحلات',
+  'courses center': 'مراكز تدريب وكورسات',
+  'carpenter': 'نجارة وموبيليا',
+  'painter': 'دهانات وديكور',
+  'tiler': 'سيراميك وبلاط',
+  'blacksmith': 'حدادة وكريتال',
+  'alumital': 'ألوميتال وزجاج',
+  'gym': 'صالات رياضية وجيم',
+  'clothing-store': 'محلات ملابس',
+  'clothing store': 'محلات ملابس',
+  'gold-and-jewelry-shops': 'ذهب ومجوهرات',
+  'gold and jewelry shops': 'ذهب ومجوهرات',
+  'haircut-and-shave': 'صالونات وحلاقة',
+  'haircut and shave': 'صالونات وحلاقة',
+  'fish-shop': 'أسماك ومأكولات بحرية',
+  'fish shop': 'أسماك ومأكولات بحرية',
+  'bookstore': 'مكتبات وأدوات مدرسية',
+  'auto_repair': 'صيانة سيارات وميكانيكا',
+  'auto repair': 'صيانة سيارات وميكانيكا',
+  'bakery': 'مخابز وأفران',
+  'dentist': 'طب أسنان',
+  'pediatrician': 'أطباء أطفال',
+  'ophthalmology': 'طب وجراحة عيون',
+  'atm': 'ماكينات صراف آلي ATM',
+  'roastery': 'محامص ومقالي',
+  'physical therapy and nutrition center': 'علاج طبيعي وتغذية',
+  'institutes and colleges': 'معاهد وكليات',
+  'advertising-and-marketing-company': 'دعاية وإعلان وتصميم',
+  'henna-art-&-engraving': 'حنة وتجميل',
+  'artificial intelligence engineer': 'هندسة وبرمجة وذكاء اصطناعي'
+};
+
+const CATEGORY_NAMES_EN_WORKER = {
+  'خدمات كاش ورصيد': 'Cash & Balance Services',
+  'أطباء وعيادات': 'Doctors & Clinics',
+  'صيدليات': 'Pharmacies',
+  'مطاعم وكافيهات': 'Restaurants & Cafes',
+  'سوبر ماركت': 'Supermarkets',
+  'خدمات توصيل وشحن': 'Delivery & Shipping',
+  'حلويات ومخبوزات': 'Sweets & Bakeries',
+  'جزارة ولحوم': 'Butcheries & Meats',
+  'صيانة أجهزة كهربائية': 'Appliance Maintenance',
+  'كمبيوتر ولاب توب': 'Computers & Laptops',
+  'سباكة وأدوات صحية': 'Plumbing & Sanitary',
+  'كهرباء وتجهيزات': 'Electrical Services',
+  'أتيليه وفساتين': 'Ateliers & Dresses',
+  'عقارات واستثمار عقاري': 'Real Estate',
+  'سياحة ورحلات': 'Travel & Tourism',
+  'مراكز تدريب وكورسات': 'Training & Courses',
+  'نجارة وموبيليا': 'Carpentry & Furniture',
+  'دهانات وديكور': 'Paints & Decor',
+  'سيراميك وبلاط': 'Ceramics & Tiles',
+  'حدادة وكريتال': 'Blacksmith & Ironwork',
+  'ألوميتال وزجاج': 'Alumital & Glass',
+  'صالات رياضية وجيم': 'Gyms & Fitness',
+  'محلات ملابس': 'Clothing Stores',
+  'ذهب ومجوهرات': 'Gold & Jewelry',
+  'صالونات وحلاقة': 'Salons & Barbershops',
+  'أسماك ومأكولات بحرية': 'Fish & Seafood',
+  'مكتبات وأدوات مدرسية': 'Bookstores & Stationery',
+  'صيانة سيارات وميكانيكا': 'Auto Repair & Mechanics',
+  'مخابز وأفران': 'Bakeries',
+  'طب أسنان': 'Dental Clinics',
+  'أطباء أطفال': 'Pediatrics',
+  'طب وجراحة عيون': 'Ophthalmology',
+  'ماكينات صراف آلي ATM': 'ATMs',
+  'محامص ومقالي': 'Roasteries & Nuts',
+  'علاج طبيعي وتغذية': 'Physical Therapy & Nutrition',
+  'معاهد وكليات': 'Institutes & Colleges',
+  'دعاية وإعلان وتصميم': 'Advertising & Design',
+  'حنة وتجميل': 'Henna & Beauty',
+  'هندسة وبرمجة وذكاء اصطناعي': 'Engineering & Software'
+};
+
+function toArabicCategoryWorker(cat = '') {
+  if (!cat) return '';
+  const key = String(cat).toLowerCase().trim();
+  return CATEGORY_NAMES_AR_WORKER[key] || CATEGORY_NAMES_AR_WORKER[key.replace(/\s+/g, '-')] || CATEGORY_NAMES_AR_WORKER[key.replace(/-/g, ' ')] || cat;
+}
+
+function toEnglishCategoryWorker(cat = '') {
+  if (!cat) return '';
+  const key = String(cat).toLowerCase().trim();
+  return CATEGORY_NAMES_EN_WORKER[cat] || CATEGORY_NAMES_EN_WORKER[key] || cat;
 }
 
 function escapeHtml(str) {
