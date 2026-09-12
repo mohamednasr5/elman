@@ -1928,7 +1928,8 @@ try {
       }));
       return jsonResponse({ success: true, data: ads }, 200, corsHeaders);
     } catch (err) {
-      return jsonResponse({ success: false, error: err.message, data: [] }, 500, corsHeaders);
+      console.warn('[GET /api/ads error]:', err?.message || err);
+      return jsonResponse({ success: true, data: [] }, 200, corsHeaders);
     }
   }
 

@@ -3156,6 +3156,13 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       saveBtn.disabled = false;
     }
   });
+
+  // Ensure place form wizard is initialized immediately
+  try {
+    initPlaceFormWizard();
+  } catch (wizErr) {
+    console.warn('[Dashboard] initPlaceFormWizard notice:', wizErr);
+  }
 }
 
 // ── 4. Manage Place Offers Section ──

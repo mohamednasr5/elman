@@ -83,7 +83,6 @@ export function initPlaceFormWizard() {
   if (typeof document === 'undefined') return false;
   if (!hasSeenAddPlaceOnboarding()) {
     showAddPlaceOnboardingModal();
-    return false;
   }
   const form = document.getElementById('place-form');
   if (!form || form.dataset.wizardReady === 'true') return false;
@@ -102,12 +101,13 @@ export function initPlaceFormWizard() {
   if (scanner) scanner.classList.add('place-wizard-scanner');
 
   const labels = [
-    ['🏪','هوية النشاط','ابدأ باسم واضح وسهل البحث'],
-    ['📍','الموقع والتصنيف','حدد نشاطك ومكانك بدقة'],
-    ['📝','الوصف والخدمات','دع الذكاء الاصطناعي يساعدك في الكتابة'],
-    ['📞','التواصل والبيانات الإضافية','اجعل الوصول إليك أسرع'],
-    ['📸','الصور والهوية البصرية','أظهر نشاطك بصورة احترافية'],
-    ['🕐','مواعيد العمل والخيارات النهائية','أكمل آخر التفاصيل قبل الحفظ']
+    ['📍', 'البيانات والتصنيف', 'ابدأ باسم المكان والتصنيف أو المهنة بدقة'],
+    ['🗺️', 'الموقع والتواصل', 'حدد المنطقة والقرية وأرقام الهاتف والواتساب'],
+    ['📝', 'الوصف والخدمات', 'أضف الخدمات والكلمات المفتاحية ووصف النشاط'],
+    ['📸', 'الصور واللوجو', 'أضف صورة الغلاف وشعار النشاط (اللوجو)'],
+    ['🕒', 'مواعيد وساعات العمل', 'حدد أوقات العمل وأيام العطلات الرسمية'],
+    ['🌐', 'السوشيال ميديا', 'روابط التواصل الاجتماعي وموقعك الإلكتروني'],
+    ['📅', 'حجز المواعيد والحفظ', 'خيارات حجز المواعيد ومراجعة البيانات قبل الحفظ']
   ];
 
   const existingTitles = sections.map(section => section.querySelector('.form-section__title')?.textContent?.replace(/\s+/g,' ').trim()).filter(Boolean);
@@ -138,6 +138,9 @@ export function initPlaceFormWizard() {
   `;
   form.prepend(header);
 
+  const oldNav = form.querySelector('.place-wizard-nav');
+  oldNav?.remove();
+
   const nav = document.createElement('div');
   nav.className = 'place-wizard-nav';
   nav.innerHTML = `
@@ -147,19 +150,47 @@ export function initPlaceFormWizard() {
   `;
   if (submitRow) form.insertBefore(nav, submitRow); else form.appendChild(nav);
 
-  const style = document.createElement('style');
-  style.id = 'premium-place-wizard-style';
-  style.textContent = `
-    .premium-place-wizard-form{position:relative}
-    .place-wizard-header{margin:0 0 22px;padding:22px 22px 18px;border:1px solid rgba(2,132,199,.14);border-radius:22px;background:linear-gradient(135deg,#ffffff 0%,#f0f9ff 58%,#fffbeb 100%);box-shadow:0 16px 45px rgba(15,23,42,.07);overflow:hidden;position:relative}
-    .place-wizard-header:after{content:"";position:absolute;inset:auto -30px -70px auto;width:190px;height:190px;border-radius:50%;background:rgba(56,189,248,.08);pointer-events:none}
-    .place-wizard-header__top{display:flex;align-items:center;justify-content:space-between;gap:18px;position:relative;z-index:1}.place-wizard-eyebrow{display:inline-flex;padding:5px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:900;margin-bottom:7px}.place-wizard-title{margin:0;font-size:23px;font-weight:950;color:#0f172a;letter-spacing:-.5px}.place-wizard-subtitle{margin:5px 0 0;color:#64748b;font-size:12.5px;line-height:1.7}.place-wizard-counter{min-width:62px;height:62px;border-radius:18px;background:#fff;border:1px solid #bae6fd;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#64748b;box-shadow:0 8px 22px rgba(2,132,199,.1);flex:0 0 auto}.place-wizard-counter strong{font-size:24px;line-height:1;color:#0284c7}.place-wizard-progress{display:grid;grid-template-columns:repeat(${Math.min(stepData.length,6)},1fr);gap:7px;margin-top:18px;position:relative;z-index:1}.place-wizard-progress__item{min-width:0;border:0;background:transparent;padding:0;cursor:pointer;color:#94a3b8;display:flex;align-items:center;gap:6px;text-align:right;font:inherit}.place-wizard-progress__item span{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#e2e8f0;color:#64748b;font-size:11px;font-weight:900;flex:0 0 auto;transition:.25s}.place-wizard-progress__item b{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}.place-wizard-progress__item.is-active,.place-wizard-progress__item.is-done{color:#0369a1}.place-wizard-progress__item.is-active span,.place-wizard-progress__item.is-done span{background:linear-gradient(135deg,#0284c7,#38bdf8);color:#fff;box-shadow:0 5px 13px rgba(2,132,199,.2)}
-    .premium-place-wizard-form .form-section{display:none!important;opacity:0;transform:translateX(-18px)}.premium-place-wizard-form .form-section.place-wizard-active{display:block!important;animation:placeWizardIn .42s cubic-bezier(.2,.8,.2,1) forwards}.premium-place-wizard-form .form-section.place-wizard-active .form-section__title{margin-top:0}.place-wizard-scanner{margin-bottom:18px}.premium-place-wizard-form .place-wizard-scanner{display:none}.premium-place-wizard-form .place-wizard-scanner.place-wizard-show-scanner{display:block;animation:placeWizardIn .4s ease both}
-    .place-wizard-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 16px;padding:14px;border:1px solid #e2e8f0;border-radius:18px;background:rgba(255,255,255,.88);box-shadow:0 10px 28px rgba(15,23,42,.05)}.place-wizard-btn{border:0;border-radius:12px;padding:11px 19px;font-weight:900;font-size:13px;cursor:pointer;transition:.22s}.place-wizard-btn--next{background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;box-shadow:0 8px 20px rgba(2,132,199,.22)}.place-wizard-btn--next:hover{transform:translateY(-2px);box-shadow:0 11px 25px rgba(2,132,199,.28)}.place-wizard-btn--back{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}.place-wizard-btn--back:hover{background:#f1f5f9}.place-wizard-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}.place-wizard-nav__hint{font-size:10.5px;color:#94a3b8;text-align:center;flex:1}
-    .place-wizard-submit-row{display:none!important}.premium-place-wizard-form.place-wizard-last-step .place-wizard-submit-row{display:flex!important;animation:placeWizardIn .35s ease both}.premium-place-wizard-form.place-wizard-last-step .place-wizard-nav{display:none}
-    @keyframes placeWizardIn{from{opacity:0;transform:translateX(-18px) translateY(8px)}to{opacity:1;transform:none}}@media(max-width:700px){.place-wizard-header{padding:18px 15px}.place-wizard-title{font-size:19px}.place-wizard-subtitle{font-size:11.5px}.place-wizard-header__top{align-items:flex-start}.place-wizard-counter{width:52px;height:52px;min-width:52px}.place-wizard-counter strong{font-size:20px}.place-wizard-progress{grid-template-columns:repeat(${Math.min(stepData.length,3)},1fr);gap:5px}.place-wizard-progress__item b{display:none}.place-wizard-progress__item{justify-content:center}.place-wizard-nav{position:sticky;bottom:8px;z-index:20}.place-wizard-nav__hint{font-size:9px}.place-wizard-btn{padding:10px 14px}}
-  `;
-  document.head.appendChild(style);
+  if (!document.getElementById('premium-place-wizard-style')) {
+    const style = document.createElement('style');
+    style.id = 'premium-place-wizard-style';
+    style.textContent = `
+      .premium-place-wizard-form{position:relative}
+      .place-wizard-header{margin:0 0 22px;padding:22px 22px 18px;border:1px solid rgba(2,132,199,.14);border-radius:22px;background:linear-gradient(135deg,#ffffff 0%,#f0f9ff 58%,#fffbeb 100%);box-shadow:0 16px 45px rgba(15,23,42,.07);overflow:hidden;position:relative}
+      .place-wizard-header:after{content:"";position:absolute;inset:auto -30px -70px auto;width:190px;height:190px;border-radius:50%;background:rgba(56,189,248,.08);pointer-events:none}
+      .place-wizard-header__top{display:flex;align-items:center;justify-content:space-between;gap:18px;position:relative;z-index:1}
+      .place-wizard-eyebrow{display:inline-flex;padding:5px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:900;margin-bottom:7px}
+      .place-wizard-title{margin:0;font-size:23px;font-weight:950;color:#0f172a;letter-spacing:-.5px}
+      .place-wizard-subtitle{margin:5px 0 0;color:#64748b;font-size:12.5px;line-height:1.7}
+      .place-wizard-counter{min-width:62px;height:62px;border-radius:18px;background:#fff;border:1px solid #bae6fd;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#64748b;box-shadow:0 8px 22px rgba(2,132,199,.1);flex:0 0 auto}
+      .place-wizard-counter strong{font-size:24px;line-height:1;color:#0284c7}
+      .place-wizard-progress{display:grid;grid-template-columns:repeat(${Math.min(stepData.length,7)},1fr);gap:6px;margin-top:18px;position:relative;z-index:1}
+      .place-wizard-progress__item{min-width:0;border:0;background:transparent;padding:4px;cursor:pointer;color:#94a3b8;display:flex;align-items:center;gap:6px;text-align:right;font:inherit;border-radius:8px}
+      .place-wizard-progress__item span{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#e2e8f0;color:#64748b;font-size:11px;font-weight:900;flex:0 0 auto;transition:.25s}
+      .place-wizard-progress__item b{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}
+      .place-wizard-progress__item.is-active,.place-wizard-progress__item.is-done{color:#0369a1}
+      .place-wizard-progress__item.is-active span,.place-wizard-progress__item.is-done span{background:linear-gradient(135deg,#0284c7,#38bdf8);color:#fff;box-shadow:0 5px 13px rgba(2,132,199,.2)}
+      .premium-place-wizard-form .form-section{display:none!important;opacity:0;transform:translateX(-18px)}
+      .premium-place-wizard-form .form-section.place-wizard-active{display:block!important;opacity:1!important;transform:none!important;animation:placeWizardIn .42s cubic-bezier(.2,.8,.2,1) forwards}
+      .premium-place-wizard-form .form-section.place-wizard-active .form-section__title{margin-top:0}
+      .place-wizard-scanner{margin-bottom:18px}
+      .premium-place-wizard-form .place-wizard-scanner{display:none!important}
+      .premium-place-wizard-form .place-wizard-scanner.place-wizard-show-scanner{display:block!important;animation:placeWizardIn .4s ease both}
+      .place-wizard-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 16px;padding:14px;border:1px solid #e2e8f0;border-radius:18px;background:rgba(255,255,255,.88);box-shadow:0 10px 28px rgba(15,23,42,.05);position:sticky;bottom:8px;z-index:20}
+      .place-wizard-btn{border:0;border-radius:12px;padding:11px 19px;font-weight:900;font-size:13px;cursor:pointer;transition:.22s}
+      .place-wizard-btn--next{background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;box-shadow:0 8px 20px rgba(2,132,199,.22)}
+      .place-wizard-btn--next:hover{transform:translateY(-2px);box-shadow:0 11px 25px rgba(2,132,199,.28)}
+      .place-wizard-btn--back{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}
+      .place-wizard-btn--back:hover{background:#f1f5f9}
+      .place-wizard-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+      .place-wizard-nav__hint{font-size:10.5px;color:#94a3b8;text-align:center;flex:1}
+      .place-wizard-submit-row{display:none!important}
+      .premium-place-wizard-form.place-wizard-last-step .place-wizard-submit-row{display:flex!important;animation:placeWizardIn .35s ease both}
+      .premium-place-wizard-form.place-wizard-last-step .place-wizard-nav{display:none!important}
+      @keyframes placeWizardIn{from{opacity:0;transform:translateX(-18px) translateY(8px)}to{opacity:1;transform:none}}
+      @media(max-width:700px){.place-wizard-header{padding:18px 15px}.place-wizard-title{font-size:19px}.place-wizard-subtitle{font-size:11.5px}.place-wizard-header__top{align-items:flex-start}.place-wizard-counter{width:52px;height:52px;min-width:52px}.place-wizard-counter strong{font-size:20px}.place-wizard-progress{grid-template-columns:repeat(${Math.min(stepData.length,4)},1fr);gap:4px}.place-wizard-progress__item b{display:none}.place-wizard-progress__item{justify-content:center}.place-wizard-nav{position:sticky;bottom:8px;z-index:20}.place-wizard-nav__hint{font-size:9px}.place-wizard-btn{padding:10px 14px}}
+    `;
+    document.head.appendChild(style);
+  }
 
   let current = 0;
   const currentEl = document.getElementById('place-wizard-current');
@@ -169,12 +200,37 @@ export function initPlaceFormWizard() {
   const progressItems = Array.from(form.querySelectorAll('.place-wizard-progress__item'));
 
   const validateStep = () => {
-    const section = stepData[current].section;
-    const required = Array.from(section.querySelectorAll('input[required],select[required],textarea[required]'));
+    const section = stepData[current]?.section;
+    if (!section) return true;
+
+    if (current === 0) {
+      const nameInput = document.getElementById('p-name');
+      if (nameInput && !nameInput.value.trim()) {
+        nameInput.focus();
+        nameInput.reportValidity();
+        return false;
+      }
+      const catVal = document.getElementById('p-category')?.value;
+      if (!catVal) {
+        import('../components/Toast.js').then(({ toast }) => toast.warning('يرجى اختيار التصنيف أو المهنة المناسبة')).catch(() => {});
+        document.getElementById('p-category-search-input')?.focus();
+        return false;
+      }
+      if (catVal === 'other') {
+        const customCat = document.getElementById('p-custom-category');
+        if (customCat && !customCat.value.trim()) {
+          customCat.focus();
+          customCat.reportValidity();
+          return false;
+        }
+      }
+    }
+
+    const required = Array.from(section.querySelectorAll('input[required]:not([type="hidden"]),select[required]:not([style*="display:none"]),textarea[required]'));
     for (const field of required) {
       if (!field.checkValidity()) {
         field.reportValidity();
-        field.focus({ preventScroll: true });
+        field.focus({ preventScroll: false });
         return false;
       }
     }
@@ -183,17 +239,25 @@ export function initPlaceFormWizard() {
 
   const render = (index, direction = 1) => {
     current = Math.max(0, Math.min(index, stepData.length - 1));
-    stepData.forEach((item,i) => item.section.classList.toggle('place-wizard-active', i === current));
-    if (scanner) scanner.classList.toggle('place-wizard-show-scanner', current === 0);
+    stepData.forEach((item, i) => {
+      const isActive = (i === current);
+      item.section.classList.toggle('place-wizard-active', isActive);
+      // Hard inline style guarantee: NEVER allow inactive steps to be visible
+      item.section.style.setProperty('display', isActive ? 'block' : 'none', 'important');
+    });
+    if (scanner) {
+      scanner.classList.toggle('place-wizard-show-scanner', current === 0);
+      scanner.style.setProperty('display', current === 0 ? 'block' : 'none', 'important');
+    }
     if (currentEl) currentEl.textContent = String(current + 1);
     if (hintEl) hintEl.textContent = stepData[current].hint;
     if (backBtn) backBtn.disabled = current === 0;
     if (nextBtn) {
       const last = current === stepData.length - 1;
-      nextBtn.innerHTML = last ? 'مراجعة وحفظ النشاط <span>✓</span>' : 'التالي <span>←</span>';
+      nextBtn.innerHTML = last ? '✓ مراجعة وحفظ النشاط' : 'التالي <span>←</span>';
       form.classList.toggle('place-wizard-last-step', last);
     }
-    progressItems.forEach((item,i)=>{
+    progressItems.forEach((item, i) => {
       item.classList.toggle('is-active', i === current);
       item.classList.toggle('is-done', i < current);
     });
@@ -204,7 +268,7 @@ export function initPlaceFormWizard() {
     window.requestAnimationFrame(() => {
       const first = stepData[current].section.querySelector('input:not([type="hidden"]),select,textarea,button');
       if (first && current > 0) first.focus({ preventScroll: true });
-      form.scrollIntoView({ behavior:'smooth', block:'start' });
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   };
 
@@ -219,12 +283,16 @@ export function initPlaceFormWizard() {
   });
   progressItems.forEach(item => item.addEventListener('click', () => {
     const target = Number(item.dataset.wizardStep);
-    if (target <= current) render(target, target < current ? -1 : 0);
+    if (target <= current) {
+      render(target, target < current ? -1 : 0);
+    } else {
+      if (validateStep()) render(target, 1);
+    }
   }));
 
   form.addEventListener('input', () => {
     try { sessionStorage.setItem(WIZARD_KEY, JSON.stringify({ step: current, ts: Date.now() })); } catch (_) {}
-  }, { passive:true });
+  }, { passive: true });
 
   render(0, 0);
   return true;
