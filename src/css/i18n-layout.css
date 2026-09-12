@@ -1,0 +1,22 @@
+/* Project-wide bilingual header/layout hardening. Loaded by i18n-runtime.js. */
+html[data-lang="en"], body[data-lang="en"] { direction:ltr; }
+html[data-lang="ar"], body[data-lang="ar"] { direction:rtl; }
+.header__inner{display:flex;align-items:center;gap:clamp(8px,1vw,16px);min-width:0;}
+.header__logo{flex:0 1 auto;min-width:0;}
+.header__logo-text{min-width:0;}
+.header__logo-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.header__nav{display:flex;align-items:center;justify-content:center;gap:clamp(4px,.55vw,12px);flex:1 1 auto;min-width:0;overflow:hidden;}
+.header__nav-link{white-space:nowrap;flex:0 0 auto;}
+.header-search-expandable{flex:0 0 auto;z-index:20;}
+.lang-toggle-btn,.theme-toggle-btn{flex:0 0 auto;white-space:nowrap;}
+.lang-toggle-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;min-width:88px;height:42px;padding:0 12px;border-radius:999px;}
+.lang-toggle-btn .lang-name{font-weight:700;}
+html[data-lang="en"] .header__nav{direction:ltr;}
+html[data-lang="ar"] .header__nav{direction:rtl;}
+html[data-lang="en"] .header-search-pill{direction:ltr;}
+html[data-lang="ar"] .header-search-pill{direction:rtl;}
+html[data-lang="en"] .header-live-dropdown{text-align:left;direction:ltr;}
+html[data-lang="ar"] .header-live-dropdown{text-align:right;direction:rtl;}
+@media (max-width:1200px){.header__nav-link:nth-child(n+7){display:none;}.header__logo-name{max-width:250px;}}
+@media (max-width:980px){.header__nav-link:nth-child(n+5){display:none;}.header__logo-name{max-width:190px;}.lang-toggle-btn{min-width:76px;padding-inline:10px;}}
+@media (max-width:767px){.header__inner{gap:6px;}.header__logo-name{max-width:145px;}.header__nav{display:none;}.lang-toggle-btn{min-width:44px;width:44px;padding:0;}.lang-toggle-btn .lang-name{display:none;}.header-search-expandable{order:2;}}
