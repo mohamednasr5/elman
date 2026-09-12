@@ -1,0 +1,79 @@
+/**
+ * generate-english-pages.mjs
+ * Creates real English HTML entry points for every public page and every
+ * pre-rendered place/category page. The English UI is rendered locally by
+ * the same page modules; the Worker is used only where place data itself
+ * needs to be supplied/translated.
+ *
+ * Run after generating the Arabic SEO pages:
+ *   node generate-english-pages.mjs
+ */
+import fs from 'fs';
+import path from 'path';
+
+const ROOT = process.cwd();
+const EN = path.join(ROOT, 'en');
+
+const PUBLIC_PAGES = [
+  'index','places','categories','search','popular','offers','now','around-me',
+  'favorites','products','login','dashboard','contact','free-verification',
+  'emergency','privacy','terms','legal','hadith','quran','quran-search',
+  'quran-surah','manzala','matariya'
+];
+
+function ensure(dir) { fs.mkdirSync(dir, { recursive: true }); }
+
+function pageHtml() {
+  return `<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="index,follow">
+  <meta name="googlebot" content="index,follow">
+  <title>Dalil El Manzala & El Matariya</title>
+  <meta name="description" content="Dalil El Manzala & El Matariya — the digital local directory for places, services and activities.">
+  <meta property="og:site_name" content="Dalil El Manzala & El Matariya">
+  <meta property="og:locale" content="en_EG">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/src/css/main.css?v=20260913">
+  <link rel="stylesheet" href="/src/css/i18n-layout.css?v=20260913">
+</head>
+<body>
+  <div id="app">
+    <div id="header-slot"></div>
+    <main id="page-container" class="page-main" role="main">
+      <div class="container" style="padding:48px 16px;text-align:center">Loading…</div>
+    </main>
+    <div id="nav-slot"></div>
+    <div id="pwa-slot"></div>
+    <div id="footer-slot"></div>
+  </div>
+  <script type="module" src="/src/js/core/english-pages.js?v=20260913"></script>
+</body>
+</html>
+`;
+}
+
+function writeEntry(relDir) {
+  const dir = path.join(EN, relDir);
+  ensure(dir);
+  fs.writeFileSync(path.join(dir, 'index.html'), pageHtml(), 'utf8');
+}
+
+ensure(EN);
+for (const page of PUBLIC_PAGES) writeEntry(page === 'index' ? '' : page);
+
+// Mirror every already-generated Arabic SEO place/category page as a real
+// English entry point. The renderer resolves the slug from the URL.
+for (const group of ['place', 'category']) {
+  const source = path.join(ROOT, group);
+  if (!fs.existsSync(source)) continue;
+  for (const slug of fs.readdirSync(source)) {
+    if (slug === 'index') continue;
+    const entry = path.join(source, slug, 'index.html');
+    if (fs.existsSync(entry)) writeEntry(path.join(group, slug));
+  }
+}
+
+console.log(`English static pages generated under ${path.relative(ROOT, EN)}/`);
