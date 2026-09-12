@@ -49,7 +49,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=6a5ed636_v2"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=060040a2_v2"/>
 </head>
 <body class="dashboard-page">
 <div id="app">
@@ -86,14 +86,14 @@
 </script>
 
 <!-- Strict category-aware AI description guard. Must load before the page module. -->
-<script src="./src/js/services/description-ai-guard.js?v=6a5ed636"></script>
-<script src="./src/js/services/description-ai-response-guard.js?v=6a5ed636"></script>
+<script src="./src/js/services/description-ai-guard.js?v=060040a2"></script>
+<script src="./src/js/services/description-ai-response-guard.js?v=060040a2"></script>
 
 <!-- Page Module -->
 <script type="module">
 
-  import { initPage } from './src/js/core/page-shell.js?v=6a5ed636_social_v1';
-  import { renderDashboard } from './src/js/ui/pages/dashboard.js?v=6a5ed636_v2';
+  import { initPage } from './src/js/core/page-shell.js?v=060040a2_social_v1';
+  import { renderDashboard } from './src/js/ui/pages/dashboard.js?v=060040a2_v2';
   import { waitForAuth } from './src/js/core/auth.js';
   await initPage('dashboard.html');
   const user = await waitForAuth();

@@ -5,6 +5,7 @@
  */
 
 import { renderPlaceCard } from './PlaceCard.js';
+import { isEnglish } from '../../core/i18n.js';
 
 const _rotationTimers = new Map();
 
@@ -46,13 +47,24 @@ export function mountSponsoredShowcase(target, places = [], options = {}) {
   // Shuffle initially on page load for fair exposure
   const shuffled = [...sponsored].sort(() => Math.random() - 0.5);
   
-  const title = options.title || 'أماكن وإعلانات مميزة';
-  const subtitle = options.subtitle || 'أنشطة وخدمات موصى بها في المنزلة';
+  const isEn = isEnglish();
+  const title = options.title || (isEn ? 'Featured Places & Listings' : 'أماكن وإعلانات مميزة');
+  const subtitle = options.subtitle || (isEn ? 'Recommended businesses & services in El Manzala & El Matariya' : 'أنشطة وخدمات موصى بها في المنزلة');
   const maxVisible = options.maxVisible || 4;
   let currentIndex = 0;
 
   // Generate unique instance ID
   const instanceId = 'spons-showcase-' + Math.random().toString(36).slice(2, 8);
+
+  const badgeText = isEn ? '⭐ Featured Listings' : '⭐ إعلانات مميزة';
+  const ctaText = isEn ? '📣 Advertise Your Business Here' : 'لو عاوز إعلانك يظهر هنا تواصل معنا';
+  const ctaMsg = isEn 
+    ? 'Hello, I would like to book a featured listing on Dalil El Manzala & El Matariya directory' 
+    : 'مرحباً، أود حجز إعلان مميز يظهر في دليل المنزلة والمطرية الرقمي';
+  const timerText = isEn ? '⏱️ Updates every min' : '⏱️ تحديث كل دقيقة';
+  const timerTip = isEn ? 'Cards change automatically every minute' : 'تتغير البطاقات تلقائياً كل دقيقة';
+  const prevLabel = isEn ? 'Previous' : 'السابق';
+  const nextLabel = isEn ? 'Next' : 'التالي';
 
   container.innerHTML = `
     <div class="sponsored-showcase-wrapper" id="${instanceId}">
@@ -60,29 +72,29 @@ export function mountSponsoredShowcase(target, places = [], options = {}) {
         <div class="sponsored-showcase-title-wrap">
           <div class="sponsored-showcase-badge">
             <span class="pulse-dot"></span>
-            <span>⭐ إعلانات مميزة</span>
+            <span>${badgeText}</span>
           </div>
           <h2 class="sponsored-showcase-title">${title}</h2>
           <p class="sponsored-showcase-subtitle">${subtitle}</p>
         </div>
 
         <div class="sponsored-showcase-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <a href="https://wa.me/wasendernew?text=${encodeURIComponent('مرحباً، أود حجز إعلان مميز يظهر في دليل المنزلة والمطرية الرقمي')}" 
+          <a href="https://wa.me/wasendernew?text=${encodeURIComponent(ctaMsg)}" 
              target="_blank" 
              rel="noopener" 
              class="btn btn-sm btn-secondary sponsored-cta-btn" 
              style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;border-radius:var(--radius-full);white-space:nowrap;box-shadow:0 2px 10px rgba(245,166,35,0.25);transition:transform 0.2s">
             <span>📣</span>
-            <span>لو عاوز إعلانك يظهر هنا تواصل معنا</span>
+            <span>${ctaText}</span>
           </a>
 
           ${shuffled.length > 1 ? `
             <div class="sponsored-showcase-controls">
-              <span class="sponsored-timer-tag" title="تتغير البطاقات تلقائياً كل دقيقة">
-                ⏱️ تحديث كل دقيقة
+              <span class="sponsored-timer-tag" title="${timerTip}">
+                ${timerText}
               </span>
-              <button class="sponsored-nav-btn prev-btn" aria-label="السابق">❮</button>
-              <button class="sponsored-nav-btn next-btn" aria-label="التالي">❯</button>
+              <button class="sponsored-nav-btn prev-btn" aria-label="${prevLabel}">❮</button>
+              <button class="sponsored-nav-btn next-btn" aria-label="${nextLabel}">❯</button>
             </div>
           ` : ''}
         </div>

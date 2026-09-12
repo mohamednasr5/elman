@@ -4937,6 +4937,7 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
       }
 
       // ── 12b. Full Platform Bilingual Routing (/en, /en/*, /ar, /ar/*) ──
+      // ── 12b. Full Platform Bilingual Routing (/en, /en/*, /ar, /ar/*) ──
       const isEnPrefix = url.pathname === '/en' || url.pathname.startsWith('/en/');
       const isArPrefix = url.pathname === '/ar' || url.pathname.startsWith('/ar/');
 
@@ -4948,87 +4949,56 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
           return fetch(assetUrl.toString(), request);
         }
 
-        const lang = isEnPrefix ? 'en' : 'ar';
-        let subPath = url.pathname.replace(/^\/(en|ar)(\/|$)/, '').replace(/\/+$/, '');
+        if (isArPrefix) {
+          const cleanArPath = url.pathname.replace(/^\/ar(\/|$)/, '/$1') || '/';
+          return Response.redirect(`${url.origin}${cleanArPath}${url.search}`, 301);
+        }
 
-        const pageMap = {
-          '': '/index.html',
-          'places': '/places.html',
-          'categories': '/categories.html',
-          'category': '/category.html',
-          'dashboard': '/dashboard.html',
-          'login': '/login.html',
-          'offers': '/offers.html',
-          'now': '/now.html',
-          'emergency': '/emergency.html',
-          'contact': '/contact.html',
-          'about': '/manzala.html',
-          'privacy': '/privacy.html',
-          'terms': '/terms.html',
-          'legal': '/legal.html',
-          'products': '/products.html',
-          'search': '/search.html',
-          'favorites': '/favorites.html',
-          'around-me': '/around-me.html',
-          'manzala': '/manzala.html',
-          'matariya': '/matariya.html',
-          'free-verification': '/free-verification.html'
-        };
-
-        const targetFile = pageMap[subPath.toLowerCase()] || (subPath.endsWith('.html') ? `/${subPath}` : '/index.html');
+        // Handle English Route: Serve dedicated English static pages
+        let subPath = url.pathname.replace(/^\/en(\/|$)/, '').replace(/\/+$/, '');
+        let targetFile = `/en/${subPath ? subPath + '/' : ''}index.html`;
 
         try {
-          const originUrl = new URL(targetFile, url.origin);
-          const pageRes = await fetch(originUrl.toString(), {
+          let originUrl = new URL(targetFile, url.origin);
+          let pageRes = await fetch(originUrl.toString(), {
             headers: {
               'Accept': 'text/html,application/xhtml+xml',
               'User-Agent': request.headers.get('User-Agent') || 'Cloudflare-Worker'
             }
           });
 
+          // Fallback to /en/index.html for client-side routing if subpath file not found
+          if (!pageRes.ok && subPath) {
+            originUrl = new URL('/en/index.html', url.origin);
+            pageRes = await fetch(originUrl.toString(), {
+              headers: {
+                'Accept': 'text/html,application/xhtml+xml',
+                'User-Agent': request.headers.get('User-Agent') || 'Cloudflare-Worker'
+              }
+            });
+          }
+
           if (pageRes.ok) {
             let html = await pageRes.text();
-            if (isEnPrefix) {
-              html = html.replace(/<html\s+lang=["']ar["']\s+dir=["']rtl["']/i, '<html lang="en" dir="ltr" data-lang="en"');
-              html = html.replace(/<html(?![^>]*\blang=)/i, '<html lang="en" dir="ltr" data-lang="en"');
-
-              const canonicalClean = `${url.origin}${url.pathname}`;
-              const alternateAr = `${url.origin}${url.pathname.replace(/^\/en(\/|$)/, '/$1')}`;
-              const alternateTags = `
+            const canonicalClean = `${url.origin}${url.pathname}`;
+            const alternateAr = `${url.origin}${url.pathname.replace(/^\/en(\/|$)/, '/$1') || '/'}`;
+            const alternateTags = `
   <link rel="alternate" hreflang="en" href="${canonicalClean}" />
   <link rel="alternate" hreflang="ar" href="${alternateAr}" />
   <link rel="alternate" hreflang="x-default" href="${alternateAr}" />`;
-              html = html.replace('</head>', `${alternateTags}\n</head>`);
-
-              if (subPath === '' || subPath === 'index') {
-                html = html.replace(/<title>.*?<\/title>/i, '<title>Dalil El Manzala & El Matariya | #1 Official Digital Directory</title>');
-                html = html.replace(/<meta name="description" content="[^"]*"/i, '<meta name="description" content="Explore verified doctors, clinics, pharmacies, craftsmen, shops, and real-time community services in El Manzala and El Matariya, Egypt."');
-                html = html.replace(/<meta property="og:locale" content="[^"]*"/i, '<meta property="og:locale" content="en_US"');
-              } else if (subPath === 'places') {
-                html = html.replace(/<title>.*?<\/title>/i, '<title>All Places & Businesses | Dalil El Manzala & El Matariya</title>');
-                html = html.replace(/<meta property="og:locale" content="[^"]*"/i, '<meta property="og:locale" content="en_US"');
-              }
-            } else {
-              const canonicalClean = `${url.origin}${url.pathname}`;
-              const alternateEn = `${url.origin}${url.pathname.replace(/^\/ar(\/|$)/, '/en/$1')}`;
-              const alternateTags = `
-  <link rel="alternate" hreflang="ar" href="${canonicalClean}" />
-  <link rel="alternate" hreflang="en" href="${alternateEn}" />
-  <link rel="alternate" hreflang="x-default" href="${url.origin}/" />`;
-              html = html.replace('</head>', `${alternateTags}\n</head>`);
-            }
+            html = html.replace('</head>', `${alternateTags}\n</head>`);
 
             return new Response(html, {
               status: 200,
               headers: {
                 'Content-Type': 'text/html; charset=utf-8',
                 'Cache-Control': 'public, max-age=120, s-maxage=3600',
-                'X-Localized-Route': lang
+                'X-Localized-Route': 'en'
               }
             });
           }
         } catch (pageErr) {
-          console.warn('[Bilingual Router Error]:', pageErr?.message || pageErr);
+          console.warn('[Localized routing error]:', pageErr);
         }
       }
 
@@ -6098,13 +6068,38 @@ async function findPlaceInTurso(env, rawQuery) {
 }
 
 /**
- * In-memory cached template for place.html to avoid origin roundtrips
+ * In-memory cached template for place.html & /en/index.html to avoid origin roundtrips
  */
 let _placeHtmlTemplate = '';
 let _placeHtmlTemplateFetched = 0;
+let _placeEnHtmlTemplate = '';
+let _placeEnHtmlTemplateFetched = 0;
 
-async function getPlaceHtmlTemplate(request) {
+async function getPlaceHtmlTemplate(request, isEn = false) {
   const now = Date.now();
+  if (isEn) {
+    if (_placeEnHtmlTemplate && (now - _placeEnHtmlTemplateFetched < 600000)) {
+      return _placeEnHtmlTemplate;
+    }
+    try {
+      const tUrl = new URL('/en/index.html', request.url);
+      const r = await fetch(tUrl.toString(), {
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml',
+          'User-Agent': 'Cloudflare-Worker-Internal'
+        }
+      });
+      if (r.ok) {
+        _placeEnHtmlTemplate = await r.text();
+        _placeEnHtmlTemplateFetched = now;
+        return _placeEnHtmlTemplate;
+      }
+    } catch (err) {
+      console.warn('[getPlaceEnHtmlTemplate error]:', err?.message || err);
+    }
+    return _placeEnHtmlTemplate || '';
+  }
+
   if (_placeHtmlTemplate && (now - _placeHtmlTemplateFetched < 600000)) {
     return _placeHtmlTemplate;
   }
@@ -6226,7 +6221,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   // 4. Human visitors: Edge SSR & Instant Data Injection (Zero Skeleton, 0ms FCP)
   if (!isCrawler) {
     try {
-      let baseHtml = await getPlaceHtmlTemplate(request);
+      let baseHtml = await getPlaceHtmlTemplate(request, isEn);
 
       if (baseHtml && baseHtml.includes('id="page-container"')) {
         const phoneClean = (place.phone || '').replace(/[^\d+]/g, '').trim();

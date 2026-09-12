@@ -1,22 +1,87 @@
-/* Project-wide bilingual header/layout hardening. Loaded by i18n-runtime.js. */
-html[data-lang="en"], body[data-lang="en"] { direction:ltr; }
-html[data-lang="ar"], body[data-lang="ar"] { direction:rtl; }
-.header__inner{display:flex;align-items:center;gap:clamp(8px,1vw,16px);min-width:0;}
-.header__logo{flex:0 1 auto;min-width:0;}
-.header__logo-text{min-width:0;}
-.header__logo-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.header__nav{display:flex;align-items:center;justify-content:center;gap:clamp(4px,.55vw,12px);flex:1 1 auto;min-width:0;overflow:hidden;}
-.header__nav-link{white-space:nowrap;flex:0 0 auto;}
-.header-search-expandable{flex:0 0 auto;z-index:20;}
-.lang-toggle-btn,.theme-toggle-btn{flex:0 0 auto;white-space:nowrap;}
-.lang-toggle-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;min-width:88px;height:42px;padding:0 12px;border-radius:999px;}
-.lang-toggle-btn .lang-name{font-weight:700;}
-html[data-lang="en"] .header__nav{direction:ltr;}
-html[data-lang="ar"] .header__nav{direction:rtl;}
-html[data-lang="en"] .header-search-pill{direction:ltr;}
-html[data-lang="ar"] .header-search-pill{direction:rtl;}
-html[data-lang="en"] .header-live-dropdown{text-align:left;direction:ltr;}
-html[data-lang="ar"] .header-live-dropdown{text-align:right;direction:rtl;}
-@media (max-width:1200px){.header__nav-link:nth-child(n+7){display:none;}.header__logo-name{max-width:250px;}}
-@media (max-width:980px){.header__nav-link:nth-child(n+5){display:none;}.header__logo-name{max-width:190px;}.lang-toggle-btn{min-width:76px;padding-inline:10px;}}
-@media (max-width:767px){.header__inner{gap:6px;}.header__logo-name{max-width:145px;}.header__nav{display:none;}.lang-toggle-btn{min-width:44px;width:44px;padding:0;}.lang-toggle-btn .lang-name{display:none;}.header-search-expandable{order:2;}}
+/* Bilingual layout isolation - strictly scoped */
+html[lang="en"], body[data-lang="en"] {
+  direction: ltr;
+}
+
+html[lang="ar"], body[data-lang="ar"] {
+  direction: rtl;
+}
+
+/* Compact, responsive Language Switcher */
+.lang-toggle-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 10px;
+  height: 36px;
+  border-radius: 9999px;
+  background: var(--surface-3, #f1f5f9);
+  color: var(--text-primary, #0f172a);
+  border: 1.5px solid var(--border, #cbd5e1);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.lang-toggle-btn:hover {
+  border-color: #0284C7;
+  color: #0284C7;
+  background: rgba(2, 132, 199, 0.08);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .lang-toggle-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .lang-toggle-btn:hover {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.lang-toggle-btn .lang-globe {
+  font-size: 0.95rem;
+}
+
+.lang-toggle-btn .lang-name {
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+
+/* English LTR Scoped Adjustments */
+html[lang="en"] .header__inner {
+  direction: ltr;
+}
+
+html[lang="en"] .header__nav {
+  direction: ltr;
+}
+
+html[lang="en"] .header-search-pill {
+  direction: ltr;
+}
+
+html[lang="en"] .header-search-input {
+  direction: ltr;
+  text-align: left;
+}
+
+html[lang="en"] .header-live-dropdown {
+  text-align: left;
+  direction: ltr;
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .lang-toggle-btn {
+    padding: 0 8px;
+    height: 34px;
+  }
+}

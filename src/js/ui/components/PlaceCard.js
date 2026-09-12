@@ -1,5 +1,6 @@
 import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 import { isEnglish, t, localizeUrl } from '../../core/i18n.js';
+import { translateArea, translateCategory } from '../../utils/category-i18n.js';
 /**
  * المنزلة وناسها — PlaceCard Component
  */
@@ -166,10 +167,19 @@ export function renderPlaceCard(place) {
     (place.description ? 5 : 0) +
     ((Number(place.reviewCount || place.reviewsCount || 0) > 0) ? 5 : 0)
   );
+  const isEn = isEnglish();
+  const displayName = (isEn && (place.nameEn || place.name_en)) ? (place.nameEn || place.name_en) : (place.name || '');
+  const displayDesc = (isEn && (place.descriptionEn || place.description_en)) ? (place.descriptionEn || place.description_en) : (place.description || '');
+  const rawArea = place.areaEn || place.area_en || place.area || '';
+  const displayArea = isEn ? (translateArea(rawArea, true) || 'El Manzala') : (place.area || 'المنزلة');
+  const targetPlaceUrl = isEn ? `/en/place/${encodeURIComponent(targetSlug)}` : placeUrl;
+
   const hasManualTrustScore = place.trustScore !== undefined || place.trust_score !== undefined;
   const completeness = hasManualTrustScore ? Math.max(0, Math.min(100, Number(place.trustScore ?? place.trust_score) || 0)) : calculatedCompleteness;
   const trustClass = completeness < 50 ? 'place-trust-mini--low' : completeness < 75 ? 'place-trust-mini--medium' : 'place-trust-mini--high';
-  const trustLabel = `نسبة اكتمال بيانات هذا الملف: ${completeness}% (مؤشر استيفاء الحقول فقط)`;
+  const trustLabel = isEn
+    ? `Profile data completeness: ${completeness}%`
+    : `نسبة اكتمال بيانات هذا الملف: ${completeness}% (مؤشر استيفاء الحقول فقط)`;
   const favorite = isFavorite(placeId);
 
   let atmCashBadge = '';
@@ -177,16 +187,17 @@ export function renderPlaceCard(place) {
     const status = getAtmLiveStatus(place, 15);
     if (status) {
       const badges = [];
+      const timeNote = status.isCashRecent ? (isEn ? '⚡ (last 15m)' : '⚡ (آخر 15 د)') : '';
       if (status.hasCash || (!status.isCashRecent && status.allTimeHasCash)) {
-        badges.push(`<span class="badge atm-badge-card-cash" style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full)">💵 متوفر بها كاش ${status.isCashRecent ? '⚡ (آخر 15 د)' : ''}</span>`);
+        badges.push(`<span class="badge atm-badge-card-cash" style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full)">${isEn ? '💵 Cash Available' : '💵 متوفر بها كاش'} ${timeNote}</span>`);
       } else if (status.noCash || (!status.isCashRecent && status.allTimeNoCash)) {
-        badges.push(`<span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:11px;font-weight:800;padding:3px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">🔴 فارغة حالياً ${status.isCashRecent ? '⚡ (آخر 15 د)' : ''}</span>`);
+        badges.push(`<span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:11px;font-weight:800;padding:3px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">${isEn ? '🔴 Out of Cash' : '🔴 فارغة حالياً'} ${timeNote}</span>`);
       }
 
       if (status.isWorking || (!status.isWorkRecent && status.allTimeWorking)) {
-        badges.push(`<span class="badge atm-badge-card-working" style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full)">⚙️ الماكينة تعمل</span>`);
+        badges.push(`<span class="badge atm-badge-card-working" style="font-size:11px;padding:3px 10px;border-radius:var(--radius-full)">${isEn ? '⚙️ Operational' : '⚙️ الماكينة تعمل'}</span>`);
       } else if (status.isOutOfService || (!status.isWorkRecent && status.allTimeOutOfService)) {
-        badges.push(`<span class="badge" style="background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;padding:3px 8px;border-radius:var(--radius-full)">⚠️ خارج الخدمة</span>`);
+        badges.push(`<span class="badge" style="background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;padding:3px 8px;border-radius:var(--radius-full)">${isEn ? '⚠️ Out of Service' : '⚠️ خارج الخدمة'}</span>`);
       }
 
       if (badges.length > 0) {
@@ -196,39 +207,50 @@ export function renderPlaceCard(place) {
   }
 
   const phoneBtn = hasValidPhone
-    ? `<a href="tel:${cleanPhone(place.phone)}" class="place-card__action-btn" title="اتصال" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','phoneClicks')">📞</a>`
+    ? `<a href="tel:${cleanPhone(place.phone)}" class="place-card__action-btn" title="${isEn ? 'Call' : 'اتصال'}" aria-label="${isEn ? 'Call' : 'اتصال'}" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','phoneClicks')">📞</a>`
     : '';
 
   const liveHours = getPlaceLiveStatus(place.openHours);
+  const liveHoursBadgeText = isEn 
+    ? (liveHours?.isOpen ? 'Open Now' : 'Closed Now')
+    : (liveHours?.badgeText || '');
   const liveHoursBadge = (!isAtm && liveHours && !liveHours.isUnknown) ? `
     <span class="badge" style="background:${liveHours.isOpen ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'};color:${liveHours.color};font-weight:800;font-size:11px;padding:2px 8px;border-radius:var(--radius-full);display:inline-flex;align-items:center;gap:4px">
       <span>${liveHours.isOpen ? '🟢' : '🔴'}</span>
-      <span>${liveHours.badgeText}</span>
+      <span>${liveHoursBadgeText}</span>
     </span>
   ` : '';
 
   const docInfo = resolveDoctorSpecialty(place);
+  const docSpecialtyText = isEn 
+    ? (docInfo.shortLabelEn || docInfo.specialtyTitleEn || 'Specialized Clinic')
+    : (docInfo.shortLabel || docInfo.specialtyTitle);
   const doctorSpecialtyBadge = docInfo.isDoctor ? `
     <div style="margin:4px 0 2px 0">
       <span class="badge" style="background:#E0F2FE;color:#0369A1;font-weight:800;font-size:11.5px;padding:2px 8px;border-radius:9999px;border:1px solid #BAE6FD;display:inline-flex;align-items:center;gap:4px">
         <span>${docInfo.icon}</span>
-        <span>${docInfo.shortLabel || docInfo.specialtyTitle}</span>
+        <span>${docSpecialtyText}</span>
       </span>
     </div>
   ` : '';
 
   const profInfo = resolvePlaceProfession(place);
+  const profNameText = isEn 
+    ? (profInfo?.nameEn || profInfo?.name || '')
+    : (profInfo?.name || '');
   const professionBadge = (!docInfo.isDoctor && profInfo) ? `
     <div style="margin:4px 0 2px 0">
       <span class="place-profession-badge" style="--prof-color:${profInfo.categoryColor};color:${profInfo.categoryColor};border-color:color-mix(in srgb, ${profInfo.categoryColor} 25%, transparent);background:color-mix(in srgb, ${profInfo.categoryColor} 10%, transparent)">
         ${getProfessionSvg(profInfo.id, { size: 14, color: profInfo.categoryColor })}
-        <span>${escHtml(profInfo.name)}</span>
+        <span>${escHtml(profNameText)}</span>
       </span>
     </div>
   ` : '';
 
+  const waBtnTitle = isEn ? 'WhatsApp Chat' : 'محادثة واتساب';
+  const waBtnLabel = isEn ? `Chat on WhatsApp with ${escAttr(displayName)}` : `محادثة واتساب مع ${escAttr(place.name)}`;
   const waBtn = hasValidWhatsapp
-    ? `<a href="${buildContextualWhatsAppLink(place.whatsapp, { source: 'place_card', placeName: place.name, placeSlug: place.slug })}" target="_blank" rel="noopener" class="place-card__action-btn place-card__action-btn--whatsapp" title="محادثة واتساب" aria-label="محادثة واتساب مع ${escAttr(place.name)}" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','whatsappClicks')"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.09-1.1l-.29-.17-3.04.8 1.05-2.96-.19-.3a8.21 8.21 0 0 1-1.26-4.43c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.14-.25-.01-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.45-.06-.13-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43l-.48-.01c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.17-.48-.29z"/></svg></a>`
+    ? `<a href="${buildContextualWhatsAppLink(place.whatsapp, { source: 'place_card', placeName: place.name, placeSlug: place.slug })}" target="_blank" rel="noopener" class="place-card__action-btn place-card__action-btn--whatsapp" title="${waBtnTitle}" aria-label="${waBtnLabel}" onclick="event.stopPropagation();trackStat('${escAttr(place._key||place.id)}','whatsappClicks')"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.09-1.1l-.29-.17-3.04.8 1.05-2.96-.19-.3a8.21 8.21 0 0 1-1.26-4.43c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.4-1.75-.14-.25-.01-.39.11-.51.11-.11.25-.29.38-.44.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.45-.06-.13-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43l-.48-.01c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.44.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.17-.48-.29z"/></svg></a>`
     : '';
 
   const cardClasses = [
@@ -242,20 +264,14 @@ export function renderPlaceCard(place) {
   const availStatus = place.availabilityStatus || place.availability_status;
   let availBadge = '';
   if (availStatus === 'busy') {
-    availBadge = `<span class="badge" style="background:rgba(245,158,11,0.15);color:#D97706;border:1px solid rgba(245,158,11,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🟡</span><span>مشغول</span></span>`;
+    availBadge = `<span class="badge" style="background:rgba(245,158,11,0.15);color:#D97706;border:1px solid rgba(245,158,11,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🟡</span><span>${isEn ? 'Busy' : 'مشغول'}</span></span>`;
   } else if (availStatus === 'unavailable') {
-    availBadge = `<span class="badge" style="background:rgba(239,68,68,0.15);color:#DC2626;border:1px solid rgba(239,68,68,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🔴</span><span>غير متاح</span></span>`;
+    availBadge = `<span class="badge" style="background:rgba(239,68,68,0.15);color:#DC2626;border:1px solid rgba(239,68,68,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🔴</span><span>${isEn ? 'Unavailable' : 'غير متاح'}</span></span>`;
   } else if (availStatus === 'available') {
-    availBadge = `<span class="badge" style="background:rgba(16,185,129,0.15);color:#16A34A;border:1px solid rgba(16,185,129,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🟢</span><span>متاح للطلبات</span></span>`;
+    availBadge = `<span class="badge" style="background:rgba(16,185,129,0.15);color:#16A34A;border:1px solid rgba(16,185,129,0.35);font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:9999px;display:inline-flex;align-items:center;gap:3px"><span>🟢</span><span>${isEn ? 'Available' : 'متاح للطلبات'}</span></span>`;
   }
 
   const verifiedBadge = (place.isVerified || place.is_verified) ? renderVerifiedBadge() : '';
-
-  const isEn = isEnglish();
-  const displayName = (isEn && (place.nameEn || place.name_en)) ? (place.nameEn || place.name_en) : (place.name || '');
-  const displayDesc = (isEn && (place.descriptionEn || place.description_en)) ? (place.descriptionEn || place.description_en) : (place.description || '');
-  const displayArea = (isEn && (place.areaEn || place.area_en)) ? (place.areaEn || place.area_en) : (isEn ? 'El Manzala' : (place.area || 'المنزلة'));
-  const targetPlaceUrl = isEn ? `/en/place/${encodeURIComponent(targetSlug)}` : placeUrl;
 
   return `
     <article class="${cardClasses}" 

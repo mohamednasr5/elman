@@ -40,97 +40,91 @@
   font-size: 1rem;
 }
 
-html[dir=ltr],
-body[dir=ltr],
-[dir=ltr] {
+html[lang="en"] {
   direction: ltr !important;
   text-align: left !important;
 }
 
-html[dir=ltr] body {
+html[lang="en"] body {
   direction: ltr !important;
   text-align: left !important;
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif, Cairo;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica Neue, Arial, sans-serif, Cairo;
 }
 
-/* Header adjustments for LTR */
-[dir=ltr] .header__inner {
+/* Header adjustments for English LTR */
+html[lang="en"] .header__inner {
   direction: ltr;
 }
 
-[dir=ltr] .header__logo {
+html[lang="en"] .header__logo {
   margin-right: var(--space-4);
   margin-left: 0;
 }
 
-[dir=ltr] .header-search-pill {
+html[lang="en"] .header-search-pill {
   direction: ltr;
 }
 
-[dir=ltr] .header-search-btn-trigger {
-  order: -1;
-}
-
-[dir=ltr] .header-search-input {
+html[lang="en"] .header-search-input {
   text-align: left;
   direction: ltr;
 }
 
-[dir=ltr] .header-live-dropdown {
+html[lang="en"] .header-live-dropdown {
   text-align: left;
   direction: ltr;
 }
 
-[dir=ltr] .section-title:before {
+html[lang="en"] .section-title:before {
   margin-right: var(--space-3);
   margin-left: 0;
 }
 
-[dir=ltr] .form-input,
-[dir=ltr] .form-textarea,
-[dir=ltr] .form-select {
+html[lang="en"] .form-input,
+html[lang="en"] .form-textarea,
+html[lang="en"] .form-select {
   direction: ltr;
   text-align: left;
 }
 
-[dir=ltr] .place-card__logo {
+html[lang="en"] .place-card__logo {
   right: auto;
   left: var(--space-4);
 }
 
-[dir=ltr] .place-card__body,
-[dir=ltr] .place-card__footer {
+html[lang="en"] .place-card__body,
+html[lang="en"] .place-card__footer {
   direction: ltr;
   text-align: left;
 }
 
-[dir=ltr] .footer__links,
-[dir=ltr] .footer__col-title,
-[dir=ltr] .footer__description,
-[dir=ltr] .footer__bottom {
+html[lang="en"] .footer__links,
+html[lang="en"] .footer__col-title,
+html[lang="en"] .footer__description,
+html[lang="en"] .footer__bottom {
   text-align: left;
 }
 
-[dir=ltr] .footer__bottom {
+html[lang="en"] .footer__bottom {
   flex-direction: row-reverse;
 }
 
-[dir=ltr] .toast-container {
+html[lang="en"] .toast-container {
   right: auto;
   left: var(--space-6);
   align-items: flex-start;
 }
 
-[dir=ltr] .toast:after {
+html[lang="en"] .toast:after {
   transform-origin: left;
 }
 
-[dir=ltr] .form-input-wrapper .form-input {
+html[lang="en"] .form-input-wrapper .form-input {
   padding-left: calc(var(--space-10) + 4px);
   padding-right: var(--space-4);
 }
 
-[dir=ltr] .form-input-icon {
+html[lang="en"] .form-input-icon {
   right: auto;
   left: var(--space-4);
 }

@@ -11,13 +11,160 @@ export const TRANSLATIONS={
 
 const CLEAN_ROUTES={'/index.html':'/','/places.html':'/places','/categories.html':'/categories','/search.html':'/search','/offers.html':'/offers','/now.html':'/now','/around-me.html':'/around-me','/contact.html':'/contact','/free-verification.html':'/free-verification','/favorites.html':'/favorites','/dashboard.html':'/dashboard','/login.html':'/login','/emergency.html':'/emergency','/privacy.html':'/privacy','/terms.html':'/terms','/legal.html':'/legal','/hadith.html':'/hadith','/quran.html':'/quran','/quran-search.html':'/quran-search','/quran-surah.html':'/quran-surah','/products.html':'/products','/manzala.html':'/manzala','/matariya.html':'/matariya'};
 
-export function detectLanguage(){if(typeof window==='undefined')return DEFAULT_LANG;const p=window.location.pathname.toLowerCase().replace(/\/+$/,'')||'/';if(p==='/en'||p.startsWith('/en/'))return'en';if(p==='/ar'||p.startsWith('/ar/'))return'ar';const q=new URLSearchParams(window.location.search).get('lang')?.toLowerCase();if(q&&SUPPORTED_LANGS.includes(q))return q;try{const s=localStorage.getItem('dalil-lang');if(s&&SUPPORTED_LANGS.includes(s))return s}catch(_){}return DEFAULT_LANG}
-let _currentLang=detectLanguage();let _observer=null;
-export function getLang(){return _currentLang}export function isArabic(){return _currentLang==='ar'}export function isEnglish(){return _currentLang==='en'}
-export function t(k,f=''){const d=TRANSLATIONS[_currentLang]||TRANSLATIONS[DEFAULT_LANG];if(d&&d[k]!==undefined)return d[k];return f||k}
-function stripLang(path){let p=String(path||'/').replace(/^\/(en|ar)(\/|$)/,'/');if(!p.startsWith('/'))p='/'+p;return p||'/'}
-export function localizeUrl(path,targetLang=_currentLang){if(!path)return'';if(/^(https?:)?\/\//i.test(path)||/^(mailto|tel):/i.test(path))return path;const [base,hash='']=String(path).split('#');const [pathname,query='']=base.split('?');let clean=stripLang(pathname);if(CLEAN_ROUTES[clean])clean=CLEAN_ROUTES[clean];const out=targetLang==='en'?(clean==='/'?'/en/':`/en${clean}`):clean;return `${out}${query?`?${query}`:''}${hash?`#${hash}`:''}`}
-export function switchLanguage(newLang){if(!SUPPORTED_LANGS.includes(newLang)||typeof window==='undefined')return;_currentLang=newLang;try{localStorage.setItem('dalil-lang',newLang)}catch(_){}applyLangToDOM(newLang);const clean=stripLang(window.location.pathname);const route=CLEAN_ROUTES[clean]||clean.replace(/\.html$/,'')||'/';const out=newLang==='en'?(route==='/'?'/en/':`/en${route}`):route;window.location.assign(`${out}${window.location.search}${window.location.hash}`)}
-function translateElement(el){if(!(el instanceof Element))return;if(el.hasAttribute('data-i18n')){const k=el.getAttribute('data-i18n');const v=t(k);if(el.matches('input,textarea'))el.setAttribute('placeholder',v);else if(el.hasAttribute('data-i18n-html'))el.innerHTML=v;else el.textContent=v}if(el.hasAttribute('data-i18n-aria'))el.setAttribute('aria-label',t(el.getAttribute('data-i18n-aria')));if(el.hasAttribute('data-i18n-title'))el.setAttribute('title',t(el.getAttribute('data-i18n-title')))}
-export function applyLangToDOM(lang=_currentLang){if(typeof document==='undefined')return;_currentLang=SUPPORTED_LANGS.includes(lang)?lang:DEFAULT_LANG;const rtl=_currentLang==='ar';document.documentElement.setAttribute('lang',_currentLang);document.documentElement.setAttribute('dir',rtl?'rtl':'ltr');document.documentElement.setAttribute('data-lang',_currentLang);document.documentElement.classList.toggle('is-rtl',rtl);document.documentElement.classList.toggle('is-ltr',!rtl);document.body?.setAttribute('dir',rtl?'rtl':'ltr');document.body?.setAttribute('data-lang',_currentLang);document.body?.classList.toggle('is-rtl',rtl);document.body?.classList.toggle('is-ltr',!rtl);document.querySelectorAll('[data-i18n],[data-i18n-aria],[data-i18n-title]').forEach(translateElement);if(!_observer){_observer=new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes)if(n.nodeType===1){translateElement(n);n.querySelectorAll?.('[data-i18n],[data-i18n-aria],[data-i18n-title]').forEach(translateElement)}});_observer.observe(document.body||document.documentElement,{childList:true,subtree:true})}window.dispatchEvent(new CustomEvent('dalil:languagechange',{detail:{lang:_currentLang,dir:rtl?'rtl':'ltr'}}))}
-if(typeof document!=='undefined'){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>applyLangToDOM(_currentLang),{once:true});else applyLangToDOM(_currentLang)}
+export function detectLanguage(){
+  if (typeof window === 'undefined') return DEFAULT_LANG;
+  const p = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
+  if (p === '/en' || p.startsWith('/en/')) return 'en';
+  return 'ar';
+}
+let _currentLang = detectLanguage();
+let _observer = null;
+
+export function getLang() { return _currentLang; }
+export function isArabic() { return _currentLang === 'ar'; }
+export function isEnglish() { return _currentLang === 'en'; }
+
+export function t(k, fallback = '') {
+  const dict = TRANSLATIONS[_currentLang] || TRANSLATIONS[DEFAULT_LANG];
+  if (dict && dict[k] !== undefined) return dict[k];
+  return fallback || k;
+}
+
+function stripLang(path) {
+  let p = String(path || '/').replace(/^\/(en|ar)(\/|$)/, '/');
+  if (!p.startsWith('/')) p = '/' + p;
+  return p || '/';
+}
+
+export function localizeUrl(path, targetLang = _currentLang) {
+  if (!path) return '';
+  if (/^(https?:)?\/\//i.test(path) || /^(mailto|tel):/i.test(path) || path.startsWith('#')) return path;
+  const [base, hash = ''] = String(path).split('#');
+  const [pathname, query = ''] = base.split('?');
+  let clean = stripLang(pathname);
+  if (CLEAN_ROUTES[clean]) clean = CLEAN_ROUTES[clean];
+
+  let out;
+  if (targetLang === 'en') {
+    out = clean === '/' ? '/en/' : (clean.endsWith('/') ? `/en${clean}` : `/en${clean}/`);
+  } else {
+    // In Arabic, map clean routes back to root files if needed
+    out = clean === '/' ? '/' : (clean.endsWith('.html') ? clean : (CLEAN_ROUTES[clean] ? clean : `${clean}`));
+  }
+  return `${out}${query ? `?${query}` : ''}${hash ? `#${hash}` : ''}`;
+}
+
+export function switchLanguage(newLang) {
+  if (!SUPPORTED_LANGS.includes(newLang) || typeof window === 'undefined') return;
+  _currentLang = newLang;
+  try { localStorage.setItem('dalil-lang', newLang); } catch (_) {}
+  
+  const pathname = window.location.pathname;
+  const search = window.location.search;
+  const hash = window.location.hash;
+  
+  if (newLang === 'en') {
+    // Navigate to English equivalent
+    let clean = stripLang(pathname);
+    if (clean === '/' || clean === '/index.html') {
+      window.location.assign(`/en/${search}${hash}`);
+      return;
+    }
+    // Handle place pages
+    if (clean === '/place.html' || clean.startsWith('/place/')) {
+      const q = new URLSearchParams(search);
+      const slug = clean.startsWith('/place/') ? clean.replace('/place/', '').replace(/\/$/, '') : (q.get('slug') || '');
+      if (slug) {
+        window.location.assign(`/en/place/${encodeURIComponent(slug)}/${hash}`);
+        return;
+      }
+      window.location.assign(`/en/places/${search}${hash}`);
+      return;
+    }
+    // Handle category pages
+    if (clean === '/category.html' || clean.startsWith('/category/')) {
+      const q = new URLSearchParams(search);
+      const slug = clean.startsWith('/category/') ? clean.replace('/category/', '').replace(/\/$/, '') : (q.get('slug') || '');
+      if (slug) {
+        window.location.assign(`/en/category/${encodeURIComponent(slug)}/${hash}`);
+        return;
+      }
+      window.location.assign(`/en/categories/${search}${hash}`);
+      return;
+    }
+    // General route mapping
+    const base = clean.replace(/\.html$/, '').replace(/^\/+/, '');
+    window.location.assign(`/en/${base}/${search}${hash}`);
+  } else {
+    // Navigate to Arabic equivalent
+    let clean = stripLang(pathname).replace(/\/+$/, '') || '/';
+    if (clean === '/' || clean === '') {
+      window.location.assign(`/${search}${hash}`);
+      return;
+    }
+    if (clean === '/place' || clean.startsWith('/place/')) {
+      const slug = clean.startsWith('/place/') ? clean.replace('/place/', '').replace(/\/$/, '') : '';
+      if (slug) {
+        window.location.assign(`/place.html?slug=${encodeURIComponent(slug)}${hash}`);
+        return;
+      }
+      window.location.assign(`/places.html${search}${hash}`);
+      return;
+    }
+    if (clean === '/category' || clean.startsWith('/category/')) {
+      const slug = clean.startsWith('/category/') ? clean.replace('/category/', '').replace(/\/$/, '') : '';
+      if (slug) {
+        window.location.assign(`/category.html?slug=${encodeURIComponent(slug)}${hash}`);
+        return;
+      }
+      window.location.assign(`/categories.html${search}${hash}`);
+      return;
+    }
+    const target = clean.endsWith('.html') ? clean : `${clean}.html`;
+    window.location.assign(`${target}${search}${hash}`);
+  }
+}
+
+export function applyLangToDOM(lang = _currentLang) {
+  if (typeof document === 'undefined') return;
+  _currentLang = SUPPORTED_LANGS.includes(lang) ? lang : DEFAULT_LANG;
+  const isEn = _currentLang === 'en';
+  
+  if (isEn) {
+    document.documentElement.setAttribute('lang', 'en');
+    document.documentElement.setAttribute('dir', 'ltr');
+    document.documentElement.setAttribute('data-lang', 'en');
+    document.documentElement.classList.remove('is-rtl');
+    document.documentElement.classList.add('is-ltr');
+    if (document.body) {
+      document.body.setAttribute('dir', 'ltr');
+      document.body.setAttribute('data-lang', 'en');
+      document.body.classList.remove('is-rtl');
+      document.body.classList.add('is-ltr');
+    }
+  } else {
+    document.documentElement.setAttribute('lang', 'ar');
+    document.documentElement.setAttribute('dir', 'rtl');
+    document.documentElement.setAttribute('data-lang', 'ar');
+    document.documentElement.classList.remove('is-ltr');
+    document.documentElement.classList.add('is-rtl');
+    if (document.body) {
+      document.body.setAttribute('dir', 'rtl');
+      document.body.setAttribute('data-lang', 'ar');
+      document.body.classList.remove('is-ltr');
+      document.body.classList.add('is-rtl');
+    }
+  }
+  
+  window.dispatchEvent(new CustomEvent('dalil:languagechange', {
+    detail: { lang: _currentLang, dir: isEn ? 'ltr' : 'rtl' }
+  }));
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => applyLangToDOM(_currentLang), { once: true });
+  } else {
+    applyLangToDOM(_currentLang);
+  }
+}
