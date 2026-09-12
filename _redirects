@@ -2,30 +2,76 @@
 # Canonical redirect: /index.html → / (prevents duplicate content)
 /index.html  /  301
 
-# Bilingual Clean Routing (/en and /ar)
-/en                 /index.html         200
-/en/                /index.html         200
+# Dedicated English clean routes — served from real English entry pages.
+/en                 /en/index.html                  200
+/en/                /en/index.html                  200
+/en/places          /en/places/index.html           200
+/en/places/         /en/places/index.html           200
+/en/categories      /en/categories/index.html       200
+/en/categories/     /en/categories/index.html       200
+/en/search          /en/search/index.html            200
+/en/search/         /en/search/index.html            200
+/en/popular         /en/popular/index.html           200
+/en/popular/        /en/popular/index.html           200
+/en/offers          /en/offers/index.html            200
+/en/offers/         /en/offers/index.html            200
+/en/now             /en/now/index.html               200
+/en/now/            /en/now/index.html               200
+/en/around-me       /en/around-me/index.html         200
+/en/around-me/      /en/around-me/index.html         200
+/en/favorites       /en/favorites/index.html         200
+/en/favorites/      /en/favorites/index.html         200
+/en/products        /en/products/index.html          200
+/en/products/       /en/products/index.html          200
+/en/login           /en/login/index.html             200
+/en/login/          /en/login/index.html             200
+/en/dashboard       /en/dashboard/index.html         200
+/en/dashboard/      /en/dashboard/index.html         200
+/en/contact         /en/contact/index.html           200
+/en/contact/        /en/contact/index.html           200
+/en/free-verification  /en/free-verification/index.html 200
+/en/free-verification/ /en/free-verification/index.html 200
+/en/emergency       /en/emergency/index.html         200
+/en/emergency/      /en/emergency/index.html         200
+/en/privacy         /en/privacy/index.html           200
+/en/privacy/        /en/privacy/index.html           200
+/en/terms           /en/terms/index.html             200
+/en/terms/          /en/terms/index.html             200
+/en/legal           /en/legal/index.html             200
+/en/legal/          /en/legal/index.html             200
+/en/hadith          /en/hadith/index.html            200
+/en/hadith/         /en/hadith/index.html            200
+/en/quran           /en/quran/index.html             200
+/en/quran/          /en/quran/index.html             200
+/en/quran-search    /en/quran-search/index.html      200
+/en/quran-search/   /en/quran-search/index.html      200
+/en/quran-surah     /en/quran-surah/index.html       200
+/en/quran-surah/    /en/quran-surah/index.html       200
+/en/manzala         /en/manzala/index.html           200
+/en/manzala/        /en/manzala/index.html           200
+/en/matariya        /en/matariya/index.html          200
+/en/matariya/       /en/matariya/index.html          200
+
+# English dynamic place/category fallbacks. Static generated pages take precedence.
+/en/place            /en/place/index.html             200
+/en/place/           /en/place/index.html             200
+/en/place/*          /en/place/index.html             200
+/en/category         /en/category/index.html          200
+/en/category/        /en/category/index.html          200
+/en/category/*       /en/category/index.html          200
+
+# Arabic clean routing remains unchanged.
 /ar                 /index.html         200
 /ar/                /index.html         200
-/en/places          /places.html        200
-/en/places/         /places.html        200
 /ar/places          /places.html        200
 /ar/places/         /places.html        200
-/en/categories      /categories.html    200
-/en/categories/     /categories.html    200
 /ar/categories      /categories.html    200
 /ar/categories/     /categories.html    200
-/en/search          /search.html        200
 /ar/search          /search.html        200
-/en/contact         /contact.html       200
 /ar/contact         /contact.html       200
-/en/offers          /offers.html        200
 /ar/offers          /offers.html        200
-/en/now             /now.html           200
 /ar/now             /now.html           200
-/en/around-me       /around-me.html     200
 /ar/around-me       /around-me.html     200
-/en/free-verification /free-verification.html 200
 /ar/free-verification /free-verification.html 200
 
 # Static Pages Clean Routing
