@@ -295,22 +295,49 @@ export default {
   },
 
   async fetch(request, env, ctx) {
-    const isHead = request.method === 'HEAD';
-    const effectiveRequest = isHead ? new Request(request.url, {
-      method: 'GET',
-      headers: request.headers,
-      cf: request.cf
-    }) : request;
+    try {
+      const isHead = request.method === 'HEAD';
+      const effectiveRequest = isHead ? new Request(request.url, {
+        method: 'GET',
+        headers: request.headers,
+        cf: request.cf
+      }) : request;
 
-    const response = await this.handleRequest(effectiveRequest, env, ctx);
-    if (isHead) {
-      return new Response(null, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers
-      });
+      const response = await this.handleRequest(effectiveRequest, env, ctx);
+      if (isHead) {
+        return new Response(null, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
+        });
+      }
+      return response;
+    } catch (fatalErr) {
+      console.error('[Worker Fatal Exception Caught]:', fatalErr?.message || fatalErr);
+      const url = new URL(request.url);
+      if (url.pathname.startsWith('/api/')) {
+        return new Response(JSON.stringify({ success: false, error: fatalErr?.message || 'خطأ في الخادم' }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+          }
+        });
+      }
+      try {
+        const fallbackUrl = new URL(request.url);
+        if (fallbackUrl.pathname.startsWith('/place/')) {
+          fallbackUrl.pathname = '/place.html';
+        }
+        return await fetch(fallbackUrl.toString());
+      } catch (_) {
+        return new Response('حدث خطأ مؤقت، يرجى إعادة المحاولة', {
+          status: 500,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
+      }
     }
-    return response;
   },
 
   async handleRequest(request, env, ctx) {
@@ -4584,7 +4611,7 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
             return Response.redirect(`${url.origin}/${cleanTarget}`, 301);
           }
           try {
-            const originRes = await fetch(request);
+            const originRes = await fetch(request.url);
             if (originRes.status === 200) {
               return originRes;
             }
@@ -5504,21 +5531,24 @@ async function findPlaceInTurso(env, rawQuery) {
   // 4. Exact transliterated Arabic / English name match (slugify(p.name) === query)
   // Scans places strictly using full-string equality (zero prefix or partial guessing)
   try {
-    const allPlaces = (await db.prepare(`
-      SELECT p.* FROM places p
+    const candidatePlaces = (await db.prepare(`
+      SELECT p.id, p.name, p.name_en, p.slug FROM places p
       WHERE p.status = 'published'
+      LIMIT 300
     `).all()).results || [];
 
-    for (const cand of allPlaces) {
+    for (const cand of candidatePlaces) {
       const translitName = slugifyWorker(cand.name);
       const translitEn = slugifyWorker(cand.name_en || '');
 
       if (translitName === query || translitEn === query) {
+        const fullPlace = await db.prepare('SELECT p.* FROM places p WHERE p.id = ? LIMIT 1').bind(cand.id).first();
         if (cand.slug === cand.id || cand.slug.startsWith('p_') || cand.slug.startsWith('-P0')) {
           cand.slug = query;
           db.prepare('UPDATE places SET slug = ? WHERE id = ?').bind(query, cand.id).run().catch(() => {});
+          if (fullPlace) fullPlace.slug = query;
         }
-        return cand;
+        return fullPlace || cand;
       }
     }
   } catch (err) {
@@ -5727,9 +5757,26 @@ const html = `<!DOCTYPE html>
 
 </body>
 </html>`;
-if (url.pathname.startsWith('/p/')) {
+if (url.pathname.startsWith('/p/') || url.pathname.startsWith('/place/')) {
   if (!isCrawler) {
-    return Response.redirect(destinationUrl, 301);
+    // Human visitors must receive the real interactive place application.
+    // Serve place.html while preserving the clean URL in browser address bar.
+    try {
+      const appUrl = new URL('/place.html', request.url);
+      appUrl.searchParams.set('slug', placeTargetSlug);
+      const placeAppRes = await fetch(appUrl.toString(), {
+        headers: {
+          'Accept': request.headers.get('Accept') || 'text/html,application/xhtml+xml',
+          'User-Agent': request.headers.get('User-Agent') || ''
+        }
+      });
+      if (placeAppRes && placeAppRes.status === 200) {
+        return placeAppRes;
+      }
+    } catch (serveErr) {
+      console.warn('[place route serve interactive error]:', serveErr?.message || serveErr);
+    }
+    return Response.redirect(`${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`, 302);
   }
 }
   return new Response(html, {

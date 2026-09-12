@@ -27,19 +27,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply production clean-place route fix
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('index.js')
-          s = p.read_text(encoding='utf-8')
-          old = """if (url.pathname.startsWith('/p/')) {\n  if (!isCrawler) {\n    return Response.redirect(destinationUrl, 301);\n  }\n}"""
-          new = """if (url.pathname.startsWith('/p/') || url.pathname.startsWith('/place/')) {\n  if (!isCrawler) {\n    // Human visitors must receive the real interactive place application.\n    // Keep the clean /place/:slug URL in the browser while serving place.html\n    // so newly-created places work immediately without a generated static folder.\n    const appUrl = new URL('/place.html', request.url);\n    appUrl.searchParams.set('slug', placeTargetSlug);\n    return fetch(appUrl.toString(), request);\n  }\n}"""
-          if old not in s:
-              raise SystemExit('Expected clean-place route block was not found; refusing deployment')
-          p.write_text(s.replace(old, new, 1), encoding='utf-8')
-          print('Applied clean-place route fix')
-          PY
+      - name: Verify clean place route in Worker
+        run: node -e "const s = require('fs').readFileSync('index.js', 'utf8'); if (!s.includes('placeAppRes')) throw new Error('Interactive place route not found in index.js');"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
