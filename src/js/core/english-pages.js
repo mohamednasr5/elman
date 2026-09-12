@@ -10,6 +10,15 @@ const clean = p => String(p || '/').replace(/^\/en(?:\/|$)/, '/').replace(/\/+$/
 const parts = () => clean(location.pathname).split('/').filter(Boolean);
 const page = () => parts()[0] || '';
 
+function loadEnglishGridStyles() {
+  if (document.getElementById('english-grid-css')) return;
+  const link = document.createElement('link');
+  link.id = 'english-grid-css';
+  link.rel = 'stylesheet';
+  link.href = '/src/css/english-grid.css?v=20260913';
+  document.head.appendChild(link);
+}
+
 async function render(container) {
   const p = page();
   const q = new URLSearchParams(location.search);
@@ -119,6 +128,7 @@ async function render(container) {
   try {
     document.documentElement.lang = 'en';
     document.documentElement.dir = 'ltr';
+    loadEnglishGridStyles();
     await initPage(`${page() || 'index'}.html`);
     await render(document.getElementById('page-container'));
   } catch (error) {
