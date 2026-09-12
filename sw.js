@@ -27,7 +27,7 @@ try {
   console.warn('[SW] Firebase messaging init warning:', err);
 }
 
-const CACHE_VERSION = 'v4.4.4-api-resilience';
+const CACHE_VERSION = 'v4.4.5-logo-resilience';
 const STATIC_CACHE = 'manzala-static-' + CACHE_VERSION;
 const DYNAMIC_CACHE = 'manzala-dynamic-' + CACHE_VERSION;
 const IMAGE_CACHE = 'manzala-images-' + CACHE_VERSION;
@@ -43,13 +43,14 @@ const STATIC_ASSETS = [
   './quran.html',
   './hadith.html',
   './quran-search.html',
-  './icons/icon-48x48.png',
-  './icons/icon-72x72.png',
-  './icons/icon-96x96.png',
-  './icons/icon-192x192.png',
-  './icons/icon-maskable-192x192.png',
-  './icons/icon-512x512.png',
-  './icons/icon-maskable-512x512.png'
+  '/icons/icon-48x48.png',
+  '/icons/icon-72x72.png',
+  '/icons/icon-96x96.png',
+  '/icons/icon-192x192.png',
+  '/icons/icon-maskable-192x192.png',
+  '/icons/icon-512x512.png',
+  '/icons/icon-maskable-512x512.png',
+  '/favicon-48x48.png'
 ];
 
 const OFFLINE_PAGE = './offline.html';
@@ -216,11 +217,23 @@ async function appShellStrategy(request) {
 async function cacheFirstStrategy(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
-  if (cached) return cached;
+  if (cached) {
+    const contentType = cached.headers.get('content-type') || '';
+    if (contentType.includes('text/html') && request.url.match(/\.(webp|jpg|jpeg|png|gif|svg|avif|ico)$/i)) {
+      await cache.delete(request);
+    } else {
+      return cached;
+    }
+  }
 
   try {
     const response = await fetch(request);
-    if (response?.status === 200) await cache.put(request, response.clone());
+    if (response?.status === 200) {
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('text/html') || !request.url.match(/\.(webp|jpg|jpeg|png|gif|svg|avif|ico)$/i)) {
+        await cache.put(request, response.clone());
+      }
+    }
     return response;
   } catch (_) {
     return new Response('', { status: 503 });

@@ -29,7 +29,13 @@ function _headerHTML(active) {
 <header class="header" id="site-header" role="banner">
   <div class="container header__inner">
     <a href="/index.html" class="header__logo" aria-label="دليل المنزلة والمطرية الرقمي">
-      <img src="./icons/icon-48x48.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="36" height="36" decoding="async" class="header__logo-img"/>
+      <img src="/icons/icon-96x96.png" 
+           srcset="/icons/icon-48x48.png 1x, /icons/icon-96x96.png 2x" 
+           alt="شعار دليل المنزلة والمطرية الرقمي" 
+           width="36" height="36" 
+           decoding="async" 
+           class="header__logo-img"
+           onerror="if(!this.dataset.erred){this.dataset.erred='1';this.src='/icons/icon-48x48.png';}else if(!this.dataset.erred2){this.dataset.erred2='1';this.src='/favicon-48x48.png';}"/>
       <div class="header__logo-text">
         <span class="header__logo-name">دليل المنزلة والمطرية</span>
       </div>
@@ -194,7 +200,7 @@ function _footerHTML() {
     <div class="footer__grid">
       <div class="footer__brand">
         <a href="/index.html" class="footer__logo">
-          <img src="./icons/icon-48x48.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="40" height="40" loading="lazy" decoding="async"/>
+          <img src="/icons/icon-96x96.png" alt="شعار دليل المنزلة والمطرية الرقمي" width="40" height="40" loading="lazy" decoding="async" onerror="this.src='/icons/icon-48x48.png'"/>
           <span class="footer__logo-name">دليل المنزلة والمطرية الرقمي</span>
         </a>
         <p class="footer__description">
@@ -284,7 +290,7 @@ function _pwaBannerHTML() {
 <div class="pwa-banner" id="pwa-banner" hidden role="dialog" aria-label="تثبيت تطبيق المنزلة والمطرية الرقمي">
   <div class="pwa-banner__rect">
     <div class="pwa-banner__lead">
-      <img src="./icons/icon-96x96.png" alt="دليل المنزلة والمطرية" class="pwa-banner__rect-icon" width="42" height="42" loading="eager" decoding="async" />
+      <img src="/icons/icon-96x96.png" alt="دليل المنزلة والمطرية" class="pwa-banner__rect-icon" width="42" height="42" loading="eager" decoding="async" onerror="this.src='/icons/icon-48x48.png'" />
       <div class="pwa-banner__rect-text">
         <strong class="pwa-banner__rect-title">ثبت تطبيق المنزلة والمطرية الرقمي</strong>
         <span class="pwa-banner__rect-desc">وخليك دايماً متابع</span>
@@ -720,9 +726,9 @@ function _renderUser(user) {
 
         <div style="position:relative">
           <button class="header__user-btn" id="usr-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="${_a(user.photoURL || './icons/icon-72x72.png')}"
+            <img src="${_a(user.photoURL || '/icons/icon-72x72.png')}"
                  class="header__avatar" width="32" height="32"
-                 onerror="this.src='./icons/icon-72x72.png'"
+                 onerror="this.src='/icons/icon-72x72.png'"
                  alt="${_h(user.name)}"/>
             <span class="header__user-name">${_h((user.name||'').split(' ')[0])}</span>
             <span aria-hidden="true">▾</span>
@@ -783,7 +789,7 @@ export async function openDashboardMoreModal(user = null) {
   const isLoggedIn = Boolean(currentUser && (currentUser.uid || currentUser.id));
   const isUserAdmin = isLoggedIn && isAdmin(currentUser);
   const userName = isLoggedIn ? (currentUser.name || currentUser.displayName || 'صاحب النشاط') : 'زائر كريم';
-  const userPhoto = isLoggedIn ? (currentUser.photoURL || './icons/icon-72x72.png') : './icons/icon-72x72.png';
+  const userPhoto = isLoggedIn ? (currentUser.photoURL || '/icons/icon-72x72.png') : '/icons/icon-72x72.png';
   const isDashboardPage = typeof window !== 'undefined' && (window.location.pathname.endsWith('dashboard.html') || window.location.pathname.endsWith('/dashboard.html'));
 
   const content = isLoggedIn ? `
@@ -791,7 +797,7 @@ export async function openDashboardMoreModal(user = null) {
       <!-- User Info Card -->
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surface-2,#F8FAFC);border-radius:14px;margin-bottom:12px;border:1px solid var(--border,#E2E8F0)">
         <div style="display:flex;align-items:center;gap:12px">
-          <img src="${_a(userPhoto)}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${_h(userName)}" onerror="this.src='./icons/icon-72x72.png'"/>
+          <img src="${_a(userPhoto)}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${_h(userName)}" onerror="this.src='/icons/icon-72x72.png'"/>
           <div>
             <div style="font-weight:800;font-size:0.98rem;color:var(--text-primary,#0F172A)">${_h(userName)}</div>
             <div style="font-size:0.8rem;color:var(--text-muted,#64748B)">${isUserAdmin ? 'مدير المنصة ⭐' : 'صاحب حساب تجاري'}</div>

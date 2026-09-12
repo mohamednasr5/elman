@@ -2,7 +2,13 @@ import{initAuth as X,onAuthStateChange as Z,signOut as j,waitForAuth as G,isAdmi
 <header class="header" id="site-header" role="banner">
   <div class="container header__inner">
     <a href="/index.html" class="header__logo" aria-label="\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A">
-      <img src="./icons/icon-48x48.png" alt="\u0634\u0639\u0627\u0631 \u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A" width="36" height="36" decoding="async" class="header__logo-img"/>
+      <img src="/icons/icon-96x96.png" 
+           srcset="/icons/icon-48x48.png 1x, /icons/icon-96x96.png 2x" 
+           alt="\u0634\u0639\u0627\u0631 \u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A" 
+           width="36" height="36" 
+           decoding="async" 
+           class="header__logo-img"
+           onerror="if(!this.dataset.erred){this.dataset.erred='1';this.src='/icons/icon-48x48.png';}else if(!this.dataset.erred2){this.dataset.erred2='1';this.src='/favicon-48x48.png';}"/>
       <div class="header__logo-text">
         <span class="header__logo-name">\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629</span>
       </div>
@@ -141,7 +147,7 @@ import{initAuth as X,onAuthStateChange as Z,signOut as j,waitForAuth as G,isAdmi
     <div class="footer__grid">
       <div class="footer__brand">
         <a href="/index.html" class="footer__logo">
-          <img src="./icons/icon-48x48.png" alt="\u0634\u0639\u0627\u0631 \u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A" width="40" height="40" loading="lazy" decoding="async"/>
+          <img src="/icons/icon-96x96.png" alt="\u0634\u0639\u0627\u0631 \u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A" width="40" height="40" loading="lazy" decoding="async" onerror="this.src='/icons/icon-48x48.png'"/>
           <span class="footer__logo-name">\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A</span>
         </a>
         <p class="footer__description">
@@ -227,7 +233,7 @@ import{initAuth as X,onAuthStateChange as Z,signOut as j,waitForAuth as G,isAdmi
 <div class="pwa-banner" id="pwa-banner" hidden role="dialog" aria-label="\u062A\u062B\u0628\u064A\u062A \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A">
   <div class="pwa-banner__rect">
     <div class="pwa-banner__lead">
-      <img src="./icons/icon-96x96.png" alt="\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629" class="pwa-banner__rect-icon" width="42" height="42" loading="eager" decoding="async" />
+      <img src="/icons/icon-96x96.png" alt="\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629" class="pwa-banner__rect-icon" width="42" height="42" loading="eager" decoding="async" onerror="this.src='/icons/icon-48x48.png'" />
       <div class="pwa-banner__rect-text">
         <strong class="pwa-banner__rect-title">\u062B\u0628\u062A \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A</strong>
         <span class="pwa-banner__rect-desc">\u0648\u062E\u0644\u064A\u0643 \u062F\u0627\u064A\u0645\u0627\u064B \u0645\u062A\u0627\u0628\u0639</span>
@@ -247,9 +253,9 @@ import{initAuth as X,onAuthStateChange as Z,signOut as j,waitForAuth as G,isAdmi
 
         <div style="position:relative">
           <button class="header__user-btn" id="usr-btn" aria-haspopup="true" aria-expanded="false">
-            <img src="${O(a.photoURL||"./icons/icon-72x72.png")}"
+            <img src="${O(a.photoURL||"/icons/icon-72x72.png")}"
                  class="header__avatar" width="32" height="32"
-                 onerror="this.src='./icons/icon-72x72.png'"
+                 onerror="this.src='/icons/icon-72x72.png'"
                  alt="${P(a.name)}"/>
             <span class="header__user-name">${P((a.name||"").split(" ")[0])}</span>
             <span aria-hidden="true">\u25BE</span>
@@ -265,12 +271,12 @@ import{initAuth as X,onAuthStateChange as Z,signOut as j,waitForAuth as G,isAdmi
             <button class="header__dropdown-item" id="logout-btn" role="menuitem" style="color:var(--danger)">\u{1F6AA} \u062E\u0631\u0648\u062C</button>
           </div>
         </div>
-      </div>`;const i=document.getElementById("usr-btn"),t=document.getElementById("usr-dd");i&&t&&(i.addEventListener("click",e=>{if(e.preventDefault(),e.stopPropagation(),window.innerWidth<769){openDashboardMoreModal(a);return}const s=t.classList.contains("open");t.classList.toggle("open",!s),i.setAttribute("aria-expanded",s?"false":"true")}),document.addEventListener("click",e=>{!e.target.closest("#usr-btn")&&!e.target.closest("#usr-dd")&&(t.classList.remove("open"),i.setAttribute("aria-expanded","false"))})),document.getElementById("logout-btn")?.addEventListener("click",async()=>{await j(),p.success("\u062A\u0645 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C \u0628\u0646\u062C\u0627\u062D"),location.reload()})}else n.innerHTML='<a href="login.html" class="btn btn-primary btn-sm"><span>\u{1F511}</span> \u062F\u062E\u0648\u0644</a>'}export async function openDashboardMoreModal(a=null){const n=a||K(),i=!!(n&&(n.uid||n.id)),t=i&&$(n),e=i?n.name||n.displayName||"\u0635\u0627\u062D\u0628 \u0627\u0644\u0646\u0634\u0627\u0637":"\u0632\u0627\u0626\u0631 \u0643\u0631\u064A\u0645",s=i&&n.photoURL||"./icons/icon-72x72.png",o=typeof window<"u"&&(window.location.pathname.endsWith("dashboard.html")||window.location.pathname.endsWith("/dashboard.html")),c=i?`
+      </div>`;const i=document.getElementById("usr-btn"),t=document.getElementById("usr-dd");i&&t&&(i.addEventListener("click",e=>{if(e.preventDefault(),e.stopPropagation(),window.innerWidth<769){openDashboardMoreModal(a);return}const s=t.classList.contains("open");t.classList.toggle("open",!s),i.setAttribute("aria-expanded",s?"false":"true")}),document.addEventListener("click",e=>{!e.target.closest("#usr-btn")&&!e.target.closest("#usr-dd")&&(t.classList.remove("open"),i.setAttribute("aria-expanded","false"))})),document.getElementById("logout-btn")?.addEventListener("click",async()=>{await j(),p.success("\u062A\u0645 \u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062E\u0631\u0648\u062C \u0628\u0646\u062C\u0627\u062D"),location.reload()})}else n.innerHTML='<a href="login.html" class="btn btn-primary btn-sm"><span>\u{1F511}</span> \u062F\u062E\u0648\u0644</a>'}export async function openDashboardMoreModal(a=null){const n=a||K(),i=!!(n&&(n.uid||n.id)),t=i&&$(n),e=i?n.name||n.displayName||"\u0635\u0627\u062D\u0628 \u0627\u0644\u0646\u0634\u0627\u0637":"\u0632\u0627\u0626\u0631 \u0643\u0631\u064A\u0645",s=i&&n.photoURL||"/icons/icon-72x72.png",o=typeof window<"u"&&(window.location.pathname.endsWith("dashboard.html")||window.location.pathname.endsWith("/dashboard.html")),c=i?`
     <div class="more-menu-container" style="direction:rtl;text-align:right">
       <!-- User Info Card -->
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surface-2,#F8FAFC);border-radius:14px;margin-bottom:12px;border:1px solid var(--border,#E2E8F0)">
         <div style="display:flex;align-items:center;gap:12px">
-          <img src="${O(s)}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${P(e)}" onerror="this.src='./icons/icon-72x72.png'"/>
+          <img src="${O(s)}" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid var(--primary,#1B4F72)" alt="${P(e)}" onerror="this.src='/icons/icon-72x72.png'"/>
           <div>
             <div style="font-weight:800;font-size:0.98rem;color:var(--text-primary,#0F172A)">${P(e)}</div>
             <div style="font-size:0.8rem;color:var(--text-muted,#64748B)">${t?"\u0645\u062F\u064A\u0631 \u0627\u0644\u0645\u0646\u0635\u0629 \u2B50":"\u0635\u0627\u062D\u0628 \u062D\u0633\u0627\u0628 \u062A\u062C\u0627\u0631\u064A"}</div>

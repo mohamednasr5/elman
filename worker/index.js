@@ -4604,9 +4604,12 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
             ? url.pathname.replace('/p/', '').replace(/\/+$/, '')
             : (url.searchParams.get('slug') || url.searchParams.get('id') || '');
 
-        // For /place/:slug, first check if a root page was requested under /place/ (e.g. /place/popular.html)
+        // For /place/:slug, check if a root page or static asset was requested under /place/ (e.g. /place/icons/icon-48x48.png)
         if (url.pathname.startsWith('/place/')) {
-          if (slug.endsWith('.html') || slug.includes('.html')) {
+          const isAssetOrStatic = slug.includes('.html') || 
+            /\.(png|jpe?g|webp|gif|svg|ico|css|js|webmanifest|json|txt|xml)$/i.test(slug) ||
+            slug.startsWith('icons/') || slug.startsWith('assets/') || slug.startsWith('src/');
+          if (isAssetOrStatic) {
             const cleanTarget = slug.split('?')[0].replace(/^\/+/, '');
             return Response.redirect(`${url.origin}/${cleanTarget}`, 301);
           }
