@@ -4980,8 +4980,8 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
           if (pageRes.ok) {
             let html = await pageRes.text();
-            const canonicalClean = `${url.origin}${url.pathname}`;
-            const alternateAr = `${url.origin}${url.pathname.replace(/^\/en(\/|$)/, '/$1') || '/'}`;
+            const cleanArSuffix = url.pathname.replace(/^\/en(?:\/|$)/, '/') || '/';
+            const alternateAr = `${url.origin}${cleanArSuffix.startsWith('/') ? cleanArSuffix : '/' + cleanArSuffix}`;
             const alternateTags = `
   <link rel="alternate" hreflang="en" href="${canonicalClean}" />
   <link rel="alternate" hreflang="ar" href="${alternateAr}" />
