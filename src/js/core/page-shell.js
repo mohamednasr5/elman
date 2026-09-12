@@ -1,4 +1,4 @@
-import{initAuth as X,onAuthStateChange as Z,signOut as j,waitForAuth as G,isAdmin as $,getCurrentUser as K,getClientIp as ee,signInWithGoogle as te}from"./auth.js";import{toast as p}from"../ui/components/Toast.js";function ae(a){const n=[["/index.html","\u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629"],["/popular.html","\u0627\u0644\u0623\u0643\u062B\u0631 \u0634\u0639\u0628\u064A\u0629 \u{1F525}"],["/places.html","\u0627\u0644\u0623\u0645\u0627\u0643\u0646"],["/categories.html","\u0627\u0644\u062A\u0635\u0646\u064A\u0641\u0627\u062A"],["/offers.html","\u0627\u0644\u0639\u0631\u0648\u0636"],["/now.html","\u0637\u0644\u0628\u0627\u062A \u0623\u0647\u0627\u0644\u064A\u0646\u0627 \u{1F91D}"],["/around-me.html","\u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u064A \u{1F9ED}"],["/favorites.html","\u2764\uFE0F \u0627\u0644\u0645\u0641\u0636\u0644\u0629"]],i=e=>String(e||"").replace(/^\/+/,""),t=i(a);return`
+import{initAuth as X,onAuthStateChange as Z,signOut as j,waitForAuth as G,isAdmin as $,getCurrentUser as K,getClientIp as ee,signInWithGoogle as te}from"./auth.js";import{toast as p}from"../ui/components/Toast.js";function ae(a){const n=[["/index.html","\u0627\u0644\u0631\u0626\u064A\u0633\u064A\u0629",""],["/popular.html","\u0627\u0644\u0623\u0643\u062B\u0631 \u0634\u0639\u0628\u064A\u0629","\u{1F525}"],["/places.html","\u0627\u0644\u0623\u0645\u0627\u0643\u0646",""],["/categories.html","\u0627\u0644\u062A\u0635\u0646\u064A\u0641\u0627\u062A",""],["/offers.html","\u0627\u0644\u0639\u0631\u0648\u0636",""],["/now.html","\u0637\u0644\u0628\u0627\u062A \u0623\u0647\u0627\u0644\u064A\u0646\u0627","\u{1F91D}"],["/around-me.html","\u0628\u0627\u0644\u0642\u0631\u0628 \u0645\u0646\u064A","\u{1F9ED}"],["/favorites.html","\u0627\u0644\u0645\u0641\u0636\u0644\u0629","\u2764\uFE0F"]],i=e=>String(e||"").replace(/^\/+/,""),t=i(a);return`
 <header class="header" id="site-header" role="banner">
   <div class="container header__inner">
     <a href="/index.html" class="header__logo" aria-label="\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629 \u0627\u0644\u0631\u0642\u0645\u064A">
@@ -17,7 +17,7 @@ import{initAuth as X,onAuthStateChange as Z,signOut as j,waitForAuth as G,isAdmi
           </svg>
         </button>
         <input type="search" id="header-search-input" class="header-search-input"
-               placeholder="\u0627\u0628\u062D\u062B \u0639\u0646 \u0645\u0643\u0627\u0646\u060C \u062F\u0643\u062A\u0648\u0631\u060C \u0635\u064A\u062F\u0644\u064A\u0629\u060C \u0645\u0637\u0639\u0645..."
+               placeholder="\u0627\u0628\u062D\u062B \u0639\u0646 \u0645\u0643\u0627\u0646\u060C \u062F\u0643\u062A\u0648\u0631\u060C \u062E\u062F\u0645\u0629..."
                autocomplete="off" aria-label="\u0627\u0628\u062D\u062B \u0641\u064A \u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629"/>
         <button type="button" class="header-search-clear-btn" id="header-search-clear" aria-label="\u0645\u0633\u062D \u0627\u0644\u0628\u062D\u062B" title="\u0645\u0633\u062D">\u2715</button>
       </div>
@@ -39,7 +39,10 @@ import{initAuth as X,onAuthStateChange as Z,signOut as j,waitForAuth as G,isAdmi
     </div>
 
     <nav class="header__nav" aria-label="\u0627\u0644\u062A\u0646\u0642\u0644 \u0627\u0644\u0631\u0626\u064A\u0633\u064A">
-      ${n.map(([e,s])=>`<a href="${e}" class="header__nav-link${i(e)===t?" active":""}">${s}</a>`).join("")}
+      ${n.map(([e,s,o])=>`<a href="${e}" class="header__nav-link${i(e)===t?" active":""}">
+          <span>${s}</span>
+          ${o?`<span class="header__nav-emoji">${o}</span>`:""}
+        </a>`).join("")}
     </nav>
     
     <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="\u062A\u0628\u062F\u064A\u0644 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0644\u064A\u0644\u064A \u0648\u0627\u0644\u0646\u0647\u0627\u0631\u064A" title="\u062A\u0628\u062F\u064A\u0644 \u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u0644\u064A\u0644\u064A / \u0627\u0644\u0641\u0627\u062A\u062D">

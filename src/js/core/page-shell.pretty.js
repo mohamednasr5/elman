@@ -12,14 +12,14 @@ import { toast } from '../ui/components/Toast.js';
 ───────────────────────────────────────────────────────── */
 function _headerHTML(active) {
   const links = [
-    ['/index.html',      'الرئيسية'],
-    ['/popular.html',    'الأكثر شعبية 🔥'],
-    ['/places.html',     'الأماكن'],
-    ['/categories.html', 'التصنيفات'],
-    ['/offers.html',     'العروض'],
-    ['/now.html',        'طلبات أهالينا 🤝'],
-    ['/around-me.html',  'بالقرب مني 🧭'],
-    ['/favorites.html',  '❤️ المفضلة'],
+    ['/index.html',      'الرئيسية',      ''],
+    ['/popular.html',    'الأكثر شعبية',  '🔥'],
+    ['/places.html',     'الأماكن',       ''],
+    ['/categories.html', 'التصنيفات',     ''],
+    ['/offers.html',     'العروض',        ''],
+    ['/now.html',        'طلبات أهالينا', '🤝'],
+    ['/around-me.html',  'بالقرب مني',    '🧭'],
+    ['/favorites.html',  'المفضلة',       '❤️'],
   ];
 
   const norm = (p) => String(p || '').replace(/^\/+/, '');
@@ -44,7 +44,7 @@ function _headerHTML(active) {
           </svg>
         </button>
         <input type="search" id="header-search-input" class="header-search-input"
-               placeholder="ابحث عن مكان، دكتور، صيدلية، مطعم..."
+               placeholder="ابحث عن مكان، دكتور، خدمة..."
                autocomplete="off" aria-label="ابحث في دليل المنزلة والمطرية"/>
         <button type="button" class="header-search-clear-btn" id="header-search-clear" aria-label="مسح البحث" title="مسح">✕</button>
       </div>
@@ -66,8 +66,11 @@ function _headerHTML(active) {
     </div>
 
     <nav class="header__nav" aria-label="التنقل الرئيسي">
-      ${links.map(([file, label]) =>
-        `<a href="${file}" class="header__nav-link${norm(file) === activeNorm ? ' active' : ''}">${label}</a>`
+      ${links.map(([file, label, emoji]) =>
+        `<a href="${file}" class="header__nav-link${norm(file) === activeNorm ? ' active' : ''}">
+          <span>${label}</span>
+          ${emoji ? `<span class="header__nav-emoji">${emoji}</span>` : ''}
+        </a>`
       ).join('')}
     </nav>
     
