@@ -64,3 +64,5 @@ jobs:
       - name: Deploy Worker
         if: steps.auth_check.outputs.has_token == 'true'
         run: npx wrangler@latest deploy
+
+# Production deployment trigger verified by maintainer.
