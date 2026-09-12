@@ -28,25 +28,21 @@ const AI_MODELS = [
  * Call OpenRouter with automatic multi-model fallback cascade
  */
 async function callOpenRouterWithFallback(prompt, systemPrompt = 'أنت مساعد ذكاء اصطناعي خبير في الترجمة الاحترافية والسيو التجاري والمحلي في مصر.') {
-  for (const model of AI_MODELS) {
-    try {
-      const workerRes = await fetch(`${WORKER_URL}/api/ai/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, systemPrompt, model }),
-        signal: AbortSignal.timeout(7000)
-      });
-      if (workerRes.ok) {
-        const data = await workerRes.json();
-        const text = data.result || data.text || data.content || (data.choices && data.choices[0]?.message?.content);
-        if (text && typeof text === 'string' && text.trim()) {
-          return text.trim();
-        }
+  try {
+    const workerRes = await fetch(`${WORKER_URL}/api/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, systemPrompt, models: AI_MODELS }),
+      signal: AbortSignal.timeout(9000)
+    });
+    if (workerRes.ok) {
+      const data = await workerRes.json();
+      const text = data.result || data.text || data.content || (data.choices && data.choices[0]?.message?.content);
+      if (text && typeof text === 'string' && text.trim()) {
+        return text.trim();
       }
-    } catch (_) {
-      // Try next model in cascade
     }
-  }
+  } catch (_) {}
   return null;
 }
 

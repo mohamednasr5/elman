@@ -138,17 +138,41 @@ export function initPlaceFormWizard() {
   `;
   form.prepend(header);
 
-  const oldNav = form.querySelector('.place-wizard-nav');
-  oldNav?.remove();
+  const oldFooter = form.querySelector('.place-wizard-footer-panel') || form.querySelector('.place-wizard-nav');
+  oldFooter?.remove();
 
-  const nav = document.createElement('div');
-  nav.className = 'place-wizard-nav';
-  nav.innerHTML = `
-    <button type="button" class="place-wizard-btn place-wizard-btn--back" id="place-wizard-back">السابق</button>
-    <div class="place-wizard-nav__hint" id="place-wizard-hint">بياناتك محفوظة داخل النموذج أثناء التنقل</div>
-    <button type="button" class="place-wizard-btn place-wizard-btn--next" id="place-wizard-next">التالي <span>←</span></button>
+  const footerPanel = document.createElement('div');
+  footerPanel.className = 'place-wizard-footer-panel';
+  footerPanel.innerHTML = `
+    <div class="place-wizard-bottom-stepper">
+      <div class="place-wizard-bottom-stepper__header">
+        <div class="place-wizard-bottom-stepper__title">
+          <span class="place-wizard-bottom-badge" id="place-wizard-bottom-badge">خطوة 1 من ${stepData.length}</span>
+          <strong id="place-wizard-bottom-step-name">${escapeWizardText(stepData[0].title)}</strong>
+        </div>
+        <div class="place-wizard-bottom-stats">
+          <span class="place-wizard-bottom-percent" id="place-wizard-bottom-percent">${Math.round((1 / stepData.length) * 100)}%</span>
+        </div>
+      </div>
+      <div class="place-wizard-bottom-track">
+        <div class="place-wizard-bottom-fill" id="place-wizard-bottom-fill" style="width:${Math.round((1 / stepData.length) * 100)}%"></div>
+      </div>
+      <div class="place-wizard-progress place-wizard-progress--bottom" id="place-wizard-bottom-progress" aria-label="شريط الخطوات بالأسفل">
+        ${stepData.map((s,i)=>`
+          <button type="button" class="place-wizard-progress__item place-wizard-progress__item--bottom ${i===0?'is-active':''}" data-wizard-step="${i}" aria-label="${escapeWizardText(s.title)}" title="${escapeWizardText(s.title)}">
+            <span>${i+1}</span>
+            <b>${escapeWizardText(s.title)}</b>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="place-wizard-nav">
+      <button type="button" class="place-wizard-btn place-wizard-btn--back" id="place-wizard-back">السابق</button>
+      <div class="place-wizard-nav__hint" id="place-wizard-hint">${escapeWizardText(stepData[0].hint)}</div>
+      <button type="button" class="place-wizard-btn place-wizard-btn--next" id="place-wizard-next">التالي <span>←</span></button>
+    </div>
   `;
-  if (submitRow) form.insertBefore(nav, submitRow); else form.appendChild(nav);
+  if (submitRow) form.insertBefore(footerPanel, submitRow); else form.appendChild(footerPanel);
 
   if (!document.getElementById('premium-place-wizard-style')) {
     const style = document.createElement('style');
@@ -164,30 +188,59 @@ export function initPlaceFormWizard() {
       .place-wizard-counter{min-width:62px;height:62px;border-radius:18px;background:#fff;border:1px solid #bae6fd;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#64748b;box-shadow:0 8px 22px rgba(2,132,199,.1);flex:0 0 auto}
       .place-wizard-counter strong{font-size:24px;line-height:1;color:#0284c7}
       .place-wizard-progress{display:grid;grid-template-columns:repeat(${Math.min(stepData.length,7)},1fr);gap:6px;margin-top:18px;position:relative;z-index:1}
-      .place-wizard-progress__item{min-width:0;border:0;background:transparent;padding:4px;cursor:pointer;color:#94a3b8;display:flex;align-items:center;gap:6px;text-align:right;font:inherit;border-radius:8px}
+      .place-wizard-progress__item{min-width:0;border:0;background:transparent;padding:4px;cursor:pointer;color:#94a3b8;display:flex;align-items:center;gap:6px;text-align:right;font:inherit;border-radius:8px;transition:.2s}
       .place-wizard-progress__item span{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#e2e8f0;color:#64748b;font-size:11px;font-weight:900;flex:0 0 auto;transition:.25s}
       .place-wizard-progress__item b{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}
       .place-wizard-progress__item.is-active,.place-wizard-progress__item.is-done{color:#0369a1}
-      .place-wizard-progress__item.is-active span,.place-wizard-progress__item.is-done span{background:linear-gradient(135deg,#0284c7,#38bdf8);color:#fff;box-shadow:0 5px 13px rgba(2,132,199,.2)}
+      .place-wizard-progress__item.is-active span{background:linear-gradient(135deg,#0284c7,#38bdf8);color:#fff;box-shadow:0 5px 13px rgba(2,132,199,.25)}
+      .place-wizard-progress__item.is-done span{background:#0284c7;color:#fff}
       .premium-place-wizard-form .form-section{display:none!important;opacity:0;transform:translateX(-18px)}
       .premium-place-wizard-form .form-section.place-wizard-active{display:block!important;opacity:1!important;transform:none!important;animation:placeWizardIn .42s cubic-bezier(.2,.8,.2,1) forwards}
       .premium-place-wizard-form .form-section.place-wizard-active .form-section__title{margin-top:0}
       .place-wizard-scanner{margin-bottom:18px}
       .premium-place-wizard-form .place-wizard-scanner{display:none!important}
       .premium-place-wizard-form .place-wizard-scanner.place-wizard-show-scanner{display:block!important;animation:placeWizardIn .4s ease both}
-      .place-wizard-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 16px;padding:14px;border:1px solid #e2e8f0;border-radius:18px;background:rgba(255,255,255,.88);box-shadow:0 10px 28px rgba(15,23,42,.05);position:sticky;bottom:8px;z-index:20}
-      .place-wizard-btn{border:0;border-radius:12px;padding:11px 19px;font-weight:900;font-size:13px;cursor:pointer;transition:.22s}
+      .place-wizard-footer-panel{margin:24px 0 16px;padding:16px 18px 14px;border:1px solid rgba(2,132,199,.18);border-radius:20px;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);box-shadow:0 12px 36px rgba(15,23,42,.08);position:sticky;bottom:12px;z-index:25}
+      .place-wizard-bottom-stepper{margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #f1f5f9}
+      .place-wizard-bottom-stepper__header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+      .place-wizard-bottom-stepper__title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+      .place-wizard-bottom-badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:#e0f2fe;color:#0284c7;font-size:11px;font-weight:900}
+      .place-wizard-bottom-stepper__title strong{font-size:13.5px;color:#0f172a;font-weight:800}
+      .place-wizard-bottom-percent{font-size:12.5px;font-weight:900;color:#0284c7}
+      .place-wizard-bottom-track{height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:10px}
+      .place-wizard-bottom-fill{height:100%;background:linear-gradient(90deg,#0284c7,#38bdf8);border-radius:999px;transition:width .35s cubic-bezier(.4,0,.2,1)}
+      .place-wizard-progress--bottom{display:grid;grid-template-columns:repeat(${Math.min(stepData.length,7)},1fr);gap:6px}
+      .place-wizard-progress__item--bottom{padding:5px 6px}
+      .place-wizard-progress__item--bottom:hover{background:#f1f5f9}
+      .place-wizard-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0}
+      .place-wizard-btn{border:0;border-radius:12px;padding:11px 22px;font-weight:900;font-size:13.5px;cursor:pointer;transition:.22s;display:inline-flex;align-items:center;gap:8px}
       .place-wizard-btn--next{background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;box-shadow:0 8px 20px rgba(2,132,199,.22)}
       .place-wizard-btn--next:hover{transform:translateY(-2px);box-shadow:0 11px 25px rgba(2,132,199,.28)}
+      .place-wizard-btn--submit{background:linear-gradient(135deg,#16a34a,#15803d)!important;color:#fff!important;box-shadow:0 8px 20px rgba(22,163,74,.3)!important}
       .place-wizard-btn--back{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}
       .place-wizard-btn--back:hover{background:#f1f5f9}
       .place-wizard-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
-      .place-wizard-nav__hint{font-size:10.5px;color:#94a3b8;text-align:center;flex:1}
+      .place-wizard-nav__hint{font-size:11px;color:#64748b;text-align:center;flex:1}
       .place-wizard-submit-row{display:none!important}
-      .premium-place-wizard-form.place-wizard-last-step .place-wizard-submit-row{display:flex!important;animation:placeWizardIn .35s ease both}
-      .premium-place-wizard-form.place-wizard-last-step .place-wizard-nav{display:none!important}
       @keyframes placeWizardIn{from{opacity:0;transform:translateX(-18px) translateY(8px)}to{opacity:1;transform:none}}
-      @media(max-width:700px){.place-wizard-header{padding:18px 15px}.place-wizard-title{font-size:19px}.place-wizard-subtitle{font-size:11.5px}.place-wizard-header__top{align-items:flex-start}.place-wizard-counter{width:52px;height:52px;min-width:52px}.place-wizard-counter strong{font-size:20px}.place-wizard-progress{grid-template-columns:repeat(${Math.min(stepData.length,4)},1fr);gap:4px}.place-wizard-progress__item b{display:none}.place-wizard-progress__item{justify-content:center}.place-wizard-nav{position:sticky;bottom:8px;z-index:20}.place-wizard-nav__hint{font-size:9px}.place-wizard-btn{padding:10px 14px}}
+      @media(max-width:768px){
+        .place-wizard-header{padding:18px 15px}
+        .place-wizard-title{font-size:19px}
+        .place-wizard-subtitle{font-size:11.5px}
+        .place-wizard-header__top{align-items:flex-start}
+        .place-wizard-counter{width:52px;height:52px;min-width:52px}
+        .place-wizard-counter strong{font-size:20px}
+        .place-wizard-progress{grid-template-columns:repeat(${Math.min(stepData.length,4)},1fr);gap:4px}
+        .place-wizard-progress__item b{display:none}
+        .place-wizard-progress__item{justify-content:center}
+        .place-wizard-footer-panel{padding:12px 14px 10px;bottom:6px;border-radius:16px}
+        .place-wizard-progress--bottom{display:flex;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;gap:6px}
+        .place-wizard-progress--bottom::-webkit-scrollbar{display:none}
+        .place-wizard-progress__item--bottom{flex:0 0 auto;padding:4px 8px;background:#f8fafc}
+        .place-wizard-progress__item--bottom b{display:inline-block;font-size:10.5px}
+        .place-wizard-nav__hint{font-size:9.5px}
+        .place-wizard-btn{padding:10px 14px;font-size:12.5px}
+      }
     `;
     document.head.appendChild(style);
   }
@@ -197,7 +250,10 @@ export function initPlaceFormWizard() {
   const hintEl = document.getElementById('place-wizard-hint');
   const backBtn = document.getElementById('place-wizard-back');
   const nextBtn = document.getElementById('place-wizard-next');
-  const progressItems = Array.from(form.querySelectorAll('.place-wizard-progress__item'));
+  const bottomBadge = document.getElementById('place-wizard-bottom-badge');
+  const bottomStepName = document.getElementById('place-wizard-bottom-step-name');
+  const bottomPercent = document.getElementById('place-wizard-bottom-percent');
+  const bottomFill = document.getElementById('place-wizard-bottom-fill');
 
   const validateStep = () => {
     const section = stepData[current]?.section;
@@ -252,15 +308,42 @@ export function initPlaceFormWizard() {
     if (currentEl) currentEl.textContent = String(current + 1);
     if (hintEl) hintEl.textContent = stepData[current].hint;
     if (backBtn) backBtn.disabled = current === 0;
+
+    const pct = Math.round(((current + 1) / stepData.length) * 100);
+    if (bottomBadge) bottomBadge.textContent = `خطوة ${current + 1} من ${stepData.length}`;
+    if (bottomStepName) bottomStepName.textContent = stepData[current].title;
+    if (bottomPercent) bottomPercent.textContent = `${pct}%`;
+    if (bottomFill) bottomFill.style.width = `${pct}%`;
+
     if (nextBtn) {
       const last = current === stepData.length - 1;
       nextBtn.innerHTML = last ? '✓ مراجعة وحفظ النشاط' : 'التالي <span>←</span>';
+      nextBtn.classList.toggle('place-wizard-btn--submit', last);
       form.classList.toggle('place-wizard-last-step', last);
     }
-    progressItems.forEach((item, i) => {
-      item.classList.toggle('is-active', i === current);
-      item.classList.toggle('is-done', i < current);
+
+    const allProgressItems = Array.from(form.querySelectorAll('.place-wizard-progress__item'));
+    allProgressItems.forEach((item) => {
+      const i = Number(item.dataset.wizardStep);
+      const isAct = (i === current);
+      const isDone = (i < current);
+      item.classList.toggle('is-active', isAct);
+      item.classList.toggle('is-done', isDone);
+      const bubble = item.querySelector('span');
+      if (bubble) {
+        if (isDone) {
+          bubble.innerHTML = '✓';
+        } else {
+          bubble.textContent = String(i + 1);
+        }
+      }
     });
+
+    const activeBottomChip = footerPanel.querySelector(`.place-wizard-progress__item--bottom[data-wizard-step="${current}"]`);
+    if (activeBottomChip) {
+      activeBottomChip.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    }
+
     if (direction !== 0) {
       const active = stepData[current].section;
       active.style.setProperty('--wizard-direction', direction > 0 ? '-18px' : '18px');
@@ -281,14 +364,22 @@ export function initPlaceFormWizard() {
       submitButton?.click();
     }
   });
-  progressItems.forEach(item => item.addEventListener('click', () => {
-    const target = Number(item.dataset.wizardStep);
-    if (target <= current) {
-      render(target, target < current ? -1 : 0);
-    } else {
-      if (validateStep()) render(target, 1);
-    }
-  }));
+
+  const bindStepperClick = (container) => {
+    container?.querySelectorAll('.place-wizard-progress__item').forEach(item => {
+      item.addEventListener('click', () => {
+        const target = Number(item.dataset.wizardStep);
+        if (target <= current) {
+          render(target, target < current ? -1 : 0);
+        } else {
+          if (validateStep()) render(target, 1);
+        }
+      });
+    });
+  };
+
+  bindStepperClick(header);
+  bindStepperClick(footerPanel);
 
   form.addEventListener('input', () => {
     try { sessionStorage.setItem(WIZARD_KEY, JSON.stringify({ step: current, ts: Date.now() })); } catch (_) {}
