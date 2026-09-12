@@ -21,11 +21,14 @@ export function resolveCategoryLabel(category = '', isEn = false) {
   if (!category) return '';
   if (typeof category === 'object') {
     const slug = category.slug || category.id || category._key || category.categoryId || '';
+    const key = normalizeKey(slug);
     const arabic = category.nameAr || category.name_ar || category.arabicName || category.name || '';
     const english = category.nameEn || category.name_en || category.englishName || '';
-    if (isEn) return english || CATEGORY_NAMES_EN[normalizeKey(slug)] || (hasArabic(arabic) ? '' : arabic) || normalizeKey(slug).replace(/-/g, ' ');
+    const main = resolveMainCategoryLabel(key);
+    const profession = resolveProfessionLabel(key);
+    if (isEn) return english || CATEGORY_NAMES_EN[key] || main?.nameEn || profession?.nameEn || (hasArabic(arabic) ? '' : arabic) || key.replace(/-/g, ' ');
     if (hasArabic(arabic)) return arabic;
-    return resolveCategoryLabel(slug, false);
+    return CATEGORY_NAMES_AR[key] || main?.name || profession?.name || 'خدمات وأنشطة';
   }
   const raw = String(category).trim();
   if (!raw) return '';
