@@ -1,18 +1,19 @@
 ﻿import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
+import { isEnglish, t, localizeUrl } from '../../core/i18n.js';
 /**
  * المنزلة وناسها — Place Detail Page
  * Full production place view with cover, logo, verified badge, working hours,
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=8f57ef0b_v6';
+import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=6a5ed636_v6';
 import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
-import { submitVerificationRequest } from '../../services/places.service.js?v=8f57ef0b_v6';
+import { submitVerificationRequest } from '../../services/places.service.js?v=6a5ed636_v6';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
@@ -281,17 +282,28 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     let userReview = currentUser ? safeReviews.find(review => review.userId === currentUser.uid) : null;
 
     // Track View Count & Profile Visitor safely
+    const isEn = isEnglish();
+    const placeDisplayName = (isEn && (place.nameEn || place.name_en)) ? (place.nameEn || place.name_en) : (place.name || '');
+    const placeDisplayDesc = (isEn && (place.descriptionEn || place.description_en)) ? (place.descriptionEn || place.description_en) : (place.description || '');
+    const placeDisplayAddress = (isEn && (place.addressEn || place.address_en)) ? (place.addressEn || place.address_en) : (place.address || '');
+    const placeDisplayArea = (isEn && (place.areaEn || place.area_en)) ? (place.areaEn || place.area_en) : (isEn ? 'El Manzala' : (place.area || 'المنزلة والمطرية'));
+    const displayServices = (isEn && ((place.servicesEn && place.servicesEn.length) || (place.services_en && place.services_en.length)))
+      ? (place.servicesEn || place.services_en)
+      : (place.services || []);
+
     try { trackPlaceView(place, currentUser); } catch (_) {}
 
     // Update SEO safely for top Google Indexing
     try {
-      const placeSpecialty = place.specialty || catInfo.name || 'دليل الأنشطة';
-      const placeArea = place.area || 'المنزلة والمطرية';
-      const phoneText = place.phone ? `، الهاتف: ${place.phone}` : '';
-      const addressText = place.address ? `، العنوان: ${place.address}` : '';
+      const placeSpecialty = (isEn && (place.customCategoryEn || place.custom_category_en)) ? (place.customCategoryEn || place.custom_category_en) : (place.specialty || catInfo.name || 'دليل الأنشطة');
+      const placeArea = placeDisplayArea;
+      const phoneText = place.phone ? (isEn ? `, Phone: ${place.phone}` : `، الهاتف: ${place.phone}`) : '';
+      const addressText = placeDisplayAddress ? (isEn ? `, Address: ${placeDisplayAddress}` : `، العنوان: ${placeDisplayAddress}`) : '';
       
-      const seoTitle = `${place.name} | دليل المنزلة والمطرية الرقمي`;
-      const seoDesc = `${place.name} في ${placeArea}. ${placeSpecialty}${addressText}${phoneText}. مواعيد العمل، تقييمات العملاء، وأرقام التواصل عبر دليل المنزلة والمطرية الرقمي.`;
+      const seoTitle = isEn ? `${placeDisplayName} | Dalil El Manzala & El Matariya Directory` : `${place.name} | دليل المنزلة والمطرية الرقمي`;
+      const seoDesc = isEn
+        ? `${placeDisplayName} in ${placeArea}. ${placeSpecialty}${addressText}${phoneText}. Working hours, customer reviews, and direct contact via Dalil El Manzala.`
+        : `${place.name} في ${placeArea}. ${placeSpecialty}${addressText}${phoneText}. مواعيد العمل، تقييمات العملاء، وأرقام التواصل عبر دليل المنزلة والمطرية الرقمي.`;
       const rawPlaceSlug = place.slug || place.id;
       const cleanTranslit = generateCleanSlug(place.name);
       const isIdLike = (s) => !s || s.startsWith('p_') || s.startsWith('-P0') || (s.length > 20 && /^[a-zA-Z0-9_-]+$/.test(s));
@@ -305,13 +317,15 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         canonicalSlug = cleanTranslit || place.id;
       }
 
-      const placeCanonical = `https://dalilmanzala.com/place/${encodeURIComponent(canonicalSlug)}`;
+      const placeCanonical = isEn
+        ? `https://dalilmanzala.com/en/place/${encodeURIComponent(canonicalSlug)}`
+        : `https://dalilmanzala.com/place/${encodeURIComponent(canonicalSlug)}`;
 
       // Seamless URL normalization in browser address bar (SEO & user experience)
       try {
         if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
           if (canonicalSlug && !isIdLike(canonicalSlug) && (window.location.pathname.includes('place.html') || window.location.pathname.startsWith('/p/'))) {
-            window.history.replaceState(null, '', `/place/${encodeURIComponent(canonicalSlug)}`);
+            window.history.replaceState(null, '', isEn ? `/en/place/${encodeURIComponent(canonicalSlug)}` : `/place/${encodeURIComponent(canonicalSlug)}`);
           }
         }
       } catch (_) {}
@@ -319,7 +333,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       setMeta({
         title: seoTitle,
         description: seoDesc,
-        keywords: `${place.name}, ${placeSpecialty}, ${placeArea}, دليل المنزلة, دليل المطرية, رقم ${place.name}, عنوان ${place.name}, ${place.tags ? (Array.isArray(place.tags) ? place.tags.join(', ') : place.tags) : ''}`,
+        keywords: `${placeDisplayName}, ${placeSpecialty}, ${placeArea}, دليل المنزلة, دليل المطرية, رقم ${place.name}, عنوان ${place.name}, ${place.tags ? (Array.isArray(place.tags) ? place.tags.join(', ') : place.tags) : ''}`,
         image: place.coverImageUrl || place.cover_image_url || place.logoUrl || place.logo_url,
         url: placeCanonical
       });
@@ -368,21 +382,21 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       <!-- Top Navigation & Return Bar -->
       <div class="container" style="padding-top:var(--space-3);padding-bottom:var(--space-1)">
         <div class="page-back-bar">
-          <button type="button" class="btn-page-back" id="btn-place-back" title="الرجوع للصفحة السابقة">
+          <button type="button" class="btn-page-back" id="btn-place-back" title="${isEn ? 'Go back' : 'الرجوع للصفحة السابقة'}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="19" y1="12" x2="5" y2="12"></line>
               <polyline points="12 19 19 12 12 5"></polyline>
             </svg>
-            <span>رجوع</span>
+            <span>${isEn ? 'Back' : 'رجوع'}</span>
           </button>
           <nav class="page-breadcrumbs" aria-label="مسار التنقل">
-            <a href="index.html">الرئيسية</a>
+            <a href="${localizeUrl('index.html', isEn ? 'en' : 'ar')}">${isEn ? 'Home' : 'الرئيسية'}</a>
             <span class="breadcrumb-sep">/</span>
-            <a href="categories.html">التصنيفات</a>
+            <a href="${localizeUrl('categories.html', isEn ? 'en' : 'ar')}">${isEn ? 'Categories' : 'التصنيفات'}</a>
             <span class="breadcrumb-sep">/</span>
-            <a href="category.html?slug=${encodeURIComponent(catInfo?.slug || place.categoryId || 'other')}">${escHtml(catInfo?.name || 'التصنيف')}</a>
+            <a href="category.html?slug=${encodeURIComponent(catInfo?.slug || place.categoryId || 'other')}">${escHtml(catInfo?.name || (isEn ? 'Category' : 'التصنيف'))}</a>
             <span class="breadcrumb-sep">/</span>
-            <span class="breadcrumb-current">${escHtml(place.name)}</span>
+            <span class="breadcrumb-current">${escHtml(placeDisplayName)}</span>
           </nav>
         </div>
       </div>
@@ -412,7 +426,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               <div class="place-header-card__info">
                 <div class="place-title">
                   <div class="place-title__main">
-                    <h1 class="place-title__name">${escHtml(place.name)}</h1>
+                    <h1 class="place-title__name">${escHtml(placeDisplayName)}</h1>
                     ${(!isAtm && (place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
                     ${place.isVerified ? renderVerifiedBadge() : ''}
                     ${(!isAtm && (place.deliveryType || place.categoryId === 'delivery' || place.categoryId?.includes('delivery') || /توكتوك|تاكسي|شانجي|اتوبيس|وصلي/i.test(place.name || '')) && !/صيدلية|مطعم|كشري|حلواني|سوبر\s*ماركت/i.test(place.name || '')) ? renderDeliveryBadge(place) : ''}
@@ -591,25 +605,25 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
           ` : ''}
 
           <!-- Description -->
-          ${!isAtm && place.description ? `
+          ${!isAtm && placeDisplayDesc ? `
             <section class="info-card">
               <h2 class="info-card__title">
-                <span>📝</span> عن الشخص / المكان / الخدمة
+                <span>📝</span> ${isEn ? 'About this Business' : 'عن الشخص / المكان / الخدمة'}
               </h2>
               <p style="white-space:pre-line;color:var(--text-secondary);line-height:1.8">
-                ${escHtml(place.description)}
+                ${escHtml(placeDisplayDesc)}
               </p>
             </section>
           ` : ''}
 
           <!-- Services / Tags -->
-          ${!isAtm && place.services && place.services.length > 0 ? `
+          ${!isAtm && displayServices && displayServices.length > 0 ? `
             <section class="info-card">
               <h2 class="info-card__title">
-                <span>✨</span> الخدمات والمميزات
+                <span>✨</span> ${isEn ? 'Services & Features' : 'الخدمات والمميزات'}
               </h2>
               <div class="services-tags">
-                ${place.services.map(s => `<span class="chip chip--primary">✓ ${escHtml(s)}</span>`).join('')}
+                ${displayServices.map(s => `<span class="chip chip--primary">✓ ${escHtml(s)}</span>`).join('')}
               </div>
             </section>
           ` : ''}

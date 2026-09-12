@@ -2,6 +2,32 @@
 # Canonical redirect: /index.html → / (prevents duplicate content)
 /index.html  /  301
 
+# Bilingual Clean Routing (/en and /ar)
+/en                 /index.html         200
+/en/                /index.html         200
+/ar                 /index.html         200
+/ar/                /index.html         200
+/en/places          /places.html        200
+/en/places/         /places.html        200
+/ar/places          /places.html        200
+/ar/places/         /places.html        200
+/en/categories      /categories.html    200
+/en/categories/     /categories.html    200
+/ar/categories      /categories.html    200
+/ar/categories/     /categories.html    200
+/en/search          /search.html        200
+/ar/search          /search.html        200
+/en/contact         /contact.html       200
+/ar/contact         /contact.html       200
+/en/offers          /offers.html        200
+/ar/offers          /offers.html        200
+/en/now             /now.html           200
+/ar/now             /now.html           200
+/en/around-me       /around-me.html     200
+/ar/around-me       /around-me.html     200
+/en/free-verification /free-verification.html 200
+/ar/free-verification /free-verification.html 200
+
 # Static Pages Clean Routing
 /admin              /admin.html         200
 /admin/             /admin.html         200

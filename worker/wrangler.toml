@@ -8,11 +8,19 @@ routes = [
   { pattern = "dalilmanzala.com/place/*", zone_name = "dalilmanzala.com" },
   { pattern = "www.dalilmanzala.com/place/*", zone_name = "dalilmanzala.com" },
   { pattern = "dalilmanzala.com/p/*", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/p/*", zone_name = "dalilmanzala.com" },
+  { pattern = "dalilmanzala.com/en/*", zone_name = "dalilmanzala.com" },
+  { pattern = "dalilmanzala.com/en", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/en/*", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/en", zone_name = "dalilmanzala.com" },
+  { pattern = "dalilmanzala.com/ar/*", zone_name = "dalilmanzala.com" },
+  { pattern = "dalilmanzala.com/ar", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/ar/*", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/ar", zone_name = "dalilmanzala.com" },
   { pattern = "dalilmanzala.com/api/*", zone_name = "dalilmanzala.com" },
   { pattern = "dalilmanzala.com/api", zone_name = "dalilmanzala.com" },
   { pattern = "www.dalilmanzala.com/api/*", zone_name = "dalilmanzala.com" },
-  { pattern = "www.dalilmanzala.com/api", zone_name = "dalilmanzala.com" },
-  { pattern = "www.dalilmanzala.com/p/*", zone_name = "dalilmanzala.com" }
+  { pattern = "www.dalilmanzala.com/api", zone_name = "dalilmanzala.com" }
 ]
 
 

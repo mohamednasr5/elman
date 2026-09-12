@@ -913,7 +913,17 @@ try {
           ownerId: result.owner_id || result.ownerId || '',
           ownerEmail: result.owner_email || result.ownerEmail || '',
           mapsLink: result.maps_link || result.mapsLink || '',
+          nameEn: result.name_en || '',
+          name_en: result.name_en || '',
+          descriptionEn: result.description_en || '',
+          description_en: result.description_en || '',
+          addressEn: result.address_en || '',
+          address_en: result.address_en || '',
+          customCategoryEn: result.custom_category_en || '',
+          custom_category_en: result.custom_category_en || '',
           services: parseJson(result.services_json, []),
+          servicesEn: parseJson(result.services_en_json, []),
+          services_en: parseJson(result.services_en_json, []),
           social: parseJson(result.social_json, {}),
           stats: parseJson(result.stats_json, {}),
           working_hours: parseJson(result.working_hours_json, {}),
@@ -1050,7 +1060,17 @@ try {
         ownerId: place.owner_id || place.ownerId || '',
         ownerEmail: place.owner_email || place.ownerEmail || '',
         mapsLink: place.maps_link || place.mapsLink || '',
+        nameEn: place.name_en || '',
+        name_en: place.name_en || '',
+        descriptionEn: place.description_en || '',
+        description_en: place.description_en || '',
+        addressEn: place.address_en || '',
+        address_en: place.address_en || '',
+        customCategoryEn: place.custom_category_en || '',
+        custom_category_en: place.custom_category_en || '',
         services: parseJson(place.services_json, []),
+        servicesEn: parseJson(place.services_en_json, []),
+        services_en: parseJson(place.services_en_json, []),
         social: parseJson(place.social_json, {}),
         stats,
         working_hours: parseJson(place.working_hours_json, {}),
@@ -1388,9 +1408,22 @@ try {
         } catch (_) {}
       }
 
-      const nameEn = (body.nameEn !== undefined || body.name_en !== undefined)
+      let nameEn = (body.nameEn !== undefined || body.name_en !== undefined)
         ? (body.nameEn || body.name_en || '')
         : (existingPlace?.name_en || '');
+      let descriptionEn = (body.descriptionEn !== undefined || body.description_en !== undefined)
+        ? (body.descriptionEn || body.description_en || '')
+        : (existingPlace?.description_en || '');
+      let addressEn = (body.addressEn !== undefined || body.address_en !== undefined)
+        ? (body.addressEn || body.address_en || '')
+        : (existingPlace?.address_en || '');
+      let customCategoryEn = (body.customCategoryEn !== undefined || body.custom_category_en !== undefined)
+        ? (body.customCategoryEn || body.custom_category_en || '')
+        : (existingPlace?.custom_category_en || '');
+      let servicesEnJson = (body.servicesEnJson !== undefined || body.services_en_json !== undefined)
+        ? (body.servicesEnJson || body.services_en_json || '')
+        : (existingPlace?.services_en_json || null);
+
       const categoryId = body.categoryId || body.category_id || existingPlace?.category_id || 'general';
       const customCategory = (body.customCategory !== undefined || body.custom_category !== undefined)
         ? (body.customCategory || body.custom_category || '')
@@ -1398,6 +1431,28 @@ try {
       const subcategoryId = (body.subcategoryId !== undefined || body.subcategory_id !== undefined)
         ? (body.subcategoryId || body.subcategory_id || '')
         : (existingPlace?.subcategory_id || '');
+
+      // Automatic AI Translation into natural, accurate English
+      if (!nameEn || !descriptionEn) {
+        try {
+          const autoTrans = await autoTranslatePlaceToEnglish({
+            name,
+            description: body.description !== undefined ? body.description : (existingPlace?.description || ''),
+            address: body.address !== undefined ? body.address : (existingPlace?.address || ''),
+            customCategory,
+            services: Array.isArray(body.services) ? body.services : parseJson(body.servicesJson || body.services_json || existingPlace?.services_json, [])
+          }, env);
+          if (autoTrans) {
+            if (!nameEn && autoTrans.name_en) nameEn = autoTrans.name_en;
+            if (!descriptionEn && autoTrans.description_en) descriptionEn = autoTrans.description_en;
+            if (!addressEn && autoTrans.address_en) addressEn = autoTrans.address_en;
+            if (!customCategoryEn && autoTrans.custom_category_en) customCategoryEn = autoTrans.custom_category_en;
+            if (!servicesEnJson && autoTrans.services_en?.length) servicesEnJson = JSON.stringify(autoTrans.services_en);
+          }
+        } catch (tErr) {
+          console.warn('[savePlace auto-translate notice]:', tErr?.message || tErr);
+        }
+      }
       function sanitizeWorkerPhone(p) {
         if (!p) return null;
         const norm = String(p).replace(/\D/g, '');
@@ -1510,6 +1565,7 @@ try {
             is_sponsored = ?, is_featured = ?, sponsored_until = ?, priority = ?,
             services_json = ?, social_json = ?, working_hours_json = ?, stats_json = ?,
             parent_id = ?, branches_json = ?, availability_status = ?,
+            description_en = ?, address_en = ?, custom_category_en = ?, services_en_json = ?,
             updated_at = ?
           WHERE id = ?
         `).bind(
@@ -1520,6 +1576,7 @@ try {
           isSponsored, isFeatured, sponsoredUntil, priorityVal,
           servicesJson, socialJson, workingHoursJson, statsJson,
           parentId, branchesJson, availabilityStatus,
+          descriptionEn, addressEn, customCategoryEn, servicesEnJson,
           now, placeId
         ).run();
       } else {
@@ -1530,6 +1587,7 @@ try {
             description, logo_url, cover_image_url, owner_id, owner_email,
             status, is_verified, trust_score, verification_status, services_json, social_json,
             stats_json, working_hours_json, parent_id, branches_json, availability_status,
+            description_en, address_en, custom_category_en, services_en_json,
             created_at, updated_at, is_sponsored, is_featured, sponsored_until, priority
           ) VALUES (
             ?, ?, ?, ?, ?, ?, ?,
@@ -1537,6 +1595,7 @@ try {
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
             ?, ?, ?, ?, ?, ?
           )
         `).bind(
@@ -1545,8 +1604,13 @@ try {
           description, logoUrl, coverImageUrl, ownerId, ownerEmail,
           status, isVerified, trustScore, verificationStatus, servicesJson, socialJson,
           statsJson, workingHoursJson, parentId, branchesJson, availabilityStatus,
+          descriptionEn, addressEn, customCategoryEn, servicesEnJson,
           Number(body.createdAt || body.created_at) || now, now, isSponsored, isFeatured, sponsoredUntil, priorityVal
         ).run();
+      }
+
+      if (!nameEn || !descriptionEn) {
+        ctx.waitUntil(backgroundEnsurePlaceTranslated(placeId, env));
       }
 
       // Automatically sync child branch places if branches array provided
@@ -1686,6 +1750,78 @@ try {
     }
 
     return jsonResponse({ success: true, message: 'تم حذف المكان من Turso ومسح الكاش' }, 200, corsHeaders);
+  }
+
+  // ── Admin: Batch Auto-Translate Existing Places to English (POST /api/admin/translate-all-places) ──
+  if (url.pathname === '/api/admin/translate-all-places' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    if (!auth.user.isAdmin) {
+      return jsonResponse({ error: 'صلاحيات المشرف مطلوبة' }, 403, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const limit = Math.min(parseInt(url.searchParams.get('batch') || '5', 10), 15);
+    const untranslatedRows = await db.prepare(`
+      SELECT id, name, name_en, description, description_en, address, address_en, custom_category, custom_category_en, services_json, services_en_json, category_id
+      FROM places
+      WHERE (name_en IS NULL OR name_en = '' OR description_en IS NULL OR description_en = '')
+        AND (name IS NOT NULL AND name != '')
+      LIMIT ?
+    `).bind(limit).all().then(r => r.results || []).catch(() => []);
+
+    const remainingTotal = await db.prepare(`
+      SELECT COUNT(*) as count
+      FROM places
+      WHERE (name_en IS NULL OR name_en = '' OR description_en IS NULL OR description_en = '')
+        AND (name IS NOT NULL AND name != '')
+    `).first().then(r => Number(r?.count || 0)).catch(() => 0);
+
+    const results = [];
+    for (const row of untranslatedRows) {
+      try {
+        const translation = await autoTranslatePlaceToEnglish({
+          name: row.name,
+          description: row.description,
+          address: row.address,
+          customCategory: row.custom_category || row.category_id,
+          services_json: row.services_json
+        }, env);
+
+        if (translation) {
+          const nameEn = row.name_en || translation.name_en || '';
+          const descEn = row.description_en || translation.description_en || '';
+          const addrEn = row.address_en || translation.address_en || '';
+          const catEn = row.custom_category_en || translation.custom_category_en || '';
+          const srvEn = row.services_en_json || (translation.services_en?.length ? JSON.stringify(translation.services_en) : null);
+
+          await db.prepare(`
+            UPDATE places SET
+              name_en = ?,
+              description_en = ?,
+              address_en = ?,
+              custom_category_en = ?,
+              services_en_json = ?
+            WHERE id = ?
+          `).bind(nameEn, descEn, addrEn, catEn, srvEn, row.id).run();
+
+          results.push({ id: row.id, name: row.name, name_en: nameEn, success: true });
+        } else {
+          results.push({ id: row.id, name: row.name, success: false, reason: 'Translation returned empty' });
+        }
+      } catch (tErr) {
+        results.push({ id: row.id, name: row.name, success: false, error: tErr.message });
+      }
+    }
+
+    bumpDataVersion(env);
+    return jsonResponse({
+      success: true,
+      batchSize: limit,
+      processed: results.length,
+      remainingTotal: Math.max(0, remainingTotal - results.filter(r => r.success).length),
+      items: results
+    }, 200, corsHeaders);
   }
 
   // ── Turso: Categories (GET, POST, PUT, DELETE /api/categories) ──────────
@@ -4755,17 +4891,33 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         }
       }
 
-      // ── 12. Dynamic OpenGraph / Social Media Share Preview & Place SSR (GET /place/:slug, /p/:slug, /place.html?slug=... or /api/og) ──
-      const isPlaceRoute = (url.pathname.startsWith('/place/') || url.pathname.startsWith('/p/') || url.pathname === '/p' || url.pathname === '/api/og' || (url.pathname === '/place.html' && (url.searchParams.has('slug') || url.searchParams.has('id')))) && request.method === 'GET';
+      // ── 12. Dynamic OpenGraph / Social Media Share Preview & Place SSR (GET /place/:slug, /p/:slug, /en/place/:slug, /ar/place/:slug, /place.html?slug=... or /api/og) ──
+      const isPlaceRoute = (
+        url.pathname.startsWith('/place/') ||
+        url.pathname.startsWith('/p/') ||
+        url.pathname === '/p' ||
+        url.pathname === '/api/og' ||
+        url.pathname.startsWith('/en/place/') ||
+        url.pathname.startsWith('/ar/place/') ||
+        (url.pathname === '/place.html' && (url.searchParams.has('slug') || url.searchParams.has('id')))
+      ) && request.method === 'GET';
+
       if (isPlaceRoute) {
-        const slug = url.pathname.startsWith('/place/')
-          ? url.pathname.replace('/place/', '').replace(/\/+$/, '')
-          : url.pathname.startsWith('/p/')
-            ? url.pathname.replace('/p/', '').replace(/\/+$/, '')
-            : (url.searchParams.get('slug') || url.searchParams.get('id') || '');
+        let slug = '';
+        if (url.pathname.startsWith('/en/place/')) {
+          slug = url.pathname.replace('/en/place/', '').replace(/\/+$/, '');
+        } else if (url.pathname.startsWith('/ar/place/')) {
+          slug = url.pathname.replace('/ar/place/', '').replace(/\/+$/, '');
+        } else if (url.pathname.startsWith('/place/')) {
+          slug = url.pathname.replace('/place/', '').replace(/\/+$/, '');
+        } else if (url.pathname.startsWith('/p/')) {
+          slug = url.pathname.replace('/p/', '').replace(/\/+$/, '');
+        } else {
+          slug = url.searchParams.get('slug') || url.searchParams.get('id') || '';
+        }
 
         // For /place/:slug, check if a root page or static asset was requested under /place/ (e.g. /place/icons/icon-48x48.png)
-        if (url.pathname.startsWith('/place/')) {
+        if (url.pathname.startsWith('/place/') || url.pathname.startsWith('/en/place/') || url.pathname.startsWith('/ar/place/')) {
           const isAssetOrStatic = slug.includes('.html') || 
             /\.(png|jpe?g|webp|gif|svg|ico|css|js|webmanifest|json|txt|xml)$/i.test(slug) ||
             slug.startsWith('icons/') || slug.startsWith('assets/') || slug.startsWith('src/');
@@ -4779,7 +4931,104 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
           return await handleDynamicOpenGraph(slug, request, env, ctx);
         } catch (ogErr) {
           console.warn('[place route handleDynamicOpenGraph catch]:', ogErr);
-          return Response.redirect(`${url.origin}/places.html`, 302);
+          const fallbackPath = url.pathname.startsWith('/en/') ? '/en/places' : '/places.html';
+          return Response.redirect(`${url.origin}${fallbackPath}`, 302);
+        }
+      }
+
+      // ── 12b. Full Platform Bilingual Routing (/en, /en/*, /ar, /ar/*) ──
+      const isEnPrefix = url.pathname === '/en' || url.pathname.startsWith('/en/');
+      const isArPrefix = url.pathname === '/ar' || url.pathname.startsWith('/ar/');
+
+      if ((isEnPrefix || isArPrefix) && !url.pathname.startsWith('/api')) {
+        const staticAssetRegex = /\.(png|jpe?g|webp|gif|svg|ico|css|js|webmanifest|json|txt|xml|woff2?|ttf|map)$/i;
+        if (staticAssetRegex.test(url.pathname)) {
+          const cleanAssetPath = url.pathname.replace(/^\/(en|ar)\//, '/');
+          const assetUrl = new URL(cleanAssetPath, url.origin);
+          return fetch(assetUrl.toString(), request);
+        }
+
+        const lang = isEnPrefix ? 'en' : 'ar';
+        let subPath = url.pathname.replace(/^\/(en|ar)(\/|$)/, '').replace(/\/+$/, '');
+
+        const pageMap = {
+          '': '/index.html',
+          'places': '/places.html',
+          'categories': '/categories.html',
+          'category': '/category.html',
+          'dashboard': '/dashboard.html',
+          'login': '/login.html',
+          'offers': '/offers.html',
+          'now': '/now.html',
+          'emergency': '/emergency.html',
+          'contact': '/contact.html',
+          'about': '/manzala.html',
+          'privacy': '/privacy.html',
+          'terms': '/terms.html',
+          'legal': '/legal.html',
+          'products': '/products.html',
+          'search': '/search.html',
+          'favorites': '/favorites.html',
+          'around-me': '/around-me.html',
+          'manzala': '/manzala.html',
+          'matariya': '/matariya.html',
+          'free-verification': '/free-verification.html'
+        };
+
+        const targetFile = pageMap[subPath.toLowerCase()] || (subPath.endsWith('.html') ? `/${subPath}` : '/index.html');
+
+        try {
+          const originUrl = new URL(targetFile, url.origin);
+          const pageRes = await fetch(originUrl.toString(), {
+            headers: {
+              'Accept': 'text/html,application/xhtml+xml',
+              'User-Agent': request.headers.get('User-Agent') || 'Cloudflare-Worker'
+            }
+          });
+
+          if (pageRes.ok) {
+            let html = await pageRes.text();
+            if (isEnPrefix) {
+              html = html.replace(/<html\s+lang=["']ar["']\s+dir=["']rtl["']/i, '<html lang="en" dir="ltr" data-lang="en"');
+              html = html.replace(/<html(?![^>]*\blang=)/i, '<html lang="en" dir="ltr" data-lang="en"');
+
+              const canonicalClean = `${url.origin}${url.pathname}`;
+              const alternateAr = `${url.origin}${url.pathname.replace(/^\/en(\/|$)/, '/$1')}`;
+              const alternateTags = `
+  <link rel="alternate" hreflang="en" href="${canonicalClean}" />
+  <link rel="alternate" hreflang="ar" href="${alternateAr}" />
+  <link rel="alternate" hreflang="x-default" href="${alternateAr}" />`;
+              html = html.replace('</head>', `${alternateTags}\n</head>`);
+
+              if (subPath === '' || subPath === 'index') {
+                html = html.replace(/<title>.*?<\/title>/i, '<title>Dalil El Manzala & El Matariya | #1 Official Digital Directory</title>');
+                html = html.replace(/<meta name="description" content="[^"]*"/i, '<meta name="description" content="Explore verified doctors, clinics, pharmacies, craftsmen, shops, and real-time community services in El Manzala and El Matariya, Egypt."');
+                html = html.replace(/<meta property="og:locale" content="[^"]*"/i, '<meta property="og:locale" content="en_US"');
+              } else if (subPath === 'places') {
+                html = html.replace(/<title>.*?<\/title>/i, '<title>All Places & Businesses | Dalil El Manzala & El Matariya</title>');
+                html = html.replace(/<meta property="og:locale" content="[^"]*"/i, '<meta property="og:locale" content="en_US"');
+              }
+            } else {
+              const canonicalClean = `${url.origin}${url.pathname}`;
+              const alternateEn = `${url.origin}${url.pathname.replace(/^\/ar(\/|$)/, '/en/$1')}`;
+              const alternateTags = `
+  <link rel="alternate" hreflang="ar" href="${canonicalClean}" />
+  <link rel="alternate" hreflang="en" href="${alternateEn}" />
+  <link rel="alternate" hreflang="x-default" href="${url.origin}/" />`;
+              html = html.replace('</head>', `${alternateTags}\n</head>`);
+            }
+
+            return new Response(html, {
+              status: 200,
+              headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'public, max-age=120, s-maxage=3600',
+                'X-Localized-Route': lang
+              }
+            });
+          }
+        } catch (pageErr) {
+          console.warn('[Bilingual Router Error]:', pageErr?.message || pageErr);
         }
       }
 
@@ -5147,6 +5396,128 @@ async function callOpenRouterAI(prompt, env, options = {}) {
 }
 
 /**
+ * Professional Bilingual Arabic-to-English Auto-Translation Engine
+ * Automatically translates business profiles into natural, accurate, and fluent English.
+ */
+async function autoTranslatePlaceToEnglish(place, env) {
+  if (!place || (!place.name && !place.description)) return null;
+
+  const name = String(place.name || '').trim();
+  const description = String(place.description || '').trim();
+  const address = String(place.address || '').trim();
+  const customCategory = String(place.customCategory || place.custom_category || place.categoryName || place.category_name || '').trim();
+  const services = Array.isArray(place.services) ? place.services : (typeof place.services_json === 'string' ? parseJson(place.services_json, []) : []);
+
+  const hasArabic = (text) => /[\u0600-\u06FF]/.test(text || '');
+  if (!hasArabic(name) && !hasArabic(description) && !hasArabic(address) && !hasArabic(customCategory)) {
+    return {
+      name_en: name,
+      description_en: description,
+      address_en: address,
+      custom_category_en: customCategory,
+      services_en: services
+    };
+  }
+
+  const prompt = `Translate the following Egyptian local business information from Arabic to professional, natural, and accurate English for a commercial directory in El Manzala & El Matariya (Dakahlia, Egypt).
+
+GUIDELINES:
+- Translate business names into standard Egyptian English commercial conventions (e.g. "صيدلية النصر" -> "Al-Nasr Pharmacy", "مطعم وكافيه البرنس" -> "El-Prince Restaurant & Cafe", "مكتبة النجاح" -> "Al-Najah Bookstore", "معمل الشروق للتحاليل" -> "Al-Shorouk Medical Analysis Lab", "ورشة الأمانة للنجارة" -> "Al-Amana Carpentry Workshop", "مستشفى الخير التخصصي" -> "Al-Khair Specialized Hospital").
+- Translate Egyptian addresses accurately (e.g. "شارع البحر بجوار مجلس المدينة" -> "El-Bahr Street, next to the City Council, El Manzala", "ميدان المحطة" -> "El-Mahatta Square").
+- Translate categories professionally (e.g. "أطباء وعيادات" -> "Doctors & Clinics", "صيدليات" -> "Pharmacies", "كافيهات ومطاعم" -> "Restaurants & Cafes", "حرفيين وصنايعية" -> "Craftsmen & Technicians").
+- Write descriptions in fluent, clean English.
+- Return RAW VALID JSON ONLY. No markdown formatting, no code blocks, no backticks.
+
+Arabic Source:
+- Name: ${name}
+- Category: ${customCategory || 'Business'}
+- Address: ${address || 'El Manzala, Dakahlia'}
+- Description: ${description || name}
+- Services/Tags: ${JSON.stringify(services)}
+
+Required JSON Format:
+{
+  "name_en": "Natural English Name",
+  "description_en": "Natural English Description",
+  "address_en": "Accurate English Address",
+  "custom_category_en": "Natural English Category",
+  "services_en": ["English Service 1", "English Service 2"]
+}`;
+
+  try {
+    const rawResult = await callOpenRouterWithAccountFailover({
+      prompt,
+      systemPrompt: 'You are an expert bilingual localization and translation engine for local businesses. Respond strictly with raw valid JSON without markdown.',
+      temperature: 0.2,
+      max_tokens: 600,
+      timeoutMs: 6000
+    }, env);
+
+    if (!rawResult || typeof rawResult !== 'string') return null;
+
+    const cleaned = rawResult.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      name_en: String(parsed.name_en || '').trim(),
+      description_en: String(parsed.description_en || '').trim(),
+      address_en: String(parsed.address_en || '').trim(),
+      custom_category_en: String(parsed.custom_category_en || '').trim(),
+      services_en: Array.isArray(parsed.services_en) ? parsed.services_en : []
+    };
+  } catch (err) {
+    console.warn('[autoTranslatePlaceToEnglish error]:', err?.message || err);
+    return null;
+  }
+}
+
+/**
+ * Background worker to translate a place and persist English fields to Turso DB.
+ */
+async function backgroundEnsurePlaceTranslated(placeId, env) {
+  if (!placeId) return;
+  try {
+    const db = createTursoDB(env);
+    const row = await db.prepare('SELECT id, name, name_en, description, description_en, address, address_en, custom_category, custom_category_en, services_json, services_en_json, category_id FROM places WHERE id = ? LIMIT 1').bind(placeId).first();
+    if (!row) return;
+
+    if (row.name_en && row.description_en) {
+      return; // Already translated
+    }
+
+    const translation = await autoTranslatePlaceToEnglish({
+      name: row.name,
+      description: row.description,
+      address: row.address,
+      customCategory: row.custom_category || row.category_id,
+      services_json: row.services_json
+    }, env);
+
+    if (translation) {
+      const nameEn = row.name_en || translation.name_en || '';
+      const descEn = row.description_en || translation.description_en || '';
+      const addrEn = row.address_en || translation.address_en || '';
+      const catEn = row.custom_category_en || translation.custom_category_en || '';
+      const srvEn = row.services_en_json || (translation.services_en?.length ? JSON.stringify(translation.services_en) : null);
+
+      await db.prepare(`
+        UPDATE places SET
+          name_en = ?,
+          description_en = ?,
+          address_en = ?,
+          custom_category_en = ?,
+          services_en_json = ?
+        WHERE id = ?
+      `).bind(nameEn, descEn, addrEn, catEn, srvEn, placeId).run();
+
+      console.log(`[AutoTranslation] Successfully translated place ${placeId}: ${nameEn}`);
+      bumpDataVersion(env);
+    }
+  } catch (err) {
+    console.warn(`[backgroundEnsurePlaceTranslated error for ${placeId}]:`, err?.message || err);
+  }
+}
+
+/**
  * CENTRALIZED OPENROUTER VISION MODELS CONFIGURATION
  * Multi-model cascade for image-to-text / business-card OCR extraction.
  */
@@ -5430,6 +5801,10 @@ async function ensureNewSchemaColumnsInTurso(env) {
     await db.prepare("ALTER TABLE places ADD COLUMN parent_id TEXT").run().catch(() => {});
     await db.prepare("ALTER TABLE places ADD COLUMN branches_json TEXT").run().catch(() => {});
     await db.prepare("ALTER TABLE places ADD COLUMN availability_status TEXT DEFAULT 'available'").run().catch(() => {});
+    await db.prepare("ALTER TABLE places ADD COLUMN description_en TEXT").run().catch(() => {});
+    await db.prepare("ALTER TABLE places ADD COLUMN address_en TEXT").run().catch(() => {});
+    await db.prepare("ALTER TABLE places ADD COLUMN custom_category_en TEXT").run().catch(() => {});
+    await db.prepare("ALTER TABLE places ADD COLUMN services_en_json TEXT").run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_places_parent_id ON places(parent_id)").run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_places_availability ON places(availability_status)").run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_place_id ON reviews(place_id)").run().catch(() => {});
@@ -5770,9 +6145,12 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   const isCrawler = /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|googlebot|bingbot|slackbot|discordbot/i.test(userAgent);
   const canonicalBase = 'https://dalilmanzala.com';
 
+  const isEn = url.pathname.startsWith('/en/') || url.searchParams.get('lang') === 'en';
+  const langPrefix = isEn ? 'en' : 'ar';
+
   // 0. Edge SSR Cache check for human visitors (Instant 15-30ms response from Cloudflare Edge)
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v4?slug=${encodeURIComponent(cleanSlug.toLowerCase())}`, { method: 'GET' });
+  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v5?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
   if (!isCrawler && cache) {
     try {
       const cachedResponse = await cache.match(ssrCacheKey);
@@ -5790,20 +6168,20 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   // 2. If place not found
   if (!place) {
     if (!isCrawler) {
-      return Response.redirect(`${canonicalBase}/places.html`, 302);
+      return Response.redirect(`${canonicalBase}/${isEn ? 'en/places' : 'places.html'}`, 302);
     }
     return new Response(
       `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="${isEn ? 'en' : 'ar'}" dir="${isEn ? 'ltr' : 'rtl'}">
 <head>
   <meta charset="UTF-8">
   <meta name="robots" content="noindex">
-  <title>المكان غير موجود | دليل المنزلة والمطرية الرقمي</title>
+  <title>${isEn ? 'Place Not Found | Dalil El Manzala' : 'المكان غير موجود | دليل المنزلة والمطرية الرقمي'}</title>
 </head>
 <body>
-  <h1>المكان غير موجود</h1>
-  <p>لم يتم العثور على هذا المكان في دليل المنزلة والمطرية الرقمي.</p>
-  <p><a href="https://dalilmanzala.com/places.html">تصفح جميع الأماكن في الدليل</a></p>
+  <h1>${isEn ? 'Place Not Found' : 'المكان غير موجود'}</h1>
+  <p>${isEn ? 'This place was not found in the directory.' : 'لم يتم العثور على هذا المكان في دليل المنزلة والمطرية الرقمي.'}</p>
+  <p><a href="${canonicalBase}/${isEn ? 'en/places' : 'places.html'}">${isEn ? 'Browse all directory places' : 'تصفح جميع الأماكن في الدليل'}</a></p>
 </body>
 </html>`,
       {
@@ -5817,9 +6195,13 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   }
 
   // 3. Place metadata resolution
-  const rawPlaceName = place.name || 'تفاصيل ومواعيد وأرقام التواصل';
-  const fullShareTitle = `${rawPlaceName} | دليل المنزلة والمطرية الرقمي`;
-  const placeDesc = place.description || `تعرف على عنوان ومواعيد وخدمات وأرقام التواصل الخاصة بـ ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`;
+  const rawPlaceName = (isEn && place.name_en) ? place.name_en : (place.name || (isEn ? 'Business Profile' : 'تفاصيل ومواعيد وأرقام التواصل'));
+  const fullShareTitle = isEn
+    ? `${rawPlaceName} | Dalil El Manzala & El Matariya Official Directory`
+    : `${rawPlaceName} | دليل المنزلة والمطرية الرقمي`;
+  const placeDesc = isEn
+    ? (place.description_en || place.description || `Discover address, working hours, phone number, and services for ${rawPlaceName} in El Manzala and El Matariya, Egypt.`)
+    : (place.description || `تعرف على عنوان ومواعيد وخدمات وأرقام التواصل الخاصة بـ ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`);
   const placeImg = place.cover_image_url || place.logo_url || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
 
   const isIdLike = (s) => !s || s.startsWith('p_') || s.startsWith('-P0') || (s.length > 20 && /^[a-zA-Z0-9_-]+$/.test(s));
@@ -5836,7 +6218,10 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   }
 
   const placeTargetSlug = canonicalSlug || place.slug || cleanSlug;
-  const shareUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
+  const canonicalPath = isEn ? `/en/place/${encodeURIComponent(placeTargetSlug)}` : `/place/${encodeURIComponent(placeTargetSlug)}`;
+  const shareUrl = `${canonicalBase}${canonicalPath}`;
+  const alternateArUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
+  const alternateEnUrl = `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}`;
 
   // 4. Human visitors: Edge SSR & Instant Data Injection (Zero Skeleton, 0ms FCP)
   if (!isCrawler) {
@@ -5850,24 +6235,33 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
         const isValidWa = waClean && !/^0+$/.test(waClean) && waClean.length >= 7;
         const coverImg = place.cover_image_url || '';
         const logoImg = place.logo_url || '';
-        const placeArea = place.area || 'المنزلة والمطرية';
-        const placeAddr = place.address || '';
-        const placeCat = place.custom_category || place.category_id || '';
+        const placeArea = isEn
+          ? (place.area_en || (place.area === 'المطرية' ? 'El Matariya' : 'El Manzala'))
+          : (place.area || 'المنزلة والمطرية');
+        const placeAddr = isEn ? (place.address_en || place.address || '') : (place.address || '');
+        const placeCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
         const placeRating = Number(place.rating || 0);
         const placeReviewCount = Number(place.review_count || 0);
 
         const normalizedPlace = {
           id: place.id,
           _key: place.id,
-          name: rawPlaceName,
+          name: place.name,
+          name_en: place.name_en || '',
           nameEn: place.name_en || '',
           slug: placeTargetSlug,
-          area: placeArea,
-          address: placeAddr,
+          area: place.area || '',
+          area_en: place.area_en || '',
+          areaEn: place.area_en || '',
+          address: place.address || '',
+          address_en: place.address_en || '',
+          addressEn: place.address_en || '',
           categoryId: place.category_id || '',
           category_id: place.category_id || '',
           customCategory: place.custom_category || '',
           custom_category: place.custom_category || '',
+          customCategoryEn: place.custom_category_en || '',
+          custom_category_en: place.custom_category_en || '',
           categoryName: placeCat,
           phone: place.phone || '',
           whatsapp: place.whatsapp || '',
@@ -5876,6 +6270,8 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
           logoUrl: logoImg,
           logo_url: logoImg,
           description: place.description || '',
+          description_en: place.description_en || '',
+          descriptionEn: place.description_en || '',
           isVerified: Boolean(place.is_verified),
           is_verified: Boolean(place.is_verified),
           verified: Boolean(place.is_verified),
@@ -5887,6 +6283,8 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
           workingHours: parseJson(place.working_hours_json, {}),
           working_hours: parseJson(place.working_hours_json, {}),
           services: parseJson(place.services_json, []),
+          servicesEn: parseJson(place.services_en_json, []),
+          services_en: parseJson(place.services_en_json, []),
           social: parseJson(place.social_json, {}),
           latitude: place.latitude || null,
           longitude: place.longitude || null
@@ -5896,23 +6294,26 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
         let workingHoursHtml = '';
         const wh = parseJson(place.working_hours_json, {});
         if (wh && typeof wh === 'object' && Object.keys(wh).length > 0) {
-          const daysAr = {
+          const daysMap = isEn ? {
+            saturday: 'Saturday', sunday: 'Sunday', monday: 'Monday',
+            tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday'
+          } : {
             saturday: 'السبت', sunday: 'الأحد', monday: 'الاثنين',
             tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس', friday: 'الجمعة'
           };
           const rows = [];
-          for (const [dayKey, dayName] of Object.entries(daysAr)) {
+          for (const [dayKey, dayName] of Object.entries(daysMap)) {
             const d = wh[dayKey];
             if (d) {
-              const timeStr = d.closed ? 'مغلق' : `${d.open || ''} - ${d.close || ''}`;
-              rows.push(`<tr><td style="padding:6px 12px;font-weight:700;border-bottom:1px solid rgba(0,0,0,0.05);">${dayName}</td><td style="padding:6px 12px;direction:ltr;text-align:right;border-bottom:1px solid rgba(0,0,0,0.05);">${escapeHtml(timeStr)}</td></tr>`);
+              const timeStr = d.closed ? (isEn ? 'Closed' : 'مغلق') : `${d.open || ''} - ${d.close || ''}`;
+              rows.push(`<tr><td style="padding:6px 12px;font-weight:700;border-bottom:1px solid rgba(0,0,0,0.05);">${dayName}</td><td style="padding:6px 12px;direction:ltr;text-align:${isEn ? 'left' : 'right'};border-bottom:1px solid rgba(0,0,0,0.05);">${escapeHtml(timeStr)}</td></tr>`);
             }
           }
           if (rows.length > 0) {
             workingHoursHtml = `
               <div style="margin-top:1rem;padding:1.25rem;background:var(--surface,#fff);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border:1px solid var(--border,rgba(0,0,0,0.06));">
                 <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 10px 0;display:flex;align-items:center;gap:6px;color:var(--text-primary,#0f172a);">
-                  <span>🕒</span> <span>مواعيد وساعات العمل</span>
+                  <span>🕒</span> <span>${isEn ? 'Working Hours' : 'مواعيد وساعات العمل'}</span>
                 </h2>
                 <table style="width:100%;border-collapse:collapse;font-size:0.92rem;">
                   <tbody>${rows.join('')}</tbody>
@@ -5937,7 +6338,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
                 <div style="flex:1;min-width:0">
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                     <h1 style="margin:0 0 4px 0;font-size:1.35rem;font-weight:900;color:var(--text-primary,#0f172a);line-height:1.3">${escapeHtml(rawPlaceName)}</h1>
-                    ${place.is_verified ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,0.12);color:#16a34a;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:800">✓ موثق رسمياً</span>` : ''}
+                    ${place.is_verified ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,0.12);color:#16a34a;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:800">${isEn ? '✓ Officially Verified' : '✓ موثق رسمياً'}</span>` : ''}
                   </div>
                   <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary,#64748b);flex-wrap:wrap">
                     <span>📍 ${escapeHtml(placeArea)}${placeAddr ? ' — ' + escapeHtml(placeAddr) : ''}</span>
@@ -5951,22 +6352,22 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
               <div style="display:flex;gap:8px;margin-top:1.25rem;flex-wrap:wrap">
                 ${isValidPh ? `
                   <a href="tel:${escapeHtml(phoneClean)}" class="btn btn-primary" style="flex:1;min-width:130px;justify-content:center;font-weight:800;gap:6px;text-decoration:none;display:inline-flex;align-items:center;padding:10px 16px;border-radius:12px;background:#1B4F72;color:#fff;">
-                    <span>📞</span> <span>اتصال مباشر</span>
+                    <span>📞</span> <span>${isEn ? 'Call Now' : 'اتصال مباشر'}</span>
                   </a>
                 ` : ''}
                 ${isValidWa ? `
                   <a href="https://wa.me/20${escapeHtml(waClean)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;min-width:130px;justify-content:center;font-weight:800;border:1.5px solid #25D366;color:#16A34A;gap:6px;text-decoration:none;display:inline-flex;align-items:center;padding:10px 16px;border-radius:12px;background:#fff;">
-                    <span>💬</span> <span>محادثة واتساب</span>
+                    <span>💬</span> <span>${isEn ? 'WhatsApp' : 'محادثة واتساب'}</span>
                   </a>
                 ` : ''}
               </div>
             </div>
 
-            ${place.description ? `
+            ${(place.description || place.description_en) ? `
             <!-- Description Card -->
             <div style="margin-top:1rem;padding:1.25rem;background:var(--surface,#fff);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border:1px solid var(--border,rgba(0,0,0,0.06));">
-              <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 8px 0;color:var(--text-primary,#0f172a);">عن المكان والنشاط</h2>
-              <p style="font-size:0.92rem;color:var(--text-secondary,#334155);line-height:1.7;margin:0;white-space:pre-line;">${escapeHtml(place.description)}</p>
+              <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 8px 0;color:var(--text-primary,#0f172a);">${isEn ? 'About this Business' : 'عن المكان والنشاط'}</h2>
+              <p style="font-size:0.92rem;color:var(--text-secondary,#334155);line-height:1.7;margin:0;white-space:pre-line;">${escapeHtml((isEn && place.description_en) ? place.description_en : place.description)}</p>
             </div>
             ` : ''}
 
@@ -5977,10 +6378,15 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
         // Inject hydrated data and pre-rendered card
         let hydratedHtml = baseHtml;
 
-        // 1. Add class to html tag for instant CSS activation
-        hydratedHtml = hydratedHtml.replace('<html lang="ar" dir="rtl"', '<html lang="ar" dir="rtl" class="has-instant-place"');
+        // 1. Language and Direction Attributes
+        if (isEn) {
+          hydratedHtml = hydratedHtml.replace(/<html\s+lang=["']ar["']\s+dir=["']rtl["']/i, '<html lang="en" dir="ltr" class="has-instant-place" data-lang="en"');
+          hydratedHtml = hydratedHtml.replace(/<html(?![^>]*\blang=)/i, '<html lang="en" dir="ltr" class="has-instant-place" data-lang="en"');
+        } else {
+          hydratedHtml = hydratedHtml.replace('<html lang="ar" dir="rtl"', '<html lang="ar" dir="rtl" class="has-instant-place" data-lang="ar"');
+        }
 
-        // 2. Set title & canonical
+        // 2. Set title, canonical, and alternate hreflangs
         hydratedHtml = hydratedHtml.replace(/<title>.*?<\/title>/i, `<title>${escapeHtml(fullShareTitle)}</title>`);
         hydratedHtml = hydratedHtml.replace(/<link rel="canonical" id="place-canonical"[^>]*>/i, `<link rel="canonical" id="place-canonical" href="${escapeHtml(shareUrl)}"/>`);
         hydratedHtml = hydratedHtml.replace(/<meta name="description" content="[^"]*"/i, `<meta name="description" content="${escapeHtml(placeDesc)}"`);
@@ -5988,9 +6394,18 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
         hydratedHtml = hydratedHtml.replace(/<meta property="og:description" content="[^"]*"/i, `<meta property="og:description" content="${escapeHtml(placeDesc)}"`);
         hydratedHtml = hydratedHtml.replace(/<meta property="og:url" content="[^"]*"/i, `<meta property="og:url" content="${escapeHtml(shareUrl)}"`);
         hydratedHtml = hydratedHtml.replace(/<meta property="og:image" content="[^"]*"/i, `<meta property="og:image" content="${escapeHtml(placeImg)}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta property="og:locale" content="[^"]*"/i, `<meta property="og:locale" content="${isEn ? 'en_US' : 'ar_EG'}"`);
         hydratedHtml = hydratedHtml.replace(/<meta name="twitter:title" content="[^"]*"/i, `<meta name="twitter:title" content="${escapeHtml(fullShareTitle)}"`);
         hydratedHtml = hydratedHtml.replace(/<meta name="twitter:description" content="[^"]*"/i, `<meta name="twitter:description" content="${escapeHtml(placeDesc)}"`);
         hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
+
+        // Inject hreflang alternate tags
+        const hreflangTags = `
+  <link rel="alternate" hreflang="ar" href="${escapeHtml(alternateArUrl)}" />
+  <link rel="alternate" hreflang="en" href="${escapeHtml(alternateEnUrl)}" />
+  <link rel="alternate" hreflang="x-default" href="${escapeHtml(alternateArUrl)}" />
+  <meta property="og:locale:alternate" content="${isEn ? 'ar_EG' : 'en_US'}" />`;
+        hydratedHtml = hydratedHtml.replace('</head>', `${hreflangTags}\n</head>`);
 
         // 3. Inject instant place data into <head>
         const injectionScript = `
@@ -6014,7 +6429,8 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'public, max-age=120, s-maxage=3600, stale-while-revalidate=86400',
             'X-Edge-SSR': 'MISS',
-            'X-Content-Type-Options': 'nosniff'
+            'X-Content-Type-Options': 'nosniff',
+            'X-Localized-Route': langPrefix
           }
         });
 
@@ -6028,13 +6444,13 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
       console.warn('[handleDynamicOpenGraph SSR Error]:', ssrErr?.message || ssrErr);
     }
 
-    return Response.redirect(`${canonicalBase}/place.html?slug=${encodeURIComponent(placeTargetSlug)}`, 302);
+    return Response.redirect(`${canonicalBase}/${isEn ? 'en/places' : 'place.html?slug=' + encodeURIComponent(placeTargetSlug)}`, 302);
   }
 
-  // 5. Social Media Crawlers (Open Graph HTML)
-  const destinationUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
+  // 5. Social Media Crawlers (Open Graph HTML & JSON-LD)
+  const destinationUrl = isEn ? `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}` : `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
   const html = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="${isEn ? 'en' : 'ar'}" dir="${isEn ? 'ltr' : 'rtl'}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -6042,6 +6458,9 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   <meta name="title" content="${escapeHtml(fullShareTitle)}">
   <meta name="description" content="${escapeHtml(placeDesc)}">
   <link rel="canonical" href="${escapeHtml(shareUrl)}">
+  <link rel="alternate" hreflang="ar" href="${escapeHtml(alternateArUrl)}" />
+  <link rel="alternate" hreflang="en" href="${escapeHtml(alternateEnUrl)}" />
+  <link rel="alternate" hreflang="x-default" href="${escapeHtml(alternateArUrl)}" />
   <meta property="og:type" content="business.business">
   <meta property="og:url" content="${escapeHtml(shareUrl)}">
   <meta property="og:title" content="${escapeHtml(fullShareTitle)}">
@@ -6051,22 +6470,49 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي">
-  <meta property="og:locale" content="ar_EG">
+  <meta property="og:site_name" content="${isEn ? 'Dalil El Manzala & El Matariya Directory' : 'دليل المنزلة والمطرية الرقمي'}">
+  <meta property="og:locale" content="${isEn ? 'en_US' : 'ar_EG'}">
+  <meta property="og:locale:alternate" content="${isEn ? 'ar_EG' : 'en_US'}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="${escapeHtml(shareUrl)}">
   <meta name="twitter:title" content="${escapeHtml(fullShareTitle)}">
   <meta name="twitter:description" content="${escapeHtml(placeDesc)}">
   <meta name="twitter:image" content="${escapeHtml(placeImg)}">
 </head>
-<body style="font-family:Arial,sans-serif;text-align:center;padding:40px;direction:rtl;">
+<body style="font-family:Arial,sans-serif;text-align:center;padding:40px;direction:${isEn ? 'ltr' : 'rtl'};">
   <h1>${escapeHtml(rawPlaceName)}</h1>
   <p>
-    <script type="application/ld+json">${JSON.stringify({"@context":"https://schema.org","@type":"LocalBusiness","name":rawPlaceName,"description":placeDesc,"image":placeImg,"url":shareUrl,"telephone":place.phone||undefined,"address":{"@type":"PostalAddress","streetAddress":place.address||undefined,"addressLocality":place.area||'المنزلة والمطرية',"addressRegion":'الدقهلية',"addressCountry":'EG'},"geo":(place.latitude&&place.longitude)?{"@type":"GeoCoordinates","latitude":place.latitude,"longitude":place.longitude}:undefined,"aggregateRating":(place.review_count>0)?{"@type":"AggregateRating","ratingValue":place.rating||0,"reviewCount":place.review_count||0}:undefined})}</script>
-    جاري تحويلك إلى صفحة المكان...
+    <script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": rawPlaceName,
+      "description": placeDesc,
+      "image": placeImg,
+      "url": shareUrl,
+      "inLanguage": isEn ? "en" : "ar",
+      "telephone": place.phone || undefined,
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": (isEn && place.address_en) ? place.address_en : (place.address || undefined),
+        "addressLocality": (isEn && place.area_en) ? place.area_en : (place.area || (isEn ? 'El Manzala' : 'المنزلة والمطرية')),
+        "addressRegion": isEn ? 'Dakahlia' : 'الدقهلية',
+        "addressCountry": 'EG'
+      },
+      "geo": (place.latitude && place.longitude) ? {
+        "@type": "GeoCoordinates",
+        "latitude": place.latitude,
+        "longitude": place.longitude
+      } : undefined,
+      "aggregateRating": (place.review_count > 0) ? {
+        "@type": "AggregateRating",
+        "ratingValue": place.rating || 0,
+        "reviewCount": place.review_count || 0
+      } : undefined
+    })}</script>
+    ${isEn ? 'Redirecting to business profile...' : 'جاري تحويلك إلى صفحة المكان...'}
   </p>
   <p>
-    <a href="${escapeHtml(destinationUrl)}">اضغط هنا للانتقال إلى صفحة المكان</a>
+    <a href="${escapeHtml(destinationUrl)}">${isEn ? 'Click here if not redirected automatically' : 'اضغط هنا للانتقال إلى صفحة المكان'}</a>
   </p>
 </body>
 </html>`;

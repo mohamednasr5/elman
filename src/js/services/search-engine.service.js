@@ -192,17 +192,28 @@ export class SearchIndex {
       const locMatch = extractLocationFromQuery(`${pAddr} ${pArea} ${pCity}`);
       const village = locMatch?.name || (pArea !== 'المنزلة' && pArea !== 'المطرية' ? pArea : 'المنزلة');
 
+      const pNameEn = place.nameEn || place.name_en || '';
+      const pDescEn = place.descriptionEn || place.description_en || '';
+      const pAddrEn = place.addressEn || place.address_en || '';
+      const pCatEn = place.customCategoryEn || place.custom_category_en || cat.name_en || '';
+      const pServicesEn = Array.isArray(place.servicesEn) ? place.servicesEn.join(' ') : (Array.isArray(place.services_en) ? place.services_en.join(' ') : '');
+
       const rawSearchText = [
         pName,
+        pNameEn,
         pCat,
+        pCatEn,
         pSpec,
         pSub,
         pDesc,
+        pDescEn,
         pAddr,
+        pAddrEn,
         pArea,
         pCity,
         village,
         pServices,
+        pServicesEn,
         pKeywords,
         pPhone
       ].join(' ');

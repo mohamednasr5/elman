@@ -1,4 +1,5 @@
 import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
+import { isEnglish, t, localizeUrl } from '../../core/i18n.js';
 /**
  * المنزلة وناسها — PlaceCard Component
  */
@@ -76,7 +77,8 @@ if (typeof window !== 'undefined') {
       } catch (_) {}
     }
     const finalSlug = (p && p.slug) ? p.slug : (slug || '');
-    window.location.href = `/place.html?slug=${encodeURIComponent(finalSlug)}`;
+    const isEn = isEnglish();
+    window.location.href = isEn ? `/en/place/${encodeURIComponent(finalSlug)}` : `/place/${encodeURIComponent(finalSlug)}`;
   };
 
   window.__prefetchPlaceCard = function(slug, el = null) {
@@ -249,6 +251,12 @@ export function renderPlaceCard(place) {
 
   const verifiedBadge = (place.isVerified || place.is_verified) ? renderVerifiedBadge() : '';
 
+  const isEn = isEnglish();
+  const displayName = (isEn && (place.nameEn || place.name_en)) ? (place.nameEn || place.name_en) : (place.name || '');
+  const displayDesc = (isEn && (place.descriptionEn || place.description_en)) ? (place.descriptionEn || place.description_en) : (place.description || '');
+  const displayArea = (isEn && (place.areaEn || place.area_en)) ? (place.areaEn || place.area_en) : (isEn ? 'El Manzala' : (place.area || 'المنزلة'));
+  const targetPlaceUrl = isEn ? `/en/place/${encodeURIComponent(targetSlug)}` : placeUrl;
+
   return `
     <article class="${cardClasses}" 
              role="article"
@@ -258,10 +266,10 @@ export function renderPlaceCard(place) {
              onmouseenter="window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
              data-place-id="${escAttr(place._key || place.id)}"
              data-place-slug="${escAttr(targetSlug)}"
-             data-name="${escAttr(place.name || '')}"
+             data-name="${escAttr(displayName)}"
              data-phone="${escAttr(place.phone || '')}"
              data-whatsapp="${escAttr(place.whatsapp || '')}"
-             data-area="${escAttr(place.area || '')}"
+             data-area="${escAttr(displayArea)}"
              data-address="${escAttr(place.address || '')}"
              data-cover="${escAttr(finalCover || rawCover || '')}"
              data-logo="${escAttr(finalLogo || rawLogo || '')}"
@@ -276,24 +284,24 @@ export function renderPlaceCard(place) {
         <div class="place-card__meta-top">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span class="place-trust-mini ${trustClass}" title="${escAttr(trustLabel)}">
-              📋 اكتمال الملف: ${completeness}%
+              ${isEn ? 'Profile Completion:' : '📋 اكتمال الملف:'} ${completeness}%
             </span>
             ${availBadge}
           </div>
-          <button type="button" class="place-favorite-btn ${favorite ? 'is-favorite' : ''}" aria-label="${favorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}" title="${favorite ? 'إزالة من المفضلة' : 'حفظ المكان'}" data-favorite-place="${escAttr(placeId)}" onclick="event.stopPropagation();window.togglePlaceFavorite&&window.togglePlaceFavorite('${escAttr(placeId)}',this)">
+          <button type="button" class="place-favorite-btn ${favorite ? 'is-favorite' : ''}" aria-label="${favorite ? (isEn ? 'Remove from favorites' : 'إزالة من المفضلة') : (isEn ? 'Add to favorites' : 'إضافة إلى المفضلة')}" title="${favorite ? (isEn ? 'Remove from favorites' : 'إزالة من المفضلة') : (isEn ? 'Save place' : 'حفظ المكان')}" data-favorite-place="${escAttr(placeId)}" onclick="event.stopPropagation();window.togglePlaceFavorite&&window.togglePlaceFavorite('${escAttr(placeId)}',this)">
             ${favorite ? '♥' : '♡'}
           </button>
         </div>
         <h3 class="place-card__name">
-          <span class="truncate">${escHtml(place.name)}</span>
+          <span class="truncate">${escHtml(displayName)}</span>
           ${verifiedBadge}
         </h3>
         ${doctorSpecialtyBadge || professionBadge}
         <div class="place-card__category" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap">
           ${liveHoursBadge}
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span>📍 ${escHtml(place.area || 'المنزلة')}</span>
-            ${place._distanceStr ? `<span class="badge" style="background:rgba(16,185,129,0.12);color:var(--success);font-size:10.5px;padding:1px 6px;border-radius:var(--radius-sm);font-weight:700">على بعد ${escHtml(place._distanceStr)}</span>` : ''}
+            <span>📍 ${escHtml(displayArea)}</span>
+            ${place._distanceStr ? `<span class="badge" style="background:rgba(16,185,129,0.12);color:var(--success);font-size:10.5px;padding:1px 6px;border-radius:var(--radius-sm);font-weight:700">${isEn ? `${escHtml(place._distanceStr)} away` : `على بعد ${escHtml(place._distanceStr)}`}</span>` : ''}
             ${deliveryBadge}
           </div>
           ${(() => {
@@ -305,7 +313,7 @@ export function renderPlaceCard(place) {
               return `
                 <div style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text-muted);background:var(--surface-2);padding:2px 7px;border-radius:var(--radius-sm);border:1px solid var(--border)">
                   <span>✨</span>
-                  <span>لا توجد تقييمات بعد</span>
+                  <span>${isEn ? 'No reviews yet' : 'لا توجد تقييمات بعد'}</span>
                 </div>
               `;
             }
@@ -314,16 +322,16 @@ export function renderPlaceCard(place) {
               <div style="display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:#F59E0B;font-weight:700;background:rgba(245,158,11,0.08);padding:2px 7px;border-radius:var(--radius-sm)">
                 <span>★</span>
                 <span>${rScore}</span>
-                <span style="color:var(--text-muted);font-weight:normal;font-size:10px">(${rCount} تقييم)</span>
+                <span style="color:var(--text-muted);font-weight:normal;font-size:10px">(${rCount} ${isEn ? 'reviews' : 'تقييم'})</span>
               </div>
             `;
           })()}
         </div>
         ${atmCashBadge}
-        ${place.description ? `<p class="place-card__description">${escHtml(place.description)}</p>` : ''}
+        ${displayDesc ? `<p class="place-card__description">${escHtml(displayDesc)}</p>` : ''}
       </div>
       <div class="place-card__footer">
-        <a href="${placeUrl}" class="btn btn-outline btn-sm" onclick="event.preventDefault();window.__openPlaceCard(this, '${escAttr(targetSlug)}', event)">عرض التفاصيل</a>
+        <a href="${targetPlaceUrl}" class="btn btn-outline btn-sm" onclick="event.preventDefault();window.__openPlaceCard(this, '${escAttr(targetSlug)}', event)">${isEn ? 'View Details' : 'عرض التفاصيل'}</a>
         <div class="place-card__actions">
           ${phoneBtn}
           ${waBtn}

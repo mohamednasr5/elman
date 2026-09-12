@@ -41,8 +41,36 @@
           'quran-search': 'quran-search.html',
           'quran-surah': 'quran-surah.html',
           'manzala': 'manzala.html',
-          'matariya': 'matariya.html'
+          'matariya': 'matariya.html',
+          'free-verification': 'free-verification.html'
         };
+
+        // 1a. Bilingual prefixes (/en or /ar)
+        if (firstSeg === 'en' || firstSeg === 'ar') {
+          try {
+            localStorage.setItem('dalil-lang', firstSeg);
+          } catch (_) {}
+
+          var subSeg = (parts[1] || '').toLowerCase();
+          if (!subSeg) {
+            // Root /en or /ar
+            window.location.replace('/' + search + hash);
+            return;
+          }
+          if (pageMap[subSeg]) {
+            window.location.replace('/' + pageMap[subSeg] + search + hash);
+            return;
+          }
+          if ((subSeg === 'place' || subSeg === 'places') && parts[2]) {
+            var pSlug = parts.slice(2).join('/');
+            window.location.replace('/place/' + encodeURIComponent(pSlug) + search + hash);
+            return;
+          }
+          if (subSeg === 'place' || subSeg === 'places') {
+            window.location.replace('/places.html' + search + hash);
+            return;
+          }
+        }
 
         // If path is single segment matching a known page name (e.g. /admin or /places)
         if (parts.length === 1 && pageMap[firstSeg]) {
