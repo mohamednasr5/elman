@@ -53,26 +53,59 @@ export function toArabicCategory(cat = '') { return resolveCategoryLabel(cat, fa
 export function translateArea(area = '', isEn = false) { if (!isEn || !area) return area || 'المنزلة'; return VILLAGE_NAMES_EN[area] || area; }
 export function translateCategory(cat = '', isEn = false) { return resolveCategoryLabel(cat, isEn); }
 
-// The directory search page should advertise platform coverage, not expose the current API result count.
 function installSearchCoverageLabelPolicy() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  if (window.__dalilSearchCoveragePolicy) return;
+  if (typeof window === 'undefined' || typeof document === 'undefined' || window.__dalilSearchCoveragePolicy) return;
   window.__dalilSearchCoveragePolicy = true;
-  let lastApplied = '';
+  let metaObserver = null;
   const apply = () => {
     if (document.documentElement.lang === 'en') return;
     const el = document.getElementById('search-meta');
-    if (!el) return;
+    if (!el) return false;
     const q = new URLSearchParams(window.location.search).get('q')?.trim();
     const next = q
       ? `نتائج البحث في دليل المنزلة والمطرية عن: <strong style="color:var(--primary);font-size:1.05rem">${String(q).replace(/[&<>\"]/g, '')}</strong>`
       : 'استكشف أكثر من <strong style="color:var(--primary);font-size:1.05rem">15,000</strong> مكان وخدمة في دليل المنزلة والمطرية';
-    if (lastApplied === next && el.innerHTML === next) return;
     if (el.innerHTML !== next) el.innerHTML = next;
-    lastApplied = next;
+    return true;
   };
-  const observer = new MutationObserver(() => apply());
-  const start = () => { apply(); observer.observe(document.body, { childList: true, subtree: true }); };
-  if (document.body) start(); else window.addEventListener('DOMContentLoaded', start, { once: true });
+  const attachToMeta = () => {
+    if (!apply()) return false;
+    const el = document.getElementById('search-meta');
+    if (el && !metaObserver) {
+      metaObserver = new MutationObserver(() => apply());
+      metaObserver.observe(el, { childList: true, subtree: true, characterData: true });
+    }
+    return true;
+  };
+  const bodyObserver = new MutationObserver(() => {
+    if (attachToMeta()) bodyObserver.disconnect();
+  });
+  if (document.body) {
+    if (!attachToMeta()) bodyObserver.observe(document.body, { childList: true, subtree: true });
+  } else {
+    window.addEventListener('DOMContentLoaded', () => { if (!attachToMeta()) bodyObserver.observe(document.body, { childList: true, subtree: true }); }, { once: true });
+  }
 }
+
+function installArabicProfileCategoryGuard() {
+  if (typeof window === 'undefined' || typeof document === 'undefined' || window.__dalilProfileCategoryGuard) return;
+  window.__dalilProfileCategoryGuard = true;
+  const apply = () => {
+    if (document.documentElement.lang === 'en') return;
+    document.querySelectorAll('.manhom-card-category').forEach(el => {
+      const raw = (el.textContent || '').trim();
+      if (!raw || hasArabic(raw)) return;
+      const translated = translateCategory(raw, false);
+      if (translated && translated !== raw) el.textContent = translated;
+    });
+  };
+  document.addEventListener('click', event => {
+    if (event.target?.closest?.('.btn-download-profile-trigger')) {
+      setTimeout(apply, 0);
+      setTimeout(apply, 120);
+    }
+  }, { passive: true });
+}
+
 installSearchCoverageLabelPolicy();
+installArabicProfileCategoryGuard();
