@@ -1,10 +1,12 @@
 /**
  * AddPlaceOnboardingModal.js
  * Interactive, site-native onboarding for adding a place.
- * Shows a short animated walkthrough instead of static cards.
+ * Also upgrades the existing place form into a guided step-by-step wizard
+ * without removing or duplicating any of the existing fields/handlers.
  */
 
 const STORAGE_KEY = 'manzala_seen_add_place_onboarding_v1';
+const WIZARD_KEY = 'manzala_place_form_wizard_v1';
 
 export function hasSeenAddPlaceOnboarding() {
   if (typeof localStorage === 'undefined') return false;
@@ -64,14 +66,171 @@ export function showAddPlaceOnboardingModal(force = false) {
   document.body.style.overflow = 'hidden';
 
   const closeOnboarding = () => {
-    const chk = document.getElementById('chk-onboarding-dont-show');
-    if (chk && chk.checked) markAddPlaceOnboardingSeen();
-    else markAddPlaceOnboardingSeen();
+    markAddPlaceOnboardingSeen();
     overlay.classList.add('fade-out');
     setTimeout(() => { overlay.remove(); style.remove(); document.body.style.overflow = ''; }, 280);
   };
 
   overlay.querySelector('#btn-close-onboarding-top')?.addEventListener('click', closeOnboarding);
-  overlay.querySelector('#btn-start-adding-place')?.addEventListener('click', closeOnboarding);
+  overlay.querySelector('#btn-start-adding-place')?.addEventListener('click', () => {
+    closeOnboarding();
+    setTimeout(() => initPlaceFormWizard(), 320);
+  });
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOnboarding(); });
+}
+
+/**
+ * Turn the existing place form into a progressive, animated wizard.
+ * Important: we do not recreate the form and we do not remove any field.
+ * Existing IDs, AI buttons, scanner, upload controls and submit handler remain intact.
+ */
+export function initPlaceFormWizard() {
+  if (typeof document === 'undefined') return false;
+  const form = document.getElementById('place-form');
+  if (!form || form.dataset.wizardReady === 'true') return false;
+
+  const sections = Array.from(form.querySelectorAll('.form-section')).filter(section => section.querySelector('input,select,textarea,button'));
+  if (!sections.length) return false;
+
+  form.dataset.wizardReady = 'true';
+  form.classList.add('premium-place-wizard-form');
+
+  const submitButton = form.querySelector('#btn-save-place,button[type="submit"],input[type="submit"]');
+  const submitRow = submitButton?.closest('div');
+  if (submitRow) submitRow.classList.add('place-wizard-submit-row');
+
+  const scanner = document.getElementById('business-card-scanner-container');
+  if (scanner) scanner.classList.add('place-wizard-scanner');
+
+  const labels = [
+    ['🏪','هوية النشاط','ابدأ باسم واضح وسهل البحث'],
+    ['📍','الموقع والتصنيف','حدد نشاطك ومكانك بدقة'],
+    ['📝','الوصف والخدمات','دع الذكاء الاصطناعي يساعدك في الكتابة'],
+    ['📞','التواصل والبيانات الإضافية','اجعل الوصول إليك أسرع'],
+    ['📸','الصور والهوية البصرية','أظهر نشاطك بصورة احترافية'],
+    ['🕐','مواعيد العمل والخيارات النهائية','أكمل آخر التفاصيل قبل الحفظ']
+  ];
+
+  const existingTitles = sections.map(section => section.querySelector('.form-section__title')?.textContent?.replace(/\s+/g,' ').trim()).filter(Boolean);
+  const stepData = sections.map((section, index) => ({
+    section,
+    icon: labels[index]?.[0] || '✨',
+    title: labels[index]?.[1] || existingTitles[index] || `الخطوة ${index + 1}`,
+    hint: labels[index]?.[2] || 'أكمل هذه البيانات ثم انتقل للخطوة التالية'
+  }));
+
+  const oldHeader = form.querySelector('.place-wizard-header');
+  oldHeader?.remove();
+
+  const header = document.createElement('div');
+  header.className = 'place-wizard-header';
+  header.innerHTML = `
+    <div class="place-wizard-header__top">
+      <div>
+        <div class="place-wizard-eyebrow">✨ إضافة نشاط ذكية</div>
+        <h2 class="place-wizard-title">سنجهّز نشاطك خطوة بخطوة</h2>
+        <p class="place-wizard-subtitle">لن نطلب منك كل البيانات مرة واحدة — املأ خطوة، اضغط التالي، ونكمل معك.</p>
+      </div>
+      <div class="place-wizard-counter"><strong id="place-wizard-current">1</strong><span> / ${stepData.length}</span></div>
+    </div>
+    <div class="place-wizard-progress" id="place-wizard-progress" aria-label="تقدم إضافة النشاط">
+      ${stepData.map((s,i)=>`<button type="button" class="place-wizard-progress__item ${i===0?'is-active':''}" data-wizard-step="${i}" aria-label="${escapeWizardText(s.title)}"><span>${i+1}</span><b>${escapeWizardText(s.title)}</b></button>`).join('')}
+    </div>
+  `;
+  form.prepend(header);
+
+  const nav = document.createElement('div');
+  nav.className = 'place-wizard-nav';
+  nav.innerHTML = `
+    <button type="button" class="place-wizard-btn place-wizard-btn--back" id="place-wizard-back">السابق</button>
+    <div class="place-wizard-nav__hint" id="place-wizard-hint">بياناتك محفوظة داخل النموذج أثناء التنقل</div>
+    <button type="button" class="place-wizard-btn place-wizard-btn--next" id="place-wizard-next">التالي <span>←</span></button>
+  `;
+  if (submitRow) form.insertBefore(nav, submitRow); else form.appendChild(nav);
+
+  const style = document.createElement('style');
+  style.id = 'premium-place-wizard-style';
+  style.textContent = `
+    .premium-place-wizard-form{position:relative}
+    .place-wizard-header{margin:0 0 22px;padding:22px 22px 18px;border:1px solid rgba(2,132,199,.14);border-radius:22px;background:linear-gradient(135deg,#ffffff 0%,#f0f9ff 58%,#fffbeb 100%);box-shadow:0 16px 45px rgba(15,23,42,.07);overflow:hidden;position:relative}
+    .place-wizard-header:after{content:"";position:absolute;inset:auto -30px -70px auto;width:190px;height:190px;border-radius:50%;background:rgba(56,189,248,.08);pointer-events:none}
+    .place-wizard-header__top{display:flex;align-items:center;justify-content:space-between;gap:18px;position:relative;z-index:1}.place-wizard-eyebrow{display:inline-flex;padding:5px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:900;margin-bottom:7px}.place-wizard-title{margin:0;font-size:23px;font-weight:950;color:#0f172a;letter-spacing:-.5px}.place-wizard-subtitle{margin:5px 0 0;color:#64748b;font-size:12.5px;line-height:1.7}.place-wizard-counter{min-width:62px;height:62px;border-radius:18px;background:#fff;border:1px solid #bae6fd;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#64748b;box-shadow:0 8px 22px rgba(2,132,199,.1);flex:0 0 auto}.place-wizard-counter strong{font-size:24px;line-height:1;color:#0284c7}.place-wizard-progress{display:grid;grid-template-columns:repeat(${Math.min(stepData.length,6)},1fr);gap:7px;margin-top:18px;position:relative;z-index:1}.place-wizard-progress__item{min-width:0;border:0;background:transparent;padding:0;cursor:pointer;color:#94a3b8;display:flex;align-items:center;gap:6px;text-align:right;font:inherit}.place-wizard-progress__item span{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#e2e8f0;color:#64748b;font-size:11px;font-weight:900;flex:0 0 auto;transition:.25s}.place-wizard-progress__item b{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}.place-wizard-progress__item.is-active,.place-wizard-progress__item.is-done{color:#0369a1}.place-wizard-progress__item.is-active span,.place-wizard-progress__item.is-done span{background:linear-gradient(135deg,#0284c7,#38bdf8);color:#fff;box-shadow:0 5px 13px rgba(2,132,199,.2)}
+    .premium-place-wizard-form>.form-section{display:none;opacity:0;transform:translateX(-18px)}.premium-place-wizard-form>.form-section.place-wizard-active{display:block;animation:placeWizardIn .42s cubic-bezier(.2,.8,.2,1) forwards}.premium-place-wizard-form>.form-section.place-wizard-active .form-section__title{margin-top:0}.place-wizard-scanner{margin-bottom:18px}.premium-place-wizard-form .place-wizard-scanner{display:none}.premium-place-wizard-form .place-wizard-scanner.place-wizard-show-scanner{display:block;animation:placeWizardIn .4s ease both}
+    .place-wizard-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 16px;padding:14px;border:1px solid #e2e8f0;border-radius:18px;background:rgba(255,255,255,.88);box-shadow:0 10px 28px rgba(15,23,42,.05)}.place-wizard-btn{border:0;border-radius:12px;padding:11px 19px;font-weight:900;font-size:13px;cursor:pointer;transition:.22s}.place-wizard-btn--next{background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;box-shadow:0 8px 20px rgba(2,132,199,.22)}.place-wizard-btn--next:hover{transform:translateY(-2px);box-shadow:0 11px 25px rgba(2,132,199,.28)}.place-wizard-btn--back{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}.place-wizard-btn--back:hover{background:#f1f5f9}.place-wizard-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}.place-wizard-nav__hint{font-size:10.5px;color:#94a3b8;text-align:center;flex:1}
+    .place-wizard-submit-row{display:none!important}.premium-place-wizard-form.place-wizard-last-step .place-wizard-submit-row{display:flex!important;animation:placeWizardIn .35s ease both}.premium-place-wizard-form.place-wizard-last-step .place-wizard-nav{display:none}
+    @keyframes placeWizardIn{from{opacity:0;transform:translateX(-18px) translateY(8px)}to{opacity:1;transform:none}}@media(max-width:700px){.place-wizard-header{padding:18px 15px}.place-wizard-title{font-size:19px}.place-wizard-subtitle{font-size:11.5px}.place-wizard-header__top{align-items:flex-start}.place-wizard-counter{width:52px;height:52px;min-width:52px}.place-wizard-counter strong{font-size:20px}.place-wizard-progress{grid-template-columns:repeat(${Math.min(stepData.length,3)},1fr);gap:5px}.place-wizard-progress__item b{display:none}.place-wizard-progress__item{justify-content:center}.place-wizard-nav{position:sticky;bottom:8px;z-index:20}.place-wizard-nav__hint{font-size:9px}.place-wizard-btn{padding:10px 14px}}
+  `;
+  document.head.appendChild(style);
+
+  let current = 0;
+  const currentEl = document.getElementById('place-wizard-current');
+  const hintEl = document.getElementById('place-wizard-hint');
+  const backBtn = document.getElementById('place-wizard-back');
+  const nextBtn = document.getElementById('place-wizard-next');
+  const progressItems = Array.from(form.querySelectorAll('.place-wizard-progress__item'));
+
+  const validateStep = () => {
+    const section = stepData[current].section;
+    const required = Array.from(section.querySelectorAll('input[required],select[required],textarea[required]'));
+    for (const field of required) {
+      if (!field.checkValidity()) {
+        field.reportValidity();
+        field.focus({ preventScroll: true });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const render = (index, direction = 1) => {
+    current = Math.max(0, Math.min(index, stepData.length - 1));
+    stepData.forEach((item,i) => item.section.classList.toggle('place-wizard-active', i === current));
+    if (scanner) scanner.classList.toggle('place-wizard-show-scanner', current === 0);
+    if (currentEl) currentEl.textContent = String(current + 1);
+    if (hintEl) hintEl.textContent = stepData[current].hint;
+    if (backBtn) backBtn.disabled = current === 0;
+    if (nextBtn) {
+      const last = current === stepData.length - 1;
+      nextBtn.innerHTML = last ? 'مراجعة وحفظ النشاط <span>✓</span>' : 'التالي <span>←</span>';
+      form.classList.toggle('place-wizard-last-step', last);
+    }
+    progressItems.forEach((item,i)=>{
+      item.classList.toggle('is-active', i === current);
+      item.classList.toggle('is-done', i < current);
+    });
+    if (direction !== 0) {
+      const active = stepData[current].section;
+      active.style.setProperty('--wizard-direction', direction > 0 ? '-18px' : '18px');
+    }
+    window.requestAnimationFrame(() => {
+      const first = stepData[current].section.querySelector('input:not([type="hidden"]),select,textarea,button');
+      if (first && current > 0) first.focus({ preventScroll: true });
+      form.scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+  };
+
+  backBtn?.addEventListener('click', () => render(current - 1, -1));
+  nextBtn?.addEventListener('click', () => {
+    if (!validateStep()) return;
+    if (current < stepData.length - 1) {
+      render(current + 1, 1);
+    } else {
+      submitButton?.click();
+    }
+  });
+  progressItems.forEach(item => item.addEventListener('click', () => {
+    const target = Number(item.dataset.wizardStep);
+    if (target <= current) render(target, target < current ? -1 : 0);
+  }));
+
+  form.addEventListener('input', () => {
+    try { sessionStorage.setItem(WIZARD_KEY, JSON.stringify({ step: current, ts: Date.now() })); } catch (_) {}
+  }, { passive:true });
+
+  render(0, 0);
+  return true;
+}
+
+function escapeWizardText(value) {
+  return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
 }
