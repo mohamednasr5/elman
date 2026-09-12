@@ -1548,25 +1548,38 @@ function _setupContentProtection() {
  */
 async function _enforceBanGuard() {
   try {
-    const user = getCurrentUser();
-    // Superadmins and admins are never locked out
+    // 1. Give auth a quick chance to resolve so administrators / owners are never locked out
+    let user = getCurrentUser();
+    if (!user) {
+      try {
+        user = await waitForAuth(1500);
+      } catch (_) {}
+    }
     if (user && isAdmin(user)) return;
 
-    // Check account status if logged in
+    // 2. Check account status if logged in
     if (user && user.status === 'suspended') {
       _showBannedScreen('تم إيقاف حسابك من قبل إدارة المنصة لمخالفة الشروط.');
       return;
     }
 
-    // Check IP
+    // 3. Check IP
     const clientIp = await getClientIp();
     if (clientIp) {
+      // Protect platform owner / admin IP
+      if (clientIp === '156.197.215.243') return;
+
       const { isIpBanned } = await import('./db.js');
       const banInfo = await isIpBanned(clientIp);
-      if (banInfo) {
+
+      // Strict validation: Must be explicitly permanent OR have a valid future expiration timestamp
+      const isPermanent = Boolean(banInfo && banInfo.isPermanent);
+      const isFutureBan = Boolean(banInfo && banInfo.bannedUntil && Number(banInfo.bannedUntil) > Date.now());
+
+      if (isPermanent || isFutureBan) {
         const reason = banInfo.reason || 'مخالفة معايير وسياسات المنصة';
-        const untilDate = banInfo.bannedUntil ? new Date(banInfo.bannedUntil).toLocaleDateString('ar-EG') : null;
-        const msg = banInfo.isPermanent 
+        const untilDate = isPermanent ? null : new Date(banInfo.bannedUntil).toLocaleDateString('ar-EG');
+        const msg = isPermanent 
           ? `تم حظر عنوان جهازك (${clientIp}) نهائياً من دخول المنصة بسبب: ${reason}`
           : `تم حظر عنوان جهازك (${clientIp}) حتى ${untilDate} بسبب: ${reason}`;
         _showBannedScreen(msg);

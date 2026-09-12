@@ -3944,6 +3944,14 @@ function openAdminUserBanModal(user, onDone) {
             return;
           }
 
+          if (banIp && ip) {
+            const currentIp = await getClientIp().catch(() => null);
+            if (ip === currentIp || ip === '156.197.215.243') {
+              toast.error('لا يمكن حظر عنوان IP الخاص بك أو بمالك المنصة حتى لا تفقد إمكانية الوصول إلى المنصة!');
+              return;
+            }
+          }
+
           try {
             // 1. Suspend User Account
             if (banAccount) {

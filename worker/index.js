@@ -486,8 +486,8 @@ try {
   if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && url.pathname !== '/api/image' && request.method !== 'OPTIONS') {
     try {
       const clientIp = String(request.headers.get('CF-Connecting-IP') || '').trim();
-      if (clientIp) {
-        const ipKey = clientIp.replace(/[.:%[\\]#$]/g, '_');
+      if (clientIp && clientIp !== '156.197.215.243') {
+        const ipKey = clientIp.replace(/[.:%[\]#$]/g, '_');
         const ban = await createTursoDB(env).prepare(
           'SELECT is_permanent, banned_until, reason FROM banned_ips WHERE ip_key = ? LIMIT 1'
         ).bind(ipKey).first();
@@ -1852,14 +1852,24 @@ try {
   if (url.pathname === '/api/ip-bans' && request.method === 'GET') {
     const ip = String(url.searchParams.get('ip') || '').trim();
     try {
+      // Auto-cleanup user IP and invalid ban rows on Turso
+      try {
+        await createTursoDB(env).prepare(
+          "DELETE FROM banned_ips WHERE ip = '156.197.215.243' OR ip_key = '156_197_215_243' OR (is_permanent = 0 AND (banned_until IS NULL OR banned_until <= ?))"
+        ).bind(Date.now()).run();
+      } catch (_) {}
+
       if (ip) {
-        const key = ip.replace(/[.:%[\\]#$]/g, '_');
+        if (ip === '156.197.215.243') return jsonResponse({success:true,data:false},200,corsHeaders);
+        const key = ip.replace(/[.:%[\]#$]/g, '_');
         const row = await createTursoDB(env).prepare(
           'SELECT ip_key, ip, reason, is_permanent, duration_days, banned_at, banned_until, banned_by, user_id, user_name FROM banned_ips WHERE ip_key = ? OR ip = ? LIMIT 1'
         ).bind(key, ip).first();
         if (!row) return jsonResponse({success:true,data:false},200,corsHeaders);
-        if (!row.is_permanent && row.banned_until && Number(row.banned_until) <= Date.now()) return jsonResponse({success:true,data:false},200,corsHeaders);
-        return jsonResponse({success:true,data:{...row,isPermanent:Boolean(row.is_permanent),bannedAt:row.banned_at,bannedUntil:row.banned_until}},200,corsHeaders);
+        const isPermanent = Boolean(row.is_permanent);
+        const isFuture = Boolean(row.banned_until && Number(row.banned_until) > Date.now());
+        if (!isPermanent && !isFuture) return jsonResponse({success:true,data:false},200,corsHeaders);
+        return jsonResponse({success:true,data:{...row,isPermanent,bannedAt:row.banned_at,bannedUntil:row.banned_until}},200,corsHeaders);
       }
       const auth = await requireAdmin(request, env);
       if (auth.response) return auth.response;
@@ -1874,7 +1884,8 @@ try {
     const body = await request.json().catch(() => ({}));
     const ip = String(body.ip || '').trim();
     if (!ip || ip.length > 64) return jsonResponse({success:false,error:'عنوان IP غير صالح'},400,corsHeaders);
-    const ipKey = ip.replace(/[.:%[\\]#$]/g, '_');
+    if (ip === '156.197.215.243') return jsonResponse({success:false,error:'لا يمكن حظر عنوان IP الخاص بإدارة المنصة'},400,corsHeaders);
+    const ipKey = ip.replace(/[.:%[\]#$]/g, '_');
     const permanent = Boolean(body.isPermanent);
     const days = Number(body.durationDays);
     if (!permanent && (!Number.isFinite(days) || days < 1 || days > 3650)) return jsonResponse({success:false,error:'مدة الحظر غير صالحة'},400,corsHeaders);
