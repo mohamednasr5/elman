@@ -29,14 +29,10 @@ jobs:
           node --check src/js/ui/pages/en/place-en-v2.js
       - name: Generate dedicated English pages
         run: node generate-english-pages.mjs
-      - name: Commit generated English pages
+      - name: Commit generated English pages on main
+        if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add en
-          if git diff --cached --quiet; then
-            echo "No English page changes to commit."
-          else
-            git commit -m "Generate English static page entries"
-            git push
-          fi
+          if git diff --cached --quiet; then echo "No English page changes to commit."; else git commit -m "Generate English static page entries" && git push; fi
