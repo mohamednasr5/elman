@@ -4,7 +4,7 @@
  */
 
 import { getPublishedPlaces, getCategories } from '../../../core/db.js';
-import { renderPlaceCard, renderPlaceCardSkeleton } from '../../components/PlaceCard.js';
+import { renderEnglishPlaceCard, renderEnglishPlaceCardSkeleton } from '../../components/en/PlaceCardEn.js';
 import { executeFastSearch, warmupSearchEngine } from '../../../services/search-engine.service.js';
 import { isPhoneSearchQuery, matchPlaceByPhone } from '../../../utils/phone.js';
 import { translateArea, translateCategory } from '../../../utils/category-i18n.js';
@@ -30,15 +30,7 @@ export async function renderEnglishSearchPage($container, { q = '' } = {}) {
     <div class="container section">
       <div style="max-width:640px;margin:0 auto var(--space-6)">
         <div style="position:relative">
-          <input 
-            type="search" 
-            id="search-page-input" 
-            class="form-input" 
-            placeholder="Search by name, doctor specialty, craft, or phone..." 
-            value="${escAttr(initialQuery)}"
-            style="font-size:16px;padding:12px 18px"
-            autocomplete="off"
-          />
+          <input type="search" id="search-page-input" class="form-input" placeholder="Search by name, doctor specialty, craft, or phone..." value="${escAttr(initialQuery)}" style="font-size:16px;padding:12px 18px" autocomplete="off" />
         </div>
       </div>
 
@@ -47,7 +39,7 @@ export async function renderEnglishSearchPage($container, { q = '' } = {}) {
       </div>
 
       <div class="grid grid-4" id="search-results-grid">
-        ${Array(8).fill(renderPlaceCardSkeleton()).join('')}
+        ${Array(8).fill(renderEnglishPlaceCardSkeleton()).join('')}
       </div>
     </div>
   `;
@@ -67,7 +59,7 @@ export async function renderEnglishSearchPage($container, { q = '' } = {}) {
     const val = (input?.value || '').trim();
     if (!val) {
       if (countLabel) countLabel.textContent = `Showing all ${places.length} places`;
-      grid.innerHTML = (places || []).slice(0, 16).map(p => renderPlaceCard(p)).join('');
+      grid.innerHTML = (places || []).slice(0, 16).map(p => renderEnglishPlaceCard(p)).join('');
       return;
     }
 
@@ -77,7 +69,6 @@ export async function renderEnglishSearchPage($container, { q = '' } = {}) {
     } else {
       results = executeFastSearch(val, { limit: 50 });
       if (!results || !results.length) {
-        // Fallback filter
         const lower = val.toLowerCase();
         results = (places || []).filter(p => {
           const nameEn = String(p.nameEn || p.name_en || '').toLowerCase();
@@ -102,7 +93,7 @@ export async function renderEnglishSearchPage($container, { q = '' } = {}) {
       return;
     }
 
-    grid.innerHTML = results.map(p => renderPlaceCard(p)).join('');
+    grid.innerHTML = results.map(p => renderEnglishPlaceCard(p)).join('');
   }
 
   input?.addEventListener('input', doSearch);
