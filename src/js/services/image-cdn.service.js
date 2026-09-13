@@ -22,13 +22,12 @@ export function getOptimizedImageUrl(url, size = IMAGE_SIZES.THUMB) {
 
   if (cleanUrl.includes('images.unsplash.com')) {
     const width = size === IMAGE_SIZES.LOGO ? 90
-      : size === IMAGE_SIZES.THUMB ? 360
+      : size === IMAGE_SIZES.THUMB ? 900
       : size === IMAGE_SIZES.MEDIUM ? 2200
       : size === IMAGE_SIZES.COVER ? 2400
       : 3000;
-    const quality = size === IMAGE_SIZES.LOGO ? 80
-      : size === IMAGE_SIZES.THUMB ? 84
-      : size === IMAGE_SIZES.MEDIUM ? 94
+    const quality = size === IMAGE_SIZES.LOGO ? 85
+      : size === IMAGE_SIZES.THUMB ? 92
       : 95;
     try {
       const u = new URL(cleanUrl);
@@ -42,24 +41,13 @@ export function getOptimizedImageUrl(url, size = IMAGE_SIZES.THUMB) {
     }
   }
 
+  // R2 public objects are already served from the project's CDN. Do not route
+  // them through /api/image here: that transformation endpoint can be absent
+  // on older deployments and produces broken <img> requests. The original
+  // object is the quality ceiling and lets the browser perform the final
+  // display-size downscaling without introducing an artificial low-res source.
   if (cleanUrl.includes('r2.dev') || (R2_PUBLIC_URL && cleanUrl.includes(R2_PUBLIC_URL))) {
-    const params = new URLSearchParams();
-    if (size === IMAGE_SIZES.LOGO) {
-      params.set('w', '90'); params.set('h', '90'); params.set('fit', 'cover'); params.set('q', '90');
-    } else if (size === IMAGE_SIZES.THUMB) {
-      params.set('w', '360'); params.set('h', '216'); params.set('fit', 'cover'); params.set('q', '88');
-    } else if (size === IMAGE_SIZES.MEDIUM) {
-      // Detail/profile media must remain sharp on wide desktop displays.
-      // The previous 800px variant was stretched and visibly pixelated.
-      params.set('w', '2200'); params.set('h', '1375'); params.set('fit', 'cover'); params.set('q', '94');
-    } else if (size === IMAGE_SIZES.COVER) {
-      params.set('w', '2400'); params.set('h', '1010'); params.set('fit', 'cover'); params.set('q', '95');
-    } else {
-      // Original is the quality ceiling. Never upscale a small source.
-      return cleanUrl;
-    }
-    params.set('src', cleanUrl);
-    return '/api/image?' + params.toString();
+    return cleanUrl;
   }
 
   return cleanUrl;
