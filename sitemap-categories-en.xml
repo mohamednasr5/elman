@@ -617,6 +617,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/travel-and-tourism"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/trips</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/trips"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/trips"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/trips"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/underwear-and-lingerie-sets</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
