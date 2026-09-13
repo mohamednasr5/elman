@@ -2,6 +2,12 @@
 # Canonical redirect: /index.html → / (prevents duplicate content)
 /index.html  /  301
 
+# Default place assets: the source currently references PNG names while the
+# canonical high-resolution assets are JPG files. Keep both names valid so
+# every Arabic and English renderer receives a real fallback image.
+/assets/images/default-cover.png  /assets/images/default-cover.jpg  301
+/assets/images/default-logo.png   /assets/images/default-logo.jpg   301
+
 # Dedicated English clean routes — served from real English entry pages.
 /en                 /en/index.html                  200
 /en/                /en/index.html                  200
@@ -84,7 +90,7 @@
 /search             /search.html        200
 /search/            /search.html        200
 /dashboard          /dashboard.html     200
-/dashboard/         /dashboard.html     200
+/dashboard/         /dashboard.html      200
 /login              /login.html         200
 /login/             /login.html         200
 /offers             /offers.html        200
