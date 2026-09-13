@@ -1,5 +1,7 @@
 /**
  * المنزلة وناسها — Toast Notification Component
+ * Mobile/PWA friendly: success and action feedback stay centered in the viewport
+ * so they are not hidden behind the browser chrome or bottom navigation.
  */
 
 let _container = null;
@@ -43,15 +45,10 @@ export function showToast(message, type = 'default', duration = 4000) {
     <button class="toast__close" aria-label="إغلاق">✕</button>
   `;
 
-  // Style duration for progress bar
   toast.querySelector('.toast__close').addEventListener('click', () => dismiss(toast));
-
   container.appendChild(toast);
 
-  // Auto-dismiss
   const timer = setTimeout(() => dismiss(toast), duration);
-
-  // Store timer reference
   toast._dismissTimer = timer;
 
   return {
@@ -69,7 +66,7 @@ function dismiss(toast) {
   if (!toast.parentNode) return;
   toast.classList.add('removing');
   toast.addEventListener('animationend', () => toast.remove(), { once: true });
-  setTimeout(() => toast.remove(), 400); // Fallback
+  setTimeout(() => toast.remove(), 400);
 }
 
 // Convenience methods
@@ -85,26 +82,20 @@ export const toast = {
     el.className = 'toast toast--info';
     el.setAttribute('role', 'alert');
     el.style.setProperty('--duration', `${duration}ms`);
-    el.style.background = 'var(--surface-card, #0F2B48)';
-    el.style.color = '#fff';
-    el.style.border = '1.5px solid var(--secondary, #F5A623)';
-    el.style.boxShadow = '0 6px 20px rgba(0,0,0,0.25)';
-    el.style.borderRadius = '12px';
-    el.style.padding = '12px 14px';
 
     el.innerHTML = `
-      <div style="display:flex;align-items:flex-start;gap:10px;width:100%">
-        <span style="font-size:1.4rem;flex-shrink:0">${icon}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:800;font-size:13.5px;color:#F5A623">${escapeHtml(title || '')}</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.9);margin-top:2px;line-height:1.4">${escapeHtml(message || '')}</div>
+      <div class="toast__custom-content">
+        <span class="toast__custom-icon" aria-hidden="true">${escapeHtml(icon)}</span>
+        <div class="toast__custom-copy">
+          <div class="toast__custom-title">${escapeHtml(title || '')}</div>
+          <div class="toast__custom-message">${escapeHtml(message || '')}</div>
           ${actionText && actionUrl ? `
-            <a href="${escapeHtml(actionUrl)}" target="${actionUrl.startsWith('http') ? '_blank' : '_self'}" class="btn btn-sm btn-primary" style="margin-top:6px;font-size:11.5px;padding:4px 10px;border-radius:6px;font-weight:700;display:inline-block">
+            <a href="${escapeHtml(actionUrl)}" target="${actionUrl.startsWith('http') ? '_blank' : '_self'}" class="btn btn-sm btn-primary toast__custom-action">
               ${escapeHtml(actionText)}
             </a>
           ` : ''}
         </div>
-        <button class="toast__close" aria-label="إغلاق" style="color:rgba(255,255,255,0.7);background:none;border:none;cursor:pointer;font-size:14px">✕</button>
+        <button class="toast__close" aria-label="إغلاق">✕</button>
       </div>
     `;
 
