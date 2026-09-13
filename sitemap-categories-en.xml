@@ -281,6 +281,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/fesikh-%26-herring"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/fish-oven-and-grill</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/fish-oven-and-grill"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/fish-oven-and-grill"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/fish-oven-and-grill"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/fish-shop</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -407,6 +415,14 @@
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/hypermarket"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/hypermarket"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/hypermarket"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/category/import-and-export-company</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/import-and-export-company"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/import-and-export-company"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/import-and-export-company"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/category/institutes-and-colleges</loc>
@@ -593,6 +609,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/shoes-and-bags"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/shops-selling-tools-and-equipment</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/shops-selling-tools-and-equipment"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/shops-selling-tools-and-equipment"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/shops-selling-tools-and-equipment"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/supermarket</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -687,6 +711,14 @@
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/wholesale-food-sales"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/wholesale-food-sales"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/wholesale-food-sales"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/category/women&apos;s-abaya-shop</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/women&apos;s-abaya-shop"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/women&apos;s-abaya-shop"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/women&apos;s-abaya-shop"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/category/women&apos;s-hairdresser</loc>
