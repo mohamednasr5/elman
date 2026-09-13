@@ -1,44 +1,140 @@
-# robots.txt for https://dalilmanzala.com
+# Robots policy for https://dalilmanzala.com
+# Public directory pages and business profiles are crawlable.
+# Account, administration, internal search results and API endpoints are not index targets.
 
 User-agent: *
 Allow: /
-
-# Private / administrative / internal search pages
 Disallow: /admin.html
 Disallow: /admin/
 Disallow: /dashboard.html
 Disallow: /dashboard/
 Disallow: /login.html
 Disallow: /login/
-Disallow: /search.html
 Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /*?search=
+
+# OpenAI Search crawler — allow public directory/profile content for ChatGPT search.
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
 Disallow: /api/
 
-# AI crawlers
+# OpenAI model crawler — public pages are allowed.
 User-agent: GPTBot
 Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
 
-User-agent: ChatGPT-User
-Allow: /
-
+# Anthropic web crawlers.
 User-agent: ClaudeBot
 Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
 
+User-agent: Claude-User
+Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
+
+# Perplexity search crawler.
 User-agent: PerplexityBot
 Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
 
-User-agent: Google-Extended
+# Microsoft Bing / Copilot discovery.
+User-agent: Bingbot
 Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
+
+# Google crawling.
+User-agent: Googlebot
+Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
 
 User-agent: Applebot
 Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
 
-User-agent: Bingbot
+User-agent: Google-Extended
 Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
 
-# AI Context & Knowledge Discovery (llmstxt.org standard)
+# AI-readable discovery files.
 Allow: /llms.txt
 Allow: /llms-full.txt
+Allow: /llms-en.txt
+Allow: /llms-full-en.txt
 
-# Sitemap
+# XML sitemap index.
 Sitemap: https://dalilmanzala.com/sitemap.xml
