@@ -93,9 +93,11 @@
 <script type="module">
 
   import { initPage } from './src/js/core/page-shell.js?v=ebc49583_social_v1';
+  import { initDashboardHeaderAuthNotifications } from './src/js/core/dashboard-header-fix.js?v=20260913_auth_notif_v1';
   import { renderDashboard } from './src/js/ui/pages/dashboard.js?v=ebc49583_v2';
   import { waitForAuth } from './src/js/core/auth.js';
   await initPage('dashboard.html');
+  await initDashboardHeaderAuthNotifications();
   const user = await waitForAuth();
   if (!user) { window.location.replace('login.html'); }
   else {
