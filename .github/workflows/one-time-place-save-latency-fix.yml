@@ -1,0 +1,68 @@
+name: One-time place save latency fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, '[place-save-fix]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch critical save path
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/js/services/places.service.js')
+          text = path.read_text(encoding='utf-8-sig')
+
+          old = text
+          text = text.replace(
+              """  await validatePlaceUniqueness({name:placeData.name,phone:placeData.phone,categoryId:placeData.categoryId,placeData});
+  const placeId='p_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  const cleanCandidate=generateCleanSlug(placeData.name); let slug=cleanCandidate;
+  try { const existing=await tursoFetch('/api/places?slug='+encodeURIComponent(slug)); const existingId=existing?.data?.id || existing?.data?.place?.id; if(existingId&&String(existingId)!==String(placeId)) slug=`${cleanCandidate}-${placeId.slice(-5)}`; } catch(_){ slug=cleanCandidate; }""",
+              """  const cleanCandidate = generateCleanSlug(placeData.name);
+  const [validationResult, slugCheck] = await Promise.all([
+    validatePlaceUniqueness({ name: placeData.name, phone: placeData.phone, categoryId: placeData.categoryId, placeData }),
+    tursoFetch('/api/places?slug=' + encodeURIComponent(cleanCandidate)).catch(() => null)
+  ]);
+  void validationResult;
+  const placeId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  let slug = cleanCandidate;
+  const existingId = slugCheck?.data?.id || slugCheck?.data?.place?.id;
+  if (existingId && String(existingId) !== String(placeId)) slug = `${cleanCandidate}-${placeId.slice(-5)}`;"""
+          )
+
+          text = text.replace(
+              """  // IndexedDB is cache only and is populated after authoritative persistence succeeds.
+  await idbPut(STORES.PLACES, { id: placeId, ...newPlace }).catch(() => {});""",
+              """  // IndexedDB is cache only; never block the successful publish UX on cache writes.
+  idbPut(STORES.PLACES, { id: placeId, ...newPlace }).catch(() => {});"""
+          )
+
+          if text == old:
+              raise SystemExit('No expected save-path pattern was found; refusing to modify the file.')
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Syntax check
+        run: node --check src/js/services/places.service.js
+
+      - name: Commit source fix and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/workflows/one-time-place-save-latency-fix.yml
+          git add src/js/services/places.service.js .github/workflows/one-time-place-save-latency-fix.yml
+          git commit -m 'Fix place save latency [place-save-fix]'
+          git push origin HEAD:main
