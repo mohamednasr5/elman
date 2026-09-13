@@ -1,4 +1,4 @@
-/* Universal PWA install prompt for every page shell. */
+/* Universal PWA install prompt + shell utilities. */
 let deferredPrompt=null,banner=null,showTimer=null;
 function loadPwaStyles(){if(document.getElementById('pwa-install-design'))return;const link=document.createElement('link');link.id='pwa-install-design';link.rel='stylesheet';link.href='/src/css/pwa-install.css?v=20260913.2';document.head.appendChild(link);}
 function isEnglish(){return document.documentElement.lang==='en'||location.pathname==='/en'||location.pathname.startsWith('/en/');}
@@ -11,6 +11,7 @@ function scheduleFallbackBanner(){clearTimeout(showTimer);showTimer=setTimeout((
 function capture(e){e.preventDefault();deferredPrompt=e;window.__deferredPwaPrompt=e;clearTimeout(showTimer);setTimeout(()=>showBanner(false),400);}
 window.addEventListener('beforeinstallprompt',capture);window.addEventListener('appinstalled',()=>{deferredPrompt=null;window.__deferredPwaPrompt=null;clearTimeout(showTimer);hideBanner();});if(window.__deferredPwaPrompt){deferredPrompt=window.__deferredPwaPrompt;setTimeout(()=>showBanner(false),400);}
 async function ensureServiceWorker(){if(!('serviceWorker' in navigator))return null;try{const registration=await navigator.serviceWorker.register('/sw.js',{scope:'/'});await registration.update().catch(()=>{});if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});return registration;}catch(err){console.warn('[PWA] Service worker registration:',err);return null;}}
+function installArabicDesktopDisplayRail(){if(isEnglish()||window.innerWidth<1024||document.getElementById('en-floating-controls')||document.getElementById('display-controls-rail'))return;const lang=document.getElementById('lang-toggle-btn'),theme=document.getElementById('theme-toggle-btn');if(!lang&&!theme)return;const rail=document.createElement('aside');rail.id='display-controls-rail';rail.className='display-controls-rail';rail.setAttribute('aria-label','عناصر التحكم في اللغة والمظهر');if(theme)rail.appendChild(theme);if(lang)rail.appendChild(lang);document.body.appendChild(rail);}
 async function refreshPwaRuntime(){try{const registration=await ensureServiceWorker();if(registration){registration.update().catch(()=>{});if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});}}catch(_){} }
-function bootPwaInstall(){loadPwaStyles();ensureBanner();scheduleFallbackBanner();refreshPwaRuntime();}
+function bootPwaInstall(){loadPwaStyles();ensureBanner();scheduleFallbackBanner();refreshPwaRuntime();setTimeout(installArabicDesktopDisplayRail,300);window.addEventListener('resize',()=>{if(!isEnglish()&&window.innerWidth>=1024)installArabicDesktopDisplayRail();},{passive:true});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootPwaInstall,{once:true});else bootPwaInstall();
