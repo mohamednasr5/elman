@@ -22,7 +22,7 @@ jobs:
       - name: Commit generated English pages
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add en
           if git diff --cached --quiet; then
             echo "No English page changes to commit."
