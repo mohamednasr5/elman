@@ -8,18 +8,13 @@
  *   NO Firebase Realtime Database usage whatsoever
  */
 
-import { getAuth, WORKER_URL } from './firebase.js';
+import { getAuth, ensureFirebaseReady, WORKER_URL } from './firebase.js';
 import { appState } from './state.js';
 import { emit } from './events.js';
 
 let _authUnsubscribe = null;
-
-// ── Persistent Cache Key ───────────────────────────────────────────────────
 const PERSISTENT_USER_KEY = 'manzala_persistent_user';
 
-/**
- * Get initial cached user synchronously from localStorage (0ms instant session)
- */
 function getInitialCachedUser() {
   if (typeof window === 'undefined' || !window.localStorage) return null;
   try {
@@ -32,43 +27,47 @@ function getInitialCachedUser() {
   return null;
 }
 
-// Pre-populate appState with cached user immediately on module evaluation
 const _initialCachedUser = getInitialCachedUser();
 if (_initialCachedUser) {
   appState.set('user', _initialCachedUser);
   appState.set('authLoading', false);
 }
 
-// ── Admin Emails ───────────────────────────────────────────────────────────
 export const ADMIN_EMAILS = [
   'elfannanm@gmail.com',
   'mohamednasrofficial@gmail.com'
 ];
 
-// ── initAuth ───────────────────────────────────────────────────────────────
 /**
- * Initialize auth state listener.
- * On sign-in: syncs user to Turso and fetches full Turso profile (role, placeIds).
+ * Initialize auth after Firebase Auth SDK is definitely ready.
+ * This is intentionally async so both the Arabic and English shells use
+ * exactly the same authentication lifecycle.
  */
-export function initAuth() {
-  const auth = getAuth();
+export async function initAuth() {
+  let ready = null;
+  try {
+    ready = await ensureFirebaseReady(6000);
+  } catch (err) {
+    console.warn('[Auth] Firebase initialization failed:', err?.message || err);
+  }
+
+  const auth = ready?.auth || getAuth();
   if (!auth) {
-    // Firebase is optional for public pages; Auth is used only for login/notifications.
     appState.set('authLoading', false);
     return null;
   }
 
-  // Set local persistence
   try {
-    if (firebase?.auth?.Auth?.Persistence?.LOCAL) {
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+    if (typeof auth.setPersistence === 'function' && typeof window !== 'undefined' && window.firebase?.auth?.Auth?.Persistence?.LOCAL) {
+      await auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
     }
   } catch (_) {}
+
+  if (_authUnsubscribe) return _authUnsubscribe;
 
   _authUnsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
     if (firebaseUser) {
       try {
-        // Sync to Turso and get full profile back
         const profile = await _syncUserToTurso(firebaseUser);
         appState.set('user', profile);
         appState.set('authLoading', false);
@@ -100,13 +99,29 @@ export function initAuth() {
       }
     }
   });
+
+  return _authUnsubscribe;
 }
 
-// ── Sign In/Out ────────────────────────────────────────────────────────────
 export async function signInWithGoogle() {
-  const auth = getAuth();
-  const provider = new firebase.auth.GoogleAuthProvider();
+  const ready = await ensureFirebaseReady(8000);
+  const auth = ready?.auth || getAuth();
+  if (!auth) {
+    const error = new Error('Firebase Authentication is not available.');
+    error.code = 'auth/not-initialized';
+    throw error;
+  }
+
+  const fb = typeof window !== 'undefined' ? window.firebase : null;
+  if (!fb?.auth?.GoogleAuthProvider) {
+    const error = new Error('Google Sign-In is not available.');
+    error.code = 'auth/provider-not-ready';
+    throw error;
+  }
+
+  const provider = new fb.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+
   try {
     const result = await auth.signInWithPopup(provider);
     return result.user;
@@ -117,7 +132,8 @@ export async function signInWithGoogle() {
 }
 
 export async function signOut() {
-  const auth = getAuth();
+  const auth = await ensureFirebaseReady(6000).then(r => r?.auth).catch(() => getAuth());
+  if (!auth) return;
   try {
     localStorage.removeItem(PERSISTENT_USER_KEY);
     localStorage.removeItem('manzala_user');
@@ -127,18 +143,13 @@ export async function signOut() {
   emit('auth:signedOut');
 }
 
-// ── Token ──────────────────────────────────────────────────────────────────
-/**
- * Get Firebase ID Token (for Worker API authorization)
- */
 export async function getIdToken(forceRefresh = false) {
   const auth = getAuth();
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   if (!user) return null;
   return user.getIdToken(forceRefresh);
 }
 
-// ── Current User ───────────────────────────────────────────────────────────
 export function getCurrentUser() {
   return appState.get('user');
 }
@@ -157,7 +168,6 @@ export function isSuperAdmin(user = null) {
   return ADMIN_EMAILS.includes(email) || u.role === 'superadmin';
 }
 
-// ── waitForAuth ────────────────────────────────────────────────────────────
 export function waitForAuth() {
   return new Promise((resolve) => {
     const cached = appState.get('user') || getInitialCachedUser();
@@ -183,17 +193,15 @@ export function waitForAuth() {
           finish(fbUser ? _buildBasicProfile(fbUser) : appState.get('user'));
         } catch (_) { finish(appState.get('user')); }
       }
-    }, 5000);
+    }, 8000);
   });
 }
 
-// ── onAuthStateChange ──────────────────────────────────────────────────────
 export function onAuthStateChange(callback) {
   if (!appState.get('authLoading')) callback(appState.get('user'));
   return appState.subscribe('user', (user) => callback(user));
 }
 
-// ── Client IP ──────────────────────────────────────────────────────────────
 let _cachedClientIp = null;
 export async function getClientIp() {
   if (_cachedClientIp) return _cachedClientIp;
@@ -215,15 +223,6 @@ export async function getClientIp() {
   return null;
 }
 
-// ── Turso User Sync (Core) ────────────────────────────────────────────────────
-/**
- * Sync Firebase user → Turso users table, then fetch full Turso profile.
- * Turso is the source of truth for role, placeIds, status, etc.
- * Firebase Auth is used ONLY for identity (uid, name, email, photoURL).
- *
- * @param {firebase.User} firebaseUser
- * @returns {Promise<UserProfile>}
- */
 async function _syncUserToTurso(firebaseUser) {
   const uid = firebaseUser.uid;
   const email = (firebaseUser.email || '').trim().toLowerCase();
@@ -263,9 +262,6 @@ async function _syncUserToTurso(firebaseUser) {
   };
 }
 
-/**
- * Build minimal profile from Firebase user alone (fallback when Turso fails)
- */
 function _buildBasicProfile(firebaseUser) {
   const email = (firebaseUser.email || '').trim().toLowerCase();
   const isSuper = ADMIN_EMAILS.includes(email);
@@ -280,7 +276,6 @@ function _buildBasicProfile(firebaseUser) {
   };
 }
 
-// ── Cleanup ────────────────────────────────────────────────────────────────
 export function destroyAuth() {
   if (_authUnsubscribe) {
     _authUnsubscribe();
