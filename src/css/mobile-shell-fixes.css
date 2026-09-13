@@ -2,17 +2,43 @@
 @media (max-width: 767px) {
   html, body { overflow-x: hidden; }
 
+  /* Keep the header compact: theme + language float independently so Sign In never gets clipped. */
   .header__inner { min-width: 0 !important; width: 100% !important; padding-inline: 10px !important; gap: 6px !important; }
-  .header__logo { flex: 0 0 auto !important; min-width: 0 !important; }
+  .header__logo { flex: 0 1 auto !important; min-width: 0 !important; max-width: calc(100% - 108px) !important; }
   .header__logo-img { width: 34px !important; height: 34px !important; }
   .header__logo-name { white-space: nowrap !important; font-size: 15px !important; }
-  .header__user, #header-user-section { flex: 0 0 auto !important; min-width: 38px !important; overflow: visible !important; }
-  #header-user-section .btn { min-width: 38px !important; width: auto !important; height: 40px !important; padding: 0 9px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; white-space: nowrap !important; }
+  .header__user, #header-user-section { flex: 0 0 auto !important; min-width: 44px !important; width: auto !important; overflow: visible !important; order: 10 !important; }
+  #header-user-section .btn { min-width: 44px !important; width: auto !important; height: 40px !important; padding: 0 10px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; white-space: nowrap !important; }
   #header-user-section .btn span { display: inline !important; }
-  .lang-toggle-btn { flex: 0 0 42px !important; width: 42px !important; min-width: 42px !important; padding: 0 !important; }
+
+  /* Floating side controls — common to mobile browser and installed PWA. */
+  .lang-toggle-btn,
+  .theme-toggle-btn {
+    position: fixed !important;
+    left: 8px !important;
+    z-index: 10070 !important;
+    box-shadow: 0 6px 18px rgba(15,23,42,.14) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+  .theme-toggle-btn {
+    top: max(78px, env(safe-area-inset-top) + 70px) !important;
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    border-radius: 13px !important;
+  }
+  .lang-toggle-btn {
+    top: calc(max(78px, env(safe-area-inset-top) + 70px) + 48px) !important;
+    width: 42px !important;
+    height: 38px !important;
+    min-width: 42px !important;
+    border-radius: 13px !important;
+    padding: 0 !important;
+  }
   .lang-toggle-btn .lang-globe { display: none !important; }
-  .lang-toggle-btn .lang-name { display: inline-block !important; font-weight: 800 !important; }
-  .theme-toggle-btn { flex: 0 0 40px !important; width: 40px !important; min-width: 40px !important; padding: 0 !important; }
+  .lang-toggle-btn .lang-name { display: inline-block !important; font-weight: 900 !important; font-size: 13px !important; }
+
   .header-search-expandable { flex: 0 0 auto !important; }
 
   .bottom-nav { z-index: 10050 !important; pointer-events: auto !important; }
@@ -24,7 +50,7 @@
   .mobile-more-sheet.is-open { visibility: visible; pointer-events: auto; }
   .mobile-more-sheet__backdrop { position: absolute; inset: 0; background: rgba(15,23,42,.52); opacity: 0; transition: opacity .2s ease; }
   .mobile-more-sheet.is-open .mobile-more-sheet__backdrop { opacity: 1; }
-  .mobile-more-sheet__panel { position: absolute; left: 10px; right: 10px; bottom: calc(var(--bottom-nav-height, 64px) + 10px); max-height: min(70vh,560px); overflow: auto; background: var(--surface,#fff); border: 1px solid rgba(15,23,42,.10); border-radius: 22px; box-shadow: 0 20px 60px rgba(15,23,42,.25); padding: 14px; transform: translateY(18px); opacity: 0; transition: transform .22s ease, opacity .22s ease; }
+  .mobile-more-sheet__panel { position: absolute; left: 10px; right: 10px; bottom: calc(var(--bottom-nav-height, 64px) + 10px + env(safe-area-inset-bottom)); max-height: min(70dvh,560px); overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--surface,#fff); border: 1px solid rgba(15,23,42,.10); border-radius: 22px; box-shadow: 0 20px 60px rgba(15,23,42,.25); padding: 14px; transform: translateY(18px); opacity: 0; transition: transform .22s ease, opacity .22s ease; }
   .mobile-more-sheet.is-open .mobile-more-sheet__panel { transform: translateY(0); opacity: 1; }
   .mobile-more-sheet__head { display:flex; align-items:center; justify-content:space-between; padding:4px 4px 12px; border-bottom:1px solid rgba(15,23,42,.08); }
   .mobile-more-sheet__head strong { font-size:18px; }
@@ -33,6 +59,12 @@
   .mobile-more-sheet__grid a { display:flex; align-items:center; gap:8px; min-height:52px; padding:9px 10px; border:1px solid rgba(15,23,42,.08); border-radius:14px; background:rgba(255,255,255,.72); text-decoration:none; color:inherit; }
   .mobile-more-sheet__grid a span { font-size:20px; flex:0 0 auto; }
   .mobile-more-sheet__grid a b { font-size:13px; line-height:1.3; }
+
+  /* Voice assistant: keep the dialog and its live search results inside the viewport. */
+  .manzala-voice-modal-backdrop { z-index: 12000 !important; padding: 12px !important; box-sizing: border-box !important; }
+  .manzala-voice-modal-card { width: min(94vw, 620px) !important; max-height: calc(100dvh - 24px) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
+  .mvm-results-container { display: block; flex: 1 1 auto; min-height: 0; max-height: min(42dvh, 360px); overflow-y: auto !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .mvm-results-list { max-height: none !important; overflow: visible !important; }
 
   .footer__grid { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; align-items:start !important; gap:26px 18px !important; }
   .footer__brand, .footer__column { min-width:0 !important; }
