@@ -1,6 +1,5 @@
 # ── Cloudflare Pages Custom Headers ──
 
-# Source CSS/JS: always revalidate so production never serves an old shell after deployment.
 /src/css/*
   Cache-Control: public, max-age=0, must-revalidate, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
@@ -9,7 +8,6 @@
   Cache-Control: public, max-age=0, must-revalidate, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
 
-# Critical i18n/runtime files must revalidate so old language shells cannot persist
 /src/js/core/page-shell.js
   Cache-Control: public, max-age=0, must-revalidate
 /src/js/core/i18n.js
@@ -23,47 +21,45 @@
 /src/js/core/pwa-install.js
   Cache-Control: public, max-age=0, must-revalidate
 
+# English application shell: never pin a generated HTML entry or manifest.
+/en/*
+  Cache-Control: public, max-age=0, must-revalidate
+/en/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+  Content-Type: application/manifest+json
+
 /icons/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
   Access-Control-Allow-Origin: *
-
 /assets/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
   Access-Control-Allow-Origin: *
-
 /*.png
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
   Access-Control-Allow-Origin: *
-
 /*.jpg
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
   Access-Control-Allow-Origin: *
-
 /*.webp
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
   Access-Control-Allow-Origin: *
-
 /*.svg
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
   Access-Control-Allow-Origin: *
-
 /favicon*
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
   Access-Control-Allow-Origin: *
 
-# Clean HTML pages (Fresh content with instant revalidation)
 /*.html
   Cache-Control: public, max-age=0, must-revalidate
 /
   Cache-Control: public, max-age=0, must-revalidate
 
-# Service Workers (Never cache)
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
 /firebase-messaging-sw.js
   Cache-Control: no-cache, no-store, must-revalidate
 
-# AI Context & Agent Discovery Files
 /llms.txt
   Content-Type: text/markdown; charset=utf-8
   Access-Control-Allow-Origin: *
