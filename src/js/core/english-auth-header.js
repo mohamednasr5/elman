@@ -57,22 +57,30 @@ function renderSignedIn(container, user) {
     </div>
   `;
 
-  const menuBtn = container.querySelector('#english-user-menu-btn');
-  const dropdown = container.querySelector('#english-user-dropdown');
-  menuBtn?.addEventListener('click', event => {
+  container.querySelector('#english-user-menu-btn')?.addEventListener('click', event => {
     event.stopPropagation();
+    const dropdown = container.querySelector('#english-user-dropdown');
+    const button = event.currentTarget;
     const open = dropdown?.classList.toggle('open') || false;
-    menuBtn.setAttribute('aria-expanded', String(open));
+    button.setAttribute('aria-expanded', String(open));
   });
-  if (!container.dataset.documentClickBound) {
-    document.addEventListener('click', () => {
-      dropdown?.classList.remove('open');
-      menuBtn?.setAttribute('aria-expanded', 'false');
-    });
-    container.dataset.documentClickBound = '1';
-  }
+
   container.querySelector('#english-logout-btn')?.addEventListener('click', async () => {
     try { await signOut(); } catch (error) { console.error('[EnglishAuth] sign-out failed:', error); }
+  });
+}
+
+let _documentClickBound = false;
+function bindDocumentClick() {
+  if (_documentClickBound) return;
+  _documentClickBound = true;
+  document.addEventListener('click', event => {
+    const container = document.getElementById('header-user-section');
+    if (!container || container.contains(event.target)) return;
+    const dropdown = container.querySelector('#english-user-dropdown');
+    const button = container.querySelector('#english-user-menu-btn');
+    dropdown?.classList.remove('open');
+    button?.setAttribute('aria-expanded', 'false');
   });
 }
 
@@ -80,6 +88,7 @@ export async function installEnglishAuthHeader() {
   const container = document.getElementById('header-user-section');
   if (!container) return;
 
+  bindDocumentClick();
   await initAuth();
   const paint = user => user ? renderSignedIn(container, user) : renderSignedOut(container);
   paint(null);
