@@ -1,0 +1,16 @@
+/* Dedicated PWA install banner layer. */
+.pwa-banner[hidden]{display:none!important}
+.pwa-banner{position:fixed;z-index:14000;left:24px;right:24px;bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:18px;max-width:760px;margin:0 auto;padding:16px 18px;border:1px solid rgba(23,105,170,.18);border-radius:20px;background:rgba(255,255,255,.96);box-shadow:0 18px 55px rgba(15,23,42,.20);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:0;transform:translateY(18px);transition:opacity .28s ease,transform .28s ease;color:#0f172a;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.pwa-banner.visible{opacity:1;transform:translateY(0)}
+.pwa-banner__content{display:flex;align-items:center;gap:12px;min-width:0}
+.pwa-banner__icon{width:46px;height:46px;display:grid;place-items:center;flex:0 0 46px;border-radius:14px;background:#eaf3ff;font-size:24px}
+.pwa-banner__text{display:grid;gap:3px;min-width:0}
+.pwa-banner__title{font-size:15px;font-weight:800;line-height:1.35}
+.pwa-banner__desc{font-size:12px;line-height:1.5;color:#64748b}
+.pwa-banner__actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.pwa-banner__actions .btn{min-height:40px;padding:0 16px;border-radius:11px;font-weight:800}
+.pwa-banner__close{width:36px;height:36px;border:0;border-radius:10px;background:#f1f5f9;color:#475569;cursor:pointer;font-size:17px}
+.pwa-banner__close:hover{background:#e2e8f0}
+html[lang="en"] .pwa-banner{direction:ltr;text-align:left}
+html[lang="en"] .pwa-banner__actions{direction:ltr}
+@media(max-width:640px){.pwa-banner{left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom));padding:13px;border-radius:17px;align-items:flex-end}.pwa-banner__icon{width:40px;height:40px;flex-basis:40px;font-size:20px}.pwa-banner__title{font-size:13px}.pwa-banner__desc{font-size:11px}.pwa-banner__actions .btn{padding:0 12px;font-size:12px}}
