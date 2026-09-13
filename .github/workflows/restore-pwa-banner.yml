@@ -1,0 +1,56 @@
+name: Restore PWA Install Banner
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/pwa-banner-injected.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  inject:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject PWA module into HTML pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          marker = '/src/js/core/pwa-install.js?v=20260913'
+          changed = []
+          for p in Path('.').rglob('*.html'):
+              if '.git' in p.parts:
+                  continue
+              text = p.read_text(encoding='utf-8-sig')
+              if marker in text:
+                  continue
+              if '</body>' not in text.lower():
+                  continue
+              tag = f'<script type="module" src="{marker}"></script>\n'
+              pos = text.lower().rfind('</body>')
+              text = text[:pos] + tag + text[pos:]
+              p.write_text(text, encoding='utf-8')
+              changed.append(str(p))
+          print(f'Injected PWA module into {len(changed)} HTML files')
+          for item in changed[:100]:
+              print(item)
+          PY
+
+      - name: Commit injected pages
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add '*.html' '**/*.html' || true
+          if git diff --cached --quiet; then
+            echo 'No HTML changes needed.'
+            exit 0
+          fi
+          git commit -m 'chore(pwa): restore install banner [skip ci]'
+          git push
