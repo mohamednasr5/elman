@@ -74,7 +74,7 @@ function _loadShellCSS(){
     const l=document.createElement('link');
     l.id='shell-mobile-fixes-css';
     l.rel='stylesheet';
-    l.href='/src/css/mobile-shell-fixes.css?v=d4ce4ede_3';
+    l.href='/src/css/mobile-shell-fixes.css?v=b47ccc25_3';
     document.head.appendChild(l);
   }
   // Critical fallback: the More sheet must never become a normal block in document flow
@@ -83,39 +83,209 @@ function _loadShellCSS(){
     const s=document.createElement('style');
     s.id='shell-mobile-more-critical-css';
     s.textContent=`
-      .mobile-more-sheet{position:fixed!important;inset:0!important;z-index:11000!important;visibility:hidden!important;pointer-events:none!important;display:block!important}
+      .mobile-more-sheet{position:fixed!important;inset:0!important;z-index:13500!important;visibility:hidden!important;pointer-events:none!important;display:block!important}
       .mobile-more-sheet.is-open{visibility:visible!important;pointer-events:auto!important}
-      .mobile-more-sheet__backdrop{position:absolute!important;inset:0!important;display:block!important;background:rgba(15,23,42,.52)!important;opacity:0!important}
+      .mobile-more-sheet__backdrop{position:absolute!important;inset:0!important;display:block!important;background:rgba(15,23,42,.62)!important;backdrop-filter:blur(6px)!important;-webkit-backdrop-filter:blur(6px)!important;opacity:0!important}
       .mobile-more-sheet.is-open .mobile-more-sheet__backdrop{opacity:1!important}
-      .mobile-more-sheet__panel{position:absolute!important;left:10px!important;right:10px!important;bottom:calc(var(--bottom-nav-height,64px) + 10px + env(safe-area-inset-bottom))!important;max-height:min(70dvh,560px)!important;overflow:auto!important;background:#fff!important;border-radius:22px!important;padding:14px!important;box-sizing:border-box!important;transform:translateY(18px)!important;opacity:0!important}
+      .mobile-more-sheet__panel{position:absolute!important;left:8px!important;right:8px!important;bottom:calc(var(--bottom-nav-height,64px) + 8px + env(safe-area-inset-bottom))!important;max-height:min(84dvh,720px)!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;background:var(--surface,#fff)!important;border-radius:24px!important;padding:10px 14px 14px!important;box-sizing:border-box!important;transform:translateY(24px)!important;opacity:0!important;transition:transform .24s cubic-bezier(.16,1,.3,1),opacity .24s ease!important}
       .mobile-more-sheet.is-open .mobile-more-sheet__panel{transform:translateY(0)!important;opacity:1!important}
       body.mobile-more-open{overflow:hidden!important}
-      @media(min-width:768px){.mobile-more-sheet{display:none!important}}
-    `;
+      body.mobile-more-open #mobile-action-hints,body.mobile-more-open .pwa-banner,body.mobile-more-open #manzala-push-prompt-card,body.mobile-more-open .push-prompt-card{display:none!important;opacity:0!important;pointer-events:none!important;visibility:hidden!important}
+      @media(min-width:768px){.mobile-more-sheet{display:none!important}}`;
     document.head.appendChild(s);
   }
 }
 
 function _bindMoreMenu(){
-  const btn=document.getElementById('bottom-nav-more-btn');
-  if(!btn||btn.dataset.bound)return;
-  btn.dataset.bound='1';
-  const isEn=isEnglish();
-  const items=isEn?[['/en/places/','📍','Places Directory'],['/en/categories/','📋','Categories'],['/en/popular/','🔥','Popular'],['/en/around-me/','🧭','Near Me'],['/en/manzala/','🏙️','About El Manzala'],['/en/matariya/','🌊','About El Matariya'],['/en/favorites/','❤️','Favorites'],['/en/contact/','✉️','Contact Us']]:[['/places.html','📍','دليل الأماكن'],['/categories.html','📋','التصنيفات'],['/popular.html','🔥','الأكثر شعبية'],['/around-me.html','🧭','اكتشف حولك'],['/manzala.html','🏙️','عن المنزلة'],['/matariya.html','🌊','عن المطرية'],['/favorites.html','❤️','المفضلة'],['/contact.html','✉️','تواصل معنا']];
-  let sheet=document.getElementById('mobile-more-sheet');
-  if(!sheet){
-    sheet=document.createElement('div');
-    sheet.id='mobile-more-sheet';
-    sheet.className='mobile-more-sheet';
-    sheet.setAttribute('aria-hidden','true');
-    sheet.innerHTML=`<div class="mobile-more-sheet__backdrop" data-close="1"></div><section class="mobile-more-sheet__panel" role="dialog" aria-modal="true" aria-label="${isEn?'More':'المزيد'}"><div class="mobile-more-sheet__head"><strong>${isEn?'More':'المزيد'}</strong><button type="button" data-close="1" aria-label="${isEn?'Close':'إغلاق'}">×</button></div><div class="mobile-more-sheet__grid">${items.map(x=>`<a href="${x[0]}"><span>${x[1]}</span><b>${x[2]}</b></a>`).join('')}</div></section>`;
-    document.body.appendChild(sheet);
+  const isEn = isEnglish();
+  const getUser = () => {
+    try {
+      const raw = localStorage.getItem('manzala_persistent_user');
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+  };
+  const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+
+  function getSheetEl() {
+    let sheet = document.getElementById('mobile-more-sheet');
+    const user = getUser();
+    const isUserAdmin = isAdmin(user);
+
+    const publicLinks = isEn ? [
+      { url: '/en/places/', icon: '📍', label: 'Places Directory' },
+      { url: '/en/categories/', icon: '📋', label: 'Categories' },
+      { url: '/en/popular/', icon: '🔥', label: 'Popular Places' },
+      { url: '/en/around-me/', icon: '🧭', label: 'Near Me (GPS)' },
+      { url: '/en/offers/', icon: '🏷️', label: 'Special Offers' },
+      { url: '/en/favorites/', icon: '❤️', label: 'Favorites' },
+      { url: '/en/emergency/', icon: '🚨', label: 'Emergency' },
+      { url: '/en/now/', icon: '📢', label: 'Community Requests' },
+      { url: '/en/search/', icon: '🔍', label: 'Search Directory' },
+      { url: '/en/manzala/', icon: '🏙️', label: 'About El Manzala' },
+      { url: '/en/matariya/', icon: '🌊', label: 'About El Matariya' },
+      { url: '/en/contact/', icon: '✉️', label: 'Contact Us' }
+    ] : [
+      { url: '/places.html', icon: '📍', label: 'دليل الأماكن' },
+      { url: '/categories.html', icon: '📋', label: 'التصنيفات' },
+      { url: '/popular.html', icon: '🔥', label: 'الأكثر شعبية' },
+      { url: '/around-me.html', icon: '🧭', label: 'اكتشف حولك (GPS)' },
+      { url: '/offers.html', icon: '🏷️', label: 'العروض والخصومات' },
+      { url: '/favorites.html', icon: '❤️', label: 'المفضلة' },
+      { url: '/emergency.html', icon: '🚨', label: 'خدمات الطوارئ' },
+      { url: '/now.html', icon: '📢', label: 'طلبات أهالينا' },
+      { url: '/search.html', icon: '🔍', label: 'البحث في الدليل' },
+      { url: '/manzala.html', icon: '🏙️', label: 'عن مدينة المنزلة' },
+      { url: '/matariya.html', icon: '🌊', label: 'عن مدينة المطرية' },
+      { url: '/contact.html', icon: '✉️', label: 'تواصل معنا' }
+    ];
+
+    const dashLinks = isEn ? [
+      { url: '/en/dashboard/?section=overview', icon: '🏠', label: 'Overview' },
+      { url: '/en/dashboard/?section=places', icon: '📍', label: 'My Places' },
+      { url: '/en/dashboard/?section=add', icon: '➕', label: 'Add a Place', cls: 'mobile-more-card--accent' },
+      { url: '/en/dashboard/?section=add-scan', icon: '📸', label: 'Card Scanner (AI)', cls: 'mobile-more-card--accent' },
+      { url: '/en/dashboard/?section=analytics', icon: '📈', label: 'Analytics & Reports' },
+      { url: '/en/dashboard/?section=loyalty', icon: '🎁', label: 'Loyalty & Points' },
+      { url: '/en/dashboard/?section=notifications', icon: '🔔', label: 'Notifications' },
+      { url: '/en/dashboard/?section=following', icon: '⭐', label: 'My Following' },
+      { url: '/en/dashboard/?section=verification', icon: '🛡️', label: 'Verification Badge' }
+    ] : [
+      { url: '/dashboard.html?section=overview', icon: '🏠', label: 'نظرة عامة' },
+      { url: '/dashboard.html?section=places', icon: '📍', label: 'أماكني' },
+      { url: '/dashboard.html?section=add', icon: '➕', label: 'إضافة مكان', cls: 'mobile-more-card--accent' },
+      { url: '/dashboard.html?section=add&action=scan', icon: '📸', label: 'تصوير كارت (AI)', cls: 'mobile-more-card--accent' },
+      { url: '/dashboard.html?section=analytics', icon: '📈', label: 'التقارير والإحصائيات' },
+      { url: '/dashboard.html?section=loyalty', icon: '🎁', label: 'نادي الولاء والنقاط' },
+      { url: '/dashboard.html?section=notifications', icon: '🔔', label: 'الإشعارات والزيارات' },
+      { url: '/dashboard.html?section=following', icon: '⭐', label: 'متابعاتي وعروضها' },
+      { url: '/contact.html?type=verification', icon: '🛡️', label: 'توثيق الملف (العلامة الزرقاء)' }
+    ];
+
+    if (isUserAdmin) {
+      dashLinks.push(isEn 
+        ? { url: '/admin/', icon: '⚙️', label: 'Administration', cls: 'mobile-more-card--admin' }
+        : { url: '/admin/index.html', icon: '⚙️', label: 'لوحة تحكم الإدارة', cls: 'mobile-more-card--admin' }
+      );
+    }
+
+    const renderCards = (items) => items.map(item => `
+      <a href="${item.url}" class="mobile-more-card ${item.cls || ''}">
+        <span class="mobile-more-card__icon">${item.icon}</span>
+        <span class="mobile-more-card__label">${escapeHtml(item.label)}</span>
+        <span class="mobile-more-card__arrow" aria-hidden="true">›</span>
+      </a>
+    `).join('');
+
+    let userHeaderHtml = '';
+    if (user && user.uid) {
+      const uName = user.name || user.displayName || (isEn ? 'User' : 'مستخدم');
+      const uAvatar = user.photoURL || '/icons/icon-72x72.png';
+      const uRole = isUserAdmin ? (isEn ? 'Admin ⭐' : 'مدير المنصة ⭐') : (isEn ? 'Business Owner' : 'صاحب نشاط');
+      userHeaderHtml = `
+        <div class="mobile-more-sheet__user">
+          <img src="${escapeHtml(uAvatar)}" class="mobile-more-sheet__avatar" alt="${escapeHtml(uName)}" onerror="this.src='/icons/icon-72x72.png'">
+          <div class="mobile-more-sheet__user-meta">
+            <strong class="mobile-more-sheet__user-name">${escapeHtml(uName)}</strong>
+            <span class="mobile-more-sheet__user-role">${escapeHtml(uRole)}</span>
+          </div>
+          <a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="mobile-more-sheet__dash-link">${isEn ? 'Dashboard ›' : 'لوحتي ›'}</a>
+        </div>
+        <div class="mobile-more-sheet__section-title">📊 ${isEn ? 'Dashboard & Tools' : 'لوحة التحكم وأدواتك'}</div>
+        <div class="mobile-more-sheet__grid">${renderCards(dashLinks)}</div>
+      `;
+    } else {
+      userHeaderHtml = `
+        <div class="mobile-more-sheet__guest-banner">
+          <div class="mobile-more-sheet__guest-content">
+            <strong>${isEn ? 'Own a business in El Manzala?' : 'صاحب نشاط أو محل في المنزلة؟'}</strong>
+            <p>${isEn ? 'Sign in to add and manage your place.' : 'سجّل دخولك لإضافة نشاطك التجاري والظهور لآلاف الزوار مجاناً.'}</p>
+          </div>
+          <a href="${isEn ? '/en/login/' : '/login.html'}" class="mobile-more-sheet__guest-btn">${isEn ? 'Sign In 🔑' : 'دخول 🔑'}</a>
+        </div>
+      `;
+    }
+
+    const directoryTitle = isEn ? 'City Directory & Services' : 'خدمات الدليل والمدينة';
+
+    const panelHtml = `
+      <div class="mobile-more-sheet__backdrop" data-close="1"></div>
+      <section class="mobile-more-sheet__panel" role="dialog" aria-modal="true" aria-label="${isEn ? 'More' : 'المزيد'}">
+        <div class="mobile-more-sheet__handle"></div>
+        <div class="mobile-more-sheet__head">
+          <div class="mobile-more-sheet__head-title">
+            <span class="mobile-more-sheet__head-icon">✨</span>
+            <h2>${isEn ? 'More & Services' : 'المزيد والخدمات'}</h2>
+          </div>
+          <button type="button" class="mobile-more-sheet__close" data-close="1" aria-label="${isEn ? 'Close' : 'إغلاق'}">✕</button>
+        </div>
+        <div class="mobile-more-sheet__scroll">
+          ${userHeaderHtml}
+          <div class="mobile-more-sheet__section-title">🧭 ${escapeHtml(directoryTitle)}</div>
+          <div class="mobile-more-sheet__grid">${renderCards(publicLinks)}</div>
+        </div>
+      </section>
+    `;
+
+    if (!sheet) {
+      sheet = document.createElement('div');
+      sheet.id = 'mobile-more-sheet';
+      sheet.className = 'mobile-more-sheet';
+      sheet.setAttribute('aria-hidden', 'true');
+      sheet.innerHTML = panelHtml;
+      document.body.appendChild(sheet);
+    } else {
+      sheet.innerHTML = panelHtml;
+    }
+
+    sheet.querySelectorAll('[data-close]').forEach(el => {
+      el.onclick = e => { e.preventDefault(); e.stopPropagation(); close(); };
+    });
+
+    sheet.querySelectorAll('.mobile-more-card').forEach(card => {
+      card.onclick = () => { close(); };
+    });
+
+    return sheet;
   }
-  const open=()=>{sheet.classList.add('is-open');sheet.setAttribute('aria-hidden','false');btn.setAttribute('aria-expanded','true');document.body.classList.add('mobile-more-open')};
-  const close=()=>{sheet.classList.remove('is-open');sheet.setAttribute('aria-hidden','true');btn.setAttribute('aria-expanded','false');document.body.classList.remove('mobile-more-open')};
-  btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();sheet.classList.contains('is-open')?close():open()});
-  sheet.querySelectorAll('[data-close]').forEach(x=>x.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();close()}));
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet.classList.contains('is-open'))close()});
+
+  const open = () => {
+    const sheet = getSheetEl();
+    sheet.classList.add('is-open');
+    sheet.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('mobile-more-open');
+    document.getElementById('bottom-nav-more-btn')?.setAttribute('aria-expanded', 'true');
+  };
+
+  const close = () => {
+    const sheet = document.getElementById('mobile-more-sheet');
+    if (!sheet) return;
+    sheet.classList.remove('is-open');
+    sheet.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('mobile-more-open');
+    document.getElementById('bottom-nav-more-btn')?.setAttribute('aria-expanded', 'false');
+  };
+
+  if (!window.__mobileMoreMenuListenerBound) {
+    window.__mobileMoreMenuListenerBound = true;
+    document.addEventListener('click', e => {
+      const btn = e.target.closest?.('#bottom-nav-more-btn');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const sheet = document.getElementById('mobile-more-sheet');
+        if (sheet?.classList.contains('is-open')) close();
+        else open();
+      }
+    }, true);
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') close();
+    });
+  }
+
+  window.openMobileMoreMenu = open;
+  window.closeMobileMoreMenu = close;
 }
 
 export async function initPage(activeFile=''){
@@ -132,73 +302,3 @@ export async function initPage(activeFile=''){
   try{initAuth();onAuthStateChange(()=>{})}catch(_){}
 }
 export { waitForAuth, isAdmin };
-
-/* MOBILE_MORE_MENU_DELEGATED_FIX_v1 */
-(function(){
-  if (window.__mobileMoreDelegatedFix) return;
-  window.__mobileMoreDelegatedFix = true;
-  const getLang = () => (document.documentElement.lang || '').toLowerCase().startsWith('en') ? 'en' : 'ar';
-  const labels = {
-    ar: { title:'المزيد', close:'إغلاق', links:[['الرئيسية','/index.html'],['دليل الأماكن','/places.html'],['التصنيفات','/categories.html'],['العروض','/offers.html'],['المفضلة','/favorites.html'],['إضافة مكان','/dashboard.html?section=add'],['لوحة التحكم','/dashboard.html'],['التوثيق المجاني','/free-verification.html'],['خدمات الطوارئ','/emergency.html'],['البحث في الدليل','/search.html'],['طلبات أهالينا','/now.html'],['تواصل معنا','/contact.html'],['عن المنزلة','/manzala.html'],['عن المطرية','/matariya.html']]},
-    en: { title:'More', close:'Close', links:[['Home','/en/'],['Places Directory','/en/places/'],['Categories','/en/categories/'],['Offers','/en/offers/'],['Favorites','/en/favorites/'],['Add a Place','/en/dashboard/?section=add'],['Dashboard','/en/dashboard/'],['Free Verification','/en/free-verification/'],['Emergency Services','/en/emergency/'],['Search Directory','/en/search/'],['Community Requests','/en/now/'],['Contact Us','/en/contact/'],['About El Manzala','/en/manzala/'],['About El Matariya','/en/matariya/']]}
-  };
-  function sheet(){
-    let el=document.getElementById('mobile-more-sheet');
-    const l=labels[getLang()];
-    if(el){ el.querySelector('[data-more-title]')?.replaceChildren(document.createTextNode(l.title)); return el; }
-    el=document.createElement('div'); el.id='mobile-more-sheet'; el.className='mobile-more-sheet'; el.setAttribute('aria-hidden','true');
-    el.innerHTML='<div class="mobile-more-sheet__backdrop" data-more-close></div><section class="mobile-more-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="mobile-more-title"><div class="mobile-more-sheet__head"><h2 id="mobile-more-title" data-more-title></h2><button type="button" class="mobile-more-sheet__close" data-more-close aria-label="'+l.close+'">×</button></div><nav class="mobile-more-sheet__links" data-more-links></nav></section>';
-    document.body.appendChild(el);
-    const links=el.querySelector('[data-more-links]');
-    links.innerHTML=l.links.map(([text,href])=>'<a class="mobile-more-sheet__link" href="'+href+'"><span>'+text+'</span><span aria-hidden="true">›</span></a>').join('');
-    el.querySelector('[data-more-title]').textContent=l.title;
-    el.querySelector('.mobile-more-sheet__close').setAttribute('aria-label',l.close);
-    el.addEventListener('click',e=>{ if(e.target.closest('[data-more-close]')) close(); });
-    return el;
-  }
-  function open(){ const el=sheet(); el.classList.add('is-open'); el.setAttribute('aria-hidden','false'); document.body.classList.add('mobile-more-open'); document.getElementById('bottom-nav-more-btn')?.setAttribute('aria-expanded','true'); }
-  function close(){ const el=document.getElementById('mobile-more-sheet'); if(!el)return; el.classList.remove('is-open'); el.setAttribute('aria-hidden','true'); document.body.classList.remove('mobile-more-open'); document.getElementById('bottom-nav-more-btn')?.setAttribute('aria-expanded','false'); }
-  document.addEventListener('click',e=>{
-    const btn=e.target.closest?.('#bottom-nav-more-btn');
-    if(btn){ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); const el=document.getElementById('mobile-more-sheet'); if(el?.classList.contains('is-open')) close(); else open(); }
-  }, true);
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
-  window.openMobileMoreMenu=open; window.closeMobileMoreMenu=close;
-})();
-
-/* MOBILE_MORE_MENU_DELEGATED_FIX_v2 */
-(function(){
-  if (window.__mobileMoreDelegatedFix) return;
-  window.__mobileMoreDelegatedFix = true;
-  const getLang = () => (document.documentElement.lang || '').toLowerCase().startsWith('en') ? 'en' : 'ar';
-  const getUser = () => { try { const raw=localStorage.getItem('manzala_persistent_user'); return raw ? JSON.parse(raw) : null; } catch (_) { return null; } };
-  const isAdmin = user => !!user && (user.role==='admin'||user.role==='superadmin'||['elfannanm@gmail.com','mohamednasrofficial@gmail.com'].includes(String(user.email||'').toLowerCase()));
-  const labels = {
-    ar: { title:'المزيد', close:'إغلاق', public:[['الرئيسية','/index.html'],['دليل الأماكن','/places.html'],['التصنيفات','/categories.html'],['العروض','/offers.html'],['المفضلة','/favorites.html'],['خدمات الطوارئ','/emergency.html'],['البحث في الدليل','/search.html'],['طلبات أهالينا','/now.html'],['تواصل معنا','/contact.html'],['عن المنزلة','/manzala.html'],['عن المطرية','/matariya.html']] },
-    en: { title:'More', close:'Close', public:[['Home','/en/'],['Places Directory','/en/places/'],['Categories','/en/categories/'],['Offers','/en/offers/'],['Favorites','/en/favorites/'],['Emergency Services','/en/emergency/'],['Search Directory','/en/search/'],['Community Requests','/en/now/'],['Contact Us','/en/contact/'],['About El Manzala','/en/manzala/'],['About El Matariya','/en/matariya/']] }
-  };
-  const dashboard = {
-    ar:[['🏠 نظرة عامة','/dashboard.html?section=overview'],['📍 أماكني','/dashboard.html?section=places'],['📈 التقارير والإحصائيات','/dashboard.html?section=analytics'],['⭐ متابعاتي وعروضها','/dashboard.html?section=following'],['🗺️ بالقرب مني (GPS)','/dashboard.html?section=around-me'],['🎁 نادي الولاء والنقاط','/dashboard.html?section=loyalty'],['📸 تصوير كارت المحل (AI)','/dashboard.html?section=add&action=scan'],['➕ إضافة مكان يدوياً','/dashboard.html?section=add'],['🔔 الإشعارات والزيارات','/dashboard.html?section=notifications'],['🛡️ توثيق الملف','/contact.html?type=verification']],
-    en:[['🏠 Overview','/en/dashboard/?section=overview'],['📍 My Places','/en/dashboard/?section=places'],['📈 Analytics & Reports','/en/dashboard/?section=analytics'],['⭐ My Following & Offers','/en/dashboard/?section=following'],['🗺️ Near Me (GPS)','/en/dashboard/?section=around-me'],['🎁 Loyalty & Points','/en/dashboard/?section=loyalty'],['📸 Business Card Scanner (AI)','/en/dashboard/?section=add-scan'],['➕ Add a Place','/en/dashboard/?section=add'],['🔔 Notifications & Visits','/en/dashboard/?section=notifications'],['🛡️ Verify Your Profile','/en/dashboard/?section=verification']]
-  };
-  function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-  function sheet(){
-    let el=document.getElementById('mobile-more-sheet'); const lang=getLang(), l=labels[lang], user=getUser();
-    if(el){ el.querySelector('[data-more-title]')?.replaceChildren(document.createTextNode(l.title)); return el; }
-    el=document.createElement('div'); el.id='mobile-more-sheet'; el.className='mobile-more-sheet'; el.setAttribute('aria-hidden','true');
-    el.innerHTML='<div class="mobile-more-sheet__backdrop" data-more-close></div><section class="mobile-more-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="mobile-more-title"><div class="mobile-more-sheet__head"><h2 id="mobile-more-title" data-more-title></h2><button type="button" class="mobile-more-sheet__close" data-more-close aria-label="'+escapeHtml(l.close)+'">×</button></div><nav class="mobile-more-sheet__links" data-more-links></nav></section></div>';
-    document.body.appendChild(el);
-    const links=el.querySelector('[data-more-links]');
-    const items=user ? dashboard[lang].concat(l.public.map(([t,h])=>[t,h])) : l.public;
-    const adminItems=user&&isAdmin(user)?(lang==='en'?[['⚙️ Administration','/admin/']]:[['⚙️ لوحة تحكم الإدارة','/admin/']]):[];
-    links.innerHTML=items.concat(adminItems).map(([text,href])=>'<a class="mobile-more-sheet__link" href="'+href+'"><span>'+escapeHtml(text)+'</span><span aria-hidden="true">›</span></a>').join('');
-    el.querySelector('[data-more-title]').textContent=l.title;
-    el.addEventListener('click',e=>{ if(e.target.closest('[data-more-close]')) close(); });
-    return el;
-  }
-  function open(){const el=sheet();el.classList.add('is-open');el.setAttribute('aria-hidden','false');document.body.classList.add('mobile-more-open');document.getElementById('bottom-nav-more-btn')?.setAttribute('aria-expanded','true');}
-  function close(){const el=document.getElementById('mobile-more-sheet');if(!el)return;el.classList.remove('is-open');el.setAttribute('aria-hidden','true');document.body.classList.remove('mobile-more-open');document.getElementById('bottom-nav-more-btn')?.setAttribute('aria-expanded','false');}
-  document.addEventListener('click',e=>{const btn=e.target.closest?.('#bottom-nav-more-btn');if(btn){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();const el=document.getElementById('mobile-more-sheet');if(el?.classList.contains('is-open'))close();else open();}},true);
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
-  window.openMobileMoreMenu=open; window.closeMobileMoreMenu=close;
-})();

@@ -45,8 +45,8 @@ import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { formatDate } from '../../utils/date.js';
 import { getUserLoyaltyProfile, getLoyaltyLevelInfo, redeemPointsForVerification, claimDailyBonus, LOYALTY_LEVELS, POINTS_RULES, VERIFICATION_POINTS_COST } from '../../services/loyalty.service.js';
-import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=d4ce4ede_scanner_v2';
-import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=d4ce4ede_scanner_v2';
+import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=b47ccc25_scanner_v2';
+import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=b47ccc25_scanner_v2';
 
 let _dashUser = null;
 let _dashPlacesCache = null;
@@ -58,11 +58,11 @@ export async function renderDashboard($container, { user, section = 'overview', 
   }
   _dashUser = user;
 
-  // Fetch initial notifications count
+  // Fast Path: Fetch initial notifications count synchronously from local cache (<1ms)
   let unreadNotifsCount = 0;
   try {
-    const userNotifs = await getUserNotifications(user.uid);
-    unreadNotifsCount = userNotifs.filter(n => !n.isRead).length;
+    const cachedNotifs = getCachedManagedUserNotifications(user.uid);
+    unreadNotifsCount = (Array.isArray(cachedNotifs) ? cachedNotifs : []).filter(n => !n.isRead).length;
   } catch (_) {}
 
   $container.innerHTML = `
@@ -133,6 +133,14 @@ export async function renderDashboard($container, { user, section = 'overview', 
   `;
 
   setupDashboardNavigation();
+  getUserNotifications(user.uid).then(fresh => {
+    const count = (Array.isArray(fresh) ? fresh : []).filter(n => !n.isRead).length;
+    const badge = document.getElementById('sidebar-notifs-badge');
+    if (badge) {
+      badge.textContent = String(count);
+      badge.style.display = count > 0 ? '' : 'none';
+    }
+  }).catch(() => {});
   await switchDashboardSection(section, placeId, false);
 }
 
@@ -283,7 +291,14 @@ function setupDashboardNavigation() {
 
 // ── 1. Overview Section ──
 async function renderOverviewSection($container, user) {
-  const places = await getPlacesByOwner(user);
+  let places = [];
+  try {
+    places = await Promise.race([
+      getPlacesByOwner(user),
+      new Promise(r => setTimeout(() => r([]), 4000))
+    ]);
+    if (!Array.isArray(places)) places = [];
+  } catch (_) { places = []; }
 
   let totalViews = 0;
   let totalPhoneClicks = 0;

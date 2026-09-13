@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"/>
@@ -89,16 +89,45 @@
   import { renderDashboard } from './src/js/ui/pages/dashboard.js?v=d4ce4ede_v2';
   import { waitForAuth } from './src/js/core/auth.js';
   import { initGoogleMapsLocationPicker } from './src/js/ui/components/GoogleMapsLocationPicker.js?v=d4ce4ede_google_maps_picker_v1';
-  await initPage('dashboard.html');
-  await initDashboardHeaderAuthNotifications();
-  const user = await waitForAuth();
-  if (!user) { window.location.replace('login.html'); }
-  else {
-    const params = new URLSearchParams(location.search);
-    const section = params.get('section') || 'overview';
-    const placeId = params.get('id') || null;
-    await renderDashboard(document.getElementById('page-container'), { user, section, placeId });
-    initGoogleMapsLocationPicker();
+  // Fast path: Synchronous check for cached user to achieve 0ms First Contentful Paint
+  let cachedUser = null;
+  try {
+    const raw = localStorage.getItem('manzala_persistent_user');
+    if (raw) cachedUser = JSON.parse(raw);
+  } catch (_) {}
+
+  const params = new URLSearchParams(location.search);
+  const section = params.get('section') || 'overview';
+  const placeId = params.get('id') || null;
+
+  // Initialize page shell concurrently
+  const shellPromise = initPage('dashboard.html').catch(console.error);
+
+  if (cachedUser && cachedUser.uid) {
+    // 1. Instant render without blocking on network or FCM
+    renderDashboard(document.getElementById('page-container'), { user: cachedUser, section, placeId })
+      .then(() => {
+        try { initGoogleMapsLocationPicker(); } catch (_) {}
+      })
+      .catch(console.error);
+
+    // 2. Refresh auth & notifications in background
+    initDashboardHeaderAuthNotifications().catch(console.error);
+    await shellPromise;
+  } else {
+    // No cached user: wait for shell, race waitForAuth with 3.5s timeout to prevent endless spinning
+    await shellPromise;
+    initDashboardHeaderAuthNotifications().catch(console.error);
+    const user = await Promise.race([
+      waitForAuth(),
+      new Promise(resolve => setTimeout(() => resolve(null), 3500))
+    ]);
+    if (!user) {
+      window.location.replace('login.html');
+    } else {
+      await renderDashboard(document.getElementById('page-container'), { user, section, placeId });
+      try { initGoogleMapsLocationPicker(); } catch (_) {}
+    }
   }
 </script>
 <script type="module" src="/src/js/ui/pages/dashboard-responsive.js?v=d4ce4ede_dashboard_mobile_pwa_v1"></script>
