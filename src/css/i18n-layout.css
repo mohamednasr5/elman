@@ -56,14 +56,36 @@ html[lang="ar"], body[data-lang="ar"] {
   background: rgba(56, 189, 248, 0.12);
 }
 
+/* Language switcher shows flags only — no globe and no AR/EN text. */
 .lang-toggle-btn .lang-globe {
-  font-size: 0.95rem;
+  display: none !important;
 }
 
 .lang-toggle-btn .lang-name {
-  font-weight: 800;
-  font-size: 0.8rem;
-  letter-spacing: 0.02em;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 24px;
+  font-size: 0 !important;
+  line-height: 1;
+  letter-spacing: 0;
+  overflow: hidden;
+}
+
+html[lang="ar"] .lang-toggle-btn .lang-name::before {
+  content: "🇸🇦";
+  display: block;
+  font-size: 22px;
+  line-height: 1;
+}
+
+html[lang="en"] .lang-toggle-btn .lang-name::before {
+  content: "🇺🇸";
+  display: block;
+  font-size: 22px;
+  line-height: 1;
 }
 
 /* ── Header Navigation Spacing & Ergonomics ── */
