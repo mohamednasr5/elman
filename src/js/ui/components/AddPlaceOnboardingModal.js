@@ -8,7 +8,6 @@ import { initPlaceFormWizard as initExistingPlaceFormWizard } from './AddPlaceOn
  */
 
 const STORAGE_KEY = 'manzala_seen_add_place_onboarding_v2';
-
 const DEMO_NAME = 'مهندس محمد حماد';
 const DEMO_LOCATION = 'المنزلة، الدقهلية';
 const DEMO_PHONE = '01279934735';
@@ -26,7 +25,6 @@ export function markAddPlaceOnboardingSeen() {
 export function showAddPlaceOnboardingModal(force = false) {
   if (typeof document === 'undefined') return;
   if (!force && hasSeenAddPlaceOnboarding()) return;
-
   const existing = document.getElementById('add-place-onboarding-overlay');
   if (existing) existing.remove();
 
@@ -133,87 +131,38 @@ export function showAddPlaceOnboardingModal(force = false) {
   overlay.innerHTML = `
     <div class="onboarding-native-modal" role="dialog" aria-modal="true" aria-label="مثال عملي حي لإضافة نشاطك إلى دليل المنزلة والمطرية">
       <div class="native-topline"></div>
-      <header class="native-head">
-        <div class="native-brand"><div class="native-logo">🚀</div><div><h3 class="native-title">مثال عملي: هكذا يضيف العميل نشاطه</h3><div class="native-subtitle">محاكاة حية لملء البيانات ونشرها فور اكتمالها</div></div></div>
-        <button type="button" class="native-close" id="btn-close-onboarding-top" aria-label="إغلاق">×</button>
-      </header>
+      <header class="native-head"><div class="native-brand"><div class="native-logo">🚀</div><div><h3 class="native-title">مثال عملي: هكذا يضيف العميل نشاطه</h3><div class="native-subtitle">محاكاة حية لملء البيانات ونشرها فور اكتمالها</div></div></div><button type="button" class="native-close" id="btn-close-onboarding-top" aria-label="إغلاق">×</button></header>
       <main class="native-body">
-        <div class="sim-tabs" id="sim-tabs">
-          <div class="sim-tab" data-tab="1"><span class="lbl">البيانات الأساسية</span><span class="bar"></span></div>
-          <div class="sim-tab" data-tab="2"><span class="lbl">التواصل وواتساب</span><span class="bar"></span></div>
-          <div class="sim-tab" data-tab="3"><span class="lbl">الصور والهوية</span><span class="bar"></span></div>
-          <div class="sim-tab" data-tab="4"><span class="lbl">التقييم والنشر</span><span class="bar"></span></div>
-        </div>
+        <div class="sim-tabs" id="sim-tabs"><div class="sim-tab" data-tab="1"><span class="lbl">البيانات الأساسية</span><span class="bar"></span></div><div class="sim-tab" data-tab="2"><span class="lbl">التواصل وواتساب</span><span class="bar"></span></div><div class="sim-tab" data-tab="3"><span class="lbl">الصور والهوية</span><span class="bar"></span></div><div class="sim-tab" data-tab="4"><span class="lbl">التقييم والنشر</span><span class="bar"></span></div></div>
         <div class="native-layout">
-          <section class="sim-panel" id="sim-panel">
-            <div class="sim-panel-title">نموذج إضافة النشاط — محاكاة حية</div>
-            <div class="sim-field" id="f-name" data-step="1"><div class="sim-field-label"><span class="sim-check">✓</span>اسم النشاط</div><div class="sim-input"><span class="txt" id="in-name"></span></div></div>
-            <div class="sim-field" id="f-loc" data-step="1"><div class="sim-field-label"><span class="sim-check">✓</span>📍 الموقع</div><div class="sim-input"><span class="txt" id="in-loc"></span></div></div>
-            <div class="sim-field" id="f-phone" data-step="2"><div class="sim-field-label"><span class="sim-check">✓</span>📞 رقم الهاتف</div><div class="sim-input" style="direction:ltr;justify-content:flex-end"><span class="txt" id="in-phone"></span></div></div>
-            <div class="sim-field" id="f-wa" data-step="2"><div class="sim-toggle-row"><span>💬 تفعيل التواصل عبر واتساب</span><span class="sim-switch" id="wa-switch"></span></div></div>
-            <div class="sim-field" id="f-media" data-step="3"><div class="sim-field-label"><span class="sim-check">✓</span>📸 الشعار والغلاف</div><div class="sim-upload-row"><div class="sim-upload" id="up-logo"><span class="ic">🏪</span><span>رفع الشعار</span></div><div class="sim-upload" id="up-cover"><span class="ic">🖼️</span><span>رفع صورة الغلاف</span></div></div></div>
-            <div class="sim-field" id="f-rate" data-step="4"><div class="sim-field-label"><span class="sim-check">✓</span>🏆 التوثيق والتقييمات</div><div class="sim-stars" id="sim-stars"><span class="sim-star" data-i="1">★</span><span class="sim-star" data-i="2">★</span><span class="sim-star" data-i="3">★</span><span class="sim-star" data-i="4">★</span><span class="sim-star" data-i="5">★</span></div><div class="sim-badge-row"><span class="sim-verified" id="verified-badge">✔ نشاط موثّق</span></div></div>
-            <div class="sim-cursor" id="sim-cursor"><svg viewBox="0 0 24 24" fill="none"><path d="M4 2l14 8-6 1.5L10 18 4 2z" fill="#38bdf8" stroke="#0b1220" stroke-width="1"/></svg></div>
-          </section>
-          <section class="native-info">
-            <div class="step-kicker" id="step-kicker">✨ خطوة 1 من 4</div>
-            <h2 id="step-title">١) اكتب اسم نشاطك وموقعه</h2>
-            <p id="step-desc">اسم واضح + موقع دقيق يظهران فورًا في صفحتك أمام العملاء داخل الدليل.</p>
-            <div class="prev-browser" style="margin-top:16px"><div class="prev-bar"><span class="prev-dot"></span><span class="prev-dot"></span><span class="prev-dot"></span><div class="prev-url">dalilmanzala.com/place/…</div></div><div class="prev-body"><div class="prev-cover"></div><div class="prev-card"><div class="prev-ribbon" id="prev-ribbon">✅ تم النشر</div><div class="prev-avatar" id="prev-avatar">🏪</div><div class="prev-name" id="prev-name"></div><div class="prev-meta" id="prev-meta">📍 بانتظار إدخال الموقع…</div><div class="prev-actions"><div class="prev-action primary">📍 الموقع</div><div class="prev-action whatsapp" id="prev-whatsapp">💬 واتساب</div><div class="prev-action">⭐ التقييمات</div></div><div class="prev-stars" id="prev-stars"><span class="s">★</span><span class="s">★</span><span class="s">★</span><span class="s">★</span><span class="s">★</span></div></div><div class="toast-success" id="toast-success">🎉 تم إضافة نشاطك وظهر أمام عملائك الآن</div></div></div>
-          </section>
+          <section class="sim-panel" id="sim-panel"><div class="sim-panel-title">نموذج إضافة النشاط — محاكاة حية</div><div class="sim-field" id="f-name" data-step="1"><div class="sim-field-label"><span class="sim-check">✓</span>اسم النشاط</div><div class="sim-input"><span class="txt" id="in-name"></span></div></div><div class="sim-field" id="f-loc" data-step="1"><div class="sim-field-label"><span class="sim-check">✓</span>📍 الموقع</div><div class="sim-input"><span class="txt" id="in-loc"></span></div></div><div class="sim-field" id="f-phone" data-step="2"><div class="sim-field-label"><span class="sim-check">✓</span>📞 رقم الهاتف</div><div class="sim-input" style="direction:ltr;justify-content:flex-end"><span class="txt" id="in-phone"></span></div></div><div class="sim-field" id="f-wa" data-step="2"><div class="sim-toggle-row"><span>💬 تفعيل التواصل عبر واتساب</span><span class="sim-switch" id="wa-switch"></span></div></div><div class="sim-field" id="f-media" data-step="3"><div class="sim-field-label"><span class="sim-check">✓</span>📸 الشعار والغلاف</div><div class="sim-upload-row"><div class="sim-upload" id="up-logo"><span class="ic">🏪</span><span>رفع الشعار</span></div><div class="sim-upload" id="up-cover"><span class="ic">🖼️</span><span>رفع صورة الغلاف</span></div></div></div><div class="sim-field" id="f-rate" data-step="4"><div class="sim-field-label"><span class="sim-check">✓</span>🏆 التوثيق والتقييمات</div><div class="sim-stars" id="sim-stars"><span class="sim-star" data-i="1">★</span><span class="sim-star" data-i="2">★</span><span class="sim-star" data-i="3">★</span><span class="sim-star" data-i="4">★</span><span class="sim-star" data-i="5">★</span></div><div class="sim-badge-row"><span class="sim-verified" id="verified-badge">✔ نشاط موثّق</span></div></div><div class="sim-cursor" id="sim-cursor"><svg viewBox="0 0 24 24" fill="none"><path d="M4 2l14 8-6 1.5L10 18 4 2z" fill="#38bdf8" stroke="#0b1220" stroke-width="1"/></svg></div></section>
+          <section class="native-info"><div class="step-kicker" id="step-kicker">✨ خطوة 1 من 4</div><h2 id="step-title">١) اكتب اسم نشاطك وموقعه</h2><p id="step-desc">اسم واضح + موقع دقيق يظهران فورًا في صفحتك أمام العملاء داخل الدليل.</p><div class="prev-browser" style="margin-top:16px"><div class="prev-bar"><span class="prev-dot"></span><span class="prev-dot"></span><span class="prev-dot"></span><div class="prev-url">dalilmanzala.com/place/…</div></div><div class="prev-body"><div class="prev-cover"></div><div class="prev-card"><div class="prev-ribbon" id="prev-ribbon">✅ تم النشر</div><div class="prev-avatar" id="prev-avatar">🏪</div><div class="prev-name" id="prev-name"></div><div class="prev-meta" id="prev-meta">📍 بانتظار إدخال الموقع…</div><div class="prev-actions"><div class="prev-action primary">📍 الموقع</div><div class="prev-action whatsapp" id="prev-whatsapp">💬 واتساب</div><div class="prev-action">⭐ التقييمات</div></div><div class="prev-stars" id="prev-stars"><span class="s">★</span><span class="s">★</span><span class="s">★</span><span class="s">★</span><span class="s">★</span></div></div><div class="toast-success" id="toast-success">🎉 تم إضافة نشاطك وظهر أمام عملائك الآن</div></div></div></section>
         </div>
       </main>
       <footer class="native-footer"><div class="native-note">🔒 مثال توضيحي فقط • <strong>الاسم: ${DEMO_NAME} — رقم المثال: ${DEMO_PHONE}</strong></div><button type="button" class="native-start" id="btn-start-adding-place">ابدأ إضافة نشاطك الآن 🚀</button></footer>
-    </div>
-  `;
+    </div>`;
 
-  document.body.appendChild(overlay);
-  document.body.style.overflow = 'hidden';
-
+  document.body.appendChild(overlay); document.body.style.overflow = 'hidden';
   const token = { cancelled: false, timers: [] };
   const wait = (ms) => new Promise((resolve) => { const t = setTimeout(resolve, ms); token.timers.push(t); });
-  const panel = overlay.querySelector('#sim-panel');
-  const cursor = overlay.querySelector('#sim-cursor');
-  const moveCursor = (targetEl) => {
-    if (!targetEl || token.cancelled) return;
-    const pRect = panel.getBoundingClientRect(); const tRect = targetEl.getBoundingClientRect();
-    const x = tRect.left - pRect.left + tRect.width * 0.7; const y = tRect.top - pRect.top + tRect.height * 0.5;
-    cursor.style.transform = `translate(${x}px, ${y}px)`;
-    const ripple = document.createElement('span'); ripple.className = 'sim-ripple'; ripple.style.left = x + 'px'; ripple.style.top = y + 'px'; panel.appendChild(ripple); setTimeout(() => ripple.remove(), 600);
-  };
-  const typeInto = async (el, text, speed = 55, caretParent) => {
-    el.textContent = ''; const caret = document.createElement('span'); caret.className = 'sim-caret'; (caretParent || el).appendChild(caret);
-    for (let i = 0; i < text.length; i++) { if (token.cancelled) return; el.textContent = text.slice(0, i + 1); (caretParent || el).appendChild(caret); await wait(speed); }
-    caret.remove();
-  };
+  const panel = overlay.querySelector('#sim-panel'); const cursor = overlay.querySelector('#sim-cursor');
+  const moveCursor = (targetEl) => { if (!targetEl || token.cancelled) return; const pRect = panel.getBoundingClientRect(); const tRect = targetEl.getBoundingClientRect(); const x = tRect.left - pRect.left + tRect.width * .7; const y = tRect.top - pRect.top + tRect.height * .5; cursor.style.transform = `translate(${x}px,${y}px)`; const ripple = document.createElement('span'); ripple.className = 'sim-ripple'; ripple.style.left = x + 'px'; ripple.style.top = y + 'px'; panel.appendChild(ripple); setTimeout(() => ripple.remove(), 600); };
+  const typeInto = async (el, text, speed = 55, caretParent) => { el.textContent = ''; const caret = document.createElement('span'); caret.className = 'sim-caret'; (caretParent || el).appendChild(caret); for (let i = 0; i < text.length; i++) { if (token.cancelled) return; el.textContent = text.slice(0, i + 1); (caretParent || el).appendChild(caret); await wait(speed); } caret.remove(); };
   const setActiveTab = (n) => overlay.querySelectorAll('.sim-tab').forEach((t) => { const step = Number(t.dataset.tab); t.classList.toggle('done', step < n); t.classList.toggle('on', step === n); t.classList.toggle('filling', step === n); });
   const setActiveFields = (n) => overlay.querySelectorAll('.sim-field').forEach((f) => { const step = Number(f.dataset.step); f.classList.toggle('on', step <= n); f.classList.toggle('active', step === n); });
-  const stepMeta = { 1: { kicker: '✨ خطوة 1 من 4', title: '١) اكتب اسم نشاطك وموقعه', desc: 'اسم واضح + موقع دقيق يظهران فورًا في صفحتك أمام العملاء داخل الدليل.' }, 2: { kicker: '✨ خطوة 2 من 4', title: '٢) أضف رقم الهاتف وواتساب', desc: 'العميل يتواصل معك مباشرة بضغطة واحدة من صفحة نشاطك.' }, 3: { kicker: '✨ خطوة 3 من 4', title: '٣) ارفع الشعار وصورة الغلاف', desc: 'الهوية البصرية تمنح نشاطك مظهرًا احترافيًا يزيد ثقة العميل.' }, 4: { kicker: '✨ خطوة 4 من 4', title: '٤) وثّق نشاطك وانشره', desc: 'بمجرد الحفظ، يظهر نشاطك مباشرة للعملاء داخل دليل المنزلة والمطرية.' } };
+  const stepMeta = {1:{kicker:'✨ خطوة 1 من 4',title:'١) اكتب اسم نشاطك وموقعه',desc:'اسم واضح + موقع دقيق يظهران فورًا في صفحتك أمام العملاء داخل الدليل.'},2:{kicker:'✨ خطوة 2 من 4',title:'٢) أضف رقم الهاتف وواتساب',desc:'العميل يتواصل معك مباشرة بضغطة واحدة من صفحة نشاطك.'},3:{kicker:'✨ خطوة 3 من 4',title:'٣) ارفع الشعار وصورة الغلاف',desc:'الهوية البصرية تمنح نشاطك مظهرًا احترافيًا يزيد ثقة العميل.'},4:{kicker:'✨ خطوة 4 من 4',title:'٤) وثّق نشاطك وانشره',desc:'بمجرد الحفظ، يظهر نشاطك مباشرة للعملاء داخل دليل المنزلة والمطرية.'}};
   const setStepText = (n) => { const m = stepMeta[n]; overlay.querySelector('#step-kicker').textContent = m.kicker; overlay.querySelector('#step-title').textContent = m.title; overlay.querySelector('#step-desc').textContent = m.desc; };
-  const resetVisualState = () => {
-    overlay.querySelectorAll('.sim-field').forEach((f) => f.classList.remove('on', 'active', 'done')); overlay.querySelector('#in-name').textContent = ''; overlay.querySelector('#in-loc').textContent = ''; overlay.querySelector('#in-phone').textContent = ''; overlay.querySelector('#wa-switch').classList.remove('on'); overlay.querySelector('#up-logo').classList.remove('filled'); overlay.querySelector('#up-cover').classList.remove('filled'); overlay.querySelector('#up-logo').innerHTML = '<span class="ic">🏪</span><span>رفع الشعار</span>'; overlay.querySelector('#up-cover').innerHTML = '<span class="ic">🖼️</span><span>رفع صورة الغلاف</span>'; overlay.querySelectorAll('.sim-star').forEach((s) => s.classList.remove('on')); overlay.querySelector('#verified-badge').classList.remove('on'); overlay.querySelector('#prev-name').textContent = ''; overlay.querySelector('#prev-meta').textContent = '📍 بانتظار إدخال الموقع…'; overlay.querySelector('#prev-whatsapp').classList.remove('on'); overlay.querySelectorAll('#prev-stars .s').forEach((s) => s.classList.remove('on')); overlay.querySelector('#prev-ribbon').classList.remove('on'); overlay.querySelector('#toast-success').classList.remove('on');
-  };
-  const runLoop = async () => {
-    while (!token.cancelled) {
-      resetVisualState(); await wait(400);
-      setActiveTab(1); setActiveFields(1); setStepText(1); const fName = overlay.querySelector('#f-name'); moveCursor(fName); await wait(250); await typeInto(overlay.querySelector('#in-name'), DEMO_NAME, 60); typeInto(overlay.querySelector('#prev-name'), DEMO_NAME, 60); fName.classList.add('done'); await wait(350);
-      const fLoc = overlay.querySelector('#f-loc'); moveCursor(fLoc); await wait(250); await typeInto(overlay.querySelector('#in-loc'), DEMO_LOCATION, 55); overlay.querySelector('#prev-meta').textContent = `📍 ${DEMO_LOCATION} — يظهر للعملاء عند البحث عن خدمتك`; fLoc.classList.add('done'); await wait(700); if (token.cancelled) return;
-      setActiveTab(2); setActiveFields(2); setStepText(2); const fPhone = overlay.querySelector('#f-phone'); moveCursor(fPhone); await wait(250); await typeInto(overlay.querySelector('#in-phone'), DEMO_PHONE, 45); fPhone.classList.add('done'); await wait(300); const fWa = overlay.querySelector('#f-wa'); moveCursor(overlay.querySelector('#wa-switch')); await wait(300); overlay.querySelector('#wa-switch').classList.add('on'); overlay.querySelector('#prev-whatsapp').classList.add('on'); fWa.classList.add('done'); await wait(750); if (token.cancelled) return;
-      setActiveTab(3); setActiveFields(3); setStepText(3); const upLogo = overlay.querySelector('#up-logo'); moveCursor(upLogo); await wait(300); upLogo.classList.add('filled'); upLogo.innerHTML = '<span class="ic">🏪</span><span>تم الرفع ✓</span>'; overlay.querySelector('#prev-avatar').style.background = 'linear-gradient(135deg,#0284c7,#38bdf8)'; await wait(450); const upCover = overlay.querySelector('#up-cover'); moveCursor(upCover); await wait(300); upCover.classList.add('filled'); upCover.innerHTML = '<span class="ic">🖼️</span><span>تم الرفع ✓</span>'; overlay.querySelector('#f-media').classList.add('done'); await wait(750); if (token.cancelled) return;
-      setActiveTab(4); setActiveFields(4); setStepText(4); const stars = overlay.querySelectorAll('.sim-star'); const prevStars = overlay.querySelectorAll('#prev-stars .s'); for (let i = 0; i < stars.length; i++) { if (token.cancelled) return; moveCursor(stars[i]); await wait(180); stars[i].classList.add('on'); prevStars[i].classList.add('on'); } await wait(200); overlay.querySelector('#verified-badge').classList.add('on'); overlay.querySelector('#f-rate').classList.add('done'); await wait(350); overlay.querySelector('#prev-ribbon').classList.add('on'); overlay.querySelector('#toast-success').classList.add('on'); await wait(3200); if (token.cancelled) return;
-    }
-  };
+  const resetVisualState = () => { overlay.querySelectorAll('.sim-field').forEach((f)=>f.classList.remove('on','active','done')); overlay.querySelector('#in-name').textContent=''; overlay.querySelector('#in-loc').textContent=''; overlay.querySelector('#in-phone').textContent=''; overlay.querySelector('#wa-switch').classList.remove('on'); overlay.querySelector('#up-logo').classList.remove('filled'); overlay.querySelector('#up-cover').classList.remove('filled'); overlay.querySelector('#up-logo').innerHTML='<span class="ic">🏪</span><span>رفع الشعار</span>'; overlay.querySelector('#up-cover').innerHTML='<span class="ic">🖼️</span><span>رفع صورة الغلاف</span>'; overlay.querySelectorAll('.sim-star').forEach((s)=>s.classList.remove('on')); overlay.querySelector('#verified-badge').classList.remove('on'); overlay.querySelector('#prev-name').textContent=''; overlay.querySelector('#prev-meta').textContent='📍 بانتظار إدخال الموقع…'; overlay.querySelector('#prev-whatsapp').classList.remove('on'); overlay.querySelectorAll('#prev-stars .s').forEach((s)=>s.classList.remove('on')); overlay.querySelector('#prev-ribbon').classList.remove('on'); overlay.querySelector('#toast-success').classList.remove('on'); };
+  const runLoop = async () => { while (!token.cancelled) { resetVisualState(); await wait(400); setActiveTab(1); setActiveFields(1); setStepText(1); const fName=overlay.querySelector('#f-name'); moveCursor(fName); await wait(250); await typeInto(overlay.querySelector('#in-name'),DEMO_NAME,60); typeInto(overlay.querySelector('#prev-name'),DEMO_NAME,60); fName.classList.add('done'); await wait(350); const fLoc=overlay.querySelector('#f-loc'); moveCursor(fLoc); await wait(250); await typeInto(overlay.querySelector('#in-loc'),DEMO_LOCATION,55); overlay.querySelector('#prev-meta').textContent=`📍 ${DEMO_LOCATION} — يظهر للعملاء عند البحث عن خدمتك`; fLoc.classList.add('done'); await wait(700); if(token.cancelled)return; setActiveTab(2); setActiveFields(2); setStepText(2); const fPhone=overlay.querySelector('#f-phone'); moveCursor(fPhone); await wait(250); await typeInto(overlay.querySelector('#in-phone'),DEMO_PHONE,45); fPhone.classList.add('done'); await wait(300); const fWa=overlay.querySelector('#f-wa'); moveCursor(overlay.querySelector('#wa-switch')); await wait(300); overlay.querySelector('#wa-switch').classList.add('on'); overlay.querySelector('#prev-whatsapp').classList.add('on'); fWa.classList.add('done'); await wait(750); if(token.cancelled)return; setActiveTab(3); setActiveFields(3); setStepText(3); const upLogo=overlay.querySelector('#up-logo'); moveCursor(upLogo); await wait(300); upLogo.classList.add('filled'); upLogo.innerHTML='<span class="ic">🏪</span><span>تم الرفع ✓</span>'; overlay.querySelector('#prev-avatar').style.background='linear-gradient(135deg,#0284c7,#38bdf8)'; await wait(450); const upCover=overlay.querySelector('#up-cover'); moveCursor(upCover); await wait(300); upCover.classList.add('filled'); upCover.innerHTML='<span class="ic">🖼️</span><span>تم الرفع ✓</span>'; overlay.querySelector('#f-media').classList.add('done'); await wait(750); if(token.cancelled)return; setActiveTab(4); setActiveFields(4); setStepText(4); const stars=overlay.querySelectorAll('.sim-star'); const prevStars=overlay.querySelectorAll('#prev-stars .s'); for(let i=0;i<stars.length;i++){if(token.cancelled)return; moveCursor(stars[i]); await wait(180); stars[i].classList.add('on'); prevStars[i].classList.add('on');} await wait(200); overlay.querySelector('#verified-badge').classList.add('on'); overlay.querySelector('#f-rate').classList.add('done'); await wait(350); overlay.querySelector('#prev-ribbon').classList.add('on'); overlay.querySelector('#toast-success').classList.add('on'); await wait(3200); if(token.cancelled)return; } };
   runLoop();
-  const closeOnboarding = () => { token.cancelled = true; token.timers.forEach((t) => clearTimeout(t)); markAddPlaceOnboardingSeen(); overlay.classList.add('fade-out'); setTimeout(() => { overlay.remove(); style.remove(); document.body.style.overflow = ''; }, 280); };
-  overlay.querySelector('#btn-close-onboarding-top')?.addEventListener('click', closeOnboarding);
-  overlay.querySelector('#btn-start-adding-place')?.addEventListener('click', closeOnboarding);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOnboarding(); });
+  const closeOnboarding = () => { token.cancelled=true; token.timers.forEach((t)=>clearTimeout(t)); markAddPlaceOnboardingSeen(); overlay.classList.add('fade-out'); setTimeout(()=>{overlay.remove();style.remove();document.body.style.overflow='';},280); };
+  overlay.querySelector('#btn-close-onboarding-top')?.addEventListener('click',closeOnboarding); overlay.querySelector('#btn-start-adding-place')?.addEventListener('click',closeOnboarding); overlay.addEventListener('click',(e)=>{if(e.target===overlay)closeOnboarding();});
 }
 
-/**
- * Keep the existing real form wizard intact while using this onboarding
- * presentation as the first-time explanation.
- */
 export function initPlaceFormWizard() {
+  if (!hasSeenAddPlaceOnboarding()) {
+    showAddPlaceOnboardingModal();
+    markAddPlaceOnboardingSeen();
+  }
   return initExistingPlaceFormWizard();
 }
