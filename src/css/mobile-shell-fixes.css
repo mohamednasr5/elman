@@ -37,6 +37,17 @@
     visibility: hidden !important;
   }
 
+  .toast-container {
+    position: fixed !important;
+    inset: auto 0 calc(var(--bottom-nav-height, 72px) + 68px + env(safe-area-inset-bottom, 0px)) 0 !important;
+    z-index: 999999 !important;
+    pointer-events: none !important;
+  }
+  .toast {
+    z-index: 999999 !important;
+    pointer-events: auto !important;
+  }
+
   .mobile-more-sheet {
     position: fixed;
     inset: 0;

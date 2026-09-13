@@ -1,7 +1,58 @@
-﻿// Shared page shell — bilingual, responsive, and safe for dynamic content.
-import { initAuth, onAuthStateChange, waitForAuth, isAdmin } from './auth.js';
+// Shared page shell — bilingual, responsive, and safe for dynamic content.
+import { initAuth, onAuthStateChange, waitForAuth, isAdmin, signOut } from './auth.js';
 import { getLang, isEnglish, switchLanguage, applyLangToDOM } from './i18n.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
+
+function _escShell(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function _getStoredUser() {
+  try {
+    const raw = localStorage.getItem('manzala_persistent_user') || localStorage.getItem('manzala_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+function _renderHeaderUserSlot(user = null) {
+  const isEn = isEnglish();
+  const u = user || _getStoredUser();
+  if (u && (u.uid || u.id)) {
+    const name = String(u.displayName || u.name || (isEn ? 'Account' : 'حسابي')).trim();
+    const firstName = name.split(/\s+/)[0] || (isEn ? 'Account' : 'حسابي');
+    const photo = u.photoURL || u.photo_url || '/icons/icon-72x72.png';
+    const isUserAdmin = isAdmin(u);
+    return `<div class="header__user" style="position:relative"><button class="header__user-btn" id="header-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" title="${_escShell(name)}"><img src="${_escShell(photo)}" alt="${_escShell(firstName)}" class="header__avatar" width="32" height="32" onerror="this.src='/icons/icon-72x72.png'"><span class="header__user-name">${_escShell(firstName)}</span><span aria-hidden="true" style="font-size:10px">▾</span></button><div class="header__dropdown" id="header-user-dropdown" role="menu"><a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="header__dropdown-item" role="menuitem">🏠 ${isEn ? 'Dashboard' : 'لوحة تحكمي'}</a><a href="${isEn ? '/en/dashboard/?section=places' : '/dashboard.html?section=places'}" class="header__dropdown-item" role="menuitem">📍 ${isEn ? 'My Places' : 'أماكني'}</a><a href="${isEn ? '/en/dashboard/?section=add' : '/dashboard.html?section=add'}" class="header__dropdown-item" role="menuitem">➕ ${isEn ? 'Add Place' : 'إضافة مكان'}</a><a href="${isEn ? '/en/dashboard/?section=loyalty' : '/dashboard.html?section=loyalty'}" class="header__dropdown-item" role="menuitem">🎁 ${isEn ? 'Loyalty Rewards' : 'نادي الولاء'}</a><a href="${isEn ? '/en/dashboard/?section=notifications' : '/dashboard.html?section=notifications'}" class="header__dropdown-item" role="menuitem">🔔 ${isEn ? 'Notifications' : 'الإشعارات'}</a>${isUserAdmin ? `<div class="header__dropdown-divider"></div><a href="/admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ ${isEn ? 'Administration' : 'لوحة الإدارة'}</a>` : ''}<div class="header__dropdown-divider"></div><button class="header__dropdown-item header__dropdown-item--danger" id="header-logout-btn" type="button" role="menuitem">🚪 ${isEn ? 'Sign Out' : 'تسجيل الخروج'}</button></div></div>`;
+  }
+  const loginHref = isEn ? '/en/login/' : '/login.html';
+  const loginText = isEn ? 'Sign In' : 'دخول';
+  return `<a href="${loginHref}" class="btn btn-primary btn-sm"><span>🔑</span> ${loginText}</a>`;
+}
+
+function _bindHeaderUserEvents(user = null) {
+  const wrap = document.getElementById('header-user-section');
+  if (!wrap) return;
+  wrap.innerHTML = _renderHeaderUserSlot(user);
+
+  const btn = document.getElementById('header-user-menu-btn');
+  const dropdown = document.getElementById('header-user-dropdown');
+  if (btn && dropdown) {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropdown.classList.toggle('open');
+      btn.setAttribute('aria-expanded', String(Boolean(dropdown.classList.contains('open'))));
+    };
+    document.addEventListener('click', () => {
+      dropdown.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    });
+    document.getElementById('header-logout-btn')?.addEventListener('click', async () => {
+      try { await signOut(); } catch (_) {}
+      window.location.reload();
+    });
+  }
+}
 
 function _headerHTML(active = '') {
   const isEn = isEnglish();
@@ -18,14 +69,12 @@ function _headerHTML(active = '') {
   const current = norm(active);
   const logoHref = isEn ? '/en/' : '/index.html';
   const logoName = isEn ? 'Dalil El Manzala' : 'دليل المنزلة والمطرية';
-  const loginHref = isEn ? '/en/login/' : '/login.html';
-  const loginText = isEn ? 'Sign In' : 'دخول';
   const searchPlaceholder = isEn ? 'Search for places, services, doctors...' : 'ابحث عن مكان، دكتور، خدمة...';
   const searchTitle = isEn ? 'Quick Search' : 'بحث سريع في المنزلة والمطرية';
   const searchAria = isEn ? 'Search the directory' : 'بحث في الدليل';
   const langBtnLabel = isEn ? 'EN' : 'AR';
   const langBtnTitle = isEn ? 'Switch to Arabic' : 'Switch to English';
-  return `<header class="header" id="site-header" role="banner"><div class="container header__inner"><a href="${logoHref}" class="header__logo" aria-label="${logoName}"><img src="/icons/icon-96x96.png" alt="${logoName}" width="36" height="36" class="header__logo-img" onerror="this.src='/favicon-48x48.png';"><div class="header__logo-text"><span class="header__logo-name">${logoName}</span></div></a><div class="header-search-expandable" id="header-search-container" role="search"><div class="header-search-pill" id="header-search-pill"><button type="button" class="header-search-btn-trigger" id="header-search-trigger" aria-label="${searchAria}" title="${searchTitle}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button><input type="search" id="header-search-input" class="header-search-input" placeholder="${searchPlaceholder}" autocomplete="off" aria-label="${searchPlaceholder}"><button type="button" class="header-search-clear-btn" id="header-search-clear" aria-label="${isEn ? 'Clear' : 'مسح'}" title="${isEn ? 'Clear' : 'مسح'}">✕</button></div><div class="header-live-dropdown" id="header-live-dropdown" aria-live="polite"><div class="header-live-dropdown__header"><span>⚡ ${isEn ? 'Live Quick Suggestions:' : 'مقترحات سريعة:'}</span><span class="header-live-dropdown__count" id="header-live-count">0</span></div><div class="header-live-dropdown__list" id="header-live-list"></div><div class="header-live-dropdown__footer"><a href="${isEn ? '/en/search/' : '/search.html'}" class="header-live-dropdown__all-btn"><span>${isEn ? 'View all results on search page' : 'عرض كافة النتائج في صفحة البحث'}</span><span>${isEn ? '→' : '←'}</span></a></div></div></div><nav class="header__nav" aria-label="${isEn ? 'Main Navigation' : 'التنقل الرئيسي'}">${links.map(([file,title,emoji]) => `<a href="${file}" class="header__nav-link${norm(file) === current ? ' active' : ''}"><span>${title}</span>${emoji ? `<span class="header__nav-emoji">${emoji}</span>` : ''}</a>`).join('')}</nav><button type="button" class="lang-toggle-btn" id="lang-toggle-btn" aria-label="${langBtnTitle}" title="${langBtnTitle}"><span class="lang-globe">🌐</span><span class="lang-name">${langBtnLabel}</span></button><button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="${isEn ? 'Toggle Theme' : 'تبديل الوضع الليلي'}" title="${isEn ? 'Toggle Dark/Light Mode' : 'تبديل الوضع الليلي / الفاتح'}"><span class="theme-icon-light">☀️</span><span class="theme-icon-dark">🌙</span></button><div class="header__user" id="header-user-section"><a href="${loginHref}" class="btn btn-primary btn-sm"><span>🔑</span> ${loginText}</a></div></div></header>`;
+  return `<header class="header" id="site-header" role="banner"><div class="container header__inner"><a href="${logoHref}" class="header__logo" aria-label="${logoName}"><img src="/icons/icon-96x96.png" alt="${logoName}" width="36" height="36" class="header__logo-img" onerror="this.src='/favicon-48x48.png';"><div class="header__logo-text"><span class="header__logo-name">${logoName}</span></div></a><div class="header-search-expandable" id="header-search-container" role="search"><div class="header-search-pill" id="header-search-pill"><button type="button" class="header-search-btn-trigger" id="header-search-trigger" aria-label="${searchAria}" title="${searchTitle}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button><input type="search" id="header-search-input" class="header-search-input" placeholder="${searchPlaceholder}" autocomplete="off" aria-label="${searchPlaceholder}"><button type="button" class="header-search-clear-btn" id="header-search-clear" aria-label="${isEn ? 'Clear' : 'مسح'}" title="${isEn ? 'Clear' : 'مسح'}">✕</button></div><div class="header-live-dropdown" id="header-live-dropdown" aria-live="polite"><div class="header-live-dropdown__header"><span>⚡ ${isEn ? 'Live Quick Suggestions:' : 'مقترحات سريعة:'}</span><span class="header-live-dropdown__count" id="header-live-count">0</span></div><div class="header-live-dropdown__list" id="header-live-list"></div><div class="header-live-dropdown__footer"><a href="${isEn ? '/en/search/' : '/search.html'}" class="header-live-dropdown__all-btn"><span>${isEn ? 'View all results on search page' : 'عرض كافة النتائج في صفحة البحث'}</span><span>${isEn ? '→' : '←'}</span></a></div></div></div><nav class="header__nav" aria-label="${isEn ? 'Main Navigation' : 'التنقل الرئيسي'}">${links.map(([file,title,emoji]) => `<a href="${file}" class="header__nav-link${norm(file) === current ? ' active' : ''}"><span>${title}</span>${emoji ? `<span class="header__nav-emoji">${emoji}</span>` : ''}</a>`).join('')}</nav><button type="button" class="lang-toggle-btn" id="lang-toggle-btn" aria-label="${langBtnTitle}" title="${langBtnTitle}"><span class="lang-globe">🌐</span><span class="lang-name">${langBtnLabel}</span></button><button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="${isEn ? 'Toggle Theme' : 'تبديل الوضع الليلي'}" title="${isEn ? 'Toggle Dark/Light Mode' : 'تبديل الوضع الليلي / الفاتح'}"><span class="theme-icon-light">☀️</span><span class="theme-icon-dark">🌙</span></button><div class="header__user" id="header-user-section">${_renderHeaderUserSlot()}</div></div></header>`;
 }
 
 function _bottomNavHTML(active = '') {
@@ -298,7 +347,13 @@ export async function initPage(activeFile=''){
   _bindThemeToggle();
   _setupHeaderSearch();
   _bindMoreMenu();
+  _bindHeaderUserEvents();
   try{bindGlobalVoiceAssistantFab()}catch(_){}
-  try{initAuth();onAuthStateChange(()=>{})}catch(_){}
+  try{
+    initAuth();
+    onAuthStateChange((user)=>{
+      _bindHeaderUserEvents(user);
+    });
+  }catch(_){}
 }
 export { waitForAuth, isAdmin };

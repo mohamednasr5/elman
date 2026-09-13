@@ -148,8 +148,22 @@ export async function testPhoneSystemNotification(user = null) {
     return granted;
   }
   try {
+    const orig = window.location.origin;
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SHOW_PWA_NOTIFICATION',
+        payload: {
+          title: '🔔 تجربة إشعار نظام Android',
+          body: 'تهانينا! نظام الإشعارات يعمل بكفاءة على هاتفك وفي شريط الإشعارات.',
+          url: 'dashboard.html?section=notifications',
+          icon: orig + '/icons/icon-192x192.png',
+          badge: orig + '/icons/icon-96x96.png',
+          tag: 'test-push-' + Date.now()
+        }
+      });
+    }
     _registration = _registration || await navigator.serviceWorker.ready;
-    await _registration.showNotification('🔔 تجربة إشعار نظام Android', { body: 'تهانينا! نظام الإشعارات يعمل بكفاءة على هاتفك وفي شريط الإشعارات.', icon: './icons/icon-192x192.png', badge: './icons/icon-96x96.png', dir: 'rtl', lang: 'ar', vibrate: [200, 100, 200], tag: 'test-push-' + Date.now(), renotify: true, data: { url: 'dashboard.html?section=notifications' } });
+    await _registration.showNotification('🔔 تجربة إشعار نظام Android', { body: 'تهانينا! نظام الإشعارات يعمل بكفاءة على هاتفك وفي شريط الإشعارات.', icon: orig + '/icons/icon-192x192.png', badge: orig + '/icons/icon-96x96.png', dir: 'rtl', lang: 'ar', vibrate: [200, 100, 200], tag: 'test-push-' + Date.now(), renotify: true, data: { url: 'dashboard.html?section=notifications' } });
     playNotificationSound(); toast.success('تم إرسال إشعار تجريبي لشريط تنبيهات هاتفك 📲'); return true;
   } catch (err) { toast.error('حدث خطأ أثناء إظهار الإشعار: ' + err.message); return false; }
 }

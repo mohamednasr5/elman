@@ -1,4 +1,4 @@
-﻿/**
+/**
  * المنزلة وناسها — Places Service
  * Core business logic for Place, Offers and Products management
  */
@@ -11,6 +11,7 @@ import { isAtmPlace } from '../utils/atm.js';
 import { WORKER_URL } from '../core/firebase.js';
 import { getIdToken } from '../core/auth.js';
 import { isValidPhoneNumber } from '../utils/phone.js';
+import { awardPoints } from './loyalty.service.js';
 
 export function extractBrandRoot(name) {
   if (!name) return '';
@@ -111,6 +112,7 @@ export async function createPlace(placeData, currentUser) {
   broadcastNewPlaceNotification(newPlace).catch(() => {});
   Promise.resolve(sendTelegramAdminNotification('new_place', { id: placeId, name: newPlace.name, categoryName: placeData.categoryName || placeData.categoryId, phone: newPlace.phone, area: newPlace.area, ownerName: currentUser.name || currentUser.displayName || currentUser.email })).catch(() => {});
   Promise.resolve(broadcastRealtimeChange('NEW_PLACE', { place: { id: placeId, ...newPlace } })).catch(() => {});
+  Promise.resolve(awardPoints(currentUser.uid, 'ADD_PLACE', { placeId, placeName: newPlace.name })).catch(() => {});
   return placeId;
 }
 

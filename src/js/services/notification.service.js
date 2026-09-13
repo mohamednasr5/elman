@@ -604,22 +604,44 @@ export function showLiveNotificationPopup(notification, uid) {
   popupBox.appendChild(notifEl);
 
   // Trigger Native Android System Notification via Service Worker if permission granted
-  if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-    navigator.serviceWorker.ready.then(reg => {
-      if (reg && reg.showNotification) {
-        reg.showNotification(notification.title || 'دليل المنزلة والمطرية 🔔', {
-          body: notification.message || notification.body || '',
-          icon: notification.icon || './icons/icon-192x192.png',
-          badge: './icons/icon-96x96.png',
-          dir: 'rtl',
-          lang: 'ar',
-          vibrate: [200, 100, 200],
-          tag: notification.id || ('manzala-notif-' + Date.now()),
-          renotify: true,
-          data: { url: targetUrl }
+  if (typeof Notification !== 'undefined') {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const iconUrl = (notification.icon && notification.icon.startsWith('http')) ? notification.icon : (origin + '/icons/icon-192x192.png');
+    const badgeUrl = origin + '/icons/icon-96x96.png';
+    const notifTag = notification.id || ('manzala-notif-' + Date.now());
+
+    if (Notification.permission === 'granted' && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SHOW_PWA_NOTIFICATION',
+          payload: {
+            title: notification.title || 'دليل المنزلة والمطرية 🔔',
+            body: notification.message || notification.body || '',
+            url: targetUrl,
+            icon: iconUrl,
+            badge: badgeUrl,
+            tag: notifTag
+          }
         });
       }
-    }).catch(() => {});
+      navigator.serviceWorker.ready.then(reg => {
+        if (reg && reg.showNotification) {
+          reg.showNotification(notification.title || 'دليل المنزلة والمطرية 🔔', {
+            body: notification.message || notification.body || '',
+            icon: iconUrl,
+            badge: badgeUrl,
+            dir: 'rtl',
+            lang: 'ar',
+            vibrate: [200, 100, 200],
+            tag: notifTag,
+            renotify: true,
+            data: { url: targetUrl }
+          });
+        }
+      }).catch(() => {});
+    } else if (Notification.permission === 'default') {
+      import('./fcm.service.js').then(m => m.mountPushNotificationPrompt?.()).catch(() => {});
+    }
   }
 
   setTimeout(() => {

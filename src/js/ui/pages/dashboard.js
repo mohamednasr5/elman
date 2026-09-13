@@ -747,11 +747,11 @@ function openBranchModal({ place, branchIndex = -1, user, onSave = null }) {
       <div class="form-row">
         <div class="form-group" style="flex:1">
           <label class="form-label" style="font-size:12px;font-weight:700">هاتف الفرع</label>
-          <input type="tel" id="bm-phone" class="form-input" placeholder="01012345678" value="${escAttr(branch.phone || '')}" style="direction:ltr;text-align:right" />
+          <input type="tel" id="bm-phone" class="form-input" placeholder="01********* (11 رقم)" maxlength="11" value="${escAttr(branch.phone || '')}" style="direction:ltr;text-align:right" />
         </div>
         <div class="form-group" style="flex:1">
           <label class="form-label" style="font-size:12px;font-weight:700">واتساب الفرع</label>
-          <input type="tel" id="bm-whatsapp" class="form-input" placeholder="01012345678" value="${escAttr(branch.whatsapp || '')}" style="direction:ltr;text-align:right" />
+          <input type="tel" id="bm-whatsapp" class="form-input" placeholder="01********* (11 رقم)" maxlength="11" value="${escAttr(branch.whatsapp || '')}" style="direction:ltr;text-align:right" />
         </div>
       </div>
 
@@ -1479,13 +1479,13 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <div class="form-row" id="p-phone-row">
           <div class="form-group">
             <label class="form-label">رقم الهاتف <span class="required">*</span></label>
-            <input type="tel" id="p-phone" class="form-input" required placeholder="01012345678 أو خط ساخن 17555" value="${escAttr(place?.phone || '')}" style="direction:ltr;text-align:right" />
+            <input type="tel" id="p-phone" class="form-input" required placeholder="01********* (11 رقم أو خط ساخن)" maxlength="11" value="${escAttr(place?.phone || '')}" style="direction:ltr;text-align:right" />
             <p style="font-size:11px;color:var(--text-muted);margin-top:3px">يدعم أرقام الموبايل، الأرضي، والخطوط الساخنة والأرقام الموحدة (مثل 17555). مسموح لنفس الرقم بمكانين كحد أقصى.</p>
           </div>
 
           <div class="form-group">
             <label class="form-label">رقم WhatsApp للتواصل المباشر</label>
-            <input type="tel" id="p-whatsapp" class="form-input" placeholder="01012345678" value="${escAttr(place?.whatsapp || '')}" style="direction:ltr;text-align:right" />
+            <input type="tel" id="p-whatsapp" class="form-input" placeholder="01********* (11 رقم)" maxlength="11" value="${escAttr(place?.whatsapp || '')}" style="direction:ltr;text-align:right" />
           </div>
         </div>
 
@@ -1874,11 +1874,11 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       <div class="form-row">
         <div class="form-group" style="flex:1">
           <label class="form-label" style="font-size:12px;font-weight:700">رقم هاتف الفرع</label>
-          <input type="tel" class="form-input b-phone" placeholder="01012345678" value="${escAttr(initialData?.phone || '')}" style="direction:ltr;text-align:right" />
+          <input type="tel" class="form-input b-phone" placeholder="01********* (11 رقم)" maxlength="11" value="${escAttr(initialData?.phone || '')}" style="direction:ltr;text-align:right" />
         </div>
         <div class="form-group" style="flex:1">
           <label class="form-label" style="font-size:12px;font-weight:700">واتساب الفرع</label>
-          <input type="tel" class="form-input b-whatsapp" placeholder="01012345678" value="${escAttr(initialData?.whatsapp || '')}" style="direction:ltr;text-align:right" />
+          <input type="tel" class="form-input b-whatsapp" placeholder="01********* (11 رقم)" maxlength="11" value="${escAttr(initialData?.whatsapp || '')}" style="direction:ltr;text-align:right" />
         </div>
       </div>
 
@@ -2990,6 +2990,22 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     document.getElementById('p-area')?.addEventListener('change', queueDedupeCheck);
     document.getElementById('p-area-search-input')?.addEventListener('input', queueDedupeCheck);
   }
+
+  // Restrict phone and WhatsApp inputs to digits only and max 11 digits
+  ['p-phone', 'p-whatsapp'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 11);
+      });
+    }
+  });
+  // Event delegation for dynamically added branch phone/whatsapp fields
+  document.getElementById('place-form')?.addEventListener('input', (e) => {
+    if (e.target && (e.target.classList.contains('b-phone') || e.target.classList.contains('b-whatsapp') || e.target.id === 'bm-phone' || e.target.id === 'bm-whatsapp')) {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 11);
+    }
+  });
 
   // Attach smart auto-normalization to all social input fields (handles @handle, handle, or full URL)
   ['facebook', 'x', 'instagram', 'tiktok', 'threads', 'youtube', 'website'].forEach(plat => {

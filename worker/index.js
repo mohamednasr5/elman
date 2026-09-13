@@ -5782,6 +5782,34 @@ async function ensureNewSchemaColumnsInTurso(env) {
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_place_slug ON reviews(place_slug)").run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at)").run().catch(() => {});
     
+    // Loyalty and Gamification Schema
+    await db.prepare("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0").run().catch(() => {});
+    await db.prepare("ALTER TABLE users ADD COLUMN total_earned INTEGER DEFAULT 0").run().catch(() => {});
+    await db.prepare("ALTER TABLE users ADD COLUMN last_daily_bonus_date TEXT").run().catch(() => {});
+    await db.prepare("ALTER TABLE users ADD COLUMN last_redemption_at INTEGER").run().catch(() => {});
+    await db.prepare(`CREATE TABLE IF NOT EXISTS loyalty_history (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      rule_key TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      label TEXT,
+      place_id TEXT,
+      place_name TEXT,
+      meta_json TEXT,
+      created_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_loyalty_history_user ON loyalty_history(user_id, created_at DESC)").run().catch(() => {});
+    await db.prepare(`CREATE TABLE IF NOT EXISTS loyalty_redemptions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      place_id TEXT NOT NULL,
+      place_name TEXT,
+      points_redeemed INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_loyalty_redemptions_user ON loyalty_redemptions(user_id)").run().catch(() => {});
+
     // Interactive features schema (Service Requests, Live Craftsmen On-Call, Village Hub, Appointments)
     await db.prepare(`CREATE TABLE IF NOT EXISTS service_requests (
       id TEXT PRIMARY KEY,

@@ -1,4 +1,4 @@
-﻿import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
+import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 import { isEnglish, t, localizeUrl } from '../../core/i18n.js';
 import { translateCategory, toArabicCategory } from '../../utils/category-i18n.js';
 /**
@@ -1237,6 +1237,12 @@ function setupAtmPollInteractivity(placeId, initialPoll = {}) {
         try {
           const updatedPoll = await submitAtmPollVote(placeId, qKey, choice);
           toast.success('تم تسجيل إجابتك بنجاح! شكراً لمساعدتك لأهالي المنزلة والمطرية ✨');
+          const curUser = getCurrentUser();
+          if (curUser?.uid) {
+            awardPoints(curUser.uid, 'UPDATE_ATM', { placeId }).then(res => {
+              if (res?.success) toast.info(`🎉 حصلت على +${res.awarded} نقطة في نادي الولاء!`);
+            }).catch(() => {});
+          }
           pollSection.innerHTML = renderAtmPollMarkup(updatedPoll, placeId);
           attachButtons();
         } catch (err) {
@@ -1639,6 +1645,11 @@ function openReviewModal(place, user, existingReview, onDone) {
                 comment: commentVal
               });
               toast.success('شكراً لمشاركتك! تم نشر تقييمك بنجاح ⭐');
+              if (user?.uid) {
+                awardPoints(user.uid, 'ADD_REVIEW', { placeId: place.id || place._key, placeName: place.name }).then(res => {
+                  if (res?.success) toast.info(`🎉 حصلت على +${res.awarded} نقطة في نادي الولاء!`);
+                }).catch(() => {});
+              }
             }
             modal.close();
 
