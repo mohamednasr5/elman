@@ -27,6 +27,8 @@ jobs:
           node-version: 20
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Validate dashboard parity
+        run: node scripts/validate-dashboard-parity.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run browser smoke tests
