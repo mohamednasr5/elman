@@ -14,6 +14,8 @@ const englishCard=fs.readFileSync(path.join(root,'src/js/ui/components/en/PlaceC
 for(const token of ['renderEnglishPlaceCard','projectPlaceToEnglish','getPlaceLiveStatus','data-fallback-src']) if(!englishCard.includes(token)){console.error(`English card component is missing ${token}`);process.exit(1);}
 const auth=fs.readFileSync(path.join(root,'src/js/core/auth.js'),'utf8');
 for(const token of ['ensureFirebaseReady','signInWithPopup','PERSISTENT_USER_KEY']) if(!auth.includes(token)){console.error(`Auth layer is missing ${token}`);process.exit(1);}
+const pwa=fs.readFileSync(path.join(root,'src/js/core/pwa-install.js'),'utf8');
+if(!pwa.includes("navigator.serviceWorker.register('/sw.js'")){console.error('PWA installer does not register the unified service worker');process.exit(1);}
 const enPages=fs.readdirSync(path.join(root,'src/js/ui/pages/en')).filter(f=>f.endsWith('.js'));
 if(!enPages.length){console.error('No English page modules found');process.exit(1);}
 console.log(`English frontend structural validation passed (${enPages.length} English page modules).`);
