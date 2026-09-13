@@ -84,4 +84,65 @@
   .footer__grid { grid-template-columns:minmax(250px,1.2fr) repeat(3,minmax(180px,1fr)) !important; align-items:start !important; gap:clamp(18px,2.5vw,42px) !important; }
   .footer__grid > .footer__column:first-of-type .footer__links { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; column-gap:28px !important; }
   .footer__grid > .footer__column:first-of-type { min-width:0 !important; }
+
+  /* Desktop: move language + theme out of the main header flow and stack them vertically. */
+  .lang-toggle-btn,
+  .theme-toggle-btn {
+    position: fixed !important;
+    left: 14px !important;
+    z-index: 10070 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 8px 24px rgba(15,23,42,.14) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    margin: 0 !important;
+  }
+
+  .theme-toggle-btn {
+    top: 96px !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    border-radius: 14px !important;
+  }
+
+  .lang-toggle-btn {
+    top: 148px !important;
+    width: 44px !important;
+    height: 40px !important;
+    min-width: 44px !important;
+    padding: 0 !important;
+    border-radius: 14px !important;
+  }
+
+  .lang-toggle-btn .lang-globe { display: none !important; }
+  .lang-toggle-btn .lang-name {
+    display: inline-block !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    letter-spacing: .02em !important;
+  }
+
+  /* Remove their occupied flex space from the header even if legacy rules set display:inline-flex. */
+  .header__inner > .lang-toggle-btn,
+  .header__inner > .theme-toggle-btn {
+    flex: 0 0 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* The fixed clones remain visible; the original buttons keep their IDs/events. */
+  .header__inner > .lang-toggle-btn::before,
+  .header__inner > .theme-toggle-btn::before { content: none !important; }
+
+  /* Keep the floating controls clear of the top header and back/breadcrumb bars. */
+  @media (max-height: 760px) {
+    .theme-toggle-btn { top: 82px !important; }
+    .lang-toggle-btn { top: 132px !important; }
+  }
 }
