@@ -9,5 +9,9 @@ for(const name of ['base.css','layout.css','components.css','cards.css','forms.c
 const generator=fs.readFileSync(path.join(root,'generate-english-pages.mjs'),'utf8');
 if(!generator.includes('/src/css/en/index.css')){console.error('English static generator does not load the dedicated English stylesheet');process.exit(1);}
 const controller=fs.readFileSync(path.join(root,'src/js/core/english-pages.js'),'utf8');
-if(!controller.includes("place-en-v2.js")||!controller.includes('english-audit.js')){console.error('English controller is not using the isolated place renderer/audit');process.exit(1);}
-console.log('English frontend structural validation passed.');
+for(const token of ['place-en-v2.js','english-audit.js','PlaceCardEn.js','installEnglishCardBridge']) if(!controller.includes(token)){console.error(`English controller is missing ${token}`);process.exit(1);}
+const englishCard=fs.readFileSync(path.join(root,'src/js/ui/components/en/PlaceCardEn.js'),'utf8');
+for(const token of ['renderEnglishPlaceCard','projectPlaceToEnglish','English']) if(!englishCard.includes(token)){console.error(`English card component is missing ${token}`);process.exit(1);}
+const enPages=fs.readdirSync(path.join(root,'src/js/ui/pages/en')).filter(f=>f.endsWith('.js'));
+if(!enPages.length){console.error('No English page modules found');process.exit(1);}
+console.log(`English frontend structural validation passed (${enPages.length} English page modules).`);
