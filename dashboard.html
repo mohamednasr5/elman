@@ -90,6 +90,7 @@
   import { initDashboardHeaderAuthNotifications } from './src/js/core/dashboard-header-fix.js?v=20260913_auth_notif_v1';
   import { renderDashboard } from './src/js/ui/pages/dashboard.js?v=ebc49583_v2';
   import { waitForAuth } from './src/js/core/auth.js';
+  import { initGoogleMapsLocationPicker } from './src/js/ui/components/GoogleMapsLocationPicker.js?v=20260913_google_maps_picker_v1';
   await initPage('dashboard.html');
   await initDashboardHeaderAuthNotifications();
   const user = await waitForAuth();
@@ -99,6 +100,7 @@
     const section = params.get('section') || 'overview';
     const placeId = params.get('id') || null;
     await renderDashboard(document.getElementById('page-container'), { user, section, placeId });
+    initGoogleMapsLocationPicker();
   }
 </script>
 <script type="module" src="/src/js/ui/pages/dashboard-responsive.js?v=20260913_dashboard_mobile_pwa_v1"></script>
