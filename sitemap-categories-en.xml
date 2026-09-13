@@ -97,6 +97,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/butterfly-weddings-%26-events"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/capacity-development-center</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/capacity-development-center"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/capacity-development-center"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/capacity-development-center"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/carpet</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
