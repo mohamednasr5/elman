@@ -1,0 +1,8 @@
+/* English profile media quality layer. Never upscale a missing/low-resolution asset into a broken image box. */
+html[lang="en"] .en-place-cover{background:#0f172a}
+html[lang="en"] .en-place-cover>img{object-fit:contain;object-position:center;background:#0f172a;image-rendering:auto}
+html[lang="en"] .en-place-cover__shade{background:linear-gradient(to top,rgba(0,0,0,.42),rgba(0,0,0,0) 58%)}
+html[lang="en"] .en-place-cover>img.is-media-broken{display:none}
+html[lang="en"] .en-place-logo.is-media-broken{display:none}
+html[lang="en"] .en-gallery img.is-media-broken,.en-offer-media img.is-media-broken,.en-product-media img.is-media-broken{visibility:hidden}
+html[lang="en"] .en-place-cover>img,html[lang="en"] .en-gallery img,html[lang="en"] .en-offer-media img,html[lang="en"] .en-product-media img{max-width:100%;max-height:100%}
