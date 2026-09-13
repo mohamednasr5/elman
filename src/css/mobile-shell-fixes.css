@@ -86,8 +86,8 @@
   .footer__grid > .footer__column:first-of-type { min-width:0 !important; }
 
   /* Desktop: move language + theme out of the main header flow and stack them vertically. */
-  .lang-toggle-btn,
-  .theme-toggle-btn {
+  .header__inner > .lang-toggle-btn,
+  .header__inner > .theme-toggle-btn {
     position: fixed !important;
     left: 14px !important;
     z-index: 10070 !important;
@@ -98,9 +98,10 @@
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
     margin: 0 !important;
+    flex: none !important;
   }
 
-  .theme-toggle-btn {
+  .header__inner > .theme-toggle-btn {
     top: 96px !important;
     width: 44px !important;
     height: 44px !important;
@@ -108,7 +109,7 @@
     border-radius: 14px !important;
   }
 
-  .lang-toggle-btn {
+  .header__inner > .lang-toggle-btn {
     top: 148px !important;
     width: 44px !important;
     height: 40px !important;
@@ -117,32 +118,21 @@
     border-radius: 14px !important;
   }
 
-  .lang-toggle-btn .lang-globe { display: none !important; }
-  .lang-toggle-btn .lang-name {
+  .header__inner > .lang-toggle-btn .lang-globe { display: none !important; }
+  .header__inner > .lang-toggle-btn .lang-name {
     display: inline-block !important;
     font-size: 12px !important;
     font-weight: 900 !important;
     letter-spacing: .02em !important;
   }
 
-  /* Remove their occupied flex space from the header even if legacy rules set display:inline-flex. */
+  /* Keep the controls visually independent from header flex sizing. */
   .header__inner > .lang-toggle-btn,
-  .header__inner > .theme-toggle-btn {
-    flex: 0 0 0 !important;
-    width: 0 !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    overflow: visible !important;
-  }
-
-  /* The fixed clones remain visible; the original buttons keep their IDs/events. */
-  .header__inner > .lang-toggle-btn::before,
-  .header__inner > .theme-toggle-btn::before { content: none !important; }
+  .header__inner > .theme-toggle-btn { align-self: auto !important; }
 
   /* Keep the floating controls clear of the top header and back/breadcrumb bars. */
   @media (max-height: 760px) {
-    .theme-toggle-btn { top: 82px !important; }
-    .lang-toggle-btn { top: 132px !important; }
+    .header__inner > .theme-toggle-btn { top: 82px !important; }
+    .header__inner > .lang-toggle-btn { top: 132px !important; }
   }
 }
