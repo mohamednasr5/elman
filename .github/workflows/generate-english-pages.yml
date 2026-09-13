@@ -1,15 +1,17 @@
-name: Generate English Static Pages
+name: Generate Bilingual SEO Pages
 on:
   push:
-    branches: [main, feature/complete-english-frontend]
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: generate-english-static-${{ github.ref }}
+  group: bilingual-seo-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  generate:
+  seo:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,31 +22,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Validate English frontend
-        run: |
-          node scripts/validate-english-frontend.mjs
-          node --check generate-english-pages.mjs
-          node --check src/js/core/english-pages.js
-          node --check src/js/core/english-data.js
-          node --check src/js/core/english-audit.js
-          node --check src/js/core/auth.js
-          node --check src/js/core/pwa-install.js
-          node --check src/js/services/image-cdn.service.js
-          node --check src/js/ui/components/en/PlaceCardEn.js
-          node --check src/js/ui/pages/en/city-en.js
-          node --check src/js/ui/pages/en/place-en-v2.js
-      - name: Generate dedicated English pages
+      - name: Generate English SEO-aware pages
         run: node generate-english-pages.mjs
-      - name: Commit generated English pages on main
-        if: github.ref == 'refs/heads/main'
+      - name: Harden Arabic canonical and hreflang signals
+        run: node scripts/harden-arabic-seo.mjs
+      - name: Generate bilingual sitemaps and indexing manifest
+        run: node scripts/generate-seo-assets.mjs
+      - name: Validate SEO assets
+        run: |
+          node --check generate-english-pages.mjs
+          node --check scripts/harden-arabic-seo.mjs
+          node --check scripts/generate-seo-assets.mjs
+          node --check scripts/submit-indexnow.mjs
+          node --check scripts/validate-seo.mjs
+          node scripts/validate-seo.mjs
+      - name: Commit generated SEO assets
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add en
+          git add en sitemap*.xml .indexnow-urls.json
+          git add '*.html' || true
           if git diff --cached --quiet; then
-            echo "No English page changes to commit."
+            echo "No generated SEO changes."
             exit 0
           fi
-          git commit -m "Generate English static page entries"
+          git commit -m "chore(seo): refresh bilingual indexable pages and sitemaps"
           git pull --rebase origin main
           git push origin HEAD:main
+      - name: Notify IndexNow
+        run: node scripts/submit-indexnow.mjs
