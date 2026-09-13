@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
@@ -47,19 +47,17 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="دليل المنزلة والمطرية"/>
   <link rel="manifest" href="./manifest.webmanifest"/>
-  <link rel="icon" type="image/x-icon" href="./favicon.ico"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/>
-  <link rel="icon" type="image/png" sizes="48x48" href="./icons/icon-48x48.png"/>
-  <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png"/>
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192x192.png"/>
-  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512x512.png"/>
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180x180.png"/>
-  <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192x192.png"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=ebc49583"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=d4ce4ede"/>
 <link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/now.html">
 <link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/now/">
 <link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/now.html">
@@ -96,8 +94,8 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=ebc49583_ahlyna1';
-  import { renderNowPage } from './src/js/ui/pages/now.js?v=ebc49583_pubtime1';
+  import { initPage } from './src/js/core/page-shell.js?v=d4ce4ede_ahlyna1';
+  import { renderNowPage } from './src/js/ui/pages/now.js?v=d4ce4ede_pubtime1';
 
   const pc = document.getElementById('page-container');
   initPage('now.html').catch(err => console.warn('[PageShell Error]:', err));
@@ -106,6 +104,6 @@
     if (pc) pc.innerHTML = '<div style="text-align:center;padding:40px 16px;color:#ef4444">حدث خطأ أثناء تحميل الصفحة. يرجى إعادة المحاولة.</div>';
   });
 </script>
-<script type="module" src="/src/js/core/pwa-install.js?v=20260913"></script>
+<script type="module" src="/src/js/core/pwa-install.js?v=d4ce4ede"></script>
 </body>
 </html>

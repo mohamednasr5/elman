@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
@@ -42,15 +42,18 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
   <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
 
   <!-- Fonts & Core Styles -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"/>
-  <link rel="stylesheet" href="/src/css/main.css?v=ebc49583"/>
+  <link rel="stylesheet" href="/src/css/main.css?v=d4ce4ede"/>
 
   <!-- Structured Data (JSON-LD) -->
   <script type="application/ld+json">
@@ -335,6 +338,28 @@
           
       <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
         <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
+          <a href="/place/nbe-atm-the-local-unit-el-kafer-elgdyd-alwhda-almhlya-alkfr-algdyd-14_heT" style="color:var(--primary,#0284c7);text-decoration:none">
+            NBE ATM - The local unit - El-Kafer Elgdyd - الوحدة المحلية - الكفر الجديد
+          </a>
+        </h3>
+        <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
+          📍 ميت سلسيل • 📞 19666
+        </p>
+      </div>
+    
+      <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
+        <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
+          <a href="/place/makyna-srf-ala-bnk-alkahra-YRUMtW" style="color:var(--primary,#0284c7);text-decoration:none">
+            ماكينة صرف الى بنك القاهرة
+          </a>
+        </h3>
+        <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
+          📍 العزيزة • 📞 19666
+        </p>
+      </div>
+    
+      <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
+        <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
           <a href="/place/makyna-sraf-aala-bnk-msr-kkkj64" style="color:var(--primary,#0284c7);text-decoration:none">
             ماكينة صراف آلى بنك مصر
           </a>
@@ -348,28 +373,6 @@
         <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
           <a href="/place/makyna-sraf-aala-albnk-alahla-PYXcGy" style="color:var(--primary,#0284c7);text-decoration:none">
             ماكينة صراف آلى البنك الأهلى
-          </a>
-        </h3>
-        <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
-          📍 العزيزة • 📞 19666
-        </p>
-      </div>
-    
-      <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
-        <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
-          <a href="/place/makyna-sraf-aala-bnk-msr-0uKspJ" style="color:var(--primary,#0284c7);text-decoration:none">
-            ماكينة صراف آلى بنك مصر
-          </a>
-        </h3>
-        <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
-          📍 العزيزة • 📞 19666
-        </p>
-      </div>
-    
-      <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
-        <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
-          <a href="/place/makyna-srf-ala-bnk-alkahra-YRUMtW" style="color:var(--primary,#0284c7);text-decoration:none">
-            ماكينة صرف الى بنك القاهرة
           </a>
         </h3>
         <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
@@ -393,9 +396,9 @@
 
 <!-- Progressive Enhancement / Hydration Module -->
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=ebc49583';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=ebc49583';
-  import { waitForAuth } from '/src/js/core/auth.js?v=ebc49583';
+  import { initPage } from '/src/js/core/page-shell.js?v=d4ce4ede';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=d4ce4ede';
+  import { waitForAuth } from '/src/js/core/auth.js?v=d4ce4ede';
 
   // Concurrently initialize shell without clearing static content
   initPage('').catch(err => console.warn('[PageShell Error]:', err));
@@ -409,6 +412,5 @@
   }).catch(err => console.warn('[Place Hydration Error]:', err));
 </script>
 
-<script type="module" src="/src/js/core/pwa-install.js?v=20260913"></script>
 </body>
 </html>

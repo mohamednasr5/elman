@@ -42,15 +42,18 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
   <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
 
   <!-- Fonts & Core Styles -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"/>
-  <link rel="stylesheet" href="/src/css/main.css?v=ebc49583"/>
+  <link rel="stylesheet" href="/src/css/main.css?v=2.8.1"/>
 
   <!-- Structured Data (JSON-LD) -->
   <script type="application/ld+json">
@@ -402,9 +405,9 @@
 
 <!-- Progressive Enhancement / Hydration Module -->
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=ebc49583';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=ebc49583';
-  import { waitForAuth } from '/src/js/core/auth.js?v=ebc49583';
+  import { initPage } from '/src/js/core/page-shell.js?v=2.8.1';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=2.8.1';
+  import { waitForAuth } from '/src/js/core/auth.js?v=2.8.1';
 
   // Concurrently initialize shell without clearing static content
   initPage('').catch(err => console.warn('[PageShell Error]:', err));
@@ -418,6 +421,5 @@
   }).catch(err => console.warn('[Place Hydration Error]:', err));
 </script>
 
-<script type="module" src="/src/js/core/pwa-install.js?v=20260913"></script>
 </body>
 </html>

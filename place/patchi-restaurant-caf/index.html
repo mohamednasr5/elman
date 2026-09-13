@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <!-- Instant Zero-CLS Theme Setup: Runs before paint -->
@@ -42,15 +42,18 @@
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
   <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
 
   <!-- Fonts & Core Styles -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"/>
-  <link rel="stylesheet" href="/src/css/main.css?v=ebc49583"/>
+  <link rel="stylesheet" href="/src/css/main.css?v=d4ce4ede"/>
 
   <!-- Structured Data (JSON-LD) -->
   <script type="application/ld+json">
@@ -347,23 +350,23 @@
           
       <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
         <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
-          <a href="/place/mtam-wkafyh-650" style="color:var(--primary,#0284c7);text-decoration:none">
-            مطعم وكافيه 650
-          </a>
-        </h3>
-        <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
-          📍 المنزلة • 📞 0503612121
-        </p>
-      </div>
-    
-      <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
-        <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
           <a href="/place/mtam-almbrwk" style="color:var(--primary,#0284c7);text-decoration:none">
             مطعم المبروك
           </a>
         </h3>
         <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
           📍 المنزلة • 📞 01221066052‏
+        </p>
+      </div>
+    
+      <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
+        <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
+          <a href="/place/mtam-wkafyh-650" style="color:var(--primary,#0284c7);text-decoration:none">
+            مطعم وكافيه 650
+          </a>
+        </h3>
+        <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
+          📍 المنزلة • 📞 0503612121
         </p>
       </div>
     
@@ -380,12 +383,12 @@
     
       <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
         <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
-          <a href="/place/mtam-fhyd-sea-food" style="color:var(--primary,#0284c7);text-decoration:none">
-            مطعم فهيد للمأكولات البحرية والاسماك - sea food
+          <a href="/place/mtaam-flfa" style="color:var(--primary,#0284c7);text-decoration:none">
+            مطاعم فلفة
           </a>
         </h3>
         <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
-          📍 المنزلة • 📞 01010300193‏
+          📍 المنزلة • 📞 01555252104
         </p>
       </div>
     
@@ -405,9 +408,9 @@
 
 <!-- Progressive Enhancement / Hydration Module -->
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=ebc49583';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=ebc49583';
-  import { waitForAuth } from '/src/js/core/auth.js?v=ebc49583';
+  import { initPage } from '/src/js/core/page-shell.js?v=d4ce4ede';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=d4ce4ede';
+  import { waitForAuth } from '/src/js/core/auth.js?v=d4ce4ede';
 
   // Concurrently initialize shell without clearing static content
   initPage('').catch(err => console.warn('[PageShell Error]:', err));
@@ -421,6 +424,5 @@
   }).catch(err => console.warn('[Place Hydration Error]:', err));
 </script>
 
-<script type="module" src="/src/js/core/pwa-install.js?v=20260913"></script>
 </body>
 </html>

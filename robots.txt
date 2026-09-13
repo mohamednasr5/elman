@@ -136,5 +136,16 @@ Allow: /llms-full.txt
 Allow: /llms-en.txt
 Allow: /llms-full-en.txt
 
-# XML sitemap index.
+# XML sitemap index and sub-sitemaps for fast search discovery.
 Sitemap: https://dalilmanzala.com/sitemap.xml
+Sitemap: https://dalilmanzala.com/sitemap-places-ar.xml
+Sitemap: https://dalilmanzala.com/sitemap-places-en.xml
+Sitemap: https://dalilmanzala.com/sitemap-categories-ar.xml
+Sitemap: https://dalilmanzala.com/sitemap-categories-en.xml
+Sitemap: https://dalilmanzala.com/sitemap-static-ar.xml
+Sitemap: https://dalilmanzala.com/sitemap-static-en.xml
+
+# Google image & favicon crawler
+User-agent: Googlebot-Image
+Allow: /
+

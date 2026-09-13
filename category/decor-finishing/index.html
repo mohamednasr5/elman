@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <script>
@@ -30,11 +30,16 @@
   <meta name="twitter:image" content="https://dalilmanzala.com/assets/images/og-whatsapp.jpg"/>
 
   <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
   <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"/>
-  <link rel="stylesheet" href="/src/css/main.css?v=ebc49583"/>
+  <link rel="stylesheet" href="/src/css/main.css?v=d4ce4ede"/>
 
   <script type="application/ld+json">
 {
@@ -191,11 +196,10 @@
 </div>
 
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=ebc49583';
-  import { renderCategoryPage } from '/src/js/ui/pages/categories.js?v=ebc49583';
+  import { initPage } from '/src/js/core/page-shell.js?v=d4ce4ede';
+  import { renderCategoryPage } from '/src/js/ui/pages/categories.js?v=d4ce4ede';
   initPage('categories.html').catch(console.warn);
   renderCategoryPage(document.getElementById('page-container'), { slug: 'decor-finishing' }).catch(console.warn);
 </script>
-<script type="module" src="/src/js/core/pwa-install.js?v=20260913"></script>
 </body>
 </html>

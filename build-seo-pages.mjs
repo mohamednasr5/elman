@@ -163,9 +163,12 @@ function buildBusinessPageHTML(place, relatedPlaces = []) {
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
   <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180x180.png"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
 
   <!-- Fonts & Core Styles -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -387,7 +390,12 @@ function buildCategoryPageHTML(catName, places) {
   <meta name="twitter:image" content="${DEFAULT_OG_IMAGE}"/>
 
   <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
   <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"/>
@@ -512,13 +520,14 @@ async function run() {
         </article>`;
     }).join('\n');
 
-    const skeletonRegex = /<!-- Instant Skeleton Loader \(hydrated seamlessly by JS\) -->[\s\S]*?<\/div>\s*<\/div>/;
+    const skeletonRegex = /<!-- Instant (?:SEO Place Directory & )?Skeleton Loader \(hydrated seamlessly by JS\) -->[\s\S]*?<\/main>/i;
     if (skeletonRegex.test(placesHtml)) {
       const replacement = `<!-- Instant SEO Place Directory & Skeleton Loader (hydrated seamlessly by JS) -->
       <div id="seo-places-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">
         ${placeCardsHtml}
       </div>
-    </div>`;
+    </div>
+  </main>`;
       placesHtml = placesHtml.replace(skeletonRegex, replacement);
       fs.writeFileSync(placesHtmlPath, placesHtml, 'utf8');
       console.log(`✓ Successfully injected ${places.length} crawlable place links into places.html`);
@@ -548,6 +557,66 @@ async function run() {
       catHtml = catHtml.replace(catSkeletonRegex, catReplacement);
       fs.writeFileSync(catHtmlPath, catHtml, 'utf8');
       console.log(`✓ Successfully injected ${categoryMap.size} crawlable category links into categories.html`);
+    }
+  }
+
+  // 5. Inject Internal Links into en/places/index.html and en/categories/index.html
+  const enPlacesHtmlPath = path.join(__dirname, 'en', 'places', 'index.html');
+  if (fs.existsSync(enPlacesHtmlPath)) {
+    let enPlacesHtml = fs.readFileSync(enPlacesHtmlPath, 'utf8');
+    const enCardsHtml = places.map(p => {
+      const pSlug = (p.slug || p.id || '').trim();
+      const pName = escapeHtml(p.nameEn || p.name_en || p.name || 'Local Business');
+      const pArea = escapeHtml(p.areaEn || p.area_en || (p.area === 'المطرية' ? 'El Matariya' : 'El Manzala'));
+      const pCat = escapeHtml(p.customCategoryEn || p.customCategory || p.category || 'Services');
+      return `
+        <article class="seo-place-preview-card" style="padding:1rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:14px">
+          <h2 style="font-size:1rem;margin:0 0 0.35rem"><a href="/en/place/${encodeURIComponent(pSlug)}/" style="color:var(--text-primary,#0f172a);text-decoration:none">${pName}</a></h2>
+          <p style="font-size:0.82rem;color:var(--text-secondary,#64748b);margin:0 0 0.5rem">📍 ${pArea} • 📂 ${pCat}</p>
+          <a href="/en/place/${encodeURIComponent(pSlug)}/" style="font-size:0.82rem;font-weight:700;color:var(--primary,#0284c7);text-decoration:none">View profile and contact details →</a>
+        </article>`;
+    }).join('\n');
+
+    const enMainRegex = /<main id="page-container"[^>]*>[\s\S]*?<\/main>/i;
+    if (enMainRegex.test(enPlacesHtml)) {
+      enPlacesHtml = enPlacesHtml.replace(enMainRegex, `<main id="page-container" class="page-main" role="main">
+        <div class="en-container en-section">
+          <h1 style="font-size:1.4rem;font-weight:800;margin-bottom:1rem">Places & Local Businesses in El Manzala & El Matariya</h1>
+          <div id="seo-places-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">
+            ${enCardsHtml}
+          </div>
+        </div>
+      </main>`);
+      fs.writeFileSync(enPlacesHtmlPath, enPlacesHtml, 'utf8');
+      console.log(`✓ Successfully injected ${places.length} crawlable place links into en/places/index.html`);
+    }
+  }
+
+  const enCatHtmlPath = path.join(__dirname, 'en', 'categories', 'index.html');
+  if (fs.existsSync(enCatHtmlPath)) {
+    let enCatHtml = fs.readFileSync(enCatHtmlPath, 'utf8');
+    const enCatCardsHtml = Array.from(categoryMap.entries()).map(([cName, cPlaces]) => {
+      const cSlug = encodeURIComponent(String(cName).toLowerCase().replace(/\s+/g, '-'));
+      const escapedName = escapeHtml(cName);
+      return `
+        <a href="/en/category/${cSlug}/" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
+          <span style="font-weight:700;font-size:0.95rem;margin-bottom:0.25rem">${escapedName}</span>
+          <span style="font-size:0.8rem;color:var(--text-muted,#64748b)">${cPlaces.length} places</span>
+        </a>`;
+    }).join('\n');
+
+    const enCatMainRegex = /<main id="page-container"[^>]*>[\s\S]*?<\/main>/i;
+    if (enCatMainRegex.test(enCatHtml)) {
+      enCatHtml = enCatHtml.replace(enCatMainRegex, `<main id="page-container" class="page-main" role="main">
+        <div class="en-container en-section">
+          <h1 style="font-size:1.4rem;font-weight:800;margin-bottom:1rem">Business Categories & Services in El Manzala & El Matariya</h1>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem;">
+            ${enCatCardsHtml}
+          </div>
+        </div>
+      </main>`);
+      fs.writeFileSync(enCatHtmlPath, enCatHtml, 'utf8');
+      console.log(`✓ Successfully injected ${categoryMap.size} crawlable category links into en/categories/index.html`);
     }
   }
 

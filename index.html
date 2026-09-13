@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"/>
@@ -22,14 +22,13 @@
   <meta property="og:image:height" content="630"/>
   <meta name="twitter:image" content="https://dalilmanzala.com/assets/images/og-whatsapp.jpg"/>
   <link rel="image_src" href="https://dalilmanzala.com/assets/images/og-whatsapp.jpg"/>
-  <link rel="manifest" href="./manifest.webmanifest"/>
-  <link rel="icon" type="image/x-icon" href="./favicon.ico"/>
-  <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png"/>
-  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/>
-  <link rel="icon" type="image/png" sizes="48x48" href="./favicon-48x48.png"/>
-  <link rel="icon" type="image/png" sizes="96x96" href="./icons/icon-96x96.png"/>
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192x192.png"/>
-  <link rel="apple-touch-icon" sizes="192x192" href="./apple-touch-icon.png"/>
+  <link rel="manifest" href="/manifest.webmanifest"/>
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
   <meta name="theme-color" content="#1B4F72"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -38,6 +37,58 @@
   <!-- LLM & AI Search Engine Discovery (llmstxt.org standard) -->
   <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLM Context"/>
   <link rel="describedby" href="/llms.txt"/>
+
+  <!-- Schema.org Search Engine Branding & Site Logo -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://dalilmanzala.com/#organization",
+        "name": "دليل المنزلة والمطرية الرقمي",
+        "alternateName": "Dalil El Manzala & El Matariya Official Directory",
+        "url": "https://dalilmanzala.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://dalilmanzala.com/icons/icon-192x192.png",
+          "contentUrl": "https://dalilmanzala.com/icons/icon-192x192.png",
+          "width": 192,
+          "height": 192
+        },
+        "image": "https://dalilmanzala.com/icons/icon-192x192.png",
+        "sameAs": [
+          "https://facebook.com/dalilmanzala"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "+201062035882",
+          "contactType": "customer service",
+          "areaServed": "EG",
+          "availableLanguage": ["Arabic", "English"]
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://dalilmanzala.com/#website",
+        "url": "https://dalilmanzala.com/",
+        "name": "دليل المنزلة والمطرية الرقمي",
+        "alternateName": ["دليل المنزلة", "دليل المطرية", "دليل المنزلة والمطرية", "Dalil El Manzala"],
+        "publisher": {
+          "@id": "https://dalilmanzala.com/#organization"
+        },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://dalilmanzala.com/search.html?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  }
+  </script>
 
   <!-- Immediate Early Capture of Native PWA Install Prompt -->
   <script>
@@ -70,7 +121,7 @@
   </script>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=ebc49583"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=d4ce4ede"/>
 
   <!-- ═══════════════════════════════════════════════════════════
        Critical CSS Inline — Hero Above-the-Fold (LCP + CLS Fix)
@@ -358,8 +409,8 @@
 
 </div>
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=ebc49583_vehicles1';
-  import { renderHomePage } from './src/js/ui/pages/home.js?v=ebc49583_resilient1';
+  import { initPage } from './src/js/core/page-shell.js?v=d4ce4ede_vehicles1';
+  import { renderHomePage } from './src/js/ui/pages/home.js?v=d4ce4ede_resilient1';
   const pc = document.getElementById('page-container');
 
   // Concurrently initialize page shell (header, bottom-nav, pwa) in parallel
@@ -379,6 +430,6 @@
 
   await shellPromise;
 </script>
-<script type="module" src="/src/js/core/pwa-install.js?v=20260913"></script>
+<script type="module" src="/src/js/core/pwa-install.js?v=d4ce4ede"></script>
 </body>
 </html>

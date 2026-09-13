@@ -1,4 +1,4 @@
-// Shared page shell — bilingual, responsive, and safe for dynamic content.
+﻿// Shared page shell — bilingual, responsive, and safe for dynamic content.
 import { initAuth, onAuthStateChange, waitForAuth, isAdmin } from './auth.js';
 import { getLang, isEnglish, switchLanguage, applyLangToDOM } from './i18n.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
@@ -74,7 +74,7 @@ function _loadShellCSS(){
     const l=document.createElement('link');
     l.id='shell-mobile-fixes-css';
     l.rel='stylesheet';
-    l.href='/src/css/mobile-shell-fixes.css?v=20260913_3';
+    l.href='/src/css/mobile-shell-fixes.css?v=d4ce4ede_3';
     document.head.appendChild(l);
   }
   // Critical fallback: the More sheet must never become a normal block in document flow
