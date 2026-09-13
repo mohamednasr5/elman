@@ -11,4 +11,28 @@ for(const key of ['search','favorites','login','dashboard'])write(key,key,`${key
 for(const group of ['place','category']){const source=path.join(ROOT,group);if(!fs.existsSync(source))continue;for(const s of fs.readdirSync(source)){if(s==='index')continue;const entry=path.join(source,s,'index.html');if(!fs.existsSync(entry))continue;const label=s.replace(/[-_]+/g,' '),en=`/en/${group}/${encodeURIComponent(s)}/`,ar=`/${group}/${encodeURIComponent(s)}/`;write(`${group}/${s}`,`${group}/${s}`,group==='place'?`${label} | Dalil El Manzala & El Matariya`:`${label} | Business Category`,group==='place'?`Local business profile for ${label} in El Manzala and El Matariya, Dakahlia, Egypt.`:`Local businesses and services in the ${label} category.`,en,ar)}}
 async function fetchAllPlaces(){const out=[],limit=1000;for(let offset=0;offset<100000;offset+=limit){const r=await fetch(`${SITE}/api/places?limit=${limit}&offset=${offset}`,{headers:{accept:'application/json'}});if(!r.ok)throw new Error(`Places API HTTP ${r.status} at offset ${offset}`);const j=await r.json(),batch=Array.isArray(j?.data)?j.data:[];out.push(...batch);if(batch.length<limit)break}return [...new Map(out.map(p=>[String(p.slug||p.id||'').trim(),p])).values()].filter(p=>{const s=String(p.status||p.state||'').toLowerCase();return String(p.slug||p.id||'').trim()&&!['draft','deleted','rejected','archived','hidden'].includes(s)&&p.isPublished!==false&&p.is_published!==false})}
 const items=await fetchAllPlaces();for(const p of items){const s=String(p.slug||p.id).trim(),label=String(p.nameEn||p.name_en||p.name||s).replace(/[\r\n]+/g,' ').trim(),en=`/en/place/${encodeURIComponent(s)}/`,ar=`/place/${encodeURIComponent(s)}/`;write(`place/${s}`,`place/${s}`,`${label} | Dalil El Manzala & El Matariya`,`Business profile for ${label} in El Manzala and El Matariya, Dakahlia, Egypt.`,en,ar)}
+const enPlacesFile = path.join(EN, 'places', 'index.html');
+if (fs.existsSync(enPlacesFile)) {
+  let enPlacesContent = fs.readFileSync(enPlacesFile, 'utf8');
+  const enCardsHtml = items.map(p => {
+    const pSlug = (p.slug || p.id || '').trim();
+    const pName = esc(p.nameEn || p.name_en || p.name || 'Local Business');
+    const pArea = esc(p.areaEn || p.area_en || (p.area === 'المطرية' ? 'El Matariya' : 'El Manzala'));
+    const pCat = esc(p.customCategoryEn || p.customCategory || p.category || 'Services');
+    return `<article class="seo-place-preview-card" style="padding:1rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:14px">
+      <h2 style="font-size:1rem;margin:0 0 0.35rem"><a href="/en/place/${encodeURIComponent(pSlug)}/" style="color:var(--text-primary,#0f172a);text-decoration:none">${pName}</a></h2>
+      <p style="font-size:0.82rem;color:var(--text-secondary,#64748b);margin:0 0 0.5rem">📍 ${pArea} • 📂 ${pCat}</p>
+      <a href="/en/place/${encodeURIComponent(pSlug)}/" style="font-size:0.82rem;font-weight:700;color:var(--primary,#0284c7);text-decoration:none">View profile and contact details →</a>
+    </article>`;
+  }).join('\n');
+  enPlacesContent = enPlacesContent.replace(/<main id="page-container"[^>]*>[\s\S]*?<\/main>/i, `<main id="page-container" class="page-main" role="main">
+    <div class="en-container en-section">
+      <h1 style="font-size:1.4rem;font-weight:800;margin-bottom:1rem">Places & Local Businesses in El Manzala & El Matariya</h1>
+      <div id="seo-places-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">
+        ${enCardsHtml}
+      </div>
+    </div>
+  </main>`);
+  fs.writeFileSync(enPlacesFile, enPlacesContent, 'utf8');
+}
 console.log(`English SEO-aware static pages generated for ${items.length} published places.`);
