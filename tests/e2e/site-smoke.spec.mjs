@@ -4,7 +4,7 @@ const isMobileProject = testInfo => testInfo.project.name === 'mobile-chromium';
 async function assertNoHorizontalOverflow(page) { expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2)).toBe(false); }
 
 test.describe('responsive public shell', () => {
-  test('Arabic shell loads without horizontal overflow', async ({ page, browserName }, testInfo) => {
+  test('Arabic shell loads without horizontal overflow', async ({ page }, testInfo) => {
     await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('html')).toHaveAttribute('lang', /ar/i);
     await expect(page.locator('#site-header')).toBeVisible();
@@ -41,5 +41,22 @@ test.describe('responsive public shell', () => {
     expect(sw.ok()).toBeTruthy();
     await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
     await expect.poll(async () => (await page.evaluate(() => navigator.serviceWorker?.getRegistrations().then(r => r.length))) || 0).toBeGreaterThan(0);
+  });
+
+  test('English dashboard exposes the same core user feature set', async ({ request }) => {
+    const response = await request.get('/src/js/ui/pages/en/dashboard-en.js');
+    expect(response.ok()).toBeTruthy();
+    const source = await response.text();
+    for (const label of ['Overview','My Places','Analytics & Reports','My Following & Offers','Near Me (GPS)','Loyalty & Points','Business Card Scanner (AI)','Add a Place Manually','Notifications & Visits','Verify Your Profile']) {
+      expect(source).toContain(label);
+    }
+  });
+
+  test('realtime synchronization refreshes the hot cache instead of blanking it', async ({ request }) => {
+    const response = await request.get('/src/js/services/realtime-sync.service.js');
+    expect(response.ok()).toBeTruthy();
+    const source = await response.text();
+    expect(source).toContain('localStorage.setItem(\'manzala_fast_places_cache\'');
+    expect(source).not.toContain("localStorage.removeItem('manzala_fast_places_cache')");
   });
 });
