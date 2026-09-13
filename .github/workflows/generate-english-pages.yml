@@ -1,13 +1,10 @@
 name: Generate English Static Pages
-
 on:
   push:
-    branches: [main]
+    branches: [main, feature/complete-english-frontend]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   generate:
     runs-on: ubuntu-latest
@@ -16,19 +13,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Generate dedicated English pages
         run: node generate-english-pages.mjs
-
       - name: Commit generated English pages
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+users.noreply.github.com"
           git add en
           if git diff --cached --quiet; then
             echo "No English page changes to commit."
