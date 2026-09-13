@@ -40,6 +40,73 @@ export function stripAl(text) {
 }
 
 /**
+ * Clean common prefixes from an Arabic word (وال, بال, كال, فال, ال, و, ب, ل)
+ */
+export function cleanArabicWord(w) {
+  let s = normalizeArabic(w);
+  if (!s) return '';
+  if (s.startsWith('وال') && s.length > 5) s = s.slice(3);
+  else if (s.startsWith('بال') && s.length > 5) s = s.slice(3);
+  else if (s.startsWith('كال') && s.length > 5) s = s.slice(3);
+  else if (s.startsWith('فال') && s.length > 5) s = s.slice(3);
+  else if (s.startsWith('ال') && s.length > 4) s = s.slice(2);
+  else if (s.startsWith('و') && s.length > 3) s = s.slice(1);
+  else if (s.startsWith('ب') && s.length > 3) s = s.slice(1);
+  else if (s.startsWith('ل') && s.length > 3) s = s.slice(1);
+  return s;
+}
+
+/**
+ * Extract root/stem ignoring common plurals (ات, ين, ون) and feminine endings (يه, ه, ي)
+ */
+export function getArabicStem(w) {
+  let s = cleanArabicWord(w);
+  if (s.endsWith('ات') && s.length > 4) return s.slice(0, -2);
+  if (s.endsWith('يه') && s.length > 4) return s.slice(0, -2);
+  if (s.endsWith('ين') && s.length > 4) return s.slice(0, -2);
+  if (s.endsWith('ون') && s.length > 4) return s.slice(0, -2);
+  if (s.endsWith('ه') && s.length > 3) return s.slice(0, -1);
+  if (s.endsWith('ي') && s.length > 3) return s.slice(0, -1);
+  return s;
+}
+
+/**
+ * Match an Arabic word with another ignoring prefixes, plurals, and hamzas/dots
+ */
+export function matchArabicWord(cw, q) {
+  if (!cw || !q) return false;
+  const cleanCw = cleanArabicWord(cw);
+  const cleanQ = cleanArabicWord(q);
+  if (cw === q || cleanCw === cleanQ || cw === cleanQ || cleanCw === q) return true;
+  if (cw.startsWith(q) || cleanCw.startsWith(q) || cw.startsWith(cleanQ) || cleanCw.startsWith(cleanQ)) return true;
+  
+  const stemCw = getArabicStem(cw);
+  const stemQ = getArabicStem(q);
+  if (stemCw.length >= 3 && stemQ.length >= 3) {
+    if (stemCw === stemQ || stemCw.startsWith(stemQ) || stemQ.startsWith(stemCw)) return true;
+  }
+  return false;
+}
+
+/**
+ * High-performance smart category token matcher
+ * Ensures words match words properly (e.g. "بيع" matches selling categories and doesn't false-match "طبيعي")
+ */
+export function matchArabicCategoryTokens(rawCat, rawQuery) {
+  if (!rawCat) return false;
+  const normQ = normalizeArabic(rawQuery).trim();
+  if (!normQ) return true;
+  const rawQTokens = normQ.split(/\s+/).filter(Boolean);
+
+  const normCat = normalizeArabic(rawCat);
+  const catWords = normCat.split(/\s+/).filter(Boolean);
+
+  return rawQTokens.every(q => {
+    return catWords.some(cw => matchArabicWord(cw, q));
+  });
+}
+
+/**
  * Extract root search keyword & detect Egyptian conversational intents
  */
 export function extractSmartDialectKeyword(text) {

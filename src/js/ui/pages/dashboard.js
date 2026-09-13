@@ -1,4 +1,4 @@
-﻿import { initPlaceFormWizard } from '../components/AddPlaceOnboardingModal.js';
+import { initPlaceFormWizard } from '../components/AddPlaceOnboardingModal.js';
 import { 
   fetchManagedUserNotifications, 
   getCachedManagedUserNotifications,
@@ -38,7 +38,7 @@ import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '..
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { isAdmin } from '../../core/auth.js';
-import { formatPrice, arabicMatch, normalizeArabic, arabicScore } from '../../utils/arabic.js';
+import { formatPrice, arabicMatch, normalizeArabic, stripAl, arabicScore, matchArabicCategoryTokens } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { normalizePhoneNumber, extractPlacePhoneNumbers } from '../../utils/phone.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
@@ -2163,24 +2163,55 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
   // Category Search Input Filtering & Autocomplete Dropdown
   catSearchInput?.addEventListener('input', (e) => {
-    const q = e.target.value.trim();
-    if (!q) {
+    const rawQ = (e.target.value || '').trim();
+    if (!rawQ) {
       if (searchResults) searchResults.style.display = 'none';
       catPills.forEach(pill => pill.style.display = 'inline-flex');
       if (catNoMatch) catNoMatch.style.display = 'none';
       return;
     }
 
-    const { categories: matchedCats, professions: matchedProfs } = searchProfessionsAndCategories(q);
+    const normQ = normalizeArabic(rawQ);
+    const qNoAl = stripAl(normQ);
+    const qTokens = normQ.split(/\s+/).filter(Boolean);
+    const qTokensNoAl = qTokens.map(t => (t.startsWith('ال') && t.length > 3) ? t.slice(2) : t).filter(Boolean);
+
+    const { categories: matchedCats, professions: matchedProfs } = searchProfessionsAndCategories(rawQ);
+    const matchedCatSlugs = new Set(
+      matchedCats.map(c => String(c.slug || c.id || '').toLowerCase().trim()).filter(Boolean)
+    );
+    const matchedProfCatSlugs = new Set(
+      matchedProfs.map(p => String(p.categorySlug || '').toLowerCase().trim()).filter(Boolean)
+    );
 
     let visibleCount = 0;
     catPills.forEach(pill => {
-      const id = (pill.getAttribute('data-cat-id') || '').toLowerCase();
-      const name = (pill.getAttribute('data-cat-name') || '').toLowerCase();
-      const isMatched = matchedCats.some(c => (c.slug || c.id || '').toLowerCase() === id) || name.includes(q.toLowerCase());
+      const id = String(pill.getAttribute('data-cat-id') || '').toLowerCase().trim();
+      const rawName = String(pill.getAttribute('data-cat-name') || '').trim();
+      if (!rawName) return;
+
+      // "other" pill is only shown if query specifically mentions other/new, or when no match
+      if (id === 'other') {
+        const isOtherMatch = normQ.includes('اخرى') || normQ.includes('جديد');
+        pill.style.display = isOtherMatch ? 'inline-flex' : 'none';
+        if (isOtherMatch) visibleCount++;
+        return;
+      }
+
+      // Smart token-based Arabic category matching:
+      // Words must match words (so "بيع" matches selling categories and won't false-match "طبيعي")
+      // Handles all hamzas (أ إ آ ء ئ ؤ), dots under yaa (ي vs ى), taa marbuta/haa, and prefixes (ال, و, ب, ل)
+      let isMatched = matchArabicCategoryTokens(rawName, rawQ);
+
+      // Also check matching via professions / craft categories
+      if (!isMatched && id) {
+        isMatched = matchedCatSlugs.has(id) || matchedProfCatSlugs.has(id);
+      }
+
       pill.style.display = isMatched ? 'inline-flex' : 'none';
       if (isMatched) visibleCount++;
     });
+
     if (catNoMatch) catNoMatch.style.display = visibleCount === 0 && matchedProfs.length === 0 ? 'block' : 'none';
 
     // Render Search Dropdown with professions & categories

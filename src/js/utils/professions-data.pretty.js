@@ -6,7 +6,7 @@
  * High-performance, lightweight, dual-tone animated SVG vector rendering
  */
 
-import { normalizeArabic } from './arabic.js';
+import { normalizeArabic, stripAl } from './arabic.js';
 
 /**
  * ── SVG Icon Generator ──
@@ -1036,19 +1036,33 @@ export function findProfessionByName(name) {
 export function searchProfessionsAndCategories(query) {
   if (!query || !query.trim()) return { categories: PROFESSION_CATEGORIES, professions: ALL_PROFESSIONS.slice(0, 30) };
 
-  const q = normalizeArabic(query.trim().toLowerCase());
+  const rawQ = query.trim().toLowerCase();
+  const q = normalizeArabic(rawQ);
+  const qNoAl = stripAl(q);
+  const qTokens = q.split(/\s+/).filter(Boolean);
+  const qTokensNoAl = qTokens.map(t => (t.startsWith('ال') && t.length > 3) ? t.slice(2) : t).filter(Boolean);
+
+  const matchText = (text) => {
+    if (!text) return false;
+    const norm = normalizeArabic(text);
+    if (norm.includes(q)) return true;
+    const normNoAl = stripAl(norm);
+    if (normNoAl.includes(qNoAl)) return true;
+    if (qTokensNoAl.some(t => t.length >= 2 && (norm.includes(t) || normNoAl.includes(t)))) return true;
+    return false;
+  };
 
   const matchedCategories = PROFESSION_CATEGORIES.filter(cat => 
-    normalizeArabic(cat.name).includes(q) || 
-    cat.nameEn.toLowerCase().includes(q) ||
-    cat.slug.toLowerCase().includes(q)
+    matchText(cat.name) || 
+    (cat.nameEn && cat.nameEn.toLowerCase().includes(rawQ)) ||
+    (cat.slug && cat.slug.toLowerCase().includes(rawQ))
   );
 
   const matchedProfessions = ALL_PROFESSIONS.filter(prof => {
-    if (normalizeArabic(prof.name).includes(q)) return true;
-    if (prof.nameEn.toLowerCase().includes(q)) return true;
-    if (prof.categoryName && normalizeArabic(prof.categoryName).includes(q)) return true;
-    if (prof.keywords && prof.keywords.some(k => normalizeArabic(k).includes(q))) return true;
+    if (matchText(prof.name)) return true;
+    if (prof.nameEn && prof.nameEn.toLowerCase().includes(rawQ)) return true;
+    if (prof.categoryName && matchText(prof.categoryName)) return true;
+    if (prof.keywords && prof.keywords.some(k => matchText(k))) return true;
     return false;
   });
 
