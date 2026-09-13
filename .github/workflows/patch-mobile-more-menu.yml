@@ -1,0 +1,37 @@
+name: Patch Mobile More Menu
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/patch-mobile-more-menu.mjs'
+      - 'src/js/core/page-shell.js'
+      - 'src/js/core/page-shell.pretty.js'
+      - '.github/workflows/patch-mobile-more-menu.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'Apply resilient mobile More menu patch') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply patch
+        run: node scripts/patch-mobile-more-menu.mjs
+      - name: Commit patched shell files
+        run: |
+          if git diff --quiet -- src/js/core/page-shell.js src/js/core/page-shell.pretty.js; then
+            echo 'No changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/js/core/page-shell.js src/js/core/page-shell.pretty.js
+          git commit -m 'Apply resilient mobile More menu patch'
+          git push
