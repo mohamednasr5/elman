@@ -2017,7 +2017,7 @@ async function _fetchAndStoreReviews(targetId, effectiveSlug, rawTargetId, cache
   try {
     const querySlug = effectiveSlug && effectiveSlug !== targetId ? `&slug=${encodeURIComponent(effectiveSlug)}` : '';
     const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(targetId)}${querySlug}&limit=500`, {
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(12000),
       cache: 'default'
     });
     if (!res.ok) throw new Error(`Reviews Worker HTTP ${res.status}`);
@@ -2043,7 +2043,9 @@ async function _fetchAndStoreReviews(targetId, effectiveSlug, rawTargetId, cache
     }
     return list;
   } catch (err) {
-    console.warn('[_fetchAndStoreReviews] Notice:', err?.message || err);
+    if (err?.name !== 'TimeoutError' && err?.name !== 'AbortError') {
+      console.warn('[_fetchAndStoreReviews] Notice:', err?.message || err);
+    }
     return getCached(cacheKey) || [];
   }
 }

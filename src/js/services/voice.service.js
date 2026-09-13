@@ -92,6 +92,7 @@ if (typeof window !== 'undefined') {
 
 export class VoiceSearch {
   constructor(options = {}) {
+    this.options = options || {};
     this.onResult = options.onResult || (() => {});
     this.onInterim = options.onInterim || (() => {});
     this.onStart = options.onStart || (() => {});
@@ -124,7 +125,7 @@ export class VoiceSearch {
       (typeof location !== 'undefined' && location.pathname.startsWith('/en/')) ||
       document.body?.dataset?.lang === 'en'
     );
-    this.recognition.lang = options.lang || (isEn ? 'en-US' : 'ar-EG');
+    this.recognition.lang = this.options?.lang || (isEn ? 'en-US' : 'ar-EG');
     this.recognition.continuous = false;
     this.recognition.interimResults = true;
     this.recognition.maxAlternatives = 3;
