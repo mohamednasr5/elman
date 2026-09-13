@@ -27,7 +27,9 @@ jobs:
           node --check src/js/core/english-pages.js
           node --check src/js/core/english-data.js
           node --check src/js/core/english-audit.js
+          node --check src/js/core/auth.js
           node --check src/js/core/pwa-install.js
+          node --check src/js/services/image-cdn.service.js
           node --check src/js/ui/components/en/PlaceCardEn.js
           node --check src/js/ui/pages/en/city-en.js
           node --check src/js/ui/pages/en/place-en-v2.js
