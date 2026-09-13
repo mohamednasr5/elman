@@ -5,59 +5,19 @@ import { getPlaceLiveStatus } from '../../../utils/live-hours.js';
 
 const esc = value => String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const escJs = value => String(value ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' ');
+const normalizeAsset = (value, fallback) => { const s=String(value||'').trim(); if(!s)return fallback; const fixed=s.replace(/^\.\//,'/').replace(/^assets\//,'/assets/').replace(/default-cover\.png$/i,'default-cover.jpg').replace(/default-logo\.png$/i,'default-logo.jpg'); return fixed; };
+function imageWithFallback(src,fallback,alt,className=''){const safeSrc=esc(src),safeFallback=escJs(fallback);return `<img class="${className}" src="${safeSrc}" alt="${esc(alt)}" loading="lazy" decoding="async" data-fallback-src="${esc(fallback)}" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src='${safeFallback}';}else{this.removeAttribute('src');this.classList.add('is-broken');}">`;}
 
-function imageWithFallback(src, fallback, alt, className='') {
-  const safeSrc = esc(src);
-  const safeFallback = escJs(fallback);
-  return `<img class="${className}" src="${safeSrc}" alt="${esc(alt)}" loading="lazy" decoding="async" data-fallback-src="${esc(fallback)}" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src='${safeFallback}';}else{this.removeAttribute('src');this.classList.add('is-broken');}">`;
+export function renderEnglishPlaceCard(source={}){
+  const place=projectPlaceToEnglish(source),assets=getDefaultPlaceAssets(place);
+  const fallbackCover=normalizeAsset(assets.coverImageUrl||assets.cover,'/assets/images/default-cover.jpg');
+  const fallbackLogo=normalizeAsset(assets.logoUrl||assets.logo,'/assets/images/default-logo.jpg');
+  const rawCover=normalizeAsset(place.coverImageUrl||fallbackCover,fallbackCover),rawLogo=normalizeAsset(place.logoUrl||fallbackLogo,fallbackLogo);
+  const cover=getOptimizedImageUrl(rawCover,IMAGE_SIZES.THUMB)||fallbackCover,logo=getOptimizedImageUrl(rawLogo,IMAGE_SIZES.LOGO)||fallbackLogo;
+  const slug=place.slug||place.id||place._key||'',url=`/en/place/${encodeURIComponent(slug)}`;
+  const verified=Boolean(place.isVerified||place.is_verified||place.verified);
+  const liveHours=getPlaceLiveStatus(place.openHours||place.open_hours||place.workingHours||place.working_hours);
+  const open=liveHours&&!liveHours.isUnknown?Boolean(liveHours.isOpen):null,services=englishServices(place);
+  return `<article class="en-place-card" data-place-slug="${esc(slug)}"><a href="${url}" class="en-place-card__media" aria-label="View ${esc(place.displayName)}">${imageWithFallback(cover,fallbackCover,place.displayName,'en-place-card__cover-image')}<div class="en-place-card__media-overlay">${verified?'<span class="en-badge en-badge--verified">✓ Verified</span>':'<span></span>'}${open===true?'<span class="en-badge en-badge--open">Open Now</span>':open===false?'<span class="en-badge en-badge--closed">Closed</span>':''}</div></a><div class="en-place-card__body"><div class="en-place-card__identity">${imageWithFallback(logo,fallbackLogo,'','en-place-card__logo')}<div class="en-place-card__identity-text"><h3 class="en-place-card__title">${esc(place.displayName)}</h3><div class="en-place-card__category">${esc(place.displayCategory)}</div></div></div><div class="en-place-card__area">📍 ${esc(place.displayArea)}</div>${place.displayDescription?`<p class="en-place-card__desc">${esc(place.displayDescription)}</p>`:''}${services.length?`<div class="en-place-card__services">${services.slice(0,3).map(s=>`<span class="en-badge en-badge--service">${esc(s)}</span>`).join('')}</div>`:''}<div class="en-place-card__footer"><span class="en-place-card__listing">${place.reviewCount||place.reviewsCount?`★ ${Number(place.rating||0).toFixed(1)} · ${Number(place.reviewCount||place.reviewsCount)} reviews`:'Local listing'}</span><div class="en-place-card__actions">${place.phone?`<a class="en-place-card__action" href="tel:${esc(place.phone)}" aria-label="Call ${esc(place.displayName)}">📞</a>`:''}${place.whatsapp?`<a class="en-place-card__action" href="https://wa.me/${esc(String(place.whatsapp).replace(/\D/g,''))}" target="_blank" rel="noopener" aria-label="WhatsApp ${esc(place.displayName)}">💬</a>`:''}<a class="en-place-card__action" href="${url}" aria-label="View ${esc(place.displayName)}">→</a></div></div></div></article>`;
 }
-
-export function renderEnglishPlaceCard(source = {}) {
-  const place = projectPlaceToEnglish(source);
-  const assets = getDefaultPlaceAssets(place);
-  const fallbackCover = assets.coverImageUrl || '/assets/images/og-whatsapp.jpg';
-  const fallbackLogo = assets.logoUrl || '/assets/images/default-logo.jpg';
-  const rawCover = place.coverImageUrl || fallbackCover;
-  const rawLogo = place.logoUrl || fallbackLogo;
-  const cover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.THUMB) || fallbackCover;
-  const logo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.LOGO) || fallbackLogo;
-  const slug = place.slug || place.id || place._key || '';
-  const url = `/en/place/${encodeURIComponent(slug)}`;
-  const verified = Boolean(place.isVerified || place.is_verified || place.verified);
-  const liveHours = getPlaceLiveStatus(place.openHours || place.open_hours || place.workingHours || place.working_hours);
-  const open = liveHours && !liveHours.isUnknown ? Boolean(liveHours.isOpen) : null;
-  const services = englishServices(place);
-  return `<article class="en-place-card" data-place-slug="${esc(slug)}">
-    <a href="${url}" class="en-place-card__media" aria-label="View ${esc(place.displayName)}">
-      ${imageWithFallback(cover, fallbackCover, place.displayName, 'en-place-card__cover-image')}
-      <div class="en-place-card__media-overlay">
-        ${verified ? '<span class="en-badge en-badge--verified">✓ Verified</span>' : '<span></span>'}
-        ${open === true ? '<span class="en-badge en-badge--open">Open Now</span>' : open === false ? '<span class="en-badge en-badge--closed">Closed</span>' : ''}
-      </div>
-    </a>
-    <div class="en-place-card__body">
-      <div class="en-place-card__identity">
-        ${logo ? imageWithFallback(logo, fallbackLogo, '', 'en-place-card__logo') : ''}
-        <div class="en-place-card__identity-text">
-          <h3 class="en-place-card__title">${esc(place.displayName)}</h3>
-          <div class="en-place-card__category">${esc(place.displayCategory)}</div>
-        </div>
-      </div>
-      <div class="en-place-card__area">📍 ${esc(place.displayArea)}</div>
-      ${place.displayDescription ? `<p class="en-place-card__desc">${esc(place.displayDescription)}</p>` : ''}
-      ${services.length ? `<div class="en-place-card__services">${services.slice(0,3).map(s=>`<span class="en-badge en-badge--service">${esc(s)}</span>`).join('')}</div>` : ''}
-      <div class="en-place-card__footer">
-        <span class="en-place-card__listing">${place.reviewCount || place.reviewsCount ? `★ ${Number(place.rating || 0).toFixed(1)} · ${Number(place.reviewCount || place.reviewsCount)} reviews` : 'Local listing'}</span>
-        <div class="en-place-card__actions">
-          ${place.phone ? `<a class="en-place-card__action" href="tel:${esc(place.phone)}" aria-label="Call ${esc(place.displayName)}">📞</a>` : ''}
-          ${place.whatsapp ? `<a class="en-place-card__action" href="https://wa.me/${esc(String(place.whatsapp).replace(/\D/g,''))}" target="_blank" rel="noopener" aria-label="WhatsApp ${esc(place.displayName)}">💬</a>` : ''}
-          <a class="en-place-card__action" href="${url}" aria-label="View ${esc(place.displayName)}">→</a>
-        </div>
-      </div>
-    </div>
-  </article>`;
-}
-
-export function renderEnglishPlaceCardSkeleton() {
-  return '<div class="en-place-card" aria-hidden="true"><div class="en-place-card__media"><div class="en-place-card__skeleton-media"></div></div><div class="en-place-card__body"><div class="skeleton" style="height:20px;width:65%;margin-bottom:10px"></div><div class="skeleton" style="height:14px;width:42%;margin-bottom:16px"></div><div class="skeleton" style="height:42px;width:100%"></div></div></div>';
-}
+export function renderEnglishPlaceCardSkeleton(){return '<div class="en-place-card" aria-hidden="true"><div class="en-place-card__media"><div class="en-place-card__skeleton-media"></div></div><div class="en-place-card__body"><div class="skeleton" style="height:20px;width:65%;margin-bottom:10px"></div><div class="skeleton" style="height:14px;width:42%;margin-bottom:16px"></div><div class="skeleton" style="height:42px;width:100%"></div></div></div>';}
