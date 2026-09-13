@@ -1,1 +1,11 @@
-html[lang="en"] .toast,html[lang="en"] .modal,html[lang="en"] .dialog,html[lang="en"] .bottom-sheet,html[lang="en"] .floating-panel{direction:ltr;text-align:left;font-family:"Plus Jakarta Sans",system-ui,sans-serif}html[lang="en"] .toast{letter-spacing:-.01em}html[lang="en"] .modal-content,html[lang="en"] .dialog-content,html[lang="en"] .bottom-sheet__content{border-radius:20px}html[lang="en"] [data-language="ar"],html[lang="en"] .arabic-only{display:none!important}
+html[lang="en"] .toast,html[lang="en"] .modal,html[lang="en"] .dialog,html[lang="en"] .bottom-sheet,html[lang="en"] .floating-panel{direction:ltr;text-align:left;font-family:"Plus Jakarta Sans",system-ui,sans-serif}
+html[lang="en"] .toast{letter-spacing:-.01em}
+html[lang="en"] .modal-content,html[lang="en"] .dialog-content,html[lang="en"] .bottom-sheet__content{border-radius:20px}
+html[lang="en"] [data-language="ar"],html[lang="en"] .arabic-only{display:none!important}
+html[lang="en"] .en-floating-controls{position:fixed;top:50%;left:14px;z-index:12000;display:flex;flex-direction:column;align-items:center;gap:8px;transform:translateY(-50%);padding:8px;border:1px solid rgba(148,163,184,.28);border-radius:18px;background:rgba(255,255,255,.92);box-shadow:0 12px 34px rgba(15,23,42,.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+html[lang="en"] .en-floating-controls .lang-toggle-btn,html[lang="en"] .en-floating-controls .theme-toggle-btn{width:48px;height:48px;min-width:48px;margin:0;display:flex!important;align-items:center;justify-content:center;border:1px solid #e2e8f0;border-radius:14px;background:#fff;color:#0f172a;box-shadow:0 3px 10px rgba(15,23,42,.06);cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+html[lang="en"] .en-floating-controls .lang-toggle-btn:hover,html[lang="en"] .en-floating-controls .theme-toggle-btn:hover{transform:translateY(-1px);border-color:#93c5fd;box-shadow:0 7px 18px rgba(15,23,42,.1)}
+html[lang="en"] .en-floating-controls .lang-name{font-size:12px;font-weight:800}
+html[lang="en"] .en-floating-controls .lang-globe{font-size:15px}
+html[lang="en"] .en-floating-controls .theme-icon-light,html[lang="en"] .en-floating-controls .theme-icon-dark{font-size:17px}
+@media(max-width:1023px){html[lang="en"] .en-floating-controls{top:auto;bottom:82px;left:10px;transform:none;flex-direction:row;border-radius:16px;padding:6px}html[lang="en"] .en-floating-controls .lang-toggle-btn,html[lang="en"] .en-floating-controls .theme-toggle-btn{width:44px;height:44px;min-width:44px}}
