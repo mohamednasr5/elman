@@ -9,7 +9,7 @@ const parts=()=>clean(location.pathname).split('/').filter(Boolean);
 const page=()=>parts()[0]||'';
 function loadEnglishStyles(){
   if(document.getElementById('english-design-system')) return;
-  const link=document.createElement('link'); link.id='english-design-system'; link.rel='stylesheet'; link.href='/src/css/en/index.css?v=20260913'; document.head.appendChild(link);
+  const link=document.createElement('link'); link.id='english-design-system'; link.rel='stylesheet'; link.href='/src/css/en/index.css?v=20260913.2'; document.head.appendChild(link);
 }
 function installEnglishCardBridge(root){
   if(!root || root.__englishCardBridgeInstalled) return;
@@ -23,18 +23,13 @@ function installEnglishCardBridge(root){
       if(!place) return;
       const html=renderEnglishPlaceCard(place);
       if(!html) return;
-      const wrapper=document.createElement('div');
-      wrapper.innerHTML=html.trim();
-      const replacement=wrapper.firstElementChild;
-      if(!replacement) return;
-      replacement.setAttribute('data-en-upgraded','true');
-      card.replaceWith(replacement);
+      const wrapper=document.createElement('div'); wrapper.innerHTML=html.trim();
+      const replacement=wrapper.firstElementChild; if(!replacement) return;
+      replacement.setAttribute('data-en-upgraded','true'); card.replaceWith(replacement);
     });
   };
   upgrade();
-  const observer=new MutationObserver(()=>upgrade());
-  observer.observe(root,{childList:true,subtree:true});
-  root.__englishCardBridgeObserver=observer;
+  const observer=new MutationObserver(()=>upgrade()); observer.observe(root,{childList:true,subtree:true}); root.__englishCardBridgeObserver=observer;
 }
 async function render(container){
   const p=page(), q=new URLSearchParams(location.search), user=getCurrentUser();
