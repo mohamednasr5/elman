@@ -72,3 +72,4 @@ jobs:
         run: npx wrangler@latest deploy
 
 # Production deployment trigger verified by maintainer.
+# API availability refresh trigger: redeploy the current Worker so live routes match main.
