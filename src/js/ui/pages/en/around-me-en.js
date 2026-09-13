@@ -4,7 +4,7 @@
  */
 
 import { getPublishedPlaces } from '../../../core/db.js';
-import { renderPlaceCard, renderPlaceCardSkeleton } from '../../components/PlaceCard.js';
+import { renderEnglishPlaceCard, renderEnglishPlaceCardSkeleton } from '../../components/en/PlaceCardEn.js';
 import { getUserLocation, sortPlacesByDistance } from '../../../utils/maps.js';
 
 export async function renderEnglishAroundMePage($container) {
@@ -38,7 +38,7 @@ export async function renderEnglishAroundMePage($container) {
       </div>
 
       <div class="grid grid-4" id="around-places-grid">
-        ${Array(8).fill(renderPlaceCardSkeleton()).join('')}
+        ${Array(8).fill(renderEnglishPlaceCardSkeleton()).join('')}
       </div>
     </div>
   `;
@@ -49,7 +49,7 @@ export async function renderEnglishAroundMePage($container) {
   const locateBtn = document.getElementById('btn-locate-me');
   const promptBox = document.getElementById('around-me-gps-prompt');
 
-  function renderList(list, userCoords = null) {
+  function renderList(list) {
     if (!grid) return;
     if (countLabel) countLabel.textContent = `Showing ${list.length} places`;
     if (!list.length) {
@@ -63,7 +63,7 @@ export async function renderEnglishAroundMePage($container) {
       `;
       return;
     }
-    grid.innerHTML = list.map(p => renderPlaceCard(p)).join('');
+    grid.innerHTML = list.map(p => renderEnglishPlaceCard(p)).join('');
   }
 
   renderList(places || []);
@@ -75,7 +75,7 @@ export async function renderEnglishAroundMePage($container) {
       const coords = await getUserLocation();
       const sorted = sortPlacesByDistance(places || [], coords);
       promptBox.style.display = 'none';
-      renderList(sorted, coords);
+      renderList(sorted);
     } catch (err) {
       alert('Could not access GPS location. Please check browser permissions and try again.');
       locateBtn.disabled = false;

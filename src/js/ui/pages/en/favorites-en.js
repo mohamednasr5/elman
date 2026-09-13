@@ -5,7 +5,7 @@
 
 import { getFavorites, isFavorite } from '../../../services/favorites.service.js';
 import { getPublishedPlaces } from '../../../core/db.js';
-import { renderPlaceCard, renderPlaceCardSkeleton } from '../../components/PlaceCard.js';
+import { renderEnglishPlaceCard, renderEnglishPlaceCardSkeleton } from '../../components/en/PlaceCardEn.js';
 
 export async function renderEnglishFavoritesPage($container) {
   document.title = 'Saved Places & Favorites | Dalil El Manzala & El Matariya';
@@ -24,7 +24,7 @@ export async function renderEnglishFavoritesPage($container) {
 
     <div class="container section">
       <div class="grid grid-4" id="fav-places-grid">
-        ${Array(4).fill(renderPlaceCardSkeleton()).join('')}
+        ${Array(4).fill(renderEnglishPlaceCardSkeleton()).join('')}
       </div>
     </div>
   `;
@@ -59,5 +59,5 @@ export async function renderEnglishFavoritesPage($container) {
     return;
   }
 
-  grid.innerHTML = favPlaces.map(p => renderPlaceCard(p)).join('');
+  grid.innerHTML = favPlaces.map(p => renderEnglishPlaceCard(p)).join('');
 }

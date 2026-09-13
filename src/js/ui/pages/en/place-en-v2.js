@@ -1,0 +1,31 @@
+import { getPlace, getPlaceBySlug, getPlaceReviews, trackPlaceView } from '../../../core/db.js';
+import { getCurrentUser } from '../../../core/auth.js';
+import { isFavorite, toggleFavorite } from '../../../services/favorites.service.js';
+import { buildContextualWhatsAppLink } from '../../../services/whatsapp.service.js';
+import { getOptimizedImageUrl, IMAGE_SIZES } from '../../../services/image-cdn.service.js';
+import { getDefaultPlaceAssets } from '../../../utils/category-assets.js';
+import { projectPlaceToEnglish, englishServices } from '../../../core/english-data.js';
+
+const esc = value => String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+export async function renderEnglishPlacePageV2($container, { slug, initialPlace = null } = {}) {
+  const cleanSlug = String(slug || '').trim();
+  let source = initialPlace || window._placesRegistry?.get(cleanSlug) || null;
+  if (!source) { try { source = await getPlaceBySlug(cleanSlug) || await getPlace(cleanSlug); } catch (_) {} }
+  if (!source) { $container.innerHTML='<main class="en-container en-section"><div class="en-empty"><div class="en-empty__icon">📍</div><h1>Place Not Found</h1><p class="en-muted">The place or business you are looking for is unavailable.</p><a class="en-btn en-btn--primary" href="/en/places/">Browse All Places</a></div></main>'; return; }
+  const place = projectPlaceToEnglish(source);
+  try { trackPlaceView(source, getCurrentUser()); } catch (_) {}
+  const assets = getDefaultPlaceAssets(source);
+  const cover = getOptimizedImageUrl(source.coverImageUrl || assets.coverImageUrl, IMAGE_SIZES.COVER) || '/assets/images/og-whatsapp.jpg';
+  const logo = getOptimizedImageUrl(source.logoUrl || assets.logoUrl, IMAGE_SIZES.LOGO);
+  const id = source.id || source._key || source.slug;
+  const fav = isFavorite(id);
+  const services = englishServices(source);
+  const phone = String(source.phone || '').replace(/\D/g,'');
+  const wa = String(source.whatsapp || '').replace(/\D/g,'');
+  document.title = `${place.displayName} | Dalil El Manzala & El Matariya`;
+  $container.innerHTML = `<div class="en-place-hero"><div class="en-container"><div class="en-breadcrumbs" style="padding:18px 0"><a href="/en/">Home</a><span>/</span><a href="/en/places/">Places</a><span>/</span><span>${esc(place.displayName)}</span></div><div class="en-place-cover"><img src="${esc(cover)}" alt="${esc(place.displayName)}"></div><div class="en-place-profile"><div>${logo?`<img class="en-place-logo" src="${esc(logo)}" alt="">`:''}</div><div><h1 class="en-place-title">${esc(place.displayName)}</h1><div class="en-place-meta"><span class="en-badge" style="background:#eff6ff;color:#1d4ed8">${esc(place.displayCategory)}</span><span class="en-badge" style="background:#f2f4f7;color:#475467">📍 ${esc(place.displayArea)}</span>${source.isVerified||source.is_verified?'<span class="en-badge en-badge--verified">✓ Verified</span>':''}</div></div><div class="en-place-actions"><button class="en-btn en-btn--ghost" id="en-fav">${fav?'♥ Saved':'♡ Save Place'}</button><button class="en-btn en-btn--ghost" id="en-share">↗ Share</button></div></div><div class="en-place-actions-bar">${phone?`<a class="en-btn en-btn--primary" href="tel:${esc(phone)}">📞 Call</a>`:''}${wa?`<a class="en-btn" style="background:#16a34a;color:#fff" href="${buildContextualWhatsAppLink(source.whatsapp,{source:'place_page',placeName:place.displayName})}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}${source.mapsLink||source.lat?`<a class="en-btn en-btn--ghost" href="${esc(source.mapsLink||`https://www.google.com/maps/search/?api=1&query=${source.lat},${source.lng}`)}" target="_blank" rel="noopener">🗺️ Maps</a>`:''}</div></div></div><main class="en-container en-section"><div class="en-place-layout"><div><article class="en-place-card"><span class="en-kicker">Overview</span><h2>About This Business</h2><p>${esc(place.displayDescription || `${place.displayName} is listed in the ${place.displayCategory} category in ${place.displayArea}.`)}</p>${services.length?`<h3>Services & Features</h3><div style="display:flex;gap:7px;flex-wrap:wrap">${services.map(s=>`<span class="en-badge" style="background:#f2f4f7;color:#475467">✓ ${esc(s)}</span>`).join('')}</div>`:''}</article><article class="en-place-card"><h2>Customer Reviews</h2><div id="en-reviews"><p class="en-muted">Loading reviews…</p></div></article></div><aside><article class="en-place-card"><h3>Business Details</h3><dl style="display:grid;gap:12px;margin:0"><div><dt class="en-muted">Category</dt><dd style="margin:2px 0 0">${esc(place.displayCategory)}</dd></div><div><dt class="en-muted">Area</dt><dd style="margin:2px 0 0">${esc(place.displayArea)}</dd></div>${place.displayAddress?`<div><dt class="en-muted">Address</dt><dd style="margin:2px 0 0">${esc(place.displayAddress)}</dd></div>`:''}${phone?`<div><dt class="en-muted">Phone</dt><dd style="margin:2px 0 0"><a href="tel:${esc(phone)}">${esc(source.phone)}</a></dd></div>`:''}</dl></article><article class="en-place-card"><h3>Are you the owner?</h3><p class="en-muted">Claim your profile to update contact details, hours and offers.</p><a class="en-btn en-btn--primary" style="width:100%" href="/en/free-verification/">Claim This Profile</a></article></aside></div></main>`;
+  document.getElementById('en-fav')?.addEventListener('click',()=>{ toggleFavorite(id); renderEnglishPlacePageV2($container,{slug,initialPlace:source}); });
+  document.getElementById('en-share')?.addEventListener('click',async()=>{ try { if(navigator.share) await navigator.share({title:place.displayName,text:`${place.displayName} on Dalil El Manzala & El Matariya`,url:location.href}); else { await navigator.clipboard?.writeText(location.href); alert('Link copied to clipboard.'); } } catch (_) {} });
+  try { const reviews=await getPlaceReviews(id); const el=document.getElementById('en-reviews'); if(el) el.innerHTML=reviews?.length?reviews.map(r=>`<div style="padding:14px 0;border-bottom:1px solid #eef2f6"><div style="display:flex;justify-content:space-between"><strong>${esc(r.userName||'Customer')}</strong><span>★ ${Number(r.rating||0).toFixed(1)}</span></div><p class="en-muted" style="margin:5px 0 0">${esc(r.comment||'')}</p></div>`).join(''):'<p class="en-muted">No reviews yet. Be the first to review this place.</p>'; } catch (_) {}
+}
