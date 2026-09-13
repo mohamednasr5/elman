@@ -3,6 +3,15 @@ let deferredPrompt = null;
 let banner = null;
 let showTimer = null;
 
+function loadPwaStyles() {
+  if (document.getElementById('pwa-install-design')) return;
+  const link = document.createElement('link');
+  link.id = 'pwa-install-design';
+  link.rel = 'stylesheet';
+  link.href = '/src/css/pwa-install.css?v=20260913.1';
+  document.head.appendChild(link);
+}
+
 function isEnglish() {
   return document.documentElement.lang === 'en' || window.location.pathname === '/en' || window.location.pathname.startsWith('/en/');
 }
@@ -35,7 +44,6 @@ function ensureBanner() {
       <button class="pwa-banner__close" id="pwa-banner-close" type="button" aria-label="${en ? 'Close' : 'إغلاق'}">✕</button>
     </div>`;
   slot.appendChild(banner);
-
   banner.querySelector('#pwa-install-btn')?.addEventListener('click', async () => {
     if (!deferredPrompt) { showManualInstructions(); return; }
     try {
@@ -117,14 +125,15 @@ async function refreshPwaRuntime() {
   } catch (_) {}
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    ensureBanner();
-    scheduleFallbackBanner();
-    refreshPwaRuntime();
-  }, { once: true });
-} else {
+function bootPwaInstall() {
+  loadPwaStyles();
   ensureBanner();
   scheduleFallbackBanner();
   refreshPwaRuntime();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootPwaInstall, { once: true });
+} else {
+  bootPwaInstall();
 }
