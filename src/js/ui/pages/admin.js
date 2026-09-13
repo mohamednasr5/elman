@@ -1,4 +1,4 @@
-﻿/**
+/**
  * المنزلة وناسها — Admin Control Panel (Instant SPA + Sponsored Ads Edition)
  * Zero-latency navigation, in-memory caching, responsive mobile bottom-bar,
  * and complete Sponsored Place / Paid Ad priority controls.
@@ -3172,26 +3172,72 @@ async function renderAdminCategories($container) {
   });
 }
 
+function matchCategoryEmojiLocal(name = '') {
+  const n = String(name || '').toLowerCase().trim();
+  if (!n) return '📁';
+  if (/سمك|أسماك|اسماك|سي فود|seafood|فسخاني|رنجة|جمبري|شواية سمك|فرن سمك|فرن وشواية سمك/.test(n)) return '🐟';
+  if (/مخبز|فرن|عيش|معجنات|فطائر|فطاطري|مخبوزات|حلواني|كيك|تورتة|حلويات/.test(n)) return '🥖';
+  if (/مشويات|شواية|كباب|كفتة|حاتي|مشوي|جزار|لحوم|مجزرة|كبدة/.test(n)) return '🥩';
+  if (/دواجن|فراخ|طيور|بط|دجاج/.test(n)) return '🍗';
+  if (/سوبر ماركت|ماركت|بقالة|تموين|هايبر|عطارة|مقلة|محمصة|لب|مكسرات/.test(n)) return '🛒';
+  if (/صيدلي|صيدلية|أدوية|دواء/.test(n)) return '💊';
+  if (/أسنان|اسنان|تبييض/.test(n)) return '🦷';
+  if (/عيون|بصريات|نظارات/.test(n)) return '👓';
+  if (/معمل|تحاليل|أشعة|اشعة/.test(n)) return '🔬';
+  if (/مستشفى|طوارئ|إسعاف/.test(n)) return '🏥';
+  if (/طبيب|دكتور|عيادة|استشاري|أخصائي|كشف|جراحة/.test(n)) return '🩺';
+  if (/كافيه|مقهى|قهوة|كوفي|شاي|عصير|عصائر/.test(n)) return '☕';
+  if (/مطعم|مأكولات|وجبات|سندوتش|فول|طعمية|فلافل|شاورما|برجر|بيتزا|كشري/.test(n)) return '🍽️';
+  if (/ملابس|أزياء|ازياء|فستان|بدل|رجالي|حريمي|أطفال|بوتيك/.test(n)) return '👔';
+  if (/أحذية|احذية|شوز|كوتشي|شنط|جلود/.test(n)) return '👟';
+  if (/ذهب|مجوهرات|صاغة|فضة|ساعات/.test(n)) return '💍';
+  if (/حلاق|حلاقة|صالون|كوافير|بيوتي|ميك اب|مكياج|عطور|برفان/.test(n)) return '✂️';
+  if (/نجار|نجارة|موبيليا|غرف نوم|أنتريه/.test(n)) return '🪚';
+  if (/سباك|سباكة|أدوات صحية/.test(n)) return '🔧';
+  if (/كهربا|كهربائي|إنارة/.test(n)) return '⚡';
+  if (/حداد|حدادة|كريتال/.test(n)) return '🔨';
+  if (/نقاش|نقاشة|دهان|بويات|ديكور/.test(n)) return '🎨';
+  if (/ألوميتال|الوميتال|سيكوريت|زجاج/.test(n)) return '🪟';
+  if (/تكييف|تبريد|صيانة أجهزة|غسالات|ثلاجات/.test(n)) return '❄️';
+  if (/موبايل|هاتف|اتصالات|تليفون/.test(n)) return '📱';
+  if (/كمبيوتر|لابتوب|برمجة|نت/.test(n)) return '💻';
+  if (/سيارات|ميكانيك|كاوتش|غسيل سيارات|بنزين/.test(n)) return '🚗';
+  if (/موتوسيكل|دراجة|عجلة/.test(n)) return '🏍️';
+  if (/مكتبة|تصوير|طباعة|كتب|ورق/.test(n)) return '📚';
+  if (/محامي|استشارات قانونية|قانون/.test(n)) return '⚖️';
+  if (/محاسب|ضرائب/.test(n)) return '📊';
+  if (/خياط|ترزي|تفصيل/.test(n)) return '🪡';
+  if (/زهور|ورد|هدايا/.test(n)) return '💐';
+  if (/جيم|رياضة|فتنس/.test(n)) return '🏋️';
+  if (/بلايستيشن|العاب|ألعاب/.test(n)) return '🎮';
+  if (/عقارات|شقق|سمسار/.test(n)) return '🏢';
+  return '📁';
+}
+
 function showAddCategoryModal(onDone) {
   const modal = showModal({
     title: 'إضافة تصنيف جديد للدليل',
     content: `
       <div class="form-group">
         <label class="form-label">اسم التصنيف بالعربية <span class="required">*</span></label>
-        <input type="text" id="cat-name-ar" class="form-input" required placeholder="مثال: ورشة نجارة، ستوديو تصوير" />
+        <input type="text" id="cat-name-ar" class="form-input" required placeholder="مثال: فرن وشواية سمك، ورشة نجارة" />
       </div>
       <div class="form-group">
         <label class="form-label">الاسم بالإنجليزية <span class="required">*</span></label>
         <div style="display:flex;gap:8px">
-          <input type="text" id="cat-name-en" class="form-input" required placeholder="Carpentry Services" style="direction:ltr;flex:1" />
-          <button type="button" class="btn btn-secondary" id="btn-ai-cat-translate">✨ AI ترجمة</button>
+          <input type="text" id="cat-name-en" class="form-input" required placeholder="Fish Bakery & Grill" style="direction:ltr;flex:1" />
+          <button type="button" class="btn btn-secondary" id="btn-ai-cat-translate" style="white-space:nowrap">✨ AI ترجمة</button>
         </div>
       </div>
       <div class="form-group">
         <label class="form-label">الأيقونة <span class="required">*</span></label>
         <div style="display:flex;gap:8px">
-          <input type="text" id="cat-icon" class="form-input" required placeholder="🪚" style="flex:1" />
-          <button type="button" class="btn btn-secondary" id="btn-ai-cat-icon">✨ AI أيقونة</button>
+          <input type="text" id="cat-icon" class="form-input" required placeholder="مثال: 🐟 أو 🥖" style="flex:1;font-size:18px;text-align:center" />
+          <button type="button" class="btn btn-secondary" id="btn-ai-cat-icon" style="white-space:nowrap">✨ AI أيقونة</button>
+        </div>
+        <div class="cat-quick-emojis" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.08)">
+          <span style="font-size:11px;color:#94a3b8;align-self:center;margin-left:4px">اقتراحات سريعة:</span>
+          ${['🐟','🥖','🥩','🍗','🍽️','☕','🛒','💊','🩺','🦷','👔','🔧','⚡','🎨','🪚','📱','💻','🚗','📚','🏢'].map(e => `<button type="button" class="btn-quick-cat-emoji" data-emoji="${e}" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;cursor:pointer;font-size:16px;padding:2px 7px;line-height:1.2">${e}</button>`).join('')}
         </div>
       </div>
     `,
@@ -3202,11 +3248,11 @@ function showAddCategoryModal(onDone) {
         closeOnClick: false,
         onClick: async () => {
           const name = document.getElementById('cat-name-ar')?.value.trim();
-          const slug = document.getElementById('cat-name-en')?.value.trim().toLowerCase().replace(/\\s+/g, '-');
+          const slug = document.getElementById('cat-name-en')?.value.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
           const icon = document.getElementById('cat-icon')?.value.trim() || '📁';
 
           if (!name || !slug) {
-            toast.warning('يرجى كتابة الاسم والـ Slug');
+            toast.warning('يرجى كتابة الاسم والـ Slug بالإنجليزية');
             return;
           }
 
@@ -3235,7 +3281,7 @@ function showAddCategoryModal(onDone) {
               id: slug,
               slug,
               name,
-              nameEn: slug,
+              nameEn: document.getElementById('cat-name-en')?.value.trim() || slug,
               icon,
               order: Date.now(),
               isActive: true,
@@ -3260,42 +3306,135 @@ function showAddCategoryModal(onDone) {
     ]
   });
 
+  // Attach quick emoji click handlers
+  document.querySelectorAll('.btn-quick-cat-emoji').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const emoji = btn.dataset.emoji;
+      const iconInput = document.getElementById('cat-icon');
+      if (iconInput && emoji) iconInput.value = emoji;
+    });
+  });
+
   document.getElementById('btn-ai-cat-translate')?.addEventListener('click', async () => {
     const name = document.getElementById('cat-name-ar')?.value.trim();
     const btn = document.getElementById('btn-ai-cat-translate');
     if (!name) { toast.warning('اكتب اسم التصنيف بالعربية أولاً'); return; }
     const old = btn.textContent; btn.disabled = true; btn.textContent = '⏳ جاري الترجمة...';
     try {
-      const res = await fetch(WORKER_URL + '/api/ai/translate', {
-        method:'POST', headers:{'Content-Type':'application/json', ...(await getIdToken() ? {Authorization:'Bearer '+await getIdToken()} : {})},
-        body:JSON.stringify({name, category:'business-directory-category'})
-      });
-      const data = await res.json().catch(()=>({}));
-      if (!res.ok || !data.success || !data.translatedName) throw new Error(data.error || 'تعذر الترجمة');
-      document.getElementById('cat-name-en').value = String(data.translatedName).trim();
-      toast.success('تمت الترجمة السياقية بنجاح ✨');
-    } catch(e) { toast.error(e.message || 'فشل الترجمة'); }
-    finally { btn.disabled=false; btn.textContent=old; }
+      let translatedText = '';
+      
+      // 1. Try Backend Worker endpoint
+      try {
+        const res = await fetch(WORKER_URL + '/api/ai/translate', {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...(await getIdToken() ? {Authorization:'Bearer '+await getIdToken()} : {})},
+          body:JSON.stringify({name, category:'business-directory-category'})
+        });
+        if (res.ok) {
+          const data = await res.json().catch(()=>({}));
+          if (data.success && data.translatedName && !/[\u0600-\u06FF]/.test(data.translatedName)) {
+            translatedText = String(data.translatedName).trim();
+          }
+        }
+      } catch (_) {}
+
+      // 2. Client-side Cloud Translation Fallback (MyMemory)
+      if (!translatedText || /[\u0600-\u06FF]/.test(translatedText)) {
+        try {
+          const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(name)}&langpair=ar|en`, {
+            signal: AbortSignal.timeout(3500)
+          });
+          if (mmRes.ok) {
+            const mmData = await mmRes.json();
+            const text = mmData?.responseData?.translatedText;
+            if (text && typeof text === 'string' && !/[\u0600-\u06FF]/.test(text) && !text.toUpperCase().includes('MYMEMORY')) {
+              translatedText = text.trim();
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 3. Client-side Intelligent Synthesis Fallback
+      if (!translatedText || /[\u0600-\u06FF]/.test(translatedText)) {
+        try {
+          const { translatePlaceName } = await import('../../services/ai.service.js');
+          const localTrans = await translatePlaceName(name, 'Category');
+          if (localTrans && !/[\u0600-\u06FF]/.test(localTrans)) {
+            translatedText = localTrans.trim();
+          }
+        } catch (_) {}
+      }
+
+      if (!translatedText || /[\u0600-\u06FF]/.test(translatedText)) {
+        throw new Error('تعذر ترجمة الاسم إلى الإنجليزية');
+      }
+
+      // Format nicely in Title Case
+      const formatted = translatedText.split(/\s+/).map(w => {
+        if (['&', 'and', 'of', 'the', 'in'].includes(w.toLowerCase())) return w.toLowerCase();
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      }).join(' ');
+
+      const enInput = document.getElementById('cat-name-en');
+      if (enInput) enInput.value = formatted;
+
+      // Auto-suggest icon if icon field is empty
+      const iconInput = document.getElementById('cat-icon');
+      if (iconInput && (!iconInput.value || iconInput.value === '📁')) {
+        const autoIcon = matchCategoryEmojiLocal(name);
+        if (autoIcon && autoIcon !== '📁') iconInput.value = autoIcon;
+      }
+
+      toast.success('تمت الترجمة إلى الإنجليزية بنجاح ✨');
+    } catch(e) {
+      toast.error(e.message || 'فشل الترجمة');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+    }
   });
 
   document.getElementById('btn-ai-cat-icon')?.addEventListener('click', async () => {
     const name = document.getElementById('cat-name-ar')?.value.trim();
     const btn = document.getElementById('btn-ai-cat-icon');
     if (!name) { toast.warning('اكتب اسم التصنيف بالعربية أولاً'); return; }
-    const old = btn.textContent; btn.disabled=true; btn.textContent='⏳ جاري التوليد...';
+    const old = btn.textContent; btn.disabled = true; btn.textContent = '⏳ جاري التوليد...';
     try {
-      const token = await getIdToken();
-      if (!token) throw new Error('يجب تسجيل الدخول كمسؤول');
-      const res = await fetch(WORKER_URL + '/api/ai/category-icon', {
-        method:'POST', headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
-        body:JSON.stringify({name})
-      });
-      const data=await res.json().catch(()=>({}));
-      if(!res.ok || !data.success || !data.icon) throw new Error(data.error || 'تعذر توليد الأيقونة');
-      document.getElementById('cat-icon').value=data.icon;
-      toast.success('تم توليد أيقونة مناسبة للنشاط ✨');
-    } catch(e) { toast.error(e.message || 'فشل توليد الأيقونة'); }
-    finally { btn.disabled=false; btn.textContent=old; }
+      let icon = '';
+
+      // 1. Check local precision dictionary first
+      const localMatch = matchCategoryEmojiLocal(name);
+      if (localMatch && localMatch !== '📁') {
+        icon = localMatch;
+      }
+
+      // 2. Try Worker endpoint if not resolved
+      if (!icon) {
+        try {
+          const token = await getIdToken();
+          if (token) {
+            const res = await fetch(WORKER_URL + '/api/ai/category-icon', {
+              method:'POST',
+              headers:{'Content-Type':'application/json', Authorization:'Bearer '+token},
+              body:JSON.stringify({name})
+            });
+            const data = await res.json().catch(()=>({}));
+            if (res.ok && data.success && data.icon) {
+              icon = data.icon;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (!icon) icon = '📁';
+      document.getElementById('cat-icon').value = icon;
+      toast.success('تم اختيار أيقونة مناسبة للنشاط ✨');
+    } catch(e) {
+      toast.error(e.message || 'فشل توليد الأيقونة');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+    }
   });
 }
 

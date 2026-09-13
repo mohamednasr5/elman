@@ -4411,18 +4411,12 @@ try {
       if (url.pathname === '/api/ai/translate' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
         const arabicName = String(body.name || body.text || '').trim();
-        const category = body.category || '';
 
         if (!arabicName) {
           return jsonResponse({ error: 'الاسم مطلوب' }, 400, corsHeaders);
         }
 
-        const translated = await callOpenRouterAI(
-          `Translate the following Arabic business/place name in Egypt into a clean, natural English business name. Return ONLY the translated name without quotes or explanation: "${arabicName}"`,
-          env
-        );
-
-        const cleanTranslated = (translated || arabicName).trim();
+        const cleanTranslated = await translateArabicToEnglishWithFailover(arabicName, env);
 
         return jsonResponse({
           success: true,
@@ -4670,12 +4664,25 @@ ${categoriesContextStr}
         const body = await request.json().catch(() => ({}));
         const name = String(body.name || '').trim();
         if (!name) return jsonResponse({success:false,error:'اسم التصنيف مطلوب'},400,corsHeaders);
-        const generated = await callOpenRouterAI(
-          'Choose exactly ONE Unicode emoji that professionally represents this business directory category. Understand the Arabic business/activity meaning, not literal translation. Return ONLY one emoji and nothing else. Category: ' + name,
-          env
-        );
-        const emoji = String(generated || '').trim().match(/^\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*$/u)?.[0];
-        if (!emoji) return jsonResponse({success:false,error:'تعذر توليد أيقونة مناسبة'},502,corsHeaders);
+
+        // Tier 1: Check high-precision semantic category dictionary first
+        let emoji = matchCategoryEmoji(name);
+
+        // Tier 2: If no direct semantic match, try OpenRouter AI
+        if (!emoji) {
+          try {
+            const generated = await callOpenRouterAI(
+              'Choose exactly ONE Unicode emoji that professionally represents this business directory category. Understand the Arabic business/activity meaning, not literal translation. Return ONLY one emoji and nothing else. Category: ' + name,
+              env,
+              { timeoutMs: 3000 }
+            );
+            emoji = String(generated || '').trim().match(/^\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*$/u)?.[0];
+          } catch (_) {}
+        }
+
+        // Final safe fallback: never fail with 502!
+        if (!emoji) emoji = '📁';
+
         return jsonResponse({success:true,icon:emoji},200,corsHeaders);
       }
 
@@ -5083,6 +5090,291 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
     }
   }
 };
+
+/**
+ * ─────────────────────────────────────────────────────────────
+ * LOCAL BILINGUAL TRANSLATION & CATEGORY EMOJI RESILIENCE ENGINE
+ * ─────────────────────────────────────────────────────────────
+ */
+
+function matchCategoryEmoji(name = '') {
+  const n = String(name || '').toLowerCase().trim();
+  if (!n) return '📁';
+  // Fish & Seafood (including fish bakery / oven / grill)
+  if (/سمك|أسماك|اسماك|سي فود|seafood|فسخاني|رنجة|جمبري|شواية سمك|فرن سمك|فرن وشواية سمك/.test(n)) return '🐟';
+  // Bakery & Ovens & Pastries
+  if (/مخبز|فرن|عيش|معجنات|فطائر|فطاطري|مخبوزات|حلواني|كيك|تورتة|حلويات/.test(n)) return '🥖';
+  // Butcher & Meat & Grills
+  if (/مشويات|شواية|كباب|كفتة|حاتي|مشوي/.test(n)) return '🥩';
+  if (/جزار|لحوم|مجزرة|كبدة/.test(n)) return '🥩';
+  if (/دواجن|فراخ|طيور|بط|دجاج/.test(n)) return '🍗';
+  // Groceries & Supermarkets
+  if (/سوبر ماركت|ماركت|بقالة|تموين|هايبر|عطارة|مقلة|محمصة|لب|مكسرات/.test(n)) return '🛒';
+  // Pharmacy & Medical
+  if (/صيدلي|صيدلية|أدوية|دواء/.test(n)) return '💊';
+  if (/أسنان|اسنان|تبييض/.test(n)) return '🦷';
+  if (/عيون|بصريات|نظارات/.test(n)) return '👓';
+  if (/معمل|تحاليل|أشعة|اشعة/.test(n)) return '🔬';
+  if (/مستشفى|طوارئ|إسعاف/.test(n)) return '🏥';
+  if (/طبيب|دكتور|عيادة|استشاري|أخصائي|كشف|جراحة/.test(n)) return '🩺';
+  // Cafes & Drinks
+  if (/كافيه|مقهى|قهوة|كوفي|شاي|عصير|عصائر/.test(n)) return '☕';
+  // Restaurants & Fast Food
+  if (/مطعم|مأكولات|وجبات|سندوتش|فول|طعمية|فلافل|شاورما|برجر|بيتزا|كشري/.test(n)) return '🍽️';
+  // Clothing & Fashion
+  if (/ملابس|أزياء|ازياء|فستان|بدل|رجالي|حريمي|أطفال|بوتيك/.test(n)) return '👔';
+  if (/أحذية|احذية|شوز|كوتشي|شنط|جلود/.test(n)) return '👟';
+  if (/ذهب|مجوهرات|صاغة|فضة|ساعات/.test(n)) return '💍';
+  // Beauty & Barbers
+  if (/حلاق|حلاقة|صالون|كوافير|بيوتي|ميك اب|مكياج|عطور|برفان/.test(n)) return '✂️';
+  // Crafts & Maintenance (Only carpentry gets 🪚)
+  if (/نجار|نجارة|موبيليا|غرف نوم|أنتريه/.test(n)) return '🪚';
+  if (/سباك|سباكة|أدوات صحية/.test(n)) return '🔧';
+  if (/كهربا|كهربائي|إنارة/.test(n)) return '⚡';
+  if (/حداد|حدادة|كريتال/.test(n)) return '🔨';
+  if (/نقاش|نقاشة|دهان|بويات|ديكور/.test(n)) return '🎨';
+  if (/ألوميتال|الوميتال|سيكوريت|زجاج/.test(n)) return '🪟';
+  if (/تكييف|تبريد|صيانة أجهزة|غسالات|ثلاجات/.test(n)) return '❄️';
+  // Tech & Mobile & Auto
+  if (/موبايل|هاتف|اتصالات|تليفون/.test(n)) return '📱';
+  if (/كمبيوتر|لابتوب|برمجة|نت/.test(n)) return '💻';
+  if (/سيارات|ميكانيك|كاوتش|غسيل سيارات|بنزين/.test(n)) return '🚗';
+  if (/موتوسيكل|دراجة|عجلة/.test(n)) return '🏍️';
+  // Services & Office
+  if (/مكتبة|تصوير|طباعة|كتب|ورق/.test(n)) return '📚';
+  if (/محامي|استشارات قانونية|قانون/.test(n)) return '⚖️';
+  if (/محاسب|ضرائب/.test(n)) return '📊';
+  if (/خياط|ترزي|تفصيل/.test(n)) return '🪡';
+  if (/زهور|ورد|هدايا/.test(n)) return '💐';
+  if (/جيم|رياضة|فتنس/.test(n)) return '🏋️';
+  if (/بلايستيشن|العاب|ألعاب/.test(n)) return '🎮';
+  if (/عقارات|شقق|سمسار/.test(n)) return '🏢';
+  return null;
+}
+
+const LOCAL_BIZ_DICTIONARY = {
+  'فرن': 'Oven',
+  'مخبز': 'Bakery',
+  'شواية': 'Grill',
+  'مشويات': 'Grills',
+  'سمك': 'Fish',
+  'اسماك': 'Seafood',
+  'أسماك': 'Seafood',
+  'مطعم': 'Restaurant',
+  'كافيه': 'Cafe',
+  'مقهى': 'Cafe',
+  'صيدلية': 'Pharmacy',
+  'عيادة': 'Clinic',
+  'دكتور': 'Dr.',
+  'طبيب': 'Doctor',
+  'سوبر ماركت': 'Supermarket',
+  'ماركت': 'Market',
+  'بقالة': 'Grocery',
+  'جزارة': 'Butchery',
+  'جزار': 'Butcher',
+  'دواجن': 'Poultry',
+  'طيور': 'Poultry',
+  'محل': 'Shop',
+  'معرض': 'Showroom',
+  'شركة': 'Company',
+  'ورشة': 'Workshop',
+  'مكتبة': 'Bookstore',
+  'حلويات': 'Pastries & Sweets',
+  'حلواني': 'Pastry Shop',
+  'عصير': 'Juice Bar',
+  'عصائر': 'Juice Bar',
+  'مغسلة': 'Laundry',
+  'دراي كلين': 'Dry Clean',
+  'ملابس': 'Clothing',
+  'أزياء': 'Fashion',
+  'أحذية': 'Footwear',
+  'ذهب': 'Gold & Jewelry',
+  'مجوهرات': 'Jewelry',
+  'حلاقة': 'Barbershop',
+  'كوافير': 'Beauty Salon',
+  'نجارة': 'Carpentry',
+  'سباكة': 'Plumbing',
+  'كهرباء': 'Electrical',
+  'حدادة': 'Blacksmith',
+  'نقاشة': 'Painting & Decor',
+  'بويات': 'Paints',
+  'دهانات': 'Paints & Finishes',
+  'ألوميتال': 'Alumital & Aluminum',
+  'زجاج': 'Glass',
+  'تكييف': 'Air Conditioning',
+  'تبريد': 'Refrigeration',
+  'سيارات': 'Automotive',
+  'ميكانيكي': 'Mechanic',
+  'كاوتش': 'Tires',
+  'موبايل': 'Mobile & Phones',
+  'هواتف': 'Phones',
+  'اتصالات': 'Telecom',
+  'كمبيوتر': 'Computer',
+  'إلكترونيات': 'Electronics',
+  'أجهزة': 'Appliances',
+  'خضار': 'Vegetables',
+  'فواكه': 'Fruits',
+  'خضروات وفواكه': 'Fruits & Vegetables',
+  'عطارة': 'Spices & Herbs',
+  'مقلة': 'Roastery & Nuts',
+  'محمصة': 'Roastery',
+  'فسخاني': 'Fish & Herrings',
+  'رنجة': 'Herring & Smoked Fish',
+  'كبابجي': 'Kebab House',
+  'فول وطعمية': 'Foul & Falafel',
+  'فلافل': 'Falafel',
+  'شاورما': 'Shawarma',
+  'بيتزا': 'Pizza',
+  'فطير': 'Egyptian Feteer',
+  'فطاطري': 'Pies & Pastries',
+  'كشري': 'Koshary',
+  'أسنان': 'Dental Clinic',
+  'عيون': 'Eye Clinic',
+  'أطفال': 'Pediatrics',
+  'نساء وتوليد': 'OB-GYN',
+  'باطنة': 'Internal Medicine',
+  'عظام': 'Orthopedics',
+  'جلدية': 'Dermatology',
+  'أنف وأذن': 'ENT Clinic',
+  'علاج طبيعي': 'Physical Therapy',
+  'تغذية': 'Nutrition',
+  'معمل تحاليل': 'Medical Lab',
+  'أشعة': 'Radiology & Scan',
+  'مستشفى': 'Hospital',
+  'سياحة': 'Tourism & Travel',
+  'رحلات': 'Tours',
+  'نادي': 'Club',
+  'جيم': 'Fitness Gym',
+  'ألعاب': 'Games & Toys',
+  'بلايستيشن': 'PlayStation Lounge',
+  'عقارات': 'Real Estate',
+  'محاماة': 'Law Firm',
+  'استشارات قانونية': 'Legal Consultations',
+  'محاسبة': 'Accounting & Tax'
+};
+
+function transliterateArabicPhonetic(str) {
+  const map = {
+    'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'aa', 'ب': 'b', 'ت': 't', 'ث': 'th',
+    'ج': 'g', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'z', 'ر': 'r', 'ز': 'z',
+    'س': 's', 'ش': 'sh', 'ص': 's', 'ض': 'd', 'ط': 't', 'ظ': 'z', 'ع': 'a',
+    'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+    'ه': 'h', 'ة': 'a', 'و': 'w', 'ي': 'y', 'ى': 'a', 'ء': '', 'ئ': 'e', 'ؤ': 'o'
+  };
+  let out = '';
+  for (const ch of String(str || '')) {
+    out += map[ch] !== undefined ? map[ch] : ch;
+  }
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+function translateEgyptianBusinessNameOffline(arabic) {
+  const norm = String(arabic || '').replace(/[\u064B-\u065F\u0670]/g, '').trim();
+  if (LOCAL_BIZ_DICTIONARY[norm]) return LOCAL_BIZ_DICTIONARY[norm];
+
+  const words = norm.split(/\s+/).filter(Boolean);
+  const parts = [];
+
+  for (let i = 0; i < words.length; i++) {
+    const raw = words[i];
+    const isAnd = (raw.startsWith('و') || raw.startsWith('وال')) && raw.length > 2;
+    let clean = raw;
+    if (clean.startsWith('وال')) clean = clean.slice(3);
+    else if (clean.startsWith('لل')) clean = clean.slice(2);
+    else if (clean.startsWith('ال')) clean = clean.slice(2);
+    else if (isAnd) clean = clean.slice(1);
+
+    if (isAnd && parts.length > 0 && parts[parts.length - 1] !== '&') {
+      parts.push('&');
+    }
+
+    const nextRaw = words[i + 1];
+    if (nextRaw) {
+      const nextClean = nextRaw.replace(/^(ال|و|وال)/, '');
+      const combo = `${clean} ${nextClean}`;
+      if (LOCAL_BIZ_DICTIONARY[combo]) {
+        parts.push(LOCAL_BIZ_DICTIONARY[combo]);
+        i++;
+        continue;
+      }
+    }
+
+    if (LOCAL_BIZ_DICTIONARY[clean]) {
+      parts.push(LOCAL_BIZ_DICTIONARY[clean]);
+    } else if (LOCAL_BIZ_DICTIONARY[raw]) {
+      parts.push(LOCAL_BIZ_DICTIONARY[raw]);
+    } else {
+      parts.push(transliterateArabicPhonetic(clean || raw));
+    }
+  }
+
+  return parts.join(' ').replace(/\s+&\s+/g, ' & ').trim();
+}
+
+function formatEnglishTitle(text) {
+  if (!text) return '';
+  return String(text)
+    .toLowerCase()
+    .split(/\s+/)
+    .map(w => {
+      if (w === '&' || w === 'and' || w === 'of' || w === 'the') return w;
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(' ')
+    .trim();
+}
+
+async function translateArabicToEnglishWithFailover(arabicText, env) {
+  const clean = String(arabicText || '').trim();
+  if (!clean) return '';
+  if (!/[\u0600-\u06FF]/.test(clean)) return formatEnglishTitle(clean);
+
+  let translated = '';
+
+  // Tier 1: Try OpenRouter AI
+  try {
+    const aiResult = await callOpenRouterAI(
+      `Translate the following Egyptian business/category name from Arabic to natural English (US). Return ONLY the translated name without quotes or extra text: "${clean}"`,
+      env,
+      { timeoutMs: 3500 }
+    );
+    if (aiResult && typeof aiResult === 'string') {
+      const cleanAi = aiResult.replace(/["'`«»]/g, '').replace(/^(Translation|Name|English):\s*/i, '').trim();
+      if (cleanAi && !/[\u0600-\u06FF]/.test(cleanAi) && cleanAi.length >= 2) {
+        translated = cleanAi;
+      }
+    }
+  } catch (_) {}
+
+  // Tier 2: Free Cloud Translation API (MyMemory)
+  if (!translated || /[\u0600-\u06FF]/.test(translated)) {
+    try {
+      const mmRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean)}&langpair=ar|en`, {
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(4000)
+      });
+      if (mmRes.ok) {
+        const mmData = await mmRes.json();
+        const text = mmData?.responseData?.translatedText;
+        if (text && typeof text === 'string' && !/[\u0600-\u06FF]/.test(text) && !text.toUpperCase().includes('MYMEMORY')) {
+          translated = text.trim();
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Tier 3: Local Egyptian Commercial Dictionary
+  if (!translated || /[\u0600-\u06FF]/.test(translated)) {
+    translated = translateEgyptianBusinessNameOffline(clean);
+  }
+
+  // Final Guarantee: If somehow still contains Arabic letters, transliterate phonetically!
+  if (!translated || /[\u0600-\u06FF]/.test(translated)) {
+    translated = transliterateArabicPhonetic(clean);
+  }
+
+  return formatEnglishTitle(translated);
+}
 
 /**
  * ─────────────────────────────────────────────────────────────
