@@ -44,7 +44,7 @@ async function getJson(url){
 function shell(title,sub,icon,showAyah=true){
  const heroSlot = showAyah
   ? `<div class="ih-ayah-today" id="ih-ayah-today"><div class="ih-ayah-today-label">آية اليوم</div><div class="ih-ayah-today-text"><div class="ih-pulse"></div></div><div class="ih-ayah-today-meta">جاري اختيار آية عشوائية من المصحف الشريف…</div></div>`
-  : `<div class="ih-quran-emblem"><img src="./quran/00.jpg" alt="القرآن الكريم" class="ih-quran-emblem-img"><span class="ih-quran-shine" aria-hidden="true"></span></div>`;
+  : `<div class="ih-hadith-emblem" role="region" aria-label="حديث شريف: بلِّغوا عني ولو آية"><div class="ih-hadith-emblem-inner"><div class="ih-hadith-emblem-header"><span class="ih-hadith-emblem-star">۞</span><span class="ih-hadith-emblem-prefix">قال النبي ﷺ</span><span class="ih-hadith-emblem-star">۞</span></div><div class="ih-hadith-emblem-text">«بلِّغوا عني ولو آية»</div><div class="ih-hadith-emblem-footer"><span class="ih-hadith-emblem-rule"></span><span class="ih-hadith-emblem-sub">صحيح البخاري</span><span class="ih-hadith-emblem-rule"></span></div></div><span class="ih-quran-shine" aria-hidden="true"></span></div>`;
  const subtitle = sub ? `<p class="ih-sub">${esc(sub)}</p>` : '';
  return `<div class="islamic-hub"><div class="ih-wrap">
  <section class="ih-hero"><div class="ih-hero-copy">

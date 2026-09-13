@@ -514,6 +514,115 @@
   .ih-quran-emblem-img{ width:132px; height:132px; }
 }
 
+/* ── Decorated Hadith Emblem («بلِّغوا عني ولو آية») ── */
+.ih-hadith-emblem{
+  position:relative;
+  width:100%;
+  max-width:320px;
+  min-height:180px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px 16px;
+  border-radius:var(--radius-2xl,22px);
+  background:linear-gradient(135deg,rgba(27,79,114,.05) 0%,rgba(245,166,35,.09) 50%,rgba(27,79,114,.07) 100%),var(--surface,#fff);
+  border:1.5px solid rgba(245,166,35,.45);
+  box-shadow:inset 0 0 0 3px rgba(245,166,35,.08),0 10px 30px rgba(15,39,61,.08);
+  overflow:hidden;
+  isolation:isolate;
+  animation:ihFadeIn .6s ease both;
+  text-align:center;
+}
+[data-theme="dark"] .ih-hadith-emblem{
+  background:linear-gradient(135deg,rgba(15,39,61,.95) 0%,rgba(21,57,91,.9) 100%);
+  border-color:rgba(245,166,35,.55);
+  box-shadow:inset 0 0 0 3px rgba(245,166,35,.12),0 12px 36px rgba(0,0,0,.35);
+}
+.ih-hadith-emblem-inner{
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  padding:12px 14px;
+  border:1px dashed rgba(245,166,35,.42);
+  border-radius:var(--radius-xl,18px);
+  background:rgba(255,255,255,.55);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+[data-theme="dark"] .ih-hadith-emblem-inner{
+  background:rgba(15,39,61,.45);
+  border-color:rgba(245,166,35,.35);
+}
+.ih-hadith-emblem-header{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  color:var(--secondary-dark,#D97706);
+  font-size:.85rem;
+  font-weight:800;
+  margin-bottom:6px;
+}
+.ih-hadith-emblem-star{
+  font-size:.95rem;
+  color:#F5A623;
+  opacity:.95;
+}
+.ih-hadith-emblem-prefix{
+  letter-spacing:.02em;
+}
+.ih-hadith-emblem-text{
+  font-family:'Amiri','Traditional Arabic','Scheherazade New',serif;
+  font-size:clamp(1.45rem,2.4vw,1.85rem);
+  font-weight:700;
+  line-height:1.55;
+  color:var(--primary,#1B4F72);
+  margin:4px 0 8px;
+  text-shadow:0 1px 2px rgba(0,0,0,.05);
+  text-wrap:balance;
+}
+[data-theme="dark"] .ih-hadith-emblem-text{
+  color:#FBD38D;
+  text-shadow:0 2px 14px rgba(245,166,35,.35);
+}
+.ih-hadith-emblem-footer{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  margin-top:2px;
+}
+.ih-hadith-emblem-rule{
+  flex:0 0 28px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(245,166,35,.6),transparent);
+}
+.ih-hadith-emblem-sub{
+  font-size:.76rem;
+  font-weight:700;
+  color:var(--text-muted,#64748B);
+  letter-spacing:.03em;
+}
+[data-theme="dark"] .ih-hadith-emblem-sub{
+  color:rgba(255,255,255,.65);
+}
+@media(max-width:700px){
+  .ih-hadith-emblem{
+    max-width:100%;
+    min-height:155px;
+    padding:12px;
+  }
+  .ih-hadith-emblem-text{
+    font-size:1.35rem;
+  }
+}
+
+
 /* ── Search result audio control ── */
 .ih-result-content{ display:flex; align-items:center; gap:12px; }
 .ih-result-content .ih-ayah{ flex:1; min-width:0; }
