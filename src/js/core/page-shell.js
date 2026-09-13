@@ -68,7 +68,67 @@ function _setupHeaderSearch() {
 function _bindLanguageToggle(){const b=document.getElementById('lang-toggle-btn');if(!b||b.dataset.bound)return;b.dataset.bound='1';b.addEventListener('click',e=>{e.preventDefault();switchLanguage(isEnglish()?'ar':'en')})}
 function _bindThemeToggle(){document.querySelectorAll('#theme-toggle-btn,.theme-toggle-btn').forEach(b=>{if(b.dataset.bound)return;b.dataset.bound='1';b.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme')||'light',n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);document.body?.classList.toggle('dark-theme',n==='dark');document.body?.classList.toggle('light-theme',n==='light');localStorage.setItem('elmanzala-theme',n)})})}
 function _inject(id,html){const slot=document.getElementById(id);if(!slot)return;const tmp=document.createElement('div');tmp.innerHTML=html.trim();slot.replaceWith(tmp.firstElementChild)}
-function _bindMoreMenu(){const btn=document.getElementById('bottom-nav-more-btn');if(!btn||btn.dataset.bound)return;btn.dataset.bound='1';const isEn=isEnglish();const items=isEn?[['/en/places/','📍','Places Directory'],['/en/categories/','📋','Categories'],['/en/popular/','🔥','Popular'],['/en/around-me/','🧭','Near Me'],['/en/manzala/','🏙️','About El Manzala'],['/en/matariya/','🌊','About El Matariya'],['/en/favorites/','❤️','Favorites'],['/en/contact/','✉️','Contact Us']]:[['/places.html','📍','دليل الأماكن'],['/categories.html','📋','التصنيفات'],['/popular.html','🔥','الأكثر شعبية'],['/around-me.html','🧭','اكتشف حولك'],['/manzala.html','🏙️','عن المنزلة'],['/matariya.html','🌊','عن المطرية'],['/favorites.html','❤️','المفضلة'],['/contact.html','✉️','تواصل معنا']];let sheet=document.getElementById('mobile-more-sheet');if(!sheet){sheet=document.createElement('div');sheet.id='mobile-more-sheet';sheet.className='mobile-more-sheet';sheet.innerHTML=`<div class="mobile-more-sheet__backdrop" data-close="1"></div><section class="mobile-more-sheet__panel" role="dialog" aria-modal="true" aria-label="${isEn?'More':'المزيد'}"><div class="mobile-more-sheet__head"><strong>${isEn?'More':'المزيد'}</strong><button type="button" data-close="1" aria-label="${isEn?'Close':'إغلاق'}">×</button></div><div class="mobile-more-sheet__grid">${items.map(x=>`<a href="${x[0]}"><span>${x[1]}</span><b>${x[2]}</b></a>`).join('')}</div></section>`;document.body.appendChild(sheet)}const open=()=>{sheet.classList.add('is-open');btn.setAttribute('aria-expanded','true');document.body.classList.add('mobile-more-open')},close=()=>{sheet.classList.remove('is-open');btn.setAttribute('aria-expanded','false');document.body.classList.remove('mobile-more-open')};btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();sheet.classList.contains('is-open')?close():open()});sheet.querySelectorAll('[data-close]').forEach(x=>x.addEventListener('click',e=>{e.preventDefault();close()}));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet.classList.contains('is-open'))close()})}
-function _loadShellCSS(){if(document.getElementById('shell-mobile-fixes-css'))return;const l=document.createElement('link');l.id='shell-mobile-fixes-css';l.rel='stylesheet';l.href='/src/css/mobile-shell-fixes.css?v=20260913_2';document.head.appendChild(l)}
-export async function initPage(activeFile=''){applyLangToDOM(getLang());_loadShellCSS();_inject('header-slot',_headerHTML(activeFile));_inject('footer-slot',_footerHTML());_inject('nav-slot',_bottomNavHTML(activeFile));_bindLanguageToggle();_bindThemeToggle();_setupHeaderSearch();_bindMoreMenu();try{bindGlobalVoiceAssistantFab()}catch(_){}try{initAuth();onAuthStateChange(()=>{})}catch(_){} }
+
+function _loadShellCSS(){
+  if(!document.getElementById('shell-mobile-fixes-css')){
+    const l=document.createElement('link');
+    l.id='shell-mobile-fixes-css';
+    l.rel='stylesheet';
+    l.href='/src/css/mobile-shell-fixes.css?v=20260913_3';
+    document.head.appendChild(l);
+  }
+  // Critical fallback: the More sheet must never become a normal block in document flow
+  // if the external stylesheet is delayed, stale, or unavailable.
+  if(!document.getElementById('shell-mobile-more-critical-css')){
+    const s=document.createElement('style');
+    s.id='shell-mobile-more-critical-css';
+    s.textContent=`
+      .mobile-more-sheet{position:fixed!important;inset:0!important;z-index:11000!important;visibility:hidden!important;pointer-events:none!important;display:block!important}
+      .mobile-more-sheet.is-open{visibility:visible!important;pointer-events:auto!important}
+      .mobile-more-sheet__backdrop{position:absolute!important;inset:0!important;display:block!important;background:rgba(15,23,42,.52)!important;opacity:0!important}
+      .mobile-more-sheet.is-open .mobile-more-sheet__backdrop{opacity:1!important}
+      .mobile-more-sheet__panel{position:absolute!important;left:10px!important;right:10px!important;bottom:calc(var(--bottom-nav-height,64px) + 10px + env(safe-area-inset-bottom))!important;max-height:min(70dvh,560px)!important;overflow:auto!important;background:#fff!important;border-radius:22px!important;padding:14px!important;box-sizing:border-box!important;transform:translateY(18px)!important;opacity:0!important}
+      .mobile-more-sheet.is-open .mobile-more-sheet__panel{transform:translateY(0)!important;opacity:1!important}
+      body.mobile-more-open{overflow:hidden!important}
+      @media(min-width:768px){.mobile-more-sheet{display:none!important}}
+    `;
+    document.head.appendChild(s);
+  }
+}
+
+function _bindMoreMenu(){
+  const btn=document.getElementById('bottom-nav-more-btn');
+  if(!btn||btn.dataset.bound)return;
+  btn.dataset.bound='1';
+  const isEn=isEnglish();
+  const items=isEn?[['/en/places/','📍','Places Directory'],['/en/categories/','📋','Categories'],['/en/popular/','🔥','Popular'],['/en/around-me/','🧭','Near Me'],['/en/manzala/','🏙️','About El Manzala'],['/en/matariya/','🌊','About El Matariya'],['/en/favorites/','❤️','Favorites'],['/en/contact/','✉️','Contact Us']]:[['/places.html','📍','دليل الأماكن'],['/categories.html','📋','التصنيفات'],['/popular.html','🔥','الأكثر شعبية'],['/around-me.html','🧭','اكتشف حولك'],['/manzala.html','🏙️','عن المنزلة'],['/matariya.html','🌊','عن المطرية'],['/favorites.html','❤️','المفضلة'],['/contact.html','✉️','تواصل معنا']];
+  let sheet=document.getElementById('mobile-more-sheet');
+  if(!sheet){
+    sheet=document.createElement('div');
+    sheet.id='mobile-more-sheet';
+    sheet.className='mobile-more-sheet';
+    sheet.setAttribute('aria-hidden','true');
+    sheet.innerHTML=`<div class="mobile-more-sheet__backdrop" data-close="1"></div><section class="mobile-more-sheet__panel" role="dialog" aria-modal="true" aria-label="${isEn?'More':'المزيد'}"><div class="mobile-more-sheet__head"><strong>${isEn?'More':'المزيد'}</strong><button type="button" data-close="1" aria-label="${isEn?'Close':'إغلاق'}">×</button></div><div class="mobile-more-sheet__grid">${items.map(x=>`<a href="${x[0]}"><span>${x[1]}</span><b>${x[2]}</b></a>`).join('')}</div></section>`;
+    document.body.appendChild(sheet);
+  }
+  const open=()=>{sheet.classList.add('is-open');sheet.setAttribute('aria-hidden','false');btn.setAttribute('aria-expanded','true');document.body.classList.add('mobile-more-open')};
+  const close=()=>{sheet.classList.remove('is-open');sheet.setAttribute('aria-hidden','true');btn.setAttribute('aria-expanded','false');document.body.classList.remove('mobile-more-open')};
+  btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();sheet.classList.contains('is-open')?close():open()});
+  sheet.querySelectorAll('[data-close]').forEach(x=>x.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();close()}));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet.classList.contains('is-open'))close()});
+}
+
+export async function initPage(activeFile=''){
+  applyLangToDOM(getLang());
+  _loadShellCSS();
+  _inject('header-slot',_headerHTML(activeFile));
+  _inject('footer-slot',_footerHTML());
+  _inject('nav-slot',_bottomNavHTML(activeFile));
+  _bindLanguageToggle();
+  _bindThemeToggle();
+  _setupHeaderSearch();
+  _bindMoreMenu();
+  try{bindGlobalVoiceAssistantFab()}catch(_){}
+  try{initAuth();onAuthStateChange(()=>{})}catch(_){}
+}
 export { waitForAuth, isAdmin };
