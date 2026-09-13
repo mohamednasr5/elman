@@ -3,7 +3,7 @@
  * Dedicated native English saved places renderer
  */
 
-import { getFavorites, isFavorite } from '../../../services/favorites.service.js';
+import { getFavoriteIds } from '../../../services/favorites.service.js';
 import { getPublishedPlaces } from '../../../core/db.js';
 import { renderEnglishPlaceCard, renderEnglishPlaceCardSkeleton } from '../../components/en/PlaceCardEn.js';
 
@@ -29,7 +29,7 @@ export async function renderEnglishFavoritesPage($container) {
     </div>
   `;
 
-  const favIds = getFavorites() || [];
+  const favIds = getFavoriteIds() || [];
   const grid = document.getElementById('fav-places-grid');
 
   if (!favIds.length) {
@@ -45,7 +45,7 @@ export async function renderEnglishFavoritesPage($container) {
   }
 
   const places = await getPublishedPlaces({ limit: 200 });
-  const favPlaces = (places || []).filter(p => favIds.includes(p.id) || favIds.includes(p._key) || favIds.includes(p.slug));
+  const favPlaces = (places || []).filter(p => favIds.includes(String(p.id)) || favIds.includes(String(p._key)) || favIds.includes(String(p.slug)));
 
   if (!favPlaces.length) {
     grid.innerHTML = `
