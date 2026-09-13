@@ -35,7 +35,8 @@ export async function renderEnglishHomePage($container, { user } = {}) {
     if (Array.isArray(cachedCats) && cachedCats.length) renderCategories(cachedCats);
     if (Array.isArray(cachedPlaces) && cachedPlaces.length) {
       renderVerifiedShowcase(cachedPlaces);
-      renderLatestPlaces(cachedPlaces.slice(0, 8));
+      const sorted = sortLatestPlaces(cachedPlaces);
+      renderLatestPlaces(sorted.slice(0, 8));
       renderStatsBar(cachedPlaces.length, cachedCats?.length || 31);
       warmupSearchEngine(cachedPlaces, cachedCats || []);
     }
@@ -74,7 +75,8 @@ export async function renderEnglishHomePage($container, { user } = {}) {
 
   renderCategories(categories);
   renderVerifiedShowcase(places);
-  renderLatestPlaces(places.slice(0, 8));
+  const liveSorted = sortLatestPlaces(places);
+  renderLatestPlaces(liveSorted.slice(0, 8));
   renderOffers(offers);
   renderDeliveryServices(places);
   renderAds(ads);
@@ -360,6 +362,48 @@ function renderVerifiedShowcase(places) {
       update();
     }, 5000);
   }
+}
+
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function sortLatestPlaces(places) {
+  if (!Array.isArray(places) || !places.length) return [];
+  const seen = new Set();
+  const sponsored = [];
+  const regular = [];
+
+  const sortedByTime = [...places].sort((a, b) => {
+    const timeA = Number(a.createdAt) || Number(a.updatedAt) || 0;
+    const timeB = Number(b.createdAt) || Number(b.updatedAt) || 0;
+    return timeB - timeA;
+  });
+
+  sortedByTime.forEach(place => {
+    const k = place._key || place.id;
+    if (seen.has(k)) return;
+    seen.add(k);
+
+    if (isPlaceSponsored(place)) {
+      sponsored.push(place);
+    } else {
+      regular.push(place);
+    }
+  });
+
+  const finalSponsored = shuffleArray(sponsored);
+  const recentPoolSize = Math.min(regular.length, 45);
+  const recentPool = regular.slice(0, recentPoolSize);
+  const olderPlaces = regular.slice(recentPoolSize);
+  const rotatedRecent = shuffleArray(recentPool);
+
+  return [...finalSponsored, ...rotatedRecent, ...olderPlaces];
 }
 
 function renderLatestPlaces(places) {

@@ -310,7 +310,7 @@ export async function renderHomePage($main, { user } = {}) {
   }
 }
 
-function sortLatestPlaces(places, currentUid = null, shuffleSponsored = false) {
+function sortLatestPlaces(places, currentUid = null, shuffleSponsored = true) {
   const seen = new Set();
   const sponsored = [];
   const regular = [];
@@ -335,10 +335,19 @@ function sortLatestPlaces(places, currentUid = null, shuffleSponsored = false) {
   });
 
   // Fair rotation: Randomly shuffle sponsored places order so every sponsor gets equal top visibility
-  const finalSponsored = shuffleSponsored ? shuffleArray(sponsored) : sponsored;
+  const finalSponsored = shuffleArray(sponsored);
 
-  // Sponsored first, followed directly by the newest added places
-  return [...finalSponsored, ...regular];
+  // Dynamic freshness rotation:
+  // Instead of always showing the exact same static top regular places,
+  // take a generous pool of the latest recent places (up to 45 places) and shuffle them,
+  // followed by the rest. This guarantees every visitor / refresh sees fresh, rotating places
+  // proving that the directory is lively, active, and packed with new entries.
+  const recentPoolSize = Math.min(regular.length, 45);
+  const recentPool = regular.slice(0, recentPoolSize);
+  const olderPlaces = regular.slice(recentPoolSize);
+  const rotatedRecent = shuffleArray(recentPool);
+
+  return [...finalSponsored, ...rotatedRecent, ...olderPlaces];
 }
 
 function renderCategories(categories) {

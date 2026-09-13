@@ -18,6 +18,24 @@ function getTursoClient(env) {
   return client;
 }
 
+function resetTursoClient(env) {
+  try {
+    if (env) clients.delete(env);
+  } catch (_) {}
+}
+
+function withTimeout(promise, ms = 7000) {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`Turso query timed out after ${ms}ms`));
+    }, ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timer);
+  });
+}
+
 function normalizeArgs(args) {
   return (args || []).map(value => value === undefined ? null : value);
 }
@@ -38,9 +56,10 @@ function legacyCategoriesSql(sql) {
 }
 
 class TursoStatement {
-  constructor(client, sql) {
+  constructor(client, sql, env) {
     this.client = client;
     this.sql = sql;
+    this.env = env;
     this.args = [];
   }
 
@@ -53,18 +72,21 @@ class TursoStatement {
     let lastErr;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const rows = typeof this.client.all === 'function'
-          ? await this.client.all(this.sql, this.args)
-          : await (await this.client.prepare(this.sql)).all(this.args);
+        const queryPromise = typeof this.client.all === 'function'
+          ? this.client.all(this.sql, this.args)
+          : (await this.client.prepare(this.sql)).all(this.args);
+        const rows = await withTimeout(queryPromise, 7000);
         return { results: rows };
       } catch (err) {
         lastErr = err;
+        resetTursoClient(this.env);
         if (isCategoriesSortOrderError(this.sql, err)) {
           try {
             const fallbackSql = legacyCategoriesSql(this.sql);
-            const rows = typeof this.client.all === 'function'
-              ? await this.client.all(fallbackSql, this.args)
-              : await (await this.client.prepare(fallbackSql)).all(this.args);
+            const fallbackPromise = typeof this.client.all === 'function'
+              ? this.client.all(fallbackSql, this.args)
+              : (await this.client.prepare(fallbackSql)).all(this.args);
+            const rows = await withTimeout(fallbackPromise, 7000);
             return { results: rows };
           } catch (fallbackErr) {
             lastErr = fallbackErr;
@@ -81,18 +103,21 @@ class TursoStatement {
     let lastErr;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const row = typeof this.client.get === 'function'
-          ? await this.client.get(this.sql, this.args)
-          : await (await this.client.prepare(this.sql)).get(this.args);
+        const queryPromise = typeof this.client.get === 'function'
+          ? this.client.get(this.sql, this.args)
+          : (await this.client.prepare(this.sql)).get(this.args);
+        const row = await withTimeout(queryPromise, 7000);
         return row ?? null;
       } catch (err) {
         lastErr = err;
+        resetTursoClient(this.env);
         if (isCategoriesSortOrderError(this.sql, err)) {
           try {
             const fallbackSql = legacyCategoriesSql(this.sql);
-            const row = typeof this.client.get === 'function'
-              ? await this.client.get(fallbackSql, this.args)
-              : await (await this.client.prepare(fallbackSql)).get(this.args);
+            const fallbackPromise = typeof this.client.get === 'function'
+              ? this.client.get(fallbackSql, this.args)
+              : (await this.client.prepare(fallbackSql)).get(this.args);
+            const row = await withTimeout(fallbackPromise, 7000);
             return row ?? null;
           } catch (fallbackErr) {
             lastErr = fallbackErr;
@@ -109,9 +134,10 @@ class TursoStatement {
     let lastErr;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const result = typeof this.client.run === 'function'
-          ? await this.client.run(this.sql, this.args)
-          : await (await this.client.prepare(this.sql)).run(this.args);
+        const queryPromise = typeof this.client.run === 'function'
+          ? this.client.run(this.sql, this.args)
+          : (await this.client.prepare(this.sql)).run(this.args);
+        const result = await withTimeout(queryPromise, 7000);
         return {
           success: true,
           meta: {
@@ -121,12 +147,14 @@ class TursoStatement {
         };
       } catch (err) {
         lastErr = err;
+        resetTursoClient(this.env);
         if (isCategoriesSortOrderError(this.sql, err)) {
           try {
             const fallbackSql = legacyCategoriesSql(this.sql);
-            const result = typeof this.client.run === 'function'
-              ? await this.client.run(fallbackSql, this.args)
-              : await (await this.client.prepare(fallbackSql)).run(this.args);
+            const fallbackPromise = typeof this.client.run === 'function'
+              ? this.client.run(fallbackSql, this.args)
+              : (await this.client.prepare(fallbackSql)).run(this.args);
+            const result = await withTimeout(fallbackPromise, 7000);
             return {
               success: true,
               meta: {
@@ -151,7 +179,7 @@ export function createTursoDB(env) {
 
   return {
     prepare(sql) {
-      return new TursoStatement(client, sql);
+      return new TursoStatement(client, sql, env);
     },
 
     async batch(statements) {
@@ -160,7 +188,12 @@ export function createTursoDB(env) {
         args: normalizeArgs(statement.args)
       }));
 
-      return client.batch(batch, 'write');
+      try {
+        return await withTimeout(client.batch(batch, 'write'), 8000);
+      } catch (err) {
+        resetTursoClient(env);
+        throw err;
+      }
     }
   };
 }

@@ -420,7 +420,7 @@ export function initLiveNotificationSubscriber(uid) {
 
   const poll = async () => {
     try {
-      const places = await getPublishedPlaces({limit:250,forceFresh:true});
+      const places = await getPublishedPlaces({limit:50});
       const now = Date.now();
       const current = new Map((places||[]).map(p => [String(p.id||p._key), p]));
       if (previous.size) {
@@ -494,7 +494,8 @@ export function initLiveNotificationSubscriber(uid) {
       refresh();
     } catch (_) {}
   };
-  poll();
+  // Delay initial background poll by 25s so it doesn't storm the network during initial page load
+  setTimeout(poll, 25000);
   const timer=setInterval(poll,60000);
   window.addEventListener('beforeunload',()=>clearInterval(timer),{once:true});
 }
