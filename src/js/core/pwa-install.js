@@ -101,9 +101,30 @@ if (window.__deferredPwaPrompt) {
   setTimeout(() => showBanner(false), 900);
 }
 
+async function refreshPwaRuntime() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        registration.update().catch(() => {});
+        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+    }
+    if ('caches' in window) {
+      const names = await caches.keys();
+      await Promise.all(names.filter(name => /^manzala-(images|api)-/i.test(name)).map(name => caches.delete(name)));
+    }
+  } catch (_) {}
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { ensureBanner(); scheduleFallbackBanner(); }, { once: true });
+  document.addEventListener('DOMContentLoaded', () => {
+    ensureBanner();
+    scheduleFallbackBanner();
+    refreshPwaRuntime();
+  }, { once: true });
 } else {
   ensureBanner();
   scheduleFallbackBanner();
+  refreshPwaRuntime();
 }
