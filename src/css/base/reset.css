@@ -363,3 +363,23 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--danger);
   border-color: transparent;
 }
+
+/* Arabic RTL page-back-bar visual order.
+   Markup is button first, breadcrumbs second. In RTL the flex axis
+   otherwise puts the button on the right. Keep the visual container LTR
+   while preserving RTL text inside each control. */
+[dir="rtl"] .page-back-bar {
+  direction: ltr !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+}
+
+[dir="rtl"] .page-back-bar .btn-page-back {
+  order: 1 !important;
+  direction: rtl !important;
+}
+
+[dir="rtl"] .page-back-bar .page-breadcrumbs {
+  order: 2 !important;
+  direction: rtl !important;
+}
