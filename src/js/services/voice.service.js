@@ -376,19 +376,70 @@ export async function openManzalaVoiceAssistantModal() {
             <p class="mvm-subtitle">تحدث بحرية.. وسنعثر لك على المكان والخدمات فوراً</p>
           </div>
         </div>
-        <button type="button" class="mvm-close" aria-label="إغلاق">✕</button>
+        <button type="button" class="mvm-close-btn" id="mvm-close-btn" aria-label="إغلاق">✕</button>
       </div>
 
-      <div class="mvm-body">
-        <div class="mvm-search-row">
-          <input id="mvm-input" class="mvm-input" type="search" inputmode="search" autocomplete="off" placeholder="مثال: صيدلية مفتوحة الآن قريبة مني" />
-          <button type="button" id="mvm-mic-btn" class="mvm-mic-btn" aria-label="ابدأ البحث الصوتي">🎙️</button>
-          <button type="button" id="mvm-search-btn" class="mvm-search-btn" aria-label="بحث">🔍</button>
+      <!-- Assistant Central Orb & Wave Animation -->
+      <div class="mvm-center-stage">
+        <div class="mvm-orb-wrapper" id="mvm-orb-btn" role="button" title="اضغط للتحدث أو إعادة الاستماع">
+          <div class="mvm-orb-core">
+            <span class="mvm-orb-letter">M</span>
+          </div>
+          <div class="mvm-orb-pulse pulse-1"></div>
+          <div class="mvm-orb-pulse pulse-2"></div>
         </div>
-        <div id="mvm-status" class="mvm-status" aria-live="polite">اضغط على الميكروفون وتحدث بحرية.</div>
-        <div id="mvm-results-container" class="mvm-results-container">
-          <div id="mvm-results-list" class="mvm-results-list"></div>
+
+        <!-- Live Waveform Bars -->
+        <div class="mvm-waveform" id="mvm-waveform">
+          <span class="wave-bar wb-1"></span>
+          <span class="wave-bar wb-2"></span>
+          <span class="wave-bar wb-3"></span>
+          <span class="wave-bar wb-4"></span>
+          <span class="wave-bar wb-5"></span>
+          <span class="wave-bar wb-6"></span>
+          <span class="wave-bar wb-7"></span>
         </div>
+
+        <!-- High-Prominence Live Listening Banner -->
+        <div class="mvm-listening-banner" id="mvm-listening-banner" style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(2,132,199,0.15));border:1.5px solid #10B981;border-radius:16px;padding:12px 18px;margin-bottom:14px;width:100%;max-width:440px;text-align:center;box-shadow:0 4px 15px rgba(16,185,129,0.15)">
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:900;color:#10B981;margin-bottom:4px">
+            <span style="display:inline-block;width:10px;height:10px;background:#10B981;border-radius:50%;box-shadow:0 0 10px #10B981;animation:pulseDot 1.5s infinite"></span>
+            <span>أنا أستمع إليك الآن.. تفضل بالتحدث!</span>
+          </div>
+          <div class="mvm-status" id="mvm-status-text" style="font-size:12.5px;color:var(--text-secondary,#475569);margin:0;font-weight:600">
+            تكلم بصوتك العادي عن أي مكان، عيادة، صيدلية، مطعم أو خدمة
+          </div>
+        </div>
+
+        <!-- Live Transcription Bubble -->
+        <div class="mvm-transcript-box" id="mvm-transcript-box">
+          <span class="mvm-transcript-placeholder">مثال: "عاوز صيدلية قريبة", "دكتور عظام", "مطعم كريب", "سباك"...</span>
+        </div>
+      </div>
+
+      <!-- Quick Suggestion Chips -->
+      <div class="mvm-quick-chips">
+        <span class="mvm-chips-label">⚡ أو اختر تصنيفاً سريعاً:</span>
+        <div class="mvm-chips-scroll">
+          <button type="button" class="mvm-chip" data-query="atm">🏧 ماكينات ATM</button>
+          <button type="button" class="mvm-chip" data-query="صيدلية">💊 صيدليات</button>
+          <button type="button" class="mvm-chip" data-query="دكتور">🩺 أطباء وعيادات</button>
+          <button type="button" class="mvm-chip" data-query="مطعم">🍕 مطاعم وبيتزا</button>
+          <button type="button" class="mvm-chip" data-query="كافيه">☕ كافيهات ومشروبات</button>
+          <button type="button" class="mvm-chip" data-query="سوبر ماركت">🛒 سوبر ماركت</button>
+          <button type="button" class="mvm-chip" data-query="سباك">🪠 سباكين</button>
+          <button type="button" class="mvm-chip" data-query="نجار">🪚 نجارين</button>
+          <button type="button" class="mvm-chip" data-query="محمصة">🥜 محامص وتسالي</button>
+          <button type="button" class="mvm-chip" data-query="قاعة افراح">👑 قاعات أفراح</button>
+        </div>
+      </div>
+
+      <!-- Instant Live Results Preview Container -->
+      <div class="mvm-results-container" id="mvm-results-container" style="display:none">
+        <div class="mvm-results-header">
+          <span class="mvm-results-title" id="mvm-results-title">أقرب الأماكن المطابقة:</span>
+        </div>
+        <div class="mvm-results-list" id="mvm-results-list"></div>
       </div>
     </div>
   `;
@@ -396,90 +447,524 @@ export async function openManzalaVoiceAssistantModal() {
   document.body.appendChild(modalBackdrop);
   _activeVoiceModal = modalBackdrop;
 
-  const input = modalBackdrop.querySelector('#mvm-input');
-  const mic = modalBackdrop.querySelector('#mvm-mic-btn');
-  const close = modalBackdrop.querySelector('.mvm-close');
-  const status = modalBackdrop.querySelector('#mvm-status');
-  const results = modalBackdrop.querySelector('#mvm-results-list');
+  requestAnimationFrame(() => {
+    modalBackdrop.classList.add('visible');
+  });
 
-  const renderResults = (items = []) => {
-    if (!results) return;
-    if (!items.length) {
-      results.innerHTML = '<div class="mvm-empty">لم نجد نتائج مطابقة. جرّب اسم المكان أو الخدمة بشكل أبسط.</div>';
-      return;
-    }
-    results.innerHTML = items.slice(0, 12).map(place => {
-      const id = place.id || place._key || place.slug;
-      return `<a class="mvm-result" href="place.html?id=${encodeURIComponent(id)}"><strong>${escapeHtml(place.name || 'مكان')}</strong><span>${escapeHtml(place.categoryName || place.category || '')}</span><small>${escapeHtml(place.address || place.area || '')}</small></a>`;
-    }).join('');
-  };
+  const statusText = document.getElementById('mvm-status-text');
+  const transcriptBox = document.getElementById('mvm-transcript-box');
+  const waveform = document.getElementById('mvm-waveform');
+  const orbBtn = document.getElementById('mvm-orb-btn');
+  const resultsContainer = document.getElementById('mvm-results-container');
+  const resultsList = document.getElementById('mvm-results-list');
+  const resultsTitle = document.getElementById('mvm-results-title');
 
-  const runSearch = async (q) => {
-    const query = String(q || '').trim();
-    if (!query) return;
-    status.textContent = `جاري البحث عن: ${query}`;
-    try {
-      const places = _voiceHotCache.places || await getPublishedPlaces({ limit: 200 });
-      const expanded = expandArabicSearchIntent(query) || query;
-      const keywords = extractSearchKeywords(expanded) || expanded;
-      const scored = (places || []).map(place => {
-        const score = Math.max(
-          arabicScore(place.name || '', keywords),
-          arabicScore(place.categoryName || place.category || '', keywords) * 0.9,
-          arabicScore(place.area || '', keywords) * 0.85,
-          arabicScore(place.address || '', keywords) * 0.7
-        );
-        return { place, score };
-      }).filter(x => x.score > 0).sort((a, b) => b.score - a.score).map(x => x.place);
-      renderResults(scored);
-      status.textContent = `تم العثور على ${scored.length} نتيجة.`;
-    } catch (err) {
-      console.warn('[VoiceAssistant] search:', err);
-      status.textContent = 'تعذر تنفيذ البحث الآن. حاول مرة أخرى.';
-    }
-  };
-
+  // Initialize Speech Recognition for Assistant
   _modalVoiceInstance = new VoiceSearch({
     onStart: () => {
-      mic.classList.add('listening');
-      mic.innerHTML = '🔴';
-      status.textContent = 'جاري الاستماع... تحدث الآن';
+      const banner = document.getElementById('mvm-listening-banner');
+      if (banner) {
+        banner.style.borderColor = '#10B981';
+        banner.style.background = 'linear-gradient(135deg,rgba(16,185,129,0.15),rgba(2,132,199,0.15))';
+      }
+      if (statusText) statusText.innerHTML = '🟢 <strong style="color:#10B981">الميكروفون نشط الآن..</strong> تفضل بالحديث وسأجيبك فوراً';
+      if (waveform) waveform.classList.add('active');
+      if (orbBtn) orbBtn.classList.add('listening');
     },
-    onInterim: (text) => {
-      input.value = text;
-      status.textContent = `جاري الاستماع: ${text}`;
+    onInterim: (interim) => {
+      if (transcriptBox) {
+        transcriptBox.innerHTML = `<span class="mvm-live-interim">"${interim}"</span>`;
+      }
+      if (interim && interim.trim().length > 2) {
+        executeVoiceAssistantSearch(interim, true);
+      }
     },
-    onResult: (text) => {
-      input.value = text;
-      runSearch(text);
+    onResult: async (cleaned, raw) => {
+      const query = cleaned || raw;
+      if (transcriptBox) {
+        transcriptBox.innerHTML = `<span class="mvm-final-query">🔍 "${query}"</span>`;
+      }
+      if (statusText) {
+        statusText.innerHTML = '⚡ <strong style="color:var(--secondary,#F5A623)">تم التعرف على صوتك! جاري جلب الأماكن فوراً...</strong>';
+      }
+      if (waveform) waveform.classList.remove('active');
+      if (orbBtn) orbBtn.classList.remove('listening');
+
+      // Fetch and display instant matching places
+      await executeVoiceAssistantSearch(query);
     },
     onEnd: () => {
-      mic.classList.remove('listening');
-      mic.innerHTML = '🎙️';
+      if (waveform) waveform.classList.remove('active');
+      if (orbBtn) orbBtn.classList.remove('listening');
+      const banner = document.getElementById('mvm-listening-banner');
+      if (banner && !transcriptBox?.querySelector('.mvm-final-query')) {
+        banner.style.borderColor = 'var(--border,#CBD5E1)';
+        banner.style.background = 'var(--surface-2,#F8FAFC)';
+      }
+      if (statusText && !transcriptBox?.querySelector('.mvm-final-query')) {
+        statusText.innerHTML = '🎙️ اضغط على الدائرة <strong>M</strong> في المنتصف للتحدث مجدداً';
+      }
+    },
+    onError: () => {
+      if (waveform) waveform.classList.remove('active');
+      if (orbBtn) orbBtn.classList.remove('listening');
+      if (statusText) {
+        statusText.innerHTML = '⚠️ اضغط على زر <strong>M</strong> للتحدث مرة أخرى';
+      }
     }
   });
 
-  mic.addEventListener('click', () => {
-    if (_modalVoiceInstance?.isListening) _modalVoiceInstance.stop();
-    else _modalVoiceInstance?.start();
-  });
-  modalBackdrop.querySelector('#mvm-search-btn')?.addEventListener('click', () => runSearch(input.value));
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); runSearch(input.value); } });
-  close.addEventListener('click', closeManzalaVoiceAssistantModal);
-  modalBackdrop.addEventListener('click', e => { if (e.target === modalBackdrop) closeManzalaVoiceAssistantModal(); });
+  // Start listening immediately
+  _modalVoiceInstance.start();
 
-  return modalBackdrop;
+  // Orb click to toggle / restart listening
+  orbBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!_modalVoiceInstance) {
+      _modalVoiceInstance = new VoiceSearch({
+        onStart: () => {
+          if (statusText) statusText.innerHTML = '🟢 <span style="color:var(--success,#10B981);font-weight:800">استمع إليك الآن..</span> تفضل بالحديث';
+          if (waveform) waveform.classList.add('active');
+          if (orbBtn) orbBtn.classList.add('listening');
+        },
+        onInterim: (interim) => {
+          if (transcriptBox) {
+            transcriptBox.innerHTML = `<span class="mvm-live-interim">"${interim}"</span>`;
+          }
+          executeVoiceAssistantSearch(interim, true);
+        },
+        onResult: (finalText) => {
+          if (transcriptBox) {
+            transcriptBox.innerHTML = `<span class="mvm-final-query">🔍 "${finalText}"</span>`;
+          }
+          executeVoiceAssistantSearch(finalText, false);
+        },
+        onEnd: () => {
+          if (waveform) waveform.classList.remove('active');
+          if (orbBtn) orbBtn.classList.remove('listening');
+          if (statusText && !transcriptBox?.querySelector('.mvm-final-query')) {
+            statusText.innerHTML = '🎙️ اضغط على حرف <strong>M</strong> في المنتصف للتحدث مجدداً';
+          }
+        },
+        onError: () => {
+          if (waveform) waveform.classList.remove('active');
+          if (orbBtn) orbBtn.classList.remove('listening');
+          if (statusText) {
+            statusText.innerHTML = '⚠️ اضغط على حرف <strong>M</strong> للتحدث مرة أخرى';
+          }
+        }
+      });
+    }
+
+    if (_modalVoiceInstance && _modalVoiceInstance.isListening) {
+      _modalVoiceInstance.stop();
+    } else if (_modalVoiceInstance) {
+      _modalVoiceInstance.start();
+    }
+  });
+
+  // Chip buttons click
+  modalBackdrop.querySelectorAll('.mvm-chip').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const q = btn.getAttribute('data-query');
+      if (transcriptBox) {
+        transcriptBox.innerHTML = `<span class="mvm-final-query">🔍 "${q}"</span>`;
+      }
+      await executeVoiceAssistantSearch(q);
+    });
+  });
+
+  // Close Handlers
+  const closeBtn = document.getElementById('mvm-close-btn');
+  const doClose = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    closeManzalaVoiceAssistantModal();
+  };
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', doClose);
+    closeBtn.addEventListener('touchend', doClose, { passive: false });
+  }
+
+  modalBackdrop.addEventListener('click', (e) => {
+    if (e.target === modalBackdrop || e.target.closest('#mvm-close-btn')) {
+      doClose(e);
+    }
+  });
+
+      const EMERGENCY_NUMBERS = [
+  {number:'122', names:['شرطة النجدة','النجدة','نجدة','النجده','طوارئ الشرطة','رقم النجدة']},
+  {number:'123', names:['الإسعاف المصرية','الإسعاف','الاسعاف','اسعاف','اسعاف مصر','الإسعاف المصري','عربية اسعاف','سيارة اسعاف','رقم الاسعاف']},
+  {number:'115', names:['الأمن العام','قطاع الامن العام']},
+  {number:'180', names:['المطافئ المصرية','المطافي','مطافي','المطافئ','الاطفاء','إطفاء','حريق','حريقة','رقم المطافي']},
+  {number:'121', names:['طوارئ الكهرباء','طوارئ كهربا','انقطاع الكهرباء','اعطال الكهرباء','عطل كهرباء','شكاوى الكهرباء','بلاغات الكهرباء','رقم طوارئ الكهرباء','رقم طوارئ كهربا','طواريء الكهرباء']},
+  {number:'129', names:['طوارئ الغاز','طوارئ غاز','تسريب غاز','تسرب غاز','انقطاع الغاز','شكاوى الغاز','بلاغات الغاز','رقم طوارئ الغاز','طواريء الغاز']},
+  {number:'125', names:['طوارئ المياه','طوارئ مياه','انقطاع المياه','اعطال المياه','عطل مياه','شكاوى المياه','بلاغات المياه','كسر ماسورة','رقم طوارئ المياه','طواريء المياه']},
+  {number:'01221110000', names:['حوادث المرور','طوارئ المرور','إغاثة المرور','اغاثة المرور']},
+  {number:'16474', names:['الرعاية الحرجة والعاجلة','الرعاية الحرجة']},
+  {number:'138', names:['وزارة الداخلية','شكاوى وزارة الداخلية']},
+  {number:'107', names:['دار الإفتاء المصرية','دار الافتاء','فتوى الافتاء']},
+  {number:'106', names:['الهيئة العامة للتأمين الصحي','طوارئ التأمين الصحي']},
+  {number:'19151', names:['وزارة التربية والتعليم','شكاوى وزارة التربية والتعليم']},
+  {number:'19556', names:['الهيئة العامة لتعليم الكبار','تعليم الكبار']},
+  {number:'19654', names:['وزارة السياحة','شكاوى وزارة السياحة']},
+  {number:'19136', names:['وزارة الدفاع']},
+  {number:'19808', names:['وزارة البيئة','شكاوى وزارة البيئة']},
+  {number:'19806', names:['الهيئة العامة للتأمين الصحي']},
+  {number:'19126', names:['وزارة التربية والتعليم']},
+  {number:'19545', names:['جامعة القاهرة مركز التعليم المفتوح','التعليم المفتوح']},
+  {number:'19561', names:['الهيئة العامة للخدمات البيطرية','الخدمات البيطرية']},
+  {number:'19805', names:['وزارة التجارة والصناعة']},
+  {number:'16100', names:['هيئة الرقابة الإدارية','الرقابة الادارية']},
+  {number:'16916', names:['هيئة سوق المال','سوق المال']},
+  {number:'16789', names:['البريد المصري']},
+  {number:'16217', names:['الهيئة القومية للتأمينات الاجتماعية','التأمينات الاجتماعية']},
+  {number:'16035', names:['الهيئة العامة للاستثمار','هيئة الاستثمار']},
+  {number:'16248', names:['هيئة تنمية صناعة تكنولوجيا المعلومات','تكنولوجيا المعلومات']},
+  {number:'19733', names:['الصندوق الاجتماعي للتنمية','الصندوق الاجتماعي']},
+  {number:'19591', names:['الهيئة العامة للرقابة على الصادرات','الرقابة على الصادرات']},
+  {number:'19526', names:['مبيعات كبار العملاء']},
+  {number:'19053', names:['الهيئة المصرية للرقابة على التأمين','الرقابة على التأمين']},
+  {number:'19654', names:['مجلس التدريب الصناعي']},
+  {number:'19680', names:['تكنولوجيا تشغيل المنشآت المالية']},
+  {number:'152', names:['طوارئ النظافة','شكاوى النظافة']},
+  {number:'175', names:['طوارئ الصرف الصحي','شكاوى الصرف الصحي','انسداد مجاري']},
+  {number:'155', names:['شكاوى الاتصالات','مرفق الاتصالات']},
+  {number:'16000', names:['المجلس القومي للأمومة والطفولة','خط نجدة الطفل']},
+  {number:'16021', names:['المجلس القومي لحقوق الإنسان','حقوق الإنسان']},
+  {number:'19932', names:['مركز اتصال المصرية للاتصالات','شكاوى المصرية للاتصالات']},
+  {number:'111', names:['مركز معلومات شبكات المرافق','شبكات المرافق']},
+  {number:'19895', names:['مشروع حساب لكل بيت']},
+  {number:'19246', names:['مرفق الاتصالات']},
+  {number:'1717 / 090070000', names:['مصر للطيران']},
+  {number:'19415', names:['النيل للطيران']},
+  {number:'01277852555', names:['إير كايرو','اير كايرو']},
+  {number:'01000073419', names:['العربية للطيران']},
+  {number:'02233320555 / 01501692277', names:['طيران الإمارات']},
+  {number:'01009998271', names:['فلاي ناس']},
+  {number:'0223960454 / 0223960465', names:['الخطوط الجوية التركية']},
+  {number:'025741200 / 025747575 / 025931049', names:['الخطوط الجوية السعودية']},
+  {number:'025750875 / 025750905', names:['الخطوط الملكية الأردنية']},
+  {number:'0225780740', names:['الخطوط الجوية البريطانية']},
+  {number:'02226966620', names:['الخطوط الجوية الإثيوبية']},
+  {number:'4631010 / 4595671 / 4591487 / 4591486', names:['مطار الإسكندرية الدولي','مطار برج العرب']},
+  {number:'35316900 / 35391580', names:['مطار سفنكس الدولي']},
+  {number:'199970', names:['شركة مطار القاهرة الدولي','استعلامات مطار القاهرة']},
+  {number:'16707', names:['ميناء القاهرة الجوي']},
+  {number:'105', names:['إنفلونزا الطيور','انفلونزا الطيور']},
+  {number:'1647', names:['الرعاية الحرجة والعاجلة']},
+  {number:'4243479', names:['بلاغات سرقات المتاجر']},
+  {number:'4268822', names:['بلاغات سرقات السيارات','جرائم النشل']},
+  {number:'4269966', names:['قسم مكافحة المخدرات']},
+  {number:'4203208', names:['مباحث الأموال العامة']},
+  {number:'4269955', names:['مباحث الآداب']},
+  {number:'4268305', names:['مباحث المصنفات الفنية']},
+  {number:'4949547', names:['مباحث المرور']},
+  {number:'4244322', names:['شرطة المرافق']},
+  {number:'484222', names:['مباحث التليفونات']},
+  {number:'4863754', names:['مباحث التهرب الضريبي']},
+  {number:'3925810', names:['إسعاف الطرق']},
+  {number:'01200003633', names:['عمليات المرور المركزية']},
+  {number:'0227921487', names:['مباحث الإنترنت','مباحث الانترنت','جرائم الانترنت']},
+  {number:'0227921490', names:['مباحث الإنترنت','مباحث الانترنت']},
+  {number:'022645000 / 022646000 / 022647000', names:['الأمن الوطني','امن وطني','الأمن الوطنى']}
+];
+
+const normalizeEmergencyText = (text = '') => String(text).toLowerCase()
+  .normalize('NFKD')
+  .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
+  .replace(/[أإآٱ]/g, 'ا').replace(/ؤ/g, 'و').replace(/[ئى]/g, 'ي').replace(/ة/g, 'ه')
+  .replace(/[^\u0600-\u06FF0-9a-zA-Z\s]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+function getEmergencyAnswer(query = '') {
+  if (!query || !query.trim()) return null;
+  const rawNorm = normalizeEmergencyText(query);
+  if (!rawNorm) return null;
+
+  // 1. Business, trade & craftsman queries must NEVER be hijacked as emergencies
+  const tradeOrCraftWords = [
+    'كهربائي', 'كهربايي', 'سباك', 'نجار', 'نقاش', 'ميكانيكي', 'فني', 'بتاع',
+    'صنايعي', 'معلم', 'محل', 'معرض', 'دكتور', 'طبيب', 'عياد', 'صيدل', 'مهندس',
+    'ورشه', 'ورشة', 'تاسيس', 'تأسيس', 'تصليح', 'صيانة', 'صيانه', 'تركيب',
+    'بيع', 'شراء', 'اسعار', 'سعر', 'دكان'
+  ];
+  const hasTradeWord = tradeOrCraftWords.some(w => rawNorm.includes(w));
+
+  // Explicit emergency / crisis / hotline triggers
+  const explicitEmergencyWords = [
+    'طوارئ', 'طواري', 'طواريء', 'خط ساخن', 'انقطاع', 'تسريب', 'تسرب',
+    'حريق', 'حريقه', 'بلاغ', 'بلاغات', 'شكوى', 'شكاوى', 'اعطال', 'عطل',
+    'نجدة', 'نجده', 'اسعاف', 'مطافي', 'مطافئ'
+  ];
+  const hasExplicitEmergency = explicitEmergencyWords.some(w => rawNorm.includes(w));
+
+  // If query expresses craft or professional intent, it is NOT an emergency unless explicit emergency keyword is present
+  if (hasTradeWord && !hasExplicitEmergency) {
+    return null;
+  }
+
+  // 2. Strip conversational / filler prefixes from query (e.g. "عاوز", "رقم", "اتصل بـ")
+  const cleanQ = rawNorm
+    .replace(/^(عاوز|عايز|عاوزه|عايزه|محتاج|محتاجه|محتاجين|بدور على|بدور علي|ابحث عن|فين|هاتلي|قولي على|قولي علي|رقم|نمره|نمرة|تليفون|خط)\s+/g, '')
+    .trim();
+
+  // 3. Check for specific utility breakdown / hotline intent
+  if (hasExplicitEmergency) {
+    if (cleanQ.includes('كهربا') || cleanQ.includes('كهرباء')) {
+      return EMERGENCY_NUMBERS.find(i => i.number === '121') || null;
+    }
+    if (cleanQ.includes('غاز')) {
+      return EMERGENCY_NUMBERS.find(i => i.number === '129') || null;
+    }
+    if (cleanQ.includes('مياه') || cleanQ.includes('مايه') || cleanQ.includes('ماسوره') || cleanQ.includes('ماسورة')) {
+      return EMERGENCY_NUMBERS.find(i => i.number === '125') || null;
+    }
+    if (cleanQ.includes('مجاري') || cleanQ.includes('صرف')) {
+      return EMERGENCY_NUMBERS.find(i => i.number === '175') || null;
+    }
+  }
+
+  // 4. Exact or high-precision token match against emergency list
+  for (const item of EMERGENCY_NUMBERS) {
+    for (const name of item.names) {
+      const nName = normalizeEmergencyText(name);
+      // Exact match after cleaning or full query
+      if (rawNorm === nName || cleanQ === nName) {
+        return item;
+      }
+      // "رقم طوارئ الكهرباء" or "طوارئ الكهرباء"
+      if (cleanQ.startsWith(nName) || cleanQ.endsWith(nName) || (cleanQ.includes(nName) && nName.length >= 7)) {
+        return item;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function executeVoiceAssistantSearch(query, isInterim = false) {
+    if (!query || !query.trim()) return;
+
+    const emergency = getEmergencyAnswer(query);
+    if (emergency) {
+      const resultsTitle = document.getElementById('mvm-results-title');
+      const resultsList = document.getElementById('mvm-results-list');
+      const resultsBox = document.getElementById('mvm-results-container');
+      if (resultsBox) resultsBox.style.display = 'block';
+      if (resultsTitle) resultsTitle.innerHTML = '🚨 رقم الطوارئ المطلوب';
+      if (resultsList) resultsList.innerHTML = `
+        <div class="mvm-result-card animate-fade-in" style="background:var(--surface);border:1px solid #25c6d5;border-radius:16px;padding:18px;text-align:center;box-shadow:0 8px 24px rgba(37,198,213,.14)">
+          <div style="font-size:13px;font-weight:800;color:var(--text-secondary);margin-bottom:6px">${escapeHtml(emergency.names[0])}</div>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px">${String(emergency.number).split('/').map(phone=>phone.trim()).filter(Boolean).map(phone=>{const clean=phone.replace(/[^0-9+]/g,'');return `<a href="tel:${clean}" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:145px;padding:10px 14px;border-radius:12px;background:linear-gradient(135deg,#0d668f,#1785ad);color:#fff;text-decoration:none;font:800 18px/1 var(--e-mono,monospace);direction:ltr">${clean}<span style="font:800 11px/1 Cairo,sans-serif">☎ اتصال</span></a>`}).join('')}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px">اضغط على الرقم للاتصال فوراً</div>
+        </div>`;
+      if (!isInterim) {
+        speakEmergencyNumber(emergency);
+      }
+      return;
+    }
+
+    const resultsTitle = document.getElementById('mvm-results-title');
+    const resultsList = document.getElementById('mvm-results-list');
+    const resultsBox = document.getElementById('mvm-results-container');
+
+    if (resultsBox) resultsBox.style.display = 'block';
+    if (resultsTitle && !isInterim) {
+      resultsTitle.innerHTML = '⚡ أفضل الأماكن المطابقة لـ "' + escapeHtml(query) + '":';
+    }
+
+    try {
+      // ⚡ Sub-millisecond Execution (< 3ms)
+      const results = await executeFastSearch(query, {
+        userCoords: _voiceHotCache.userCoords,
+        limit: 8
+      });
+
+      if (!resultsList) return;
+
+      if (results.length === 0) {
+        if (!isInterim) {
+          resultsList.innerHTML = `
+            <div style="text-align:center;padding:18px 12px;color:var(--text-muted)">
+              <div style="font-size:24px;margin-bottom:6px">🔍</div>
+              <div style="font-size:14px;font-weight:700">لم يتم العثور على مكان مطابق فورياً</div>
+              <div style="font-size:12px;margin-top:4px">جرب التحدث باسم آخر مثل "دكتور أسنان"، "صيدلية بالمطرية"، "معمل ألبان"</div>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      // Render Top Match Cards Immediately
+      resultsList.innerHTML = results.map(doc => {
+        const p = doc.raw || doc;
+        const placeName = p.name || 'مكان بالدليل';
+        const catName = p.categoryName || doc.category || 'نشاط تجاري';
+        const fullAddress = p.address || p.area || 'مدينة المنزلة';
+        const phone = p.phone || '';
+        const whatsapp = p.whatsapp || p.phone || '';
+        const placeSlug = p.slug || p.id || '';
+        const matchedReason = doc.matchedReason || '';
+
+        return `
+          <div class="mvm-result-card animate-fade-in" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                <h4 style="margin:0;font-size:15px;font-weight:800;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  ${escapeHtml(placeName)}
+                </h4>
+                ${p.isVerified ? '<span style="color:#0284C7;font-size:13px;font-weight:800" title="موثق">✓</span>' : ''}
+              </div>
+              <div style="font-size:12px;color:var(--primary);font-weight:700;margin-bottom:2px">
+                ${matchedReason ? `<span style="background:rgba(2,132,199,0.1);color:#0284C7;padding:1px 6px;border-radius:4px;font-size:11px;margin-left:4px">${escapeHtml(matchedReason)}</span>` : ''}
+                ${escapeHtml(catName)}
+              </div>
+              <div style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                📍 ${escapeHtml(fullAddress)}
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              ${phone ? `
+                <a href="tel:${escapeAttr(phone)}" class="btn btn-sm btn-primary" style="padding:6px 10px;font-size:12px;border-radius:8px;text-decoration:none" title="اتصال">
+                  📞
+                </a>
+              ` : ''}
+              ${whatsapp ? `
+                <a href="${buildContextualWhatsAppLink(whatsapp, { source: 'voice_assistant', placeName, placeSlug })}" target="_blank" rel="noopener" class="btn btn-sm btn-whatsapp" style="padding:6px 10px;font-size:12px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:4px" title="محادثة واتساب"><img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon-sm" /></a>
+              ` : ''}
+              <a href="/place.html?slug=${escapeAttr(placeSlug)}" class="btn btn-sm btn-outline" style="padding:6px 10px;font-size:12px;border-radius:8px;text-decoration:none" title="عرض التفاصيل">
+                👁️
+              </a>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // If final speech, trigger natural smart audio synthesis
+      if (!isInterim && results.length > 0) {
+        speakAssistantVoiceResponse(results[0], results.length, query);
+      }
+
+    } catch (err) {
+      console.error('[VoiceSearch] Instant Search Error:', err);
+    }
+  }
+
+  function speakEmergencyNumber(item){
+  if(typeof window==='undefined'||!('speechSynthesis' in window))return;
+  try{
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(`رقم ${item.names[0]} هو ${item.number}`);
+    u.lang='ar-EG';u.rate=.95;u.pitch=1;
+    window.speechSynthesis.speak(u);
+  }catch(_){}
+}
+function speakAssistantVoiceResponse(topResult, totalCount, query) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const pName = topResult.name || 'المكان';
+      const text = totalCount === 1 
+        ? `يُوجد مكان واحد بدليل المَنْزَلَةَ والمطرية الرقمي، وهو ${pName}` 
+        : `يُوجد ${totalCount} أماكن بدليل المَنْزَلَةَ والمطرية الرقمي، أول نتيجة هي ${pName}`;
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ar-EG';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    } catch (_) {}
+  }
 }
 
 export function closeManzalaVoiceAssistantModal() {
-  try { _modalVoiceInstance?.stop(); } catch (_) {}
-  _modalVoiceInstance = null;
-  _activeVoiceModal?.remove();
+  if (_modalVoiceInstance) {
+    try {
+      _modalVoiceInstance.stop();
+    } catch (_) {}
+    _modalVoiceInstance = null;
+  }
+  const modals = document.querySelectorAll('.manzala-voice-modal-backdrop, #manzala-voice-modal-backdrop');
+  modals.forEach(m => {
+    m.classList.remove('visible');
+    setTimeout(() => {
+      m.remove();
+    }, 200);
+  });
   _activeVoiceModal = null;
+  try { window.speechSynthesis?.cancel(); } catch (_) {}
 }
 
 function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = String(str ?? '');
-  return div.innerHTML;
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escapeAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+export function bindGlobalVoiceAssistantFab() {
+  if (typeof document === 'undefined') return;
+
+  // 1. Direct Bind to all known floating FABs & Nav buttons
+  const selectors = [
+    '#global-voice-assistant-fab',
+    '.bottom-nav__voice-assistant-fab',
+    '.fab-voice-assistant',
+    '#btn-global-voice-assistant',
+    '.global-voice-trigger',
+    '.btn-voice-search',
+    '[data-action="voice-search"]',
+    '[data-voice-trigger]'
+  ];
+
+  const handleTrigger = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openManzalaVoiceAssistantModal();
+  };
+
+  selectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(btn => {
+      btn.removeEventListener('click', handleTrigger);
+      btn.addEventListener('click', handleTrigger);
+      btn.addEventListener('touchend', (e) => {
+        // Prevent ghost click on touch devices
+        e.preventDefault();
+        openManzalaVoiceAssistantModal();
+      }, { passive: false });
+    });
+  });
+
+  // 2. Global Event Delegation as foolproof safety net
+  if (!window._globalVoiceFabDelegated) {
+    window._globalVoiceFabDelegated = true;
+    document.addEventListener('click', (e) => {
+      const target = e.target.closest('#global-voice-assistant-fab, .bottom-nav__voice-assistant-fab, .fab-voice-assistant, #btn-global-voice-assistant, .global-voice-trigger, [data-voice-trigger]');
+      if (target) {
+        e.preventDefault();
+        e.stopPropagation();
+        openManzalaVoiceAssistantModal();
+      }
+    }, { capture: true });
+  }
+}
+
+function formatVoiceWhatsApp(phone) {
+  if (!phone) return '';
+  let cleaned = String(phone).replace(/\D/g, '');
+  if (cleaned.startsWith('201') && cleaned.length === 12) return cleaned;
+  if (cleaned.startsWith('00201') && cleaned.length === 14) return cleaned.slice(2);
+  if (cleaned.startsWith('01') && cleaned.length === 11) return '2' + cleaned;
+  if (cleaned.startsWith('1') && cleaned.length === 10) return '20' + cleaned;
+  if (cleaned.startsWith('21') && cleaned.length === 11) return '20' + cleaned.slice(1);
+  return cleaned.startsWith('0') ? '2' + cleaned : cleaned;
 }
