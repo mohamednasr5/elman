@@ -17,6 +17,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Validate English frontend
+        run: |
+          node scripts/validate-english-frontend.mjs
+          node --check generate-english-pages.mjs
+          node --check src/js/core/english-pages.js
+          node --check src/js/core/english-data.js
+          node --check src/js/core/english-audit.js
+          node --check src/js/ui/components/en/PlaceCardEn.js
+          node --check src/js/ui/pages/en/city-en.js
+          node --check src/js/ui/pages/en/place-en-v2.js
       - name: Generate dedicated English pages
         run: node generate-english-pages.mjs
       - name: Commit generated English pages
