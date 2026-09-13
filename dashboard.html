@@ -8,8 +8,6 @@
   <meta name="keywords" content="دليل المنزلة والمطرية الرقمي, المنزلة, المطرية دقهلية, العصافرة, الجمالية, ميت سلسيل, البصراط, العزيزة, الأحمدية, الروضة, الحوتة, النسايمة, ميت خضير, ميت شريف, محلات, أطباء, حرفيين, خدمات الدقهلية"/>
   <meta name="robots" content="index,follow"/>
   <link rel="canonical" href="https://dalilmanzala.com/dashboard.html"/>
-  
-  <!-- Open Graph / WhatsApp / Facebook -->
   <meta property="og:type" content="website"/>
   <meta property="og:url" content="https://dalilmanzala.com/dashboard.html"/>
   <meta property="og:site_name" content="دليل المنزلة والمطرية الرقمي"/>
@@ -22,15 +20,11 @@
   <meta property="og:image:height" content="630"/>
   <meta property="og:image:alt" content="لوحة التحكم | دليل المنزلة والمطرية الرقمي"/>
   <meta property="og:locale" content="ar_EG"/>
-
-  <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image"/>
   <meta name="twitter:url" content="https://dalilmanzala.com/dashboard.html"/>
   <meta name="twitter:title" content="لوحة التحكم | دليل المنزلة والمطرية الرقمي"/>
   <meta name="twitter:description" content="إدارة أماكنك وعروضك ومنتجاتك في دليل المنزلة والمطرية الرقمي"/>
   <meta name="twitter:image" content="https://dalilmanzala.com/assets/images/og-whatsapp.jpg"/>
-
-  <!-- Image source for older scrapers -->
   <link rel="image_src" href="https://dalilmanzala.com/assets/images/og-whatsapp.jpg"/>
   <meta name="theme-color" content="#1B4F72"/>
   <meta name="mobile-web-app-capable" content="yes"/>
@@ -53,45 +47,44 @@
 </head>
 <body class="dashboard-page">
 <div id="app">
-
-  <!-- Header injected by JS -->
   <div id="header-slot"></div>
-
-  <!-- Page Content -->
   <main class="page-main" id="page-container" role="main">
     <div style="display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:1rem">
       <div class="spinner spinner-lg"></div>
       <p style="color:var(--text-muted);font-size:.9rem">جاري التحميل...</p>
     </div>
   </main>
-
-  <!-- Bottom Nav injected by JS -->
   <div id="nav-slot"></div>
-
-  <!-- PWA Banner injected by JS -->
   <div id="pwa-slot"></div>
-
-  <!-- Footer injected by JS -->
   <div id="footer-slot"></div>
-
 </div>
-
-<!-- Firebase SDK -->
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script>
-  // Safe ServerValue fallback for legacy scripts
   window.ServerValue = window.ServerValue || { TIMESTAMP: Date.now() };
-</script>
 
-<!-- Strict category-aware AI description guard. Must load before the page module. -->
+  // The dashboard historically referenced .png defaults, while the actual
+  // repository assets are JPEG files. Keep a resilient runtime fallback for
+  // dynamically-rendered dashboard previews and old cached markup.
+  document.addEventListener('error', function (event) {
+    const img = event.target;
+    if (!(img instanceof HTMLImageElement) || img.dataset.defaultFallbackApplied === '1') return;
+    const src = img.getAttribute('src') || '';
+    let fallback = '';
+    if (/assets\/images\/default-logo\.png(?:[?#].*)?$/i.test(src)) {
+      fallback = src.replace(/default-logo\.png/i, 'default-logo.jpg');
+    } else if (/assets\/images\/default-cover\.png(?:[?#].*)?$/i.test(src)) {
+      fallback = src.replace(/default-cover\.png/i, 'default-cover.jpg');
+    }
+    if (!fallback) return;
+    img.dataset.defaultFallbackApplied = '1';
+    img.src = fallback;
+  }, true);
+</script>
 <script src="./src/js/services/description-ai-guard.js?v=ebc49583"></script>
 <script src="./src/js/services/description-ai-response-guard.js?v=ebc49583"></script>
-
-<!-- Page Module -->
 <script type="module">
-
   import { initPage } from './src/js/core/page-shell.js?v=ebc49583_social_v1';
   import { initDashboardHeaderAuthNotifications } from './src/js/core/dashboard-header-fix.js?v=20260913_auth_notif_v1';
   import { renderDashboard } from './src/js/ui/pages/dashboard.js?v=ebc49583_v2';
