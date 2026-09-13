@@ -529,6 +529,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/poultry"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/category/poultry-hatching</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/poultry-hatching"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/poultry-hatching"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/poultry-hatching"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/category/restaurants-and-cafes</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
