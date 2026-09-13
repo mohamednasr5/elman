@@ -21,7 +21,7 @@ for(const token of ['renderEnglishPlaceCard','projectPlaceToEnglish','English'])
 const auth=fs.readFileSync(path.join(root,'src/js/core/auth.js'),'utf8');
 for(const token of ['ensureFirebaseReady','export async function initAuth','export async function signInWithGoogle']) if(!auth.includes(token)){console.error(`Authentication pipeline is missing ${token}`);process.exit(1);}
 const image=fs.readFileSync(path.join(root,'src/js/services/image-cdn.service.js'),'utf8');
-for(const token of ['COVER','w',"'2200'", "'94'"]) if(!image.includes(token)){console.error(`High-resolution image pipeline is missing ${token}`);process.exit(1);}
+for(const token of ['COVER','w',"'2200'", "'95'"]) if(!image.includes(token)){console.error(`High-resolution image pipeline is missing ${token}`);process.exit(1);}
 const enAuth=fs.readFileSync(path.join(root,'src/js/core/english-auth-header.js'),'utf8');
 for(const token of ['Sign In','Dashboard','My Places','Sign Out']) if(!enAuth.includes(token)){console.error(`English authenticated header is missing ${token}`);process.exit(1);}
 const enPages=fs.readdirSync(path.join(root,'src/js/ui/pages/en')).filter(f=>f.endsWith('.js'));
