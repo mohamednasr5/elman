@@ -5,6 +5,7 @@
 
 import { FCM_VAPID_KEY, WORKER_URL } from '../core/firebase.js';
 import { getCurrentUser } from '../core/auth.js';
+import { on } from '../core/events.js';
 import { showLiveNotificationPopup, updateAllNotificationBadges, playNotificationSound } from './notification.service.js';
 import { toast } from '../ui/components/Toast.js';
 
@@ -12,6 +13,7 @@ let _fcmInitialized = false;
 let _lastRegisteredUserId = null;
 let _messaging = null;
 let _registration = null;
+let _authListenerBound = false;
 
 function resolveUser(user = null) {
   return (user && typeof user === 'object') ? user : (getCurrentUser?.() || null);
@@ -31,6 +33,10 @@ export async function initFcmMessaging(user = null) {
   const currentUser = resolveUser(user);
   try {
     _registration = _registration || await navigator.serviceWorker.ready;
+    if (!_authListenerBound) {
+      _authListenerBound = true;
+      on('auth:signedIn', (signedInUser) => { initFcmMessaging(signedInUser).catch(() => {}); });
+    }
     if (typeof firebase !== 'undefined' && firebase.messaging) {
       try {
         _messaging = _messaging || firebase.messaging();
@@ -75,9 +81,7 @@ export async function requestNotificationPermissionAndRegisterToken(user = null)
         _messaging = _messaging || firebase.messaging();
         await registerDeviceFcmToken(_messaging, _registration, currentUser);
         _lastRegisteredUserId = currentUser?.uid || 'anonymous';
-      } catch (err) {
-        console.debug('[FCM] Token registration handled:', err?.message || err);
-      }
+      } catch (err) { console.debug('[FCM] Token registration handled:', err?.message || err); }
     }
     try {
       await _registration.showNotification('🎉 تم تفعيل إشعارات المنزلة والمطرية بنجاح!', {
@@ -145,9 +149,7 @@ export async function testPhoneSystemNotification(user = null) {
   }
   try {
     _registration = _registration || await navigator.serviceWorker.ready;
-    await _registration.showNotification('🔔 تجربة إشعار نظام Android', {
-      body: 'تهانينا! نظام الإشعارات يعمل بكفاءة على هاتفك وفي شريط الإشعارات.', icon: './icons/icon-192x192.png', badge: './icons/icon-96x96.png', dir: 'rtl', lang: 'ar', vibrate: [200, 100, 200], tag: 'test-push-' + Date.now(), renotify: true, data: { url: 'dashboard.html?section=notifications' }
-    });
+    await _registration.showNotification('🔔 تجربة إشعار نظام Android', { body: 'تهانينا! نظام الإشعارات يعمل بكفاءة على هاتفك وفي شريط الإشعارات.', icon: './icons/icon-192x192.png', badge: './icons/icon-96x96.png', dir: 'rtl', lang: 'ar', vibrate: [200, 100, 200], tag: 'test-push-' + Date.now(), renotify: true, data: { url: 'dashboard.html?section=notifications' } });
     playNotificationSound(); toast.success('تم إرسال إشعار تجريبي لشريط تنبيهات هاتفك 📲'); return true;
   } catch (err) { toast.error('حدث خطأ أثناء إظهار الإشعار: ' + err.message); return false; }
 }
