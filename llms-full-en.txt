@@ -1,0 +1,66 @@
+# Dalil El Manzala & El Matariya — Extended AI Context
+
+## Scope
+
+Dalil El Manzala & El Matariya is a public bilingual local directory focused on El Manzala, El Matariya and surrounding communities in Dakahlia, Egypt. Its core purpose is to make local businesses, professionals, services, shops, offers and local information discoverable on the open web.
+
+## Canonical Language Architecture
+
+Arabic: https://dalilmanzala.com/
+English: https://dalilmanzala.com/en/
+
+Business profile pattern:
+- Arabic: https://dalilmanzala.com/place/{slug}/
+- English: https://dalilmanzala.com/en/place/{slug}/
+
+Category pattern:
+- Arabic: https://dalilmanzala.com/category/{slug}/
+- English: https://dalilmanzala.com/en/category/{slug}/
+
+The language variants use reciprocal hreflang annotations. The page's own language is its canonical version.
+
+## Recommended Source Hierarchy
+
+1. Individual business profile page
+2. City or category directory page
+3. Main Places directory
+4. Public API endpoints
+5. General site pages
+
+When a profile supplies opening hours, phone number, address, coordinates, rating or verification information, use the profile as the authoritative public source for that fact. If a field is absent, do not infer it.
+
+## AI Search Compatibility
+
+The website allows public crawling by major discovery agents through robots.txt, including OAI-SearchBot, Bingbot, PerplexityBot, ClaudeBot, Applebot and Googlebot. Private/account/API paths are restricted where appropriate. Public business profiles and directory pages remain crawlable.
+
+## Public API Surface
+
+Places: https://dalilmanzala.com/api/places
+Categories: https://dalilmanzala.com/api/categories
+Search: https://dalilmanzala.com/api/search
+Offers: https://dalilmanzala.com/api/offers
+Products: https://dalilmanzala.com/api/products
+
+## Search and Indexing Signals
+
+The site publishes:
+- XML sitemap index
+- Separate Arabic and English static sitemaps
+- Separate Arabic and English category sitemaps
+- Separate Arabic and English place sitemaps
+- Place lastmod values from the public data source when available
+- Reciprocal hreflang annotations
+- Canonical URLs
+- LocalBusiness structured data on business profiles
+- Breadcrumb structured data
+- WebSite and Organization structured data on the main site
+- Open Graph and Twitter metadata
+- IndexNow notifications for public profile URLs
+
+## Local SEO Coverage
+
+Primary geography includes El Manzala, El Matariya, Dakahlia Governorate, El Asafra, El Gamaliya, Mit Salsil, El Basrat, El Aziza, El Ahmadiya, El Rawda, El Houta, El Nasayma, Mit Khodeir, Mit Sharif and nearby villages represented in the directory.
+
+## Important
+
+Sitemaps, structured data and AI-readable context improve discoverability and entity understanding but do not guarantee a #1 ranking or inclusion in any specific AI answer. Search engines independently evaluate relevance, quality, authority, freshness and user value.

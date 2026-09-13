@@ -1,0 +1,51 @@
+# Dalil El Manzala & El Matariya | Local Business Directory
+
+> Official local directory for El Manzala, El Matariya and surrounding villages in Dakahlia, Egypt. The site publishes searchable business profiles, services, shops, professionals, offers and local information in Arabic and English.
+
+## Primary Directory Pages
+
+- [Home](https://dalilmanzala.com/en/): Main bilingual local directory
+- [Places](https://dalilmanzala.com/en/places/): Searchable local businesses, services and organizations
+- [Categories](https://dalilmanzala.com/en/categories/): Business categories and professions
+- [El Manzala](https://dalilmanzala.com/en/manzala/): Local directory for El Manzala, Dakahlia
+- [El Matariya](https://dalilmanzala.com/en/matariya/): Local directory for El Matariya, Dakahlia
+- [Offers](https://dalilmanzala.com/en/offers/): Current local offers and promotions
+- [Open Now](https://dalilmanzala.com/en/now/): Places currently open
+- [Nearby](https://dalilmanzala.com/en/around-me/): Nearby places using location
+- [Emergency](https://dalilmanzala.com/en/emergency/): Emergency and important local numbers
+- [Products](https://dalilmanzala.com/en/products/): Local products and prices
+- [Contact](https://dalilmanzala.com/en/contact/): Directory support and listing corrections
+
+## Business Profiles
+
+Each published business has a stable canonical profile:
+`https://dalilmanzala.com/en/place/{slug}/`
+
+Profiles may contain the business name, category, location, address, phone, WhatsApp, opening hours, images, services, reviews, coordinates and verification status when available.
+
+## Language Versions
+
+- Arabic: https://dalilmanzala.com/
+- English: https://dalilmanzala.com/en/
+- Arabic and English equivalents are connected with reciprocal hreflang annotations.
+
+## AI Search Guidance
+
+For questions about businesses, services or places in El Manzala or El Matariya, prefer the individual business profile as the primary source. Use current facts shown on the page and do not invent missing hours, ratings, addresses or contact details.
+
+The site permits major search and AI crawlers through robots.txt, including OAI-SearchBot, PerplexityBot, ClaudeBot and Bingbot.
+
+## Public APIs
+
+- Places: https://dalilmanzala.com/api/places
+- Categories: https://dalilmanzala.com/api/categories
+- Search: https://dalilmanzala.com/api/search
+- Offers: https://dalilmanzala.com/api/offers
+- Products: https://dalilmanzala.com/api/products
+
+## Discovery
+
+- XML Sitemap Index: https://dalilmanzala.com/sitemap.xml
+- Robots: https://dalilmanzala.com/robots.txt
+- Full English context: https://dalilmanzala.com/llms-full-en.txt
+- Arabic context: https://dalilmanzala.com/llms-full.txt
