@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: generate-english-static-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   generate:
     runs-on: ubuntu-latest
@@ -12,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -24,6 +27,7 @@ jobs:
           node --check src/js/core/english-pages.js
           node --check src/js/core/english-data.js
           node --check src/js/core/english-audit.js
+          node --check src/js/core/pwa-install.js
           node --check src/js/ui/components/en/PlaceCardEn.js
           node --check src/js/ui/pages/en/city-en.js
           node --check src/js/ui/pages/en/place-en-v2.js
@@ -35,4 +39,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add en
-          if git diff --cached --quiet; then echo "No English page changes to commit."; else git commit -m "Generate English static page entries" && git push; fi
+          if git diff --cached --quiet; then
+            echo "No English page changes to commit."
+            exit 0
+          fi
+          git commit -m "Generate English static page entries"
+          git pull --rebase origin main
+          git push origin HEAD:main
