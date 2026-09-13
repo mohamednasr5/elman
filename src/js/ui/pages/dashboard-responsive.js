@@ -10,6 +10,64 @@ import { getCurrentUser } from '../../core/auth.js';
 
   const isMobile = () => window.matchMedia('(max-width: 1023px)').matches;
 
+  function normalizeEgyptianDigits(value) {
+    return String(value || '')
+      .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+      .replace(/\D/g, '')
+      .slice(0, 11);
+  }
+
+  function setupDashboardPhoneInputs() {
+    const apply = (input) => {
+      if (!(input instanceof HTMLInputElement) || input.type !== 'tel') return;
+      if (input.dataset.phoneLimitReady === '1') return;
+      input.dataset.phoneLimitReady = '1';
+      input.setAttribute('maxlength', '11');
+      input.setAttribute('minlength', '0');
+      input.setAttribute('inputmode', 'numeric');
+      input.setAttribute('pattern', '[0-9٠-٩]{0,11}');
+      input.setAttribute('autocomplete', 'tel');
+
+      // Avoid a realistic-looking example that users may mistake for a real number.
+      if (input.id === 'bm-phone' || input.id === 'bm-whatsapp') {
+        input.placeholder = '01xxxxxxxxx (11 رقمًا كحد أقصى)';
+      }
+
+      input.addEventListener('input', () => {
+        const start = input.selectionStart;
+        const raw = input.value;
+        const clean = normalizeEgyptianDigits(raw);
+        if (clean !== raw) {
+          input.value = clean;
+          const next = Math.min(clean.length, Number.isFinite(start) ? start : clean.length);
+          try { input.setSelectionRange(next, next); } catch (_) {}
+        }
+      });
+
+      input.addEventListener('paste', () => {
+        requestAnimationFrame(() => {
+          input.value = normalizeEgyptianDigits(input.value);
+        });
+      });
+    };
+
+    document.querySelectorAll('input[type="tel"]').forEach(apply);
+
+    if (document.body.dataset.dashboardPhoneObserver !== '1') {
+      document.body.dataset.dashboardPhoneObserver = '1';
+      const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+          mutation.addedNodes.forEach(node => {
+            if (!(node instanceof Element)) return;
+            if (node.matches?.('input[type="tel"]')) apply(node);
+            node.querySelectorAll?.('input[type="tel"]').forEach(apply);
+          });
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  }
+
   function buildMobileDashboardNav() {
     if (document.getElementById('dashboard-mobile-drawer')) return;
     const sidebarNav = document.getElementById('dashboard-sidebar-nav');
@@ -110,6 +168,7 @@ import { getCurrentUser } from '../../core/auth.js';
   }
 
   function init() {
+    setupDashboardPhoneInputs();
     buildMobileDashboardNav();
     const user = getCurrentUser?.() || null;
     initFcmMessaging(user).catch(() => {});
