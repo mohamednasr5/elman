@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -15,4 +15,5 @@ import {initPage} from './src/js/core/page-shell.js?v=ebc49583';
 import {renderQuranSurah} from './src/js/ui/pages/islamic-hub.js?v=ebc49583';
 await initPage('quran-surah.html'); await renderQuranSurah(document.getElementById('page-container'));
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
-</script></body></html>
+</script><script type="module" src="/src/js/core/pwa-install.js?v=20260913"></script>
+</body></html>

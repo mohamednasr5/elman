@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -135,4 +135,5 @@ render();
 document.getElementById('e-search').addEventListener('input',()=>{render();});document.getElementById('e-reset').addEventListener('click',()=>{document.getElementById('e-search').value='';render()});
 document.querySelectorAll('.e-tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.e-tab').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-selected','false')});btn.classList.add('active');btn.setAttribute('aria-selected','true');active=btn.dataset.group;render()}));
 </script>
+<script type="module" src="/src/js/core/pwa-install.js?v=20260913"></script>
 </body></html>
