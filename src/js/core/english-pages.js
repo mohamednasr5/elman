@@ -1,6 +1,7 @@
 ﻿/** English Pages Controller — isolated presentation layer */
 import { initPage } from './page-shell.js?v=ebc49583';
 import { getCurrentUser, waitForAuth } from './auth.js';
+import { installEnglishAuthHeader } from './english-auth-header.js';
 import { installEnglishAudit } from './english-audit.js';
 import { renderEnglishPlaceCard } from '../ui/components/en/PlaceCardEn.js';
 
@@ -58,4 +59,4 @@ async function render(container){
   if(p==='dashboard'){const {renderEnglishDashboard}=await import('../ui/pages/en/dashboard-en.js');return renderEnglishDashboard(container,{user,section:q.get('section')||'overview'});}
   const {renderEnglishHomePage}=await import('../ui/pages/en/home-en.js');return renderEnglishHomePage(container,{user});
 }
-(async()=>{try{document.documentElement.lang='en';document.documentElement.dir='ltr';loadEnglishStyles();await initPage(`${page()||'index'}.html`);const container=document.getElementById('page-container');await render(container);installEnglishCardBridge(container);installEnglishAudit();}catch(error){console.error('[English Pages]',error);const c=document.getElementById('page-container');if(c)c.innerHTML='<section class="en-container en-section"><div class="en-empty"><div class="en-empty__icon">⚠️</div><h1>Something went wrong</h1><p class="en-muted">Please reload the page or return to the homepage.</p><a class="en-btn en-btn--primary" href="/en/">Return to Homepage</a></div></section>';}})();
+(async()=>{try{document.documentElement.lang='en';document.documentElement.dir='ltr';loadEnglishStyles();await initPage(`${page()||'index'}.html`);const container=document.getElementById('page-container');await installEnglishAuthHeader();await render(container);installEnglishCardBridge(container);installEnglishAudit();}catch(error){console.error('[English Pages]',error);const c=document.getElementById('page-container');if(c)c.innerHTML='<section class="en-container en-section"><div class="en-empty"><div class="en-empty__icon">⚠️</div><h1>Something went wrong</h1><p class="en-muted">Please reload the page or return to the homepage.</p><a class="en-btn en-btn--primary" href="/en/">Return to Homepage</a></div></section>';}})();
