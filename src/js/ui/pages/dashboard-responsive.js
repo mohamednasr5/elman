@@ -12,7 +12,8 @@ import { getCurrentUser } from '../../core/auth.js';
 
   function normalizeEgyptianDigits(value) {
     return String(value || '')
-      .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+      .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 1632))
+      .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 1776))
       .replace(/\D/g, '')
       .slice(0, 11);
   }
@@ -34,12 +35,18 @@ import { getCurrentUser } from '../../core/auth.js';
       }
 
       input.addEventListener('input', () => {
-        const start = input.selectionStart;
+        const start = input.selectionStart ?? input.value.length;
         const raw = input.value;
+        const textBefore = raw.slice(0, start);
+        const digitsBefore = textBefore
+          .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 1632))
+          .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 1776))
+          .replace(/\D/g, '').length;
+
         const clean = normalizeEgyptianDigits(raw);
         if (clean !== raw) {
           input.value = clean;
-          const next = Math.min(clean.length, Number.isFinite(start) ? start : clean.length);
+          const next = Math.min(clean.length, digitsBefore);
           try { input.setSelectionRange(next, next); } catch (_) {}
         }
       });

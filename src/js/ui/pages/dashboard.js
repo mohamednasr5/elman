@@ -40,7 +40,7 @@ import { toast } from '../components/Toast.js';
 import { isAdmin } from '../../core/auth.js';
 import { formatPrice, arabicMatch, normalizeArabic, stripAl, arabicScore, matchArabicCategoryTokens } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
-import { normalizePhoneNumber, extractPlacePhoneNumbers } from '../../utils/phone.js';
+import { normalizePhoneNumber, extractPlacePhoneNumbers, toAsciiDigits } from '../../utils/phone.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { formatDate } from '../../utils/date.js';
@@ -831,8 +831,8 @@ function openBranchModal({ place, branchIndex = -1, user, onSave = null }) {
           }
           const area = document.getElementById('bm-area')?.value.trim() || '';
           const address = document.getElementById('bm-address')?.value.trim() || '';
-          const phone = document.getElementById('bm-phone')?.value.trim() || '';
-          const whatsapp = document.getElementById('bm-whatsapp')?.value.trim() || '';
+          const phone = normalizePhoneNumber(document.getElementById('bm-phone')?.value.trim() || '');
+          const whatsapp = normalizePhoneNumber(document.getElementById('bm-whatsapp')?.value.trim() || '');
           const sameHours = document.getElementById('bm-same-hours')?.checked ?? true;
           const is24Checked = document.getElementById('bm-hours-24')?.checked ?? false;
           const openT = document.getElementById('bm-time-open')?.value || '09:00';
@@ -2991,19 +2991,36 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     document.getElementById('p-area-search-input')?.addEventListener('input', queueDedupeCheck);
   }
 
-  // Restrict phone and WhatsApp inputs to digits only and max 11 digits
+  function formatPhoneInput(input, maxLen = 11) {
+    if (!input) return;
+    const raw = input.value;
+    if (!raw) return;
+    const start = input.selectionStart ?? raw.length;
+    let converted = toAsciiDigits(raw);
+    const textBefore = raw.slice(0, start);
+    const digitsBefore = toAsciiDigits(textBefore).replace(/\D/g, '').length;
+
+    let clean = converted.replace(/\D/g, '');
+    if (maxLen && clean.length > maxLen) clean = clean.slice(0, maxLen);
+    if (raw !== clean) {
+      input.value = clean;
+      const newCursor = Math.min(clean.length, digitsBefore);
+      try { input.setSelectionRange(newCursor, newCursor); } catch (_) {}
+    }
+  }
+
+  // Restrict phone and WhatsApp inputs to digits only and max 11 digits with instant Arabic conversion
   ['p-phone', 'p-whatsapp'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      el.addEventListener('input', (e) => {
-        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 11);
-      });
+      el.addEventListener('input', () => formatPhoneInput(el, 11));
+      el.addEventListener('paste', () => requestAnimationFrame(() => formatPhoneInput(el, 11)));
     }
   });
   // Event delegation for dynamically added branch phone/whatsapp fields
   document.getElementById('place-form')?.addEventListener('input', (e) => {
     if (e.target && (e.target.classList.contains('b-phone') || e.target.classList.contains('b-whatsapp') || e.target.id === 'bm-phone' || e.target.id === 'bm-whatsapp')) {
-      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 11);
+      formatPhoneInput(e.target, 11);
     }
   });
 
@@ -3097,8 +3114,8 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         medicalSpecialty: document.getElementById('p-medical-specialty')?.value.trim() || null,
         deliveryType: document.getElementById('p-delivery-type')?.value || null,
         description: document.getElementById('p-desc').value,
-        phone: document.getElementById('p-phone').value,
-        whatsapp: document.getElementById('p-whatsapp').value,
+        phone: normalizePhoneNumber(document.getElementById('p-phone')?.value || ''),
+        whatsapp: normalizePhoneNumber(document.getElementById('p-whatsapp')?.value || ''),
         area: (document.getElementById('p-area')?.value === 'other' 
           ? (document.getElementById('p-custom-area')?.value.trim() || 'المنزلة') 
           : (document.getElementById('p-area')?.value || 'المنزلة')),
@@ -3131,8 +3148,8 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             const bName = row.querySelector('.b-name')?.value.trim() || '';
             const bAddress = row.querySelector('.b-address')?.value.trim() || '';
             const bArea = row.querySelector('.b-area')?.value.trim() || '';
-            const bPhone = row.querySelector('.b-phone')?.value.trim() || '';
-            const bWhatsapp = row.querySelector('.b-whatsapp')?.value.trim() || '';
+            const bPhone = normalizePhoneNumber(row.querySelector('.b-phone')?.value.trim() || '');
+            const bWhatsapp = normalizePhoneNumber(row.querySelector('.b-whatsapp')?.value.trim() || '');
             const bId = row.getAttribute('data-branch-id') || '';
             const isSameHours = row.querySelector('.b-same-hours-cb')?.checked ?? true;
             const is24Checked = row.querySelector('.b-hours-24-cb')?.checked ?? false;

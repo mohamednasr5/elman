@@ -333,8 +333,56 @@ function _bindMoreMenu(){
     });
   }
 
-  window.openMobileMoreMenu = open;
-  window.closeMobileMoreMenu = close;
+function _bindGlobalPhoneAutoFormat() {
+  if (window.__globalPhoneAutoFormatBound) return;
+  window.__globalPhoneAutoFormatBound = true;
+
+  const isPhoneInput = (el) => {
+    if (!el || !(el instanceof HTMLInputElement)) return false;
+    if (el.type === 'tel') return true;
+    const attr = `${el.id || ''} ${el.name || ''} ${el.className || ''}`.toLowerCase();
+    return /\b(phone|whatsapp|mobile|telephon|hataf)\b/.test(attr) ||
+      el.id === 'p-phone' || el.id === 'p-whatsapp' ||
+      el.id === 'bm-phone' || el.id === 'bm-whatsapp' ||
+      el.id === 'cf-phone' || el.id === 'fv-phone' || el.id === 'fv-whatsapp' ||
+      el.id === 'aep-phone' || el.id === 'aep-whatsapp' ||
+      el.id === 'apt-phone' || el.id === 'req-user-phone' || el.id === 'live-phone' ||
+      el.id === 'suggested-phone-input' ||
+      el.classList.contains('b-phone') || el.classList.contains('b-whatsapp');
+  };
+
+  const handleInput = (e) => {
+    const el = e.target;
+    if (!isPhoneInput(el)) return;
+    const raw = el.value;
+    if (!raw) return;
+
+    if (!/[\u0660-\u0669\u06F0-\u06F9]/.test(raw)) return;
+
+    const start = el.selectionStart ?? raw.length;
+    const textBefore = raw.slice(0, start);
+    const convertedBefore = textBefore
+      .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 1632))
+      .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 1776));
+
+    const convertedFull = raw
+      .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 1632))
+      .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 1776));
+
+    el.value = convertedFull;
+    const newPos = Math.min(convertedFull.length, convertedBefore.length);
+    try {
+      el.setSelectionRange(newPos, newPos);
+    } catch (_) {}
+  };
+
+  document.addEventListener('input', handleInput, true);
+  document.addEventListener('paste', (e) => {
+    const el = e.target;
+    if (isPhoneInput(el)) {
+      requestAnimationFrame(() => handleInput({ target: el }));
+    }
+  }, true);
 }
 
 export async function initPage(activeFile=''){
@@ -348,6 +396,7 @@ export async function initPage(activeFile=''){
   _setupHeaderSearch();
   _bindMoreMenu();
   _bindHeaderUserEvents();
+  _bindGlobalPhoneAutoFormat();
   try{bindGlobalVoiceAssistantFab()}catch(_){}
   try{
     initAuth();

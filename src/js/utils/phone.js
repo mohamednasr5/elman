@@ -5,16 +5,23 @@
  */
 
 /**
+ * Converts Eastern Arabic and Persian/Urdu digits to standard ASCII (0-9)
+ */
+export function toAsciiDigits(str = '') {
+  return String(str || '')
+    .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 1632))
+    .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 1776));
+}
+
+/**
  * Normalizes any phone number string:
- * - Converts Arabic/Hindi digits (٠-٩) to standard ASCII (0-9)
+ * - Converts Arabic/Hindi/Persian digits (٠-٩, ۰-۹) to standard ASCII (0-9)
  * - Removes non-digit characters (+, -, spaces, parentheses)
  * - Resolves country code (+20, 0020, 20) to standard local 0-prefixed number
  */
 export function normalizePhoneNumber(raw = '') {
   if (!raw) return '';
-  const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
-  let s = String(raw).replace(/[٠-٩]/g, d => arabicDigits.indexOf(d));
-  s = s.replace(/\D/g, '');
+  let s = toAsciiDigits(raw).replace(/\D/g, '');
 
   if (s.startsWith('0020')) s = s.slice(4);
   else if (s.startsWith('20') && (s.startsWith('201') || s.startsWith('205') || s.length >= 11)) s = s.slice(2);
@@ -38,8 +45,7 @@ export function isValidPhoneNumber(raw = '') {
   if (/^0+$/.test(norm)) return false;
 
   // Rejects single repeated digit (99999999999, 11111111111, 01111111111)
-  const rawDigits = String(raw).replace(/\D/g, '');
-  if (/^(\d)\1+$/.test(rawDigits) || /^0?(\d)\1+$/.test(rawDigits)) return false;
+  if (/^(\d)\1+$/.test(norm) || /^0?(\d)\1+$/.test(norm)) return false;
   if (/^01[0125](\d)\1{7}$/.test(norm)) return false;
 
   // Rejects common dummy sequences
