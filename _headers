@@ -16,7 +16,11 @@
   Cache-Control: public, max-age=0, must-revalidate
 /src/js/core/i18n-runtime.js
   Cache-Control: public, max-age=0, must-revalidate
-/src/css/i18n-layout.css
+/src/js/core/i18n-layout.css
+  Cache-Control: public, max-age=0, must-revalidate
+/src/css/mobile-shell-fixes.css
+  Cache-Control: public, max-age=0, must-revalidate
+/src/js/core/pwa-install.js
   Cache-Control: public, max-age=0, must-revalidate
 
 /icons/*
