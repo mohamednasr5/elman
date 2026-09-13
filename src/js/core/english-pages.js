@@ -2,6 +2,7 @@
 import { initPage } from './page-shell.js?v=ebc49583';
 import { getCurrentUser, waitForAuth } from './auth.js';
 import { installEnglishAudit } from './english-audit.js';
+import { renderEnglishPlaceCard } from '../ui/components/en/PlaceCardEn.js';
 
 const clean=p=>String(p||'/').replace(/^\/en(?:\/|$)/,'/').replace(/\/+$/,'')||'/';
 const parts=()=>clean(location.pathname).split('/').filter(Boolean);
@@ -9,6 +10,31 @@ const page=()=>parts()[0]||'';
 function loadEnglishStyles(){
   if(document.getElementById('english-design-system')) return;
   const link=document.createElement('link'); link.id='english-design-system'; link.rel='stylesheet'; link.href='/src/css/en/index.css?v=20260913'; document.head.appendChild(link);
+}
+function installEnglishCardBridge(root){
+  if(!root || root.__englishCardBridgeInstalled) return;
+  root.__englishCardBridgeInstalled=true;
+  const upgrade=()=>{
+    if(document.documentElement.lang!=='en') return;
+    root.querySelectorAll('.place-card:not([data-en-upgraded]), .fair-place-card:not([data-en-upgraded])').forEach(card=>{
+      const slug=card.getAttribute('data-place-slug')||card.getAttribute('data-slug')||'';
+      const registry=typeof window!=='undefined' ? window._placesRegistry : null;
+      const place=registry?.get(String(slug).toLowerCase().trim()) || (slug ? registry?.get(slug) : null);
+      if(!place) return;
+      const html=renderEnglishPlaceCard(place);
+      if(!html) return;
+      const wrapper=document.createElement('div');
+      wrapper.innerHTML=html.trim();
+      const replacement=wrapper.firstElementChild;
+      if(!replacement) return;
+      replacement.setAttribute('data-en-upgraded','true');
+      card.replaceWith(replacement);
+    });
+  };
+  upgrade();
+  const observer=new MutationObserver(()=>upgrade());
+  observer.observe(root,{childList:true,subtree:true});
+  root.__englishCardBridgeObserver=observer;
 }
 async function render(container){
   const p=page(), q=new URLSearchParams(location.search), user=getCurrentUser();
@@ -32,4 +58,4 @@ async function render(container){
   if(p==='dashboard'){const {renderEnglishDashboard}=await import('../ui/pages/en/dashboard-en.js');return renderEnglishDashboard(container,{user,section:q.get('section')||'overview'});}
   const {renderEnglishHomePage}=await import('../ui/pages/en/home-en.js');return renderEnglishHomePage(container,{user});
 }
-(async()=>{try{document.documentElement.lang='en';document.documentElement.dir='ltr';loadEnglishStyles();await initPage(`${page()||'index'}.html`);await render(document.getElementById('page-container'));installEnglishAudit();}catch(error){console.error('[English Pages]',error);const c=document.getElementById('page-container');if(c)c.innerHTML='<section class="en-container en-section"><div class="en-empty"><div class="en-empty__icon">⚠️</div><h1>Something went wrong</h1><p class="en-muted">Please reload the page or return to the homepage.</p><a class="en-btn en-btn--primary" href="/en/">Return to Homepage</a></div></section>';}})();
+(async()=>{try{document.documentElement.lang='en';document.documentElement.dir='ltr';loadEnglishStyles();await initPage(`${page()||'index'}.html`);const container=document.getElementById('page-container');await render(container);installEnglishCardBridge(container);installEnglishAudit();}catch(error){console.error('[English Pages]',error);const c=document.getElementById('page-container');if(c)c.innerHTML='<section class="en-container en-section"><div class="en-empty"><div class="en-empty__icon">⚠️</div><h1>Something went wrong</h1><p class="en-muted">Please reload the page or return to the homepage.</p><a class="en-btn en-btn--primary" href="/en/">Return to Homepage</a></div></section>';}})();
