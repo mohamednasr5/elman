@@ -30,8 +30,8 @@ jobs:
             echo 'No changes required.'
             exit 0
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name 'Mohamed Hammad'
+          git config user.email '23390682+mohamednasr5@users.noreply.github.com'
           git add src/js/core/page-shell.js src/js/core/page-shell.pretty.js
           git commit -m 'Apply resilient mobile More menu patch'
           git push
