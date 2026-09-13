@@ -119,7 +119,12 @@ export class VoiceSearch {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     this.recognition = new SpeechRecognition();
-    this.recognition.lang = 'ar-EG'; // Egyptian Arabic dialect
+    const isEn = typeof document !== 'undefined' && (
+      document.documentElement.lang === 'en' ||
+      (typeof location !== 'undefined' && location.pathname.startsWith('/en/')) ||
+      document.body?.dataset?.lang === 'en'
+    );
+    this.recognition.lang = options.lang || (isEn ? 'en-US' : 'ar-EG');
     this.recognition.continuous = false;
     this.recognition.interimResults = true;
     this.recognition.maxAlternatives = 3;
@@ -361,27 +366,89 @@ export async function openManzalaVoiceAssistantModal() {
     closeManzalaVoiceAssistantModal();
   }
 
+  const isEn = typeof document !== 'undefined' && (
+    document.documentElement.lang === 'en' ||
+    (typeof location !== 'undefined' && location.pathname.startsWith('/en/')) ||
+    document.body?.dataset?.lang === 'en'
+  );
+
+  document.body.classList.add('voice-modal-open');
+
+  const texts = isEn ? {
+    title: 'El Manzala & El Matariya AI Voice Assistant',
+    subtitle: 'Speak freely.. We will find places and services instantly',
+    closeAria: 'Close',
+    orbTitle: 'Tap to speak or restart listening',
+    listeningBannerTitle: "I'm listening now.. Go ahead and speak!",
+    listeningBannerDesc: 'Speak normally about any place, clinic, pharmacy, restaurant or service',
+    placeholder: 'e.g. "Nearest pharmacy", "Orthopedic clinic", "Pizza restaurant", "Plumber"...',
+    chipsLabel: '⚡ Or pick a quick category:',
+    chips: [
+      { q: 'atm', label: '🏧 ATM Machines' },
+      { q: 'pharmacy', label: '💊 Pharmacies' },
+      { q: 'doctor', label: '🩺 Doctors & Clinics' },
+      { q: 'restaurant', label: '🍕 Restaurants & Food' },
+      { q: 'cafe', label: '☕ Cafes & Drinks' },
+      { q: 'supermarket', label: '🛒 Supermarkets' },
+      { q: 'plumber', label: '🪠 Plumbers' },
+      { q: 'carpenter', label: '🪚 Carpenters' },
+      { q: 'roastery', label: '🥜 Roasteries & Snacks' },
+      { q: 'wedding hall', label: '👑 Wedding Halls' }
+    ],
+    resultsTitle: 'Matching Places:',
+    activeMic: '🟢 <strong style="color:#10B981">Microphone active..</strong> Go ahead and speak!',
+    recognized: '⚡ <strong style="color:var(--secondary,#F5A623)">Voice recognized! Fetching places...</strong>',
+    restartTip: '🎙️ Tap the <strong>M</strong> orb in the center to speak again',
+    errorTip: '⚠️ Tap the <strong>M</strong> orb to try speaking again'
+  } : {
+    title: 'مساعد دليل المنزلة والمطرية الصوتي الذكي',
+    subtitle: 'تحدث بحرية.. وسنعثر لك على المكان والخدمات فوراً',
+    closeAria: 'إغلاق',
+    orbTitle: 'اضغط للتحدث أو إعادة الاستماع',
+    listeningBannerTitle: 'أنا أستمع إليك الآن.. تفضل بالتحدث!',
+    listeningBannerDesc: 'تكلم بصوتك العادي عن أي مكان، عيادة، صيدلية، مطعم أو خدمة',
+    placeholder: 'مثال: "عاوز صيدلية قريبة", "دكتور عظام", "مطعم كريب", "سباك"...',
+    chipsLabel: '⚡ أو اختر تصنيفاً سريعاً:',
+    chips: [
+      { q: 'atm', label: '🏧 ماكينات ATM' },
+      { q: 'صيدلية', label: '💊 صيدليات' },
+      { q: 'دكتور', label: '🩺 أطباء وعيادات' },
+      { q: 'مطعم', label: '🍕 مطاعم وبيتزا' },
+      { q: 'كافيه', label: '☕ كافيهات ومشروبات' },
+      { q: 'سوبر ماركت', label: '🛒 سوبر ماركت' },
+      { q: 'سباك', label: '🪠 سباكين' },
+      { q: 'نجار', label: '🪚 نجارين' },
+      { q: 'محمصة', label: '🥜 محامص وتسالي' },
+      { q: 'قاعة افراح', label: '👑 قاعات أفراح' }
+    ],
+    resultsTitle: 'أقرب الأماكن المطابقة:',
+    activeMic: '🟢 <strong style="color:#10B981">الميكروفون نشط الآن..</strong> تفضل بالحديث وسأجيبك فوراً',
+    recognized: '⚡ <strong style="color:var(--secondary,#F5A623)">تم التعرف على صوتك! جاري جلب الأماكن فوراً...</strong>',
+    restartTip: '🎙️ اضغط على الدائرة <strong>M</strong> في المنتصف للتحدث مجدداً',
+    errorTip: '⚠️ اضغط على زر <strong>M</strong> للتحدث مرة أخرى'
+  };
+
   const modalBackdrop = document.createElement('div');
   modalBackdrop.className = 'manzala-voice-modal-backdrop';
   modalBackdrop.id = 'manzala-voice-modal-backdrop';
 
   modalBackdrop.innerHTML = `
-    <div class="manzala-voice-modal-card" role="dialog" aria-modal="true">
+    <div class="manzala-voice-modal-card" role="dialog" aria-modal="true" dir="${isEn ? 'ltr' : 'rtl'}">
       <!-- Header -->
       <div class="mvm-header">
         <div class="mvm-title-wrap">
           <span class="mvm-badge-icon">M</span>
           <div>
-            <h3 class="mvm-title">مساعد دليل المنزلة والمطرية الصوتي الذكي</h3>
-            <p class="mvm-subtitle">تحدث بحرية.. وسنعثر لك على المكان والخدمات فوراً</p>
+            <h3 class="mvm-title">${texts.title}</h3>
+            <p class="mvm-subtitle">${texts.subtitle}</p>
           </div>
         </div>
-        <button type="button" class="mvm-close-btn" id="mvm-close-btn" aria-label="إغلاق">✕</button>
+        <button type="button" class="mvm-close-btn" id="mvm-close-btn" aria-label="${texts.closeAria}">✕</button>
       </div>
 
       <!-- Assistant Central Orb & Wave Animation -->
       <div class="mvm-center-stage">
-        <div class="mvm-orb-wrapper" id="mvm-orb-btn" role="button" title="اضغط للتحدث أو إعادة الاستماع">
+        <div class="mvm-orb-wrapper" id="mvm-orb-btn" role="button" title="${texts.orbTitle}">
           <div class="mvm-orb-core">
             <span class="mvm-orb-letter">M</span>
           </div>
@@ -404,40 +471,31 @@ export async function openManzalaVoiceAssistantModal() {
         <div class="mvm-listening-banner" id="mvm-listening-banner" style="background:linear-gradient(135deg,rgba(16,185,129,0.15),rgba(2,132,199,0.15));border:1.5px solid #10B981;border-radius:16px;padding:12px 18px;margin-bottom:14px;width:100%;max-width:440px;text-align:center;box-shadow:0 4px 15px rgba(16,185,129,0.15)">
           <div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:900;color:#10B981;margin-bottom:4px">
             <span style="display:inline-block;width:10px;height:10px;background:#10B981;border-radius:50%;box-shadow:0 0 10px #10B981;animation:pulseDot 1.5s infinite"></span>
-            <span>أنا أستمع إليك الآن.. تفضل بالتحدث!</span>
+            <span>${texts.listeningBannerTitle}</span>
           </div>
           <div class="mvm-status" id="mvm-status-text" style="font-size:12.5px;color:var(--text-secondary,#475569);margin:0;font-weight:600">
-            تكلم بصوتك العادي عن أي مكان، عيادة، صيدلية، مطعم أو خدمة
+            ${texts.listeningBannerDesc}
           </div>
         </div>
 
         <!-- Live Transcription Bubble -->
         <div class="mvm-transcript-box" id="mvm-transcript-box">
-          <span class="mvm-transcript-placeholder">مثال: "عاوز صيدلية قريبة", "دكتور عظام", "مطعم كريب", "سباك"...</span>
+          <span class="mvm-transcript-placeholder">${texts.placeholder}</span>
         </div>
       </div>
 
       <!-- Quick Suggestion Chips -->
       <div class="mvm-quick-chips">
-        <span class="mvm-chips-label">⚡ أو اختر تصنيفاً سريعاً:</span>
+        <span class="mvm-chips-label">${texts.chipsLabel}</span>
         <div class="mvm-chips-scroll">
-          <button type="button" class="mvm-chip" data-query="atm">🏧 ماكينات ATM</button>
-          <button type="button" class="mvm-chip" data-query="صيدلية">💊 صيدليات</button>
-          <button type="button" class="mvm-chip" data-query="دكتور">🩺 أطباء وعيادات</button>
-          <button type="button" class="mvm-chip" data-query="مطعم">🍕 مطاعم وبيتزا</button>
-          <button type="button" class="mvm-chip" data-query="كافيه">☕ كافيهات ومشروبات</button>
-          <button type="button" class="mvm-chip" data-query="سوبر ماركت">🛒 سوبر ماركت</button>
-          <button type="button" class="mvm-chip" data-query="سباك">🪠 سباكين</button>
-          <button type="button" class="mvm-chip" data-query="نجار">🪚 نجارين</button>
-          <button type="button" class="mvm-chip" data-query="محمصة">🥜 محامص وتسالي</button>
-          <button type="button" class="mvm-chip" data-query="قاعة افراح">👑 قاعات أفراح</button>
+          ${texts.chips.map(c => `<button type="button" class="mvm-chip" data-query="${escapeAttr(c.q)}">${escapeHtml(c.label)}</button>`).join('')}
         </div>
       </div>
 
       <!-- Instant Live Results Preview Container -->
       <div class="mvm-results-container" id="mvm-results-container" style="display:none">
         <div class="mvm-results-header">
-          <span class="mvm-results-title" id="mvm-results-title">أقرب الأماكن المطابقة:</span>
+          <span class="mvm-results-title" id="mvm-results-title">${texts.resultsTitle}</span>
         </div>
         <div class="mvm-results-list" id="mvm-results-list"></div>
       </div>
@@ -467,7 +525,7 @@ export async function openManzalaVoiceAssistantModal() {
         banner.style.borderColor = '#10B981';
         banner.style.background = 'linear-gradient(135deg,rgba(16,185,129,0.15),rgba(2,132,199,0.15))';
       }
-      if (statusText) statusText.innerHTML = '🟢 <strong style="color:#10B981">الميكروفون نشط الآن..</strong> تفضل بالحديث وسأجيبك فوراً';
+      if (statusText) statusText.innerHTML = texts.activeMic;
       if (waveform) waveform.classList.add('active');
       if (orbBtn) orbBtn.classList.add('listening');
     },
@@ -485,7 +543,7 @@ export async function openManzalaVoiceAssistantModal() {
         transcriptBox.innerHTML = `<span class="mvm-final-query">🔍 "${query}"</span>`;
       }
       if (statusText) {
-        statusText.innerHTML = '⚡ <strong style="color:var(--secondary,#F5A623)">تم التعرف على صوتك! جاري جلب الأماكن فوراً...</strong>';
+        statusText.innerHTML = texts.recognized;
       }
       if (waveform) waveform.classList.remove('active');
       if (orbBtn) orbBtn.classList.remove('listening');
@@ -502,14 +560,14 @@ export async function openManzalaVoiceAssistantModal() {
         banner.style.background = 'var(--surface-2,#F8FAFC)';
       }
       if (statusText && !transcriptBox?.querySelector('.mvm-final-query')) {
-        statusText.innerHTML = '🎙️ اضغط على الدائرة <strong>M</strong> في المنتصف للتحدث مجدداً';
+        statusText.innerHTML = texts.restartTip;
       }
     },
     onError: () => {
       if (waveform) waveform.classList.remove('active');
       if (orbBtn) orbBtn.classList.remove('listening');
       if (statusText) {
-        statusText.innerHTML = '⚠️ اضغط على زر <strong>M</strong> للتحدث مرة أخرى';
+        statusText.innerHTML = texts.errorTip;
       }
     }
   });
@@ -524,7 +582,7 @@ export async function openManzalaVoiceAssistantModal() {
     if (!_modalVoiceInstance) {
       _modalVoiceInstance = new VoiceSearch({
         onStart: () => {
-          if (statusText) statusText.innerHTML = '🟢 <span style="color:var(--success,#10B981);font-weight:800">استمع إليك الآن..</span> تفضل بالحديث';
+          if (statusText) statusText.innerHTML = texts.activeMic;
           if (waveform) waveform.classList.add('active');
           if (orbBtn) orbBtn.classList.add('listening');
         },
@@ -544,14 +602,14 @@ export async function openManzalaVoiceAssistantModal() {
           if (waveform) waveform.classList.remove('active');
           if (orbBtn) orbBtn.classList.remove('listening');
           if (statusText && !transcriptBox?.querySelector('.mvm-final-query')) {
-            statusText.innerHTML = '🎙️ اضغط على حرف <strong>M</strong> في المنتصف للتحدث مجدداً';
+            statusText.innerHTML = texts.restartTip;
           }
         },
         onError: () => {
           if (waveform) waveform.classList.remove('active');
           if (orbBtn) orbBtn.classList.remove('listening');
           if (statusText) {
-            statusText.innerHTML = '⚠️ اضغط على حرف <strong>M</strong> للتحدث مرة أخرى';
+            statusText.innerHTML = texts.errorTip;
           }
         }
       });
@@ -884,6 +942,9 @@ function speakAssistantVoiceResponse(topResult, totalCount, query) {
 }
 
 export function closeManzalaVoiceAssistantModal() {
+  try {
+    document.body.classList.remove('voice-modal-open');
+  } catch (_) {}
   if (_modalVoiceInstance) {
     try {
       _modalVoiceInstance.stop();

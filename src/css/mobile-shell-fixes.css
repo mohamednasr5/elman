@@ -28,6 +28,8 @@
   #global-voice-assistant-fab, #bottom-nav-more-btn { position: relative; z-index: 10053 !important; cursor: pointer !important; }
   body.mobile-more-open { overflow: hidden !important; }
   body.mobile-more-open #mobile-action-hints,
+  body.voice-modal-open #mobile-action-hints,
+  body:has(.manzala-voice-modal-backdrop) #mobile-action-hints,
   body.mobile-more-open .pwa-banner,
   body.mobile-more-open #manzala-push-prompt-card,
   body.mobile-more-open .push-prompt-card {
@@ -374,7 +376,7 @@
   .header__dropdown--dashboard .header__dropdown-divider,
   #user-dropdown .header__dropdown-divider { margin: 6px 4px !important; }
 
-  .manzala-voice-modal-backdrop { z-index: 12000 !important; padding: 12px !important; box-sizing: border-box !important; }
+  .manzala-voice-modal-backdrop { z-index: 15000 !important; padding: 12px !important; box-sizing: border-box !important; }
   .manzala-voice-modal-card { width: min(94vw, 620px) !important; max-height: calc(100dvh - 24px) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
   .mvm-results-container { display: block; flex: 1 1 auto; min-height: 0; max-height: min(42dvh, 360px); overflow-y: auto !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .mvm-results-list { max-height: none !important; overflow: visible !important; }

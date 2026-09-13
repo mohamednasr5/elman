@@ -740,3 +740,16 @@
     margin: 0;
   }
 }
+
+/* ── LTR English Overrides ── */
+html[lang="en"] .fv-step-card__num {
+  right: auto;
+  left: 15px;
+}
+html[lang="en"] .fv-form-group label {
+  text-align: left;
+}
+html[lang="en"] .fv-faq__question {
+  text-align: left;
+}
+

@@ -1,6 +1,6 @@
 /* English Place Profile — visual counterpart of src/css/pages/place.css.
    Same component rhythm and information density; LTR typography and controls. */
-html[lang="en"] .en-place-page{--en-primary:#1769aa;--en-primary-dark:#0f4f86;--en-ink:#0f172a;--en-secondary:#334155;--en-muted:#64748b;--en-border:#e2e8f0;--en-surface:#fff;--en-surface-2:#f8fafc;--en-surface-3:#f1f5f9;direction:ltr;color:var(--en-ink);background:#f8fafc;min-height:100vh}
+html[lang="en"] .en-place-page{--en-primary:#1B4F72;--en-primary-dark:#0F273D;--en-ink:#0f172a;--en-secondary:#334155;--en-muted:#64748b;--en-border:#e2e8f0;--en-surface:#fff;--en-surface-2:#f8fafc;--en-surface-3:#f1f5f9;direction:ltr;color:var(--en-ink);background:#f8fafc;min-height:100vh}
 html[lang="en"] .en-place-backbar{background:var(--en-surface-2);border-bottom:1px solid var(--en-border);padding:14px 0}
 html[lang="en"] .en-place-backbar__inner{width:min(100%,1280px);margin:auto;padding:0 20px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:16px}
 html[lang="en"] .en-breadcrumbs{display:flex;align-items:center;gap:8px;min-width:0;color:var(--en-muted);font-size:13px;line-height:1.5}
@@ -25,15 +25,15 @@ html[lang="en"] .en-place-heading{min-width:0;padding-top:2px}.en-place-title-li
 html[lang="en"] .en-place-title-line h1{margin:0;color:var(--en-ink);font-size:clamp(1.65rem,2.7vw,2.3rem);line-height:1.18;font-weight:850;letter-spacing:-.035em}
 
 /* Real verified badge, not an emoji approximation. */
-html[lang="en"] .en-verified-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid #bfdbfe;border-radius:999px;background:#eff6ff;color:#075ca8;font-size:12px;font-weight:800;white-space:nowrap}
-html[lang="en"] .en-verified-badge__icon{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#1681d9;color:#fff;font-size:11px;font-weight:900}
+html[lang="en"] .en-verified-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border:1px solid rgba(245,166,35,.35);border-radius:999px;background:rgba(245,166,35,.12);color:#b45309;font-size:12px;font-weight:800;white-space:nowrap}
+html[lang="en"] .en-verified-badge__icon{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#f59e0b;color:#fff;font-size:11px;font-weight:900}
 html[lang="en"] .en-place-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:9px}
 html[lang="en"] .en-category-pill,html[lang="en"] .en-location-pill,html[lang="en"] .en-status-pill{display:inline-flex;align-items:center;gap:5px;min-height:27px;padding:3px 10px;border-radius:999px;border:1px solid var(--en-border);background:#fff;color:var(--en-secondary);font-size:11.5px;font-weight:750}
 html[lang="en"] .en-status-pill.is-open,html[lang="en"] .en-live-dot.is-open{background:#ecfdf5;color:#047857;border-color:#a7f3d0}html[lang="en"] .en-status-pill.is-closed,html[lang="en"] .en-live-dot.is-closed{background:#fff1f2;color:#be123c;border-color:#fecdd3}
 html[lang="en"] .en-rating{display:flex;align-items:center;gap:7px;margin-top:8px;color:var(--en-muted);font-size:12px}.en-rating-stars{color:#f59e0b;letter-spacing:1px}
 html[lang="en"] .en-place-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 html[lang="en"] .en-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:0 15px;border:1px solid #dbe3ec;border-radius:11px;background:#fff;color:var(--en-ink);font-size:13px;font-weight:750;text-decoration:none;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
-html[lang="en"] .en-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,23,42,.08);border-color:#bfd0df}.en-btn--primary{background:linear-gradient(135deg,#1d75b6,#0f4f86);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(23,105,170,.18)}.en-btn--whatsapp{background:#16a34a;color:#fff;border-color:#16a34a}.en-btn--outline{background:#f8fbff;color:#125c94;border-color:#bdd8ee}.en-btn--ghost{background:#fff}
+html[lang="en"] .en-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,23,42,.08);border-color:#bfd0df}.en-btn--primary{background:linear-gradient(135deg,#1B4F72,#0F273D);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(27,79,114,.24)}.en-btn--whatsapp{background:#16a34a;color:#fff;border-color:#16a34a}.en-btn--outline{background:#f8fbff;color:#1B4F72;border-color:#bdd8ee}.en-btn--ghost{background:#fff}
 html[lang="en"] .en-place-actions-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;padding:14px 0 18px;border-top:1px solid var(--en-border)}html[lang="en"] .en-place-actions-bar .en-btn{width:100%;min-height:44px}
 
 /* Content cards and sidebar mirror Arabic .place-layout. */
