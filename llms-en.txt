@@ -15,6 +15,7 @@
 - [Emergency](https://dalilmanzala.com/en/emergency/): Emergency and important local numbers
 - [Products](https://dalilmanzala.com/en/products/): Local products and prices
 - [Contact](https://dalilmanzala.com/en/contact/): Directory support and listing corrections
+- [About Us](https://dalilmanzala.com/en/about.html): Platform mission, local vision and developer profile (Eng. Mohamed Hammad)
 
 ## Business Profiles
 

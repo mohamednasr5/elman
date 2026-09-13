@@ -51,6 +51,8 @@
 /en/manzala/        /en/manzala/index.html           200
 /en/matariya        /en/matariya/index.html          200
 /en/matariya/       /en/matariya/index.html          200
+/en/about           /en/about/index.html             200
+/en/about/          /en/about/index.html             200
 
 # English dynamic place/category fallbacks. Static generated pages take precedence.
 /en/place            /en/place/index.html             200
@@ -119,8 +121,12 @@
 /manzala/           /manzala.html       200
 /matariya           /matariya.html      200
 /matariya/          /matariya.html      200
-/about              /manzala.html       200
-/about/             /manzala.html       200
+/about                  /about.html         200
+/about/                 /about.html         200
+/ar/about               /ar/about.html      200
+/ar/about/              /ar/about.html      200
+/ar/about.html          /ar/about.html      200
+/en/about.html          /en/about.html      200
 
 # Directory roots redirect to listing pages
 /place              /places.html        301
