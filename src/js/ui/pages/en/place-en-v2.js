@@ -1,31 +1,165 @@
-import { getPlace, getPlaceBySlug, getPlaceReviews, trackPlaceView } from '../../../core/db.js';
+import { getPlace, getPlaceBySlug, getPlaceReviews, getPlaceOffers, getPlaceProducts, trackPlaceView } from '../../../core/db.js';
 import { getCurrentUser } from '../../../core/auth.js';
 import { isFavorite, toggleFavorite } from '../../../services/favorites.service.js';
 import { buildContextualWhatsAppLink } from '../../../services/whatsapp.service.js';
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../../services/image-cdn.service.js';
 import { getDefaultPlaceAssets } from '../../../utils/category-assets.js';
-import { projectPlaceToEnglish, englishServices } from '../../../core/english-data.js';
+import { formatWorkingHours, isPlaceOpen } from '../../../utils/date.js';
+import { resolveMapEmbedInfo } from '../../../utils/maps.js';
+import { projectPlaceToEnglish, englishServices, englishText } from '../../../core/english-data.js';
 
 const esc = value => String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const cleanPhone = value => String(value ?? '').replace(/\D/g,'');
+const englishOnly = (value, fallback = '') => englishText(value, fallback);
+const hasSocial = social => social && typeof social === 'object' && Object.values(social).some(Boolean);
+const stars = rating => {
+  const n = Math.min(5, Math.max(0, Math.round(Number(rating) || 0)));
+  return '★'.repeat(n) + '☆'.repeat(5 - n);
+};
+
+function verifiedBadge() {
+  return '<span class="en-verified-badge" title="Verified business" aria-label="Verified business"><span class="en-verified-badge__icon">✓</span><span>Verified</span></span>';
+}
+
+function socialLinks(social = {}) {
+  const items = [
+    ['facebook','Facebook'], ['instagram','Instagram'], ['tiktok','TikTok'],
+    ['youtube','YouTube'], ['threads','Threads'], ['x','X'], ['twitter','X'], ['website','Website']
+  ];
+  return items.filter(([key]) => social[key]).filter((item, index, arr) => item[1] !== 'X' || index === arr.findIndex(x => x[1] === 'X'))
+    .map(([key,label]) => `<a class="en-social-link" href="${esc(social[key])}" target="_blank" rel="noopener noreferrer">${label}</a>`).join('');
+}
+
+function renderHours(hours) {
+  const list = Array.isArray(hours) ? hours : [];
+  if (!list.length) return '<div class="en-empty-inline">Business hours are not available yet.</div>';
+  return list.map(h => `<div class="en-hours-row ${h.isToday ? 'is-today' : ''}">
+    <span class="en-hours-day">${esc(englishOnly(h.name, 'Day'))}${h.isToday ? ' <em>Today</em>' : ''}</span>
+    <span class="en-hours-time ${h.closed ? 'is-closed' : ''}">${h.closed ? 'Closed' : `${esc(h.open)} — ${esc(h.close)}`}</span>
+  </div>`).join('');
+}
+
+function renderOffer(offer) {
+  const title = englishOnly(offer.title, 'Special Offer');
+  const description = englishOnly(offer.description, '');
+  const image = offer.imageUrl ? getOptimizedImageUrl(offer.imageUrl, IMAGE_SIZES.CARD) : '';
+  const price = englishOnly(offer.newPrice, '');
+  const oldPrice = englishOnly(offer.oldPrice, '');
+  return `<article class="en-offer-card">
+    <div class="en-offer-media">${image ? `<img src="${esc(image)}" alt="${esc(title)}" loading="lazy">` : '<span>🏷️</span>'}</div>
+    <div class="en-offer-body"><h3>${esc(title)}</h3>${description ? `<p>${esc(description)}</p>` : ''}${price ? `<strong>${esc(price)}</strong>` : ''}${oldPrice ? `<del>${esc(oldPrice)}</del>` : ''}</div>
+  </article>`;
+}
+
+function renderProduct(product) {
+  const name = englishOnly(product.name, 'Product');
+  const description = englishOnly(product.description, '');
+  const image = product.imageUrl ? getOptimizedImageUrl(product.imageUrl, IMAGE_SIZES.CARD) : '';
+  const price = englishOnly(product.price, '');
+  return `<article class="en-product-card">
+    <div class="en-product-media">${image ? `<img src="${esc(image)}" alt="${esc(name)}" loading="lazy">` : '<span>📦</span>'}${product.isFeatured ? '<b>Featured</b>' : ''}</div>
+    <div class="en-product-body"><h3>${esc(name)}</h3>${description ? `<p>${esc(description)}</p>` : ''}${price ? `<strong>${esc(price)}</strong>` : ''}</div>
+  </article>`;
+}
 
 export async function renderEnglishPlacePageV2($container, { slug, initialPlace = null } = {}) {
   const cleanSlug = String(slug || '').trim();
   let source = initialPlace || window._placesRegistry?.get(cleanSlug) || null;
   if (!source) { try { source = await getPlaceBySlug(cleanSlug) || await getPlace(cleanSlug); } catch (_) {} }
-  if (!source) { $container.innerHTML='<main class="en-container en-section"><div class="en-empty"><div class="en-empty__icon">📍</div><h1>Place Not Found</h1><p class="en-muted">The place or business you are looking for is unavailable.</p><a class="en-btn en-btn--primary" href="/en/places/">Browse All Places</a></div></main>'; return; }
+  if (!source) {
+    $container.innerHTML = '<main class="en-container en-section"><div class="en-empty"><div class="en-empty__icon">📍</div><h1>Place Not Found</h1><p>The place or business you are looking for is unavailable.</p><a class="en-btn en-btn--primary" href="/en/places/">Browse All Places</a></div></main>';
+    return;
+  }
+
   const place = projectPlaceToEnglish(source);
-  try { trackPlaceView(source, getCurrentUser()); } catch (_) {}
-  const assets = getDefaultPlaceAssets(source);
-  const cover = getOptimizedImageUrl(source.coverImageUrl || assets.coverImageUrl, IMAGE_SIZES.COVER) || '/assets/images/og-whatsapp.jpg';
-  const logo = getOptimizedImageUrl(source.logoUrl || assets.logoUrl, IMAGE_SIZES.LOGO);
   const id = source.id || source._key || source.slug;
-  const fav = isFavorite(id);
+  const currentUser = getCurrentUser();
+  const favorite = isFavorite(id);
+  const assets = getDefaultPlaceAssets(source);
+  const coverSource = source.coverImageUrl || source.cover_image_url || assets.coverImageUrl || '';
+  const logoSource = source.logoUrl || source.logo_url || assets.logoUrl || '';
+  const cover = getOptimizedImageUrl(coverSource, IMAGE_SIZES.COVER) || '/assets/images/og-whatsapp.jpg';
+  const logo = getOptimizedImageUrl(logoSource, IMAGE_SIZES.LOGO);
+  const phone = cleanPhone(source.phone);
+  const whatsapp = cleanPhone(source.whatsapp);
+  const hoursRaw = source.workingHours || source.working_hours || {};
+  const hours = formatWorkingHours(hoursRaw);
+  const open = isPlaceOpen(hoursRaw);
   const services = englishServices(source);
-  const phone = String(source.phone || '').replace(/\D/g,'');
-  const wa = String(source.whatsapp || '').replace(/\D/g,'');
+  const address = place.displayAddress;
+  const description = place.displayDescription;
+  const social = source.social || {};
+  const coords = source.location || {};
+  let mapInfo = null;
+  try { mapInfo = resolveMapEmbedInfo(source); } catch (_) {}
+
+  let reviews = [], offers = [], products = [];
+  try { [reviews, offers, products] = await Promise.all([getPlaceReviews(id), getPlaceOffers(id), getPlaceProducts(id)]); } catch (_) {}
+  reviews = Array.isArray(reviews) ? reviews : [];
+  offers = Array.isArray(offers) ? offers : [];
+  products = Array.isArray(products) ? products : [];
+  const englishReviews = reviews.filter(r => !/\u0600-\u06ff/.test(String(r.comment || '')));
+  const totalReviews = Number(source.reviewCount || source.review_count || source.reviewsCount || englishReviews.length || 0);
+  const avgRating = Number(source.rating || 0) || (englishReviews.length ? englishReviews.reduce((s,r)=>s+(Number(r.rating)||0),0)/englishReviews.length : 0);
+
+  try { trackPlaceView(source, currentUser); } catch (_) {}
   document.title = `${place.displayName} | Dalil El Manzala & El Matariya`;
-  $container.innerHTML = `<div class="en-place-hero"><div class="en-container"><div class="en-breadcrumbs" style="padding:18px 0"><a href="/en/">Home</a><span>/</span><a href="/en/places/">Places</a><span>/</span><span>${esc(place.displayName)}</span></div><div class="en-place-cover"><img src="${esc(cover)}" alt="${esc(place.displayName)}"></div><div class="en-place-profile"><div>${logo?`<img class="en-place-logo" src="${esc(logo)}" alt="">`:''}</div><div><h1 class="en-place-title">${esc(place.displayName)}</h1><div class="en-place-meta"><span class="en-badge" style="background:#eff6ff;color:#1d4ed8">${esc(place.displayCategory)}</span><span class="en-badge" style="background:#f2f4f7;color:#475467">📍 ${esc(place.displayArea)}</span>${source.isVerified||source.is_verified?'<span class="en-badge en-badge--verified">✓ Verified</span>':''}</div></div><div class="en-place-actions"><button class="en-btn en-btn--ghost" id="en-fav">${fav?'♥ Saved':'♡ Save Place'}</button><button class="en-btn en-btn--ghost" id="en-share">↗ Share</button></div></div><div class="en-place-actions-bar">${phone?`<a class="en-btn en-btn--primary" href="tel:${esc(phone)}">📞 Call</a>`:''}${wa?`<a class="en-btn" style="background:#16a34a;color:#fff" href="${buildContextualWhatsAppLink(source.whatsapp,{source:'place_page',placeName:place.displayName})}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}${source.mapsLink||source.lat?`<a class="en-btn en-btn--ghost" href="${esc(source.mapsLink||`https://www.google.com/maps/search/?api=1&query=${source.lat},${source.lng}`)}" target="_blank" rel="noopener">🗺️ Maps</a>`:''}</div></div></div><main class="en-container en-section"><div class="en-place-layout"><div><article class="en-place-card"><span class="en-kicker">Overview</span><h2>About This Business</h2><p>${esc(place.displayDescription || `${place.displayName} is listed in the ${place.displayCategory} category in ${place.displayArea}.`)}</p>${services.length?`<h3>Services & Features</h3><div style="display:flex;gap:7px;flex-wrap:wrap">${services.map(s=>`<span class="en-badge" style="background:#f2f4f7;color:#475467">✓ ${esc(s)}</span>`).join('')}</div>`:''}</article><article class="en-place-card"><h2>Customer Reviews</h2><div id="en-reviews"><p class="en-muted">Loading reviews…</p></div></article></div><aside><article class="en-place-card"><h3>Business Details</h3><dl style="display:grid;gap:12px;margin:0"><div><dt class="en-muted">Category</dt><dd style="margin:2px 0 0">${esc(place.displayCategory)}</dd></div><div><dt class="en-muted">Area</dt><dd style="margin:2px 0 0">${esc(place.displayArea)}</dd></div>${place.displayAddress?`<div><dt class="en-muted">Address</dt><dd style="margin:2px 0 0">${esc(place.displayAddress)}</dd></div>`:''}${phone?`<div><dt class="en-muted">Phone</dt><dd style="margin:2px 0 0"><a href="tel:${esc(phone)}">${esc(source.phone)}</a></dd></div>`:''}</dl></article><article class="en-place-card"><h3>Are you the owner?</h3><p class="en-muted">Claim your profile to update contact details, hours and offers.</p><a class="en-btn en-btn--primary" style="width:100%" href="/en/free-verification/">Claim This Profile</a></article></aside></div></main>`;
-  document.getElementById('en-fav')?.addEventListener('click',()=>{ toggleFavorite(id); renderEnglishPlacePageV2($container,{slug,initialPlace:source}); });
-  document.getElementById('en-share')?.addEventListener('click',async()=>{ try { if(navigator.share) await navigator.share({title:place.displayName,text:`${place.displayName} on Dalil El Manzala & El Matariya`,url:location.href}); else { await navigator.clipboard?.writeText(location.href); alert('Link copied to clipboard.'); } } catch (_) {} });
-  try { const reviews=await getPlaceReviews(id); const el=document.getElementById('en-reviews'); if(el) el.innerHTML=reviews?.length?reviews.map(r=>`<div style="padding:14px 0;border-bottom:1px solid #eef2f6"><div style="display:flex;justify-content:space-between"><strong>${esc(r.userName||'Customer')}</strong><span>★ ${Number(r.rating||0).toFixed(1)}</span></div><p class="en-muted" style="margin:5px 0 0">${esc(r.comment||'')}</p></div>`).join(''):'<p class="en-muted">No reviews yet. Be the first to review this place.</p>'; } catch (_) {}
+
+  const mapUrl = source.mapsLink || source.maps_link || mapInfo?.directLink || ((coords.lat || source.lat || source.latitude) && (coords.lng || source.lng || source.longitude)
+    ? `https://www.google.com/maps/search/?api=1&query=${coords.lat || source.lat || source.latitude},${coords.lng || source.lng || source.longitude}` : '');
+
+  $container.innerHTML = `
+    <div class="en-place-page">
+      <section class="en-place-hero">
+        <div class="en-place-cover">
+          <div class="en-place-cover__backdrop" style="background-image:url('${esc(cover)}')"></div>
+          <img src="${esc(cover)}" alt="${esc(place.displayName)} cover image">
+          <div class="en-place-cover__shade"></div>
+          <div class="en-container en-place-cover__content"><div class="en-breadcrumbs"><a href="/en/">Home</a><span>›</span><a href="/en/places/">Places</a><span>›</span><strong>${esc(place.displayName)}</strong></div></div>
+        </div>
+        <div class="en-container">
+          <div class="en-place-identity">
+            <div class="en-place-logo-wrap">${logo ? `<img class="en-place-logo" src="${esc(logo)}" alt="${esc(place.displayName)} logo">` : '<div class="en-place-logo en-place-logo--placeholder">🏪</div>'}</div>
+            <div class="en-place-heading">
+              <div class="en-place-title-line"><h1>${esc(place.displayName)}</h1>${source.isVerified || source.is_verified || source.verified ? verifiedBadge() : ''}</div>
+              <div class="en-place-meta"><span class="en-category-pill">${esc(place.displayCategory)}</span><span class="en-location-pill">📍 ${esc(place.displayArea)}</span>${open === true ? '<span class="en-status-pill is-open">Open now</span>' : open === false ? '<span class="en-status-pill is-closed">Closed now</span>' : ''}</div>
+              ${totalReviews ? `<div class="en-rating"><span class="en-rating-stars">${stars(avgRating)}</span><b>${avgRating.toFixed(1)}</b><span>${totalReviews} reviews</span></div>` : ''}
+            </div>
+            <div class="en-place-header-actions"><button class="en-btn en-btn--ghost" id="en-fav">${favorite ? '♥ Saved' : '♡ Save Place'}</button><button class="en-btn en-btn--ghost" id="en-share">↗ Share</button></div>
+          </div>
+          <div class="en-place-actions-bar">
+            ${phone ? `<a class="en-btn en-btn--primary" href="tel:${esc(phone)}">📞 Call <span>${esc(source.phone)}</span></a>` : ''}
+            ${whatsapp ? `<a class="en-btn en-btn--whatsapp" href="${buildContextualWhatsAppLink(source.whatsapp,{source:'place_page',placeName:place.displayName})}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
+            ${mapUrl ? `<a class="en-btn en-btn--outline" href="${esc(mapUrl)}" target="_blank" rel="noopener">🗺️ Get Directions</a>` : ''}
+          </div>
+        </div>
+      </section>
+
+      <main class="en-container en-section">
+        <div class="en-place-layout">
+          <div class="en-place-main">
+            <article class="en-place-card en-overview-card"><div class="en-section-kicker">ABOUT THIS PLACE</div><h2>About ${esc(place.displayName)}</h2><p class="en-lead">${esc(description || `A local business in ${place.displayArea}, listed under ${place.displayCategory}.`)}</p>${services.length ? `<div class="en-subsection"><h3>Services & Features</h3><div class="en-service-grid">${services.map(s=>`<span>✓ ${esc(s)}</span>`).join('')}</div></div>` : ''}</article>
+
+            ${offers.length ? `<section class="en-place-card"><div class="en-card-heading"><div><div class="en-section-kicker">CURRENT DEALS</div><h2>Offers</h2></div><span class="en-count">${offers.length}</span></div><div class="en-offer-grid">${offers.map(renderOffer).join('')}</div></section>` : ''}
+            ${source.isVerified && products.length ? `<section class="en-place-card"><div class="en-card-heading"><div><div class="en-section-kicker">PRODUCTS</div><h2>Products & Prices</h2></div>${verifiedBadge()}</div><div class="en-product-grid">${products.map(renderProduct).join('')}</div></section>` : ''}
+
+            ${source.imageUrls?.length ? `<section class="en-place-card"><div class="en-card-heading"><div><div class="en-section-kicker">GALLERY</div><h2>Photos</h2></div><span class="en-count">${source.imageUrls.length}</span></div><div class="en-gallery">${source.imageUrls.map((url,i)=>`<button type="button" data-lightbox="${esc(url)}"><img src="${esc(getOptimizedImageUrl(url, IMAGE_SIZES.CARD) || url)}" alt="${esc(place.displayName)} photo ${i+1}" loading="lazy"></button>`).join('')}</div></section>` : ''}
+
+            <section class="en-place-card" id="reviews"><div class="en-card-heading"><div><div class="en-section-kicker">COMMUNITY</div><h2>Customer Reviews</h2></div>${totalReviews ? `<span class="en-rating-total">${avgRating.toFixed(1)} / 5</span>` : ''}</div>${totalReviews ? `<div class="en-review-summary"><div class="en-review-score"><strong>${avgRating.toFixed(1)}</strong><div>${stars(avgRating)}</div><span>Based on ${totalReviews} reviews</span></div><div class="en-rating-bars">${[5,4,3,2,1].map(n=>{const count=englishReviews.filter(r=>Math.round(Number(r.rating)||0)===n).length; const pct=totalReviews?Math.round(count/totalReviews*100):0; return `<div><span>${n} ★</span><i><b style="width:${pct}%"></b></i><small>${count}</small></div>`}).join('')}</div></div>` : ''}<div class="en-reviews-list">${englishReviews.length ? englishReviews.map(r=>`<article class="en-review"><div class="en-review-top"><strong>${esc(englishOnly(r.userName,'Customer'))}</strong><span class="en-rating-stars">${stars(r.rating)}</span></div><time>${esc(r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '')}</time><p>${esc(englishOnly(r.comment,''))}</p></article>`).join('') : '<div class="en-empty-inline">No English reviews yet. Be the first to share your experience.</div>'}</div></section>
+          </div>
+
+          <aside class="en-place-sidebar">
+            <section class="en-place-card en-hours-card"><div class="en-card-heading"><div><div class="en-section-kicker">HOURS</div><h2>Opening Hours</h2></div>${open === true ? '<span class="en-live-dot is-open">Open</span>' : open === false ? '<span class="en-live-dot is-closed">Closed</span>' : ''}</div><div class="en-hours-list">${renderHours(hours)}</div></section>
+            <section class="en-place-card"><div class="en-section-kicker">CONTACT</div><h2>Business Details</h2><dl class="en-details-list"><div><dt>Category</dt><dd>${esc(place.displayCategory)}</dd></div><div><dt>Area</dt><dd>${esc(place.displayArea)}</dd></div>${address ? `<div><dt>Address</dt><dd>${esc(address)}</dd></div>` : ''}${phone ? `<div><dt>Phone</dt><dd><a href="tel:${esc(phone)}">${esc(source.phone)}</a></dd></div>` : ''}${source.email ? `<div><dt>Email</dt><dd><a href="mailto:${esc(source.email)}">${esc(source.email)}</a></dd></div>` : ''}</dl></section>
+            ${hasSocial(social) ? `<section class="en-place-card"><div class="en-section-kicker">CONNECT</div><h2>Online Presence</h2><div class="en-social-grid">${socialLinks(social)}</div></section>` : ''}
+            ${mapInfo?.embedUrl || mapUrl ? `<section class="en-place-card en-map-card"><div class="en-card-heading"><div><div class="en-section-kicker">LOCATION</div><h2>Find Us</h2></div>${mapUrl ? `<a href="${esc(mapUrl)}" target="_blank" rel="noopener">Open map</a>` : ''}</div>${address ? `<p class="en-map-address">📍 ${esc(address)}</p>` : ''}${mapInfo?.embedUrl ? `<div class="en-map"><iframe src="${esc(mapInfo.embedUrl)}" title="Map for ${esc(place.displayName)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>` : ''}</section>` : ''}
+            ${source.isVerified ? `<section class="en-trust-card">${verifiedBadge()}<h3>Verified Business</h3><p>This profile has been verified by the directory team.</p></section>` : `<section class="en-claim-card"><span>✓</span><div><h3>Are you the owner?</h3><p>Claim this profile to update your details, hours, offers and photos.</p><a href="/en/free-verification/" class="en-btn en-btn--primary">Claim This Profile</a></div></section>`}
+          </aside>
+        </div>
+      </main>
+    </div>`;
+
+  document.getElementById('en-fav')?.addEventListener('click', () => { toggleFavorite(id); renderEnglishPlacePageV2($container,{slug,initialPlace:source}); });
+  document.getElementById('en-share')?.addEventListener('click', async () => { try { if (navigator.share) await navigator.share({title:place.displayName,text:`${place.displayName} on Dalil El Manzala & El Matariya`,url:location.href}); else { await navigator.clipboard?.writeText(location.href); window.alert('Link copied to clipboard.'); } } catch (_) {} });
+  $container.querySelectorAll('[data-lightbox]').forEach(btn => btn.addEventListener('click', () => { const overlay=document.createElement('div'); overlay.className='en-lightbox'; overlay.innerHTML=`<img src="${esc(btn.dataset.lightbox)}" alt="${esc(place.displayName)}">`; overlay.addEventListener('click',()=>overlay.remove()); document.body.appendChild(overlay); }));
 }
