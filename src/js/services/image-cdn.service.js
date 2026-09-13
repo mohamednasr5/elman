@@ -23,13 +23,13 @@ export function getOptimizedImageUrl(url, size = IMAGE_SIZES.THUMB) {
   if (cleanUrl.includes('images.unsplash.com')) {
     const width = size === IMAGE_SIZES.LOGO ? 90
       : size === IMAGE_SIZES.THUMB ? 360
-      : size === IMAGE_SIZES.MEDIUM ? 1600
-      : size === IMAGE_SIZES.COVER ? 1800
-      : 2400;
+      : size === IMAGE_SIZES.MEDIUM ? 2200
+      : size === IMAGE_SIZES.COVER ? 2400
+      : 3000;
     const quality = size === IMAGE_SIZES.LOGO ? 80
       : size === IMAGE_SIZES.THUMB ? 84
-      : size === IMAGE_SIZES.MEDIUM ? 92
-      : 94;
+      : size === IMAGE_SIZES.MEDIUM ? 94
+      : 95;
     try {
       const u = new URL(cleanUrl);
       u.searchParams.set('w', String(width));
@@ -49,13 +49,13 @@ export function getOptimizedImageUrl(url, size = IMAGE_SIZES.THUMB) {
     } else if (size === IMAGE_SIZES.THUMB) {
       params.set('w', '360'); params.set('h', '216'); params.set('fit', 'cover'); params.set('q', '88');
     } else if (size === IMAGE_SIZES.MEDIUM) {
-      // The previous 800px profile variant was too small for large desktop
-      // heroes and became visibly soft when stretched. Keep a high-resolution
-      // variant for all detail/profile media.
-      params.set('w', '1600'); params.set('h', '1000'); params.set('fit', 'cover'); params.set('q', '92');
+      // Detail/profile media must remain sharp on wide desktop displays.
+      // The previous 800px variant was stretched and visibly pixelated.
+      params.set('w', '2200'); params.set('h', '1375'); params.set('fit', 'cover'); params.set('q', '94');
     } else if (size === IMAGE_SIZES.COVER) {
-      params.set('w', '1800'); params.set('h', '720'); params.set('fit', 'cover'); params.set('q', '94');
+      params.set('w', '2400'); params.set('h', '1010'); params.set('fit', 'cover'); params.set('q', '95');
     } else {
+      // Original is the quality ceiling. Never upscale a small source.
       return cleanUrl;
     }
     params.set('src', cleanUrl);
