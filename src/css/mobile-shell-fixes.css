@@ -30,15 +30,26 @@
   .mobile-more-sheet.is-open { visibility: visible; pointer-events: auto; }
   .mobile-more-sheet__backdrop { position: absolute; inset: 0; background: rgba(15,23,42,.52); opacity: 0; transition: opacity .2s ease; }
   .mobile-more-sheet.is-open .mobile-more-sheet__backdrop { opacity: 1; }
-  .mobile-more-sheet__panel { position: absolute; left: 10px; right: 10px; bottom: calc(var(--bottom-nav-height, 64px) + 10px + env(safe-area-inset-bottom)); max-height: min(70dvh,560px); overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--surface,#fff); border: 1px solid rgba(15,23,42,.10); border-radius: 22px; box-shadow: 0 20px 60px rgba(15,23,42,.25); padding: 14px; transform: translateY(18px); opacity: 0; transition: transform .22s ease, opacity .22s ease; }
+  .mobile-more-sheet__panel { position: absolute; left: 10px; right: 10px; bottom: calc(var(--bottom-nav-height, 64px) + 10px + env(safe-area-inset-bottom)); max-height: min(78dvh, 680px); overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--surface,#fff); border: 1px solid rgba(15,23,42,.10); border-radius: 22px; box-shadow: 0 20px 60px rgba(15,23,42,.25); padding: 14px; transform: translateY(18px); opacity: 0; transition: transform .22s ease, opacity .22s ease; }
   .mobile-more-sheet.is-open .mobile-more-sheet__panel { transform: translateY(0); opacity: 1; }
   .mobile-more-sheet__head { display:flex; align-items:center; justify-content:space-between; padding:4px 4px 12px; border-bottom:1px solid rgba(15,23,42,.08); }
-  .mobile-more-sheet__head strong { font-size:18px; }
+  .mobile-more-sheet__head h2 { font-size:18px; margin:0; }
   .mobile-more-sheet__head button { width:34px; height:34px; border:0; border-radius:50%; background:rgba(15,23,42,.07); font-size:24px; line-height:1; cursor:pointer; }
-  .mobile-more-sheet__grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; padding-top:12px; }
-  .mobile-more-sheet__grid a { display:flex; align-items:center; gap:8px; min-height:52px; padding:9px 10px; border:1px solid rgba(15,23,42,.08); border-radius:14px; background:rgba(255,255,255,.72); text-decoration:none; color:inherit; }
-  .mobile-more-sheet__grid a span { font-size:20px; flex:0 0 auto; }
-  .mobile-more-sheet__grid a b { font-size:13px; line-height:1.3; }
+  .mobile-more-sheet__links { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; padding-top:12px; }
+  .mobile-more-sheet__link { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:52px; padding:9px 10px; border:1px solid rgba(15,23,42,.08); border-radius:14px; background:rgba(255,255,255,.72); text-decoration:none; color:inherit; font-size:13px; font-weight:700; }
+  .mobile-more-sheet__link:active { transform:scale(.985); }
+  .mobile-more-sheet__link > span:first-child { min-width:0; }
+
+  /* Signed-in header menu: large, scrollable and easy to tap on phones. */
+  .header__dropdown--dashboard,
+  #user-dropdown { position: fixed !important; top: calc(env(safe-area-inset-top) + 58px) !important; right: 10px !important; left: auto !important; width: min(88vw, 340px) !important; max-height: min(74dvh, 620px) !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important; z-index: 11100 !important; padding: 8px !important; border-radius: 18px !important; }
+  html[dir="rtl"] .header__dropdown--dashboard,
+  html[dir="rtl"] #user-dropdown { right: 10px !important; left: auto !important; }
+  .header__dropdown--dashboard .header__dropdown-item,
+  #user-dropdown .header__dropdown-item { min-height: 46px !important; padding: 10px 12px !important; border-radius: 12px !important; font-size: 13px !important; display:flex !important; align-items:center !important; gap:8px !important; }
+  .header__dropdown--dashboard .header__dropdown-divider,
+  #user-dropdown .header__dropdown-divider { margin: 6px 4px !important; }
+
   .manzala-voice-modal-backdrop { z-index: 12000 !important; padding: 12px !important; box-sizing: border-box !important; }
   .manzala-voice-modal-card { width: min(94vw, 620px) !important; max-height: calc(100dvh - 24px) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
   .mvm-results-container { display: block; flex: 1 1 auto; min-height: 0; max-height: min(42dvh, 360px); overflow-y: auto !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
@@ -55,6 +66,7 @@
   .header-search-expandable { max-width:40px !important; }
   .header-search-pill { width:40px !important; }
   .header-search-pill.expanded { width:min(62vw,280px) !important; }
+  .mobile-more-sheet__links { grid-template-columns:1fr !important; }
 }
 
 @media (min-width: 768px) {
@@ -62,7 +74,6 @@
   .footer__grid > .footer__column:first-of-type .footer__links { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; column-gap:28px !important; }
   .footer__grid > .footer__column:first-of-type { min-width:0 !important; }
 
-  /* Desktop: language + theme are removed from the header flex flow and stacked vertically. */
   .header__inner > .theme-toggle-btn,
   .header__inner > .lang-toggle-btn {
     position: fixed !important;
@@ -91,29 +102,7 @@
   .header__inner > .lang-toggle-btn { top: 132px !important; }
 }
 
-/* Arabic page-back bar: Back button on the LEFT, breadcrumbs on the RIGHT. */
-html[dir="rtl"] .page-back-bar {
-  display: flex !important;
-  direction: ltr !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  width: 100% !important;
-}
-html[dir="rtl"] .page-back-bar .btn-page-back {
-  order: 1 !important;
-  margin-inline-start: 0 !important;
-  margin-inline-end: auto !important;
-  direction: rtl !important;
-}
-html[dir="rtl"] .page-back-bar .page-breadcrumbs {
-  order: 2 !important;
-  margin-inline-start: auto !important;
-  margin-inline-end: 0 !important;
-  direction: rtl !important;
-  text-align: right !important;
-}
-
-/* English page-back bar keeps normal LTR ordering. */
-html[lang="en"] .page-back-bar {
-  direction: ltr !important;
-}
+html[dir="rtl"] .page-back-bar { display:flex !important; direction:ltr !important; align-items:center !important; justify-content:space-between !important; width:100% !important; }
+html[dir="rtl"] .page-back-bar .btn-page-back { order:1 !important; margin-inline-start:0 !important; margin-inline-end:auto !important; direction:rtl !important; }
+html[dir="rtl"] .page-back-bar .page-breadcrumbs { order:2 !important; margin-inline-start:auto !important; margin-inline-end:0 !important; direction:rtl !important; text-align:right !important; }
+html[lang="en"] .page-back-bar { direction:ltr !important; }
