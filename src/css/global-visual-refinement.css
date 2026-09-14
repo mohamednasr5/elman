@@ -12,7 +12,6 @@
   --dm-card-shadow-hover:0 14px 32px rgba(15,23,42,.11);
 }
 
-/* Main visual surfaces: make every major section read as a distinct block. */
 .section,
 .panel,
 .content-section,
@@ -39,7 +38,6 @@
   isolation:isolate;
 }
 
-/* Section heading divider — visually anchors title to its section. */
 .section-title,
 .panel-title,
 .section__title,
@@ -50,7 +48,6 @@
   padding-bottom:12px;
 }
 
-/* Universal card language. Specific page styles still win where needed. */
 .card,
 .place-card,
 .category-card,
@@ -83,7 +80,6 @@
   isolation:isolate;
 }
 
-/* A restrained inner highlight makes the boundary readable without looking heavy. */
 .card::before,
 .place-card::before,
 .category-card::before,
@@ -118,7 +114,6 @@
   box-shadow:inset 0 1px 0 rgba(255,255,255,.82);
 }
 
-/* Nested cards get a lighter border so hierarchy is obvious. */
 .card .card,
 .card .place-card,
 .section .card,
@@ -131,102 +126,114 @@
 }
 
 @media (hover:hover) and (pointer:fine){
-  .card,
-  .place-card,
-  .category-card,
-  .offer-card,
-  .product-card,
-  .info-card,
-  .review-card,
-  .feature-card,
-  .tool-card,
-  .place-feature-card,
-  .place-tool-card,
-  .spotlight-card,
-  .stat-card,
-  .dashboard-card,
-  .profile-card,
-  .result-card,
-  .contact-card,
-  .map-card,
-  .gallery-card,
-  .service-card,
-  .item-card,
-  .list-card,
-  .notification-card,
-  .settings-card,
-  .widget-card{
+  .card,.place-card,.category-card,.offer-card,.product-card,.info-card,.review-card,.feature-card,.tool-card,.place-feature-card,.place-tool-card,.spotlight-card,.stat-card,.dashboard-card,.profile-card,.result-card,.contact-card,.map-card,.gallery-card,.service-card,.item-card,.list-card,.notification-card,.settings-card,.widget-card{
     transition:border-color .25s ease,box-shadow .25s ease,transform .25s cubic-bezier(.2,.75,.2,1);
   }
-  .card:hover,
-  .place-card:hover,
-  .category-card:hover,
-  .offer-card:hover,
-  .product-card:hover,
-  .info-card:hover,
-  .review-card:hover,
-  .feature-card:hover,
-  .tool-card:hover,
-  .place-feature-card:hover,
-  .place-tool-card:hover,
-  .spotlight-card:hover,
-  .stat-card:hover,
-  .dashboard-card:hover,
-  .profile-card:hover,
-  .result-card:hover,
-  .contact-card:hover,
-  .map-card:hover,
-  .gallery-card:hover,
-  .service-card:hover,
-  .item-card:hover,
-  .list-card:hover,
-  .notification-card:hover,
-  .settings-card:hover{
+  .card:hover,.place-card:hover,.category-card:hover,.offer-card:hover,.product-card:hover,.info-card:hover,.review-card:hover,.feature-card:hover,.tool-card:hover,.place-feature-card:hover,.place-tool-card:hover,.spotlight-card:hover,.stat-card:hover,.dashboard-card:hover,.profile-card:hover,.result-card:hover,.contact-card:hover,.map-card:hover,.gallery-card:hover,.service-card:hover,.item-card:hover,.list-card:hover,.notification-card:hover,.settings-card:hover,.widget-card:hover{
     border-color:var(--dm-card-border-hover);
     box-shadow:var(--dm-card-shadow-hover);
   }
 }
 
-/* Common separators inside cards. */
-.card__footer,
-.card__header,
-.card-footer,
-.card-header,
-.panel-footer,
-.panel-header,
-.list-divider,
-.item-divider{
+.card__footer,.card__header,.card-footer,.card-header,.panel-footer,.panel-header,.list-divider,.item-divider{
   border-color:rgba(15,23,42,.10)!important;
 }
 
-/* Avoid double borders where a card directly contains a section. */
-.card > .section,
-.panel > .section{box-shadow:none;border-color:rgba(15,23,42,.075)}
+.card > .section,.panel > .section{box-shadow:none;border-color:rgba(15,23,42,.075)}
 
-/* Dark mode keeps the hierarchy while reducing contrast harshness. */
-[data-theme="dark"],body.dark-theme{--dm-section-border:rgba(148,163,184,.18);--dm-card-border:rgba(148,163,184,.19);--dm-card-border-hover:rgba(96,165,250,.38);--dm-section-shadow:0 12px 34px rgba(0,0,0,.22);--dm-card-shadow:0 6px 20px rgba(0,0,0,.22);--dm-card-shadow-hover:0 14px 34px rgba(0,0,0,.32)}
+[data-theme="dark"],body.dark-theme{
+  --dm-section-border:rgba(148,163,184,.18);
+  --dm-card-border:rgba(148,163,184,.19);
+  --dm-card-border-hover:rgba(96,165,250,.38);
+  --dm-section-shadow:0 12px 34px rgba(0,0,0,.22);
+  --dm-card-shadow:0 6px 20px rgba(0,0,0,.22);
+  --dm-card-shadow-hover:0 14px 34px rgba(0,0,0,.32)
+}
+
+/* ========================================================================== 
+   PLACE DETAIL — OWNER-ONLY CERTIFICATE + ACTION ROW BALANCE
+   ========================================================================== */
+
+/* The appreciation certificate is a private owner/admin action. The existing
+   owner state is exposed by the manage-place pill, so non-owners never see it. */
+.place-card-row-tools-trio:not(:has(.place-pill-btn--manage)) .place-tool-card--cert{
+  display:none!important;
+}
+
+/* When the private certificate is hidden, the two public cards consume the
+   complete row instead of leaving an empty third column. */
+.place-card-row-tools-trio:not(:has(.place-pill-btn--manage)){
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  width:100%;
+}
+
+.place-card-row-tools-trio:not(:has(.place-pill-btn--manage)) .place-tool-card{
+  width:100%;
+  min-width:0;
+}
+
+/* The owner sees the original three-card tool row with equal visual weight. */
+.place-card-row-tools-trio:has(.place-pill-btn--manage){
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+
+/* Mobile: two public cards remain side-by-side and fill the available width. */
+@media(max-width:767px){
+  .place-card-row-tools-trio:not(:has(.place-pill-btn--manage)){
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  .place-card-row-tools-trio:not(:has(.place-pill-btn--manage)) .place-tool-card{
+    min-height:132px;
+  }
+
+  /* Center the owner/visitor action strip shown beneath the tool cards. */
+  .place-card-row-bottom{
+    width:100%;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:10px!important;
+    text-align:center;
+  }
+  .place-card-row-bottom__right,
+  .place-card-row-bottom__left{
+    width:100%;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    flex-wrap:wrap;
+    gap:8px!important;
+  }
+  .place-card-row-bottom .place-pill-btn{
+    margin-inline:auto;
+  }
+
+  /* Keep the report/update link centered and visually separated. */
+  .place-card-row-bottom + *{
+    text-align:center;
+  }
+}
+
+@media(max-width:420px){
+  .place-card-row-tools-trio:not(:has(.place-pill-btn--manage)){
+    gap:8px!important;
+  }
+  .place-card-row-tools-trio:not(:has(.place-pill-btn--manage)) .place-tool-card{
+    min-height:122px;
+    padding-inline:8px;
+  }
+}
 
 @media(max-width:767px){
-  .section,
-  .panel,
-  .content-section,
-  .page-section,
-  .dashboard-section,
-  .search-section,
-  .category-section,
-  .results-section,
-  .info-section,
-  .settings-section,
-  .profile-section,
-  .reviews-section,
-  .offers-section,
-  .products-section,
-  .gallery-section,
-  .map-section,
-  .contact-section,
-  .stats-section{border-radius:16px}
+  .section,.panel,.content-section,.page-section,.dashboard-section,.search-section,.category-section,.results-section,.info-section,.settings-section,.profile-section,.reviews-section,.offers-section,.products-section,.gallery-section,.map-section,.contact-section,.stats-section{
+    border-radius:16px;
+  }
 }
 
 @media(prefers-reduced-motion:reduce){
-  .card,.place-card,.category-card,.offer-card,.product-card,.info-card,.review-card,.feature-card,.tool-card,.place-feature-card,.place-tool-card,.spotlight-card,.stat-card,.dashboard-card,.profile-card,.result-card,.contact-card,.map-card,.gallery-card,.service-card,.item-card,.list-card,.notification-card,.settings-card,.widget-card{transition:none!important}
+  .card,.place-card,.category-card,.offer-card,.product-card,.info-card,.review-card,.feature-card,.tool-card,.place-feature-card,.place-tool-card,.spotlight-card,.stat-card,.dashboard-card,.profile-card,.result-card,.contact-card,.map-card,.gallery-card,.service-card,.item-card,.list-card,.notification-card,.settings-card,.widget-card{
+    transition:none!important;
+  }
 }
