@@ -9,6 +9,7 @@ import { resolveMapEmbedInfo } from '../../../utils/maps.js';
 import { projectPlaceToEnglish, englishServices, englishText } from '../../../core/english-data.js';
 import { openPlaceProfileCardModal } from '../../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../../components/StorefrontQrModal.js';
+import { openCertificateOfAppreciationModal } from '../../components/CertificateOfAppreciationModal.js';
 
 const esc = value => String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const cleanPhone = value => String(value ?? '').replace(/\D/g,'');
@@ -50,13 +51,23 @@ function _buildPlaceHTML(source, place, reviews = [], offers = [], products = []
   const availability = availabilityBadge(source.availabilityStatus || source.availability_status || source.availability);
   const favorite = isFavorite(source.id || source._key || source.slug);
   const mapUrl = source.mapsLink || source.maps_link || mapInfo?.directLink || ((coords.lat || source.lat || source.latitude) && (coords.lng || source.lng || source.longitude) ? `https://www.google.com/maps/search/?api=1&query=${coords.lat || source.lat || source.latitude},${coords.lng || source.lng || source.longitude}` : '');
+  const currentUser = getCurrentUser();
+  const isOwner = Boolean(
+    currentUser && (
+      (source.ownerId && currentUser.uid === source.ownerId) ||
+      (source.userId && currentUser.uid === source.userId) ||
+      (source.ownerUid && currentUser.uid === source.ownerUid) ||
+      (source.email && currentUser.email && source.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+      currentUser.isAdmin || currentUser.role === 'admin'
+    )
+  );
 
   return `<div class="en-place-page">
     <div class="en-place-backbar"><div class="en-place-backbar__inner"><nav class="en-breadcrumbs" aria-label="Breadcrumb"><a href="/en/">Home</a><span>/</span><a href="/en/places/">Places</a><span>/</span><strong>${esc(place.displayName)}</strong></nav><a class="en-back-btn" href="/en/places/">← Back</a></div></div>
     <section class="en-place-hero"><div class="en-place-cover"><div class="en-place-cover__backdrop"></div><img src="${esc(cover)}" alt="${esc(place.displayName)} cover image" fetchpriority="high" decoding="async"><div class="en-place-cover__shade"></div></div>
       <div class="en-container"><div class="en-place-identity"><div class="en-place-logo-wrap">${logo ? `<img class="en-place-logo" src="${esc(logo)}" alt="${esc(place.displayName)} logo">` : '<div class="en-place-logo en-place-logo--placeholder">🏪</div>'}</div>
         <div class="en-place-heading"><div class="en-place-title-line"><h1>${esc(place.displayName)}</h1>${verified ? verifiedBadge() : ''}</div><div class="en-place-meta"><span class="en-category-pill">${esc(place.displayCategory)}</span><span class="en-location-pill">📍 ${esc(place.displayArea)}</span>${open === true ? '<span class="en-status-pill is-open">Open now</span>' : open === false ? '<span class="en-status-pill is-closed">Closed now</span>' : ''}${availability}</div>${totalReviews ? `<div class="en-rating"><span class="en-rating-stars">${stars(avgRating)}</span><b>${avgRating.toFixed(1)}</b><span>${totalReviews} reviews</span></div>` : ''}</div>
-        <div class="en-place-header-actions"><button class="en-btn en-btn--ghost" id="en-profile-card">▣ Profile Card</button><button class="en-btn en-btn--ghost" id="en-qr-card">▣ QR Code</button><button class="en-btn en-btn--ghost" id="en-fav">${favorite ? '♥ Saved' : '♡ Save Place'}</button><button class="en-btn en-btn--ghost" id="en-share">↗ Share</button></div>
+        <div class="en-place-header-actions"><button class="en-btn en-btn--ghost" id="en-profile-card">▣ Profile Card</button><button class="en-btn en-btn--ghost" id="en-qr-card">▣ QR Code</button>${isOwner ? '<button class="en-btn en-btn--ghost" id="en-cert-btn" style="border-color:#F59E0B;color:#D97706;font-weight:700">🎖️ Certificate</button>' : ''}<button class="en-btn en-btn--ghost" id="en-fav">${favorite ? '♥ Saved' : '♡ Save Place'}</button><button class="en-btn en-btn--ghost" id="en-share">↗ Share</button></div>
       </div><div class="en-place-actions-bar">${phone ? `<a class="en-btn en-btn--primary" href="tel:${esc(phone)}">📞 Call <span>${esc(source.phone)}</span></a>` : ''}${whatsapp ? `<a class="en-btn en-btn--whatsapp" href="${esc(buildContextualWhatsAppLink(source.whatsapp, { source: 'place_page_en', placeName: place.displayName }))}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}${mapUrl ? `<a class="en-btn en-btn--outline" href="${esc(mapUrl)}" target="_blank" rel="noopener">🗺️ Get Directions</a>` : ''}</div></div>
     </section>
     <main class="en-container en-section"><div class="en-place-layout"><div class="en-place-main">
@@ -93,6 +104,7 @@ function _buildPlaceHTML(source, place, reviews = [], offers = [], products = []
 function _bindPlaceEvents($container, source, place, id, slug) {
   document.getElementById('en-profile-card')?.addEventListener('click', () => { try { openPlaceProfileCardModal(source, {}); } catch (_) {} });
   document.getElementById('en-qr-card')?.addEventListener('click', () => { try { openStorefrontQrModal(source, {}); } catch (_) {} });
+  document.getElementById('en-cert-btn')?.addEventListener('click', () => { try { openCertificateOfAppreciationModal(source, {}); } catch (_) {} });
   document.getElementById('en-fav')?.addEventListener('click', () => { toggleFavorite(id); renderEnglishPlacePageV2($container, { slug, initialPlace: source }); });
   document.getElementById('en-share')?.addEventListener('click', async () => { try { if (navigator.share) await navigator.share({ title: place.displayName, text: `${place.displayName} on Dalil El Manzala & El Matariya`, url: location.href }); else { await navigator.clipboard?.writeText(location.href); window.alert('Link copied to clipboard.'); } } catch (_) {} });
   $container.querySelectorAll('[data-lightbox]').forEach(btn => btn.addEventListener('click', () => { const overlay = document.createElement('div'); overlay.className = 'en-lightbox'; overlay.innerHTML = `<img src="${esc(btn.dataset.lightbox)}" alt="${esc(place.displayName)}">`; overlay.addEventListener('click', () => overlay.remove()); document.body.appendChild(overlay); }));

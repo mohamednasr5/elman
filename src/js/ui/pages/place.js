@@ -18,6 +18,7 @@ import { submitVerificationRequest } from '../../services/places.service.js?v=d4
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
+import { openCertificateOfAppreciationModal } from '../components/CertificateOfAppreciationModal.js';
 import { getPlaceLiveStatus } from '../../utils/live-hours.js';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { resolveMapEmbedInfo, extractCoordinates } from '../../utils/maps.js';
@@ -201,7 +202,15 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     }
 
     const currentUser = getCurrentUser() || user;
-    const isOwner = currentUser && currentUser.uid === place.ownerId;
+    const isOwner = Boolean(
+      currentUser && (
+        (place.ownerId && currentUser.uid === place.ownerId) ||
+        (place.userId && currentUser.uid === place.userId) ||
+        (place.ownerUid && currentUser.uid === place.ownerUid) ||
+        (place.email && currentUser.email && place.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+        isAdmin(currentUser)
+      )
+    );
     const isUserAdmin = currentUser && isAdmin(currentUser);
 
     // Check if place is currently banned
@@ -464,6 +473,13 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                       <span>لوحة QR للمحل</span>
                     </button>
 
+                    ${isOwner ? `
+                    <button type="button" class="btn btn-sm btn-outline btn-appreciation-certificate" id="btn-appreciation-certificate-header" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.18));border-color:#F59E0B;color:#B45309;font-weight:800" title="عرض وتحميل شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
+                      <span>🎖️</span>
+                      <span>شهادة تقدير</span>
+                    </button>
+                    ` : ''}
+
                     <button type="button" class="btn btn-sm btn-outline btn-follow-place-trigger ${isFollowing ? 'following' : ''}" id="btn-follow-place" data-pid="${escAttr(placeId)}" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;${isFollowing ? 'background:rgba(16,185,129,0.12);color:var(--success);border-color:var(--success);font-weight:700' : 'background:var(--surface);border-color:var(--border)'}" title="متابعة المكان ومشاهدة عروضه في حسابك">
                       <span class="follow-icon">${isFollowing ? '✓' : '🔔'}</span>
                       <span class="follow-label">${isFollowing ? 'متابع' : 'متابعة'}</span>
@@ -567,6 +583,10 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   <span>⚙️</span>
                   <span>إدارة وتعديل المكان</span>
                 </a>
+                <button type="button" class="btn btn-outline btn--full-mobile btn-appreciation-certificate" id="btn-appreciation-certificate-action" style="border-color:#F59E0B;color:#B45309;font-weight:800;background:rgba(245,158,11,0.06);gap:8px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
+                  <span>🎖️</span>
+                  <span>شهادة تقدير رسمية لنشاطك (A4)</span>
+                </button>
               ` : ''}
               ${(!isAtm && (place.allowAppointments === true || (place.allowAppointments !== false && (place.categoryId === 'doctor' || place.categoryId?.includes('clinic') || place.categoryId === 'health')))) ? `
                 <button type="button" class="btn btn-outline btn--full-mobile" id="btn-book-appointment" style="border-color:#0284c7;color:#0284c7;font-weight:800;gap:6px">
@@ -983,6 +1003,15 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         e.preventDefault();
         e.stopPropagation();
         openStorefrontQrModal(place, category);
+      });
+    });
+
+    // Setup Certificate of Appreciation Modal for Place Owner
+    document.querySelectorAll('.btn-appreciation-certificate, #btn-appreciation-certificate-header, #btn-appreciation-certificate-action').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openCertificateOfAppreciationModal(place, category);
       });
     });
 
