@@ -667,11 +667,6 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             ` : ''}
           </div>
 
-          <!-- Google-Style 5-Star Reviews Slot (Directly below Place Card as requested!) -->
-          <div id="place-reviews-slot">
-            ${!isAtm ? renderReviewsSectionHTML({ placeId, placeName: place.name, safeReviews, totalReviews, currentUser, userReview, isHammad }) : ''}
-          </div>
-
           <!-- ATM Cash Availability Live Poll Card -->
           ${isAtm ? `
             <div class="atm-poll-card animate-fade-in-up" id="atm-poll-section" style="background:linear-gradient(135deg, #0F2B48 0%, #1B4F72 100%);color:#fff;padding:20px;border-radius:var(--radius-lg);margin-bottom:var(--space-4);box-shadow:0 8px 24px rgba(27,79,114,0.25);border:1px solid rgba(255,255,255,0.15)">
@@ -750,6 +745,11 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               </div>
             </section>
           ` : ''}
+
+          <!-- Google-Style 5-Star Reviews Slot (Directly below Place Card as requested!) -->
+          <div id="place-reviews-slot">
+            ${!isAtm ? renderReviewsSectionHTML({ placeId, placeName: place.name, safeReviews, totalReviews, currentUser, userReview, isHammad }) : ''}
+          </div>
 
         </div>
 

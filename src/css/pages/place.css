@@ -68,30 +68,35 @@
 /* Row 1: Logo Avatar, Place Name, Verified Badge, Online Badge */
 .place-card-row-identity {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 16px;
   width: 100%;
+  position: relative;
+  min-height: 60px;
 }
 
 .place-card-logo,
 .place-logo {
-  width: 82px !important;
-  height: 82px !important;
-  max-width: 82px !important;
-  max-height: 82px !important;
-  min-width: 82px !important;
-  min-height: 82px !important;
-  border-radius: 20px;
-  border: 3.5px solid #FFFFFF;
-  box-shadow: 0 10px 25px -4px rgba(15, 23, 42, 0.15), 0 2px 6px rgba(0, 0, 0, 0.04);
+  width: 116px !important;
+  height: 116px !important;
+  max-width: 116px !important;
+  max-height: 116px !important;
+  min-width: 116px !important;
+  min-height: 116px !important;
+  border-radius: 22px;
+  border: 4px solid #FFFFFF !important;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.22), 0 4px 10px rgba(0, 0, 0, 0.06);
   overflow: hidden !important;
   flex-shrink: 0;
-  background: var(--surface-3, #F1F5F9);
+  background: #FFFFFF !important;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   box-sizing: border-box;
+  margin-top: -62px !important;
+  z-index: 15;
+  padding: 4px;
 }
 
 .place-card-logo img,
@@ -100,9 +105,10 @@
   height: 100% !important;
   max-width: 100% !important;
   max-height: 100% !important;
-  object-fit: cover !important;
+  object-fit: contain !important;
   display: block;
   border-radius: 16px;
+  background: transparent;
 }
 
 .place-card-logo__placeholder,
@@ -113,19 +119,39 @@
   align-items: center;
   justify-content: center;
   background: var(--primary-alpha, rgba(27, 79, 114, 0.08));
-  font-size: 2.2rem;
+  font-size: 2.8rem;
+  border-radius: 16px;
 }
 
-@media (max-width: 540px) {
+@media (max-width: 767px) {
   .place-card-logo,
   .place-logo {
-    width: 72px !important;
-    height: 72px !important;
-    max-width: 72px !important;
-    max-height: 72px !important;
-    min-width: 72px !important;
-    min-height: 72px !important;
-    border-radius: 17px;
+    width: 98px !important;
+    height: 98px !important;
+    max-width: 98px !important;
+    max-height: 98px !important;
+    min-width: 98px !important;
+    min-height: 98px !important;
+    border-radius: 18px !important;
+    margin-top: -50px !important;
+    border: 3.5px solid #FFFFFF !important;
+    padding: 3px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .place-card-logo,
+  .place-logo {
+    width: 90px !important;
+    height: 90px !important;
+    max-width: 90px !important;
+    max-height: 90px !important;
+    min-width: 90px !important;
+    min-height: 90px !important;
+    border-radius: 16px !important;
+    margin-top: -46px !important;
+    border: 3px solid #FFFFFF !important;
+    padding: 3px !important;
   }
 }
 
@@ -135,8 +161,9 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 5px;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-bottom: 2px;
 }
 
 .place-card-name-wrap,
@@ -246,22 +273,32 @@
   width: 100%;
 }
 
-.place-card-category-side {
-  display: flex;
+.place-card-category-side,
+.place-card-meta-tags {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.place-category-tag {
+.place-category-tag,
+.place-rating-badge-inline {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-full, 9999px);
+  box-sizing: border-box;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.place-category-tag {
   gap: 6px;
-  padding: 4px 12px;
   background: rgba(2, 132, 199, 0.08);
   color: #0284C7;
-  border: 1px solid rgba(2, 132, 199, 0.2);
-  border-radius: var(--radius-full, 9999px);
+  border: 1.5px solid rgba(2, 132, 199, 0.25);
   font-size: 13px;
   font-weight: 800;
   text-decoration: none;
@@ -269,7 +306,8 @@
 }
 
 .place-category-tag:hover {
-  background: rgba(2, 132, 199, 0.15);
+  background: rgba(2, 132, 199, 0.16);
+  border-color: #0284C7;
   transform: translateY(-1px);
 }
 
@@ -278,9 +316,13 @@
   color: #0369A1;
   font-weight: 800;
   font-size: 12.5px;
-  padding: 4px 12px;
+  padding: 0 12px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 9999px;
   border: 1px solid #BAE6FD;
+  box-sizing: border-box;
 }
 
 .place-trust-mini {
@@ -332,21 +374,17 @@
 }
 
 .place-rating-badge-inline {
-  display: inline-flex;
-  align-items: center;
   gap: 5px;
-  padding: 4px 12px;
-  border-radius: var(--radius-full, 999px);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 800;
   background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  border: 1.5px solid rgba(245, 158, 11, 0.28);
   color: #D97706;
 }
 
-.place-rating-badge-inline .rating-star { color: #F59E0B; font-size: 13px; }
-.place-rating-badge-inline .rating-val { font-weight: 900; color: #B45309; }
-.place-rating-badge-inline .rating-sub { color: #92400E; font-weight: 600; font-size: 11px; }
+.place-rating-badge-inline .rating-star { color: #F59E0B; font-size: 13.5px; line-height: 1; display: inline-flex; align-items: center; }
+.place-rating-badge-inline .rating-val { font-weight: 900; color: #B45309; line-height: 1; }
+.place-rating-badge-inline .rating-sub { color: #92400E; font-weight: 700; font-size: 11.5px; line-height: 1; }
 
 /* ═══════════════════════════════════════════════════════════
    Row 4: Primary Contact Actions (Call + WhatsApp)
@@ -584,17 +622,17 @@
   line-height: 1.2;
 }
 
-/* --- Card 1: Download Profile Card (Sapphire Tech 3D) --- */
+/* --- Card 1: Download Profile Card (Vibrant Warm Orange 3D) --- */
 .place-tool-card--download {
-  background: linear-gradient(145deg, #FFFFFF 0%, #F0F9FF 55%, #E0F2FE 100%) !important;
-  border: 1.5px solid rgba(2, 132, 199, 0.35) !important;
-  box-shadow: 0 8px 22px -4px rgba(2, 132, 199, 0.18), 0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #FFFFFF !important;
+  background: linear-gradient(145deg, #FFFFFF 0%, #FFF7ED 55%, #FFEDD5 100%) !important;
+  border: 1.5px solid rgba(249, 115, 22, 0.4) !important;
+  box-shadow: 0 8px 22px -4px rgba(234, 88, 12, 0.22), 0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 #FFFFFF !important;
 }
 .place-tool-card--download .place-tool-card__icon-box,
 .place-tool-card--download .place-tool-card__icon {
-  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
+  background: linear-gradient(135deg, #FB923C 0%, #EA580C 100%) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 6px 16px rgba(234, 88, 12, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
 }
 .place-tool-card--download .place-tool-card__title {
   color: #0F172A !important;
@@ -603,13 +641,13 @@
 }
 .place-tool-card--download .place-tool-card__hint,
 .place-tool-card--download .place-tool-card__sub {
-  color: #0284C7 !important;
+  color: #C2410C !important;
   font-weight: 800 !important;
   font-size: 11px !important;
 }
 .place-tool-card--download:hover {
-  border-color: #0284C7 !important;
-  box-shadow: 0 16px 32px -6px rgba(2, 132, 199, 0.32), 0 4px 10px rgba(0, 0, 0, 0.05), inset 0 1px 0 #FFFFFF !important;
+  border-color: #EA580C !important;
+  box-shadow: 0 16px 32px -6px rgba(234, 88, 12, 0.35), 0 4px 10px rgba(0, 0, 0, 0.05), inset 0 1px 0 #FFFFFF !important;
 }
 
 /* --- Card 2: Storefront QR Poster (Royal Purple 3D) --- */
@@ -2007,13 +2045,16 @@
 
   .place-card-logo,
   .place-logo {
-    width: 68px !important;
-    height: 68px !important;
-    max-width: 68px !important;
-    max-height: 68px !important;
-    min-width: 68px !important;
-    min-height: 68px !important;
-    border-radius: 16px !important;
+    width: 98px !important;
+    height: 98px !important;
+    max-width: 98px !important;
+    max-height: 98px !important;
+    min-width: 98px !important;
+    min-height: 98px !important;
+    border-radius: 18px !important;
+    margin-top: -50px !important;
+    border: 3.5px solid #FFFFFF !important;
+    padding: 3px !important;
   }
 
   .place-title__name,
