@@ -332,6 +332,7 @@ function _bindMoreMenu(){
       if (e.key === 'Escape') close();
     });
   }
+}
 
 function _bindGlobalPhoneAutoFormat() {
   if (window.__globalPhoneAutoFormatBound) return;
