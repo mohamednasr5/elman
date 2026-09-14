@@ -494,6 +494,7 @@ export function getSharedFooterHTML() {
             <li><a href="categories.html" class="footer__link">التصنيفات والأنشطة</a></li>
             <li><a href="offers.html"     class="footer__link">العروض اليومية</a></li>
             <li><a href="products.html"   class="footer__link">المنتجات</a></li>
+            <li><a href="about.html"      class="footer__link">عن الدليل</a></li>
           </ul>
         </div>
         <div>
@@ -517,6 +518,7 @@ export function getSharedFooterHTML() {
       <div class="footer__bottom">
         <p class="footer__copyright">© 2026 دليل المنزلة والمطرية الرقمي (المنزلة وناسها). جميع الحقوق محفوظة.</p>
         <div class="footer__bottom-links">
+          <a href="about.html"   class="footer__bottom-link">عن الدليل</a>
           <a href="privacy.html" class="footer__bottom-link">الخصوصية</a>
           <a href="terms.html"   class="footer__bottom-link">الشروط</a>
           <a href="contact.html" class="footer__bottom-link">تواصل</a>

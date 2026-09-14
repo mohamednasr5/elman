@@ -123,9 +123,11 @@
 /matariya/          /matariya.html      200
 /about                  /about.html         200
 /about/                 /about.html         200
-/ar/about               /ar/about.html      200
-/ar/about/              /ar/about.html      200
-/ar/about.html          /ar/about.html      200
+/ar/about               /about.html         301
+/ar/about/              /about.html         301
+/ar/about.html          /about.html         301
+/en/about               /en/about.html      200
+/en/about/              /en/about.html      200
 /en/about.html          /en/about.html      200
 
 # Directory roots redirect to listing pages

@@ -13,7 +13,7 @@
 - [الطوارئ](https://dalilmanzala.com/emergency.html): أرقام الطوارئ والخدمات العاجلة
 - [المنزلة](https://dalilmanzala.com/manzala.html): دليل مدينة المنزلة والقرى والخدمات
 - [المطرية](https://dalilmanzala.com/matariya.html): دليل مدينة المطرية والقرى والخدمات
-- [عن الدليل](https://dalilmanzala.com/ar/about.html): من نحن ورؤية المنصة والمهندس محمد حماد مطور المنصة
+- [عن الدليل](https://dalilmanzala.com/about.html): من نحن ورؤية المنصة والمهندس محمد حماد مطور المنصة
 
 ## English Directory
 

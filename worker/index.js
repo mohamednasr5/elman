@@ -364,6 +364,12 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
 
+    // Canonical URL normalization: Eliminate duplicate slashes (e.g. //about.html -> /about.html)
+    if (/\/{2,}/.test(url.pathname)) {
+      const cleanPath = url.pathname.replace(/\/+/g, '/');
+      return Response.redirect(`${url.origin}${cleanPath}${url.search}`, 301);
+    }
+
 // ── Static AI/SEO Discovery Files ────────────────────────────────
 // GET /llms.txt — AI Agentic Discovery (required for 3/3 score)
 // GET /llms.txt — AI Agentic Discovery (llmstxt.org standard)
@@ -5058,13 +5064,21 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         }
 
         if (isArPrefix) {
-          const cleanArPath = url.pathname.replace(/^\/ar(\/|$)/, '/$1') || '/';
+          const cleanArPath = (url.pathname.replace(/^\/ar(\/|$)/, '/') || '/').replace(/\/+/g, '/');
           return Response.redirect(`${url.origin}${cleanArPath}${url.search}`, 301);
         }
 
         // Handle English Route: Serve dedicated English static pages
         let subPath = url.pathname.replace(/^\/en(\/|$)/, '').replace(/\/+$/, '');
-        let targetFile = `/en/${subPath ? subPath + '/' : ''}index.html`;
+        let targetFile = '';
+
+        if (!subPath) {
+          targetFile = '/en/index.html';
+        } else if (subPath.endsWith('.html')) {
+          targetFile = `/en/${subPath}`;
+        } else {
+          targetFile = `/en/${subPath}/index.html`;
+        }
 
         try {
           let originUrl = new URL(targetFile, url.origin);
@@ -5075,7 +5089,30 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
             }
           });
 
-          // Fallback to /en/index.html for client-side routing if subpath file not found
+          // If not found and subPath doesn't end with .html, try /en/${subPath}.html
+          if (!pageRes.ok && subPath && !subPath.endsWith('.html')) {
+            originUrl = new URL(`/en/${subPath}.html`, url.origin);
+            pageRes = await fetch(originUrl.toString(), {
+              headers: {
+                'Accept': 'text/html,application/xhtml+xml',
+                'User-Agent': request.headers.get('User-Agent') || 'Cloudflare-Worker'
+              }
+            });
+          }
+
+          // If not found and subPath ends with .html, try /en/${subPath.replace(/\.html$/, '')}/index.html
+          if (!pageRes.ok && subPath && subPath.endsWith('.html')) {
+            const cleanName = subPath.replace(/\.html$/, '');
+            originUrl = new URL(`/en/${cleanName}/index.html`, url.origin);
+            pageRes = await fetch(originUrl.toString(), {
+              headers: {
+                'Accept': 'text/html,application/xhtml+xml',
+                'User-Agent': request.headers.get('User-Agent') || 'Cloudflare-Worker'
+              }
+            });
+          }
+
+          // Fallback to /en/index.html for client-side routing only if subpath file not found anywhere
           if (!pageRes.ok && subPath) {
             originUrl = new URL('/en/index.html', url.origin);
             pageRes = await fetch(originUrl.toString(), {
@@ -5088,14 +5125,16 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
           if (pageRes.ok) {
             let html = await pageRes.text();
-            const cleanArSuffix = url.pathname.replace(/^\/en(?:\/|$)/, '/') || '/';
-            const alternateAr = `${url.origin}${cleanArSuffix.startsWith('/') ? cleanArSuffix : '/' + cleanArSuffix}`;
-            const canonicalClean = `${url.origin}${url.pathname}`;
+            const cleanArSuffix = (url.pathname.replace(/^\/en(?:\/|$)/, '/') || '/').replace(/\/+/g, '/');
+            const alternateAr = `${url.origin}${cleanArSuffix}`;
+            const canonicalClean = `${url.origin}${url.pathname.replace(/\/+/g, '/')}`;
             const alternateTags = `
   <link rel="alternate" hreflang="en" href="${canonicalClean}" />
   <link rel="alternate" hreflang="ar" href="${alternateAr}" />
   <link rel="alternate" hreflang="x-default" href="${alternateAr}" />`;
-            html = html.replace('</head>', `${alternateTags}\n</head>`);
+            if (!html.includes('hreflang="en"')) {
+              html = html.replace('</head>', `${alternateTags}\n</head>`);
+            }
 
             return new Response(html, {
               status: 200,

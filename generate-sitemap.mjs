@@ -24,7 +24,7 @@ async function run(){
     ['https://dalilmanzala.com/emergency.html','https://dalilmanzala.com/en/emergency/','monthly','0.8'],
     ['https://dalilmanzala.com/around-me.html','https://dalilmanzala.com/en/around-me/','weekly','0.7'],
     ['https://dalilmanzala.com/products.html','https://dalilmanzala.com/en/products/','daily','0.7'],
-    ['https://dalilmanzala.com/ar/about.html','https://dalilmanzala.com/en/about.html','monthly','0.8'],
+    ['https://dalilmanzala.com/about.html','https://dalilmanzala.com/en/about.html','monthly','0.8'],
     ['https://dalilmanzala.com/contact.html','https://dalilmanzala.com/en/contact/','monthly','0.5'],
     ['https://dalilmanzala.com/privacy.html','https://dalilmanzala.com/en/privacy/','yearly','0.3'],
     ['https://dalilmanzala.com/terms.html','https://dalilmanzala.com/en/terms/','yearly','0.3'],
