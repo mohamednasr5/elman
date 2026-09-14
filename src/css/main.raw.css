@@ -3,6 +3,8 @@
    Imports all modules in correct order
    ═══════════════════════════════════════════════════════════ */
 
+@import url('./global-visual-refinement.css');
+
 /* 1. Base */
 @import url('./base/variables.css');
 @import url('./base/reset.css');
@@ -280,4 +282,3 @@ img.lazy.error {
 .page-back-bar {
   gap: 12px;
 }
-
