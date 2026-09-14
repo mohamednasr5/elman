@@ -16,14 +16,14 @@
   border-radius: 50% !important;
 }
 
-/* Compact official gold seal — visually close to the reference badge. */
+/* Extra-compact official gold seal — intentionally close to the reference size. */
 .place-verified-seal {
   position: absolute !important;
-  left: -5px !important;
+  left: -3px !important;
   right: auto !important;
-  bottom: -2px !important;
-  width: 34px !important;
-  height: 34px !important;
+  bottom: -1px !important;
+  width: 28px !important;
+  height: 28px !important;
   display: grid !important;
   place-items: center !important;
   border-radius: 50% !important;
@@ -32,14 +32,14 @@
     linear-gradient(145deg, #fff7b8 0%, #ffd447 28%, #efb92b 58%, #c98508 82%, #8c5c08 100%) !important;
   color: #fff !important;
   font-family: Arial, sans-serif !important;
-  font-size: 21px !important;
+  font-size: 17px !important;
   font-weight: 1000 !important;
   line-height: 1 !important;
-  border: 2px solid #fff !important;
+  border: 1.5px solid #fff !important;
   box-shadow:
-    0 3px 9px rgba(83, 52, 0, .28),
-    0 0 0 1.5px rgba(218, 165, 35, .86),
-    0 0 9px rgba(245, 197, 66, .46),
+    0 2px 7px rgba(83, 52, 0, .26),
+    0 0 0 1px rgba(218, 165, 35, .86),
+    0 0 7px rgba(245, 197, 66, .42),
     inset 0 1px 2px rgba(255,255,255,.96) !important;
   z-index: 40 !important;
   pointer-events: auto !important;
@@ -47,14 +47,13 @@
   animation: verificationSealPulse 4.8s ease-in-out infinite !important;
 }
 
-/* Subtle rosette edge so the mark reads like an official seal. */
 .place-verified-seal::marker { content: none !important; }
 
 /* Rotating golden glint: stays tightly locked to the seal perimeter. */
 .place-verified-seal::before {
   content: "" !important;
   position: absolute !important;
-  inset: -4px !important;
+  inset: -3px !important;
   border-radius: 50% !important;
   background: conic-gradient(
     from 0deg,
@@ -65,8 +64,8 @@
     #fff7b0 334deg,
     transparent 341deg 360deg
   ) !important;
-  -webkit-mask: radial-gradient(circle, transparent 0 18px, #000 19px 22px, transparent 23px) !important;
-  mask: radial-gradient(circle, transparent 0 18px, #000 19px 22px, transparent 23px) !important;
+  -webkit-mask: radial-gradient(circle, transparent 0 14px, #000 15px 18px, transparent 19px) !important;
+  mask: radial-gradient(circle, transparent 0 14px, #000 15px 18px, transparent 19px) !important;
   transform-origin: 50% 50% !important;
   animation: verificationSealOrbit 3.2s linear infinite !important;
   pointer-events: none !important;
@@ -118,23 +117,23 @@
     filter: brightness(1) saturate(1);
     transform: scale(1);
     box-shadow:
-      0 3px 9px rgba(83, 52, 0, .28),
-      0 0 0 1.5px rgba(218, 165, 35, .86),
-      0 0 9px rgba(245, 197, 66, .46),
+      0 2px 7px rgba(83, 52, 0, .26),
+      0 0 0 1px rgba(218, 165, 35, .86),
+      0 0 7px rgba(245, 197, 66, .42),
       inset 0 1px 2px rgba(255,255,255,.96);
   }
   78% {
     filter: brightness(1.18) saturate(1.12);
-    transform: scale(1.045);
+    transform: scale(1.035);
     box-shadow:
-      0 5px 12px rgba(83, 52, 0, .30),
-      0 0 0 2px rgba(255, 215, 82, .90),
-      0 0 15px rgba(255, 221, 112, .78),
+      0 3px 9px rgba(83, 52, 0, .28),
+      0 0 0 1.5px rgba(255, 215, 82, .90),
+      0 0 12px rgba(255, 221, 112, .72),
       inset 0 1px 3px rgba(255,255,255,1);
   }
   83% {
-    filter: brightness(1.38) saturate(1.12);
-    transform: scale(1.02);
+    filter: brightness(1.34) saturate(1.12);
+    transform: scale(1.015);
   }
   88% {
     filter: brightness(1) saturate(1);
@@ -187,19 +186,19 @@
 
 @media (max-width: 700px) {
   .place-verified-seal {
-    left: -5px !important;
+    left: -3px !important;
     right: auto !important;
-    bottom: -2px !important;
-    width: 36px !important;
-    height: 36px !important;
-    font-size: 22px !important;
-    border-width: 2px !important;
+    bottom: -1px !important;
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 18px !important;
+    border-width: 1.5px !important;
   }
 
   .place-verified-seal::before {
-    inset: -4px !important;
-    -webkit-mask: radial-gradient(circle, transparent 0 19px, #000 20px 23px, transparent 24px) !important;
-    mask: radial-gradient(circle, transparent 0 19px, #000 20px 23px, transparent 24px) !important;
+    inset: -3px !important;
+    -webkit-mask: radial-gradient(circle, transparent 0 15px, #000 16px 19px, transparent 20px) !important;
+    mask: radial-gradient(circle, transparent 0 15px, #000 16px 19px, transparent 20px) !important;
   }
 
   /* On touch screens the exact same tooltip is fixed above the bottom nav. */
