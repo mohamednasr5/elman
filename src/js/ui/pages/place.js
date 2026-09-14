@@ -7,7 +7,7 @@ import { translateCategory, toArabicCategory } from '../../utils/category-i18n.j
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
-import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=d4ce4ede_v6';
+import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, submitPhoneSuggestion, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=d4ce4ede_v6';
 import { getCurrentUser, signInWithGoogle, isAdmin, onAuthStateChange } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
@@ -300,7 +300,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     // Early fetch reviews in parallel with page rendering
     const reviewsFetchPromise = !isAtm ? getPlaceReviews(placeId, place.slug) : Promise.resolve([]);
 
-    const hasValidPhone = !isAtm && isValidPhoneNumber(place.phone);
+    const hasValidPhone = !isAtm && isValidPhoneNumber(place.phone) && !place.phoneUnavailable;
     const hasValidWhatsapp = isValidPhoneNumber(place.whatsapp);
 
     const calculatedCompleteness = Math.min(100,
@@ -566,15 +566,18 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
             <!-- Quick Action Buttons -->
             <div class="place-contact-btns">
-              ${(!hasValidPhone && !hasValidWhatsapp && !isAtm) ? `
-                <div class="place-no-phone-notice" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border:1px dashed var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:8px;width:100%;flex-wrap:wrap">
-                  <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
-                    <span style="font-size:16px">ℹ️</span>
-                    <span><strong>رقم التواصل غير متاح حالياً</strong> لهذا النشاط.</span>
+              ${(!hasValidPhone && !isAtm) ? `
+                <div class="place-no-phone-notice animate-fade-in" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(135deg, rgba(2,132,199,0.08) 0%, rgba(14,165,233,0.12) 100%);border:1.5px dashed #0284C7;border-radius:var(--radius-md);padding:12px 16px;margin-bottom:10px;width:100%;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--text-secondary)">
+                    <span style="font-size:22px">📞</span>
+                    <div>
+                      <div style="font-weight:800;color:var(--text-primary);font-size:13.5px">رقم التواصل غير متوفر حالياً لهذا المكان</div>
+                      <div style="font-size:12px;color:var(--text-muted)">ساعد أهالي وزوار المنزلة والمطرية في الوصول لهذا النشاط</div>
+                    </div>
                   </div>
-                  <button type="button" class="btn btn-sm btn-outline" onclick="window.openSuggestPhoneNumber({ placeId: '${escAttr(placeId)}', placeName: '${escAttr(place.name || '')}' })" style="gap:5px;font-size:12px;font-weight:700;color:var(--primary)">
-                    <span>💡</span>
-                    <span>اقترح رقمًا صحيحًا</span>
+                  <button type="button" class="btn btn-sm btn-primary" onclick="window.openSuggestPhoneNumber({ placeId: '${escAttr(placeId)}', placeName: '${escAttr(place.name || '')}' })" style="gap:6px;font-size:13px;font-weight:800;padding:8px 16px;box-shadow:0 3px 10px rgba(2,132,199,0.25)">
+                    <span>✍️</span>
+                    <span>هل تعرف رقم المكان؟ اضغط هنا واكتبه</span>
                   </button>
                 </div>
               ` : ''}
@@ -2488,17 +2491,22 @@ if (typeof window !== 'undefined') {
 
   window.openSuggestPhoneNumber = ({ placeId, placeName }) => {
     const modal = showModal({
-      title: '💡 اقتراح رقم هاتف للمكان',
+      title: '💡 هل تعرف رقم هذا المكان؟',
       size: 'sm',
       content: `
         <div style="display:flex;flex-direction:column;gap:14px">
           <div style="padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-size:13px;line-height:1.7">
-            ساعد أهالي المنزلة والمطرية في الوصول لهذا المكان.<br>
-            <strong>${escHtml(placeName || 'هذا المكان')}</strong>
+            ساعد أهالي وزوار المنزلة والمطرية في الوصول لهذا النشاط والتواصل معه:<br>
+            <strong style="color:var(--primary);font-size:14.5px">${escHtml(placeName || 'هذا المكان')}</strong>
           </div>
           <div>
-            <label class="form-label" style="font-weight:800;display:block;margin-bottom:6px">رقم الهاتف أو الواتساب المقترح:</label>
-            <input id="suggested-phone-input" type="tel" class="form-input" dir="ltr" placeholder="مثال: 01012345678 أو 050xxxxxxx" autocomplete="tel" style="width:100%" />
+            <label class="form-label" style="font-weight:800;display:block;margin-bottom:6px">رقم الهاتف أو الواتساب المقترح: <span style="color:#ef4444">*</span></label>
+            <input id="suggested-phone-input" type="tel" class="form-input" dir="ltr" placeholder="01********* (11 رقم أو خط أرضي)" maxlength="11" autocomplete="tel" style="width:100%;font-size:15px;font-weight:700" />
+            <p style="font-size:11px;color:var(--text-muted);margin-top:4px">يدعم أرقام الموبايل (11 رقم)، الأرضي، والخطوط الساخنة والأرقام الموحدة.</p>
+          </div>
+          <div>
+            <label class="form-label" style="font-weight:800;display:block;margin-bottom:6px">اسمك أو صفتك <span style="font-weight:500;color:var(--text-muted)">(اختياري)</span>:</label>
+            <input id="suggested-reporter-name" type="text" class="form-input" placeholder="مثال: أحمد (زبون / صاحب المكان)" style="width:100%" />
           </div>
           <div>
             <label class="form-label" style="font-weight:800;display:block;margin-bottom:6px">ملاحظة إضافية <span style="font-weight:500;color:var(--text-muted)">(اختياري)</span>:</label>
@@ -2508,11 +2516,12 @@ if (typeof window !== 'undefined') {
       `,
       buttons: [
         {
-          label: '📤 إرسال الاقتراح للمراجعة',
+          label: '📤 إرسال الرقم للاعتماد',
           type: 'primary',
           closeOnClick: false,
           onClick: async () => {
             const rawPhone = document.getElementById('suggested-phone-input')?.value?.trim() || '';
+            const reporter = document.getElementById('suggested-reporter-name')?.value?.trim() || '';
             const note = document.getElementById('suggested-phone-note')?.value?.trim() || '';
             if (!isValidPhoneNumber(rawPhone)) {
               toast.error('يرجى كتابة رقم هاتف مصري صحيح (موبايل 11 رقم أو أرضي)');
@@ -2520,17 +2529,18 @@ if (typeof window !== 'undefined') {
             }
             try {
               const u = getCurrentUser();
-              const details = `رقم مقترح: ${rawPhone}${note ? ` | ملاحظة: ${note}` : ''}`;
-              await reportPlaceData({
+              const reporterName = reporter || u?.name || u?.displayName || 'مستخدم متطوع';
+              await submitPhoneSuggestion({
                 placeId,
-                reason: 'رقم الهاتف غير صحيح',
-                details,
-                reporterName: u?.name || u?.displayName || 'مستخدم متطوع'
+                placeName,
+                suggestedPhone: rawPhone,
+                note,
+                reporterName
               });
-              toast.success('شكرًا لمساهمتك! تم إرسال الرقم المقترح للمراجعة والاعتماد. 💡');
+              toast.success('شكرًا جزيلاً لمساهمتك! تم إرسال الرقم المقترح وسيتم مراجعته واعتماده في الدليل. 💡');
               modal.close();
             } catch (err) {
-              toast.error(err.message || 'تعذر إرسال الاقتراح');
+              toast.error(err.message || 'تعذر إرسال الرقم المقترح');
             }
           }
         },

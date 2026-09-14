@@ -1494,9 +1494,13 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
         <div class="form-row" id="p-phone-row">
           <div class="form-group">
-            <label class="form-label">رقم الهاتف <span class="required">*</span></label>
+            <label class="form-label" id="p-phone-label">رقم الهاتف <span class="required" id="p-phone-required-star">*</span></label>
             <input type="tel" id="p-phone" class="form-input" required placeholder="01********* (11 رقم أو خط ساخن)" maxlength="11" value="${escAttr(place?.phone || '')}" style="direction:ltr;text-align:right" />
             <p style="font-size:11px;color:var(--text-muted);margin-top:3px">يدعم أرقام الموبايل، الأرضي، والخطوط الساخنة والأرقام الموحدة (مثل 17555). مسموح لنفس الرقم بمكانين كحد أقصى.</p>
+            <label class="form-check-label" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;margin-top:8px;font-size:12.5px;color:var(--text-secondary);font-weight:700;user-select:none">
+              <input type="checkbox" id="p-phone-unavailable" style="width:17px;height:17px;accent-color:var(--primary);cursor:pointer" ${(place?.phoneUnavailable || (isEdit && !place?.phone)) ? 'checked' : ''} />
+              <span>🚫 رقم التواصل غير متوفر حالياً لهذا المكان</span>
+            </label>
           </div>
 
           <div class="form-group">
@@ -3046,6 +3050,35 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     if (el) attachSmartSocialInput(el, plat);
   });
 
+  // Toggle phone unavailable logic
+  const phoneUnavailableCb = document.getElementById('p-phone-unavailable');
+  const phoneInput = document.getElementById('p-phone');
+  const phoneStar = document.getElementById('p-phone-required-star');
+
+  function syncPhoneUnavailableState() {
+    if (!phoneUnavailableCb || !phoneInput) return;
+    const isUnavailable = phoneUnavailableCb.checked;
+    if (isUnavailable) {
+      phoneInput.required = false;
+      phoneInput.disabled = true;
+      phoneInput.value = '';
+      phoneInput.placeholder = 'رقم التواصل غير متوفر حالياً';
+      phoneInput.style.opacity = '0.6';
+      phoneInput.style.background = 'var(--surface-2)';
+      if (phoneStar) phoneStar.style.display = 'none';
+    } else {
+      phoneInput.required = true;
+      phoneInput.disabled = false;
+      phoneInput.placeholder = '01********* (11 رقم أو خط ساخن)';
+      phoneInput.style.opacity = '1';
+      phoneInput.style.background = '';
+      if (phoneStar) phoneStar.style.display = 'inline';
+    }
+  }
+
+  phoneUnavailableCb?.addEventListener('change', syncPhoneUnavailableState);
+  if (phoneUnavailableCb?.checked) syncPhoneUnavailableState();
+
   // Form Submit
   document.getElementById('place-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -3121,6 +3154,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         });
       }
 
+      const isPhoneUnavailable = Boolean(document.getElementById('p-phone-unavailable')?.checked);
+      const rawPhone = isPhoneUnavailable ? '' : (document.getElementById('p-phone')?.value || '');
+
       const placeData = {
         name: document.getElementById('p-name').value,
         nameEn: document.getElementById('p-name-en').value,
@@ -3130,7 +3166,8 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         medicalSpecialty: document.getElementById('p-medical-specialty')?.value.trim() || null,
         deliveryType: document.getElementById('p-delivery-type')?.value || null,
         description: document.getElementById('p-desc').value,
-        phone: normalizePhoneNumber(document.getElementById('p-phone')?.value || ''),
+        phone: isPhoneUnavailable ? '' : normalizePhoneNumber(rawPhone),
+        phoneUnavailable: isPhoneUnavailable,
         whatsapp: normalizePhoneNumber(document.getElementById('p-whatsapp')?.value || ''),
         area: (document.getElementById('p-area')?.value === 'other' 
           ? (document.getElementById('p-custom-area')?.value.trim() || 'المنزلة') 

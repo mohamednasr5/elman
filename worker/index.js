@@ -627,32 +627,138 @@ try {
   }
 
   // ── Public Data Quality Reports ─────────────────────────────────
-  // POST /api/place-reports — visitors can flag stale/incorrect place data.
+  // ── Public Data Quality Reports & Phone Suggestions ──────────
+  // POST /api/place-reports — visitors can flag stale/incorrect place data or suggest phone numbers
   if (url.pathname === '/api/place-reports' && request.method === 'POST') {
     try {
-      const body = await request.json();
+      const body = await request.json().catch(() => ({}));
       const placeId = String(body.placeId || body.place_id || '').trim();
       const reason = String(body.reason || '').trim().slice(0, 120);
-      const details = String(body.details || '').trim().slice(0, 1000);
-      const reporterName = String(body.reporterName || 'زائر').trim().slice(0, 80);
-      if (!placeId || !reason) return jsonResponse({ success:false, error:'بيانات البلاغ غير مكتملة' }, 400, corsHeaders);
-      const exists = await createTursoDB(env).prepare('SELECT id FROM places WHERE id = ? LIMIT 1').bind(placeId).first();
-      if (!exists) return jsonResponse({ success:false, error:'المكان غير موجود' }, 404, corsHeaders);
+      let details = String(body.details || '').trim().slice(0, 1500);
+      const reporterName = String(body.reporterName || body.reporter_name || 'زائر').trim().slice(0, 80);
+      const suggestedPhone = String(body.suggestedPhone || body.suggested_phone || body.phone || '').trim();
+      const note = String(body.note || '').trim().slice(0, 300);
 
-      // Small abuse guard: one report per IP/place within 10 minutes.
+      if (!placeId || (!reason && !suggestedPhone)) {
+        return jsonResponse({ success: false, error: 'بيانات البلاغ غير مكتملة' }, 400, corsHeaders);
+      }
+
+      // If a suggested phone is provided, format details cleanly with JSON payload
+      if (suggestedPhone) {
+        details = JSON.stringify({
+          suggestedPhone,
+          note: note || '',
+          rawText: `رقم مقترح: ${suggestedPhone}${note ? ` | ملاحظة: ${note}` : ''}`
+        });
+      }
+
+      const exists = await createTursoDB(env).prepare('SELECT id, name, owner_id FROM places WHERE id = ? LIMIT 1').bind(placeId).first();
+      if (!exists) return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
+
+      // Abuse guard: one report per IP/place within 3 minutes.
       const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-      const rateKey = new Request('https://report-rate.local/' + encodeURIComponent(ip + ':' + placeId));
+      const rateKey = new Request('https://report-rate.local/' + encodeURIComponent(ip + ':' + placeId + (suggestedPhone ? ':ph' : '')));
       const rateCache = caches.default;
       if (await rateCache.match(rateKey)) {
-        return jsonResponse({ success:false, error:'تم استلام بلاغ مشابه مؤخرًا، شكرًا لك' }, 429, { ...corsHeaders, 'Retry-After':'600' });
+        return jsonResponse({ success: false, error: 'تم استلام اقتراح أو بلاغ لهذا المكان مؤخرًا، شكرًا لك' }, 429, { ...corsHeaders, 'Retry-After': '180' });
       }
-      const id = crypto.randomUUID();
+
+      const id = 'rep_' + crypto.randomUUID();
+      const reportReason = reason || (suggestedPhone ? 'اقتراح رقم هاتف' : 'معلومة غير صحيحة');
       await createTursoDB(env).prepare('INSERT INTO place_reports (id, place_id, reason, details, reporter_name, status, created_at) VALUES (?, ?, ?, ?, ?, \'new\', ?)')
-        .bind(id, placeId, reason, details, reporterName, Date.now()).run();
-      ctx.waitUntil(rateCache.put(rateKey, new Response('1', { headers:{'Cache-Control':'max-age=600'} })));
-      return jsonResponse({ success:true, message:'تم استلام البلاغ' }, 201, { ...corsHeaders, 'Cache-Control':'no-store' });
+        .bind(id, placeId, reportReason, details, reporterName, Date.now()).run();
+
+      ctx.waitUntil(rateCache.put(rateKey, new Response('1', { headers: { 'Cache-Control': 'max-age=180' } })));
+      return jsonResponse({ success: true, message: 'تم استلام الاقتراح بنجاح للمراجعة والاعتماد' }, 201, { ...corsHeaders, 'Cache-Control': 'no-store' });
     } catch (err) {
-      return jsonResponse({ success:false, error:'تعذر استلام البلاغ' }, 500, corsHeaders);
+      return jsonResponse({ success: false, error: 'تعذر استلام البلاغ' }, 500, corsHeaders);
+    }
+  }
+
+  // GET /api/place-reports — Admin view of all quality reports and phone suggestions
+  if (url.pathname === '/api/place-reports' && request.method === 'GET') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
+    try {
+      const statusFilter = (url.searchParams.get('status') || '').trim();
+      let query = `
+        SELECT r.id, r.place_id, r.reason, r.details, r.reporter_name, r.status, r.created_at, r.reviewed_at, r.reviewed_by,
+               p.name as place_name, p.slug as place_slug, p.phone as current_phone, p.area as place_area, p.category_id as category_id
+        FROM place_reports r
+        LEFT JOIN places p ON r.place_id = p.id
+      `;
+      const bindings = [];
+      if (statusFilter && statusFilter !== 'all') {
+        query += ' WHERE r.status = ?';
+        bindings.push(statusFilter);
+      }
+      query += ' ORDER BY r.created_at DESC LIMIT 250';
+
+      const stmt = bindings.length > 0 ? createTursoDB(env).prepare(query).bind(...bindings) : createTursoDB(env).prepare(query);
+      const res = await stmt.all();
+      return jsonResponse({ success: true, data: res.results || [] }, 200, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+    }
+  }
+
+  // POST /api/place-reports/action (or PUT /api/place-reports) — Admin approve/reject/delete actions
+  if ((url.pathname === '/api/place-reports/action' || url.pathname.startsWith('/api/place-reports/')) && (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH')) {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
+
+    const body = await request.json().catch(() => ({}));
+    const idFromPath = url.pathname.startsWith('/api/place-reports/') ? url.pathname.replace('/api/place-reports/', '') : '';
+    const id = (body.id || idFromPath || '').trim();
+    const action = (body.action || body.status || '').trim().toLowerCase(); // 'approve' | 'reject' | 'delete'
+    const newPhone = String(body.phone || body.suggestedPhone || '').trim();
+
+    if (!id) return jsonResponse({ success: false, error: 'Report ID required' }, 400, corsHeaders);
+
+    try {
+      const report = await createTursoDB(env).prepare('SELECT * FROM place_reports WHERE id = ? LIMIT 1').bind(id).first();
+      if (!report) return jsonResponse({ success: false, error: 'السجل غير موجود' }, 404, corsHeaders);
+
+      const now = Date.now();
+      const reviewer = auth.user.name || auth.user.displayName || auth.user.email || 'الإدارة';
+
+      if (action === 'approve' || action === 'approved') {
+        // Resolve phone number to apply
+        let phoneToApply = newPhone;
+        if (!phoneToApply && report.details) {
+          try {
+            const parsed = JSON.parse(report.details);
+            phoneToApply = parsed.suggestedPhone || parsed.phone || '';
+          } catch (_) {
+            const m = report.details.match(/رقم مقترح:\s*([0-9\+]{7,15})/);
+            if (m) phoneToApply = m[1];
+          }
+        }
+
+        if (phoneToApply) {
+          const cleanPhone = String(phoneToApply).replace(/[^0-9+]/g, '').trim();
+          await createTursoDB(env).prepare('UPDATE places SET phone = ?, updated_at = ? WHERE id = ?')
+            .bind(cleanPhone, now, report.place_id).run();
+        }
+
+        await createTursoDB(env).prepare("UPDATE place_reports SET status = 'approved', reviewed_at = ?, reviewed_by = ? WHERE id = ?")
+          .bind(now, reviewer, id).run();
+
+        bumpDataVersion(env, ctx);
+        return jsonResponse({ success: true, message: 'تم قبول الاقتراح وتحديث رقم الهاتف للمكان بنجاح', phone: phoneToApply }, 200, corsHeaders);
+      } else if (action === 'reject' || action === 'rejected') {
+        await createTursoDB(env).prepare("UPDATE place_reports SET status = 'rejected', reviewed_at = ?, reviewed_by = ? WHERE id = ?")
+          .bind(now, reviewer, id).run();
+
+        return jsonResponse({ success: true, message: 'تم رفض الاقتراح' }, 200, corsHeaders);
+      } else if (action === 'delete') {
+        await createTursoDB(env).prepare('DELETE FROM place_reports WHERE id = ?').bind(id).run();
+        return jsonResponse({ success: true, message: 'تم حذف السجل' }, 200, corsHeaders);
+      }
+
+      return jsonResponse({ success: false, error: 'إجراء غير مدعوم' }, 400, corsHeaders);
+    } catch (err) {
+      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
   }
 

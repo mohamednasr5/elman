@@ -102,7 +102,8 @@ async function tursoFetch(path, options = {}) {
     path.includes('admin=1') ||
     path.startsWith('/api/users') ||
     path.startsWith('/api/verification') ||
-    path.startsWith('/api/category-requests')
+    path.startsWith('/api/category-requests') ||
+    path.startsWith('/api/place-reports')
   );
 
   try {
@@ -712,17 +713,48 @@ export async function searchPlacesTurso(query = '', { category = '', area = '', 
   return null;
 }
 
-/** Submit a public report about incorrect/stale place information. */
-export async function reportPlaceData({ placeId, reason = 'معلومة غير صحيحة', details = '', reporterName = 'زائر' } = {}) {
-  if (!placeId || !reason) throw new Error('بيانات البلاغ غير مكتملة');
+/** Submit a public report about incorrect/stale place information or suggest a phone number. */
+export async function reportPlaceData({ placeId, reason = 'معلومة غير صحيحة', details = '', reporterName = 'زائر', suggestedPhone = '', note = '' } = {}) {
+  if (!placeId || (!reason && !suggestedPhone)) throw new Error('بيانات البلاغ غير مكتملة');
   const res = await fetch(`${WORKER_URL}/api/place-reports`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ placeId, reason, details, reporterName })
+    body: JSON.stringify({ placeId, reason, details, reporterName, suggestedPhone, note })
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.success) throw new Error(data.error || 'تعذر إرسال البلاغ');
   return data;
+}
+
+/** Submit a public phone number suggestion for a place. */
+export async function submitPhoneSuggestion({ placeId, placeName = '', suggestedPhone = '', note = '', reporterName = 'زائر' } = {}) {
+  if (!placeId || !suggestedPhone) throw new Error('رقم الهاتف ومعرف المكان مطلوبان');
+  return await reportPlaceData({
+    placeId,
+    reason: 'اقتراح رقم هاتف',
+    details: `رقم مقترح: ${suggestedPhone}${note ? ` | ملاحظة: ${note}` : ''}`,
+    suggestedPhone,
+    note,
+    reporterName
+  });
+}
+
+/** Get quality reports and phone suggestions for admin. */
+export async function getAdminPhoneReports({ status = 'all' } = {}) {
+  const res = await tursoFetch(`/api/place-reports?status=${encodeURIComponent(status)}`, { requiresAuth: true });
+  return res?.data || [];
+}
+
+/** Approve, reject, or delete a quality report / phone suggestion. */
+export async function actOnPhoneReport({ reportId, action = 'approve', phone = '' } = {}) {
+  if (!reportId) throw new Error('معرف البلاغ مطلوب');
+  const res = await tursoFetch('/api/place-reports/action', {
+    method: 'POST',
+    requiresAuth: true,
+    body: JSON.stringify({ id: reportId, action, phone })
+  });
+  if (!res || res.success === false) throw new Error(res?.error || 'فشل تنفيذ الإجراء');
+  return res;
 }
 
 /** Get place by slug (with multi-tier resilient lookup and 0ms instant cache) */

@@ -54,15 +54,16 @@ export function isSameBusinessOrBranch(p1, p2) {
 
 export async function validatePlaceUniqueness({ name, phone, excludePlaceId = null, categoryId = '', placeData = null }) {
   const isAtm = isAtmPlace(placeData || { categoryId, name });
+  const isPhoneUnavailable = Boolean(placeData?.phoneUnavailable || !phone);
   const normName = normalizeArabic(name || '').trim();
   const cleanPhoneNum = normalizePhoneNumber(phone || '');
   if (!normName) throw new Error(isAtm ? 'يرجى إدخال اسم البنك' : 'اسم المكان مطلوب');
   if (isAtm) return;
-  if (!isValidPhoneNumber(phone)) {
-    throw new Error('يرجى إدخال رقم هاتف مصري صحيح ومفعل (موبايل 11 رقم أو أرضي أو رقم موحد)، ولا يُقبل تسجيل أرقام غير صالحة أو أصفار.');
+  if (!isPhoneUnavailable && !isValidPhoneNumber(phone)) {
+    throw new Error('يرجى إدخال رقم هاتف مصري صحيح ومفعل (موبايل 11 رقم أو أرضي أو رقم موحد)، أو تحديد خيار "رقم التواصل غير متوفر حالياً".');
   }
   const allPlaces = (await getPublishedPlaces({ limit: 1000 })) || [];
-  const currentPlaceObj = { ...(placeData || {}), name, phone, id: excludePlaceId || placeData?.id || placeData?._key };
+  const currentPlaceObj = { ...(placeData || {}), name, phone: isPhoneUnavailable ? '' : phone, id: excludePlaceId || placeData?.id || placeData?._key };
   const unrelatedMatchingPhonePlaces = [];
   for (const p of allPlaces) {
     if (!p) continue;
@@ -73,10 +74,12 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
     if (existingNormName && existingNormName === normName) {
       throw new Error(`يوجد مكان مسجل مسبقاً بنفس الاسم تماماً ("${p.name}")، يرجى إضافة اسم الفرع أو المنطقة لتمييزه (مثال: "${p.name} / بجوار كذا").`);
     }
-    const existingPhone = normalizePhoneNumber(p.phone || '');
-    if (existingPhone && existingPhone === cleanPhoneNum && !isSameBusinessOrBranch(currentPlaceObj, p)) unrelatedMatchingPhonePlaces.push(p);
+    if (!isPhoneUnavailable && cleanPhoneNum) {
+      const existingPhone = normalizePhoneNumber(p.phone || '');
+      if (existingPhone && existingPhone === cleanPhoneNum && !isSameBusinessOrBranch(currentPlaceObj, p)) unrelatedMatchingPhonePlaces.push(p);
+    }
   }
-  if (unrelatedMatchingPhonePlaces.length >= 2) {
+  if (!isPhoneUnavailable && unrelatedMatchingPhonePlaces.length >= 2) {
     const placesNames = unrelatedMatchingPhonePlaces.map(p => `"${p.name}"`).join(' و ');
     throw new Error(`رقم الهاتف ("${phone}") مسجل بالفعل لأنشطة تجارية أخرى مختلفة (${placesNames}). إذا كان هذا فرعاً لنفس النشاط، يرجى كتابة اسم النشاط الرئيسي في بداية اسم الفرع.`);
   }
@@ -95,10 +98,14 @@ export async function createPlace(placeData, currentUser) {
   const existingId = slugCheck?.data?.id || slugCheck?.data?.place?.id;
   if (existingId && String(existingId) !== String(placeId)) slug = `${cleanCandidate}-${placeId.slice(-5)}`;
   const now = Date.now();
+  const isPhoneUnavailable = Boolean(placeData.phoneUnavailable || !placeData.phone);
   const newPlace = {
     id: placeId, slug, ownerId: currentUser.uid, ownerEmail: currentUser.email || '', name: placeData.name.trim(), nameEn: placeData.nameEn || '',
     categoryId: placeData.categoryId || 'other', customCategory: placeData.customCategory || null, medicalSpecialty: placeData.medicalSpecialty || null,
-    subcategoryId: placeData.subcategoryId || '', description: placeData.description || '', phone: normalizePhoneNumber(placeData.phone || ''), whatsapp: normalizePhoneNumber(placeData.whatsapp || ''),
+    subcategoryId: placeData.subcategoryId || '', description: placeData.description || '',
+    phone: isPhoneUnavailable ? '' : normalizePhoneNumber(placeData.phone || ''),
+    phoneUnavailable: isPhoneUnavailable,
+    whatsapp: normalizePhoneNumber(placeData.whatsapp || ''),
     address: placeData.address || '', area: placeData.area || 'المنزلة', mapsLink: placeData.mapsLink || '', location: placeData.location || { lat: 31.1578, lng: 31.9367 },
     alwaysOpen: Boolean(placeData.alwaysOpen), alwaysOpenExcept: Boolean(placeData.alwaysOpenExcept), workingHours: placeData.workingHours || getDefaultWorkingHours(),
     coverImageUrl: placeData.coverImageUrl || '', logoUrl: placeData.logoUrl || '', imageUrls: placeData.imageUrls || [], services: placeData.services || [],
@@ -119,8 +126,41 @@ export async function createPlace(placeData, currentUser) {
 export async function updatePlace(placeId, placeData) {
   const current = (await getPlace(placeId)) || (await idbGet(STORES.PLACES, placeId));
   if (!current) throw new Error('المكان غير موجود');
-  if (placeData.name || placeData.phone) await validatePlaceUniqueness({ name: placeData.name || current.name, phone: placeData.phone || current.phone, excludePlaceId: placeId, categoryId: placeData.categoryId || current.categoryId, placeData: { ...current, ...placeData } });
-  const updates = { name: placeData.name ? placeData.name.trim() : current.name, nameEn: placeData.nameEn !== undefined ? placeData.nameEn : (current.nameEn || ''), categoryId: placeData.categoryId || current.categoryId, customCategory: placeData.customCategory !== undefined ? placeData.customCategory : (current.customCategory || null), medicalSpecialty: placeData.medicalSpecialty !== undefined ? placeData.medicalSpecialty : (current.medicalSpecialty || null), subcategoryId: placeData.subcategoryId || '', description: placeData.description !== undefined ? placeData.description : current.description, phone: placeData.phone !== undefined ? normalizePhoneNumber(placeData.phone || '') : (current.phone || ''), whatsapp: placeData.whatsapp !== undefined ? normalizePhoneNumber(placeData.whatsapp || '') : (current.whatsapp || ''), address: placeData.address !== undefined ? placeData.address : current.address, area: placeData.area || current.area || 'المنزلة', mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''), location: placeData.location !== undefined ? placeData.location : current.location, alwaysOpen: placeData.alwaysOpen !== undefined ? Boolean(placeData.alwaysOpen) : Boolean(current.alwaysOpen), alwaysOpenExcept: placeData.alwaysOpenExcept !== undefined ? Boolean(placeData.alwaysOpenExcept) : Boolean(current.alwaysOpenExcept), workingHours: placeData.workingHours || current.workingHours, coverImageUrl: placeData.coverImageUrl !== undefined ? placeData.coverImageUrl : current.coverImageUrl, logoUrl: placeData.logoUrl !== undefined ? placeData.logoUrl : current.logoUrl, imageUrls: placeData.imageUrls || current.imageUrls || [], services: placeData.services || current.services || [], social: { ...(current.social || {}), ...(placeData.social || {}) }, deliveryType: placeData.deliveryType !== undefined ? placeData.deliveryType : (current.deliveryType || null), branches: placeData.branches !== undefined ? placeData.branches.map(b => ({ ...b, phone: normalizePhoneNumber(b.phone || ''), whatsapp: normalizePhoneNumber(b.whatsapp || '') })) : (current.branches || []), availabilityStatus: placeData.availabilityStatus !== undefined ? placeData.availabilityStatus : (current.availabilityStatus || current.availability_status || 'available'), updatedAt: Date.now() };
+  if (placeData.name || placeData.phone !== undefined || placeData.phoneUnavailable !== undefined) {
+    await validatePlaceUniqueness({ name: placeData.name || current.name, phone: placeData.phone !== undefined ? placeData.phone : current.phone, excludePlaceId: placeId, categoryId: placeData.categoryId || current.categoryId, placeData: { ...current, ...placeData } });
+  }
+  const isPhoneUnavailable = placeData.phoneUnavailable !== undefined
+    ? Boolean(placeData.phoneUnavailable)
+    : (placeData.phone === '' ? true : Boolean(current.phoneUnavailable));
+
+  const updates = {
+    name: placeData.name ? placeData.name.trim() : current.name,
+    nameEn: placeData.nameEn !== undefined ? placeData.nameEn : (current.nameEn || ''),
+    categoryId: placeData.categoryId || current.categoryId,
+    customCategory: placeData.customCategory !== undefined ? placeData.customCategory : (current.customCategory || null),
+    medicalSpecialty: placeData.medicalSpecialty !== undefined ? placeData.medicalSpecialty : (current.medicalSpecialty || null),
+    subcategoryId: placeData.subcategoryId || '',
+    description: placeData.description !== undefined ? placeData.description : current.description,
+    phone: isPhoneUnavailable ? '' : (placeData.phone !== undefined ? normalizePhoneNumber(placeData.phone || '') : (current.phone || '')),
+    phoneUnavailable: isPhoneUnavailable,
+    whatsapp: placeData.whatsapp !== undefined ? normalizePhoneNumber(placeData.whatsapp || '') : (current.whatsapp || ''),
+    address: placeData.address !== undefined ? placeData.address : current.address,
+    area: placeData.area || current.area || 'المنزلة',
+    mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''),
+    location: placeData.location !== undefined ? placeData.location : current.location,
+    alwaysOpen: placeData.alwaysOpen !== undefined ? Boolean(placeData.alwaysOpen) : Boolean(current.alwaysOpen),
+    alwaysOpenExcept: placeData.alwaysOpenExcept !== undefined ? Boolean(placeData.alwaysOpenExcept) : Boolean(current.alwaysOpenExcept),
+    workingHours: placeData.workingHours || current.workingHours,
+    coverImageUrl: placeData.coverImageUrl !== undefined ? placeData.coverImageUrl : current.coverImageUrl,
+    logoUrl: placeData.logoUrl !== undefined ? placeData.logoUrl : current.logoUrl,
+    imageUrls: placeData.imageUrls || current.imageUrls || [],
+    services: placeData.services || current.services || [],
+    social: { ...(current.social || {}), ...(placeData.social || {}) },
+    deliveryType: placeData.deliveryType !== undefined ? placeData.deliveryType : (current.deliveryType || null),
+    branches: placeData.branches !== undefined ? placeData.branches.map(b => ({ ...b, phone: normalizePhoneNumber(b.phone || ''), whatsapp: normalizePhoneNumber(b.whatsapp || '') })) : (current.branches || []),
+    availabilityStatus: placeData.availabilityStatus !== undefined ? placeData.availabilityStatus : (current.availabilityStatus || current.availability_status || 'available'),
+    updatedAt: Date.now()
+  };
   const updatedPlace = { ...current, ...updates, id: placeId, slug: current.slug || updates.slug };
   await syncPlaceToWorkerTurso(placeId, updatedPlace);
   idbPut(STORES.PLACES, updatedPlace).catch(() => {});

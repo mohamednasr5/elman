@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso, getPlaceAnalyticsReport } from '../../core/db.js?v=d4ce4ede';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso, getPlaceAnalyticsReport, getAdminPhoneReports, actOnPhoneReport } from '../../core/db.js?v=d4ce4ede';
 import { WORKER_URL } from '../../core/firebase.js';
 import { isAdmin, getCurrentUser, getIdToken } from '../../core/auth.js';
 import { uploadImage } from '../../services/upload.service.js';
@@ -41,6 +41,7 @@ const adminCache = {
   offers: null,
   ads: null,
   verificationRequests: null,
+  phoneReports: null,
   categoryRequests: null,
   categories: null,
   settings: null,
@@ -60,6 +61,7 @@ const ICONS = {
   chart:     svgIcon('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
   pin:       svgIcon('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'),
   shield:    svgIcon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>'),
+  phone:     svgIcon('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'),
   folder:    svgIcon('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'),
   users:     svgIcon('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
   tag:       svgIcon('<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>'),
@@ -129,6 +131,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           ${navLink('services-hub',  '#', ICONS.bullhorn,  'طلبات الخدمات والمتاحين ⚡', ['services-hub', 'live-news'].includes(section))}
           ${navLink('products',      '#', ICONS.tag,       'المنتجات والمراجعة 🛍️', section === 'products')}
           ${navLink('reviews',       '#', ICONS.star,      'التقييمات ⭐',    section === 'reviews')}
+          ${navLink('reports',       '#', ICONS.phone,     'تحديثات واقتراحات الأرقام 📞', ['reports', 'phone-suggestions'].includes(section))}
           ${navLink('verification',  '#', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
           ${navLink('categories',    '#', ICONS.folder,    'التصنيفات',       section === 'categories')}
           ${navLink('users',         '#', ICONS.users,     'المستخدمون',      section === 'users')}
@@ -174,6 +177,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
             <button type="button" class="admin-quick-chip ${section === 'overview' ? 'active' : ''}" data-admin-sec="overview">📊 الإحصائيات</button>
             <button type="button" class="admin-quick-chip ${section === 'integrity' ? 'active' : ''}" data-admin-sec="integrity">🛡️ سلامة قاعدة البيانات</button>
             <button type="button" class="admin-quick-chip ${section === 'places' ? 'active' : ''}" data-admin-sec="places">📍 الأماكن والأنشطة</button>
+            <button type="button" class="admin-quick-chip ${['reports', 'phone-suggestions'].includes(section) ? 'active' : ''}" data-admin-sec="reports">📞 تحديثات واقتراحات الأرقام</button>
             <button type="button" class="admin-quick-chip ${section === 'live-news' ? 'active' : ''}" data-admin-sec="live-news">🔥 يحدث الآن</button>
             <button type="button" class="admin-quick-chip ${section === 'products' ? 'active' : ''}" data-admin-sec="products">🛍️ مراجعة المنتجات</button>
             <button type="button" class="admin-quick-chip ${section === 'reviews' ? 'active' : ''}" data-admin-sec="reviews">⭐ التقييمات</button>
@@ -237,6 +241,10 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           </div>
 
           <div class="admin-sheet-grid">
+            <button type="button" class="admin-sheet-item" data-admin-sec="reports" style="background:rgba(2,132,199,0.18);border-color:#0284C7">
+              <span>📞</span>
+              <span style="color:#38BDF8;font-weight:800">اقتراحات الأرقام</span>
+            </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="verification" style="background:rgba(16,185,129,0.15);border-color:#10B981">
               <span>🛡️</span>
               <span style="color:#10B981;font-weight:800">طلبات التوثيق</span>
@@ -363,6 +371,7 @@ async function switchAdminSection(sectionName, pushState = true) {
     else if (sectionName === 'services-hub' || sectionName === 'live-news') await renderAdminServicesHub($main);
     else if (sectionName === 'reviews')       await renderAdminReviews($main);
     else if (sectionName === 'verification')  await renderAdminVerification($main);
+    else if (sectionName === 'reports' || sectionName === 'phone-suggestions') await renderAdminReports($main);
     else if (sectionName === 'categories')    await renderAdminCategories($main);
     else if (sectionName === 'users')         await renderAdminUsers($main);
     else if (sectionName === 'offers')        await renderAdminOffers($main);
@@ -744,6 +753,9 @@ async function renderAdminOverview($container) {
             </a>
             <a href="?section=reviews" data-admin-sec="reviews" class="btn btn-sm" style="background:#F5A623;color:#0B1E30;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none;cursor:pointer">
               ⭐ إدارة التقييمات
+            </a>
+            <a href="?section=reports" data-admin-sec="reports" class="btn btn-sm" style="background:#0EA5E9;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none;cursor:pointer">
+              📞 اقتراحات وتحديثات الأرقام
             </a>
             <a href="?section=settings" data-admin-sec="settings" class="btn btn-sm" style="background:#334155;color:#fff;border-radius:10px;font-weight:800;padding:8px 16px;text-decoration:none;cursor:pointer">
               ⚙️ إعدادات المنصة وبوت تليجرام
@@ -3013,6 +3025,230 @@ async function renderAdminVerification($container, filter = _adminVerificationFi
                 </td>
               </tr>
             `;}).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────
+//  3.5. Data Quality Reports & Phone Suggestions
+// ─────────────────────────────────────────────
+let _adminReportsFilter = 'all';
+
+window.filterAdminReports = function(f) {
+  _adminReportsFilter = f;
+  const $main = document.getElementById('admin-main-area');
+  if ($main) renderAdminReports($main, f);
+};
+
+window.approvePhoneReport = async function(reportId, suggestedPhone) {
+  const ok = await showConfirm({
+    title: 'تأكيد قبول الرقم المقترح',
+    message: `هل أنت متأكد من قبول الرقم (${suggestedPhone}) واعتماده كرقم هاتف لهذا المكان؟\nسيتم تحديث بيانات المكان وظهور الرقم لجميع الزوار فوراً في الدليل.`,
+    confirmText: 'نعم، قبول وإضافة للمكان',
+    cancelText: 'إلغاء'
+  });
+  if (!ok) return;
+
+  try {
+    toast.info('جاري اعتماد الرقم وتحديث بيانات المكان...');
+    const res = await actOnPhoneReport({ reportId, action: 'approve', phone: suggestedPhone });
+    toast.success(res.message || 'تم قبول الرقم وتحديث المكان بنجاح! 🎉');
+    adminCache.phoneReports = null;
+    adminCache.places = null;
+    const $main = document.getElementById('admin-main-area');
+    if ($main) renderAdminReports($main, _adminReportsFilter);
+  } catch (err) {
+    toast.error(err.message || 'تعذر اعتماد الرقم');
+  }
+};
+
+window.rejectPhoneReport = async function(reportId) {
+  const ok = await showConfirm({
+    title: 'رفض الاقتراح',
+    message: 'هل أنت متأكد من رفض هذا الاقتراح؟ لن يتم تعديل بيانات المكان.',
+    confirmText: 'نعم، رفض',
+    cancelText: 'تراجع'
+  });
+  if (!ok) return;
+
+  try {
+    await actOnPhoneReport({ reportId, action: 'reject' });
+    toast.info('تم رفض الاقتراح');
+    adminCache.phoneReports = null;
+    const $main = document.getElementById('admin-main-area');
+    if ($main) renderAdminReports($main, _adminReportsFilter);
+  } catch (err) {
+    toast.error(err.message || 'تعذر رفض الاقتراح');
+  }
+};
+
+window.deletePhoneReport = async function(reportId) {
+  const ok = await showConfirm({
+    title: 'حذف السجل',
+    message: 'هل تريد حذف هذا السجل نهائياً؟',
+    confirmText: 'نعم، حذف',
+    cancelText: 'إلغاء'
+  });
+  if (!ok) return;
+
+  try {
+    await actOnPhoneReport({ reportId, action: 'delete' });
+    toast.success('تم حذف السجل بنجاح');
+    adminCache.phoneReports = null;
+    const $main = document.getElementById('admin-main-area');
+    if ($main) renderAdminReports($main, _adminReportsFilter);
+  } catch (err) {
+    toast.error(err.message || 'تعذر حذف السجل');
+  }
+};
+
+async function renderAdminReports($container, filter = _adminReportsFilter) {
+  if (!adminCache.phoneReports) {
+    adminCache.phoneReports = await getAdminPhoneReports({ status: 'all' }).catch(() => []);
+  }
+
+  const allReports = (adminCache.phoneReports || []).map(r => {
+    let suggestedPhone = '';
+    let note = '';
+    if (r.details) {
+      try {
+        const parsed = JSON.parse(r.details);
+        suggestedPhone = parsed.suggestedPhone || parsed.phone || '';
+        note = parsed.note || '';
+      } catch (_) {
+        const m = String(r.details).match(/رقم مقترح:\s*([0-9\+]{7,15})/);
+        if (m) suggestedPhone = m[1];
+        const nMatch = String(r.details).match(/ملاحظة:\s*([^|]+)/);
+        if (nMatch) note = nMatch[1].trim();
+      }
+    }
+    return {
+      ...r,
+      suggestedPhone,
+      note
+    };
+  }).sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+  const totalCount = allReports.length;
+  const pendingCount = allReports.filter(r => r.status === 'new' || r.status === 'pending').length;
+  const approvedCount = allReports.filter(r => r.status === 'approved').length;
+  const rejectedCount = allReports.filter(r => r.status === 'rejected').length;
+
+  let reports = allReports;
+  if (filter === 'pending') reports = allReports.filter(r => r.status === 'new' || r.status === 'pending');
+  else if (filter === 'approved') reports = allReports.filter(r => r.status === 'approved');
+  else if (filter === 'rejected') reports = allReports.filter(r => r.status === 'rejected');
+
+  $container.innerHTML = `
+    <div class="admin-fade-in" id="admin-sec-reports">
+      <div class="dashboard-header">
+        <div>
+          <h1 class="dashboard-header__title">تحديثات واقتراحات أرقام الأماكن (${totalCount})</h1>
+          <div class="dashboard-header__subtitle">مراجعة اقتراحات أرقام الهواتف المقدمة من زوار الدليل للأماكن التي لا تملك رقم تواصل، مع إمكانية اعتمادها وإضافتها للمكان بضغطة زر</div>
+        </div>
+      </div>
+
+      <!-- Filter Pills -->
+      <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-outline'}" onclick="window.filterAdminReports('all')">
+          كل السجلات (${totalCount})
+        </button>
+        <button type="button" class="btn btn-sm ${filter === 'pending' ? 'btn-warning' : 'btn-outline'}" onclick="window.filterAdminReports('pending')">
+          ⏳ بانتظار الاعتماد (${pendingCount})
+        </button>
+        <button type="button" class="btn btn-sm ${filter === 'approved' ? 'btn-primary' : 'btn-outline'}" style="${filter === 'approved' ? 'background:#10B981;border-color:#10B981;color:#fff' : 'color:#10B981;border-color:#10B981'}" onclick="window.filterAdminReports('approved')">
+          ✓ المعتمدة والمضافة (${approvedCount})
+        </button>
+        <button type="button" class="btn btn-sm ${filter === 'rejected' ? 'btn-danger' : 'btn-outline'}" onclick="window.filterAdminReports('rejected')">
+          ✕ المرفوضة (${rejectedCount})
+        </button>
+      </div>
+
+      <div class="dashboard-table-wrapper" style="background:#0F2B48;border-radius:14px;border:1px solid rgba(255,255,255,0.12);overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+        <table class="dashboard-table" style="color:#FFFFFF;width:100%;min-width:880px;border-collapse:collapse">
+          <thead>
+            <tr>
+              <th>المكان</th>
+              <th>الرقم المقترح</th>
+              <th>الرقم الحالي للمكان</th>
+              <th>مقدم الاقتراح وملاحظته</th>
+              <th>تاريخ الإرسال</th>
+              <th>الحالة</th>
+              <th>الإجراء</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${reports.length === 0 ? '<tr><td colspan="7" class="text-center" style="padding:3rem 1rem;color:#94A3B8;">لا توجد اقتراحات أو بلاغات مطابقة لهذا الفلتر</td></tr>' : reports.map(r => {
+              const isPending = r.status === 'new' || r.status === 'pending';
+              const cleanSugg = (r.suggestedPhone || '').replace(/[^0-9+]/g, '');
+              const placeUrl = r.place_slug ? `/place.html?slug=${encodeURIComponent(r.place_slug)}` : `/place.html?id=${encodeURIComponent(r.place_id)}`;
+
+              return `
+                <tr>
+                  <td>
+                    <a href="${escAttr(placeUrl)}" target="_blank" style="color:#38BDF8;font-weight:900;text-decoration:none;display:inline-flex;align-items:center;gap:6px" title="فتح صفحة المكان في نافذة جديدة للتأكد">
+                      <span>📍</span>
+                      <span>${escHtml(r.place_name || r.place_id)}</span>
+                    </a>
+                    <div style="font-size:11.5px;color:#94A3B8;margin-top:3px">
+                      ${escHtml(r.place_area || 'المنزلة والمطرية')}
+                    </div>
+                  </td>
+                  <td>
+                    ${r.suggestedPhone ? `
+                      <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(2,132,199,0.18);border:1px solid rgba(56,189,248,0.4);padding:4px 10px;border-radius:8px">
+                        <span style="font-family:monospace;font-size:14px;font-weight:900;color:#38BDF8;direction:ltr">${escHtml(r.suggestedPhone)}</span>
+                        <button type="button" class="btn btn-xs" style="padding:2px 6px;font-size:11px;background:#0284C7;color:#fff;border:none;border-radius:4px;cursor:pointer" onclick="navigator.clipboard.writeText('${escAttr(r.suggestedPhone)}');toast.success('تم نسخ الرقم');" title="نسخ الرقم">📋</button>
+                        <a href="tel:${cleanSugg}" class="btn btn-xs" style="padding:2px 6px;font-size:11px;background:#10B981;color:#fff;border:none;border-radius:4px;text-decoration:none" title="اتصال تجريبي">📞</a>
+                      </div>
+                    ` : `
+                      <span class="badge badge--pending">${escHtml(r.reason || 'معلومة غير صحيحة')}</span>
+                    `}
+                  </td>
+                  <td>
+                    ${r.current_phone ? `
+                      <span style="direction:ltr;display:inline-block;font-size:12.5px;color:#CBD5E1">${escHtml(r.current_phone)}</span>
+                    ` : `
+                      <span class="badge" style="background:rgba(239,68,68,0.18);color:#F87171;font-size:11px;border:1px solid rgba(239,68,68,0.3)">غير متوفر</span>
+                    `}
+                  </td>
+                  <td>
+                    <div style="font-weight:800;font-size:13px;color:#F1F5F9">${escHtml(r.reporter_name || 'زائر متطوع')}</div>
+                    ${r.note ? `<div style="font-size:11.5px;color:#FBBF24;margin-top:2px">💡 ملاحظة: ${escHtml(r.note)}</div>` : ''}
+                    ${r.details && !r.details.startsWith('{') && r.details !== r.suggestedPhone ? `<div style="font-size:11px;color:#94A3B8;margin-top:2px">${escHtml(r.details)}</div>` : ''}
+                  </td>
+                  <td>
+                    <div style="font-size:12px;color:#CBD5E1">${formatDate(r.created_at)}</div>
+                  </td>
+                  <td>
+                    <span class="badge ${r.status === 'approved' ? 'badge--published' : (r.status === 'rejected' ? 'badge--rejected' : 'badge--pending')}">
+                      ${r.status === 'approved' ? 'معتمد ومضاف ✓' : (r.status === 'rejected' ? 'مرفوض ✕' : 'قيد المراجعة ⏳')}
+                    </span>
+                    ${r.reviewed_by ? `<div style="font-size:10.5px;color:#94A3B8;margin-top:2px">بواسطة: ${escHtml(r.reviewed_by)}</div>` : ''}
+                  </td>
+                  <td>
+                    ${isPending ? `
+                      <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <button type="button" class="btn btn-xs btn-success" style="font-weight:900;gap:4px;padding:6px 10px;background:#10B981;border:none;color:#fff;border-radius:6px;cursor:pointer" onclick="window.approvePhoneReport('${escAttr(r.id)}', '${escAttr(r.suggestedPhone)}')">
+                          <span>✓</span> <span>قبول وإضافة للمكان</span>
+                        </button>
+                        <button type="button" class="btn btn-xs btn-danger" style="font-weight:700;gap:3px;padding:6px 10px;background:rgba(239,68,68,0.2);border:1px solid #EF4444;color:#F87171;border-radius:6px;cursor:pointer" onclick="window.rejectPhoneReport('${escAttr(r.id)}')">
+                          <span>✕</span> <span>رفض</span>
+                        </button>
+                      </div>
+                    ` : `
+                      <div style="display:flex;gap:6px;align-items:center">
+                        <span style="font-size:11.5px;color:#94A3B8">مكتمل</span>
+                        <button type="button" class="btn btn-xs btn-ghost" style="color:#EF4444;padding:4px 6px;font-size:12px;cursor:pointer" onclick="window.deletePhoneReport('${escAttr(r.id)}')">🗑️ حذف</button>
+                      </div>
+                    `}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
         </table>
       </div>
