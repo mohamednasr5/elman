@@ -75,7 +75,19 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
 
   const theme = CARD_COLOR_THEMES.find(t => t.id === _selectedThemeId) || CARD_COLOR_THEMES[0];
   const placeName = place.name || 'اسم النشاط';
-  const categoryName = category.name || place.categoryName || place.customCategory || 'نشاط تجاري وخدمات';
+  
+  const rawCustom = (place.customCategory || place.custom_category || '').trim();
+  const rawCatName = (category?.name || place.categoryName || place.category_name || '').trim();
+  let categoryName = '';
+  if (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCustom.toLowerCase())) {
+    categoryName = rawCustom;
+  } else if (rawCatName && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCatName.toLowerCase())) {
+    categoryName = rawCatName;
+  } else if (rawCustom) {
+    categoryName = rawCustom;
+  } else {
+    categoryName = 'نشاط تجاري وخدمات';
+  }
 
   // Resolve Doctor / Medical Specialty
   const docInfo = resolveDoctorSpecialty(place, category);

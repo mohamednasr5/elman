@@ -461,7 +461,9 @@ function getCategoryEmoji(categoryId) {
 }
 
 export function getCategoryBadge(place) {
-  const catName = place.customCategory || place.categoryName || '';
+  const rawCustom = (place.customCategory || place.custom_category || '').trim();
+  const rawCat = (place.categoryName || place.category_name || '').trim();
+  const catName = (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCustom.toLowerCase())) ? rawCustom : (rawCat || rawCustom);
   const catId = (place.categoryId || '').toLowerCase();
 
   const dict = {

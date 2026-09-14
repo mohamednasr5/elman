@@ -166,10 +166,13 @@
             if (cached.name) document.title = cached.name + ' | دليل المنزلة والمطرية الرقمي';
           }
 
-          // Dispatches parallel to stylesheet & module download
+          // Dispatches parallel to stylesheet & module download with 3500ms safety timeout
+          var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+          var fetchTimer = controller ? setTimeout(function() { try { controller.abort(); } catch(_) {} }, 3500) : null;
           window.__PLACE_PREFETCH_PROMISE__ = fetch('/api/places?slug=' + encodeURIComponent(slug), {
-            headers: { 'Accept': 'application/json' }
-          }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+            headers: { 'Accept': 'application/json' },
+            signal: controller ? controller.signal : undefined
+          }).then(function(r) { if (fetchTimer) clearTimeout(fetchTimer); return r.ok ? r.json() : null; }).catch(function() { if (fetchTimer) clearTimeout(fetchTimer); return null; });
         }
       } catch (_) {}
     })();
@@ -534,9 +537,9 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=20260914.2';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=d4ce4ede_resilient1';
-  import { getCurrentUser } from '/src/js/core/auth.js?v=d4ce4ede_resilient1';
+  import { initPage } from '/src/js/core/page-shell.js?v=20260914.3';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=20260914.3';
+  import { getCurrentUser } from '/src/js/core/auth.js?v=20260914.3';
 
   (async () => {
     const params = new URLSearchParams(location.search);

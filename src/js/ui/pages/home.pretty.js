@@ -460,23 +460,47 @@ function initHomeVerifiedShowcase(allPlaces = null) {
 
   // 2. If places provided from DB / Worker, process and update cache with COMPLETE fields
   if (Array.isArray(allPlaces) && allPlaces.length > 0) {
+    const isPlaceStrictlyVerified = (p) => Boolean(
+      p && (
+        p.isVerified === true ||
+        p.isVerified === 'true' ||
+        p.isVerified === 1 ||
+        p.isVerified === '1' ||
+        p.is_verified === 1 ||
+        p.is_verified === true ||
+        p.is_verified === 'true' ||
+        p.is_verified === '1' ||
+        p.verificationStatus === 'verified' ||
+        p.verification_status === 'verified'
+      ) && (!p.verifiedUntil || Number(p.verifiedUntil) > Date.now())
+    );
+
     const extracted = allPlaces
-      .filter(p => p && p.isVerified && !isAtmPlace(p))
-      .map(p => ({
-        ...p,
-        id: p.id || p._key,
-        slug: p.slug || p.id,
-        name: p.name,
-        area: p.area || 'المنزلة والمطرية',
-        address: p.address || '',
-        phone: p.phone || '',
-        whatsapp: p.whatsapp || '',
-        logoUrl: p.logoUrl || '',
-        coverImageUrl: p.coverImageUrl || (p.gallery && p.gallery[0]) || '',
-        category: p.categoryName || p.customCategory || p.categoryId || 'نشاط تجاري',
-        cover: p.coverImageUrl || p.logoUrl || (p.gallery && p.gallery[0]) || '/assets/images/og-whatsapp.jpg',
-        isSponsored: Boolean(p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > Date.now()))
-      }));
+      .filter(p => isPlaceStrictlyVerified(p) && !isAtmPlace(p))
+      .map(p => {
+        const rawCustom = (p.customCategory || p.custom_category || '').trim();
+        const rawCat = (p.categoryName || p.category_name || '').trim();
+        const catLabel = (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCustom.toLowerCase()))
+          ? rawCustom
+          : (rawCat || p.categoryId || 'نشاط تجاري');
+        return {
+          ...p,
+          id: p.id || p._key,
+          slug: p.slug || p.id,
+          name: p.name,
+          area: p.area || 'المنزلة والمطرية',
+          address: p.address || '',
+          phone: p.phone || '',
+          whatsapp: p.whatsapp || '',
+          logoUrl: p.logoUrl || '',
+          coverImageUrl: p.coverImageUrl || (p.gallery && p.gallery[0]) || '',
+          category: catLabel,
+          categoryName: catLabel,
+          customCategory: rawCustom,
+          cover: p.coverImageUrl || p.logoUrl || (p.gallery && p.gallery[0]) || '/assets/images/og-whatsapp.jpg',
+          isSponsored: Boolean(p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > Date.now()))
+        };
+      });
 
     if (extracted.length > 0) {
       _homeVerifiedPool = extracted;

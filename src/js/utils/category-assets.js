@@ -364,7 +364,9 @@ export function generateCategoryBrandLogo(placeName = '', categoryName = '') {
 }
 
 export function getDefaultPlaceAssets(place = {}, category = {}) {
-  const catName = category.name || place.categoryName || place.customCategory || '';
+  const rawCustom = (place.customCategory || place.custom_category || '').trim();
+  const rawCat = (category.name || place.categoryName || place.category_name || '').trim();
+  const catName = (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCustom.toLowerCase())) ? rawCustom : (rawCat || rawCustom);
   const pName = place.name || '';
   const asset = resolveCategoryAsset(catName, pName);
 

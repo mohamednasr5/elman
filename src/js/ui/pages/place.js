@@ -252,6 +252,14 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       const fastCached = getCached(`reviews_${placeId}`) || (isHammad ? (getCached('reviews_p_1788742873778_6k8a9v') || getCached('reviews_almhnds-mhmd-hmad')) : null);
       if (Array.isArray(fastCached) && fastCached.length > 0) {
         safeReviews = fastCached;
+      } else {
+        try {
+          const rawLocal = localStorage.getItem(`reviews_${placeId}`) || (place.slug ? localStorage.getItem(`reviews_${place.slug}`) : null);
+          if (rawLocal) {
+            const parsed = JSON.parse(rawLocal);
+            if (Array.isArray(parsed) && parsed.length > 0) safeReviews = parsed;
+          }
+        } catch (_) {}
       }
     }
     let totalReviews = safeReviews.length || Number(place.reviewCount) || Number(place.review_count) || Number(place.reviewsCount) || Number(place.ratingCount) || Number(place.stats?.reviewCount) || Number(place.stats?.reviewsCount) || 0;
@@ -1031,6 +1039,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : 'جديد'})</span>
           `;
         }
+
+        try {
+          const ser = JSON.stringify(list);
+          localStorage.setItem(`reviews_${placeId}`, ser);
+          if (place.slug) localStorage.setItem(`reviews_${place.slug}`, ser);
+        } catch (_) {}
       };
       // Reviews are rendered from cache immediately when available; never show an infinite spinner.
       const loadingFallbackTimer = null;
@@ -1257,35 +1271,57 @@ function setupAtmPollInteractivity(placeId, initialPoll = {}) {
   attachButtons();
 }
 
+function isPlaceStrictlyVerified(p) {
+  if (!p || typeof p !== 'object') return false;
+  const isV = Boolean(
+    p.isVerified === true ||
+    p.isVerified === 'true' ||
+    p.isVerified === 1 ||
+    p.isVerified === '1' ||
+    p.is_verified === 1 ||
+    p.is_verified === true ||
+    p.is_verified === 'true' ||
+    p.is_verified === '1' ||
+    p.verificationStatus === 'verified' ||
+    p.verification_status === 'verified'
+  );
+  if (!isV) return false;
+  if (p.verifiedUntil && Number(p.verifiedUntil) <= Date.now()) return false;
+  return true;
+}
+
 function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUrl = 'https://wa.me/wasendernew') {
   const container = document.getElementById('spotlight-place-container');
   if (!container) return;
 
+  // STRICT RULE: Only places explicitly verified by the admin can appear in "شخصية / مكان اليوم".
+  // Never fall back to unverified places!
   const verifiedPlaces = (allPlaces || []).filter(p => 
     !isAtmPlace(p) &&
-    (p.isVerified || (p.verifiedUntil && Number(p.verifiedUntil) > Date.now())) && 
+    isPlaceStrictlyVerified(p) &&
     (p.id !== currentPlaceId && p._key !== currentPlaceId && p.slug !== currentPlaceId)
   );
 
-  const fallbackPlaces = (allPlaces || []).filter(p => 
-    !isAtmPlace(p) &&
-    (p.isVerified || p.isSponsored || p.isFeatured) &&
-    (p.id !== currentPlaceId && p._key !== currentPlaceId && p.slug !== currentPlaceId)
-  );
-
-  const candidates = verifiedPlaces.length > 0 ? verifiedPlaces : (fallbackPlaces.length > 0 ? fallbackPlaces : allPlaces.filter(p => !isAtmPlace(p) && p.id !== currentPlaceId));
-
-  if (!candidates || candidates.length === 0) {
+  if (!verifiedPlaces || verifiedPlaces.length === 0) {
     container.style.display = 'none';
     return;
   }
+  container.style.display = '';
 
+  const candidates = verifiedPlaces;
   let currentIndex = Math.floor(Date.now() / 60000) % candidates.length;
 
   const renderCard = (targetPlace) => {
     if (!targetPlace) return;
+    const isTargetVerified = isPlaceStrictlyVerified(targetPlace);
+    if (!isTargetVerified) return;
+
     const pName = targetPlace.name || 'شخصية اليوم';
-    const pCategory = targetPlace.categoryName || targetPlace.customCategory || 'نشاط موثق';
+    const rawCustom = (targetPlace.customCategory || targetPlace.custom_category || '').trim();
+    const rawCat = (targetPlace.categoryName || targetPlace.category_name || '').trim();
+    const pCategory = (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCustom.toLowerCase()))
+      ? rawCustom
+      : (rawCat || 'نشاط موثق');
     const pArea = targetPlace.area || targetPlace.address || 'المنزلة';
     const pImg = targetPlace.logoUrl || targetPlace.logo_url || targetPlace.coverImageUrl || targetPlace.cover_image_url || './icons/icon-72x72.png';
     const pSlug = targetPlace.slug || targetPlace.id || targetPlace._key;
@@ -1299,7 +1335,7 @@ function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUr
           <span class="spotlight-badge-icon">🛡️</span>
           <span>شخصية / مكان اليوم</span>
         </div>
-        <span class="chip chip--success" style="font-size:10px;padding:2px 8px;font-weight:700">موثق ✓</span>
+        <span class="chip chip--success" style="font-size:10px;padding:2px 8px;font-weight:700">موثق رسمياً ✓</span>
       </div>
 
       <div class="spotlight-body animate-fade-in" id="spotlight-body-content">
@@ -1310,7 +1346,7 @@ function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUr
           <div class="spotlight-info">
             <div class="spotlight-name">
               <span>${escHtml(pName)}</span>
-              <span class="spotlight-v-badge" title="موثق">✓</span>
+              <span class="spotlight-v-badge" title="موثق رسمياً">✓</span>
             </div>
             <div class="spotlight-category">${escHtml(pCategory)}</div>
             <div class="spotlight-area">📍 ${escHtml(pArea)}</div>
@@ -1465,18 +1501,19 @@ const SOCIAL_ICONS = {
 
 export function resolvePlaceCategoryInfo(place, category = null) {
   const isEn = isEnglish();
-  const customCat = (place.customCategory || place.categoryName || '').trim();
+  const rawCustom = (place.customCategory || place.custom_category || '').trim();
+  const rawCatName = (place.categoryName || place.category_name || '').trim();
   const catId = (place.categoryId || '').toLowerCase();
   
   let name = '';
-  if (customCat && customCat !== 'other' && customCat !== 'أخرى' && customCat !== 'عام') {
-    name = customCat;
-  } else if (category && category.name && category.name !== 'أخرى' && category.name !== 'عام') {
+  if (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCustom.toLowerCase())) {
+    name = rawCustom;
+  } else if (category && category.name && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(category.name.toLowerCase())) {
     name = category.name;
-  } else if (place.categoryName && place.categoryName !== 'أخرى' && place.categoryName !== 'عام') {
-    name = place.categoryName;
+  } else if (rawCatName && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCatName.toLowerCase())) {
+    name = rawCatName;
   } else {
-    name = customCat || (isEn ? 'Services & Activities' : 'خدمات وأنشطة');
+    name = rawCustom || rawCatName || (category && category.name) || (isEn ? 'Services & Activities' : 'خدمات وأنشطة');
   }
 
   name = translateCategory(name, isEn);

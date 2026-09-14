@@ -14,7 +14,18 @@ export function openStorefrontQrModal(place = {}, category = {}) {
   if (existing) existing.remove();
 
   const placeName = place.name || 'اسم النشاط';
-  const categoryName = category.name || place.categoryName || place.customCategory || 'نشاط تجاري وخدمات';
+  const rawCustom = (place.customCategory || place.custom_category || '').trim();
+  const rawCatName = (category?.name || place.categoryName || place.category_name || '').trim();
+  let categoryName = '';
+  if (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCustom.toLowerCase())) {
+    categoryName = rawCustom;
+  } else if (rawCatName && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCatName.toLowerCase())) {
+    categoryName = rawCatName;
+  } else if (rawCustom) {
+    categoryName = rawCustom;
+  } else {
+    categoryName = 'نشاط تجاري وخدمات';
+  }
   const docInfo = resolveDoctorSpecialty(place, category);
   const rawSlug = place.slug || place.id || '';
   const placeSlug = String(rawSlug).replace(/-[a-z0-9_]{5,7}$/i, '') || rawSlug;
