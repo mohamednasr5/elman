@@ -412,6 +412,32 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     // Render Full Page
     window._currentActivePlace = place;
     $container.innerHTML = `
+      <style id="cert-btn-pulse-style">
+        @keyframes certBtnPulseAttention {
+          0% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6), 0 2px 6px rgba(217, 119, 6, 0.2);
+          }
+          50% {
+            transform: scale(1.028);
+            box-shadow: 0 0 0 10px rgba(245, 158, 11, 0), 0 4px 16px rgba(245, 158, 11, 0.35);
+          }
+          100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0), 0 2px 6px rgba(217, 119, 6, 0.2);
+          }
+        }
+        .btn-appreciation-certificate-pulse {
+          animation: certBtnPulseAttention 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+          background: linear-gradient(135deg, rgba(245,158,11,0.16), rgba(217,119,6,0.25)) !important;
+          border: 1.5px solid #F59E0B !important;
+          color: #B45309 !important;
+        }
+        .btn-appreciation-certificate-pulse:hover {
+          transform: scale(1.04) !important;
+          background: linear-gradient(135deg, rgba(245,158,11,0.28), rgba(217,119,6,0.36)) !important;
+        }
+      </style>
       <!-- Top Navigation & Return Bar -->
       <div class="container" style="padding-top:var(--space-3);padding-bottom:var(--space-1)">
         <div class="page-back-bar">
@@ -478,7 +504,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                     </button>
 
                     ${isOwner ? `
-                    <button type="button" class="btn btn-sm btn-outline btn-appreciation-certificate" id="btn-appreciation-certificate-header" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.18));border-color:#F59E0B;color:#B45309;font-weight:800" title="عرض وتحميل شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
+                    <button type="button" class="btn btn-sm btn-outline btn-appreciation-certificate btn-appreciation-certificate-pulse" id="btn-appreciation-certificate-header" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;font-weight:800" title="عرض وتحميل شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
                       <span>🎖️</span>
                       <span>شهادة تقدير</span>
                     </button>
@@ -587,7 +613,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   <span>⚙️</span>
                   <span>إدارة وتعديل المكان</span>
                 </a>
-                <button type="button" class="btn btn-outline btn--full-mobile btn-appreciation-certificate" id="btn-appreciation-certificate-action" style="border-color:#F59E0B;color:#B45309;font-weight:800;background:rgba(245,158,11,0.06);gap:8px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
+                <button type="button" class="btn btn-outline btn--full-mobile btn-appreciation-certificate btn-appreciation-certificate-pulse" id="btn-appreciation-certificate-action" style="font-weight:800;gap:8px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
                   <span>🎖️</span>
                   <span>شهادة تقدير رسمية لنشاطك (A4)</span>
                 </button>
@@ -1028,35 +1054,39 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
     // Dynamic Auth State Listener: reveal certificate button if owner signs in asynchronously
     onAuthStateChange((latestUser) => {
-      if (!latestUser) return;
-      const nowOwner = Boolean(
-        isCertPreview ||
-        isHammad ||
-        (latestUser && (
-          (place.ownerId && latestUser.uid === place.ownerId) ||
-          (place.userId && latestUser.uid === place.userId) ||
-          (place.ownerUid && latestUser.uid === place.ownerUid) ||
-          (place.email && latestUser.email && place.email.toLowerCase() === latestUser.email.toLowerCase()) ||
-          isAdmin(latestUser)
-        ))
-      );
-      if (nowOwner) {
-        const actionsRow = document.querySelector('.place-title-actions-row');
-        if (actionsRow && !document.getElementById('btn-appreciation-certificate-header')) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'btn btn-sm btn-outline btn-appreciation-certificate';
-          btn.id = 'btn-appreciation-certificate-header';
-          btn.style.cssText = 'border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.18));border-color:#F59E0B;color:#B45309;font-weight:800';
-          btn.title = 'عرض وتحميل شهادة التقدير الرسمية لنشاطك من الدليل (A4)';
-          btn.innerHTML = '<span>🎖️</span><span>شهادة تقدير</span>';
-          btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openCertificateOfAppreciationModal(place, category);
-          });
-          actionsRow.appendChild(btn);
+      try {
+        if (!latestUser) return;
+        const nowOwner = Boolean(
+          isCertPreview ||
+          isHammad ||
+          (latestUser && (
+            (place?.ownerId && latestUser.uid === place.ownerId) ||
+            (place?.userId && latestUser.uid === place.userId) ||
+            (place?.ownerUid && latestUser.uid === place.ownerUid) ||
+            (place?.email && latestUser.email && String(place.email).toLowerCase() === String(latestUser.email).toLowerCase()) ||
+            isAdmin(latestUser)
+          ))
+        );
+        if (nowOwner) {
+          const actionsRow = document.querySelector('.place-title-actions-row');
+          if (actionsRow && !document.getElementById('btn-appreciation-certificate-header')) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm btn-outline btn-appreciation-certificate btn-appreciation-certificate-pulse';
+            btn.id = 'btn-appreciation-certificate-header';
+            btn.style.cssText = 'border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;font-weight:800';
+            btn.title = 'عرض وتحميل شهادة التقدير الرسمية لنشاطك من الدليل (A4)';
+            btn.innerHTML = '<span>🎖️</span><span>شهادة تقدير</span>';
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openCertificateOfAppreciationModal(place, category);
+            });
+            actionsRow.appendChild(btn);
+          }
         }
+      } catch (authErr) {
+        console.warn('[PlacePage] Auth state listener warning:', authErr);
       }
     });
 

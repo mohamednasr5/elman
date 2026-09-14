@@ -364,10 +364,12 @@ export function generateCategoryBrandLogo(placeName = '', categoryName = '') {
 }
 
 export function getDefaultPlaceAssets(place = {}, category = {}) {
-  const rawCustom = (place.customCategory || place.custom_category || '').trim();
-  const rawCat = (category.name || place.categoryName || place.category_name || '').trim();
+  const safePlace = place || {};
+  const safeCat = category || {};
+  const rawCustom = (safePlace.customCategory || safePlace.custom_category || '').trim();
+  const rawCat = (safeCat.name || safePlace.categoryName || safePlace.category_name || '').trim();
   const catName = (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCustom.toLowerCase())) ? rawCustom : (rawCat || rawCustom);
-  const pName = place.name || '';
+  const pName = safePlace.name || '';
   const asset = resolveCategoryAsset(catName, pName);
 
   let finalCover = place.coverImageUrl || place.cover_image_url || place.coverImage || place.image || place.photos?.[0] || '';

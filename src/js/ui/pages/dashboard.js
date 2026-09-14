@@ -514,7 +514,7 @@ function renderPlacesListHTML(places) {
                     ` : `
                       <a href="contact.html?type=verification" class="btn btn-sm" style="background:rgba(217,119,6,0.1);color:#b45309;border:1px solid rgba(217,119,6,0.3);font-weight:700" title="طلب توثيق هذا المكان بالعلامة الزرقاء">🛡️ وثق مكانك</a>
                     `}
-                    <button type="button" class="btn btn-sm btn-dash-cert" data-place-id="${escAttr(placeId)}" style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.22));color:#B45309;border:1px solid #F59E0B;font-weight:800;border-radius:var(--radius-sm);cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك (A4)">
+                    <button type="button" class="btn btn-sm btn-dash-cert btn-appreciation-certificate-pulse" data-place-id="${escAttr(placeId)}" style="border:1px solid #F59E0B;color:#B45309;font-weight:800;border-radius:var(--radius-sm);cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك (A4)">
                       <span>🎖️</span> <span>شهادة تقدير (A4)</span>
                     </button>
                   </div>

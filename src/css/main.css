@@ -137,3 +137,31 @@ html[lang="en"] .form-input-icon {
   right: auto;
   left: var(--space-4);
 }
+
+@keyframes certBtnPulseAttention {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.65), 0 2px 6px rgba(217, 119, 6, 0.2);
+  }
+  50% {
+    transform: scale(1.028);
+    box-shadow: 0 0 0 10px rgba(245, 158, 11, 0), 0 6px 18px rgba(245, 158, 11, 0.35);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0), 0 2px 6px rgba(217, 119, 6, 0.2);
+  }
+}
+
+.btn-appreciation-certificate-pulse {
+  animation: certBtnPulseAttention 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(217, 119, 6, 0.25)) !important;
+  border: 1.5px solid #F59E0B !important;
+  color: #B45309 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.btn-appreciation-certificate-pulse:hover {
+  transform: scale(1.04) !important;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(217, 119, 6, 0.36)) !important;
+}

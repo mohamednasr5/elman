@@ -166,9 +166,11 @@ export const MEDICAL_SPECIALTY_MAP = [
 ];
 
 export function resolveDoctorSpecialty(place = {}, category = {}) {
-  const catSlug = (category.slug || place.categoryId || '').toLowerCase();
-  const catName = (category.name || place.categoryName || '').toLowerCase();
-  const placeNameNorm = normalizeArabic(place.name || '');
+  const safeCategory = category || {};
+  const safePlace = place || {};
+  const catSlug = (safeCategory.slug || safePlace.categoryId || '').toLowerCase();
+  const catName = (safeCategory.name || safePlace.categoryName || '').toLowerCase();
+  const placeNameNorm = normalizeArabic(safePlace.name || '');
 
   // Strict Exclusion: Check if this is a known non-medical category (computers, technical services, car repair, mobile, carpentry, etc.)
   const nonMedicalTerms = [
