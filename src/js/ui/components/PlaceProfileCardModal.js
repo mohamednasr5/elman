@@ -8,6 +8,8 @@
 import { toast } from './Toast.js';
 import { resolveDoctorSpecialty } from '../../utils/specialty.js';
 import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
+import { toArabicCategory } from '../../utils/category-i18n.js';
+import { getCached } from '../../core/db.js';
 
 export const CARD_COLOR_THEMES = [
   { id: 'navy', name: 'أزرق نيلي', start: '#0284c7', mid: '#0369a1', end: '#075985', swatch: '#0284c7' },
@@ -77,14 +79,44 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
   const placeName = place.name || 'اسم النشاط';
   
   const rawCustom = (place.customCategory || place.custom_category || '').trim();
-  const rawCatName = (category?.name || place.categoryName || place.category_name || '').trim();
+  let rawCatName = (category?.name || place.categoryName || place.category_name || '').trim();
+
+  const targetCatId = (place.categoryId || place.category_id || '').trim().toLowerCase();
+
+  // If rawCatName is missing or generic, attempt to resolve from cached categories
+  if (!rawCatName || ['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCatName.toLowerCase())) {
+    try {
+      const allCachedCats = (typeof getCached === 'function' ? getCached('categories_all') : null) 
+        || (typeof window !== 'undefined' && window.__categories_cache) 
+        || [];
+      if (allCachedCats.length && targetCatId) {
+        const found = allCachedCats.find(c => {
+          const cKey = String(c._key || c.id || '').trim().toLowerCase();
+          const cSlug = String(c.slug || '').trim().toLowerCase();
+          return cKey === targetCatId || cSlug === targetCatId || cKey.replace(/-/g, ' ') === targetCatId.replace(/-/g, ' ');
+        });
+        if (found?.name) rawCatName = found.name.trim();
+      }
+    } catch (_) {}
+  }
+
+  // Fallback to toArabicCategory dictionary
+  if (!rawCatName || ['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCatName.toLowerCase())) {
+    const dictName = toArabicCategory(targetCatId);
+    if (dictName && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(dictName.toLowerCase())) {
+      rawCatName = dictName;
+    }
+  }
+
   let categoryName = '';
   if (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCustom.toLowerCase())) {
     categoryName = rawCustom;
-  } else if (rawCatName && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCatName.toLowerCase())) {
+  } else if (rawCatName && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCatName.toLowerCase())) {
     categoryName = rawCatName;
   } else if (rawCustom) {
     categoryName = rawCustom;
+  } else if (rawCatName) {
+    categoryName = rawCatName;
   } else {
     categoryName = 'نشاط تجاري وخدمات';
   }
@@ -267,6 +299,12 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
   downloadBtn.addEventListener('click', async () => {
     const activeTheme = CARD_COLOR_THEMES.find(t => t.id === _selectedThemeId) || CARD_COLOR_THEMES[0];
     
+    // Read the exact live text rendered in the preview DOM to guarantee 100% WYSIWYG parity!
+    const liveCategoryText = overlay.querySelector('.manhom-card-category')?.textContent?.trim();
+    const finalCategoryToPrint = (liveCategoryText && !liveCategoryText.includes('نشاط تجاري وخدمات'))
+      ? liveCategoryText
+      : (displaySubtitle || categoryName);
+
     downloadBtn.disabled = true;
     const originalText = downloadBtn.innerHTML;
     downloadBtn.innerHTML = `<span>⏳ جاري التصميم...</span>`;
@@ -274,7 +312,9 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
     try {
       await generateAndDownloadPlaceCard({
         place,
-        categoryName: displaySubtitle,
+        category,
+        defaultAssets,
+        categoryName: finalCategoryToPrint,
         fullAddress,
         theme: activeTheme,
         coverUrl,
@@ -296,7 +336,8 @@ export function openPlaceProfileCardModal(place = {}, category = {}) {
 /**
  * محرك رسم وتوليد الصورة بدقة فائقة عبر HTML5 Canvas مع إسناد الغلاف والشعار وجهات الاتصال
  */
-async function generateAndDownloadPlaceCard({ place, categoryName, fullAddress, theme, coverUrl, logoUrl, phone, whatsapp }) {
+async function generateAndDownloadPlaceCard({ place, category = {}, defaultAssets: passedDefaultAssets, categoryName, fullAddress, theme, coverUrl, logoUrl, phone, whatsapp }) {
+  const defaultAssets = passedDefaultAssets || getDefaultPlaceAssets(place, category);
   if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
     try {
       await document.fonts.ready;

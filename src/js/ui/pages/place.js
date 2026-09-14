@@ -226,20 +226,31 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
     // Fast categories retrieval (cached in IDB / memory - non-blocking for instant render)
     let categories = getCached('categories_all') || [];
-    let category = categories.find(c => c._key === place.categoryId || c.slug === place.categoryId);
+    const matchCategory = (cats, targetId) => {
+      if (!cats?.length || !targetId) return null;
+      const tid = String(targetId).trim().toLowerCase();
+      return cats.find(c => {
+        const cKey = String(c._key || c.id || '').trim().toLowerCase();
+        const cSlug = String(c.slug || '').trim().toLowerCase();
+        return cKey === tid || cSlug === tid || cKey.replace(/-/g, ' ') === tid.replace(/-/g, ' ');
+      }) || null;
+    };
+
+    let category = matchCategory(categories, place.categoryId);
     let catInfo = resolvePlaceCategoryInfo(place, category);
     const isAtm = isAtmPlace(place, category);
 
     // Asynchronously resolve & update category metadata if not present in instant cache
-    if (!categories.length) {
+    if (!category) {
       getCategories().then(cats => {
         if (!cats?.length) return;
-        const freshCat = cats.find(c => c._key === place.categoryId || c.slug === place.categoryId);
+        const freshCat = matchCategory(cats, place.categoryId);
         if (freshCat) {
-          const freshCatInfo = resolvePlaceCategoryInfo(place, freshCat);
+          category = freshCat;
+          catInfo = resolvePlaceCategoryInfo(place, freshCat);
           const badgeEl = $container.querySelector('.place-badge--category');
-          if (badgeEl && freshCatInfo.name) {
-            badgeEl.innerHTML = `${freshCatInfo.icon ? `<span style="margin-left:4px">${freshCatInfo.icon}</span>` : ''}${freshCatInfo.name}`;
+          if (badgeEl && catInfo.name) {
+            badgeEl.innerHTML = `${catInfo.icon ? `<span style="margin-left:4px">${catInfo.icon}</span>` : ''}${catInfo.name}`;
           }
         }
       }).catch(() => {});
@@ -1513,7 +1524,12 @@ export function resolvePlaceCategoryInfo(place, category = null) {
   } else if (rawCatName && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCatName.toLowerCase())) {
     name = rawCatName;
   } else {
-    name = rawCustom || rawCatName || (category && category.name) || (isEn ? 'Services & Activities' : 'خدمات وأنشطة');
+    const dictName = toArabicCategory(catId);
+    if (dictName && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(dictName.toLowerCase())) {
+      name = dictName;
+    } else {
+      name = rawCustom || rawCatName || (category && category.name) || (isEn ? 'Services & Activities' : 'خدمات وأنشطة');
+    }
   }
 
   name = translateCategory(name, isEn);

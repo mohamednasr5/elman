@@ -8,6 +8,8 @@ import { toast } from './Toast.js';
 import { resolveDoctorSpecialty } from '../../utils/specialty.js';
 import { getDefaultPlaceAssets } from '../../utils/category-assets.js';
 import { checkIsPlaceVerified, drawCanvasVerifiedBadge } from './PlaceProfileCardModal.js';
+import { toArabicCategory } from '../../utils/category-i18n.js';
+import { getCached } from '../../core/db.js';
 
 export function openStorefrontQrModal(place = {}, category = {}) {
   const existing = document.getElementById('storefront-qr-modal-overlay');
@@ -15,14 +17,44 @@ export function openStorefrontQrModal(place = {}, category = {}) {
 
   const placeName = place.name || 'اسم النشاط';
   const rawCustom = (place.customCategory || place.custom_category || '').trim();
-  const rawCatName = (category?.name || place.categoryName || place.category_name || '').trim();
+  let rawCatName = (category?.name || place.categoryName || place.category_name || '').trim();
+
+  const targetCatId = (place.categoryId || place.category_id || '').trim().toLowerCase();
+
+  // If rawCatName is missing or generic, attempt to resolve from cached categories
+  if (!rawCatName || ['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCatName.toLowerCase())) {
+    try {
+      const allCachedCats = (typeof getCached === 'function' ? getCached('categories_all') : null) 
+        || (typeof window !== 'undefined' && window.__categories_cache) 
+        || [];
+      if (allCachedCats.length && targetCatId) {
+        const found = allCachedCats.find(c => {
+          const cKey = String(c._key || c.id || '').trim().toLowerCase();
+          const cSlug = String(c.slug || '').trim().toLowerCase();
+          return cKey === targetCatId || cSlug === targetCatId || cKey.replace(/-/g, ' ') === targetCatId.replace(/-/g, ' ');
+        });
+        if (found?.name) rawCatName = found.name.trim();
+      }
+    } catch (_) {}
+  }
+
+  // Fallback to toArabicCategory dictionary
+  if (!rawCatName || ['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCatName.toLowerCase())) {
+    const dictName = toArabicCategory(targetCatId);
+    if (dictName && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(dictName.toLowerCase())) {
+      rawCatName = dictName;
+    }
+  }
+
   let categoryName = '';
   if (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCustom.toLowerCase())) {
     categoryName = rawCustom;
-  } else if (rawCatName && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCatName.toLowerCase())) {
+  } else if (rawCatName && !['other', 'أخرى', 'عام', 'نشاط عام', 'خدمات وأنشطة', 'نشاط تجاري وخدمات', 'نشاط تجاري'].includes(rawCatName.toLowerCase())) {
     categoryName = rawCatName;
   } else if (rawCustom) {
     categoryName = rawCustom;
+  } else if (rawCatName) {
+    categoryName = rawCatName;
   } else {
     categoryName = 'نشاط تجاري وخدمات';
   }
@@ -146,10 +178,16 @@ export function openStorefrontQrModal(place = {}, category = {}) {
     btn.disabled = true;
     btn.innerHTML = '<span>⏳ جاري التوليد...</span>';
 
+    // Read live category text directly from preview DOM (WYSIWYG!)
+    const liveSubText = overlay.querySelector('#qr-poster-preview p')?.textContent?.trim();
+    const finalCategoryName = (liveSubText && !liveSubText.includes('نشاط تجاري وخدمات'))
+      ? liveSubText.replace(/^[^\s]+\s+/, '') // remove leading icon if any
+      : categoryName;
+
     try {
       await generateAndDownloadQrPoster({
         place,
-        categoryName,
+        categoryName: finalCategoryName,
         docInfo,
         defaultAssets,
         placeUrl,
