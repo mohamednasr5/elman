@@ -1,6 +1,7 @@
 /* ========================================================================== 
    Place CSS Entry — original page styles first, premium layers second.
    ========================================================================== */
+@import url('../global-visual-refinement.css');
 @import url('./place.base.css');
 @import url('./place-detail-overrides.css');
 @import url('./place-detail-final-polish.css');
