@@ -31,6 +31,7 @@ export function initUniversalMobileTouchTooltips() {
   if (typeof document === 'undefined') return;
 
   document.addEventListener('click', (e) => {
+    // Exclude notification bell, profile button, dropdowns, navigation links
     if (
       e.target.closest('.header-notif-btn') ||
       e.target.closest('#header-notifs-badge') ||
@@ -42,6 +43,7 @@ export function initUniversalMobileTouchTooltips() {
       return;
     }
 
+    // Strictly match ONLY 1. Verified, 2. Sponsored, 3. User Rank
     const badgeEl = e.target.closest(
       '.badge-verified, .badge-sponsored, .badge-user-rank, .user-rank-badge, .loyalty-rank-badge, [data-badge="verified"], [data-badge="sponsored"], [data-badge="rank"]'
     );
@@ -59,11 +61,11 @@ export function initUniversalMobileTouchTooltips() {
     } else if (badgeEl.classList.contains('badge-sponsored') || text.includes('إعلان') || text.includes('ممول') || text.includes('مدفوع')) {
       info = BADGE_DESCRIPTIONS.sponsored;
     } else if (
-      badgeEl.classList.contains('badge-user-rank') ||
+      badgeEl.classList.contains('badge-user-rank') || 
       badgeEl.classList.contains('user-rank-badge') ||
-      text.includes('مستكشف') ||
-      text.includes('سفير') ||
-      text.includes('عمدة') ||
+      text.includes('مستكشف') || 
+      text.includes('سفير') || 
+      text.includes('عمدة') || 
       text.includes('رائد') ||
       text.includes('رتبة') ||
       text.includes('مدير')
@@ -76,6 +78,7 @@ export function initUniversalMobileTouchTooltips() {
       return;
     }
 
+    // Intercept click only for these 3 badges to show explanation
     e.preventDefault();
     e.stopPropagation();
 
@@ -86,49 +89,66 @@ export function initUniversalMobileTouchTooltips() {
     showTouchTooltip(badgeEl, info);
   }, { capture: true });
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') dismissActiveTooltip();
-  });
+  window.addEventListener('scroll', dismissActiveTooltip, { passive: true });
 }
 
-function showTouchTooltip(anchor, info) {
+function showTouchTooltip(targetEl, { title, desc, icon }) {
   dismissActiveTooltip();
 
   _tooltipContainer = document.createElement('div');
-  _tooltipContainer.className = 'mobile-touch-tooltip mobile-touch-tooltip--verified-sync';
-  _tooltipContainer.setAttribute('role', 'status');
+  _tooltipContainer.className = 'mobile-touch-tooltip-bubble';
   _tooltipContainer.innerHTML = `
-    <div class="mobile-touch-tooltip__icon" aria-hidden="true">${info.icon}</div>
-    <div class="mobile-touch-tooltip__content">
-      <div class="mobile-touch-tooltip__title">${escapeHtml(info.title)}</div>
-      <div class="mobile-touch-tooltip__desc">${escapeHtml(info.desc)}</div>
+    <div class="mobile-tooltip-card">
+      <div class="mobile-tooltip-header">
+        <span class="mobile-tooltip-icon">${icon}</span>
+        <strong class="mobile-tooltip-title">${title}</strong>
+        <button type="button" class="mobile-tooltip-close" aria-label="إغلاق">✕</button>
+      </div>
+      ${desc ? `<div class="mobile-tooltip-body">${desc}</div>` : ''}
     </div>
-    <button type="button" class="mobile-touch-tooltip__close" aria-label="إغلاق">×</button>
   `;
 
   document.body.appendChild(_tooltipContainer);
-  _tooltipContainer.querySelector('.mobile-touch-tooltip__close')?.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
+
+  const isMobile = window.innerWidth <= 640;
+  if (isMobile) {
+    _tooltipContainer.classList.add('mobile-mode-bottom');
+  } else {
+    _tooltipContainer.classList.add('desktop-mode-floating');
+    const rect = targetEl.getBoundingClientRect();
+    const top = rect.top + window.scrollY - 10;
+    const left = rect.left + window.scrollX + (rect.width / 2);
+    _tooltipContainer.style.top = `${top}px`;
+    _tooltipContainer.style.left = `${left}px`;
+  }
+
+  requestAnimationFrame(() => {
+    _tooltipContainer?.classList.add('visible');
+  });
+
+  _tooltipContainer.querySelector('.mobile-tooltip-close')?.addEventListener('click', (e) => {
+    e.stopPropagation();
     dismissActiveTooltip();
   });
 
-  requestAnimationFrame(() => _tooltipContainer?.classList.add('is-visible'));
-
-  clearTimeout(_activeTimeout);
-  _activeTimeout = setTimeout(() => dismissActiveTooltip(), 4200);
+  _activeTimeout = setTimeout(() => {
+    dismissActiveTooltip();
+  }, 4000);
 }
 
-function dismissActiveTooltip() {
-  clearTimeout(_activeTimeout);
-  _activeTimeout = null;
-  if (!_tooltipContainer) return;
-  _tooltipContainer.classList.remove('is-visible');
-  const el = _tooltipContainer;
-  _tooltipContainer = null;
-  setTimeout(() => el.remove(), 180);
-}
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+export function dismissActiveTooltip() {
+  if (_activeTimeout) {
+    clearTimeout(_activeTimeout);
+    _activeTimeout = null;
+  }
+  if (_tooltipContainer) {
+    _tooltipContainer.classList.remove('visible');
+    const el = _tooltipContainer;
+    _tooltipContainer = null;
+    setTimeout(() => {
+      if (el && el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    }, 250);
+  }
 }
