@@ -4,6 +4,10 @@
  * so they are not hidden behind the browser chrome or bottom navigation.
  */
 
+// Side-effect module: place rating motion is initialized whenever this shared
+// component is loaded; it only acts when .google-rating-card exists in the DOM.
+import '../animations/place-rating-animation.js';
+
 let _container = null;
 
 function getContainer() {
