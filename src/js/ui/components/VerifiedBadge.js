@@ -1,6 +1,8 @@
 import { resolveDeliveryVehicle } from '../../utils/delivery-vehicle.js';
 import { isEnglish } from '../../core/i18n.js';
 
+const VERIFICATION_TOOLTIP = 'حساب مشهور تم التأكد منه وموثق رسمي';
+
 /**
  * Add the gold verification seal to the circular place logo after the
  * place-detail HTML is rendered. Keeping this as a real DOM element gives
@@ -17,7 +19,7 @@ function mountPlaceVerificationSeals(root = document) {
     }
     if (existing) return;
 
-    const tip = identity.getAttribute('data-verified-tooltip') || 'حساب مشهور تم التأكد منه وموثق رسمي';
+    const tip = identity.getAttribute('data-verified-tooltip') || VERIFICATION_TOOLTIP;
     const seal = document.createElement('span');
     seal.className = 'place-verified-seal';
     seal.setAttribute('data-verified-tooltip', tip);
@@ -28,6 +30,67 @@ function mountPlaceVerificationSeals(root = document) {
     seal.textContent = '✓';
     logo.appendChild(seal);
   });
+}
+
+/**
+ * Touch devices do not reliably expose CSS :hover/:active tooltips.
+ * Toggle a real class on tap so the exact same CSS tooltip works on phones.
+ */
+function bindVerificationTooltipInteractions() {
+  if (typeof document === 'undefined' || document.documentElement.dataset.verificationTooltipBound === '1') return;
+  document.documentElement.dataset.verificationTooltipBound = '1';
+
+  const selector = '.place-verified-seal, .badge-verified';
+  let closeTimer = null;
+
+  const closeTooltips = (except = null) => {
+    document.querySelectorAll(`${selector}.is-tooltip-open`).forEach(el => {
+      if (el !== except) el.classList.remove('is-tooltip-open');
+    });
+  };
+
+  const openTooltip = (el) => {
+    if (!el) return;
+    closeTooltips(el);
+    el.classList.add('is-tooltip-open');
+    if (closeTimer) clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      el.classList.remove('is-tooltip-open');
+    }, 4200);
+  };
+
+  document.addEventListener('click', event => {
+    const target = event.target?.closest?.(selector);
+    if (target) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (target.classList.contains('is-tooltip-open')) {
+        target.classList.remove('is-tooltip-open');
+        if (closeTimer) clearTimeout(closeTimer);
+      } else {
+        openTooltip(target);
+      }
+      return;
+    }
+    closeTooltips();
+  }, true);
+
+  document.addEventListener('touchend', event => {
+    const target = event.target?.closest?.(selector);
+    if (!target) closeTooltips();
+  }, { passive: true, capture: true });
+
+  document.addEventListener('focusin', event => {
+    const target = event.target?.closest?.(selector);
+    if (target) openTooltip(target);
+  }, true);
+
+  document.addEventListener('focusout', event => {
+    const target = event.target?.closest?.(selector);
+    if (target && !target.contains(event.relatedTarget)) {
+      setTimeout(() => target.classList.remove('is-tooltip-open'), 120);
+    }
+  }, true);
 }
 
 if (typeof document !== 'undefined') {
@@ -43,6 +106,7 @@ if (typeof document !== 'undefined') {
     if (document.body) {
       sealObserver.observe(document.body, { childList: true, subtree: true });
       scheduleSealMount();
+      bindVerificationTooltipInteractions();
     }
   };
   if (document.body) observeSeals();
@@ -69,7 +133,7 @@ export function renderSponsoredBadge() {
  */
 export function renderVerifiedBadge() {
   const isEn = isEnglish();
-  const tip = isEn ? 'A famous account that has been officially verified' : 'حساب مشهور تم التأكد منه وموثق رسمي';
+  const tip = isEn ? 'A famous account that has been officially verified' : VERIFICATION_TOOLTIP;
   const text = isEn ? 'Verified' : 'موثق';
   return `
     <span class="badge-verified" title="${tip}" data-verified-tooltip="${tip}" aria-label="${tip}" tabindex="0" role="img">
@@ -156,4 +220,3 @@ export function renderOnlineBadge(isOnline = true) {
     </span>
   `;
 }
-
