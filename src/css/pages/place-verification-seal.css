@@ -56,7 +56,10 @@
   animation: verificationSealPulse 4.8s ease-in-out infinite !important;
 }
 
-/* Rotating golden glint: stays tightly locked to the scalloped seal perimeter. */
+/*
+ * Rotating glint is a CHILD of the seal and therefore stays above the logo.
+ * It is masked to a narrow ring so it can never become a shine behind the seal.
+ */
 .place-verified-seal::before {
   content: "" !important;
   position: absolute !important;
@@ -76,7 +79,7 @@
   transform-origin: 50% 50% !important;
   animation: verificationSealOrbit 3.2s linear infinite !important;
   pointer-events: none !important;
-  z-index: -1 !important;
+  z-index: 0 !important;
 }
 
 .place-verified-seal::after {
@@ -109,7 +112,8 @@
 .place-verified-seal:hover::after,
 .place-verified-seal:focus::after,
 .place-verified-seal:focus-visible::after,
-.place-verified-seal:active::after {
+.place-verified-seal:active::after,
+.place-verified-seal.is-tooltip-open::after {
   opacity: 1 !important;
   visibility: visible !important;
   transform: translate(-50%, 0) !important;
@@ -185,7 +189,8 @@
 .badge-verified:hover::after,
 .badge-verified:focus::after,
 .badge-verified:focus-visible::after,
-.badge-verified:active::after {
+.badge-verified:active::after,
+.badge-verified.is-tooltip-open::after {
   opacity: 1 !important;
   visibility: visible !important;
   transform: translate(-50%, 0) !important;
@@ -200,15 +205,17 @@
     height: 30px !important;
     font-size: 18px !important;
     border-width: 2px !important;
+    z-index: 60 !important;
   }
 
   .place-verified-seal::before {
     inset: -3px !important;
     -webkit-mask: radial-gradient(circle, transparent 0 15px, #000 16px 19px, transparent 20px) !important;
     mask: radial-gradient(circle, transparent 0 15px, #000 16px 19px, transparent 20px) !important;
+    z-index: 0 !important;
   }
 
-  /* On touch screens the exact same tooltip is fixed above the bottom nav. */
+  /* On touch screens the same tooltip is opened by tapping the seal/badge. */
   .place-verified-seal::after,
   .badge-verified::after {
     position: fixed !important;
@@ -221,16 +228,19 @@
     max-width: calc(100vw - 32px) !important;
     padding: 11px 14px !important;
     font-size: 12px !important;
+    z-index: 2147483646 !important;
   }
 
   .place-verified-seal:hover::after,
   .place-verified-seal:focus::after,
   .place-verified-seal:focus-visible::after,
   .place-verified-seal:active::after,
+  .place-verified-seal.is-tooltip-open::after,
   .badge-verified:hover::after,
   .badge-verified:focus::after,
   .badge-verified:focus-visible::after,
-  .badge-verified:active::after {
+  .badge-verified:active::after,
+  .badge-verified.is-tooltip-open::after {
     transform: translate(-50%, 0) !important;
   }
 }
