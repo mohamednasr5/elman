@@ -438,18 +438,18 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         padding: 6px 0;
       }
       .cert-intro {
-        font-family: 'Amiri', 'Traditional Arabic', serif;
-        font-size: 15.5px;
+        font-family: 'Cairo', 'Tajawal', sans-serif;
+        font-size: 16px;
         font-weight: 700;
         color: #334155;
         margin: 0;
       }
       .cert-honoree-wrap {
-        margin: 2px 0;
+        margin: 4px 0 8px 0;
       }
       .cert-honoree-name {
         font-family: 'Cairo', 'Segoe UI', sans-serif;
-        font-size: 32px;
+        font-size: 34px;
         font-weight: 900;
         color: #0F2744;
         line-height: 1.25;
@@ -473,39 +473,33 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         font-weight: 900;
         box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
       }
-      .cert-honoree-category {
-        font-size: 13.5px;
-        font-weight: 800;
-        color: #0369A1;
-        margin-top: 2px;
-      }
 
       .cert-endorsement-text {
         max-width: 880px;
-        margin: 2px auto;
-        font-family: 'Amiri', 'Traditional Arabic', serif;
+        margin: 0 auto;
+        font-family: 'Cairo', 'Tajawal', sans-serif;
       }
       .cert-paragraph {
-        font-size: 14.8px;
+        font-size: 14.5px;
         font-weight: 700;
         color: #1E293B;
         margin: 8px 0;
-        line-height: 1.95;
+        line-height: 1.85;
         letter-spacing: 0.1px;
       }
       .cert-paragraph strong {
         color: #0F2744;
         font-weight: 900;
-        font-family: 'Cairo', 'Amiri', serif;
+        font-family: 'Cairo', 'Tajawal', sans-serif;
       }
       
       .cert-quote-tag {
-        font-family: 'Amiri', 'Traditional Arabic', serif;
+        font-family: 'Cairo', 'Tajawal', sans-serif;
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 800;
         color: #B45309;
-        font-style: italic;
-        margin: 8px 0 4px 0;
+        font-style: normal;
+        margin: 8px 0 6px 0;
       }
 
       .cert-proud-badge {
@@ -513,10 +507,10 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         background: rgba(245, 158, 11, 0.12);
         border: 1.5px solid #F59E0B;
         color: #92400E;
-        padding: 5px 22px;
+        padding: 6px 24px;
         border-radius: 9999px;
-        font-family: 'Amiri', 'Traditional Arabic', serif;
-        font-size: 13.5px;
+        font-family: 'Cairo', 'Tajawal', sans-serif;
+        font-size: 13px;
         font-weight: 700;
         margin: 4px auto 0 auto;
         line-height: 1.5;
@@ -525,8 +519,9 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
       /* Footer */
       .cert-footer {
         display: grid;
-        grid-template-columns: 1.3fr 1.2fr 1.1fr;
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
+        gap: 16px;
         margin-top: 6px;
         padding-top: 6px;
         border-top: 1.5px solid rgba(217, 119, 6, 0.25);
@@ -564,42 +559,50 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
+        gap: 14px;
         text-align: right;
+        background: #FFFFFF;
+        border: 1.5px solid #CBD5E1;
+        border-radius: 12px;
+        padding: 6px 14px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        flex-shrink: 0;
       }
       .cert-qr-frame {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #FFFFFF;
-        border: 1.5px solid #CBD5E1;
-        border-radius: 8px;
-        padding: 4px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 6px;
+        padding: 3px;
         flex-shrink: 0;
       }
       .cert-qr-img {
-        width: 58px;
-        height: 58px;
+        width: 52px;
+        height: 52px;
         display: block;
         border-radius: 4px;
         object-fit: contain;
       }
       .cert-qr-label {
-        font-size: 8px;
+        font-size: 8.5px;
         font-weight: 800;
         color: #0369A1;
         margin-top: 2px;
+        white-space: nowrap;
         font-family: 'Cairo', sans-serif;
       }
       .cert-meta-texts {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        font-size: 10.5px;
-        color: #64748B;
-        line-height: 1.45;
+        justify-content: center;
+        font-size: 11px;
+        color: #475569;
+        line-height: 1.5;
+        white-space: nowrap;
       }
       .cert-meta-domain {
         font-size: 13.5px;
@@ -608,14 +611,25 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         text-decoration: none;
         direction: ltr;
         display: inline-block;
+        font-family: 'Cairo', sans-serif;
       }
       .cert-meta-domain:hover {
         text-decoration: underline;
       }
-      .cert-meta-serial code {
-        font-family: monospace;
-        color: #475569;
+      .cert-meta-serial {
+        font-size: 11px;
         font-weight: 700;
+        color: #334155;
+      }
+      .cert-meta-serial code {
+        font-family: 'Cairo', monospace;
+        color: #0F2744;
+        font-weight: 800;
+      }
+      .cert-meta-date {
+        font-size: 10px;
+        font-weight: 700;
+        color: #64748B;
       }
 
       /* Prominent Enlarged Stamp */
@@ -729,9 +743,6 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         #certificate-print-root .cert-honoree-name {
           color: #0F2744 !important;
         }
-        #certificate-print-root .cert-honoree-category {
-          color: #0369A1 !important;
-        }
         #certificate-print-root .cert-verified-badge {
           background: #0284C7 !important;
           color: #FFFFFF !important;
@@ -746,11 +757,19 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         }
         #certificate-print-root .cert-footer {
           display: grid !important;
-          grid-template-columns: 1.3fr 1.2fr 1.1fr !important;
+          grid-template-columns: 1fr auto 1fr !important;
           align-items: center !important;
+          gap: 16px !important;
           margin-top: 4px !important;
           padding-top: 4px !important;
           border-color: rgba(217, 119, 6, 0.25) !important;
+        }
+        #certificate-print-root .cert-meta-block {
+          background: #FFFFFF !important;
+          border: 1.5px solid #CBD5E1 !important;
+          border-radius: 10px !important;
+          padding: 5px 12px !important;
+          gap: 12px !important;
         }
         #certificate-print-root .cert-official-stamp {
           width: 142px !important;
@@ -842,7 +861,7 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
                 <div class="cert-title-container">
                   <div class="cert-title-ribbon">
                     <span class="cert-title-decor">❖</span>
-                    <h1 class="cert-main-title">شهادة تقدير وتميّز</h1>
+                    <h1 class="cert-main-title">شهادة تقدير وتميز</h1>
                     <span class="cert-title-decor">❖</span>
                   </div>
                   <div class="cert-sub-title">CERTIFICATE OF APPRECIATION & EXCELLENCE</div>
@@ -862,30 +881,27 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
                     <span>${placeName}</span>
                     ${isVerified ? '<span class="cert-verified-badge" title="نشاط موثق رسمياً">✓</span>' : ''}
                   </div>
-                  <div class="cert-honoree-category">
-                    (تصنيف: <strong>${displayCategory}</strong>)
-                  </div>
                 </div>
 
-                <!-- Official Endorsement Text -->
+                <!-- Official Endorsement Text (Without diacritics / Tashkeel) -->
                 <div class="cert-endorsement-text">
                   <p class="cert-paragraph">
-                    تقديرًا للحضور المميز، والمكانة البارزة، والمساهمة الفعّالة في المجتمع المحلي، وما يحظى به من اهتمام وتفاعل ملحوظ لدى جمهور مدينة المنزلة والمطرية.
+                    تقديرا للحضور المميز والمكانة البارزة والمساهمة الفعالة في المجتمع المحلي، وما يحظى به من اهتمام وتفاعل ملحوظ لدى جمهور مدينة المنزلة والمطرية.
                   </p>
                   <p class="cert-paragraph">
-                    ويأتي هذا التكريم استنادًا إلى مؤشرات التفاعل والبحث والرواج المسجلة على منصة دليل المنزلة والمطرية الرقمي، حيث حققت بطاقة <strong>[${placeName}]</strong> حضورًا متقدمًا ضمن أكثر البطاقات بحثًا وزيارة خلال آخر 30 يومًا.
+                    ويأتي هذا التكريم استنادا إلى مؤشرات التفاعل والبحث والرواج المسجلة على منصة دليل المنزلة والمطرية الرقمي، حيث حققت بطاقة <strong>[${placeName}]</strong> حضورا متقدما ضمن أكثر البطاقات بحثا وزيارة خلال آخر 30 يوما.
                   </p>
                   <p class="cert-paragraph">
-                    وإيمانًا منّا بأن التميّز الحقيقي يستحق أن يُرى، ويُقدَّر، ويُوثَّق، تتقدم إدارة دليل المنزلة والمطرية الرقمي بخالص التقدير والاعتزاز بهذا الحضور المميز، مع أطيب التمنيات بدوام النجاح والتألق والعطاء.
+                    وإيمانا منا بأن التميز الحقيقي يستحق أن يرى ويقدر ويوثق، تتقدم إدارة دليل المنزلة والمطرية الرقمي بخالص التقدير والاعتزاز بهذا الحضور المميز، مع أطيب التمنيات بدوام النجاح والتألق والعطاء.
                   </p>
                   <div class="cert-quote-tag">
-                    «التميّز لا يُقاس بالحضور فقط... بل بالأثر الذي يتركه.»
+                    «التميز لا يقاس بالحضور فقط... بل بالأثر الذي يتركه»
                   </div>
                 </div>
 
                 <!-- Appreciation Tagline -->
                 <div class="cert-proud-badge">
-                  شكراً لكم.. «أنتم لا تظهرون في الدليل فقط... بل أنتم جزء من قصته ونجاحه.» ومع خالص التقدير والامتنان
+                  شكرا لكم.. «أنتم لا تظهرون في الدليل فقط... بل أنتم جزء من قصته ونجاحه» ومع خالص التقدير والامتنان
                 </div>
 
               </div>
@@ -1160,7 +1176,7 @@ async function generateCertificateCanvasDownload({
   // Title Text inside Ribbon
   ctx.font = '900 48px "Cairo", "Segoe UI", sans-serif';
   ctx.fillStyle = '#F59E0B';
-  ctx.fillText('❖  شهادة تقدير وتميّز  ❖', W / 2, ribbonY + ribbonH / 2 + 2);
+  ctx.fillText('❖  شهادة تقدير وتميز  ❖', W / 2, ribbonY + ribbonH / 2 + 2);
 
   // English Subtitle
   ctx.font = 'bold 19px "Segoe UI", Arial, sans-serif';
@@ -1168,17 +1184,17 @@ async function generateCertificateCanvasDownload({
   ctx.fillText('CERTIFICATE OF APPRECIATION & EXCELLENCE', W / 2, ribbonY + ribbonH + 28);
 
   // 6. Body Text (Evenly & majestically distributed to fill A4 landscape completely)
-  let curY = 430;
+  let curY = 440;
 
-  // Intro
-  ctx.font = '700 32px "Amiri", "Traditional Arabic", "Cairo", serif';
+  // Intro (Cairo bold, without diacritics)
+  ctx.font = '700 32px "Cairo", sans-serif';
   ctx.fillStyle = '#334155';
   ctx.fillText('تتشرف إدارة دليل المنزلة والمطرية الرقمي بتقديم هذه الشهادة إلى', W / 2, curY);
 
-  curY += 80;
+  curY += 85;
 
   // Place Name with Blue Verified Badge (Exact WYSIWYG match to DOM)
-  ctx.font = '900 74px "Cairo", "Segoe UI", sans-serif';
+  ctx.font = '900 76px "Cairo", sans-serif';
   ctx.fillStyle = '#0F2744';
   
   if (isVerified) {
@@ -1215,47 +1231,41 @@ async function generateCertificateCanvasDownload({
     ctx.fillText(placeName, W / 2, curY);
   }
 
-  curY += 66;
+  // Category line is completely removed as requested
+  curY += 95;
 
-  // Category
-  ctx.font = 'bold 32px "Cairo", "Segoe UI", sans-serif';
-  ctx.fillStyle = '#0369A1';
-  ctx.fillText('(تصنيف: ' + categoryName + ')', W / 2, curY);
-
-  curY += 88;
-
-  // Paragraph 1 (with Amiri calligraphy font and generous line spacing)
-  ctx.font = '700 33px "Amiri", "Traditional Arabic", "Cairo", serif';
+  // Paragraph 1 (Cairo bold, no diacritics)
+  ctx.font = '700 30px "Cairo", sans-serif';
   ctx.fillStyle = '#1E293B';
-  ctx.fillText('تقديرًا للحضور المميز، والمكانة البارزة، والمساهمة الفعّالة في المجتمع المحلي،', W / 2, curY);
+  ctx.fillText('تقديرا للحضور المميز والمكانة البارزة والمساهمة الفعالة في المجتمع المحلي،', W / 2, curY);
   curY += 56;
   ctx.fillText('وما يحظى به من اهتمام وتفاعل ملحوظ لدى جمهور مدينة المنزلة والمطرية.', W / 2, curY);
 
   curY += 86;
 
-  // Paragraph 2
-  ctx.fillText('ويأتي هذا التكريم استنادًا إلى مؤشرات التفاعل والبحث والرواج المسجلة على منصة دليل المنزلة والمطرية الرقمي،', W / 2, curY);
+  // Paragraph 2 (Cairo bold, no diacritics)
+  ctx.fillText('ويأتي هذا التكريم استنادا إلى مؤشرات التفاعل والبحث والرواج المسجلة على منصة دليل المنزلة والمطرية الرقمي،', W / 2, curY);
   curY += 56;
-  ctx.fillText('حيث حققت بطاقة [' + placeName + '] حضورًا متقدمًا ضمن أكثر البطاقات بحثًا وزيارة خلال آخر 30 يومًا.', W / 2, curY);
+  ctx.fillText('حيث حققت بطاقة [' + placeName + '] حضورا متقدما ضمن أكثر البطاقات بحثا وزيارة خلال آخر 30 يوما.', W / 2, curY);
 
   curY += 86;
 
-  // Paragraph 3
-  ctx.fillText('وإيمانًا منّا بأن التميّز الحقيقي يستحق أن يُرى، ويُقدَّر، ويُوثَّق، تتقدم إدارة دليل المنزلة والمطرية الرقمي بخالص التقدير والاعتزاز', W / 2, curY);
+  // Paragraph 3 (Cairo bold, no diacritics)
+  ctx.fillText('وإيمانا منا بأن التميز الحقيقي يستحق أن يرى ويقدر ويوثق، تتقدم إدارة دليل المنزلة والمطرية الرقمي بخالص التقدير والاعتزاز', W / 2, curY);
   curY += 56;
   ctx.fillText('بهذا الحضور المميز، مع أطيب التمنيات بدوام النجاح والتألق والعطاء.', W / 2, curY);
 
   curY += 86;
 
-  // Quote 1
-  ctx.font = '700 32px "Amiri", "Traditional Arabic", "Cairo", serif';
+  // Quote (Cairo bold, no diacritics)
+  ctx.font = '800 31px "Cairo", sans-serif';
   ctx.fillStyle = '#B45309';
-  ctx.fillText('«التميّز لا يُقاس بالحضور فقط... بل بالأثر الذي يتركه.»', W / 2, curY);
+  ctx.fillText('«التميز لا يقاس بالحضور فقط... بل بالأثر الذي يتركه»', W / 2, curY);
 
-  curY += 82;
+  curY += 84;
 
-  // Appreciation Tagline Box
-  const proudW = 1660;
+  // Appreciation Tagline Box (Cairo bold, no diacritics)
+  const proudW = 1680;
   const proudH = 74;
   const proudX = (W - proudW) / 2;
   const proudY = curY - 37;
@@ -1269,9 +1279,9 @@ async function generateCertificateCanvasDownload({
   ctx.lineWidth = 2.5;
   ctx.stroke();
 
-  ctx.font = '700 27px "Amiri", "Traditional Arabic", "Cairo", serif';
+  ctx.font = '700 26px "Cairo", sans-serif';
   ctx.fillStyle = '#92400E';
-  ctx.fillText('شكراً لكم.. «أنتم لا تظهرون في الدليل فقط... بل أنتم جزء من قصته ونجاحه.» ومع خالص التقدير والامتنان', W / 2, curY);
+  ctx.fillText('شكرا لكم.. «أنتم لا تظهرون في الدليل فقط... بل أنتم جزء من قصته ونجاحه» ومع خالص التقدير والامتنان', W / 2, curY);
 
   // Subtle separator line above footer
   ctx.save();
@@ -1320,61 +1330,67 @@ async function generateCertificateCanvasDownload({
   const metaCenterX = W / 2;
 
   if (qrImg) {
-    // QR Code Frame Card
-    const qrCardW = 136;
-    const qrCardH = 152;
-    const qrCardX = metaCenterX + 35;
-    const qrCardY = footerY - 95;
+    // Elegant Container Card for QR & Meta details (Separates QR completely from texts)
+    const cardW = 460;
+    const cardH = 154;
+    const cardX = metaCenterX - (cardW / 2);
+    const cardY = footerY - 95;
 
     ctx.save();
     ctx.fillStyle = '#FFFFFF';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 3;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
     ctx.beginPath();
-    ctx.roundRect(qrCardX, qrCardY, qrCardW, qrCardH, 12);
+    ctx.roundRect(cardX, cardY, cardW, cardH, 14);
     ctx.fill();
     ctx.strokeStyle = '#CBD5E1';
     ctx.lineWidth = 2.5;
     ctx.stroke();
     ctx.restore();
 
-    ctx.drawImage(qrImg, qrCardX + 10, qrCardY + 8, 116, 116);
+    // QR Image on the right side of the card (RTL layout)
+    const qrSize = 106;
+    const qrX = cardX + cardW - qrSize - 16;
+    const qrY = cardY + 12;
+
+    ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
     ctx.font = 'bold 15px "Cairo", sans-serif';
     ctx.fillStyle = '#0369A1';
     ctx.textAlign = 'center';
-    ctx.fillText('رمز التحقق الذكي', qrCardX + (qrCardW / 2), qrCardY + 137);
+    ctx.fillText('رمز التحقق الذكي', qrX + (qrSize / 2), qrY + qrSize + 20);
 
-    // Text details placed neatly beside QR
-    const textCenterX = metaCenterX - 110;
-    ctx.textAlign = 'center';
-    ctx.font = '900 30px "Cairo", "Segoe UI", sans-serif';
+    // Text details placed on the left side of the card with guaranteed separation from QR
+    const textStartX = qrX - 22;
+    ctx.textAlign = 'right';
+    
+    ctx.font = '900 24px "Cairo", sans-serif';
     ctx.fillStyle = '#0284C7';
-    ctx.fillText('dalilmanzala.com', textCenterX, footerY - 32);
+    ctx.fillText('dalilmanzala.com', textStartX, cardY + 40);
 
-    ctx.font = 'bold 21px "Courier New", monospace';
-    ctx.fillStyle = '#475569';
-    ctx.fillText('الرقم التسلسلي: ' + serialNumber, textCenterX, footerY + 10);
+    ctx.font = 'bold 18px "Cairo", monospace';
+    ctx.fillStyle = '#334155';
+    ctx.fillText('الرقم التسلسلي: ' + serialNumber, textStartX, cardY + 76);
 
-    ctx.font = '700 20px "Cairo", "Segoe UI", sans-serif';
+    ctx.font = '700 17px "Cairo", sans-serif';
     ctx.fillStyle = '#64748B';
-    ctx.fillText('تاريخ الإصدار: ' + formattedDate, textCenterX, footerY + 44);
+    ctx.fillText('تاريخ الإصدار: ' + formattedDate, textStartX, cardY + 112);
   } else {
     // Fallback if QR image is not loaded
     ctx.textAlign = 'center';
     ctx.font = 'bold 38px "Segoe UI", sans-serif';
     ctx.fillText('🎖️', metaCenterX, footerY - 82);
 
-    ctx.font = '900 30px "Cairo", "Segoe UI", sans-serif';
+    ctx.font = '900 28px "Cairo", sans-serif';
     ctx.fillStyle = '#0284C7';
     ctx.fillText('dalilmanzala.com', metaCenterX, footerY - 36);
 
-    ctx.font = 'bold 22px "Courier New", monospace';
-    ctx.fillStyle = '#64748B';
+    ctx.font = 'bold 20px "Cairo", monospace';
+    ctx.fillStyle = '#334155';
     ctx.fillText('الرقم التسلسلي: ' + serialNumber, metaCenterX, footerY + 6);
 
-    ctx.font = '600 22px "Cairo", "Segoe UI", sans-serif';
+    ctx.font = '700 19px "Cairo", sans-serif';
     ctx.fillStyle = '#64748B';
     ctx.fillText('تاريخ الإصدار: ' + formattedDate, metaCenterX, footerY + 44);
   }
