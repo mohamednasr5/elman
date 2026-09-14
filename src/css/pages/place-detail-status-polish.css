@@ -1,0 +1,98 @@
+/* ========================================================================== 
+   PLACE STATUS POLISH — verified beside name + Facebook-style presence dot
+   ========================================================================== */
+
+/* The verification badge belongs immediately after the place name. */
+.place-card-name-wrap{
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+}
+.place-card-name-wrap .place-card-name{order:1!important}
+.place-card-name-wrap .badge-verified{order:2!important;flex:0 0 auto!important}
+.place-card-name-wrap .badge-online-pulse{order:3!important;flex:0 0 auto!important}
+
+/* Online status: show only the presence dot, while preserving the native tooltip/title. */
+.place-card-name-wrap .badge-online-pulse{
+  width:14px!important;
+  height:14px!important;
+  min-width:14px!important;
+  min-height:14px!important;
+  padding:0!important;
+  margin:0!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border-radius:50%!important;
+  cursor:help!important;
+  position:relative!important;
+}
+.place-card-name-wrap .badge-online-pulse .online-indicator-text{
+  display:none!important;
+}
+.place-card-name-wrap .badge-online-pulse .online-indicator-dot{
+  display:block!important;
+  width:10px!important;
+  height:10px!important;
+  min-width:10px!important;
+  min-height:10px!important;
+  margin:0!important;
+  border-radius:50%!important;
+  border:2px solid #fff!important;
+  box-sizing:border-box!important;
+}
+.place-card-name-wrap .badge-online-pulse--online .online-indicator-dot,
+.place-card-name-wrap .online-indicator-dot:not(.online-indicator-dot--offline){
+  background:#22c55e!important;
+  box-shadow:0 0 0 2px rgba(34,197,94,.14),0 0 10px rgba(34,197,94,.34)!important;
+}
+.place-card-name-wrap .badge-online-pulse--offline .online-indicator-dot,
+.place-card-name-wrap .online-indicator-dot--offline{
+  background:#ef4444!important;
+  box-shadow:0 0 0 2px rgba(239,68,68,.12),0 0 8px rgba(239,68,68,.22)!important;
+}
+
+/* A restrained live pulse only for the green state. */
+.place-card-name-wrap .badge-online-pulse--online .online-indicator-dot{
+  animation:dmPresencePulse 2s ease-in-out infinite;
+}
+@keyframes dmPresencePulse{
+  0%,100%{box-shadow:0 0 0 2px rgba(34,197,94,.12),0 0 7px rgba(34,197,94,.24)}
+  50%{box-shadow:0 0 0 4px rgba(34,197,94,.08),0 0 13px rgba(34,197,94,.38)}
+}
+
+/* Native title tooltip remains the source of truth:
+   online => "متصل حالياً" / offline => "صاحب المكان غير متصل حالياً". */
+.place-card-name-wrap .badge-online-pulse:hover .online-indicator-dot{
+  transform:scale(1.12);
+}
+
+/* Keep the identity row compact and balanced on desktop. */
+@media (min-width:768px){
+  .place-card-name-wrap{gap:9px!important}
+  .place-card-name-wrap .badge-verified{margin-inline-start:2px!important}
+  .place-card-name-wrap .badge-online-pulse{margin-inline-start:1px!important}
+}
+
+/* Mobile: verified stays directly beside the name; presence remains a tiny dot. */
+@media (max-width:767px){
+  .place-card-name-wrap{
+    width:100%!important;
+    justify-content:center!important;
+    gap:7px!important;
+  }
+  .place-card-name-wrap .place-card-name{
+    width:auto!important;
+    flex:0 1 auto!important;
+  }
+  .place-card-name-wrap .badge-verified{order:2!important}
+  .place-card-name-wrap .badge-online-pulse{order:3!important}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .place-card-name-wrap .badge-online-pulse--online .online-indicator-dot{animation:none!important}
+}
