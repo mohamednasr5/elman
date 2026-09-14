@@ -3711,8 +3711,12 @@ try {
     const now = Date.now();
 
     try {
+      const db = createTursoDB(env);
+      await db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run().catch(() => {});
+      await db.prepare("ALTER TABLE users ADD COLUMN photo_url TEXT").run().catch(() => {});
+
       // Upsert: preserve existing role in Turso (server-side protection)
-      await createTursoDB(env).prepare(`
+      await db.prepare(`
         INSERT INTO users (id, name, email, photo_url, role, status, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
@@ -3728,12 +3732,13 @@ try {
       `).bind(id, name, email, photoUrl, requestedRole, status, now, now).run();
 
       // Return full Turso profile so auth.js can use actual DB role
-      const profile = await createTursoDB(env).prepare(
-        `SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
+      const profile = await db.prepare(
+        `SELECT * FROM users WHERE id = ? LIMIT 1`
       ).bind(id).first();
 
       return jsonResponse({ success: true, data: profile || null }, 200, corsHeaders);
     } catch (err) {
+      console.error('[POST /api/users/sync error]:', err?.message || err);
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
     }
   }
@@ -6170,7 +6175,9 @@ async function ensureNewSchemaColumnsInTurso(env) {
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_place_slug ON reviews(place_slug)").run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at)").run().catch(() => {});
     
-    // Loyalty and Gamification Schema
+    // Users Schema Updates
+    await db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run().catch(() => {});
+    await db.prepare("ALTER TABLE users ADD COLUMN photo_url TEXT").run().catch(() => {});
     await db.prepare("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0").run().catch(() => {});
     await db.prepare("ALTER TABLE users ADD COLUMN total_earned INTEGER DEFAULT 0").run().catch(() => {});
     await db.prepare("ALTER TABLE users ADD COLUMN last_daily_bonus_date TEXT").run().catch(() => {});
