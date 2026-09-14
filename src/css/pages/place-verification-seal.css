@@ -1,6 +1,6 @@
 /* ========================================================================== 
    Premium Verification Seal
-   Gold official-verification seal anchored to the place logo.
+   Compact official-verification seal anchored to the place logo.
    The glint rotates around the seal itself; it never leaves its orbit.
    ========================================================================== */
 
@@ -16,43 +16,45 @@
   border-radius: 50% !important;
 }
 
-/* Official gold seal: intentionally sits on the LOWER-LEFT of the logo. */
+/* Compact official gold seal — visually close to the reference badge. */
 .place-verified-seal {
   position: absolute !important;
-  left: -9px !important;
+  left: -5px !important;
   right: auto !important;
-  bottom: -4px !important;
-  width: 46px !important;
-  height: 46px !important;
+  bottom: -2px !important;
+  width: 34px !important;
+  height: 34px !important;
   display: grid !important;
   place-items: center !important;
-  border-radius: 44% 56% 50% 50% / 54% 44% 56% 46% !important;
+  border-radius: 50% !important;
   background:
-    radial-gradient(circle at 30% 25%, #fffdf0 0 9%, transparent 10%),
-    radial-gradient(circle at 68% 72%, rgba(255,255,255,.22) 0 12%, transparent 13%),
-    linear-gradient(145deg, #fff8c9 0%, #ffd95a 28%, #f1bd2f 55%, #c88708 78%, #8b5b08 100%) !important;
+    radial-gradient(circle at 30% 24%, #fffef2 0 8%, transparent 9%),
+    linear-gradient(145deg, #fff7b8 0%, #ffd447 28%, #efb92b 58%, #c98508 82%, #8c5c08 100%) !important;
   color: #fff !important;
   font-family: Arial, sans-serif !important;
-  font-size: 28px !important;
+  font-size: 21px !important;
   font-weight: 1000 !important;
   line-height: 1 !important;
-  border: 3px solid #fff !important;
+  border: 2px solid #fff !important;
   box-shadow:
-    0 5px 14px rgba(83, 52, 0, .30),
-    0 0 0 2px rgba(218, 165, 35, .82),
-    0 0 14px rgba(245, 197, 66, .48),
-    inset 0 1px 3px rgba(255,255,255,.95) !important;
+    0 3px 9px rgba(83, 52, 0, .28),
+    0 0 0 1.5px rgba(218, 165, 35, .86),
+    0 0 9px rgba(245, 197, 66, .46),
+    inset 0 1px 2px rgba(255,255,255,.96) !important;
   z-index: 40 !important;
   pointer-events: auto !important;
   cursor: help !important;
   animation: verificationSealPulse 4.8s ease-in-out infinite !important;
 }
 
+/* Subtle rosette edge so the mark reads like an official seal. */
+.place-verified-seal::marker { content: none !important; }
+
 /* Rotating golden glint: stays tightly locked to the seal perimeter. */
 .place-verified-seal::before {
   content: "" !important;
   position: absolute !important;
-  inset: -6px !important;
+  inset: -4px !important;
   border-radius: 50% !important;
   background: conic-gradient(
     from 0deg,
@@ -63,8 +65,8 @@
     #fff7b0 334deg,
     transparent 341deg 360deg
   ) !important;
-  -webkit-mask: radial-gradient(circle, transparent 0 24px, #000 25px 30px, transparent 31px) !important;
-  mask: radial-gradient(circle, transparent 0 24px, #000 25px 30px, transparent 31px) !important;
+  -webkit-mask: radial-gradient(circle, transparent 0 18px, #000 19px 22px, transparent 23px) !important;
+  mask: radial-gradient(circle, transparent 0 18px, #000 19px 22px, transparent 23px) !important;
   transform-origin: 50% 50% !important;
   animation: verificationSealOrbit 3.2s linear infinite !important;
   pointer-events: none !important;
@@ -116,23 +118,23 @@
     filter: brightness(1) saturate(1);
     transform: scale(1);
     box-shadow:
-      0 5px 14px rgba(83, 52, 0, .30),
-      0 0 0 2px rgba(218, 165, 35, .82),
-      0 0 14px rgba(245, 197, 66, .48),
-      inset 0 1px 3px rgba(255,255,255,.95);
+      0 3px 9px rgba(83, 52, 0, .28),
+      0 0 0 1.5px rgba(218, 165, 35, .86),
+      0 0 9px rgba(245, 197, 66, .46),
+      inset 0 1px 2px rgba(255,255,255,.96);
   }
   78% {
     filter: brightness(1.18) saturate(1.12);
-    transform: scale(1.055);
+    transform: scale(1.045);
     box-shadow:
-      0 7px 18px rgba(83, 52, 0, .34),
-      0 0 0 3px rgba(255, 215, 82, .90),
-      0 0 24px rgba(255, 221, 112, .86),
-      inset 0 1px 4px rgba(255,255,255,1);
+      0 5px 12px rgba(83, 52, 0, .30),
+      0 0 0 2px rgba(255, 215, 82, .90),
+      0 0 15px rgba(255, 221, 112, .78),
+      inset 0 1px 3px rgba(255,255,255,1);
   }
   83% {
-    filter: brightness(1.48) saturate(1.16);
-    transform: scale(1.025);
+    filter: brightness(1.38) saturate(1.12);
+    transform: scale(1.02);
   }
   88% {
     filter: brightness(1) saturate(1);
@@ -185,18 +187,19 @@
 
 @media (max-width: 700px) {
   .place-verified-seal {
-    left: -6px !important;
+    left: -5px !important;
     right: auto !important;
-    bottom: -3px !important;
-    width: 42px !important;
-    height: 42px !important;
-    font-size: 25px !important;
+    bottom: -2px !important;
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 22px !important;
+    border-width: 2px !important;
   }
 
   .place-verified-seal::before {
-    inset: -6px !important;
-    -webkit-mask: radial-gradient(circle, transparent 0 21px, #000 22px 28px, transparent 29px) !important;
-    mask: radial-gradient(circle, transparent 0 21px, #000 22px 28px, transparent 29px) !important;
+    inset: -4px !important;
+    -webkit-mask: radial-gradient(circle, transparent 0 19px, #000 20px 23px, transparent 24px) !important;
+    mask: radial-gradient(circle, transparent 0 19px, #000 20px 23px, transparent 24px) !important;
   }
 
   /* On touch screens the exact same tooltip is fixed above the bottom nav. */
