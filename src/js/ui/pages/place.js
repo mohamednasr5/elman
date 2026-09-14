@@ -592,25 +592,25 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               `)}
             </div>
 
-            <!-- Row 5: Secondary Trio Cards (Chic Cards with click animation) -->
+            <!-- Row 5: Secondary Trio Cards (3D Chic Cards with click animation) -->
             <div class="place-card-row-tools-trio">
-              <!-- Card 1: Download Profile Card -->
-              <button type="button" class="place-tool-card btn-download-profile-trigger" id="btn-download-profile-card" data-pid="${escAttr(placeId)}" title="تحميل البطاقة التعريفية لمشاركتها كصورة">
-                <div class="place-tool-card__icon">🪪</div>
+              <!-- Card 1: Download Profile Card (Sapphire Tech 3D) -->
+              <button type="button" class="place-tool-card place-tool-card--download btn-download-profile-trigger" id="btn-download-profile-card" data-pid="${escAttr(placeId)}" title="تحميل البطاقة التعريفية لمشاركتها كصورة">
+                <div class="place-tool-card__icon-box">🪪</div>
                 <div class="place-tool-card__title">تحميل البطاقة</div>
                 <div class="place-tool-card__hint">صورة جاهزة للمشاركة</div>
               </button>
 
-              <!-- Card 2: Storefront QR Poster -->
-              <button type="button" class="place-tool-card btn-open-storefront-qr" id="btn-open-storefront-qr" title="طباعة لوحة QR ذكية لواجهة المحل">
-                <div class="place-tool-card__icon">🖨️</div>
+              <!-- Card 2: Storefront QR Poster (Royal Purple 3D) -->
+              <button type="button" class="place-tool-card place-tool-card--qr btn-open-storefront-qr" id="btn-open-storefront-qr" title="طباعة لوحة QR ذكية لواجهة المحل">
+                <div class="place-tool-card__icon-box">🖨️</div>
                 <div class="place-tool-card__title">لوحة QR المحل</div>
                 <div class="place-tool-card__hint">لطباعتها على الواجهة</div>
               </button>
 
-              <!-- Card 3: Certificate of Appreciation -->
-              <button type="button" class="place-tool-card btn-appreciation-certificate" id="btn-appreciation-certificate-header" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك (A4)">
-                <div class="place-tool-card__icon">🎖️</div>
+              <!-- Card 3: Certificate of Appreciation (Prestige Gold 3D) -->
+              <button type="button" class="place-tool-card place-tool-card--cert btn-appreciation-certificate" id="btn-appreciation-certificate-header" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك (A4)">
+                <div class="place-tool-card__icon-box">🎖️</div>
                 <div class="place-tool-card__title">شهادة تقدير</div>
                 <div class="place-tool-card__hint">شهادة رسمية A4</div>
               </button>
