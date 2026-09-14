@@ -1,0 +1,307 @@
+/* ==========================================================================
+   DALIL MANZALA — PLACE HEADER V3
+   Final identity layout: circular logo, tight gold orbit, inline verification,
+   Facebook-style presence dot, centered mobile header.
+   ========================================================================== */
+
+/* ---- Logo: one clean circular avatar, no internal shine ---- */
+.place-header-card .place-card-logo,
+.place-header-card .place-logo,
+.place-card-row-identity > .place-card-logo {
+  position: relative !important;
+  width: 124px !important;
+  height: 124px !important;
+  min-width: 124px !important;
+  min-height: 124px !important;
+  flex: 0 0 124px !important;
+  padding: 5px !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  overflow: visible !important;
+  isolation: isolate !important;
+  background: #fff !important;
+  border: 2px solid rgba(197, 150, 35, .62) !important;
+  box-shadow:
+    0 14px 32px rgba(15, 23, 42, .16),
+    0 0 0 5px rgba(214, 167, 52, .10),
+    inset 0 1px 0 rgba(255,255,255,.95) !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.place-header-card .place-card-logo img,
+.place-header-card .place-logo img,
+.place-card-row-identity > .place-card-logo img {
+  position: relative !important;
+  z-index: 2 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+/* Remove every previous internal sweep/highlight animation. */
+.place-header-card .place-card-logo::after,
+.place-header-card .place-logo::after,
+.place-card-row-identity > .place-card-logo::after {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+}
+
+/* Tight gold orbit: rotates around the logo's own center, never wanders away. */
+.place-header-card .place-card-logo::before,
+.place-header-card .place-logo::before,
+.place-card-row-identity > .place-card-logo::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: -6px !important;
+  z-index: 4 !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  border: 3px solid rgba(191, 143, 29, .30) !important;
+  border-top-color: #fff1a3 !important;
+  border-right-color: #d7a62c !important;
+  border-bottom-color: #9b6b0f !important;
+  border-left-color: rgba(191, 143, 29, .35) !important;
+  background: transparent !important;
+  box-shadow:
+    0 0 0 1px rgba(241,196,15,.10),
+    0 0 12px rgba(241,196,15,.15) !important;
+  pointer-events: none !important;
+  animation: dmLogoOrbitV3 3.2s linear infinite !important;
+  transform-origin: center center !important;
+}
+
+@keyframes dmLogoOrbitV3 {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Name + verification: one compact identity line ---- */
+.place-header-card .place-card-name-wrap,
+.place-card-row-identity .place-card-name-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  width: auto !important;
+  max-width: 100% !important;
+  gap: 8px !important;
+  white-space: nowrap !important;
+}
+
+.place-header-card .place-card-name-wrap .place-card-name,
+.place-card-row-identity .place-card-name-wrap .place-card-name {
+  order: 1 !important;
+  width: auto !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  white-space: normal !important;
+}
+
+.place-header-card .place-card-name-wrap .badge-verified,
+.place-card-row-identity .place-card-name-wrap .badge-verified {
+  order: 2 !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+}
+
+/* Presence dot is the third item; text is hidden but title remains available. */
+.place-header-card .place-card-name-wrap .badge-online-pulse,
+.place-card-row-identity .place-card-name-wrap .badge-online-pulse {
+  order: 3 !important;
+  flex: 0 0 12px !important;
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  min-height: 12px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: help !important;
+  position: relative !important;
+}
+
+.place-header-card .place-card-name-wrap .online-indicator-text,
+.place-card-row-identity .place-card-name-wrap .online-indicator-text {
+  display: none !important;
+}
+
+.place-header-card .place-card-name-wrap .online-indicator-dot,
+.place-card-row-identity .place-card-name-wrap .online-indicator-dot {
+  display: block !important;
+  width: 9px !important;
+  height: 9px !important;
+  min-width: 9px !important;
+  min-height: 9px !important;
+  margin: 0 !important;
+  border: 2px solid #fff !important;
+  border-radius: 50% !important;
+  box-sizing: content-box !important;
+}
+
+.place-header-card .place-card-name-wrap .badge-online-pulse--online .online-indicator-dot,
+.place-header-card .place-card-name-wrap .online-indicator-dot:not(.online-indicator-dot--offline) {
+  background: #22c55e !important;
+  box-shadow: 0 0 0 1px rgba(34,197,94,.20), 0 0 8px rgba(34,197,94,.34) !important;
+  animation: dmPresenceV3 2s ease-in-out infinite !important;
+}
+
+.place-header-card .place-card-name-wrap .badge-online-pulse--offline .online-indicator-dot,
+.place-header-card .place-card-name-wrap .online-indicator-dot--offline {
+  background: #ef4444 !important;
+  box-shadow: 0 0 0 1px rgba(239,68,68,.16), 0 0 7px rgba(239,68,68,.22) !important;
+  animation: none !important;
+}
+
+@keyframes dmPresenceV3 {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+/* ---- Desktop identity balance ---- */
+@media (min-width: 768px) {
+  .place-header-card .place-card-row-identity {
+    align-items: center !important;
+    min-height: 124px !important;
+    gap: 18px !important;
+  }
+
+  .place-header-card .place-card-identity-text {
+    min-width: 0 !important;
+  }
+
+  .place-header-card .place-card-name {
+    font-size: clamp(25px, 2.1vw, 34px) !important;
+    line-height: 1.15 !important;
+  }
+}
+
+/* ---- Mobile: logo centered exactly over the cover/card seam ---- */
+@media (max-width: 767px) {
+  .place-header-card {
+    position: relative !important;
+    overflow: visible !important;
+  }
+
+  .place-header-card .place-card-row-identity {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    min-height: 0 !important;
+    padding: 92px 14px 16px !important;
+    text-align: center !important;
+  }
+
+  .place-header-card .place-card-row-identity > .place-card-logo {
+    position: absolute !important;
+    top: -74px !important;
+    left: 50% !important;
+    right: auto !important;
+    width: 148px !important;
+    height: 148px !important;
+    min-width: 148px !important;
+    min-height: 148px !important;
+    flex: 0 0 148px !important;
+    padding: 5px !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    z-index: 20 !important;
+  }
+
+  .place-header-card .place-card-row-identity > .place-card-logo::before {
+    inset: -7px !important;
+  }
+
+  .place-header-card .place-card-identity-text {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  .place-header-card .place-card-name-wrap {
+    width: 100% !important;
+    justify-content: center !important;
+    flex-wrap: nowrap !important;
+    gap: 7px !important;
+  }
+
+  .place-header-card .place-card-name-wrap .place-card-name {
+    width: auto !important;
+    max-width: calc(100% - 70px) !important;
+    flex: 0 1 auto !important;
+    text-align: center !important;
+    font-size: clamp(21px, 6vw, 28px) !important;
+    line-height: 1.2 !important;
+  }
+
+  .place-header-card .place-card-row-meta {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 9px !important;
+  }
+
+  .place-header-card .place-card-meta-tags {
+    width: 100% !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .place-header-card .place-category-tag,
+  .place-header-card .place-card-location,
+  .place-header-card .place-card-address {
+    margin-inline: auto !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .place-header-card .place-card-row-identity {
+    padding-top: 84px !important;
+  }
+  .place-header-card .place-card-row-identity > .place-card-logo {
+    top: -66px !important;
+    width: 134px !important;
+    height: 134px !important;
+    min-width: 134px !important;
+    min-height: 134px !important;
+    flex-basis: 134px !important;
+  }
+  .place-header-card .place-card-name-wrap .place-card-name {
+    font-size: 21px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .place-header-card .place-card-logo::before,
+  .place-header-card .place-logo::before,
+  .place-card-row-identity > .place-card-logo::before,
+  .place-header-card .place-card-name-wrap .badge-online-pulse--online .online-indicator-dot {
+    animation: none !important;
+  }
+}
