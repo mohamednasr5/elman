@@ -36,8 +36,17 @@
   transform: translateY(-1px);
 }
 
-.lang-toggle-btn .lang-globe {
-  font-size: 1rem;
+.lang-toggle-btn .lang-flag-icon {
+  width: 26px;
+  height: 19px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  display: block;
+}
+.lang-toggle-btn .lang-globe,
+.lang-toggle-btn .lang-name {
+  display: none !important;
 }
 
 html[lang="en"] {
