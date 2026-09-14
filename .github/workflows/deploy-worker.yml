@@ -49,6 +49,7 @@ jobs:
         run: node -e "import('@tursodatabase/serverless').then(() => console.log('Turso dependency verified successfully')).catch(err => { console.error(err); process.exit(1); })"
 
       - name: Repair Turso public API schema
+        if: ${{ env.TURSO_AUTH_TOKEN != '' }}
         run: node repair-turso-schema.mjs
 
       - name: Validate Worker bundle
@@ -77,4 +78,4 @@ jobs:
         run: npx wrangler@latest deploy
 
 # Production deployment trigger verified by maintainer.
-# API availability refresh trigger: repair the Turso schema and redeploy the current Worker so live routes match main.
+# API availability refresh trigger: repair the Turso schema when a CI database token is available, and always deploy the Worker runtime self-healing path.
