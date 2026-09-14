@@ -62,7 +62,13 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
   if (!isPhoneUnavailable && !isValidPhoneNumber(phone)) {
     throw new Error('يرجى إدخال رقم هاتف مصري صحيح ومفعل (موبايل 11 رقم أو أرضي أو رقم موحد)، أو تحديد خيار "رقم التواصل غير متوفر حالياً".');
   }
-  const allPlaces = (await getPublishedPlaces({ limit: 1000 })) || [];
+  let allPlaces = [];
+  try {
+    allPlaces = (await idbGetAll(STORES.PLACES)) || [];
+  } catch (_) {}
+  if (!allPlaces || allPlaces.length === 0) {
+    allPlaces = getCached('published_100_') || [];
+  }
   const currentPlaceObj = { ...(placeData || {}), name, phone: isPhoneUnavailable ? '' : phone, id: excludePlaceId || placeData?.id || placeData?._key };
   const unrelatedMatchingPhonePlaces = [];
   for (const p of allPlaces) {
@@ -88,15 +94,9 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
 export async function createPlace(placeData, currentUser) {
   if (!currentUser?.uid) throw new Error('يجب تسجيل الدخول لإضافة مكان');
   const cleanCandidate = generateCleanSlug(placeData.name);
-  const [validationResult, slugCheck] = await Promise.all([
-    validatePlaceUniqueness({ name: placeData.name, phone: placeData.phone, categoryId: placeData.categoryId, placeData }),
-    tursoFetch('/api/places?slug=' + encodeURIComponent(cleanCandidate)).catch(() => null)
-  ]);
-  void validationResult;
+  await validatePlaceUniqueness({ name: placeData.name, phone: placeData.phone, categoryId: placeData.categoryId, placeData });
   const placeId = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-  let slug = cleanCandidate;
-  const existingId = slugCheck?.data?.id || slugCheck?.data?.place?.id;
-  if (existingId && String(existingId) !== String(placeId)) slug = `${cleanCandidate}-${placeId.slice(-5)}`;
+  const slug = cleanCandidate;
   const now = Date.now();
   const isPhoneUnavailable = Boolean(placeData.phoneUnavailable || !placeData.phone);
   const newPlace = {
@@ -124,7 +124,7 @@ export async function createPlace(placeData, currentUser) {
 }
 
 export async function updatePlace(placeId, placeData) {
-  const current = (await getPlace(placeId)) || (await idbGet(STORES.PLACES, placeId));
+  const current = (await idbGet(STORES.PLACES, placeId)) || (await getPlace(placeId));
   if (!current) throw new Error('المكان غير موجود');
   if (placeData.name || placeData.phone !== undefined || placeData.phoneUnavailable !== undefined) {
     await validatePlaceUniqueness({ name: placeData.name || current.name, phone: placeData.phone !== undefined ? placeData.phone : current.phone, excludePlaceId: placeId, categoryId: placeData.categoryId || current.categoryId, placeData: { ...current, ...placeData } });

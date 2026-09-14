@@ -223,6 +223,7 @@ export function initPlaceFormWizard() {
       .place-wizard-nav__hint{font-size:11px;color:#64748b;text-align:center;flex:1}
       .place-wizard-submit-row{display:none!important}
       @keyframes placeWizardIn{from{opacity:0;transform:translateX(-18px) translateY(8px)}to{opacity:1;transform:none}}
+      @keyframes placeSpin{to{transform:rotate(360deg)}}
       @media(max-width:768px){
         .place-wizard-header{padding:18px 15px}
         .place-wizard-title{font-size:19px}
@@ -361,6 +362,10 @@ export function initPlaceFormWizard() {
     if (current < stepData.length - 1) {
       render(current + 1, 1);
     } else {
+      if (nextBtn.disabled) return;
+      nextBtn.disabled = true;
+      nextBtn.dataset.originalHtml = nextBtn.innerHTML;
+      nextBtn.innerHTML = '<span style="display:inline-block;width:15px;height:15px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:placeSpin .6s linear infinite;margin-left:8px;vertical-align:middle"></span> ⚡ جاري الحفظ فوراً...';
       submitButton?.click();
     }
   });

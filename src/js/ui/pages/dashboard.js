@@ -3083,8 +3083,15 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   document.getElementById('place-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const saveBtn = document.getElementById('btn-save-place');
-    saveBtn.classList.add('loading');
-    saveBtn.disabled = true;
+    const wizardNextBtn = document.getElementById('place-wizard-next');
+    if (saveBtn) {
+      saveBtn.classList.add('loading');
+      saveBtn.disabled = true;
+    }
+    if (wizardNextBtn) {
+      wizardNextBtn.disabled = true;
+      wizardNextBtn.innerHTML = '<span style="display:inline-block;width:15px;height:15px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:placeSpin .6s linear infinite;margin-left:8px;vertical-align:middle"></span> ⚡ جاري الحفظ فوراً...';
+    }
 
     // Safety Interception: Warn user if a high-similarity duplicate exists
     if (!isEdit && _currentDuplicateMatch && _currentDuplicateMatch.score >= 85 && !_ignoredDuplicateIds.has(_currentDuplicateMatch.place.id)) {
@@ -3097,8 +3104,14 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         icon: '💡'
       });
       if (!ok) {
-        saveBtn.classList.remove('loading');
-        saveBtn.disabled = false;
+        if (saveBtn) {
+          saveBtn.classList.remove('loading');
+          saveBtn.disabled = false;
+        }
+        if (wizardNextBtn) {
+          wizardNextBtn.disabled = false;
+          wizardNextBtn.innerHTML = '✓ مراجعة وحفظ النشاط';
+        }
         document.getElementById('p-name')?.focus();
         return;
       }
@@ -3266,16 +3279,14 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         toast.success('تمت إضافة المكان بنجاح إلى الدليل! 🎉');
       }
 
-      // If user proposed custom category, also register it in categoryRequests node for admin review
+      // If user proposed custom category, register it in background without blocking redirect
       if (customCategory) {
-        try {
-          await submitCategoryRequestTurso({
-            categoryName: customCategory,
-            placeName: placeData.name,
-            ownerName: user.name || user.displayName || 'مستخدم',
-            userId: user.uid
-          });
-        } catch (_) {}
+        submitCategoryRequestTurso({
+          categoryName: customCategory,
+          placeName: placeData.name,
+          ownerName: user.name || user.displayName || 'مستخدم',
+          userId: user.uid
+        }).catch(() => {});
       }
 
       clearDbCache();
@@ -3284,8 +3295,14 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       console.error('Save place error:', err);
       toast.error(err.message || 'فشل حفظ المكان');
     } finally {
-      saveBtn.classList.remove('loading');
-      saveBtn.disabled = false;
+      if (saveBtn) {
+        saveBtn.classList.remove('loading');
+        saveBtn.disabled = false;
+      }
+      if (wizardNextBtn) {
+        wizardNextBtn.disabled = false;
+        wizardNextBtn.innerHTML = '✓ مراجعة وحفظ النشاط';
+      }
     }
   });
 

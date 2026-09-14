@@ -1574,26 +1574,10 @@ try {
         ? (body.subcategoryId || body.subcategory_id || '')
         : (existingPlace?.subcategory_id || '');
 
-      // Automatic AI Translation into natural, accurate English
-      if (!nameEn || !descriptionEn) {
-        try {
-          const autoTrans = await autoTranslatePlaceToEnglish({
-            name,
-            description: body.description !== undefined ? body.description : (existingPlace?.description || ''),
-            address: body.address !== undefined ? body.address : (existingPlace?.address || ''),
-            customCategory,
-            services: Array.isArray(body.services) ? body.services : parseJson(body.servicesJson || body.services_json || existingPlace?.services_json, [])
-          }, env);
-          if (autoTrans) {
-            if (!nameEn && autoTrans.name_en) nameEn = autoTrans.name_en;
-            if (!descriptionEn && autoTrans.description_en) descriptionEn = autoTrans.description_en;
-            if (!addressEn && autoTrans.address_en) addressEn = autoTrans.address_en;
-            if (!customCategoryEn && autoTrans.custom_category_en) customCategoryEn = autoTrans.custom_category_en;
-            if (!servicesEnJson && autoTrans.services_en?.length) servicesEnJson = JSON.stringify(autoTrans.services_en);
-          }
-        } catch (tErr) {
-          console.warn('[savePlace auto-translate notice]:', tErr?.message || tErr);
-        }
+      // Fast non-blocking AI Translation into English: schedule in background via ctx.waitUntil
+      // This ensures the place is saved in Turso immediately (<100ms) without waiting 6s for LLM API
+      if ((!nameEn || !descriptionEn) && ctx && typeof ctx.waitUntil === 'function') {
+        ctx.waitUntil(backgroundEnsurePlaceTranslated(placeId, env));
       }
       function sanitizeWorkerPhone(p) {
         if (!p) return null;
