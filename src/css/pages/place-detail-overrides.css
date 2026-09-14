@@ -50,3 +50,21 @@
 .place-tool-card--download .place-tool-card__title{color:#fff!important;font-weight:800!important;text-shadow:0 1px 10px rgba(0,0,0,.18)}
 .place-tool-card--download .place-tool-card__hint,.place-tool-card--download .place-tool-card__sub{color:#FDE68A!important;font-weight:700!important}
 .place-tool-card--download::after{content:"";position:absolute;right:-42px;bottom:-48px;width:120px;height:120px;border-radius:50%;border:1px solid rgba(241,196,15,.22);box-shadow:0 0 0 12px rgba(241,196,15,.035),0 0 0 24px rgba(241,196,15,.02);pointer-events:none}
+
+/* ========================================================================== 
+   RATING CINEMATIC COUNT-UP
+   ========================================================================== */
+.google-rating-card .google-rating-score{font-variant-numeric:tabular-nums;letter-spacing:-1px;min-width:3.2ch;display:inline-block;transition:transform .25s ease,text-shadow .25s ease}
+.google-rating-card .google-rating-score.dm-rating-score-counting{transform:scale(1.035);text-shadow:0 5px 18px rgba(27,79,114,.12)}
+.google-rating-card .google-rating-score.dm-rating-score-complete{animation:dmRatingScoreFinish .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes dmRatingScoreFinish{0%{transform:scale(1.08)}65%{transform:scale(.985)}100%{transform:scale(1)}}
+.google-rating-card .google-rating-stars{display:flex!important;align-items:center;justify-content:center;gap:2px;direction:ltr}
+.google-rating-card .google-rating-stars .dm-rating-star{display:inline-block;opacity:0;transform:translateY(8px) scale(.35) rotate(-12deg);animation:dmStarReveal .58s cubic-bezier(.2,.85,.2,1) forwards;animation-delay:var(--star-delay,0ms);filter:drop-shadow(0 3px 5px rgba(245,158,11,.18))}
+@keyframes dmStarReveal{0%{opacity:0;transform:translateY(8px) scale(.35) rotate(-12deg)}58%{opacity:1;transform:translateY(-2px) scale(1.16) rotate(3deg)}100%{opacity:1;transform:translateY(0) scale(1) rotate(0)}}
+.google-rating-card .bar-track{position:relative;overflow:hidden}
+.google-rating-card .bar-fill{transform-origin:right center;box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 2px 8px rgba(245,158,11,.12);transition:width 1s cubic-bezier(.16,.75,.2,1)!important;position:relative}
+.google-rating-card .bar-fill::after{content:"";position:absolute;top:0;bottom:0;width:44px;right:-44px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.68),transparent);filter:blur(1px);animation:dmBarGlint 1s ease-out .12s both}
+@keyframes dmBarGlint{from{transform:translateX(0);opacity:0}20%{opacity:1}to{transform:translateX(-320px);opacity:0}}
+.google-rating-card .google-rating-bar-row{transition:transform .28s ease}
+.google-rating-card .google-rating-bar-row:hover{transform:translateX(-2px)}
+@media (prefers-reduced-motion:reduce){.google-rating-card .google-rating-score,.google-rating-card .google-rating-stars .dm-rating-star,.google-rating-card .bar-fill{animation:none!important;transition:none!important}.google-rating-card .bar-fill{width:var(--dm-rating-width)!important}}
