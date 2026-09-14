@@ -26,6 +26,8 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TURSO_DATABASE_URL: https://dalilmanzala-mohamednasr.aws-eu-west-1.turso.io
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,6 +47,9 @@ jobs:
 
       - name: Verify Turso dependency
         run: node -e "import('@tursodatabase/serverless').then(() => console.log('Turso dependency verified successfully')).catch(err => { console.error(err); process.exit(1); })"
+
+      - name: Repair Turso public API schema
+        run: node repair-turso-schema.mjs
 
       - name: Validate Worker bundle
         run: npx wrangler@latest deploy --dry-run
@@ -72,4 +77,4 @@ jobs:
         run: npx wrangler@latest deploy
 
 # Production deployment trigger verified by maintainer.
-# API availability refresh trigger: redeploy the current Worker so live routes match main.
+# API availability refresh trigger: repair the Turso schema and redeploy the current Worker so live routes match main.
