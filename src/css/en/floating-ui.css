@@ -2,15 +2,11 @@ html[lang="en"] .toast,html[lang="en"] .modal,html[lang="en"] .dialog,html[lang=
 html[lang="en"] .toast{letter-spacing:-.01em}
 html[lang="en"] .modal-content,html[lang="en"] .dialog-content,html[lang="en"] .bottom-sheet__content{border-radius:20px}
 html[lang="en"] [data-language="ar"],html[lang="en"] .arabic-only{display:none!important}
-/* Hide language & theme floating bar in English version */
+/* Hide legacy language & theme floating rails in English version */
 html[lang="en"] .en-floating-controls,
 html[lang="en"] .display-controls-rail,
 html[lang="en"] #display-controls-rail,
-html[lang="en"] #en-floating-controls,
-html[lang="en"] .header__inner > .lang-toggle-btn,
-html[lang="en"] .header__inner > .theme-toggle-btn,
-html[lang="en"] .lang-toggle-btn,
-html[lang="en"] .theme-toggle-btn {
+html[lang="en"] #en-floating-controls {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
