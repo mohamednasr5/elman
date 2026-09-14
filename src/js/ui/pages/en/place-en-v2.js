@@ -60,6 +60,22 @@ function _buildPlaceHTML(source, place, reviews = [], offers = [], products = []
       </div><div class="en-place-actions-bar">${phone ? `<a class="en-btn en-btn--primary" href="tel:${esc(phone)}">📞 Call <span>${esc(source.phone)}</span></a>` : ''}${whatsapp ? `<a class="en-btn en-btn--whatsapp" href="${esc(buildContextualWhatsAppLink(source.whatsapp, { source: 'place_page_en', placeName: place.displayName }))}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}${mapUrl ? `<a class="en-btn en-btn--outline" href="${esc(mapUrl)}" target="_blank" rel="noopener">🗺️ Get Directions</a>` : ''}</div></div>
     </section>
     <main class="en-container en-section"><div class="en-place-layout"><div class="en-place-main">
+      ${!verified ? `
+        <div class="en-unverified-notice animate-fade-in" style="background:var(--surface);border:1px dashed var(--border);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:24px">ℹ️</span>
+            <div>
+              <strong style="display:block;font-size:15px;color:var(--text-primary)">This business is currently unverified</strong>
+              <span style="font-size:13px;color:var(--text-muted)">The verified badge guarantees data accuracy, unlocks extra features, and prioritizes ranking in Dalil El Manzala & El Matariya.</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <a href="/en/contact/?topic=verification&place=${encodeURIComponent(place.displayName || '')}#pricing" class="en-btn en-btn--primary" id="btn-request-verification">
+              <span>🛡️</span> Request Verification
+            </a>
+          </div>
+        </div>
+      ` : ''}
       <article class="en-place-card en-overview-card"><div class="en-section-kicker">OVERVIEW</div><h2>About ${esc(place.displayName)}</h2><p class="en-lead">${esc(description || `A local business in ${place.displayArea}, listed under ${place.displayCategory}.`)}</p>${services.length ? `<div class="en-subsection"><h3>Services & Features</h3><div class="en-service-grid">${services.map(s => `<span>✓ ${esc(s)}</span>`).join('')}</div></div>` : ''}</article>
       ${offers.length ? `<section class="en-place-card"><div class="en-card-heading"><div><div class="en-section-kicker">CURRENT DEALS</div><h2>Offers</h2></div><span class="en-count">${offers.length}</span></div><div class="en-offer-grid">${offers.map(renderOffer).join('')}</div></section>` : ''}
       ${verified && products.length ? `<section class="en-place-card"><div class="en-card-heading"><div><div class="en-section-kicker">PRODUCTS</div><h2>Products & Prices</h2></div>${verifiedBadge()}</div><div class="en-product-grid">${products.map(renderProduct).join('')}</div></section>` : ''}
@@ -70,7 +86,7 @@ function _buildPlaceHTML(source, place, reviews = [], offers = [], products = []
       <section class="en-place-card en-details-card"><div class="en-section-kicker">CONTACT</div><h2>Business Details</h2><dl class="en-details-list"><div><dt>Category</dt><dd>${esc(place.displayCategory)}</dd></div><div><dt>Area</dt><dd>${esc(place.displayArea)}</dd></div>${address ? `<div><dt>Address</dt><dd>${esc(address)}</dd></div>` : ''}${phone ? `<div><dt>Phone</dt><dd><a href="tel:${esc(phone)}">${esc(source.phone)}</a></dd></div>` : ''}${source.email && !/[\u0600-\u06ff]/.test(String(source.email)) ? `<div><dt>Email</dt><dd><a href="mailto:${esc(source.email)}">${esc(source.email)}</a></dd></div>` : ''}</dl></section>
       ${hasSocial(social) ? `<section class="en-place-card en-social-card"><div class="en-section-kicker">CONNECT</div><h2>Online Presence</h2><div class="en-social-grid">${socialLinks(social)}</div></section>` : ''}
       ${mapInfo?.embedUrl || mapUrl ? `<section class="en-place-card en-map-card"><div class="en-card-heading"><div><div class="en-section-kicker">LOCATION</div><h2>Find Us</h2></div>${mapUrl ? `<a href="${esc(mapUrl)}" target="_blank" rel="noopener">Open map</a>` : ''}</div>${address ? `<p class="en-map-address">📍 ${esc(address)}</p>` : ''}${mapInfo?.embedUrl ? `<div class="en-map"><iframe src="${esc(mapInfo.embedUrl)}" title="Map for ${esc(place.displayName)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>` : ''}</section>` : ''}
-      ${verified ? `<section class="en-trust-card">${verifiedBadge()}<h3>Verified Business</h3><p>This profile has been verified by the directory team.</p></section>` : `<section class="en-claim-card"><span>✓</span><div><h3>Are you the owner?</h3><p>Claim this profile to update your contact details, hours, offers and photos.</p><a href="/en/free-verification/" class="en-btn en-btn--primary">Claim This Profile</a></div></section>`}
+      ${verified ? `<section class="en-trust-card">${verifiedBadge()}<h3>Verified Business</h3><p>This profile has been verified by the directory team.</p></section>` : `<section class="en-claim-card"><span>✓</span><div><h3>Are you the owner?</h3><p>Claim this profile to update your contact details, hours, offers and photos.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><a href="/en/contact/?topic=verification&place=${encodeURIComponent(place.displayName || '')}#pricing" class="en-btn en-btn--primary">Request Verification</a><a href="/en/free-verification/" class="en-btn en-btn--outline">Free Verification</a></div></div></section>`}
     </aside></div></main></div>`;
 }
 

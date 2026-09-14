@@ -614,11 +614,11 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                 </p>
               </div>
               <div class="unverified-notice__actions">
-                <button class="btn btn-sm btn-primary" id="btn-request-verification">
-                  <span>🛡️</span> طلب التوثيق الآن
-                </button>
+                <a href="${isEn ? `/en/contact/?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing` : `/contact.html?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`}" class="btn btn-sm btn-primary" id="btn-request-verification">
+                  <span>🛡️</span> ${isEn ? 'Request Verification' : 'طلب التوثيق الآن'}
+                </a>
                 <button class="btn btn-sm btn-outline" id="btn-claim-place">
-                  أنا صاحب هذا المكان
+                  ${isEn ? 'I own this business' : 'أنا صاحب هذا المكان'}
                 </button>
               </div>
             </div>
@@ -949,11 +949,15 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       }
     });
 
-    // Verification Request Button
+    // Verification Request Button: Redirect directly to contact page to see verification prices
     let waUrl = 'https://wa.me/wasendernew';
 
-    document.getElementById('btn-request-verification')?.addEventListener('click', () => {
-      showVerificationModal(place, user, waUrl);
+    document.getElementById('btn-request-verification')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetUrl = isEn
+        ? `/en/contact/?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`
+        : `/contact.html?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`;
+      window.location.href = targetUrl;
     });
 
     document.getElementById('btn-claim-place')?.addEventListener('click', () => {
@@ -1420,19 +1424,13 @@ function showVerificationModal(place, user, waUrl) {
     `,
     buttons: [
       {
-        label: '💬 طلب التوثيق عبر WhatsApp',
-        type: 'whatsapp',
-        onClick: async () => {
-          if (user) {
-            try {
-              await submitVerificationRequest(place.id || place._key, user);
-              toast.success('تم تسجيل طلب التوثيق وإرساله للإدارة');
-            } catch (e) {
-              console.warn('Req submit error:', e);
-            }
-          }
-          const text = encodeURIComponent(`السلام عليكم، أود طلب توثيق نشاطي على منصة المنزلة وناسها:\nالاسم: ${place.name}\nرابط النشاط: https://elmanzala.com/place.html?slug=${place.slug}`);
-          window.open(`${waUrl}?text=${text}`, '_blank');
+        label: '🛡️ عرض أسعار وباقات التوثيق',
+        type: 'primary',
+        onClick: () => {
+          const isEn = document.documentElement.lang === 'en' || location.pathname.includes('/en/');
+          window.location.href = isEn
+            ? `/en/contact/?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`
+            : `/contact.html?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`;
         },
         closeOnClick: true
       },

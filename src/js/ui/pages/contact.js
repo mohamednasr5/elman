@@ -128,6 +128,15 @@ export async function renderContactPage($container, { user } = {}) {
         0%, 100% { opacity: 1; }
         50% { opacity: 0; }
       }
+      .pillar-card--highlight {
+        outline: 3px solid #F5A623 !important;
+        box-shadow: 0 0 35px rgba(245, 166, 35, 0.5) !important;
+        animation: pillarPulse 1.2s ease-in-out 3 !important;
+      }
+      @keyframes pillarPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.025); }
+      }
 
       /* Fair Placement & Rotation Section */
       .fair-rotation-section {
@@ -433,7 +442,7 @@ export async function renderContactPage($container, { user } = {}) {
     <div class="container" style="max-width:1100px;margin:0 auto;padding:0 16px">
 
       <!-- 3 Pricing Pillars -->
-      <section class="pillars-grid">
+      <section class="pillars-grid" id="pricing-plans">
         <div class="pillar-card pillar-card--sponsor">
           <div class="pillar-icon-box">📢</div>
           <div class="pillar-price">💰 100 جنيه مصري / شهرياً</div>
@@ -442,7 +451,7 @@ export async function renderContactPage($container, { user } = {}) {
           <button type="button" class="btn btn-primary btn-block btn-select-topic" data-topic="ads">ابدأ إعلانك 📢</button>
         </div>
 
-        <div class="pillar-card pillar-card--verify">
+        <div class="pillar-card pillar-card--verify" id="pillar-verify">
           <div class="pillar-icon-box">🛡️</div>
           <div class="pillar-price">💎 1000 جنيه مصري / مدى الحياة</div>
           <h2 class="pillar-title">توثيق حسابك ومكانك</h2>
@@ -707,12 +716,30 @@ export async function renderContactPage($container, { user } = {}) {
 
   initContactCounters($container);
 
-  // Auto-select topic if passed in URL (?type=verification or ?topic=verification)
+  // Auto-select topic & handle pricing scroll if passed in URL (?type=verification, ?topic=verification, #pricing)
   try {
     const urlParams = new URLSearchParams(window.location.search);
     const urlTopic = urlParams.get('type') || urlParams.get('topic');
+    const placeName = urlParams.get('place') || urlParams.get('placeName');
+
+    if (placeName) {
+      const placeInput = document.getElementById('cf-place-name');
+      if (placeInput) placeInput.value = placeName;
+    }
+
     if (urlTopic && TOPICS[urlTopic]) {
       setTopic(urlTopic);
+    }
+
+    const isPricingTarget = window.location.hash === '#pricing' || window.location.hash === '#pricing-plans' || urlParams.get('view') === 'pricing';
+
+    if (isPricingTarget) {
+      setTimeout(() => {
+        const verifyCard = document.getElementById('pillar-verify') || document.getElementById('pricing-plans');
+        verifyCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('pillar-verify')?.classList.add('pillar-card--highlight');
+      }, 300);
+    } else if (urlTopic && TOPICS[urlTopic]) {
       setTimeout(() => {
         document.getElementById('contact-form-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 200);
