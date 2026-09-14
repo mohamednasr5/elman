@@ -99,7 +99,9 @@
 }
 
 .place-verified-seal:hover::after,
-.place-verified-seal:focus-visible::after {
+.place-verified-seal:focus::after,
+.place-verified-seal:focus-visible::after,
+.place-verified-seal:active::after {
   opacity: 1 !important;
   visibility: visible !important;
   transform: translate(-50%, 0) !important;
@@ -173,7 +175,9 @@
 }
 
 .badge-verified:hover::after,
-.badge-verified:focus-visible::after {
+.badge-verified:focus::after,
+.badge-verified:focus-visible::after,
+.badge-verified:active::after {
   opacity: 1 !important;
   visibility: visible !important;
   transform: translate(-50%, 0) !important;
@@ -195,7 +199,7 @@
     mask: radial-gradient(circle, transparent 0 21px, #000 22px 28px, transparent 29px) !important;
   }
 
-  /* On touch screens the same tooltip is available without relying on native title UI. */
+  /* On touch screens the exact same tooltip is fixed above the bottom nav. */
   .place-verified-seal::after,
   .badge-verified::after {
     position: fixed !important;
@@ -211,9 +215,13 @@
   }
 
   .place-verified-seal:hover::after,
+  .place-verified-seal:focus::after,
   .place-verified-seal:focus-visible::after,
+  .place-verified-seal:active::after,
   .badge-verified:hover::after,
-  .badge-verified:focus-visible::after {
+  .badge-verified:focus::after,
+  .badge-verified:focus-visible::after,
+  .badge-verified:active::after {
     transform: translate(-50%, 0) !important;
   }
 }
