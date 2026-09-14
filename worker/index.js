@@ -71,14 +71,31 @@ async function authenticateRequest(request, env) {
   }
 }
 
-async function requireAuth(request, env) {
-  const origin = request.headers.get('Origin') || '';
-  const cors = {
-    'Access-Control-Allow-Origin': origin || 'https://dalilmanzala.com',
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/(www\.)?dalilmanzala\.com$/,
+  /^https:\/\/[a-z0-9-]+\.pages\.dev$/,
+  /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
+];
+
+function isOriginAllowed(origin) {
+  if (!origin || typeof origin !== 'string') return false;
+  return ALLOWED_ORIGIN_PATTERNS.some(pat => pat.test(origin.trim()));
+}
+
+function getCorsHeaders(request) {
+  const origin = request?.headers?.get('Origin') || '';
+  const allowed = isOriginAllowed(origin);
+  return {
+    'Access-Control-Allow-Origin': allowed ? origin : 'https://dalilmanzala.com',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
   };
+}
+
+async function requireAuth(request, env) {
+  const cors = getCorsHeaders(request);
   const user = await authenticateRequest(request, env);
   if (!user) return { user: null, response: jsonResponse({ success:false, error:'Unauthorized' }, 401, { ...cors, 'WWW-Authenticate':'Bearer' }) };
   if (['banned','suspended','disabled'].includes(user.status)) {
@@ -88,13 +105,7 @@ async function requireAuth(request, env) {
 }
 
 async function requireAdmin(request, env, superadminOnly = false) {
-  const origin = request.headers.get('Origin') || '';
-  const cors = {
-    'Access-Control-Allow-Origin': origin || 'https://dalilmanzala.com',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    'Vary': 'Origin'
-  };
+  const cors = getCorsHeaders(request);
   const auth = await requireAuth(request, env);
   if (auth.response) return auth;
   if (!auth.user.isAdmin || (superadminOnly && !auth.user.isSuperAdmin)) {
@@ -320,8 +331,7 @@ export default {
           status: 500,
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+            ...getCorsHeaders(request)
           }
         });
       }
@@ -341,20 +351,7 @@ export default {
   },
 
   async handleRequest(request, env, ctx) {
-    const origin = request.headers.get('Origin') || '';
-    const allowedOrigins = ['https://dalilmanzala.com', 'https://www.dalilmanzala.com', 'http://localhost:8788', 'http://127.0.0.1:8788'];
-    const isAllowedOrigin = allowedOrigins.includes(origin) ||
-      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
-      /^https:\/\/[a-z0-9-]+\.github\.io$/.test(origin);
-
-    // CORS Headers
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': isAllowedOrigin ? origin : 'https://dalilmanzala.com',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-      'Access-Control-Max-Age': '86400',
-      'Vary': 'Origin',
-    };
+    const corsHeaders = getCorsHeaders(request);
 
     // Preflight OPTIONS must be handled first before any redirects or auth
     if (request.method === 'OPTIONS') {
@@ -965,15 +962,24 @@ try {
       const adminAuth = await requireAdmin(request, env);
       if (adminAuth.response) return adminAuth.response;
     }
-    const limitParam = parseInt(url.searchParams.get('limit') || '500', 10);
+    const pageParam = parseInt(url.searchParams.get('page') || '0', 10);
+    const limitDefault = pageParam > 0 ? 24 : 500;
+    const limitParam = parseInt(url.searchParams.get('limit') || String(limitDefault), 10);
     const offsetParam = parseInt(url.searchParams.get('offset') || '0', 10);
+    const categoryFilter = (url.searchParams.get('category') || url.searchParams.get('category_id') || '').trim();
+    const areaFilter = (url.searchParams.get('area') || '').trim();
+    const searchFilter = (url.searchParams.get('q') || url.searchParams.get('search') || '').trim();
     const ownerIdFilter = (url.searchParams.get('owner_id') || '').trim();
     const ownerEmailFilter = (url.searchParams.get('owner_email') || '').trim().toLowerCase();
 
     const limit = Math.min(Math.max(limitParam, 1), 1000);
-    const offset = Math.max(offsetParam, 0);
+    let offset = Math.max(offsetParam, 0);
+    if (pageParam > 0) {
+      offset = (pageParam - 1) * limit;
+    }
 
     const params = [];
+    const conditions = [];
 
     // IMPORTANT: list endpoint must never aggregate the entire reviews table.
     // A global GROUP BY on reviews turns every homepage/search request into a
@@ -993,18 +999,38 @@ try {
       LEFT JOIN users u ON u.id = p.owner_id
     `;
     if (!adminList && !ownerIdFilter && !ownerEmailFilter) {
-      sql += ` WHERE p.status = 'published'`;
+      conditions.push(`p.status = 'published'`);
     }
 
     if (ownerIdFilter && ownerEmailFilter) {
-      sql += ` WHERE (p.owner_id = ? OR LOWER(p.owner_email) = ?)`;
+      conditions.push(`(p.owner_id = ? OR LOWER(p.owner_email) = ?)`);
       params.push(ownerIdFilter, ownerEmailFilter);
     } else if (ownerIdFilter) {
-      sql += ` WHERE (p.owner_id = ? OR LOWER(p.owner_email) = ?)`;
+      conditions.push(`(p.owner_id = ? OR LOWER(p.owner_email) = ?)`);
       params.push(ownerIdFilter, ownerIdFilter.toLowerCase());
     } else if (ownerEmailFilter) {
-      sql += ` WHERE LOWER(p.owner_email) = ?`;
+      conditions.push(`LOWER(p.owner_email) = ?`);
       params.push(ownerEmailFilter);
+    }
+
+    if (categoryFilter) {
+      conditions.push(`(p.category_id = ? OR LOWER(p.custom_category) = ? OR LOWER(p.subcategory_id) = ?)`);
+      params.push(categoryFilter, categoryFilter.toLowerCase(), categoryFilter.toLowerCase());
+    }
+
+    if (areaFilter) {
+      conditions.push(`(p.area = ? OR p.area LIKE ?)`);
+      params.push(areaFilter, `%${areaFilter}%`);
+    }
+
+    if (searchFilter) {
+      conditions.push(`(p.name LIKE ? OR p.name_en LIKE ? OR p.description LIKE ? OR p.custom_category LIKE ?)`);
+      const sLike = `%${searchFilter}%`;
+      params.push(sLike, sLike, sLike, sLike);
+    }
+
+    if (conditions.length > 0) {
+      sql += ` WHERE ` + conditions.join(' AND ');
     }
 
     sql += ` ORDER BY p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
@@ -1020,7 +1046,7 @@ try {
       try {
         listCache = caches.default;
         const v = await getDataVersion(env);
-        listCacheKey = new Request(`https://cache.local/api/places/list?limit=${limit}&offset=${offset}&v=${v}`, { method: 'GET' });
+        listCacheKey = new Request(`https://cache.local/api/places/list?limit=${limit}&offset=${offset}&page=${pageParam}&cat=${encodeURIComponent(categoryFilter)}&area=${encodeURIComponent(areaFilter)}&q=${encodeURIComponent(searchFilter)}&v=${v}`, { method: 'GET' });
         const cachedList = await listCache.match(listCacheKey);
         if (cachedList) {
           const cached = new Response(cachedList.body, cachedList);
@@ -1039,7 +1065,7 @@ try {
       return jsonResponse({
         success: true,
         data: [],
-        pagination: { limit, offset, returned: 0 }
+        pagination: { page: pageParam > 0 ? pageParam : 1, limit, offset, returned: 0, hasMore: false }
       }, 200, {
         ...corsHeaders,
         'Cache-Control': 'no-store'
@@ -1098,13 +1124,17 @@ try {
       };
     });
 
+    const currentPage = pageParam > 0 ? pageParam : (Math.floor(offset / limit) + 1);
+    const hasMore = places.length === limit;
     const response = jsonResponse({
       success: true,
       data: places,
       pagination: {
+        page: currentPage,
         limit,
         offset,
-        returned: places.length
+        returned: places.length,
+        hasMore
       }
     }, 200, {
       ...corsHeaders,
@@ -4232,6 +4262,72 @@ try {
     }
   }
 
+  // ── Turso: Notification Read State (GET & POST /api/notifications/read) ───────────
+  if (url.pathname === '/api/notifications/read') {
+    const db = createTursoDB(env);
+    if (!globalThis._hasEnsuredNotifsTable) {
+      try {
+        await db.prepare(`CREATE TABLE IF NOT EXISTS user_notifications_read (
+          user_id TEXT NOT NULL,
+          notif_id TEXT NOT NULL,
+          read_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, notif_id)
+        )`).run();
+        await db.prepare("CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)").run().catch(() => {});
+        globalThis._hasEnsuredNotifsTable = true;
+      } catch (_) {}
+    }
+
+    if (request.method === 'GET') {
+      const user = await authenticateRequest(request, env).catch(() => null);
+      const userId = user?.uid || (url.searchParams.get('userId') || url.searchParams.get('user_id') || '').trim();
+      if (!userId) {
+        return jsonResponse({ success: true, readIds: [] }, 200, corsHeaders);
+      }
+      try {
+        const rows = await db.prepare(
+          'SELECT notif_id FROM user_notifications_read WHERE user_id = ?'
+        ).bind(userId).all();
+        const readIds = (rows.results || []).map(r => r.notif_id);
+        return jsonResponse({ success: true, readIds }, 200, corsHeaders);
+      } catch (err) {
+        return jsonResponse({ success: true, readIds: [] }, 200, corsHeaders);
+      }
+    }
+
+    if (request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const user = await authenticateRequest(request, env).catch(() => null);
+      const userId = user?.uid || (typeof body.userId === 'string' && body.userId ? body.userId : '').trim();
+      
+      let notifIds = [];
+      if (Array.isArray(body.notifIds)) {
+        notifIds = body.notifIds.map(id => String(id).trim()).filter(Boolean);
+      } else if (body.notifId) {
+        notifIds = [String(body.notifId).trim()];
+      }
+
+      if (!userId || notifIds.length === 0) {
+        return jsonResponse({ success: true, count: 0 }, 200, corsHeaders);
+      }
+
+      try {
+        const now = Date.now();
+        for (const nid of notifIds) {
+          await db.prepare(
+            'INSERT INTO user_notifications_read (user_id, notif_id, read_at) VALUES (?, ?, ?) ON CONFLICT(user_id, notif_id) DO UPDATE SET read_at = excluded.read_at'
+          ).bind(userId, nid, now).run();
+        }
+        return jsonResponse({ success: true, count: notifIds.length }, 200, corsHeaders);
+      } catch (err) {
+        console.warn('[notifications/read POST error]:', err?.message || err);
+        return jsonResponse({ success: false, error: err?.message || String(err) }, 500, corsHeaders);
+      }
+    }
+
+    return jsonResponse({ error: 'Method not allowed' }, 405, corsHeaders);
+  }
+
   // ── Turso: Track Place Stat (POST /api/places/track-stat) ─────────
   if (url.pathname === '/api/places/track-stat' && request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
@@ -6200,7 +6296,13 @@ async function ensureNewSchemaColumnsInTurso(env) {
       user_id TEXT,
       created_at INTEGER NOT NULL
     )`).run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_appointments_place ON appointment_requests(place_id, created_at DESC)").run().catch(() => {});
+    await db.prepare(`CREATE TABLE IF NOT EXISTS user_notifications_read (
+      user_id TEXT NOT NULL,
+      notif_id TEXT NOT NULL,
+      read_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, notif_id)
+    )`).run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)").run().catch(() => {});
   } catch (err) {
     console.warn('[ensureNewSchemaColumnsInTurso] Notice:', err.message);
   }

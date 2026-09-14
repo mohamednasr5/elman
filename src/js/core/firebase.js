@@ -69,24 +69,25 @@ export function loadFirebaseSDK() {
   if (_firebaseLoadPromise) return _firebaseLoadPromise;
 
   _firebaseLoadPromise = new Promise((resolve) => {
-    const scripts = [
-      'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
-      'https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js'
-    ];
-    const loadNext = (idx) => {
-      if (idx >= scripts.length) {
+    function inject(src) {
+      return new Promise((res) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.onload = () => res(true);
+        s.onerror = () => res(false);
+        document.head.appendChild(s);
+      });
+    }
+
+    inject('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js').then(() => {
+      Promise.all([
+        inject('https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js'),
+        inject('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js')
+      ]).then(() => {
         resolve(window.firebase || null);
-        return;
-      }
-      const s = document.createElement('script');
-      s.src = scripts[idx];
-      s.async = true;
-      s.onload = () => loadNext(idx + 1);
-      s.onerror = () => loadNext(idx + 1);
-      document.head.appendChild(s);
-    };
-    loadNext(0);
+      });
+    });
   });
   return _firebaseLoadPromise;
 }

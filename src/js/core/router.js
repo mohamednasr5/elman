@@ -132,6 +132,12 @@ async function resolveRoute() {
     }
   }
 
+  // Update canonical URL if specified in meta or derived
+  if (meta.canonical) {
+    const canUrl = typeof meta.canonical === 'function' ? meta.canonical(params, query) : meta.canonical;
+    updateCanonicalUrl(canUrl);
+  }
+
   // Update state
   appState.set('currentPage', { path, params, query, meta });
   emit('router:navigated', { path, params, query, meta });
@@ -145,6 +151,23 @@ async function resolveRoute() {
   } catch (err) {
     console.error('[Router] Handler error:', err);
   }
+}
+
+/**
+ * Updates or creates the canonical link tag dynamically
+ */
+export function updateCanonicalUrl(url) {
+  if (typeof document === 'undefined' || !url) return;
+  try {
+    let link = document.querySelector('link[rel="canonical"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.setAttribute('rel', 'canonical');
+      document.head.appendChild(link);
+    }
+    const cleanUrl = url.startsWith('http') ? url : `https://dalilmanzala.com${url.startsWith('/') ? '' : '/'}${url}`;
+    link.setAttribute('href', cleanUrl);
+  } catch (_) {}
 }
 
 /**

@@ -158,6 +158,19 @@ export async function clearReadNotifications(uid) {
   }
 }
 
+// ── Server Sync for Read Notifications ──
+async function syncReadStatusToServer(uid, notifIds) {
+  if (!uid || !notifIds || notifIds.length === 0) return;
+  try {
+    const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || 'https://api.dalilmanzala.com';
+    await fetch(`${workerUrl}/api/notifications/read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: uid, notifIds: Array.isArray(notifIds) ? notifIds : [notifIds] })
+    });
+  } catch (_) {}
+}
+
 export async function markSingleNotificationAsRead(notifId, uid) {
   if (!notifId) return;
   const idStr = String(notifId);
@@ -169,6 +182,10 @@ export async function markSingleNotificationAsRead(notifId, uid) {
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('manzala_read_notifs_all', JSON.stringify(arr));
     if (uid) localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(arr));
+  }
+
+  if (uid) {
+    syncReadStatusToServer(uid, [idStr]);
   }
 }
 
@@ -185,6 +202,10 @@ export async function markAllUserNotificationsAsRead(uid) {
     localStorage.setItem('manzala_read_notifs_all', JSON.stringify(arr));
     if (uid) localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(arr));
   }
+
+  if (uid && arr.length > 0) {
+    syncReadStatusToServer(uid, arr);
+  }
 }
 
 // Local cache helper for instant sub-second notifications display (<10ms)
@@ -200,7 +221,8 @@ export function getCachedManagedUserNotifications(uid) {
       .filter(n => n && n.id && !deletedIds.has(String(n.id)))
       .map(n => ({
         ...n,
-        isRead: Boolean(n.isRead || readIds.has(String(n.id)))
+        eventId: n.eventId || n.id,
+        isRead: Boolean(n.isRead || readIds.has(String(n.id)) || (n.eventId && readIds.has(String(n.eventId))))
       }));
   } catch (_) {
     return [];
@@ -208,21 +230,59 @@ export function getCachedManagedUserNotifications(uid) {
 }
 
 /**
- * Fetch all notifications (Live Firebase RTDB + Verified/New Places Synthesizer with SWR Cache)
+ * Fetch all notifications (Turso Announcements + Verified/New Places Synthesizer with SWR Cache & Deduplication)
  */
 export async function fetchManagedUserNotifications(uid) {
   const deletedIds = getDeletedNotifIds(uid);
   const readIds = getReadNotifIds(uid);
+
+  // Sync server-side read IDs if user is logged in
+  if (uid) {
+    try {
+      const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || 'https://api.dalilmanzala.com';
+      const srvRes = await fetch(`${workerUrl}/api/notifications/read?userId=${encodeURIComponent(uid)}`, { method: 'GET' }).catch(() => null);
+      if (srvRes && srvRes.ok) {
+        const srvData = await srvRes.json().catch(() => null);
+        if (Array.isArray(srvData?.readIds)) {
+          srvData.readIds.forEach(id => readIds.add(String(id)));
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(Array.from(readIds)));
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   const mergedMap = {};
 
-  // 1. Fetch Global Notifications (dbGet uses memory & localStorage SWR cache)
+  // 1. Fetch Global Announcements from Worker
   try {
-    const globalNotifs = (await dbGet('globalNotifications', true)) || {};
-    Object.entries(globalNotifs).forEach(([id, val]) => {
-      if (val && !deletedIds.has(String(id))) {
-        mergedMap[id] = { id: String(id), ...val, isBroadcast: true, isRead: readIds.has(String(id)) };
+    const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || 'https://api.dalilmanzala.com';
+    const resp = await fetch(`${workerUrl}/api/announcements`, { method: 'GET' }).catch(() => null);
+    if (resp && resp.ok) {
+      const data = await resp.json().catch(() => null);
+      const items = data?.announcements || data?.data || [];
+      if (Array.isArray(items)) {
+        items.forEach(item => {
+          const id = String(item.id || item._key || '');
+          const eventId = `announcement_${id}`;
+          if (id && !deletedIds.has(id) && !deletedIds.has(eventId)) {
+            mergedMap[id] = {
+              id,
+              eventId,
+              type: 'announcement',
+              title: item.title || 'إشعار من الدليل',
+              message: item.content || item.message || '',
+              actionUrl: item.url || '/',
+              url: item.url || '/',
+              createdAt: Number(item.createdAt || item.created_at || Date.now()),
+              isBroadcast: true,
+              isRead: readIds.has(id) || readIds.has(eventId)
+            };
+          }
+        });
       }
-    });
+    }
   } catch (_) {}
 
   // 2. Synthesize directly from Verified Places & Latest Places in Turso / Cache
@@ -243,9 +303,11 @@ export async function fetchManagedUserNotifications(uid) {
       );
       if (isPlaceVerified) {
         const notifId = 'notif_verified_' + id;
-        if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+        const eventId = 'place_verified_' + id;
+        if (!deletedIds.has(notifId) && !deletedIds.has(eventId) && !mergedMap[notifId]) {
           mergedMap[notifId] = {
             id: notifId,
+            eventId,
             type: 'place_verified',
             title: '👑 توثيق رسمي: ' + (place.name || 'مكان موثق'),
             placeId: id,
@@ -259,7 +321,7 @@ export async function fetchManagedUserNotifications(uid) {
             icon: place.logoUrl || './icons/icon-192x192.png',
             createdAt: Number(place.verifiedAt || place.updatedAt || place.createdAt || (Date.now() - 3600000)),
             isBroadcast: true,
-            isRead: readIds.has(notifId)
+            isRead: readIds.has(notifId) || readIds.has(eventId)
           };
         }
       }
@@ -268,9 +330,11 @@ export async function fetchManagedUserNotifications(uid) {
       const createdTime = Number(place.createdAt || 0);
       if (createdTime > 0) {
         const notifId = 'notif_new_place_' + id;
-        if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+        const eventId = 'place_new_' + id;
+        if (!deletedIds.has(notifId) && !deletedIds.has(eventId) && !mergedMap[notifId]) {
           mergedMap[notifId] = {
             id: notifId,
+            eventId,
             type: 'new_place',
             title: '🎉 انضمام نشاط جديد: ' + (place.name || 'نشاط جديد'),
             placeId: id,
@@ -283,7 +347,7 @@ export async function fetchManagedUserNotifications(uid) {
             icon: place.logoUrl || './icons/icon-192x192.png',
             createdAt: createdTime,
             isBroadcast: true,
-            isRead: readIds.has(notifId)
+            isRead: readIds.has(notifId) || readIds.has(eventId)
           };
         }
       }
@@ -296,10 +360,12 @@ export async function fetchManagedUserNotifications(uid) {
     (craftsmen || []).forEach(c => {
       if (!c || !c.isAvailableNow) return;
       const notifId = 'notif_craftsman_' + c.id;
-      if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+      const eventId = 'craftsman_' + c.id;
+      if (!deletedIds.has(notifId) && !deletedIds.has(eventId) && !mergedMap[notifId]) {
         const targetUrl = c.placeId ? `/place.html?id=${encodeURIComponent(c.placeId)}` : `/now.html#craftsman-${c.id}`;
         mergedMap[notifId] = {
           id: notifId,
+          eventId,
           type: 'craftsman_live',
           title: `⚡ (${c.craftsmanName}) متاح حالياً لأي طلب!`,
           message: `فني (${c.professionName}) متاح الآن للتحرك والطلبات بالمنزلة والمطرية. اضغط لمشاهدة ملفه والتواصل`,
@@ -309,7 +375,7 @@ export async function fetchManagedUserNotifications(uid) {
           icon: './icons/icon-192x192.png',
           createdAt: Number(c.updatedAt || Date.now()),
           isBroadcast: true,
-          isRead: readIds.has(notifId)
+          isRead: readIds.has(notifId) || readIds.has(eventId)
         };
       }
     });
@@ -321,10 +387,12 @@ export async function fetchManagedUserNotifications(uid) {
     (requests || []).forEach(r => {
       if (!r || r.status !== 'open') return;
       const notifId = 'notif_req_' + r.id;
-      if (!deletedIds.has(notifId) && !mergedMap[notifId]) {
+      const eventId = 'req_' + r.id;
+      if (!deletedIds.has(notifId) && !deletedIds.has(eventId) && !mergedMap[notifId]) {
         const targetUrl = `/now.html#req-${r.id}`;
         mergedMap[notifId] = {
           id: notifId,
+          eventId,
           type: 'service_request',
           title: `📢 طلب جديد: (${r.userName || 'أحد الأهالي'}) محتاج (${r.title})`,
           message: `طلب خدمة (${r.category || 'عامة'}) في ${r.village || 'المنزلة'} (${r.timing || 'خلال اليوم'}) — اضغط لمشاهدة الطلب`,
@@ -334,17 +402,25 @@ export async function fetchManagedUserNotifications(uid) {
           icon: r.photoUrl || './icons/icon-192x192.png',
           createdAt: Number(r.createdAt || Date.now()),
           isBroadcast: true,
-          isRead: readIds.has(notifId)
+          isRead: readIds.has(notifId) || readIds.has(eventId)
         };
       }
     });
   } catch (_) {}
 
-  // 5. Personal notifications arrive through FCM/local state; no RTDB reads.
-  const all = Object.values(mergedMap).map(n => ({
-    ...n,
-    isRead: Boolean(n.isRead || readIds.has(String(n.id)))
-  }));
+  // 5. Deduplicate by eventId across synthesized & FCM notifications
+  const seenEvents = new Set();
+  const all = [];
+  for (const n of Object.values(mergedMap)) {
+    const evtKey = n.eventId || n.id;
+    if (seenEvents.has(evtKey)) continue;
+    seenEvents.add(evtKey);
+    all.push({
+      ...n,
+      eventId: evtKey,
+      isRead: Boolean(n.isRead || readIds.has(String(n.id)) || readIds.has(evtKey))
+    });
+  }
 
   const sorted = all.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
 

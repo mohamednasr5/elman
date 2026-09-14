@@ -1,6 +1,7 @@
 /**
- * المنزلة وناسها — Firebase RTDB Helpers
- * Typed, promise-based wrappers around Firebase Realtime Database
+ * دليل المنزلة والمطرية الرقمي — Data Access Layer (DAL)
+ * Authoritative Data Client: Turso SQLite via Cloudflare Worker Edge API.
+ * SWR Multi-Tier Cache Engine: Memory (0.01ms) -> LocalStorage -> IndexedDB -> Edge.
  */
 
 import { WORKER_URL, getAuth } from './firebase.js';
@@ -319,7 +320,7 @@ export function getDB() {
 }
 
 export function dbRef(path) {
-  throw new Error('Firebase Realtime Database is disabled. Use Turso APIs: '+path);
+  throw new Error('Direct path reference is deprecated. Use Turso API endpoints for: '+path);
 }
 
 export async function dbGet(path, useCache = true) {
@@ -329,8 +330,6 @@ export async function dbGet(path, useCache = true) {
     if(isBusinessDataPath(path)){
       const val=await tursoGetBusiness(path); if(useCache)setCache(key,val); return val;
     }
-    // No Firebase Realtime Database fallback. Non-business legacy paths must
-    // be migrated to a dedicated Turso endpoint instead of silently reading RTDB.
     return null;
   } catch(err){ console.warn('[dbGet] Turso read failed for '+path+':',err?.message||err); return null; }
 }
@@ -348,7 +347,7 @@ export async function dbSet(path, data) {
     await tursoWriteBusiness(path, 'PUT', data);
     return;
   }
-  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
+  throw new Error('Direct path write is deprecated. Use Turso API endpoints for: '+path);
 }
 
 export async function dbUpdate(path, updates) {
@@ -363,7 +362,6 @@ export async function dbUpdate(path, updates) {
       return;
     }
     if (String(path).match(/^places\/[^/]+\/reviews$/)) {
-      // Update multiple reviews without touching Firebase.
       const placeId = String(path).split('/')[1];
       for (const [reviewId, patch] of Object.entries(updates || {})) {
         if (patch === null) {
@@ -377,14 +375,13 @@ export async function dbUpdate(path, updates) {
     await tursoWriteBusiness(path, 'PUT', updates);
     return;
   }
-  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
+  throw new Error('Direct path update is deprecated. Use Turso API endpoints for: '+path);
 }
 
 export async function dbPush(path, data) {
   if (isBusinessDataPath(path)) {
     const cleanPath = String(path || '').replace(/^\/+/, '');
 
-    // Ads are authoritative in Turso. Never attempt Firebase push.
     if (/^ads(?:\/|$)/i.test(cleanPath)) {
       const parts = cleanPath.split('/').filter(Boolean);
       const result = await tursoWriteBusiness(cleanPath, 'POST', data || {});
@@ -392,7 +389,6 @@ export async function dbPush(path, data) {
       return { key: newId, id: newId };
     }
 
-    // Reviews are authoritative in Turso.
     if (/^places\/[^/]+\/reviews$/i.test(cleanPath)) {
       const placeId = cleanPath.split('/')[1];
       const result = await tursoWriteBusiness(cleanPath, 'POST', { ...(data || {}), place_id: data?.place_id || placeId });
@@ -403,7 +399,7 @@ export async function dbPush(path, data) {
     throw new Error(`Turso write path is not supported for business data: ${cleanPath}`);
   }
 
-  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
+  throw new Error('Direct path push is deprecated. Use Turso API endpoints for: '+path);
 }
 
 export async function dbRemove(path) {
@@ -413,7 +409,7 @@ export async function dbRemove(path) {
     await tursoWriteBusiness(path, 'DELETE');
     return;
   }
-  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
+  throw new Error('Direct path remove is deprecated. Use Turso API endpoints for: '+path);
 }
 
 export async function dbIncrement(path, delta = 1) {
@@ -429,9 +425,9 @@ export async function dbIncrement(path, delta = 1) {
       if (!res.ok) throw new Error(`Worker stat update failed: ${res.status}`);
       return;
     }
-    throw new Error(`Firebase increment blocked for business data path: ${path}`);
+    throw new Error(`Stat increment path not found: ${path}`);
   }
-  throw new Error('Firebase Realtime Database is disabled; migrate this path to Turso: '+path);
+  throw new Error('Direct path increment is deprecated. Use Turso API endpoints for: '+path);
 }
 
 export function serverTimestamp() {
@@ -439,11 +435,11 @@ export function serverTimestamp() {
 }
 
 export function dbListen(path, callback) {
-  throw new Error('Firebase Realtime Database listeners are disabled: '+path);
+  throw new Error('Direct listeners are deprecated. Use SWR Turso polling for: '+path);
 }
 
 export function dbListenChild(path, addedCb, changedCb, removedCb) {
-  throw new Error('Firebase Realtime Database listeners are disabled: '+path);
+  throw new Error('Direct listeners are deprecated. Use SWR Turso polling for: '+path);
 }
 
 export async function dbQuery({ path, orderBy = 'createdAt', limit = 20, startAfter = null, equalTo = null, direction = 'desc' }) {
@@ -459,7 +455,7 @@ export async function dbQuery({ path, orderBy = 'createdAt', limit = 20, startAf
     return items.slice(0, limit);
   }
 
-  throw new Error('Firebase Realtime Database queries are disabled; use Turso APIs: '+path);
+  throw new Error('Direct path queries are deprecated. Use Turso API endpoints for: '+path);
 }
 
 export async function getUserProfile(uid) {
@@ -1150,6 +1146,72 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
   } catch (_) {}
 
   return [];
+}
+
+/**
+ * Authoritative Server-Side Paginated Query Engine (Cursor / Page Pagination)
+ * Scalable for 10,000+ places with targeted category, area, and text search filters.
+ */
+export async function getPlacesPaginated({ page = 1, limit = 24, category = '', area = '', q = '', forceFresh = false } = {}) {
+  const p = Math.max(1, parseInt(page, 10) || 1);
+  const l = Math.min(100, Math.max(1, parseInt(limit, 10) || 24));
+  const offset = (p - 1) * l;
+  const cacheKey = `places_p_${p}_l_${l}_c_${category}_a_${area}_q_${q}`;
+
+  if (!forceFresh) {
+    const mem = getCached(cacheKey, 180000);
+    if (mem) return mem;
+  }
+
+  const queryParams = new URLSearchParams({
+    limit: String(l),
+    offset: String(offset),
+    page: String(p)
+  });
+  if (category) queryParams.set('category', category);
+  if (area) queryParams.set('area', area);
+  if (q) queryParams.set('q', q);
+
+  try {
+    const res = await fetch(`${WORKER_URL}/api/places?${queryParams.toString()}`, {
+      signal: AbortSignal.timeout(6000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const rawPlaces = Array.isArray(json?.data) ? json.data : [];
+    const normalized = rawPlaces.map(normalizeTursoPlace).filter(Boolean);
+    const result = {
+      places: normalized,
+      pagination: json?.pagination || {
+        page: p,
+        limit: l,
+        offset,
+        returned: normalized.length,
+        hasMore: normalized.length === l
+      }
+    };
+    setCache(cacheKey, result);
+    return result;
+  } catch (err) {
+    console.warn('[getPlacesPaginated] Fetch fallback to IDB:', err?.message || err);
+    try {
+      const all = await idbGetAll(STORES.PLACES);
+      let filtered = (all || []).filter(item => item && item.status === 'published');
+      if (category) filtered = filtered.filter(item => (item.category_id === category || item.custom_category === category));
+      if (area) filtered = filtered.filter(item => item.area === area);
+      if (q) {
+        const normQ = q.toLowerCase().trim();
+        filtered = filtered.filter(item => String(item.name || '').toLowerCase().includes(normQ));
+      }
+      const paged = filtered.slice(offset, offset + l);
+      return {
+        places: paged,
+        pagination: { page: p, limit: l, offset, returned: paged.length, hasMore: offset + l < filtered.length }
+      };
+    } catch (_) {
+      return { places: [], pagination: { page: p, limit: l, offset, returned: 0, hasMore: false } };
+    }
+  }
 }
 
 async function _syncPublishedPlaces(limit = 100, cacheKey = '') {
