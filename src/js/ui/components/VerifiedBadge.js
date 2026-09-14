@@ -2,6 +2,54 @@ import { resolveDeliveryVehicle } from '../../utils/delivery-vehicle.js';
 import { isEnglish } from '../../core/i18n.js';
 
 /**
+ * Add the gold verification seal to the circular place logo after the
+ * place-detail HTML is rendered. Keeping this as a real DOM element gives
+ * the seal a reliable tooltip on desktop and touch/keyboard focus on mobile.
+ */
+function mountPlaceVerificationSeals(root = document) {
+  if (!root || typeof root.querySelectorAll !== 'function') return;
+  root.querySelectorAll('.place-card-row-identity > .place-card-logo').forEach(logo => {
+    const identity = logo.parentElement?.querySelector(':scope > .place-card-identity-text .badge-verified');
+    const existing = logo.querySelector('.place-verified-seal');
+    if (!identity) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing) return;
+
+    const tip = identity.getAttribute('data-verified-tooltip') || 'حساب مشهور تم التأكد منه وموثق رسمي';
+    const seal = document.createElement('span');
+    seal.className = 'place-verified-seal';
+    seal.setAttribute('data-verified-tooltip', tip);
+    seal.setAttribute('title', tip);
+    seal.setAttribute('aria-label', tip);
+    seal.setAttribute('role', 'img');
+    seal.setAttribute('tabindex', '0');
+    seal.textContent = '✓';
+    logo.appendChild(seal);
+  });
+}
+
+if (typeof document !== 'undefined') {
+  const scheduleSealMount = () => mountPlaceVerificationSeals(document);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scheduleSealMount, { once: true });
+  } else {
+    scheduleSealMount();
+  }
+
+  const sealObserver = new MutationObserver(() => scheduleSealMount());
+  const observeSeals = () => {
+    if (document.body) {
+      sealObserver.observe(document.body, { childList: true, subtree: true });
+      scheduleSealMount();
+    }
+  };
+  if (document.body) observeSeals();
+  else document.addEventListener('DOMContentLoaded', observeSeals, { once: true });
+}
+
+/**
  * Render sponsored / featured place badge
  */
 export function renderSponsoredBadge() {
@@ -65,7 +113,7 @@ export function renderStatusBadge(status) {
     draft:      { text: 'Draft',       cls: 'badge--draft' },
     pending:    { text: 'Under Review', cls: 'badge--pending' },
     suspended:  { text: 'Suspended',   cls: 'badge--suspended' },
-    rejected:   { text: 'Rejected',    cls: 'badge--rejected' },
+    rejected:  { text: 'Rejected',    cls: 'badge--rejected' },
   };
   const map = isEn ? mapEn : mapAr;
   const item = map[status] || { text: status, cls: '' };
