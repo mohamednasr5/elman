@@ -1757,6 +1757,28 @@ function openReviewModal(place, user, existingReview, onDone) {
           <span>📍</span> ${escHtml(place.name)}
         </div>
 
+        ${!user ? `
+          <!-- Guest Reviewer Name Field -->
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-weight:700;display:flex;align-items:center;gap:6px;font-size:13px">
+              <span>👤</span>
+              <span>اسمك الكريم <span style="font-weight:500;color:var(--text-muted);font-size:11.5px">(اختياري، يظهر مع التقييم):</span></span>
+            </label>
+            <input 
+              id="review-guest-name-input" 
+              class="form-input" 
+              type="text" 
+              maxlength="50" 
+              placeholder="مثال: أحمد، مريم، زائر..." 
+              value="" 
+              style="font-size:14px;width:100%" />
+          </div>
+        ` : `
+          <div style="font-size:12.5px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;background:var(--surface-2);padding:8px 12px;border-radius:10px;border:1px solid var(--border)">
+            <span>👤</span> التقييم باسم: <strong style="color:var(--primary);font-weight:800">${escHtml(user.name || user.displayName || 'مستخدم')}</strong>
+          </div>
+        `}
+
         <!-- Stars Picker -->
         <div style="text-align:center;background:var(--surface-2);padding:16px;border-radius:var(--radius-md);border:1px solid var(--border)">
           <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:8px">
@@ -1799,30 +1821,43 @@ function openReviewModal(place, user, existingReview, onDone) {
         closeOnClick: false,
         onClick: async () => {
           const commentVal = document.getElementById('review-comment-input')?.value.trim();
+          const guestName = document.getElementById('review-guest-name-input')?.value?.trim() || '';
           if (!commentVal) {
             toast.warning('يرجى كتابة نص التقييم');
             return;
           }
+
+          const actionBtn = document.querySelector('.modal-footer .btn-primary') || document.activeElement;
+          if (actionBtn && !actionBtn.disabled) {
+            actionBtn.disabled = true;
+            actionBtn.innerText = '⏳ جاري النشر...';
+          }
+
+          const effectiveUser = user || {
+            uid: 'guest_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            name: guestName || 'عميل وزائر',
+            photoURL: ''
+          };
 
           try {
             if (existingReview) {
               await updatePlaceReview(place.id || place._key, existingReview.id, {
                 rating: selectedRating,
                 comment: commentVal
-              }, user);
+              }, effectiveUser);
               toast.success('تم تحديث تقييمك بنجاح ✨');
             } else {
               await addPlaceReview({
                 placeId: place.id || place._key,
                 placeName: place.name,
                 placeSlug: place.slug,
-                user,
+                user: effectiveUser,
                 rating: selectedRating,
                 comment: commentVal
               });
               toast.success('شكراً لمشاركتك! تم نشر تقييمك بنجاح ⭐');
-              if (user?.uid) {
-                awardPoints(user.uid, 'ADD_REVIEW', { placeId: place.id || place._key, placeName: place.name }).then(res => {
+              if (effectiveUser?.uid && !effectiveUser.uid.startsWith('guest_')) {
+                awardPoints(effectiveUser.uid, 'ADD_REVIEW', { placeId: place.id || place._key, placeName: place.name }).then(res => {
                   if (res?.success) toast.info(`🎉 حصلت على +${res.awarded} نقطة في نادي الولاء!`);
                 }).catch(() => {});
               }
@@ -1847,10 +1882,13 @@ function openReviewModal(place, user, existingReview, onDone) {
 
               const ratingBadge = document.getElementById('place-header-rating-badge');
               if (ratingBadge) {
-                ratingBadge.innerHTML = `
-                  <span>★</span>
-                  <span>${avgRating > 0 ? avgRating.toFixed(1) : (totalReviews > 0 ? '5.0' : '0.0')}</span>
-                  <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews > 0 ? `${totalReviews} تقييم` : 'جديد'})</span>
+                ratingBadge.innerHTML = totalReviews > 0 ? `
+                  <span class="rating-star">★</span>
+                  <span class="rating-val">${avgRating > 0 ? avgRating.toFixed(1) : '5.0'}</span>
+                  <span class="rating-sub">(${totalReviews} تقييم)</span>
+                ` : `
+                  <span class="rating-star-empty">✨</span>
+                  <span class="rating-none">لا توجد تقييمات بعد</span>
                 `;
               }
             } catch (syncErr) {
@@ -1863,6 +1901,10 @@ function openReviewModal(place, user, existingReview, onDone) {
               });
             }
           } catch (err) {
+            if (actionBtn) {
+              actionBtn.disabled = false;
+              actionBtn.innerText = existingReview ? '💾 حفظ التعديل' : '🚀 نشر التقييم';
+            }
             console.error('[Review] submit failed:', err);
             const message = err?.message || String(err) || 'تعذر حفظ التقييم';
             toast.error(message === 'is not defined' ? 'تعذر إتمام العملية. يرجى تحديث الصفحة والمحاولة مرة أخرى.' : message);
@@ -2387,23 +2429,17 @@ function renderReviewsSectionHTML({ placeId, placeName, safeReviews = [], totalR
         </h2>
 
         <div>
-          ${currentUser ? `
-            ${userReview ? `
-              ${(!isHammad || currentUser.role === 'superadmin') ? `
-                <button class="btn btn-sm btn-outline" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full)">
-                  ✏️ تعديل تقييمي
-                </button>
-              ` : `
-                <span class="badge" style="background:rgba(245,158,11,0.12);color:#D97706;font-size:11.5px">✓ تم تسجيل تقييمك</span>
-              `}
-            ` : `
-              <button class="btn btn-sm btn-primary" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full);box-shadow:0 2px 8px rgba(27,79,114,0.25)">
-                ⭐ اكتب تقييمك الآن
+          ${userReview ? `
+            ${(!isHammad || currentUser?.role === 'superadmin') ? `
+              <button class="btn btn-sm btn-outline" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full)">
+                ✏️ تعديل تقييمي
               </button>
+            ` : `
+              <span class="badge" style="background:rgba(245,158,11,0.12);color:#D97706;font-size:11.5px">✓ تم تسجيل تقييمك</span>
             `}
           ` : `
-            <button class="btn btn-sm btn-secondary" id="btn-login-to-review" style="font-size:12.5px;border-radius:var(--radius-full)">
-              🔒 تسجيل الدخول للتقييم
+            <button class="btn btn-sm btn-primary" id="btn-open-review-modal" style="font-size:12.5px;border-radius:var(--radius-full);box-shadow:0 2px 8px rgba(27,79,114,0.25)">
+              ⭐ اكتب تقييمك الآن
             </button>
           `}
         </div>

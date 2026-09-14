@@ -2258,22 +2258,23 @@ export async function recalculatePlaceRating(placeId) {
   }
 }
 
-/** Add a review to a place (Logged-in user) - STRICT NO DUPLICATE RULE */
+/** Add a review to a place (Logged-in user or Guest) - STRICT NO DUPLICATE RULE */
 export async function addPlaceReview({ placeId, placeName, placeSlug, user, rating, comment }) {
-  if (!user || !placeId) throw new Error('يجب تسجيل الدخول لإضافة تقييم');
+  if (!placeId) throw new Error('معرف المكان مطلوب لإضافة تقييم');
   
   const cleanComment = sanitizeReviewText(comment);
   if (!cleanComment) throw new Error('يرجى كتابة نص التقييم');
 
   const numRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
-  const userName = user.name || user.displayName || 'مستخدم مسجل';
+  const effectiveUid = user?.uid || ('guest_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
+  const userName = user?.name || user?.displayName || 'عميل وزائر';
   const normName = userName.trim().toLowerCase();
 
   // Strict Rule: Check if user or name already reviewed this place
   const existingReviews = await getPlaceReviews(placeId, placeSlug);
   const userExisting = existingReviews.find(r => 
-    r.userId === user.uid ||
-    (normName && (r.userName || '').trim().toLowerCase() === normName)
+    (user?.uid && r.userId === user.uid) ||
+    (normName && normName !== 'عميل وزائر' && normName !== 'زائر' && (r.userName || '').trim().toLowerCase() === normName)
   );
 
   if (userExisting) {
@@ -2286,9 +2287,9 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     placeId,
     placeName: placeName || 'المكان',
     placeSlug: placeSlug || '',
-    userId: user.uid,
+    userId: effectiveUid,
     userName: userName,
-    userPhoto: user.photoURL || '',
+    userPhoto: user?.photoURL || '',
     rating: numRating,
     comment: cleanComment,
     // Keep review creation self-contained: do not call an optional helper that may be absent from a cached bundle.
@@ -2299,6 +2300,7 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
   };
 
   // Single authoritative write: Frontend → Worker → Turso.
+  // The Worker directly recalculates stats and updates place denormalized fields.
   await dbSet(`places/${placeId}/reviews/${reviewId}`, {
     ...reviewData,
     place_id: placeId,
@@ -2306,7 +2308,6 @@ export async function addPlaceReview({ placeId, placeName, placeSlug, user, rati
     place_slug: placeSlug || ''
   });
 
-  await recalculatePlaceRating(placeId);
   await invalidateLocalPlaceCache(placeId, placeSlug);
   clearDbCache();
 

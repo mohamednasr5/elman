@@ -284,24 +284,25 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         transform: translateY(-1px);
       }
       .certificate-preview-container {
-        padding: 20px 14px;
+        padding: 16px 8px;
         background: #070D1C;
         display: flex;
         justify-content: center;
-        align-items: center;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        align-items: flex-start;
+        overflow: hidden;
+        width: 100%;
+        box-sizing: border-box;
       }
       
       /* The Standard A4 Landscape Certificate Sheet (297mm x 210mm ~ 1.414 ratio) */
       .certificate-sheet {
-        width: 100%;
-        max-width: 980px;
-        min-width: 740px;
+        width: 840px;
+        max-width: 840px;
+        min-width: 840px;
         aspect-ratio: 297 / 210;
         background: #FCFBF7;
         color: #0F172A;
-        box-shadow: 0 20px 55px rgba(0, 0, 0, 0.65);
+        box-shadow: 0 16px 45px rgba(0, 0, 0, 0.65);
         border-radius: 6px;
         padding: 12px;
         box-sizing: border-box;
@@ -311,6 +312,45 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        flex-shrink: 0;
+        transform-origin: top center;
+        transition: transform 0.15s ease-out;
+      }
+
+      @media (max-width: 640px) {
+        .certificate-modal-overlay {
+          padding: 6px !important;
+        }
+        .certificate-modal-dialog {
+          border-radius: 16px !important;
+          max-height: 98vh !important;
+        }
+        .certificate-modal-toolbar {
+          padding: 10px 14px !important;
+          gap: 10px !important;
+        }
+        .certificate-modal-title {
+          font-size: 12.5px !important;
+          line-height: 1.35 !important;
+          flex-wrap: wrap !important;
+        }
+        .certificate-owner-tag {
+          font-size: 10px !important;
+          padding: 2px 7px !important;
+        }
+        .certificate-modal-actions {
+          width: 100% !important;
+          display: grid !important;
+          grid-template-columns: 1fr 1fr !important;
+          gap: 8px !important;
+        }
+        .btn-print-cert, .btn-download-cert {
+          padding: 9px 8px !important;
+          font-size: 12px !important;
+          justify-content: center !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
       }
 
       /* Subtle Security Watermark Vector in Center */
@@ -952,6 +992,32 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 
+  // Dynamic A4 Certificate Responsive Auto-Scaler
+  const updateCertScale = () => {
+    const previewContainer = overlay.querySelector('.certificate-preview-container');
+    const sheet = overlay.querySelector('#certificate-print-root');
+    if (!previewContainer || !sheet) return;
+    const baseWidth = 840;
+    const baseHeight = Math.round(baseWidth * (210 / 297)); // 594px
+    const pad = window.innerWidth <= 640 ? 12 : 24;
+    const availableWidth = previewContainer.clientWidth - pad;
+    if (availableWidth > 0 && availableWidth < baseWidth) {
+      const scale = Math.max(0.25, availableWidth / baseWidth);
+      sheet.style.transform = `scale(${scale})`;
+      sheet.style.transformOrigin = 'top center';
+      sheet.style.margin = '0 auto';
+      previewContainer.style.height = `${Math.ceil(baseHeight * scale) + (window.innerWidth <= 640 ? 12 : 24)}px`;
+    } else {
+      sheet.style.transform = 'none';
+      sheet.style.margin = '0 auto';
+      previewContainer.style.height = 'auto';
+    }
+  };
+
+  requestAnimationFrame(updateCertScale);
+  window.addEventListener('resize', updateCertScale);
+  window.addEventListener('orientationchange', updateCertScale);
+
   // Attach Print Handler
   const printBtn = overlay.querySelector('#btn-print-certificate');
   printBtn.addEventListener('click', () => {
@@ -986,6 +1052,8 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
 
   // Close handlers
   const closeModal = () => {
+    window.removeEventListener('resize', updateCertScale);
+    window.removeEventListener('orientationchange', updateCertScale);
     overlay.classList.add('fade-out');
     setTimeout(() => {
       overlay.remove();

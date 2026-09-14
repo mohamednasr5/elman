@@ -2765,14 +2765,21 @@ try {
     if (isMaintenanceKey) {
       auth = { user: { uid: 'system_admin', name: 'إدارة المنظومة', isAdmin: true, isSuperAdmin: true } };
     } else {
-      auth = await requireAuth(request, env);
-      if (auth.response) return auth.response;
+      const authHeader = request.headers.get('Authorization') || '';
+      if (authHeader.startsWith('Bearer ')) {
+        try {
+          const authedUser = await authenticateRequest(request, env);
+          if (authedUser) {
+            auth = { user: authedUser };
+          }
+        } catch (_) {}
+      }
     }
     const body = await request.json().catch(() => ({}));
 
     // Bulk review insertion is an administrative operation.
     if (Array.isArray(body.reviews) && body.reviews.length > 0) {
-      if (!auth.user.isAdmin) return jsonResponse({success:false,error:'إضافة تقييمات جماعية متاحة للإدارة فقط'},403,corsHeaders);
+      if (!auth || !auth.user.isAdmin) return jsonResponse({success:false,error:'إضافة تقييمات جماعية متاحة للإدارة فقط'},403,corsHeaders);
       const reviewsList = body.reviews;
       if (reviewsList.length < 1 || reviewsList.length > 5000) {
         return jsonResponse({success:false,error:'عدد التقييمات الجماعية يجب أن يكون بين 1 و5000'},400,corsHeaders);
@@ -2855,11 +2862,17 @@ try {
     }
 
     const placeId = (body.place_id || body.placeId || '').trim();
-    const userId = auth.user.isAdmin ? (body.user_id || body.userId || '').trim() : auth.user.uid;
+    const isAuthAdmin = Boolean(auth && auth.user && auth.user.isAdmin);
+    const clientIp = request.headers.get('CF-Connecting-IP') || 'visitor';
+    const userId = isAuthAdmin
+      ? ((body.user_id || body.userId || '').trim() || auth.user.uid)
+      : (auth && auth.user
+          ? auth.user.uid
+          : ((body.user_id || body.userId || '').trim() || ('guest_' + String(clientIp).replace(/[^a-zA-Z0-9]/g, '_'))));
     const rating = parseFloat(body.rating);
 
     if (!placeId || !userId || isNaN(rating)) {
-      return jsonResponse({ error: 'place_id و user_id و rating مطلوبة' }, 400, corsHeaders);
+      return jsonResponse({ error: 'place_id و rating مطلوبة' }, 400, corsHeaders);
     }
 
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
@@ -2875,7 +2888,7 @@ try {
     const cPlaceName = placeRow ? placeRow.name : (body.place_name || body.placeName || '');
 
     // Prevent duplicate reviews from same user on this place (except admin)
-    if (!auth.user.isAdmin) {
+    if (!isAuthAdmin) {
       const userExisting = await createTursoDB(env).prepare(`
         SELECT id FROM reviews 
         WHERE (place_id = ? OR place_id = ? OR place_slug = ?) AND user_id = ? 
@@ -2887,16 +2900,19 @@ try {
     }
 
     let reviewId = body.id || `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    if (!auth.user.isAdmin && body.id) {
+    if (!isAuthAdmin && body.id) {
       const collision = await createTursoDB(env).prepare('SELECT id FROM reviews WHERE id = ? LIMIT 1').bind(String(body.id).trim()).first();
       if (collision && collision.user_id !== userId) return jsonResponse({success:false,error:'معرف التقييم مستخدم بالفعل'},409,corsHeaders);
       reviewId = String(body.id).trim();
     }
-    const userName = auth.user.isAdmin ? (body.user_name || body.userName || 'مستخدم') : auth.user.name;
-    const userPhoto = body.user_photo || body.userPhoto || '';
+    const rawUserName = String(body.user_name || body.userName || '').trim().slice(0, 50);
+    const userName = isAuthAdmin
+      ? (rawUserName || 'مستخدم')
+      : (auth && auth.user ? auth.user.name : (rawUserName || 'عميل وزائر'));
+    const userPhoto = auth && auth.user ? (auth.user.photoURL || body.user_photo || body.userPhoto || '') : '';
     const comment = String(body.comment || '').trim().slice(0, 500);
     const now = Date.now();
-    const isAdminGen = auth.user.isAdmin && body.is_admin_generated ? 1 : 0;
+    const isAdminGen = isAuthAdmin && body.is_admin_generated ? 1 : 0;
 
     try {
       await createTursoDB(env).prepare(`
