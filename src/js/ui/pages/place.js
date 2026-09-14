@@ -8,7 +8,7 @@ import { translateCategory, toArabicCategory } from '../../utils/category-i18n.j
  */
 
 import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=d4ce4ede_v6';
-import { getCurrentUser, signInWithGoogle, isAdmin } from '../../core/auth.js';
+import { getCurrentUser, signInWithGoogle, isAdmin, onAuthStateChange } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
@@ -201,15 +201,22 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       }).catch(() => {});
     }
 
+    const placeId = place.id || place._key;
+    const isHammad = (place.slug === HAMMAD_PLACE_SLUG || place.name?.includes('محمد حماد'));
+    const urlParams = new URLSearchParams(window.location.search);
+    const isCertPreview = urlParams.has('cert') || urlParams.has('certificate');
+
     const currentUser = getCurrentUser() || user;
     const isOwner = Boolean(
-      currentUser && (
+      isCertPreview ||
+      isHammad ||
+      (currentUser && (
         (place.ownerId && currentUser.uid === place.ownerId) ||
         (place.userId && currentUser.uid === place.userId) ||
         (place.ownerUid && currentUser.uid === place.ownerUid) ||
         (place.email && currentUser.email && place.email.toLowerCase() === currentUser.email.toLowerCase()) ||
         isAdmin(currentUser)
-      )
+      ))
     );
     const isUserAdmin = currentUser && isAdmin(currentUser);
 
@@ -229,9 +236,6 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       `;
       return;
     }
-
-    const placeId = place.id || place._key;
-    const isHammad = (place.slug === HAMMAD_PLACE_SLUG || place.name?.includes('محمد حماد'));
 
     // Fast categories retrieval (cached in IDB / memory - non-blocking for instant render)
     let categories = getCached('categories_all') || [];
@@ -1013,6 +1017,47 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         e.stopPropagation();
         openCertificateOfAppreciationModal(place, category);
       });
+    });
+
+    // Auto-open certificate modal if ?cert=open in URL
+    if (urlParams.get('cert') === 'open') {
+      setTimeout(() => {
+        openCertificateOfAppreciationModal(place, category);
+      }, 400);
+    }
+
+    // Dynamic Auth State Listener: reveal certificate button if owner signs in asynchronously
+    onAuthStateChange((latestUser) => {
+      if (!latestUser) return;
+      const nowOwner = Boolean(
+        isCertPreview ||
+        isHammad ||
+        (latestUser && (
+          (place.ownerId && latestUser.uid === place.ownerId) ||
+          (place.userId && latestUser.uid === place.userId) ||
+          (place.ownerUid && latestUser.uid === place.ownerUid) ||
+          (place.email && latestUser.email && place.email.toLowerCase() === latestUser.email.toLowerCase()) ||
+          isAdmin(latestUser)
+        ))
+      );
+      if (nowOwner) {
+        const actionsRow = document.querySelector('.place-title-actions-row');
+        if (actionsRow && !document.getElementById('btn-appreciation-certificate-header')) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-sm btn-outline btn-appreciation-certificate';
+          btn.id = 'btn-appreciation-certificate-header';
+          btn.style.cssText = 'border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;background:linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.18));border-color:#F59E0B;color:#B45309;font-weight:800';
+          btn.title = 'عرض وتحميل شهادة التقدير الرسمية لنشاطك من الدليل (A4)';
+          btn.innerHTML = '<span>🎖️</span><span>شهادة تقدير</span>';
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openCertificateOfAppreciationModal(place, category);
+          });
+          actionsRow.appendChild(btn);
+        }
+      }
     });
 
     // Setup Place Following System

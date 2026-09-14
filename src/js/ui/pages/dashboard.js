@@ -38,6 +38,7 @@ import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '..
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { isAdmin } from '../../core/auth.js';
+import { openCertificateOfAppreciationModal } from '../components/CertificateOfAppreciationModal.js';
 import { formatPrice, arabicMatch, normalizeArabic, stripAl, arabicScore, matchArabicCategoryTokens } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { normalizePhoneNumber, extractPlacePhoneNumbers, toAsciiDigits } from '../../utils/phone.js';
@@ -440,6 +441,18 @@ async function renderPlacesSection($container, user) {
   `;
   setupAvailabilitySelectListeners($container);
   setupBranchListeners($container, user, places, () => renderPlacesSection($container, user));
+
+  // Bind Certificate of Appreciation modal for places in dashboard
+  $container.querySelectorAll('.btn-dash-cert').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const pid = btn.dataset.placeId;
+      const targetPlace = places.find(p => (p.id || p._key) === pid);
+      if (targetPlace) {
+        openCertificateOfAppreciationModal(targetPlace, {});
+      }
+    });
+  });
 }
 
 function renderPlacesListHTML(places) {
@@ -501,6 +514,9 @@ function renderPlacesListHTML(places) {
                     ` : `
                       <a href="contact.html?type=verification" class="btn btn-sm" style="background:rgba(217,119,6,0.1);color:#b45309;border:1px solid rgba(217,119,6,0.3);font-weight:700" title="طلب توثيق هذا المكان بالعلامة الزرقاء">🛡️ وثق مكانك</a>
                     `}
+                    <button type="button" class="btn btn-sm btn-dash-cert" data-place-id="${escAttr(placeId)}" style="background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(217,119,6,0.22));color:#B45309;border:1px solid #F59E0B;font-weight:800;border-radius:var(--radius-sm);cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك (A4)">
+                      <span>🎖️</span> <span>شهادة تقدير (A4)</span>
+                    </button>
                   </div>
                 `;
               })()}
