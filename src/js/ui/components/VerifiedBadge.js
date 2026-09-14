@@ -85,16 +85,25 @@ export function renderDeliveryBadge(typeOrPlace) {
 }
 
 /**
- * Render Live Online Owner Badge (متصل الآن بالأخضر)
+ * Render Live Online Owner Badge (متصل الآن بالأخضر / غير متصل حالياً)
  */
 export function renderOnlineBadge(isOnline = true) {
-  if (!isOnline) return '';
   const isEn = isEnglish();
-  const tip = isEn ? 'Place owner is online now and ready to respond' : 'صاحب المكان متصل الآن بالموقع ومتاح للرد والتواصل';
-  const text = isEn ? 'Online Now' : 'متصل الآن';
+  if (isOnline) {
+    const tip = isEn ? 'Place owner is online now and ready to respond' : 'صاحب المكان متصل الآن بالمنصة ومتاح للتواصل';
+    const text = isEn ? 'Online' : 'متصل الآن';
+    return `
+      <span class="badge-online-pulse" title="${tip}" aria-label="${tip}">
+        <span class="online-indicator-dot"></span>
+        <span class="online-indicator-text">${text}</span>
+      </span>
+    `;
+  }
+  const tip = isEn ? 'Place owner is currently offline' : 'صاحب المكان غير متصل حالياً';
+  const text = isEn ? 'Offline' : 'غير متصل حالياً';
   return `
-    <span class="badge-online-pulse" title="${tip}" aria-label="${tip}">
-      <span class="online-indicator-dot"></span>
+    <span class="badge-online-pulse badge-online-pulse--offline" title="${tip}" aria-label="${tip}">
+      <span class="online-indicator-dot online-indicator-dot--offline"></span>
       <span class="online-indicator-text">${text}</span>
     </span>
   `;

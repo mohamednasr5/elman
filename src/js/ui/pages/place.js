@@ -486,44 +486,14 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                 <div class="place-title">
                   <div class="place-title__main">
                     <h1 class="place-title__name">${escHtml(placeDisplayName)}</h1>
-                    ${(!isAtm && (place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
                     ${place.isVerified ? renderVerifiedBadge() : ''}
+                    ${(!isAtm && (place.isSponsored || place.isFeatured || place.isPromoted) && (!place.sponsoredUntil || place.sponsoredUntil > Date.now())) ? renderSponsoredBadge() : ''}
                     ${(!isAtm && (place.deliveryType || place.categoryId === 'delivery' || place.categoryId?.includes('delivery') || /توكتوك|تاكسي|شانجي|اتوبيس|وصلي/i.test(place.name || '')) && !/صيدلية|مطعم|كشري|حلواني|سوبر\s*ماركت/i.test(place.name || '')) ? renderDeliveryBadge(place) : ''}
                     <span id="place-owner-online-container" class="place-owner-online-slot"></span>
                   </div>
-
-                  <div class="place-title-actions-row">
-                    <button type="button" class="btn-download-profile-card btn-download-profile-trigger" id="btn-download-profile-card" data-pid="${escAttr(placeId)}" title="تحميل البطاقة التعريفية لمشاركتها كصورة">
-                      <span class="card-icon">🪪</span>
-                      <span>تحميل البطاقة</span>
-                    </button>
-
-                    <button type="button" class="btn btn-sm btn-outline btn-open-storefront-qr" id="btn-open-storefront-qr" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;background:var(--surface);border-color:var(--border)" title="طباعة لوحة QR ذكية لواجهة المحل">
-                      <span>🖨️</span>
-                      <span>لوحة QR للمحل</span>
-                    </button>
-
-                    ${isOwner ? `
-                    <button type="button" class="btn btn-sm btn-outline btn-appreciation-certificate btn-appreciation-certificate-pulse" id="btn-appreciation-certificate-header" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;font-weight:800" title="عرض وتحميل شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
-                      <span>🎖️</span>
-                      <span>شهادة تقدير</span>
-                    </button>
-                    ` : ''}
-
-                    <button type="button" class="btn btn-sm btn-outline btn-follow-place-trigger ${isFollowing ? 'following' : ''}" id="btn-follow-place" data-pid="${escAttr(placeId)}" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;${isFollowing ? 'background:rgba(16,185,129,0.12);color:var(--success);border-color:var(--success);font-weight:700' : 'background:var(--surface);border-color:var(--border)'}" title="متابعة المكان ومشاهدة عروضه في حسابك">
-                      <span class="follow-icon">${isFollowing ? '✓' : '🔔'}</span>
-                      <span class="follow-label">${isFollowing ? 'متابع' : 'متابعة'}</span>
-                      ${place.followersCount ? `<span class="follow-count-badge" style="opacity:0.8;font-size:11px">(${place.followersCount})</span>` : ''}
-                    </button>
-
-                    <button type="button" class="btn btn-sm btn-outline btn-share-place-trigger" style="border-radius:var(--radius-full);gap:5px;font-size:12px;padding:5px 12px;box-shadow:0 1px 4px rgba(0,0,0,0.05);background:var(--surface);border-color:var(--border)" title="مشاركة بطاقة هذا المكان">
-                      <span>📤</span>
-                      <span>مشاركة</span>
-                    </button>
-                  </div>
                 </div>
                 
-                <div class="place-header-badges-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0">
+                <div class="place-header-badges-row">
                   <a href="category.html?slug=${encodeURIComponent(catInfo?.slug || place.categoryId || 'other')}" class="place-category-tag">
                     ${craftCatSvg || catInfo?.icon || '🏪'} ${escHtml(catInfo?.name || 'تصنيف')}
                   </a>
@@ -533,118 +503,191 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                       <span>${escHtml(profInfo.name || '')}</span>
                     </a>
                   ` : ''}
-                  ${place.nameEn ? `<span class="place-header-en-name" style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
+                  ${(isEn && place.nameEn) ? `<span class="place-header-en-name" style="color:var(--text-muted);font-size:var(--font-size-sm);direction:ltr">(${escHtml(place.nameEn)})</span>` : ''}
                   ${place.medicalSpecialty ? `
                     <span class="badge" style="background:#E0F2FE;color:#0369A1;font-weight:700;font-size:12.5px;padding:3px 10px;border-radius:9999px;border:1px solid #BAE6FD">
                       🩺 تخصص: ${escHtml(place.medicalSpecialty)}
                     </span>
                   ` : ''}
-
-                  ${!isAtm ? `
-                    <div id="place-header-rating-badge" style="display:inline-flex;align-items:center;gap:4px;color:${totalReviews > 0 ? '#F59E0B' : 'var(--text-muted)'};font-weight:700;font-size:12px;background:${totalReviews > 0 ? 'rgba(245,158,11,0.08)' : 'var(--surface-2)'};padding:3px 8px;border-radius:var(--radius-sm);border:1px solid var(--border)">
-                      ${totalReviews > 0 ? `
-                        <span>★</span>
-                        <span>${avgRating > 0 ? avgRating.toFixed(1) : '5.0'}</span>
-                        <span style="color:var(--text-muted);font-weight:normal;font-size:11px">(${totalReviews} تقييم)</span>
-                      ` : `
-                        <span>✨</span>
-                        <span>لا توجد تقييمات بعد</span>
-                      `}
-                    </div>
-                  ` : ''}
                   <div id="place-availability-badge-container">
                     ${renderAvailabilityBadge(place.availabilityStatus || place.availability_status)}
                   </div>
-                  <span class="place-trust-mini ${trustClass}" title="مؤشر نسبة استيفاء حقول ومعلومات هذا الملف (وليس تقييماً لجودة النشاط)">📋 اكتمال الملف ${trustScore}%</span>
+                  ${trustScore ? `<span class="place-trust-mini ${trustClass}" title="مؤشر نسبة استيفاء حقول ومعلومات هذا الملف">📋 اكتمال الملف ${trustScore}%</span>` : ''}
                 </div>
-                <div class="place-address">
-                  <span>📍</span>
-                  <span>${escHtml(place.address || place.area || 'مدينة المنزلة')}</span>
+
+                <div class="place-address-rating-row">
+                  <div class="place-address">
+                    <span>📍</span>
+                    <span>${escHtml(place.address || place.area || 'مدينة المنزلة')}</span>
+                  </div>
+                  ${!isAtm ? `
+                    <div id="place-header-rating-badge" class="place-rating-badge-inline">
+                      ${totalReviews > 0 ? `
+                        <span class="rating-star">★</span>
+                        <span class="rating-val">${avgRating > 0 ? avgRating.toFixed(1) : '5.0'}</span>
+                        <span class="rating-sub">(${totalReviews} تقييم)</span>
+                      ` : `
+                        <span class="rating-star-empty">✨</span>
+                        <span class="rating-none">لا توجد تقييمات بعد</span>
+                      `}
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div class="place-quick-tools-bar">
+                  <button type="button" class="place-quick-tool-btn btn-download-profile-trigger" id="btn-download-profile-card" data-pid="${escAttr(placeId)}" title="تحميل البطاقة التعريفية لمشاركتها كصورة">
+                    <span class="card-icon">🪪</span>
+                    <span>تحميل البطاقة</span>
+                  </button>
+
+                  <button type="button" class="place-quick-tool-btn btn-open-storefront-qr" id="btn-open-storefront-qr" title="طباعة لوحة QR ذكية لواجهة المحل">
+                    <span>🖨️</span>
+                    <span>لوحة QR للمحل</span>
+                  </button>
+
+                  ${isOwner ? `
+                  <button type="button" class="place-quick-tool-btn btn-appreciation-certificate btn-appreciation-certificate-pulse" id="btn-appreciation-certificate-header" title="عرض وتحميل شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
+                    <span>🎖️</span>
+                    <span>شهادة تقدير</span>
+                  </button>
+                  ` : ''}
+
+                  <button type="button" class="place-quick-tool-btn btn-follow-place-trigger ${isFollowing ? 'following' : ''}" id="btn-follow-place" data-pid="${escAttr(placeId)}" title="متابعة المكان ومشاهدة عروضه في حسابك">
+                    <span class="follow-icon">${isFollowing ? '✓' : '🔔'}</span>
+                    <span class="follow-label">${isFollowing ? 'متابع' : 'متابعة'}</span>
+                    ${place.followersCount ? `<span class="follow-count-badge" style="opacity:0.8;font-size:11px">(${place.followersCount})</span>` : ''}
+                  </button>
+
+                  <button type="button" class="place-quick-tool-btn btn-share-place-trigger" title="مشاركة بطاقة هذا المكان">
+                    <span>📤</span>
+                    <span>مشاركة</span>
+                  </button>
                 </div>
               </div>
             </div>
 
-            <!-- Quick Action Buttons -->
-            <div class="place-contact-btns">
-              ${(!hasValidPhone && !isAtm) ? `
-                <div class="place-no-phone-notice animate-fade-in" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(135deg, rgba(2,132,199,0.08) 0%, rgba(14,165,233,0.12) 100%);border:1.5px dashed #0284C7;border-radius:var(--radius-md);padding:12px 16px;margin-bottom:10px;width:100%;flex-wrap:wrap">
-                  <div style="display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--text-secondary)">
-                    <span style="font-size:22px">📞</span>
-                    <div>
-                      <div style="font-weight:800;color:var(--text-primary);font-size:13.5px">رقم التواصل غير متوفر حالياً لهذا المكان</div>
-                      <div style="font-size:12px;color:var(--text-muted)">ساعد أهالي وزوار المنزلة والمطرية في الوصول لهذا النشاط</div>
-                    </div>
-                  </div>
-                  <button type="button" class="btn btn-sm btn-primary" onclick="window.openSuggestPhoneNumber({ placeId: '${escAttr(placeId)}', placeName: '${escAttr(place.name || '')}' })" style="gap:6px;font-size:13px;font-weight:800;padding:8px 16px;box-shadow:0 3px 10px rgba(2,132,199,0.25)">
-                    <span>✍️</span>
-                    <span>هل تعرف رقم المكان؟ اضغط هنا واكتبه</span>
-                  </button>
-                </div>
-              ` : ''}
-
+            <!-- Chic 4-Cards Action Grid -->
+            <div class="place-action-cards-grid">
+              <!-- Card 1: Call / Suggest Phone -->
               ${hasValidPhone ? `
-                <a href="tel:${cleanPhone(place.phone)}" class="btn btn-primary" onclick="trackStat('${escAttr(placeId)}', 'phoneClicks')" title="اتصال هاتفي">
-                  <span>📞</span>
-                  <span>اتصال (${escHtml(place.phone)})</span>
+                <a href="tel:${cleanPhone(place.phone)}" class="place-action-card place-action-card--call" onclick="trackStat('${escAttr(placeId)}', 'phoneClicks')" title="اتصال هاتفي">
+                  <div class="place-action-card__icon">📞</div>
+                  <div class="place-action-card__title">اتصال هاتفي</div>
+                  <div class="place-action-card__sub" dir="ltr">${escHtml(place.phone)}</div>
                 </a>
-              ` : ''}
-              
+              ` : `
+                <div class="place-action-card place-action-card--no-phone" onclick="window.openSuggestPhoneNumber({ placeId: '${escAttr(placeId)}', placeName: '${escAttr(place.name || '')}' })" title="اقتراح رقم هاتف">
+                  <div class="place-action-card__icon">✍️</div>
+                  <div class="place-action-card__title">رقم التواصل</div>
+                  <div class="place-action-card__sub">اضغط هنا واكتبه</div>
+                </div>
+              `}
+
+              <!-- Card 2: WhatsApp / Alternative -->
               ${hasValidWhatsapp ? `
                 <a href="${buildContextualWhatsAppLink(place.whatsapp, { source: 'place_page', placeName: place.name, placeSlug: place.slug })}" 
                    target="_blank" 
                    rel="noopener" 
-                   class="btn btn-whatsapp" onclick="trackStat('${escAttr(placeId)}', 'whatsappClicks')" title="محادثة واتساب">
-                  <img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon" />
-                  <span>محادثة واتساب</span>
+                   class="place-action-card place-action-card--wa" 
+                   onclick="trackStat('${escAttr(placeId)}', 'whatsappClicks')" 
+                   title="محادثة واتساب">
+                  <div class="place-action-card__icon">
+                    <img src="./icons/whatsapp.png" alt="WhatsApp" class="wa-official-icon" style="width:26px;height:26px;object-fit:contain" />
+                  </div>
+                  <div class="place-action-card__title">محادثة واتساب</div>
+                  <div class="place-action-card__sub">تواصل فوري وشات</div>
                 </a>
-              ` : ''}
-              
-              ${place.mapsLink || place.location ? `
+              ` : ((!isAtm && (place.allowAppointments === true || (place.allowAppointments !== false && (place.categoryId === 'doctor' || place.categoryId?.includes('clinic') || place.categoryId === 'health')))) ? `
+                <button type="button" class="place-action-card place-action-card--appointment" id="btn-book-appointment" title="طلب حجز موعد / استشارة">
+                  <div class="place-action-card__icon">📅</div>
+                  <div class="place-action-card__title">حجز موعد</div>
+                  <div class="place-action-card__sub">طلب مسبق واستشارة</div>
+                </button>
+              ` : `
+                <button type="button" class="place-action-card place-action-card--share btn-share-place-trigger" title="مشاركة بطاقة هذا المكان">
+                  <div class="place-action-card__icon">📤</div>
+                  <div class="place-action-card__title">مشاركة المكان</div>
+                  <div class="place-action-card__sub">إرسال للأصدقاء</div>
+                </button>
+              `)}
+
+              <!-- Card 3: Directions on Map -->
+              ${(place.mapsLink || place.location) ? `
                 <a href="${escAttr(mapInfo.directLink || place.mapsLink || `https://www.google.com/maps/search/?api=1&query=${place.location?.lat},${place.location?.lng}`)}" 
                    target="_blank" 
                    rel="noopener" 
-                   class="btn btn-outline ${(!hasValidPhone || !hasValidWhatsapp) ? '' : 'btn--full-mobile'}" 
+                   class="place-action-card place-action-card--map" 
                    onclick="trackStat('${escAttr(placeId)}', 'directionsClicks')" 
                    title="الاتجاهات على الخريطة">
-                  <span>🗺️</span>
-                  <span>الاتجاهات على الخريطة</span>
+                  <div class="place-action-card__icon">🗺️</div>
+                  <div class="place-action-card__title">الاتجاهات</div>
+                  <div class="place-action-card__sub">على الخريطة</div>
                 </a>
-              ` : ''}
+              ` : `
+                <button type="button" class="place-action-card place-action-card--map btn-share-place-trigger" title="موقع المكان">
+                  <div class="place-action-card__icon">🗺️</div>
+                  <div class="place-action-card__title">الموقع</div>
+                  <div class="place-action-card__sub">${escHtml(place.area || 'المنزلة')}</div>
+                </button>
+              `}
 
-              ${isOwner ? `
-                <a href="dashboard.html?section=places&id=${escAttr(placeId)}" class="btn btn-secondary btn--full-mobile">
+              <!-- Card 4: Action (Appointment / Share / Report) -->
+              ${(!isAtm && (place.allowAppointments === true || (place.allowAppointments !== false && (place.categoryId === 'doctor' || place.categoryId?.includes('clinic') || place.categoryId === 'health'))) && hasValidWhatsapp) ? `
+                <button type="button" class="place-action-card place-action-card--appointment" id="btn-book-appointment" title="طلب حجز موعد / استشارة">
+                  <div class="place-action-card__icon">📅</div>
+                  <div class="place-action-card__title">حجز موعد</div>
+                  <div class="place-action-card__sub">طلب مسبق واستشارة</div>
+                </button>
+              ` : (hasValidWhatsapp ? `
+                <button type="button" class="place-action-card place-action-card--share btn-share-place-trigger" title="مشاركة بطاقة هذا المكان">
+                  <div class="place-action-card__icon">📤</div>
+                  <div class="place-action-card__title">مشاركة</div>
+                  <div class="place-action-card__sub">إرسال للأصدقاء</div>
+                </button>
+              ` : `
+                <button type="button" class="place-action-card place-action-card--report" id="btn-report-place-data" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name || '')}" title="الإبلاغ عن معلومة أو تحديث">
+                  <div class="place-action-card__icon">🚩</div>
+                  <div class="place-action-card__title">تحديث بيانات</div>
+                  <div class="place-action-card__sub">اقتراح أو إبلاغ</div>
+                </button>
+              `)}
+            </div>
+
+            <!-- Owner Action Banner -->
+            ${isOwner ? `
+              <div class="place-owner-control-bar animate-fade-in">
+                <a href="dashboard.html?section=places&id=${escAttr(placeId)}" class="btn btn-sm btn-secondary" style="font-weight:800;border-radius:10px;gap:6px">
                   <span>⚙️</span>
                   <span>إدارة وتعديل المكان</span>
                 </a>
-                <button type="button" class="btn btn-outline btn--full-mobile btn-appreciation-certificate btn-appreciation-certificate-pulse" id="btn-appreciation-certificate-action" style="font-weight:800;gap:8px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
+                <button type="button" class="btn btn-sm btn-outline btn-appreciation-certificate btn-appreciation-certificate-pulse" id="btn-appreciation-certificate-action" style="font-weight:800;border-radius:10px;gap:6px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك من الدليل (A4)">
                   <span>🎖️</span>
                   <span>شهادة تقدير رسمية لنشاطك (A4)</span>
                 </button>
-              ` : ''}
-              ${(!isAtm && (place.allowAppointments === true || (place.allowAppointments !== false && (place.categoryId === 'doctor' || place.categoryId?.includes('clinic') || place.categoryId === 'health')))) ? `
-                <button type="button" class="btn btn-outline btn--full-mobile" id="btn-book-appointment" style="border-color:#0284c7;color:#0284c7;font-weight:800;gap:6px">
-                  <span>📅</span>
-                  <span>طلب حجز موعد / استشارة</span>
+              </div>
+            ` : ''}
+
+            <!-- Owner Quick Availability Switch -->
+            ${(isOwner || (currentUser && currentUser.isAdmin)) ? `
+              <div class="availability-quick-switch" style="display:flex;align-items:center;gap:8px;background:var(--surface-2);padding:8px 14px;border-radius:var(--radius-md);margin-top:10px;border:1px solid var(--border);width:100%;justify-content:space-between;flex-wrap:wrap">
+                <span style="font-size:12.5px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                  <span>⚡</span> <span>تعديل حالتك الآن:</span>
+                </span>
+                <select id="quick-availability-select" class="form-select" style="padding:4px 10px;font-size:12.5px;font-weight:700;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--surface)">
+                  <option value="available" ${(place.availabilityStatus || place.availability_status) === 'available' ? 'selected' : ''}>🟢 متاح الآن</option>
+                  <option value="busy" ${(place.availabilityStatus || place.availability_status) === 'busy' ? 'selected' : ''}>🟡 مشغول حالياً</option>
+                  <option value="unavailable" ${(place.availabilityStatus || place.availability_status) === 'unavailable' ? 'selected' : ''}>🔴 غير متاح حالياً</option>
+                </select>
+              </div>
+            ` : ''}
+
+            ${(!isOwner && !currentUser?.isAdmin) ? `
+              <div style="text-align:center;margin-top:12px">
+                <button type="button" class="btn-report-discreet" id="btn-report-place-data-link" onclick="document.getElementById('btn-report-place-data')?.click()" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline;display:inline-flex;align-items:center;gap:5px">
+                  <span>🚩</span> <span>هل لاحظت خطأ أو ترغب في تعديل بيانات هذا النشاط؟</span>
                 </button>
-              ` : ''}
-              <button type="button" class="btn btn-outline btn--full-mobile" id="btn-report-place-data" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name || '')}">
-                <span>🚩</span>
-                <span>الإبلاغ عن معلومة غير صحيحة</span>
-              </button>
-              
-              ${(isOwner || (currentUser && currentUser.isAdmin)) ? `
-                <div class="availability-quick-switch" style="display:flex;align-items:center;gap:8px;background:var(--surface-2);padding:8px 14px;border-radius:var(--radius-md);margin-top:8px;border:1px solid var(--border);width:100%;justify-content:space-between;flex-wrap:wrap">
-                  <span style="font-size:12.5px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:6px">
-                    <span>⚡</span> <span>تعديل حالتك الآن:</span>
-                  </span>
-                  <select id="quick-availability-select" class="form-select" style="padding:4px 10px;font-size:12.5px;font-weight:700;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--surface)">
-                    <option value="available" ${(place.availabilityStatus || place.availability_status) === 'available' ? 'selected' : ''}>🟢 متاح الآن</option>
-                    <option value="busy" ${(place.availabilityStatus || place.availability_status) === 'busy' ? 'selected' : ''}>🟡 مشغول حالياً</option>
-                    <option value="unavailable" ${(place.availabilityStatus || place.availability_status) === 'unavailable' ? 'selected' : ''}>🔴 غير متاح حالياً</option>
-                  </select>
-                </div>
-              ` : ''}
-            </div>
+              </div>
+            ` : ''}
           </div>
 
           <!-- ATM Cash Availability Live Poll Card -->
@@ -979,12 +1022,10 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         onlineContainer.innerHTML = renderOnlineBadge(true);
       } else if (ownerId) {
         subscribeToOwnerPresence(ownerId, ({ isOnline }) => {
-          if (isOnline) {
-            onlineContainer.innerHTML = renderOnlineBadge(true);
-          } else {
-            onlineContainer.innerHTML = '';
-          }
+          onlineContainer.innerHTML = renderOnlineBadge(Boolean(isOnline));
         });
+      } else {
+        onlineContainer.innerHTML = renderOnlineBadge(false);
       }
     }
 

@@ -98,10 +98,9 @@
 .place-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: var(--space-2);
+  margin-bottom: 6px;
 }
 
 .place-title__main {
@@ -109,28 +108,66 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.place-title-actions-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 .place-title__name {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-extrabold);
+  font-size: clamp(1.35rem, 2.8vw, 1.85rem);
+  font-weight: 900;
   color: var(--text-primary);
+  margin: 0;
+  line-height: 1.25;
 }
 
-/* Header Badges Unified Flow Row */
+/* Online Presence Status Badge */
+.badge-online-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  line-height: 1.2;
+}
+
+.badge-online-pulse--offline {
+  background: rgba(148, 163, 184, 0.12);
+  color: #64748B;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.online-indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: onlineDotPulse 1.8s infinite;
+}
+
+.online-indicator-dot--offline {
+  background: #94A3B8;
+  box-shadow: none;
+  animation: none;
+}
+
+@keyframes onlineDotPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Header Badges Row (Under Name: Category, Profession, Availability, Trust) */
 .place-header-badges-row {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin: 8px 0;
+  margin: 6px 0;
 }
 
 .place-category-tag {
@@ -177,62 +214,302 @@
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
-.place-address {
+/* Address and Rating Row (Under Category: Address + Rating beside it) */
+.place-address-rating-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-  margin-top: var(--space-2);
+  justify-content: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  font-size: 13px;
 }
 
-/* Contact Buttons & Quick Actions Grid */
-.place-contact-btns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: var(--space-2);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
+.place-address {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin: 0;
+}
+
+.place-rating-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full, 999px);
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #D97706;
+}
+
+.place-rating-badge-inline .rating-star {
+  color: #F59E0B;
+  font-size: 13px;
+}
+
+.place-rating-badge-inline .rating-val {
+  font-weight: 900;
+  color: #B45309;
+}
+
+.place-rating-badge-inline .rating-sub {
+  color: #92400E;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* Top Quick Tools Bar (Clean horizontal pill bar) */
+.place-quick-tools-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
   width: 100%;
 }
 
-.place-contact-btns .btn {
+.place-quick-tools-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.place-quick-tool-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  padding: 10px 12px;
-  font-size: 13.5px;
-  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--surface-2, #f8fafc);
+  color: var(--text-primary, #0f172a);
+  border: 1px solid var(--border, #e2e8f0);
   white-space: nowrap;
-  text-overflow: ellipsis;
-  min-width: 0;
-  border-radius: var(--radius-md);
-  text-align: center;
-  transition: all 0.2s ease;
+  flex-shrink: 0;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  font-family: inherit;
 }
 
-.place-contact-btns .btn:hover {
-  transform: translateY(-1px);
+.place-quick-tool-btn:hover {
+  background: var(--surface);
+  border-color: #0284C7;
+  color: #0284C7;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.12);
 }
 
-.place-contact-btns .btn--full-mobile {
-  grid-column: 1 / -1;
+.place-quick-tool-btn:active {
+  transform: scale(0.96);
 }
 
-@media (max-width: 480px) {
-  .place-contact-btns {
-    grid-template-columns: 1fr 1fr;
+/* ═══════════════════════════════════════════════════════════
+   Chic 4-Cards Action Grid (Square cards side-by-side with click animation)
+   ═══════════════════════════════════════════════════════════ */
+.place-action-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+  width: 100%;
+}
+
+@media (max-width: 820px) {
+  .place-action-cards-grid {
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
   }
-  .place-contact-btns .btn {
-    font-size: 12.5px;
-    padding: 9px 8px;
+}
+
+@media (max-width: 600px) {
+  .place-action-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
-  .place-contact-btns .btn--full-mobile {
-    grid-column: 1 / -1;
-    font-size: 13px;
-  }
+}
+
+.place-action-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px 8px 14px;
+  border-radius: 18px;
+  background: var(--surface, #ffffff);
+  border: 1.5px solid var(--border, #e2e8f0);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  text-decoration: none;
+  color: var(--text-primary, #0f172a);
+  cursor: pointer;
+  min-height: 105px;
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.24s ease, border-color 0.2s ease;
+  overflow: hidden;
+  user-select: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.place-action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.09);
+}
+
+.place-action-card:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.place-action-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin-bottom: 7px;
+  transition: transform 0.22s ease;
+  flex-shrink: 0;
+}
+
+.place-action-card:hover .place-action-card__icon {
+  transform: scale(1.12);
+}
+
+.place-action-card__title {
+  font-size: 13.5px;
+  font-weight: 900;
+  line-height: 1.25;
+  color: var(--text-primary, #0f172a);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.place-action-card__sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Card Themes */
+.place-action-card--call {
+  border-color: rgba(2, 132, 199, 0.22);
+}
+.place-action-card--call:hover {
+  border-color: #0284C7;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(2, 132, 199, 0.04) 100%);
+}
+.place-action-card--call .place-action-card__icon {
+  background: linear-gradient(135deg, #0284C7, #0369A1);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+}
+
+.place-action-card--no-phone {
+  border-color: rgba(2, 132, 199, 0.35);
+  border-style: dashed;
+  background: rgba(2, 132, 199, 0.02);
+}
+.place-action-card--no-phone:hover {
+  background: rgba(2, 132, 199, 0.06);
+  border-color: #0284C7;
+}
+
+.place-action-card--wa {
+  border-color: rgba(37, 211, 102, 0.25);
+}
+.place-action-card--wa:hover {
+  border-color: #25D366;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(37, 211, 102, 0.04) 100%);
+}
+.place-action-card--wa .place-action-card__icon {
+  background: #25D366;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+.place-action-card--map {
+  border-color: rgba(59, 130, 246, 0.22);
+}
+.place-action-card--map:hover {
+  border-color: #3B82F6;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(59, 130, 246, 0.04) 100%);
+}
+.place-action-card--map .place-action-card__icon {
+  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.place-action-card--appointment {
+  border-color: rgba(14, 165, 233, 0.25);
+}
+.place-action-card--appointment:hover {
+  border-color: #0EA5E9;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(14, 165, 233, 0.04) 100%);
+}
+.place-action-card--appointment .place-action-card__icon {
+  background: linear-gradient(135deg, #0EA5E9, #0284C7);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+}
+
+.place-action-card--share {
+  border-color: rgba(168, 85, 247, 0.22);
+}
+.place-action-card--share:hover {
+  border-color: #A855F7;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(168, 85, 247, 0.04) 100%);
+}
+.place-action-card--share .place-action-card__icon {
+  background: linear-gradient(135deg, #A855F7, #7E22CE);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.25);
+}
+
+.place-action-card--report {
+  border-color: rgba(239, 68, 68, 0.2);
+}
+.place-action-card--report:hover {
+  border-color: #EF4444;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(239, 68, 68, 0.04) 100%);
+}
+.place-action-card--report .place-action-card__icon {
+  background: rgba(239, 68, 68, 0.12);
+  color: #DC2626;
+}
+
+/* Owner Action Banner */
+.place-owner-control-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+  border: 1px solid #FCD34D;
+  border-radius: 14px;
+  width: 100%;
 }
 
 /* Working Hours */
