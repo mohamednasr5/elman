@@ -132,6 +132,71 @@
   font-size: 1.2rem;
 }
 
+/* Animated Luxury Sheen on Listing Place Cards (Cover & Logo) */
+.place-card__cover::after {
+  content: '';
+  position: absolute;
+  top: -80%;
+  left: -80%;
+  width: 260%;
+  height: 260%;
+  background: linear-gradient(
+    65deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.02) 40%,
+    rgba(255, 255, 255, 0.32) 50%,
+    rgba(255, 255, 255, 0.02) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  z-index: 2;
+  animation: luxuryCoverSheenSweep 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.place-card:hover .place-card__cover::after {
+  animation: luxuryCoverSheenSweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.place-card__logo::after {
+  content: '';
+  position: absolute;
+  top: -80%;
+  left: -80%;
+  width: 260%;
+  height: 260%;
+  background: linear-gradient(
+    65deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.04) 38%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0.04) 62%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  z-index: 4;
+  animation: luxuryLogoSheenSweep 7s cubic-bezier(0.4, 0, 0.2, 1) 2s infinite;
+}
+
+.place-card:hover .place-card__logo::after {
+  animation: luxuryLogoSheenSweep 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes luxuryCoverSheenSweep {
+  0% { transform: translateX(-160%) rotate(25deg); opacity: 0; }
+  12% { opacity: 1; }
+  32% { transform: translateX(180%) rotate(25deg); opacity: 0; }
+  100% { transform: translateX(180%) rotate(25deg); opacity: 0; }
+}
+
+@keyframes luxuryLogoSheenSweep {
+  0% { transform: translateX(-160%) rotate(25deg); opacity: 0; }
+  18% { opacity: 1; }
+  38% { transform: translateX(180%) rotate(25deg); opacity: 0; }
+  100% { transform: translateX(180%) rotate(25deg); opacity: 0; }
+}
+
 .place-card__body {
   padding: var(--space-5);
   padding-top: calc(var(--space-5) + 12px);

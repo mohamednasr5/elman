@@ -494,12 +494,24 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               </div>
             </div>
 
-            <!-- Row 2: Category & Profile Completeness (Arabic Only: strictly NO English name) -->
+            <!-- Row 2: Category, Rating Inline & Profile Completeness -->
             <div class="place-card-row-meta">
               <div class="place-card-meta-tags">
                 <a href="category.html?slug=${encodeURIComponent(catInfo?.slug || place.categoryId || 'other')}" class="place-category-tag">
                   ${craftCatSvg || catInfo?.icon || '🏪'} ${escHtml(catInfo?.name || 'تصنيف')}
                 </a>
+                ${!isAtm ? `
+                  <div id="place-header-rating-badge" class="place-rating-badge-inline">
+                    ${totalReviews > 0 ? `
+                      <span class="rating-star">★</span>
+                      <span class="rating-val">${avgRating > 0 ? avgRating.toFixed(1) : '5.0'}</span>
+                      <span class="rating-sub">(${totalReviews} تقييم)</span>
+                    ` : `
+                      <span class="rating-star-empty">✨</span>
+                      <span class="rating-none">لا توجد تقييمات بعد</span>
+                    `}
+                  </div>
+                ` : ''}
                 ${profInfo ? `
                   <a href="category.html?slug=${encodeURIComponent(profInfo.categorySlug || catInfo?.slug || 'crafts')}&prof=${encodeURIComponent(profInfo.id || '')}" class="place-profession-badge" style="text-decoration:none;padding:4px 12px;font-size:12.5px;display:inline-flex;align-items:center;gap:6px" title="تصفح جميع فنيي ${escHtml(profInfo.name || '')}">
                     ${getProfessionSvg(profInfo.id, { size: 16, color: profInfo.categoryColor || 'currentColor' })}
@@ -518,24 +530,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               </div>
             </div>
 
-            <!-- Row 3: Full Address & Rating Badge Inline -->
+            <!-- Row 3: Full Address (Spans cleanly without crowding) -->
             <div class="place-card-row-address-rating">
               <div class="place-address">
                 <span>📍</span>
                 <span>${escHtml(place.address || place.area || 'مدينة المنزلة')}</span>
               </div>
-              ${!isAtm ? `
-                <div id="place-header-rating-badge" class="place-rating-badge-inline">
-                  ${totalReviews > 0 ? `
-                    <span class="rating-star">★</span>
-                    <span class="rating-val">${avgRating > 0 ? avgRating.toFixed(1) : '5.0'}</span>
-                    <span class="rating-sub">(${totalReviews} تقييم)</span>
-                  ` : `
-                    <span class="rating-star-empty">✨</span>
-                    <span class="rating-none">لا توجد تقييمات بعد</span>
-                  `}
-                </div>
-              ` : ''}
             </div>
 
             <!-- Row 4: Primary Contact Actions (Call / Suggest Phone + WhatsApp) -->
@@ -2563,23 +2563,46 @@ if (typeof window !== 'undefined') {
       title: '💡 هل تعرف رقم هذا المكان؟',
       size: 'sm',
       content: `
-        <div style="display:flex;flex-direction:column;gap:14px">
-          <div style="padding:12px 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-size:13px;line-height:1.7">
-            ساعد أهالي وزوار المنزلة والمطرية في الوصول لهذا النشاط والتواصل معه:<br>
-            <strong style="color:var(--primary);font-size:14.5px">${escHtml(placeName || 'هذا المكان')}</strong>
+        <div class="suggest-phone-modal">
+          <div class="suggest-phone-banner">
+            <div class="suggest-phone-banner__icon">📱</div>
+            <div class="suggest-phone-banner__content">
+              <span class="suggest-phone-banner__label">المساهمة برقم تواصل معتمد لـ:</span>
+              <strong class="suggest-phone-banner__name">${escHtml(placeName || 'هذا المكان')}</strong>
+            </div>
           </div>
-          <div>
-            <label class="form-label" style="font-weight:800;display:block;margin-bottom:6px">رقم الهاتف أو الواتساب المقترح: <span style="color:#ef4444">*</span></label>
-            <input id="suggested-phone-input" type="tel" class="form-input" dir="ltr" placeholder="01********* (11 رقم أو خط أرضي)" maxlength="11" autocomplete="tel" style="width:100%;font-size:15px;font-weight:700" />
-            <p style="font-size:11px;color:var(--text-muted);margin-top:4px">يدعم أرقام الموبايل (11 رقم)، الأرضي، والخطوط الساخنة والأرقام الموحدة.</p>
+
+          <div class="suggest-phone-field">
+            <label class="suggest-phone-field__label" for="suggested-phone-input">
+              <span class="suggest-phone-field__icon">📞</span>
+              <span>رقم الهاتف أو الواتساب المقترح <span class="suggest-phone-required">*</span></span>
+            </label>
+            <div class="suggest-phone-input-wrap">
+              <input id="suggested-phone-input" type="tel" class="form-input suggest-phone-input" dir="ltr" placeholder="01********* أو رقم أرضي" maxlength="11" autocomplete="tel" />
+              <span class="suggest-phone-input-badge">🇪🇬</span>
+            </div>
+            <p class="suggest-phone-field__help">يدعم الموبايل (11 رقم)، الخطوط الأرضية، والخط الساخن المختصر.</p>
           </div>
-          <div>
-            <label class="form-label" style="font-weight:800;display:block;margin-bottom:6px">اسمك أو صفتك <span style="font-weight:500;color:var(--text-muted)">(اختياري)</span>:</label>
-            <input id="suggested-reporter-name" type="text" class="form-input" placeholder="مثال: أحمد (زبون / صاحب المكان)" style="width:100%" />
+
+          <div class="suggest-phone-field">
+            <label class="suggest-phone-field__label" for="suggested-reporter-name">
+              <span class="suggest-phone-field__icon">👤</span>
+              <span>اسمك أو صفتك <span class="suggest-phone-optional">(اختياري)</span></span>
+            </label>
+            <input id="suggested-reporter-name" type="text" class="form-input suggest-phone-input" placeholder="مثال: أحمد (زبون / صاحب المكان)" />
           </div>
-          <div>
-            <label class="form-label" style="font-weight:800;display:block;margin-bottom:6px">ملاحظة إضافية <span style="font-weight:500;color:var(--text-muted)">(اختياري)</span>:</label>
-            <input id="suggested-phone-note" type="text" class="form-input" placeholder="مثال: رقم الدليفري، رقم المسؤول، فرع..." style="width:100%" />
+
+          <div class="suggest-phone-field">
+            <label class="suggest-phone-field__label" for="suggested-phone-note">
+              <span class="suggest-phone-field__icon">📝</span>
+              <span>ملاحظة توضيحية <span class="suggest-phone-optional">(اختياري)</span></span>
+            </label>
+            <input id="suggested-phone-note" type="text" class="form-input suggest-phone-input" placeholder="مثال: رقم الدليفري، رقم الاستقبال، فرع..." />
+          </div>
+
+          <div class="suggest-phone-trust-hint">
+            <span class="suggest-phone-trust-hint__icon">🛡️</span>
+            <span>يتم مراجعة الرقم واعتماده فوراً لتسهيل وصول أهالي وزوار المنطقة للمكان.</span>
           </div>
         </div>
       `,
