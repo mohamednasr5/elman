@@ -2,238 +2,42 @@
    DALIL MANZALA — GLOBAL VISUAL BOUNDARIES
    Clear separation between sections, cards and nested surfaces.
    ========================================================================== */
-
-:root{
-  --dm-section-border:rgba(15,23,42,.12);
-  --dm-card-border:rgba(27,79,114,.16);
-  --dm-card-border-hover:rgba(27,79,114,.30);
-  --dm-section-shadow:0 10px 30px rgba(15,23,42,.055);
-  --dm-card-shadow:0 5px 18px rgba(15,23,42,.065);
-  --dm-card-shadow-hover:0 14px 32px rgba(15,23,42,.11);
-}
-
-.section,
-.panel,
-.content-section,
-.page-section,
-.dashboard-section,
-.search-section,
-.category-section,
-.results-section,
-.info-section,
-.settings-section,
-.profile-section,
-.reviews-section,
-.offers-section,
-.products-section,
-.gallery-section,
-.map-section,
-.contact-section,
-.stats-section{
-  position:relative;
-  border:1px solid var(--dm-section-border);
-  border-radius:20px;
-  background:var(--surface);
-  box-shadow:var(--dm-section-shadow);
-  isolation:isolate;
-}
-
-.section-title,
-.panel-title,
-.section__title,
-.section-header,
-.panel-header{
-  position:relative;
-  border-bottom:1px solid rgba(15,23,42,.09);
-  padding-bottom:12px;
-}
-
-.card,
-.place-card,
-.category-card,
-.offer-card,
-.product-card,
-.info-card,
-.review-card,
-.feature-card,
-.tool-card,
-.place-feature-card,
-.place-tool-card,
-.spotlight-card,
-.stat-card,
-.dashboard-card,
-.profile-card,
-.result-card,
-.contact-card,
-.map-card,
-.gallery-card,
-.service-card,
-.item-card,
-.list-card,
-.notification-card,
-.settings-card,
-.widget-card{
-  border:1px solid var(--dm-card-border);
-  box-shadow:var(--dm-card-shadow);
-  background:var(--surface);
-  position:relative;
-  isolation:isolate;
-}
-
-.card::before,
-.place-card::before,
-.category-card::before,
-.offer-card::before,
-.product-card::before,
-.info-card::before,
-.review-card::before,
-.feature-card::before,
-.tool-card::before,
-.place-feature-card::before,
-.place-tool-card::before,
-.spotlight-card::before,
-.stat-card::before,
-.dashboard-card::before,
-.profile-card::before,
-.result-card::before,
-.contact-card::before,
-.map-card::before,
-.gallery-card::before,
-.service-card::before,
-.item-card::before,
-.list-card::before,
-.notification-card::before,
-.settings-card::before,
-.widget-card::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  border-radius:inherit;
-  pointer-events:none;
-  z-index:-1;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.82);
-}
-
-.card .card,
-.card .place-card,
-.section .card,
-.panel .card,
-.info-card .card,
-.review-card .card,
-.dashboard-card .card{
-  border-color:rgba(15,23,42,.095);
-  box-shadow:0 3px 12px rgba(15,23,42,.045);
-}
-
-@media (hover:hover) and (pointer:fine){
-  .card,.place-card,.category-card,.offer-card,.product-card,.info-card,.review-card,.feature-card,.tool-card,.place-feature-card,.place-tool-card,.spotlight-card,.stat-card,.dashboard-card,.profile-card,.result-card,.contact-card,.map-card,.gallery-card,.service-card,.item-card,.list-card,.notification-card,.settings-card,.widget-card{
-    transition:border-color .25s ease,box-shadow .25s ease,transform .25s cubic-bezier(.2,.75,.2,1);
-  }
-  .card:hover,.place-card:hover,.category-card:hover,.offer-card:hover,.product-card:hover,.info-card:hover,.review-card:hover,.feature-card:hover,.tool-card:hover,.place-feature-card:hover,.place-tool-card:hover,.spotlight-card:hover,.stat-card:hover,.dashboard-card:hover,.profile-card:hover,.result-card:hover,.contact-card:hover,.map-card:hover,.gallery-card:hover,.service-card:hover,.item-card:hover,.list-card:hover,.notification-card:hover,.settings-card:hover,.widget-card:hover{
-    border-color:var(--dm-card-border-hover);
-    box-shadow:var(--dm-card-shadow-hover);
-  }
-}
-
-.card__footer,.card__header,.card-footer,.card-header,.panel-footer,.panel-header,.list-divider,.item-divider{
-  border-color:rgba(15,23,42,.10)!important;
-}
-
+:root{--dm-section-border:rgba(15,23,42,.12);--dm-card-border:rgba(27,79,114,.16);--dm-card-border-hover:rgba(27,79,114,.30);--dm-section-shadow:0 10px 30px rgba(15,23,42,.055);--dm-card-shadow:0 5px 18px rgba(15,23,42,.065);--dm-card-shadow-hover:0 14px 32px rgba(15,23,42,.11)}
+.section,.panel,.content-section,.page-section,.dashboard-section,.search-section,.category-section,.results-section,.info-section,.settings-section,.profile-section,.reviews-section,.offers-section,.products-section,.gallery-section,.map-section,.contact-section,.stats-section{position:relative;border:1px solid var(--dm-section-border);border-radius:20px;background:var(--surface);box-shadow:var(--dm-section-shadow);isolation:isolate}
+.section-title,.panel-title,.section__title,.section-header,.panel-header{position:relative;border-bottom:1px solid rgba(15,23,42,.09);padding-bottom:12px}
+.card,.place-card,.category-card,.offer-card,.product-card,.info-card,.review-card,.feature-card,.tool-card,.place-feature-card,.place-tool-card,.spotlight-card,.stat-card,.dashboard-card,.profile-card,.result-card,.contact-card,.map-card,.gallery-card,.service-card,.item-card,.list-card,.notification-card,.settings-card,.widget-card{border:1px solid var(--dm-card-border);box-shadow:var(--dm-card-shadow);background:var(--surface);position:relative;isolation:isolate}
+.card::before,.place-card::before,.category-card::before,.offer-card::before,.product-card::before,.info-card::before,.review-card::before,.feature-card::before,.tool-card::before,.place-feature-card::before,.place-tool-card::before,.spotlight-card::before,.stat-card::before,.dashboard-card::before,.profile-card::before,.result-card::before,.contact-card::before,.map-card::before,.gallery-card::before,.service-card::before,.item-card::before,.list-card::before,.notification-card::before,.settings-card::before,.widget-card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;box-shadow:inset 0 1px 0 rgba(255,255,255,.82)}
+.card .card,.card .place-card,.section .card,.panel .card,.info-card .card,.review-card .card,.dashboard-card .card{border-color:rgba(15,23,42,.095);box-shadow:0 3px 12px rgba(15,23,42,.045)}
+@media (hover:hover) and (pointer:fine){.card,.place-card,.category-card,.offer-card,.product-card,.info-card,.review-card,.feature-card,.tool-card,.place-feature-card,.place-tool-card,.spotlight-card,.stat-card,.dashboard-card,.profile-card,.result-card,.contact-card,.map-card,.gallery-card,.service-card,.item-card,.list-card,.notification-card,.settings-card,.widget-card{transition:border-color .25s ease,box-shadow .25s ease,transform .25s cubic-bezier(.2,.75,.2,1)}.card:hover,.place-card:hover,.category-card:hover,.offer-card:hover,.product-card:hover,.info-card:hover,.review-card:hover,.feature-card:hover,.tool-card:hover,.place-feature-card:hover,.place-tool-card:hover,.spotlight-card:hover,.stat-card:hover,.dashboard-card:hover,.profile-card:hover,.result-card:hover,.contact-card:hover,.map-card:hover,.gallery-card:hover,.service-card:hover,.item-card:hover,.list-card:hover,.notification-card:hover,.settings-card:hover,.widget-card:hover{border-color:var(--dm-card-border-hover);box-shadow:var(--dm-card-shadow-hover)}}
+.card__footer,.card__header,.card-footer,.card-header,.panel-footer,.panel-header,.list-divider,.item-divider{border-color:rgba(15,23,42,.10)!important}
 .card > .section,.panel > .section{box-shadow:none;border-color:rgba(15,23,42,.075)}
-
-[data-theme="dark"],body.dark-theme{
-  --dm-section-border:rgba(148,163,184,.18);
-  --dm-card-border:rgba(148,163,184,.19);
-  --dm-card-border-hover:rgba(96,165,250,.38);
-  --dm-section-shadow:0 12px 34px rgba(0,0,0,.22);
-  --dm-card-shadow:0 6px 20px rgba(0,0,0,.22);
-  --dm-card-shadow-hover:0 14px 34px rgba(0,0,0,.32)
-}
+[data-theme="dark"],body.dark-theme{--dm-section-border:rgba(148,163,184,.18);--dm-card-border:rgba(148,163,184,.19);--dm-card-border-hover:rgba(96,165,250,.38);--dm-section-shadow:0 12px 34px rgba(0,0,0,.22);--dm-card-shadow:0 6px 20px rgba(0,0,0,.22);--dm-card-shadow-hover:0 14px 34px rgba(0,0,0,.32)}
 
 /* ========================================================================== 
-   PLACE DETAIL — OWNER-ONLY CERTIFICATE + ACTION ROW BALANCE
+   PLACE DETAIL — PRIVATE CERTIFICATE + FULL-WIDTH PUBLIC ACTIONS
    ========================================================================== */
 
-/* The appreciation certificate is a private owner/admin action. The existing
-   owner state is exposed by the manage-place pill, so non-owners never see it. */
-.place-card-row-tools-trio:not(:has(.place-pill-btn--manage)) .place-tool-card--cert{
-  display:none!important;
-}
+/* The certificate is rendered in the same header card as the owner/manage pill.
+   This parent-level :has() keeps the certificate private to owners/admins. */
+.place-header-card:not(:has(.place-pill-btn--manage)) .place-tool-card--cert{display:none!important}
 
-/* When the private certificate is hidden, the two public cards consume the
-   complete row instead of leaving an empty third column. */
-.place-card-row-tools-trio:not(:has(.place-pill-btn--manage)){
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  width:100%;
-}
+/* Non-owners get two public cards with no empty third grid slot. */
+.place-header-card:not(:has(.place-pill-btn--manage)) .place-card-row-tools-trio{grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%}
+.place-header-card:not(:has(.place-pill-btn--manage)) .place-card-row-tools-trio .place-tool-card{width:100%;min-width:0}
 
-.place-card-row-tools-trio:not(:has(.place-pill-btn--manage)) .place-tool-card{
-  width:100%;
-  min-width:0;
-}
+/* Owners/admins keep all three actions, including the private certificate. */
+.place-header-card:has(.place-pill-btn--manage) .place-card-row-tools-trio{grid-template-columns:repeat(3,minmax(0,1fr))}
 
-/* The owner sees the original three-card tool row with equal visual weight. */
-.place-card-row-tools-trio:has(.place-pill-btn--manage){
-  grid-template-columns:repeat(3,minmax(0,1fr));
-}
-
-/* Mobile: two public cards remain side-by-side and fill the available width. */
+/* Center the owner/visitor action strip on small screens. */
 @media(max-width:767px){
-  .place-card-row-tools-trio:not(:has(.place-pill-btn--manage)){
-    grid-template-columns:repeat(2,minmax(0,1fr))!important;
-    gap:10px!important;
-  }
-  .place-card-row-tools-trio:not(:has(.place-pill-btn--manage)) .place-tool-card{
-    min-height:132px;
-  }
-
-  /* Center the owner/visitor action strip shown beneath the tool cards. */
-  .place-card-row-bottom{
-    width:100%;
-    display:flex!important;
-    flex-direction:column!important;
-    align-items:center!important;
-    justify-content:center!important;
-    gap:10px!important;
-    text-align:center;
-  }
-  .place-card-row-bottom__right,
-  .place-card-row-bottom__left{
-    width:100%;
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    flex-wrap:wrap;
-    gap:8px!important;
-  }
-  .place-card-row-bottom .place-pill-btn{
-    margin-inline:auto;
-  }
-
-  /* Keep the report/update link centered and visually separated. */
-  .place-card-row-bottom + *{
-    text-align:center;
-  }
+  .place-header-card .place-card-row-bottom{width:100%;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:10px!important;text-align:center}
+  .place-header-card .place-card-row-bottom__right,.place-header-card .place-card-row-bottom__left{width:100%;display:flex!important;align-items:center!important;justify-content:center!important;flex-wrap:wrap;gap:8px!important}
+  .place-header-card .place-card-row-bottom .place-pill-btn{margin-inline:auto}
+  .place-header-card:not(:has(.place-pill-btn--manage)) .place-card-row-tools-trio{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+  .place-header-card:not(:has(.place-pill-btn--manage)) .place-card-row-tools-trio .place-tool-card{min-height:132px}
+  .place-header-card:has(.place-pill-btn--manage) .place-card-row-tools-trio{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px!important}
+  .place-header-card .place-card-row-bottom + *{text-align:center}
 }
-
-@media(max-width:420px){
-  .place-card-row-tools-trio:not(:has(.place-pill-btn--manage)){
-    gap:8px!important;
-  }
-  .place-card-row-tools-trio:not(:has(.place-pill-btn--manage)) .place-tool-card{
-    min-height:122px;
-    padding-inline:8px;
-  }
-}
-
-@media(max-width:767px){
-  .section,.panel,.content-section,.page-section,.dashboard-section,.search-section,.category-section,.results-section,.info-section,.settings-section,.profile-section,.reviews-section,.offers-section,.products-section,.gallery-section,.map-section,.contact-section,.stats-section{
-    border-radius:16px;
-  }
-}
-
-@media(prefers-reduced-motion:reduce){
-  .card,.place-card,.category-card,.offer-card,.product-card,.info-card,.review-card,.feature-card,.tool-card,.place-feature-card,.place-tool-card,.spotlight-card,.stat-card,.dashboard-card,.profile-card,.result-card,.contact-card,.map-card,.gallery-card,.service-card,.item-card,.list-card,.notification-card,.settings-card,.widget-card{
-    transition:none!important;
-  }
-}
+@media(max-width:420px){.place-header-card:not(:has(.place-pill-btn--manage)) .place-card-row-tools-trio{gap:8px!important}.place-header-card:not(:has(.place-pill-btn--manage)) .place-card-row-tools-trio .place-tool-card{min-height:122px;padding-inline:8px}}
+@media(max-width:767px){.section,.panel,.content-section,.page-section,.dashboard-section,.search-section,.category-section,.results-section,.info-section,.settings-section,.profile-section,.reviews-section,.offers-section,.products-section,.gallery-section,.map-section,.contact-section,.stats-section{border-radius:16px}}
+@media(prefers-reduced-motion:reduce){.card,.place-card,.category-card,.offer-card,.product-card,.info-card,.review-card,.feature-card,.tool-card,.place-feature-card,.place-tool-card,.spotlight-card,.stat-card,.dashboard-card,.profile-card,.result-card,.contact-card,.map-card,.gallery-card,.service-card,.item-card,.list-card,.notification-card,.settings-card,.widget-card{transition:none!important}}
