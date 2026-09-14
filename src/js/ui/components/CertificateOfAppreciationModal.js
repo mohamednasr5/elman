@@ -24,41 +24,44 @@ import { checkIsPlaceVerified } from './PlaceProfileCardModal.js';
 export function getOfficialSealSvgMarkup(size = 180) {
   return `
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 200 200" width="${size}" height="${size}" class="cert-stamp-svg">
+      <!-- Disc Background to prevent overlapping underlying certificate border lines -->
+      <circle cx="100" cy="100" r="95" fill="#FCFBF7"/>
+
       <!-- Outer Dotted Security Circle -->
-      <circle cx="100" cy="100" r="96" fill="none" stroke="#1D4ED8" stroke-width="2.8" stroke-dasharray="6 4"/>
+      <circle cx="100" cy="100" r="95" fill="none" stroke="#1D4ED8" stroke-width="2.6" stroke-dasharray="6 4"/>
       <!-- Inner Double Solid Circle -->
-      <circle cx="100" cy="100" r="88" fill="none" stroke="#1D4ED8" stroke-width="3.5"/>
+      <circle cx="100" cy="100" r="88" fill="none" stroke="#1D4ED8" stroke-width="3.2"/>
       <circle cx="100" cy="100" r="62" fill="none" stroke="#1D4ED8" stroke-width="2"/>
       
       <defs>
-        <!-- Top arc: left to right clockwise across top (sweep=1) -->
-        <path id="dlmStampTopPath" d="M 25,100 A 75,75 0 0,1 175,100" fill="none"/>
-        <!-- Bottom arc: left to right counter-clockwise across bottom so text stands upright facing center (sweep=0) -->
-        <path id="dlmStampBottomPath" d="M 25,100 A 75,75 0 0,0 175,100" fill="none"/>
+        <!-- Top arc: baseline at r=72 centered neatly between r=62 and r=88 -->
+        <path id="dlmStampTopPath" d="M 28,100 A 72,72 0 0,1 172,100" fill="none"/>
+        <!-- Bottom arc: baseline at r=74 facing center -->
+        <path id="dlmStampBottomPath" d="M 26,100 A 74,74 0 0,0 174,100" fill="none"/>
       </defs>
 
       <!-- Top Curved Text (دليل المنزلة والمطرية الرقمي) -->
-      <text font-size="14" font-weight="900" fill="#1D4ED8" letter-spacing="0.5" font-family="'Cairo', 'Segoe UI', sans-serif">
+      <text font-size="12" font-weight="900" fill="#1D4ED8" letter-spacing="0.3" font-family="'Cairo', 'Segoe UI', sans-serif">
         <textPath href="#dlmStampTopPath" xlink:href="#dlmStampTopPath" startOffset="50%" text-anchor="middle">
           دليل المنزلة والمطرية الرقمي
         </textPath>
       </text>
 
       <!-- Bottom Curved Text (DALIL EL MANZALA) - Reads upright facing center -->
-      <text font-size="11.5" font-weight="900" fill="#1D4ED8" letter-spacing="1.8" font-family="'Segoe UI', Arial, sans-serif">
+      <text font-size="10.5" font-weight="900" fill="#1D4ED8" letter-spacing="1.5" font-family="'Segoe UI', Arial, sans-serif">
         <textPath href="#dlmStampBottomPath" xlink:href="#dlmStampBottomPath" startOffset="50%" text-anchor="middle">
           ★ DALIL EL MANZALA ★
         </textPath>
       </text>
 
       <!-- Center Badge & Official Text -->
-      <text x="100" y="85" font-size="16.5" font-weight="900" text-anchor="middle" fill="#1D4ED8" font-family="'Cairo', 'Segoe UI', sans-serif">
-        ★ معتمد ★
+      <text x="100" y="86" font-size="15" font-weight="900" text-anchor="middle" fill="#1D4ED8" font-family="'Cairo', 'Segoe UI', sans-serif">
+        ★ مـعـتـمـد ★
       </text>
-      <text x="100" y="104" font-size="13" font-weight="800" text-anchor="middle" fill="#1D4ED8" font-family="'Cairo', 'Segoe UI', sans-serif">
+      <text x="100" y="104" font-size="11.5" font-weight="800" text-anchor="middle" fill="#1D4ED8" font-family="'Cairo', 'Segoe UI', sans-serif">
         إدارة التوثيق والجودة
       </text>
-      <text x="100" y="122" font-size="10.5" font-weight="700" text-anchor="middle" fill="#2563EB" font-family="'Segoe UI', Arial, sans-serif">
+      <text x="100" y="121" font-size="9" font-weight="800" text-anchor="middle" fill="#2563EB" letter-spacing="1.5" font-family="'Segoe UI', Arial, sans-serif">
         OFFICIAL SEAL
       </text>
     </svg>
@@ -150,12 +153,19 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
   ];
   const formattedDate = now.getDate() + ' ' + arabicMonths[now.getMonth()] + ' ' + issueYear + 'م';
 
+  const rawSlug = (safePlace.slug || safePlace.id || safePlace._key || '').trim();
+  const placeSlug = String(rawSlug).replace(/-[a-z0-9_]{5,7}$/i, '') || rawSlug;
+  const placeUrl = placeSlug ? `https://dalilmanzala.com/${encodeURIComponent(placeSlug)}` : 'https://dalilmanzala.com';
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(placeUrl)}&format=png&margin=1`;
+
   const overlay = document.createElement('div');
   overlay.id = 'certificate-modal-overlay';
   overlay.className = 'certificate-modal-overlay animate-fade-in';
 
   overlay.innerHTML = `
     <style id="certificate-modal-styles">
+      @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;800;900&display=swap');
+
       .certificate-modal-overlay {
         position: fixed;
         inset: 0;
@@ -428,8 +438,9 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         padding: 6px 0;
       }
       .cert-intro {
-        font-size: 13.5px;
-        font-weight: 800;
+        font-family: 'Amiri', 'Traditional Arabic', serif;
+        font-size: 15.5px;
+        font-weight: 700;
         color: #334155;
         margin: 0;
       }
@@ -437,6 +448,7 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         margin: 2px 0;
       }
       .cert-honoree-name {
+        font-family: 'Cairo', 'Segoe UI', sans-serif;
         font-size: 32px;
         font-weight: 900;
         color: #0F2744;
@@ -471,25 +483,29 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
       .cert-endorsement-text {
         max-width: 880px;
         margin: 2px auto;
-        line-height: 1.6;
+        font-family: 'Amiri', 'Traditional Arabic', serif;
       }
       .cert-paragraph {
-        font-size: 13px;
+        font-size: 14.8px;
         font-weight: 700;
         color: #1E293B;
-        margin: 4px 0;
+        margin: 8px 0;
+        line-height: 1.95;
+        letter-spacing: 0.1px;
       }
       .cert-paragraph strong {
         color: #0F2744;
         font-weight: 900;
+        font-family: 'Cairo', 'Amiri', serif;
       }
       
       .cert-quote-tag {
-        font-size: 12.5px;
-        font-weight: 800;
+        font-family: 'Amiri', 'Traditional Arabic', serif;
+        font-size: 14px;
+        font-weight: 700;
         color: #B45309;
         font-style: italic;
-        margin: 4px 0;
+        margin: 8px 0 4px 0;
       }
 
       .cert-proud-badge {
@@ -499,16 +515,17 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         color: #92400E;
         padding: 5px 22px;
         border-radius: 9999px;
-        font-size: 12px;
-        font-weight: 800;
+        font-family: 'Amiri', 'Traditional Arabic', serif;
+        font-size: 13.5px;
+        font-weight: 700;
         margin: 4px auto 0 auto;
-        line-height: 1.45;
+        line-height: 1.5;
       }
 
       /* Footer */
       .cert-footer {
         display: grid;
-        grid-template-columns: 1.3fr 1fr 1.3fr;
+        grid-template-columns: 1.3fr 1.2fr 1.1fr;
         align-items: center;
         margin-top: 6px;
         padding-top: 6px;
@@ -544,19 +561,56 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
       }
 
       .cert-meta-block {
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        text-align: right;
+      }
+      .cert-qr-frame {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #FFFFFF;
+        border: 1.5px solid #CBD5E1;
+        border-radius: 8px;
+        padding: 4px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        flex-shrink: 0;
+      }
+      .cert-qr-img {
+        width: 58px;
+        height: 58px;
+        display: block;
+        border-radius: 4px;
+        object-fit: contain;
+      }
+      .cert-qr-label {
+        font-size: 8px;
+        font-weight: 800;
+        color: #0369A1;
+        margin-top: 2px;
+        font-family: 'Cairo', sans-serif;
+      }
+      .cert-meta-texts {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
         font-size: 10.5px;
         color: #64748B;
         line-height: 1.45;
-      }
-      .cert-meta-crest {
-        font-size: 18px;
-        margin-bottom: 2px;
       }
       .cert-meta-domain {
         font-size: 13.5px;
         font-weight: 900;
         color: #0284C7;
+        text-decoration: none;
+        direction: ltr;
+        display: inline-block;
+      }
+      .cert-meta-domain:hover {
+        text-decoration: underline;
       }
       .cert-meta-serial code {
         font-family: monospace;
@@ -581,7 +635,7 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         height: 100%;
       }
 
-      /* Strict Single Page Print Rules (Landscape A4) */
+      /* Strict Single Page Print Rules (Landscape A4) with Full Color Preservation */
       @media print {
         @page {
           size: A4 landscape;
@@ -592,6 +646,9 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
           print-color-adjust: exact !important;
           color-adjust: exact !important;
         }
+        :root {
+          color-scheme: light !important;
+        }
         html, body {
           width: 100% !important;
           height: 100% !important;
@@ -601,12 +658,17 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
           padding: 0 !important;
           overflow: hidden !important;
           background: #FCFBF7 !important;
+          background-color: #FCFBF7 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
         body * {
           visibility: hidden !important;
         }
         #certificate-print-root, #certificate-print-root * {
           visibility: visible !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
         #certificate-print-root {
           position: fixed !important;
@@ -623,6 +685,7 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
           box-shadow: none !important;
           border-radius: 0 !important;
           background: #FCFBF7 !important;
+          background-color: #FCFBF7 !important;
           page-break-inside: avoid !important;
           break-inside: avoid !important;
           page-break-after: avoid !important;
@@ -638,6 +701,7 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
           max-height: 100% !important;
           box-sizing: border-box !important;
           overflow: hidden !important;
+          border-color: #D97706 !important;
         }
         #certificate-print-root .cert-inner-border {
           height: 100% !important;
@@ -645,18 +709,60 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
           box-sizing: border-box !important;
           overflow: hidden !important;
           padding: 12px 28px 8px 28px !important;
+          border-color: #0F2744 !important;
+          background: radial-gradient(circle at center, rgba(255,255,255,0.96) 0%, rgba(250,248,242,0.96) 65%, rgba(245,239,225,0.98) 100%) !important;
+          background-color: #FAF8F2 !important;
+        }
+        #certificate-print-root .cert-title-ribbon {
+          background: linear-gradient(135deg, #0F2744 0%, #1B4F72 50%, #0F2744 100%) !important;
+          background-color: #0F2744 !important;
+          border-color: #D97706 !important;
+          filter: none !important;
+          -webkit-filter: none !important;
+        }
+        #certificate-print-root .cert-main-title {
+          color: #F59E0B !important;
+        }
+        #certificate-print-root .cert-platform-name {
+          color: #0284C7 !important;
+        }
+        #certificate-print-root .cert-honoree-name {
+          color: #0F2744 !important;
+        }
+        #certificate-print-root .cert-honoree-category {
+          color: #0369A1 !important;
+        }
+        #certificate-print-root .cert-verified-badge {
+          background: #0284C7 !important;
+          color: #FFFFFF !important;
+        }
+        #certificate-print-root .cert-quote-tag {
+          color: #B45309 !important;
+        }
+        #certificate-print-root .cert-proud-badge {
+          background: rgba(245, 158, 11, 0.12) !important;
+          border-color: #F59E0B !important;
+          color: #92400E !important;
         }
         #certificate-print-root .cert-footer {
           display: grid !important;
-          grid-template-columns: 1.3fr 1fr 1.3fr !important;
+          grid-template-columns: 1.3fr 1.2fr 1.1fr !important;
           align-items: center !important;
           margin-top: 4px !important;
           padding-top: 4px !important;
+          border-color: rgba(217, 119, 6, 0.25) !important;
         }
         #certificate-print-root .cert-official-stamp {
           width: 142px !important;
           height: 142px !important;
           transform: rotate(-8deg) !important;
+          filter: none !important;
+          -webkit-filter: none !important;
+        }
+        #certificate-print-root .cert-stamp-svg,
+        #certificate-print-root .cert-sig-svg {
+          filter: none !important;
+          -webkit-filter: none !important;
         }
         .certificate-modal-toolbar, .certificate-modal-overlay {
           background: transparent !important;
@@ -797,12 +903,17 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
                   <div class="cert-sig-name">مهندس محمد حماد — المدير العام</div>
                 </div>
 
-                <!-- Center: Verification Code & Domain -->
+                <!-- Center: Verification Code & Domain with QR Code -->
                 <div class="cert-meta-block">
-                  <div class="cert-meta-crest">🎖️</div>
-                  <div class="cert-meta-domain">dalilmanzala.com</div>
-                  <div class="cert-meta-serial">الرقم التسلسلي: <code>${serialNumber}</code></div>
-                  <div class="cert-meta-date">تاريخ الإصدار: ${formattedDate}</div>
+                  <div class="cert-qr-frame">
+                    <img src="${qrImageUrl}" alt="رمز التحقق" class="cert-qr-img" />
+                    <span class="cert-qr-label">رمز التحقق الذكي</span>
+                  </div>
+                  <div class="cert-meta-texts">
+                    <div class="cert-meta-domain">dalilmanzala.com</div>
+                    <div class="cert-meta-serial">الرقم التسلسلي: <code>${serialNumber}</code></div>
+                    <div class="cert-meta-date">تاريخ الإصدار: ${formattedDate}</div>
+                  </div>
                 </div>
 
                 <!-- Left: Official Blue Digital Stamp (Enlarged & Prominent) -->
@@ -843,7 +954,9 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         categoryName: displayCategory,
         serialNumber,
         formattedDate,
-        isVerified
+        isVerified,
+        qrImageUrl,
+        placeUrl
       });
       toast.success('تم تحميل شهادة التقدير بنجاح! نعتز بنشاطكم في دليل المنزلة 🎖️');
     } catch (err) {
@@ -903,7 +1016,9 @@ async function generateCertificateCanvasDownload({
   categoryName,
   serialNumber,
   formattedDate,
-  isVerified
+  isVerified,
+  qrImageUrl,
+  placeUrl
 }) {
   const W = 2480;
   const H = 1754;
@@ -912,13 +1027,21 @@ async function generateCertificateCanvasDownload({
   canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  // Preload SVG Seal Stamp and Signature as High-Res Vectors
+  // Ensure professional fonts (like Amiri) are fully rendered before drawing
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) {
+    try {
+      await document.fonts.ready;
+    } catch (_) {}
+  }
+
+  // Preload SVG Seal Stamp, Signature, and QR Code as High-Res Assets
   const sealSvgString = getOfficialSealSvgMarkup(420);
   const sigSvgString = getOfficialSignatureSvgMarkup(360, 100);
 
-  const [sealImg, sigImg] = await Promise.all([
+  const [sealImg, sigImg, qrImg] = await Promise.all([
     loadSafeImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(sealSvgString)),
-    loadSafeImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(sigSvgString))
+    loadSafeImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(sigSvgString)),
+    loadSafeImage(qrImageUrl)
   ]);
 
   // 1. Background (Parchment Ivory)
@@ -1048,7 +1171,7 @@ async function generateCertificateCanvasDownload({
   let curY = 430;
 
   // Intro
-  ctx.font = 'bold 31px "Cairo", "Segoe UI", sans-serif';
+  ctx.font = '700 32px "Amiri", "Traditional Arabic", "Cairo", serif';
   ctx.fillStyle = '#334155';
   ctx.fillText('تتشرف إدارة دليل المنزلة والمطرية الرقمي بتقديم هذه الشهادة إلى', W / 2, curY);
 
@@ -1101,52 +1224,52 @@ async function generateCertificateCanvasDownload({
 
   curY += 88;
 
-  // Paragraph 1
-  ctx.font = '700 31px "Cairo", "Segoe UI", sans-serif';
+  // Paragraph 1 (with Amiri calligraphy font and generous line spacing)
+  ctx.font = '700 33px "Amiri", "Traditional Arabic", "Cairo", serif';
   ctx.fillStyle = '#1E293B';
   ctx.fillText('تقديرًا للحضور المميز، والمكانة البارزة، والمساهمة الفعّالة في المجتمع المحلي،', W / 2, curY);
-  curY += 48;
+  curY += 56;
   ctx.fillText('وما يحظى به من اهتمام وتفاعل ملحوظ لدى جمهور مدينة المنزلة والمطرية.', W / 2, curY);
 
-  curY += 76;
+  curY += 86;
 
   // Paragraph 2
   ctx.fillText('ويأتي هذا التكريم استنادًا إلى مؤشرات التفاعل والبحث والرواج المسجلة على منصة دليل المنزلة والمطرية الرقمي،', W / 2, curY);
-  curY += 48;
+  curY += 56;
   ctx.fillText('حيث حققت بطاقة [' + placeName + '] حضورًا متقدمًا ضمن أكثر البطاقات بحثًا وزيارة خلال آخر 30 يومًا.', W / 2, curY);
 
-  curY += 76;
+  curY += 86;
 
   // Paragraph 3
   ctx.fillText('وإيمانًا منّا بأن التميّز الحقيقي يستحق أن يُرى، ويُقدَّر، ويُوثَّق، تتقدم إدارة دليل المنزلة والمطرية الرقمي بخالص التقدير والاعتزاز', W / 2, curY);
-  curY += 48;
+  curY += 56;
   ctx.fillText('بهذا الحضور المميز، مع أطيب التمنيات بدوام النجاح والتألق والعطاء.', W / 2, curY);
 
-  curY += 76;
+  curY += 86;
 
   // Quote 1
-  ctx.font = '900 30px "Cairo", "Segoe UI", sans-serif';
+  ctx.font = '700 32px "Amiri", "Traditional Arabic", "Cairo", serif';
   ctx.fillStyle = '#B45309';
   ctx.fillText('«التميّز لا يُقاس بالحضور فقط... بل بالأثر الذي يتركه.»', W / 2, curY);
 
-  curY += 78;
+  curY += 82;
 
   // Appreciation Tagline Box
   const proudW = 1660;
-  const proudH = 72;
+  const proudH = 74;
   const proudX = (W - proudW) / 2;
-  const proudY = curY - 36;
+  const proudY = curY - 37;
 
   ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
   ctx.beginPath();
-  ctx.roundRect(proudX, proudY, proudW, proudH, 36);
+  ctx.roundRect(proudX, proudY, proudW, proudH, 37);
   ctx.fill();
 
   ctx.strokeStyle = '#F59E0B';
   ctx.lineWidth = 2.5;
   ctx.stroke();
 
-  ctx.font = '800 27px "Cairo", "Segoe UI", sans-serif';
+  ctx.font = '700 27px "Amiri", "Traditional Arabic", "Cairo", serif';
   ctx.fillStyle = '#92400E';
   ctx.fillText('شكراً لكم.. «أنتم لا تظهرون في الدليل فقط... بل أنتم جزء من قصته ونجاحه.» ومع خالص التقدير والامتنان', W / 2, curY);
 
@@ -1160,7 +1283,7 @@ async function generateCertificateCanvasDownload({
   ctx.stroke();
   ctx.restore();
 
-  // 7. Footer: Signatures, Metadata, and Prominent Enlarged Stamp
+  // 7. Footer: Signatures, Metadata, QR Code, and Prominent Enlarged Stamp
   const footerY = 1465;
 
   // --- Right Side: Signature Block ---
@@ -1193,22 +1316,68 @@ async function generateCertificateCanvasDownload({
   ctx.fillStyle = '#1E293B';
   ctx.fillText('مهندس محمد حماد — المدير العام', sigCenterX, footerY + 58);
 
-  // --- Center: Verification Code & Domain ---
+  // --- Center: Verification Code & Domain with QR Code ---
   const metaCenterX = W / 2;
-  ctx.font = 'bold 38px "Segoe UI", sans-serif';
-  ctx.fillText('🎖️', metaCenterX, footerY - 82);
 
-  ctx.font = '900 30px "Cairo", "Segoe UI", sans-serif';
-  ctx.fillStyle = '#0284C7';
-  ctx.fillText('dalilmanzala.com', metaCenterX, footerY - 36);
+  if (qrImg) {
+    // QR Code Frame Card
+    const qrCardW = 136;
+    const qrCardH = 152;
+    const qrCardX = metaCenterX + 35;
+    const qrCardY = footerY - 95;
 
-  ctx.font = 'bold 22px "Courier New", monospace';
-  ctx.fillStyle = '#64748B';
-  ctx.fillText('الرقم التسلسلي: ' + serialNumber, metaCenterX, footerY + 6);
+    ctx.save();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 3;
+    ctx.beginPath();
+    ctx.roundRect(qrCardX, qrCardY, qrCardW, qrCardH, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#CBD5E1';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.restore();
 
-  ctx.font = '600 22px "Cairo", "Segoe UI", sans-serif';
-  ctx.fillStyle = '#64748B';
-  ctx.fillText('تاريخ الإصدار: ' + formattedDate, metaCenterX, footerY + 44);
+    ctx.drawImage(qrImg, qrCardX + 10, qrCardY + 8, 116, 116);
+
+    ctx.font = 'bold 15px "Cairo", sans-serif';
+    ctx.fillStyle = '#0369A1';
+    ctx.textAlign = 'center';
+    ctx.fillText('رمز التحقق الذكي', qrCardX + (qrCardW / 2), qrCardY + 137);
+
+    // Text details placed neatly beside QR
+    const textCenterX = metaCenterX - 110;
+    ctx.textAlign = 'center';
+    ctx.font = '900 30px "Cairo", "Segoe UI", sans-serif';
+    ctx.fillStyle = '#0284C7';
+    ctx.fillText('dalilmanzala.com', textCenterX, footerY - 32);
+
+    ctx.font = 'bold 21px "Courier New", monospace';
+    ctx.fillStyle = '#475569';
+    ctx.fillText('الرقم التسلسلي: ' + serialNumber, textCenterX, footerY + 10);
+
+    ctx.font = '700 20px "Cairo", "Segoe UI", sans-serif';
+    ctx.fillStyle = '#64748B';
+    ctx.fillText('تاريخ الإصدار: ' + formattedDate, textCenterX, footerY + 44);
+  } else {
+    // Fallback if QR image is not loaded
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 38px "Segoe UI", sans-serif';
+    ctx.fillText('🎖️', metaCenterX, footerY - 82);
+
+    ctx.font = '900 30px "Cairo", "Segoe UI", sans-serif';
+    ctx.fillStyle = '#0284C7';
+    ctx.fillText('dalilmanzala.com', metaCenterX, footerY - 36);
+
+    ctx.font = 'bold 22px "Courier New", monospace';
+    ctx.fillStyle = '#64748B';
+    ctx.fillText('الرقم التسلسلي: ' + serialNumber, metaCenterX, footerY + 6);
+
+    ctx.font = '600 22px "Cairo", "Segoe UI", sans-serif';
+    ctx.fillStyle = '#64748B';
+    ctx.fillText('تاريخ الإصدار: ' + formattedDate, metaCenterX, footerY + 44);
+  }
 
   // --- Left Side: Official Blue Digital Stamp (Enlarged & Authoritative: 360px) ---
   const stampCenterX = 480;
