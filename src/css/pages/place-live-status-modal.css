@@ -3,35 +3,112 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   VERIFIED GOLD SEAL
-   The real DOM seal is mounted by VerifiedBadge.js; this CSS fallback keeps
-   the seal visible from the verified state even during a render race.
+   VERIFIED GOLD RING + SEAL
+   The gold motion belongs to the FULL circular logo, not to the small seal.
+   The real DOM seal is mounted by VerifiedBadge.js and stays on top.
    -------------------------------------------------------------------------- */
-.place-card-row-identity>.place-card-logo{position:relative!important;overflow:visible!important;isolation:isolate!important}
-.place-card-row-identity>.place-card-logo img,.place-card-row-identity>.place-card-logo__placeholder{border-radius:50%!important}
-.place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified)::after{
-  content:'✓';position:absolute!important;right:-7px!important;bottom:-4px!important;width:43px!important;height:43px!important;display:grid!important;place-items:center!important;border-radius:50%!important;box-sizing:border-box!important;
-  background:linear-gradient(145deg,#fff9cf 0%,#ffd84d 34%,#e5a812 70%,#8b5a00 100%)!important;border:3px solid #fff!important;color:#fff!important;font:900 26px/1 Arial,sans-serif!important;text-shadow:0 1px 2px rgba(94,55,0,.45)!important;
-  box-shadow:0 5px 15px rgba(92,59,0,.3),0 0 0 2px rgba(226,171,32,.9),inset 0 1px 2px rgba(255,255,255,.95)!important;z-index:80!important;cursor:help!important;animation:dmVerifiedSealPulse 4.2s ease-in-out infinite!important;
+.place-card-row-identity>.place-card-logo{
+  position:relative!important;
+  overflow:visible!important;
+  isolation:isolate!important;
+  z-index:8!important;
 }
-.place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified)::before{
-  content:'';position:absolute!important;right:-10px!important;bottom:-7px!important;width:49px!important;height:49px!important;border-radius:50%!important;
-  background:conic-gradient(from 0deg,transparent 0 285deg,rgba(255,249,194,.2) 300deg,#fff9c7 324deg,#f1c542 337deg,transparent 350deg 360deg)!important;
-  -webkit-mask:radial-gradient(circle,transparent 0 21px,#000 22px 25px,transparent 26px)!important;mask:radial-gradient(circle,transparent 0 21px,#000 22px 25px,transparent 26px)!important;
-  pointer-events:none!important;z-index:79!important;animation:dmVerifiedOrbit 2.8s linear infinite!important;
+.place-card-row-identity>.place-card-logo img,
+.place-card-row-identity>.place-card-logo__placeholder{
+  position:relative!important;
+  z-index:2!important;
+  border-radius:50%!important;
 }
-@keyframes dmVerifiedOrbit{to{transform:rotate(360deg)}}
-@keyframes dmVerifiedSealPulse{0%,78%,100%{filter:brightness(1);transform:scale(1)}82%{filter:brightness(1.2);transform:scale(1.055)}87%{filter:brightness(1.5);transform:scale(1.015)}92%{filter:brightness(1);transform:scale(1)}}
 
-/* Exact tooltip wording on the blue "موثق" badge. Mobile tooltip is also
-   supported through the element's focus state and the existing mobile helper. */
+/* A single elegant rotating gold ring follows the circumference of the logo. */
+.place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified)::before{
+  content:''!important;
+  position:absolute!important;
+  inset:-8px!important;
+  width:auto!important;
+  height:auto!important;
+  border-radius:50%!important;
+  box-sizing:border-box!important;
+  padding:3px!important;
+  background:conic-gradient(
+    from 0deg,
+    #9a6508 0deg,
+    #d9a52d 38deg,
+    #fff4ad 72deg,
+    #e4b63e 104deg,
+    #a96f09 145deg,
+    #d8a52b 190deg,
+    #fff8c8 224deg,
+    #d39b20 260deg,
+    #9a6508 300deg,
+    #f3ca59 332deg,
+    #9a6508 360deg
+  )!important;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0)!important;
+  -webkit-mask-composite:xor!important;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0)!important;
+  mask-composite:exclude!important;
+  box-shadow:
+    0 0 0 1px rgba(255,215,92,.72),
+    0 0 8px rgba(239,185,43,.42),
+    0 0 18px rgba(255,216,91,.20)!important;
+  pointer-events:none!important;
+  z-index:1!important;
+  transform-origin:50% 50%!important;
+  animation:dmVerifiedLogoRingRotate 5.5s linear infinite!important;
+}
+
+/* A restrained periodic flash makes the ring feel polished rather than noisy. */
+.place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified){
+  filter:none!important;
+}
+
+@keyframes dmVerifiedLogoRingRotate{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+
+/* The seal itself is the only gold verification mark on top of the logo.
+   Remove the old mini-ring that previously created the floating circle. */
+.place-verified-seal::before{
+  display:none!important;
+  content:none!important;
+  animation:none!important;
+}
+
+/* Exact tooltip wording on the blue "موثق" badge. */
 .badge-verified{position:relative!important;cursor:help!important;outline:none!important}
 .badge-verified::after{
-  content:attr(data-verified-tooltip)!important;position:absolute!important;top:calc(100% + 10px)!important;right:50%!important;transform:translate(50%,-4px)!important;width:max-content!important;max-width:min(300px,78vw)!important;padding:10px 14px!important;border-radius:12px!important;
-  background:rgba(15,23,42,.97)!important;color:#fff!important;border:1px solid rgba(245,197,66,.7)!important;box-shadow:0 12px 30px rgba(15,23,42,.25)!important;font-size:12px!important;font-weight:800!important;line-height:1.55!important;white-space:normal!important;text-align:center!important;
-  opacity:0!important;visibility:hidden!important;pointer-events:none!important;z-index:10000!important;transition:opacity .18s ease,transform .18s ease,visibility .18s ease!important;
+  content:attr(data-verified-tooltip)!important;
+  position:absolute!important;
+  top:calc(100% + 10px)!important;
+  right:50%!important;
+  transform:translate(50%,-4px)!important;
+  width:max-content!important;
+  max-width:min(300px,78vw)!important;
+  padding:10px 14px!important;
+  border-radius:12px!important;
+  background:rgba(15,23,42,.97)!important;
+  color:#fff!important;
+  border:1px solid rgba(245,197,66,.7)!important;
+  box-shadow:0 12px 30px rgba(15,23,42,.25)!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  line-height:1.55!important;
+  white-space:normal!important;
+  text-align:center!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  z-index:10000!important;
+  transition:opacity .18s ease,transform .18s ease,visibility .18s ease!important;
 }
-.badge-verified:hover::after,.badge-verified:focus-visible::after{opacity:1!important;visibility:visible!important;transform:translate(50%,0)!important}
+.badge-verified:hover::after,
+.badge-verified:focus-visible::after{
+  opacity:1!important;
+  visibility:visible!important;
+  transform:translate(50%,0)!important;
+}
 
 /* --------------------------------------------------------------------------
    TODAY — animate the live indicator without replacing the real hours text.
@@ -41,8 +118,7 @@
 .working-hours__row--today .working-hours__time{font-weight:700!important}
 .working-hours__row--today .working-hours__time{animation:dmTodayStatusGlow 2.1s ease-in-out infinite}
 
-/* Dedicated Facebook-like live dot next to the current day label.
-   It is rendered with CSS so it always follows the real isToday row. */
+/* Dedicated Facebook-like live dot next to the current day label. */
 .working-hours__row--today .working-hours__day::after{
   content:'';
   display:inline-block;
@@ -80,16 +156,9 @@
 
 /* --------------------------------------------------------------------------
    TOOLTIP TOP LAYER FIX
-   The previous tooltip was a pseudo-element of the animated seal. Because
-   the seal is transformed and clipped, the browser can keep that tooltip
-   behind the logo/cover on mobile. Render the visible tooltip from BODY's
-   top-level stacking context instead. The existing JS only toggles the
-   is-tooltip-open class, so no markup rewrite is needed.
    -------------------------------------------------------------------------- */
 .place-verified-seal::after,
-.badge-verified::after{
-  display:none!important;
-}
+.badge-verified::after{display:none!important}
 
 body:has(.place-verified-seal:hover)::after,
 body:has(.place-verified-seal.is-tooltip-open)::after,
@@ -131,8 +200,15 @@ body:has(.badge-verified:focus-visible)::after{
 }
 
 @media(max-width:700px){
-  .place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified)::after{right:-5px!important;bottom:-3px!important;width:40px!important;height:40px!important;font-size:24px!important}
-  .place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified)::before{right:-8px!important;bottom:-6px!important;width:46px!important;height:46px!important}
+  /* Same elegant ring, scaled to the mobile logo without becoming a second circle. */
+  .place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified)::before{
+    inset:-7px!important;
+    padding:2.5px!important;
+    animation-duration:5.2s!important;
+  }
+  .place-verified-seal::before{display:none!important}
+  .place-verified-seal::after{display:none!important}
+
   .badge-verified::after{position:fixed!important;top:auto!important;bottom:82px!important;left:50%!important;right:auto!important;transform:translate(-50%,6px)!important;width:min(290px,calc(100vw - 32px))!important;max-width:calc(100vw - 32px)!important;padding:11px 14px!important}
   .badge-verified:hover::after,.badge-verified:focus-visible::after{transform:translate(-50%,0)!important}
   .modal.modal--sm{width:min(94vw,420px)!important;border-radius:24px!important}
@@ -141,7 +217,6 @@ body:has(.badge-verified:focus-visible)::after{
   .modal.modal--sm .modal__footer{padding:14px 15px 18px!important}
   .modal.modal--sm .modal__footer .btn-whatsapp::after{font-size:14px!important}
 
-  /* Keep the body-level tooltip above the logo, cover, sticky bar and PWA UI. */
   body:has(.place-verified-seal:hover)::after,
   body:has(.place-verified-seal.is-tooltip-open)::after,
   body:has(.place-verified-seal:focus-visible)::after,
@@ -157,6 +232,7 @@ body:has(.badge-verified:focus-visible)::after{
   }
 }
 @media(prefers-reduced-motion:reduce){
-  .place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified)::before,.place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified)::after,.working-hours__row--today .working-hours__time,.working-hours__row--today .working-hours__day::after,.place-verified-seal,.place-verified-seal::before{animation:none!important}
+  .place-card-row-identity>.place-card-logo:has(+.place-card-identity-text .badge-verified)::before,.working-hours__row--today .working-hours__time,.working-hours__row--today .working-hours__day::after{animation:none!important}
+  .place-verified-seal,.place-verified-seal::before{animation:none!important}
   body:has(.place-verified-seal:hover)::after,body:has(.place-verified-seal.is-tooltip-open)::after,body:has(.place-verified-seal:focus-visible)::after,body:has(.badge-verified:hover)::after,body:has(.badge-verified.is-tooltip-open)::after,body:has(.badge-verified:focus-visible)::after{animation:none!important}
 }
