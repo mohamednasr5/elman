@@ -1,8 +1,8 @@
 /* DALIL MANZALA — PLACE HEADER V4
    Mobile-first identity composition: logo centered over cover seam,
-   name directly below, verification inline, presence as a single dot. */
+   name directly below, verification inline, presence as a single dot.
+   Final orbit refinement: the gold light ring is locked to the logo center. */
 
-/* Keep the logo perfectly circular and visually dominant. */
 .place-header-card > .place-card-row-identity > .place-card-logo,
 .place-header-card .place-card-row-identity > .place-card-logo {
   width:124px !important;
@@ -35,36 +35,59 @@
   box-shadow:none !important;
 }
 
-/* One restrained rotating highlight strictly on the outer ring. */
+/*
+ * Premium gold orbit.
+ * IMPORTANT: this pseudo-element belongs to the logo itself, not the seal.
+ * It is exactly concentric with the logo and cannot drift behind it.
+ * The conic highlight rotates around the logo while the circular track stays fixed.
+ */
 .place-header-card > .place-card-row-identity > .place-card-logo::before,
 .place-header-card .place-card-row-identity > .place-card-logo::before {
   content:"" !important;
   position:absolute !important;
-  inset:-4px !important;
+  inset:-7px !important;
   width:auto !important;
   height:auto !important;
+  box-sizing:border-box !important;
   border-radius:50% !important;
-  border:2px solid rgba(212,175,55,.32) !important;
-  border-top-color:#fff1a8 !important;
-  border-right-color:#d4af37 !important;
-  border-bottom-color:#8c6418 !important;
-  background:transparent !important;
-  box-shadow:0 0 8px rgba(212,175,55,.22) !important;
+  background:conic-gradient(
+    from 0deg,
+    rgba(140,100,24,.30) 0deg,
+    rgba(255,241,168,.72) 48deg,
+    rgba(212,175,55,.34) 92deg,
+    rgba(140,100,24,.28) 180deg,
+    rgba(255,255,255,.96) 246deg,
+    rgba(241,196,15,.82) 262deg,
+    rgba(140,100,24,.28) 282deg,
+    rgba(140,100,24,.30) 360deg
+  ) !important;
+  -webkit-mask:radial-gradient(circle,transparent 0 61px,#000 62px 64px,transparent 65px) !important;
+  mask:radial-gradient(circle,transparent 0 61px,#000 62px 64px,transparent 65px) !important;
   pointer-events:none !important;
   z-index:40 !important;
+  transform-origin:50% 50% !important;
   animation:dmHeaderGoldOrbit 3.8s linear infinite !important;
+  filter:drop-shadow(0 0 3px rgba(241,196,15,.38)) !important;
 }
 
+/* Fine secondary halo: fixed, subtle, and concentric. */
 .place-header-card > .place-card-row-identity > .place-card-logo::after,
 .place-header-card .place-card-row-identity > .place-card-logo::after {
-  content:none !important;
-  display:none !important;
+  content:"" !important;
+  position:absolute !important;
+  inset:-3px !important;
+  border-radius:50% !important;
+  border:1px solid rgba(255,241,168,.78) !important;
+  box-shadow:0 0 0 1px rgba(212,175,55,.18),0 0 12px rgba(212,175,55,.12) !important;
+  background:transparent !important;
+  pointer-events:none !important;
+  z-index:39 !important;
   animation:none !important;
 }
 
 @keyframes dmHeaderGoldOrbit {
-  from{transform:rotate(0deg)}
-  to{transform:rotate(360deg)}
+  from { transform:rotate(0deg); }
+  to { transform:rotate(360deg); }
 }
 
 /* Desktop: logo sits immediately beside the identity text. */
@@ -74,9 +97,7 @@
     align-items:center !important;
     gap:18px !important;
   }
-  .place-header-card .place-card-identity-text {
-    min-width:0 !important;
-  }
+  .place-header-card .place-card-identity-text { min-width:0 !important; }
   .place-header-card .place-card-name-wrap {
     display:flex !important;
     align-items:center !important;
@@ -96,12 +117,10 @@
     margin:0 !important;
     flex:0 0 auto !important;
   }
-  .place-header-card .place-card-name-wrap .badge-online-pulse {
-    order:3 !important;
-  }
+  .place-header-card .place-card-name-wrap .badge-online-pulse { order:3 !important; }
 }
 
-/* Mobile: header card becomes the identity stage; logo is centered over cover seam. */
+/* Mobile: identity stage with the logo centered exactly over the cover seam. */
 @media (max-width:767px){
   .place-header-card {
     position:relative !important;
@@ -140,7 +159,13 @@
   }
 
   .place-header-card > .place-card-row-identity > .place-card-logo::before {
-    inset:-5px !important;
+    inset:-8px !important;
+    -webkit-mask:radial-gradient(circle,transparent 0 69px,#000 70px 72px,transparent 73px) !important;
+    mask:radial-gradient(circle,transparent 0 69px,#000 70px 72px,transparent 73px) !important;
+  }
+
+  .place-header-card > .place-card-row-identity > .place-card-logo::after {
+    inset:-4px !important;
   }
 
   .place-header-card .place-card-identity-text {
@@ -226,6 +251,11 @@
     min-width:126px !important;
     min-height:126px !important;
     flex-basis:126px !important;
+  }
+  .place-header-card > .place-card-row-identity > .place-card-logo::before {
+    inset:-7px !important;
+    -webkit-mask:radial-gradient(circle,transparent 0 62px,#000 63px 65px,transparent 66px) !important;
+    mask:radial-gradient(circle,transparent 0 62px,#000 63px 65px,transparent 66px) !important;
   }
 }
 
