@@ -3,7 +3,7 @@
  * Core business logic for Place, Offers and Products management
  */
 
-import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getPlace, getPublishedPlaces, idbGet, idbPut, idbDelete, STORES, tursoFetch, getCached } from '../core/db.js?v=d4ce4ede';
+import { dbGet, dbSet, dbUpdate, dbPush, dbRemove, dbIncrement, sendTelegramAdminNotification, broadcastNewPlaceNotification, clearDbCache, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getPlace, getPublishedPlaces, idbGetAll, idbGet, idbPut, idbDelete, STORES, tursoFetch, getCached } from '../core/db.js';
 import { broadcastRealtimeChange } from './realtime-sync.service.js';
 import { generatePlaceSlug, generateCleanSlug } from '../utils/slug.js';
 import { normalizeArabic } from '../utils/arabic.js';
@@ -64,10 +64,23 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
   }
   let allPlaces = [];
   try {
-    allPlaces = (await idbGetAll(STORES.PLACES)) || [];
+    if (typeof idbGetAll === 'function') {
+      allPlaces = (await idbGetAll(STORES.PLACES)) || [];
+    }
   } catch (_) {}
   if (!allPlaces || allPlaces.length === 0) {
-    allPlaces = getCached('published_100_') || [];
+    try {
+      if (typeof getCached === 'function') {
+        allPlaces = getCached('published_100_') || [];
+      }
+    } catch (_) {}
+  }
+  if (!allPlaces || allPlaces.length === 0) {
+    try {
+      if (typeof getPublishedPlaces === 'function') {
+        allPlaces = (await getPublishedPlaces(100)) || [];
+      }
+    } catch (_) {}
   }
   const currentPlaceObj = { ...(placeData || {}), name, phone: isPhoneUnavailable ? '' : phone, id: excludePlaceId || placeData?.id || placeData?._key };
   const unrelatedMatchingPhonePlaces = [];
