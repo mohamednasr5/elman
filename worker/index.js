@@ -293,6 +293,199 @@ async function getFcmAccessToken(env) {
   return data.access_token;
 }
 
+// ── Real-Time Automated SEO & IndexNow Engine ─────────────────
+const INDEXNOW_KEY = '5acdd4aec51f5bead767c3e2b3561235';
+
+async function notifyIndexNow(urls) {
+  if (!Array.isArray(urls) || urls.length === 0) return;
+  try {
+    const cleanUrls = [...new Set(urls.filter(u => typeof u === 'string' && u.startsWith('https://dalilmanzala.com/')))];
+    if (!cleanUrls.length) return;
+    const payload = JSON.stringify({
+      host: 'dalilmanzala.com',
+      key: INDEXNOW_KEY,
+      keyLocation: 'https://dalilmanzala.com/5acdd4aec51f5bead767c3e2b3561235.txt',
+      urlList: cleanUrls
+    });
+    const endpoints = [
+      'https://api.indexnow.org/indexnow',
+      'https://www.bing.com/indexnow'
+    ];
+    await Promise.allSettled(endpoints.map(ep =>
+      fetch(ep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: payload
+      })
+    ));
+  } catch (err) {
+    console.warn('[IndexNow Notification Warning]:', err?.message || err);
+  }
+}
+
+async function ensureRecentPlacesIndexed(env) {
+  try {
+    const db = createTursoDB(env);
+    const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
+    const rows = (await db.prepare(
+      "SELECT slug, id FROM places WHERE status = 'published' AND updated_at > ? LIMIT 100"
+    ).bind(twoHoursAgo).all().catch(() => ({ results: [] }))).results || [];
+    if (rows.length > 0) {
+      const urls = [];
+      for (const r of rows) {
+        const s = encodeURIComponent(String(r.slug || r.id || '').trim());
+        if (s) {
+          urls.push(`https://dalilmanzala.com/place/${s}`);
+          urls.push(`https://dalilmanzala.com/en/place/${s}`);
+        }
+      }
+      await notifyIndexNow(urls);
+    }
+  } catch (e) {
+    console.warn('[ensureRecentPlacesIndexed warning]:', e?.message || e);
+  }
+}
+
+async function handleDynamicSitemap(request, url, env, ctx) {
+  const p = url.pathname;
+  const site = 'https://dalilmanzala.com';
+
+  if (p === '/indexnow-key.txt' || p === `/${INDEXNOW_KEY}.txt`) {
+    return new Response(INDEXNOW_KEY, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+
+  // Check edge cache for dynamic sitemaps (v1)
+  const cache = caches.default;
+  const cacheKey = new Request(`https://cache.local/sitemap/v1${p}`);
+  if (cache) {
+    const cached = await cache.match(cacheKey).catch(() => null);
+    if (cached) return cached;
+  }
+
+  const esc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  const abs = path => path.startsWith('http') ? path : `${site}${path}`;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const STATIC_PAGES = [
+    ['/', '/en/', 'daily', '1.0'],
+    ['/places.html', '/en/places/', 'daily', '0.7'],
+    ['/categories.html', '/en/categories/', 'weekly', '0.7'],
+    ['/manzala.html', '/en/manzala/', 'weekly', '0.7'],
+    ['/matariya.html', '/en/matariya/', 'weekly', '0.7'],
+    ['/offers.html', '/en/offers/', 'daily', '0.7'],
+    ['/now.html', '/en/now/', 'hourly', '0.7'],
+    ['/emergency.html', '/en/emergency/', 'monthly', '0.7'],
+    ['/around-me.html', '/en/around-me/', 'weekly', '0.7'],
+    ['/products.html', '/en/products/', 'weekly', '0.7'],
+    ['/about.html', '/en/about.html', 'monthly', '0.7'],
+    ['/contact.html', '/en/contact/', 'monthly', '0.7'],
+    ['/privacy.html', '/en/privacy/', 'yearly', '0.7'],
+    ['/terms.html', '/en/terms/', 'yearly', '0.7'],
+    ['/legal.html', '/en/legal/', 'yearly', '0.7'],
+    ['/hadith.html', '/en/hadith/', 'weekly', '0.7'],
+    ['/quran.html', '/en/quran/', 'weekly', '0.7'],
+    ['/quran-search.html', '/en/quran-search/', 'weekly', '0.7'],
+    ['/quran-surah.html', '/en/quran-surah/', 'weekly', '0.7']
+  ];
+
+  let xml = '';
+
+  if (p === '/sitemap.xml') {
+    const files = [
+      'sitemap-places-ar.xml',
+      'sitemap-places-en.xml',
+      'sitemap-categories-ar.xml',
+      'sitemap-categories-en.xml',
+      'sitemap-static-ar.xml',
+      'sitemap-static-en.xml'
+    ];
+    xml = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      files.map(f => `  <sitemap>\n    <loc>${site}/${f}</loc>\n    <lastmod>${today}</lastmod>\n  </sitemap>`).join('\n') +
+      `\n</sitemapindex>\n`;
+  } else if (p === '/sitemap-places-ar.xml' || p === '/sitemap-places-en.xml') {
+    const isEn = p === '/sitemap-places-en.xml';
+    const db = createTursoDB(env);
+    const rows = (await db.prepare("SELECT slug, id, updated_at, cover_image_url, logo_url FROM places WHERE status = 'published' ORDER BY updated_at DESC").all().catch(() => ({ results: [] }))).results || [];
+    
+    let entries = [];
+    for (const place of rows) {
+      const rawSlug = String(place.slug || place.id || '').trim();
+      if (!rawSlug) continue;
+      const slugVal = encodeURIComponent(rawSlug);
+      const arPath = `/place/${slugVal}`;
+      const enPath = `/en/place/${slugVal}`;
+      const loc = isEn ? enPath : arPath;
+      const d = place.updated_at ? new Date(place.updated_at) : null;
+      const lm = (d && !Number.isNaN(d.getTime())) ? d.toISOString().slice(0, 10) : today;
+      const img = place.cover_image_url || place.logo_url;
+
+      let item = `  <url>\n    <loc>${esc(abs(loc))}</loc>\n    <lastmod>${lm}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n    <xhtml:link rel="alternate" hreflang="ar" href="${esc(abs(arPath))}"/>\n    <xhtml:link rel="alternate" hreflang="en" href="${esc(abs(enPath))}"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(abs(arPath))}"/>`;
+      if (img) {
+        item += `\n    <image:image>\n      <image:loc>${esc(abs(img))}</image:loc>\n    </image:image>`;
+      }
+      item += `\n  </url>`;
+      entries.push(item);
+    }
+    xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n` +
+      entries.join('\n') +
+      `\n</urlset>\n`;
+  } else if (p === '/sitemap-categories-ar.xml' || p === '/sitemap-categories-en.xml') {
+    const isEn = p === '/sitemap-categories-en.xml';
+    const db = createTursoDB(env);
+    const catRows = (await db.prepare("SELECT DISTINCT category_id, custom_category FROM places WHERE status = 'published'").all().catch(() => ({ results: [] }))).results || [];
+    const catSet = new Set();
+    for (const r of catRows) {
+      const c = r.custom_category || r.category_id;
+      if (c) catSet.add(String(c).trim().toLowerCase().replace(/\s+/g, '-'));
+    }
+    let entries = [];
+    for (const cat of [...catSet].sort()) {
+      const arPath = `/category/${encodeURIComponent(cat)}`;
+      const enPath = `/en/category/${encodeURIComponent(cat)}`;
+      const loc = isEn ? enPath : arPath;
+      entries.push(`  <url>\n    <loc>${esc(abs(loc))}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n    <xhtml:link rel="alternate" hreflang="ar" href="${esc(abs(arPath))}"/>\n    <xhtml:link rel="alternate" hreflang="en" href="${esc(abs(enPath))}"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(abs(arPath))}"/>\n  </url>`);
+    }
+    xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n` +
+      entries.join('\n') +
+      `\n</urlset>\n`;
+  } else if (p === '/sitemap-static-ar.xml' || p === '/sitemap-static-en.xml') {
+    const isEn = p === '/sitemap-static-en.xml';
+    let entries = [];
+    for (const [arPath, enPath, freq, prio] of STATIC_PAGES) {
+      const loc = isEn ? enPath : arPath;
+      entries.push(`  <url>\n    <loc>${esc(abs(loc))}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${freq}</changefreq>\n    <priority>${prio}</priority>\n    <xhtml:link rel="alternate" hreflang="ar" href="${esc(abs(arPath))}"/>\n    <xhtml:link rel="alternate" hreflang="en" href="${esc(abs(enPath))}"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(abs(arPath))}"/>\n  </url>`);
+    }
+    xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n` +
+      entries.join('\n') +
+      `\n</urlset>\n`;
+  }
+
+  if (!xml) return null;
+
+  const response = new Response(xml, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=1800, s-maxage=3600',
+      'X-Content-Type-Options': 'nosniff',
+      'Access-Control-Allow-Origin': '*'
+    }
+  });
+
+  if (cache) {
+    ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(() => {}));
+  }
+
+  return response;
+}
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
@@ -302,6 +495,7 @@ export default {
     ctx.waitUntil(ensureSlugsHealedInTurso(env));
     ctx.waitUntil(ensureNewSchemaColumnsInTurso(env));
     ctx.waitUntil(ensureDataSanitizedInTurso(env));
+    ctx.waitUntil(ensureRecentPlacesIndexed(env));
     ctx.waitUntil(sendDailyQuranReminder(env).catch(err => console.error('[Daily Quran Push]', err)));
   },
 
@@ -507,6 +701,14 @@ if (url.pathname === '/index.html') {
   const redirectUrl = new URL(request.url);
   redirectUrl.pathname = '/';
   return Response.redirect(redirectUrl.toString(), 301);
+}
+
+// ── Dynamic SEO Sitemaps & IndexNow Verification ──────────────
+if ((url.pathname.startsWith('/sitemap') && url.pathname.endsWith('.xml')) ||
+    url.pathname === '/indexnow-key.txt' ||
+    url.pathname === `/${INDEXNOW_KEY}.txt`) {
+  const sitemapResponse = await handleDynamicSitemap(request, url, env, ctx);
+  if (sitemapResponse) return sitemapResponse;
 }
 
 try {
@@ -1819,15 +2021,30 @@ try {
         }
       }
 
-      // Cache Invalidation for this place
+      // Real-time IndexNow notification for newly added or updated published place
+      if (status === 'published') {
+        const safeSlug = encodeURIComponent((slug || placeId).toLowerCase());
+        ctx.waitUntil(notifyIndexNow([
+          `https://dalilmanzala.com/place/${safeSlug}`,
+          `https://dalilmanzala.com/en/place/${safeSlug}`
+        ]));
+      }
+
+      // Cache Invalidation for this place and dynamic sitemaps
       try {
         const cache = caches.default;
         if (cache) {
+          const safeSlug = encodeURIComponent((slug || placeId).toLowerCase());
           const purgeUrls = [
-            `https://cache.local/api/places?slug=${encodeURIComponent((slug || placeId).toLowerCase())}`,
+            `https://cache.local/api/places?slug=${safeSlug}`,
             `https://cache.local/api/places?id=${encodeURIComponent(placeId)}`,
-            `https://cache.local/ssr/place/v4?slug=${encodeURIComponent((slug || placeId).toLowerCase())}`,
-            `https://cache.local/ssr/place/v4?slug=${encodeURIComponent(placeId.toLowerCase())}`
+            `https://cache.local/ssr/place/v8?slug=${safeSlug}`,
+            `https://cache.local/ssr/place/v8?slug=${encodeURIComponent(placeId.toLowerCase())}`,
+            `https://cache.local/sitemap/v1/sitemap.xml`,
+            `https://cache.local/sitemap/v1/sitemap-places-ar.xml`,
+            `https://cache.local/sitemap/v1/sitemap-places-en.xml`,
+            `https://cache.local/sitemap/v1/sitemap-categories-ar.xml`,
+            `https://cache.local/sitemap/v1/sitemap-categories-en.xml`
           ];
           ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)).catch(() => {}))));
         }
@@ -1870,9 +2087,14 @@ try {
       const purgeUrls = [
         `https://cache.local/api/places?slug=${encodeURIComponent(id.toLowerCase())}`,
         `https://cache.local/api/places?id=${encodeURIComponent(id)}`,
-        `https://cache.local/ssr/place/v4?slug=${encodeURIComponent(id.toLowerCase())}`
+        `https://cache.local/ssr/place/v8?slug=${encodeURIComponent(id.toLowerCase())}`,
+        `https://cache.local/sitemap/v1/sitemap.xml`,
+        `https://cache.local/sitemap/v1/sitemap-places-ar.xml`,
+        `https://cache.local/sitemap/v1/sitemap-places-en.xml`,
+        `https://cache.local/sitemap/v1/sitemap-categories-ar.xml`,
+        `https://cache.local/sitemap/v1/sitemap-categories-en.xml`
       ];
-      ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u))))).catch?.(() => {});
+      ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)).catch(() => {}))));
     }
 
     return jsonResponse({ success: true, message: 'تم حذف المكان من Turso ومسح الكاش' }, 200, corsHeaders);
@@ -6722,7 +6944,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
 
   // 0. Edge SSR Cache check (Instant 15-30ms response from Cloudflare Edge for humans & Googlebot)
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v7?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
+  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v8?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
   if (cache) {
     try {
       const cachedResponse = await cache.match(ssrCacheKey);
@@ -6970,6 +7192,11 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:title" content="[^"]*"/i, `<meta name="twitter:title" content="${escapeHtml(fullShareTitle)}"`);
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:description" content="[^"]*"/i, `<meta name="twitter:description" content="${escapeHtml(placeDesc)}"`);
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
+
+      // Ensure Google Fonts Cairo & Tajawal are present in SSR HTML
+      if (!hydratedHtml.includes('family=Cairo')) {
+        hydratedHtml = hydratedHtml.replace('<head>', `<head>\n  <link rel="preconnect" href="https://fonts.googleapis.com"/>\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>\n  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap"/>`);
+      }
 
       // Inject hreflang alternate tags
       const hreflangTags = `

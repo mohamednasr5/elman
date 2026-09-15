@@ -1,0 +1,123 @@
+/* ==========================================================================
+   DALIL MANZALA — HOMEPAGE TYPOGRAPHY & STYLING MATCH FOR PLACE PAGE
+   Forces identical Cairo & Tajawal font family, font-weights, line-height,
+   and visual aesthetics as the Homepage across all components.
+   ========================================================================== */
+
+/* Universal Root & Container Typography */
+html[lang="ar"] .place-page,
+html[lang="ar"] .place-detail-page,
+html[lang="ar"] .place-layout,
+html[lang="ar"] .place-header-card,
+html[lang="ar"] .place-main-col,
+html[lang="ar"] .place-sidebar-col,
+html[lang="ar"] #page-container,
+html[lang="ar"] #app,
+body.has-instant-place,
+body {
+  font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Place Title & Headings — Identical to Homepage Hero Title */
+.place-card-name,
+.place-title__name,
+h1.place-title,
+.place-header-card h1,
+.place-header-card .place-card-name {
+  font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 800 !important;
+  line-height: 1.28 !important;
+  letter-spacing: -0.35px !important;
+  color: var(--text-primary, #0f172a) !important;
+}
+
+/* Breadcrumbs Bar */
+.breadcrumb,
+.place-breadcrumbs,
+.place-breadcrumb-nav,
+.place-breadcrumb-nav *,
+.breadcrumb a,
+.breadcrumb span {
+  font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+  line-height: 1.4 !important;
+}
+
+/* Meta Badges (Category, Verification, Trust, Online Pulse) */
+.badge-verified,
+.badge-online-pulse,
+.place-category-tag,
+.place-trust-mini,
+.place-rating-badge-inline,
+.badge-medical-specialty,
+.place-card-meta-tags *,
+.badge-verified span,
+.badge-online-pulse span {
+  font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: normal !important;
+}
+
+/* Action Buttons (Call, WhatsApp, Share, Card Tools) */
+.place-btn-contact,
+.btn-call,
+.btn-whatsapp,
+.place-tool-card,
+.place-btn-contact *,
+.btn {
+  font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: normal !important;
+}
+
+/* Card Titles & Section Headings */
+.info-card__title,
+.working-hours__title,
+.spotlight-card__title,
+.review-card__title,
+.section-title,
+.info-card h2,
+.info-card h3 {
+  font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+}
+
+/* Card Body Descriptions & Working Hours Table */
+.info-card,
+.place-desc,
+.place-description,
+.place-desc p,
+.place-description p,
+.working-hours,
+.working-hours__row,
+.working-hours__day,
+.working-hours__time,
+.spotlight-card,
+.review-card,
+.review-card__comment {
+  font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 500 !important;
+  line-height: 1.8 !important;
+}
+
+/* Header & Navbar in Place Page */
+.header__nav-link,
+.header__logo-name,
+.header__logo-text,
+.header-search-input {
+  font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.header__nav-link {
+  font-weight: 600 !important;
+  font-size: 13.5px !important;
+}
+
+.header__nav-link.active {
+  font-weight: 800 !important;
+}
