@@ -288,23 +288,66 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         background: #070D1C;
         display: flex;
         justify-content: center;
-        align-items: flex-start;
+        align-items: center;
         overflow: hidden;
         width: 100%;
         box-sizing: border-box;
       }
       
+      /* Proportional Stage Wrapper: Centers and scales 840x594 A4 canvas cleanly on any screen */
+      .certificate-stage {
+        position: relative;
+        flex: 0 0 auto;
+        width: calc(840px * var(--cert-scale, 1));
+        height: calc(594px * var(--cert-scale, 1));
+        margin: 0 auto;
+        display: block;
+      }
+
       /* The Standard A4 Landscape Certificate Sheet (297mm x 210mm ~ 1.414 ratio) */
-      .certificate-sheet {
-        width: 840px;
-        max-width: 840px;
-        min-width: 840px;
+      .certificate-stage > .certificate-sheet {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 840px !important;
+        max-width: 840px !important;
+        min-width: 840px !important;
+        height: 594px !important;
+        min-height: 594px !important;
+        max-height: 594px !important;
         aspect-ratio: 297 / 210;
         background: #FCFBF7;
         color: #0F172A;
         box-shadow: 0 16px 45px rgba(0, 0, 0, 0.65);
         border-radius: 6px;
-        padding: 12px;
+        padding: 8px;
+        box-sizing: border-box;
+        direction: rtl;
+        font-family: 'Cairo', 'Tajawal', sans-serif;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        flex-shrink: 0;
+        transform: scale(var(--cert-scale, 1));
+        transform-origin: top left;
+        margin: 0 !important;
+        transition: transform 0.12s ease-out;
+      }
+
+      /* Fallback for standalone sheet without stage */
+      .certificate-sheet {
+        width: 840px;
+        max-width: 840px;
+        min-width: 840px;
+        height: 594px;
+        min-height: 594px;
+        max-height: 594px;
+        aspect-ratio: 297 / 210;
+        background: #FCFBF7;
+        color: #0F172A;
+        box-shadow: 0 16px 45px rgba(0, 0, 0, 0.65);
+        border-radius: 6px;
+        padding: 8px;
         box-sizing: border-box;
         position: relative;
         direction: rtl;
@@ -313,43 +356,50 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         flex-direction: column;
         overflow: hidden;
         flex-shrink: 0;
-        transform-origin: top center;
-        transition: transform 0.15s ease-out;
       }
 
       @media (max-width: 640px) {
         .certificate-modal-overlay {
-          padding: 6px !important;
+          padding: 4px !important;
+          align-items: center !important;
         }
         .certificate-modal-dialog {
-          border-radius: 16px !important;
-          max-height: 98vh !important;
+          border-radius: 12px !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 auto !important;
         }
         .certificate-modal-toolbar {
-          padding: 10px 14px !important;
-          gap: 10px !important;
+          padding: 8px 10px !important;
+          gap: 8px !important;
+        }
+        .certificate-modal-close {
+          width: 32px !important;
+          height: 32px !important;
+          font-size: 15px !important;
         }
         .certificate-modal-title {
-          font-size: 12.5px !important;
-          line-height: 1.35 !important;
-          flex-wrap: wrap !important;
+          font-size: 11.5px !important;
+          line-height: 1.3 !important;
         }
         .certificate-owner-tag {
-          font-size: 10px !important;
-          padding: 2px 7px !important;
+          display: none !important;
         }
         .certificate-modal-actions {
           width: 100% !important;
           display: grid !important;
           grid-template-columns: 1fr 1fr !important;
-          gap: 8px !important;
+          gap: 6px !important;
         }
         .btn-print-cert, .btn-download-cert {
-          padding: 9px 8px !important;
-          font-size: 12px !important;
+          padding: 7px 6px !important;
+          font-size: 11.5px !important;
           justify-content: center !important;
           width: 100% !important;
           box-sizing: border-box !important;
+        }
+        .certificate-preview-container {
+          padding: 8px 4px !important;
         }
       }
 
@@ -370,11 +420,11 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
       }
 
       .cert-outer-border {
-        border: 4px solid #D97706;
+        border: 3.5px solid #D97706;
         height: 100%;
         box-sizing: border-box;
         position: relative;
-        padding: 6px;
+        padding: 5px;
         display: flex;
         flex-direction: column;
         z-index: 2;
@@ -382,8 +432,8 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
 
       .cert-corner {
         position: absolute;
-        width: 48px;
-        height: 48px;
+        width: 40px;
+        height: 40px;
         z-index: 10;
         pointer-events: none;
       }
@@ -393,10 +443,10 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
       .cert-corner--br { bottom: -2px; right: -2px; }
 
       .cert-inner-border {
-        border: 2.5px solid #0F2744;
+        border: 2px solid #0F2744;
         height: 100%;
         box-sizing: border-box;
-        padding: 14px 28px 12px 28px;
+        padding: 8px 24px 8px 24px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -415,55 +465,55 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
       /* Header */
       .cert-header {
         text-align: center;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
         position: relative;
         z-index: 3;
       }
       .cert-platform-name {
-        font-size: 17px;
+        font-size: 15.5px;
         font-weight: 900;
         color: #0284C7;
         letter-spacing: 0.5px;
         line-height: 1.2;
       }
       .cert-platform-sub {
-        font-size: 11px;
+        font-size: 9.5px;
         color: #64748B;
         font-weight: 700;
         margin-top: 1px;
       }
 
       .cert-title-container {
-        margin-top: 6px;
+        margin-top: 3px;
       }
       .cert-title-ribbon {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
+        gap: 10px;
         background: linear-gradient(135deg, #0F2744 0%, #1B4F72 50%, #0F2744 100%);
-        padding: 5px 36px;
+        padding: 3.5px 28px;
         border-radius: 9999px;
-        border: 2px solid #D97706;
-        box-shadow: 0 4px 12px rgba(15, 39, 68, 0.25);
+        border: 1.5px solid #D97706;
+        box-shadow: 0 3px 10px rgba(15, 39, 68, 0.25);
       }
       .cert-title-decor {
         color: #F59E0B;
-        font-size: 13px;
+        font-size: 11px;
       }
       .cert-main-title {
         margin: 0;
-        font-size: 21.5px;
+        font-size: 18.5px;
         font-weight: 900;
         color: #F59E0B;
         letter-spacing: 0.5px;
       }
       .cert-sub-title {
-        font-size: 8.5px;
+        font-size: 7.5px;
         font-weight: 800;
         color: #64748B;
-        letter-spacing: 2px;
-        margin-top: 3px;
+        letter-spacing: 1.5px;
+        margin-top: 2px;
       }
 
       /* Body */
@@ -472,59 +522,59 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         flex: 1;
         display: flex;
         flex-direction: column;
-        justify-content: space-evenly;
+        justify-content: space-between;
         position: relative;
         z-index: 3;
-        padding: 6px 0;
+        padding: 2px 0;
       }
       .cert-intro {
         font-family: 'Cairo', 'Tajawal', sans-serif;
-        font-size: 16px;
+        font-size: 13.5px;
         font-weight: 700;
         color: #334155;
         margin: 0;
       }
       .cert-honoree-wrap {
-        margin: 4px 0 8px 0;
+        margin: 1px 0 3px 0;
       }
       .cert-honoree-name {
         font-family: 'Cairo', 'Segoe UI', sans-serif;
-        font-size: 34px;
+        font-size: 26px;
         font-weight: 900;
         color: #0F2744;
         line-height: 1.25;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: nowrap;
       }
       .cert-verified-badge {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
         flex-shrink: 0;
         background: linear-gradient(135deg, #38BDF8, #0284C7);
         color: #FFFFFF;
         border-radius: 50%;
-        font-size: 14px;
+        font-size: 12px;
         font-weight: 900;
         box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
       }
 
       .cert-endorsement-text {
-        max-width: 880px;
+        max-width: 780px;
         margin: 0 auto;
         font-family: 'Cairo', 'Tajawal', sans-serif;
       }
       .cert-paragraph {
-        font-size: 14.5px;
+        font-size: 11.5px;
         font-weight: 700;
         color: #1E293B;
-        margin: 8px 0;
-        line-height: 1.85;
+        margin: 3px 0;
+        line-height: 1.55;
         letter-spacing: 0.1px;
       }
       .cert-paragraph strong {
@@ -535,11 +585,11 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
       
       .cert-quote-tag {
         font-family: 'Cairo', 'Tajawal', sans-serif;
-        font-size: 14px;
+        font-size: 11.5px;
         font-weight: 800;
         color: #B45309;
         font-style: normal;
-        margin: 8px 0 6px 0;
+        margin: 3px 0 2px 0;
       }
 
       .cert-proud-badge {
@@ -547,13 +597,13 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         background: rgba(245, 158, 11, 0.12);
         border: 1.5px solid #F59E0B;
         color: #92400E;
-        padding: 6px 24px;
+        padding: 3px 18px;
         border-radius: 9999px;
         font-family: 'Cairo', 'Tajawal', sans-serif;
-        font-size: 13px;
+        font-size: 11px;
         font-weight: 700;
-        margin: 4px auto 0 auto;
-        line-height: 1.5;
+        margin: 2px auto 0 auto;
+        line-height: 1.4;
       }
 
       /* Footer */
@@ -561,9 +611,9 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         display: grid;
         grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        gap: 16px;
-        margin-top: 6px;
-        padding-top: 6px;
+        gap: 14px;
+        margin-top: 4px;
+        padding-top: 4px;
         border-top: 1.5px solid rgba(217, 119, 6, 0.25);
         position: relative;
         z-index: 3;
@@ -573,24 +623,24 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         text-align: center;
       }
       .cert-sig-authority {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 900;
         color: #0F2744;
         margin-bottom: 1px;
       }
       .cert-sig-label {
-        font-size: 10.5px;
+        font-size: 9.5px;
         color: #64748B;
         font-weight: 700;
       }
       .cert-sig-artwork {
-        height: 42px;
+        height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
       }
       .cert-sig-name {
-        font-size: 11px;
+        font-size: 10px;
         color: #1E293B;
         font-weight: 800;
       }
@@ -599,12 +649,12 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 14px;
+        gap: 10px;
         text-align: right;
         background: #FFFFFF;
         border: 1.5px solid #CBD5E1;
-        border-radius: 12px;
-        padding: 6px 14px;
+        border-radius: 10px;
+        padding: 4px 10px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         flex-shrink: 0;
       }
@@ -615,22 +665,22 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         justify-content: center;
         background: #F8FAFC;
         border: 1px solid #E2E8F0;
-        border-radius: 6px;
-        padding: 3px;
+        border-radius: 5px;
+        padding: 2px;
         flex-shrink: 0;
       }
       .cert-qr-img {
-        width: 52px;
-        height: 52px;
+        width: 44px;
+        height: 44px;
         display: block;
-        border-radius: 4px;
+        border-radius: 3px;
         object-fit: contain;
       }
       .cert-qr-label {
-        font-size: 8.5px;
+        font-size: 7.5px;
         font-weight: 800;
         color: #0369A1;
-        margin-top: 2px;
+        margin-top: 1px;
         white-space: nowrap;
         font-family: 'Cairo', sans-serif;
       }
@@ -639,13 +689,13 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         flex-direction: column;
         align-items: flex-start;
         justify-content: center;
-        font-size: 11px;
+        font-size: 10px;
         color: #475569;
-        line-height: 1.5;
+        line-height: 1.45;
         white-space: nowrap;
       }
       .cert-meta-domain {
-        font-size: 13.5px;
+        font-size: 12px;
         font-weight: 900;
         color: #0284C7;
         text-decoration: none;
@@ -657,7 +707,7 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         text-decoration: underline;
       }
       .cert-meta-serial {
-        font-size: 11px;
+        font-size: 9.5px;
         font-weight: 700;
         color: #334155;
       }
@@ -667,22 +717,22 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         font-weight: 800;
       }
       .cert-meta-date {
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 700;
         color: #64748B;
       }
 
-      /* Prominent Enlarged Stamp */
+      /* Official Digital Seal Stamp (Proportionally sized to never clip bottom) */
       .cert-stamp-block {
         display: flex;
         justify-content: center;
         align-items: center;
       }
       .cert-official-stamp {
-        width: 142px;
-        height: 142px;
-        transform: rotate(-8deg);
-        filter: drop-shadow(0 3px 6px rgba(29, 78, 216, 0.28));
+        width: 95px;
+        height: 95px;
+        transform: rotate(-7deg);
+        filter: drop-shadow(0 2px 5px rgba(29, 78, 216, 0.25));
       }
       .cert-stamp-svg {
         width: 100%;
@@ -719,6 +769,13 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
         body * {
           visibility: hidden !important;
         }
+        .certificate-stage {
+          width: 100% !important;
+          height: 100% !important;
+          display: block !important;
+          margin: 0 !important;
+          transform: none !important;
+        }
         #certificate-print-root, #certificate-print-root * {
           visibility: visible !important;
           -webkit-print-color-adjust: exact !important;
@@ -748,6 +805,7 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
           display: flex !important;
           flex-direction: column !important;
           justify-content: stretch !important;
+          transform: none !important;
           z-index: 99999999 !important;
         }
         #certificate-print-root .cert-outer-border {
@@ -762,7 +820,7 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
           max-height: 100% !important;
           box-sizing: border-box !important;
           overflow: hidden !important;
-          padding: 12px 28px 8px 28px !important;
+          padding: 10px 24px 8px 24px !important;
           border-color: #0F2744 !important;
           background: radial-gradient(circle at center, rgba(255,255,255,0.96) 0%, rgba(250,248,242,0.96) 65%, rgba(245,239,225,0.98) 100%) !important;
           background-color: #FAF8F2 !important;
@@ -799,7 +857,7 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
           display: grid !important;
           grid-template-columns: 1fr auto 1fr !important;
           align-items: center !important;
-          gap: 16px !important;
+          gap: 14px !important;
           margin-top: 4px !important;
           padding-top: 4px !important;
           border-color: rgba(217, 119, 6, 0.25) !important;
@@ -808,13 +866,13 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
           background: #FFFFFF !important;
           border: 1.5px solid #CBD5E1 !important;
           border-radius: 10px !important;
-          padding: 5px 12px !important;
-          gap: 12px !important;
+          padding: 4px 10px !important;
+          gap: 10px !important;
         }
         #certificate-print-root .cert-official-stamp {
-          width: 142px !important;
-          height: 142px !important;
-          transform: rotate(-8deg) !important;
+          width: 95px !important;
+          height: 95px !important;
+          transform: rotate(-7deg) !important;
           filter: none !important;
           -webkit-filter: none !important;
         }
@@ -855,135 +913,138 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
 
       <!-- Preview Container -->
       <div class="certificate-preview-container">
-        <!-- A4 Landscape Certificate Canvas / Printable Frame -->
-        <div id="certificate-print-root" class="certificate-sheet">
-          
-          <!-- Subtle Security Watermark in Background (Pure Vector) -->
-          <div class="cert-watermark-bg" aria-hidden="true">
-            <svg viewBox="0 0 200 200" width="340" height="340" fill="none" stroke="#D97706" opacity="0.04">
-              <circle cx="100" cy="100" r="92" stroke-width="2" stroke-dasharray="6 4"/>
-              <circle cx="100" cy="100" r="84" stroke-width="1.5"/>
-              <circle cx="100" cy="100" r="60" stroke-width="1"/>
-              <polygon points="100,45 112,80 148,80 119,102 130,137 100,116 70,137 81,102 52,80 88,80" fill="#D97706" opacity="0.4"/>
-            </svg>
-          </div>
-
-          <!-- Outer Gold Border -->
-          <div class="cert-outer-border">
+        <!-- Stage wrapper for exact proportional scaling without clipping or horizontal drift -->
+        <div class="certificate-stage" id="certificate-preview-stage">
+          <!-- A4 Landscape Certificate Canvas / Printable Frame -->
+          <div id="certificate-print-root" class="certificate-sheet">
             
-            <!-- Corner Ornaments -->
-            <div class="cert-corner cert-corner--tl">
-              <svg viewBox="0 0 60 60"><path d="M0,0 L60,0 C35,0 0,35 0,60 Z" fill="#D97706"/><circle cx="16" cy="16" r="4" fill="#F59E0B"/><path d="M8,45 Q8,8 45,8" stroke="#B45309" stroke-width="2" fill="none"/></svg>
-            </div>
-            <div class="cert-corner cert-corner--tr">
-              <svg viewBox="0 0 60 60"><path d="M60,0 L0,0 C25,0 60,35 60,60 Z" fill="#D97706"/><circle cx="44" cy="16" r="4" fill="#F59E0B"/><path d="M52,45 Q52,8 15,8" stroke="#B45309" stroke-width="2" fill="none"/></svg>
-            </div>
-            <div class="cert-corner cert-corner--bl">
-              <svg viewBox="0 0 60 60"><path d="M0,60 L60,60 C35,60 0,25 0,0 Z" fill="#D97706"/><circle cx="16" cy="44" r="4" fill="#F59E0B"/><path d="M8,15 Q8,52 45,52" stroke="#B45309" stroke-width="2" fill="none"/></svg>
-            </div>
-            <div class="cert-corner cert-corner--br">
-              <svg viewBox="0 0 60 60"><path d="M60,60 L0,60 C25,60 60,25 60,0 Z" fill="#D97706"/><circle cx="44" cy="44" r="4" fill="#F59E0B"/><path d="M52,15 Q52,52 15,52" stroke="#B45309" stroke-width="2" fill="none"/></svg>
+            <!-- Subtle Security Watermark in Background (Pure Vector) -->
+            <div class="cert-watermark-bg" aria-hidden="true">
+              <svg viewBox="0 0 200 200" width="340" height="340" fill="none" stroke="#D97706" opacity="0.04">
+                <circle cx="100" cy="100" r="92" stroke-width="2" stroke-dasharray="6 4"/>
+                <circle cx="100" cy="100" r="84" stroke-width="1.5"/>
+                <circle cx="100" cy="100" r="60" stroke-width="1"/>
+                <polygon points="100,45 112,80 148,80 119,102 130,137 100,116 70,137 81,102 52,80 88,80" fill="#D97706" opacity="0.4"/>
+              </svg>
             </div>
 
-            <!-- Inner Navy Border -->
-            <div class="cert-inner-border">
+            <!-- Outer Gold Border -->
+            <div class="cert-outer-border">
               
-              <!-- Header Section -->
-              <div class="cert-header">
-                <div class="cert-platform-name">
-                  دليل المنزلة والمطرية الرقمي
-                </div>
-                <div class="cert-platform-sub">
-                  المنصة الرقمية الأولى المعتمدة للأنشطة والخدمات بالمنزلة والمطرية
-                </div>
-
-                <!-- Main Certificate Title -->
-                <div class="cert-title-container">
-                  <div class="cert-title-ribbon">
-                    <span class="cert-title-decor">❖</span>
-                    <h1 class="cert-main-title">شهادة تقدير وتميز</h1>
-                    <span class="cert-title-decor">❖</span>
-                  </div>
-                  <div class="cert-sub-title">CERTIFICATE OF APPRECIATION & EXCELLENCE</div>
-                </div>
+              <!-- Corner Ornaments -->
+              <div class="cert-corner cert-corner--tl">
+                <svg viewBox="0 0 60 60"><path d="M0,0 L60,0 C35,0 0,35 0,60 Z" fill="#D97706"/><circle cx="16" cy="16" r="4" fill="#F59E0B"/><path d="M8,45 Q8,8 45,8" stroke="#B45309" stroke-width="2" fill="none"/></svg>
+              </div>
+              <div class="cert-corner cert-corner--tr">
+                <svg viewBox="0 0 60 60"><path d="M60,0 L0,0 C25,0 60,35 60,60 Z" fill="#D97706"/><circle cx="44" cy="16" r="4" fill="#F59E0B"/><path d="M52,45 Q52,8 15,8" stroke="#B45309" stroke-width="2" fill="none"/></svg>
+              </div>
+              <div class="cert-corner cert-corner--bl">
+                <svg viewBox="0 0 60 60"><path d="M0,60 L60,60 C35,60 0,25 0,0 Z" fill="#D97706"/><circle cx="16" cy="44" r="4" fill="#F59E0B"/><path d="M8,15 Q8,52 45,52" stroke="#B45309" stroke-width="2" fill="none"/></svg>
+              </div>
+              <div class="cert-corner cert-corner--br">
+                <svg viewBox="0 0 60 60"><path d="M60,60 L0,60 C25,60 60,25 60,0 Z" fill="#D97706"/><circle cx="44" cy="44" r="4" fill="#F59E0B"/><path d="M52,15 Q52,52 15,52" stroke="#B45309" stroke-width="2" fill="none"/></svg>
               </div>
 
-              <!-- Certificate Body -->
-              <div class="cert-body">
+              <!-- Inner Navy Border -->
+              <div class="cert-inner-border">
                 
-                <p class="cert-intro">
-                  تتشرف إدارة دليل المنزلة والمطرية الرقمي بتقديم هذه الشهادة إلى
-                </p>
+                <!-- Header Section -->
+                <div class="cert-header">
+                  <div class="cert-platform-name">
+                    دليل المنزلة والمطرية الرقمي
+                  </div>
+                  <div class="cert-platform-sub">
+                    المنصة الرقمية الأولى المعتمدة للأنشطة والخدمات بالمنزلة والمطرية
+                  </div>
 
-                <!-- Honoree Place Name -->
-                <div class="cert-honoree-wrap">
-                  <div class="cert-honoree-name">
-                    <span>${placeName}</span>
-                    ${isVerified ? '<span class="cert-verified-badge" title="نشاط موثق رسمياً">✓</span>' : ''}
+                  <!-- Main Certificate Title -->
+                  <div class="cert-title-container">
+                    <div class="cert-title-ribbon">
+                      <span class="cert-title-decor">❖</span>
+                      <h1 class="cert-main-title">شهادة تقدير وتميز</h1>
+                      <span class="cert-title-decor">❖</span>
+                    </div>
+                    <div class="cert-sub-title">CERTIFICATE OF APPRECIATION & EXCELLENCE</div>
                   </div>
                 </div>
 
-                <!-- Official Endorsement Text (Without diacritics / Tashkeel) -->
-                <div class="cert-endorsement-text">
-                  <p class="cert-paragraph">
-                    تقديرا للحضور المميز والمكانة البارزة والمساهمة الفعالة في المجتمع المحلي، وما يحظى به من اهتمام وتفاعل ملحوظ لدى جمهور مدينة المنزلة والمطرية.
+                <!-- Certificate Body -->
+                <div class="cert-body">
+                  
+                  <p class="cert-intro">
+                    تتشرف إدارة دليل المنزلة والمطرية الرقمي بتقديم هذه الشهادة إلى
                   </p>
-                  <p class="cert-paragraph">
-                    ويأتي هذا التكريم استنادا إلى مؤشرات التفاعل والبحث والرواج المسجلة على منصة دليل المنزلة والمطرية الرقمي، حيث حققت بطاقة <strong>[${placeName}]</strong> حضورا متقدما ضمن أكثر البطاقات بحثا وزيارة خلال آخر 30 يوما.
-                  </p>
-                  <p class="cert-paragraph">
-                    وإيمانا منا بأن التميز الحقيقي يستحق أن يرى ويقدر ويوثق، تتقدم إدارة دليل المنزلة والمطرية الرقمي بخالص التقدير والاعتزاز بهذا الحضور المميز، مع أطيب التمنيات بدوام النجاح والتألق والعطاء.
-                  </p>
-                  <div class="cert-quote-tag">
-                    «التميز لا يقاس بالحضور فقط... بل بالأثر الذي يتركه»
+
+                  <!-- Honoree Place Name -->
+                  <div class="cert-honoree-wrap">
+                    <div class="cert-honoree-name">
+                      <span>${placeName}</span>
+                      ${isVerified ? '<span class="cert-verified-badge" title="نشاط موثق رسمياً">✓</span>' : ''}
+                    </div>
                   </div>
+
+                  <!-- Official Endorsement Text (Without diacritics / Tashkeel) -->
+                  <div class="cert-endorsement-text">
+                    <p class="cert-paragraph">
+                      تقديرا للحضور المميز والمكانة البارزة والمساهمة الفعالة في المجتمع المحلي، وما يحظى به من اهتمام وتفاعل ملحوظ لدى جمهور مدينة المنزلة والمطرية.
+                    </p>
+                    <p class="cert-paragraph">
+                      ويأتي هذا التكريم استنادا إلى مؤشرات التفاعل والبحث والرواج المسجلة على منصة دليل المنزلة والمطرية الرقمي، حيث حققت بطاقة <strong>[${placeName}]</strong> حضورا متقدما ضمن أكثر البطاقات بحثا وزيارة خلال آخر 30 يوما.
+                    </p>
+                    <p class="cert-paragraph">
+                      وإيمانا منا بأن التميز الحقيقي يستحق أن يرى ويقدر ويوثق، تتقدم إدارة دليل المنزلة والمطرية الرقمي بخالص التقدير والاعتزاز بهذا الحضور المميز، مع أطيب التمنيات بدوام النجاح والتألق والعطاء.
+                    </p>
+                    <div class="cert-quote-tag">
+                      «التميز لا يقاس بالحضور فقط... بل بالأثر الذي يتركه»
+                    </div>
+                  </div>
+
+                  <!-- Appreciation Tagline -->
+                  <div class="cert-proud-badge">
+                    شكرا لكم.. «أنتم لا تظهرون في الدليل فقط... بل أنتم جزء من قصته ونجاحه» ومع خالص التقدير والامتنان
+                  </div>
+
                 </div>
 
-                <!-- Appreciation Tagline -->
-                <div class="cert-proud-badge">
-                  شكرا لكم.. «أنتم لا تظهرون في الدليل فقط... بل أنتم جزء من قصته ونجاحه» ومع خالص التقدير والامتنان
+                <!-- Certificate Footer: Signatures, Stamp & Seal -->
+                <div class="cert-footer">
+                  
+                  <!-- Right: Signature of Management -->
+                  <div class="cert-signature-block">
+                    <div class="cert-sig-authority">إدارة دليل المنزلة والمطرية الرقمي</div>
+                    <div class="cert-sig-label">الدليل الرقمي الأول من نوعه في المنزلة والمطرية</div>
+                    <div class="cert-sig-artwork">
+                      ${getOfficialSignatureSvgMarkup(135, 30)}
+                    </div>
+                    <div class="cert-sig-name">مهندس محمد حماد — المدير العام</div>
+                  </div>
+
+                  <!-- Center: Verification Code & Domain with QR Code -->
+                  <div class="cert-meta-block">
+                    <div class="cert-qr-frame">
+                      <img src="${qrImageUrl}" alt="رمز التحقق" class="cert-qr-img" />
+                      <span class="cert-qr-label">رمز التحقق الذكي</span>
+                    </div>
+                    <div class="cert-meta-texts">
+                      <div class="cert-meta-domain">dalilmanzala.com</div>
+                      <div class="cert-meta-serial">الرقم التسلسلي: <code>${serialNumber}</code></div>
+                      <div class="cert-meta-date">تاريخ الإصدار: ${formattedDate}</div>
+                    </div>
+                  </div>
+
+                  <!-- Left: Official Blue Digital Stamp (Proportionate & High-Res) -->
+                  <div class="cert-stamp-block">
+                    <div class="cert-official-stamp">
+                      ${getOfficialSealSvgMarkup(95)}
+                    </div>
+                  </div>
+
                 </div>
 
               </div>
-
-              <!-- Certificate Footer: Signatures, Stamp & Seal -->
-              <div class="cert-footer">
-                
-                <!-- Right: Signature of Management -->
-                <div class="cert-signature-block">
-                  <div class="cert-sig-authority">إدارة دليل المنزلة والمطرية الرقمي</div>
-                  <div class="cert-sig-label">الدليل الرقمي الأول من نوعه في المنزلة والمطرية</div>
-                  <div class="cert-sig-artwork">
-                    ${getOfficialSignatureSvgMarkup(160, 42)}
-                  </div>
-                  <div class="cert-sig-name">مهندس محمد حماد — المدير العام</div>
-                </div>
-
-                <!-- Center: Verification Code & Domain with QR Code -->
-                <div class="cert-meta-block">
-                  <div class="cert-qr-frame">
-                    <img src="${qrImageUrl}" alt="رمز التحقق" class="cert-qr-img" />
-                    <span class="cert-qr-label">رمز التحقق الذكي</span>
-                  </div>
-                  <div class="cert-meta-texts">
-                    <div class="cert-meta-domain">dalilmanzala.com</div>
-                    <div class="cert-meta-serial">الرقم التسلسلي: <code>${serialNumber}</code></div>
-                    <div class="cert-meta-date">تاريخ الإصدار: ${formattedDate}</div>
-                  </div>
-                </div>
-
-                <!-- Left: Official Blue Digital Stamp (Enlarged & Prominent) -->
-                <div class="cert-stamp-block">
-                  <div class="cert-official-stamp">
-                    ${getOfficialSealSvgMarkup(142)}
-                  </div>
-                </div>
-
-              </div>
-
             </div>
+            
           </div>
-          
         </div>
       </div>
     </div>
@@ -995,23 +1056,30 @@ export function openCertificateOfAppreciationModal(place = {}, category = {}) {
   // Dynamic A4 Certificate Responsive Auto-Scaler
   const updateCertScale = () => {
     const previewContainer = overlay.querySelector('.certificate-preview-container');
+    const stage = overlay.querySelector('#certificate-preview-stage') || overlay.querySelector('.certificate-stage');
     const sheet = overlay.querySelector('#certificate-print-root');
-    if (!previewContainer || !sheet) return;
+    if (!previewContainer || !stage || !sheet) return;
+
     const baseWidth = 840;
-    const baseHeight = Math.round(baseWidth * (210 / 297)); // 594px
-    const pad = window.innerWidth <= 640 ? 12 : 24;
-    const availableWidth = previewContainer.clientWidth - pad;
-    if (availableWidth > 0 && availableWidth < baseWidth) {
-      const scale = Math.max(0.25, availableWidth / baseWidth);
-      sheet.style.transform = `scale(${scale})`;
-      sheet.style.transformOrigin = 'top center';
-      sheet.style.margin = '0 auto';
-      previewContainer.style.height = `${Math.ceil(baseHeight * scale) + (window.innerWidth <= 640 ? 12 : 24)}px`;
-    } else {
-      sheet.style.transform = 'none';
-      sheet.style.margin = '0 auto';
-      previewContainer.style.height = 'auto';
-    }
+    const baseHeight = 594;
+    const isMobile = window.innerWidth <= 640;
+    const padX = isMobile ? 8 : 24;
+    const availableWidth = Math.max(1, previewContainer.clientWidth - padX);
+
+    // Horizontal scale ratio
+    let scale = availableWidth / baseWidth;
+
+    // Viewport height guard: prevent overflowing screen vertically on mobile or short laptops
+    const topOffset = isMobile ? 110 : 140;
+    const availableHeight = Math.max(160, window.innerHeight - topOffset);
+    const scaleByHeight = availableHeight / baseHeight;
+    scale = Math.min(scale, scaleByHeight);
+
+    // Clamp scale: maximum 1.0 (exact native A4) and minimum 0.25
+    scale = Math.min(1.0, Math.max(0.25, scale));
+
+    stage.style.setProperty('--cert-scale', String(scale));
+    stage.style.setProperty('--cert-preview-scale', String(scale));
   };
 
   requestAnimationFrame(updateCertScale);

@@ -6712,16 +6712,18 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   }
 
   const userAgent = request.headers.get('user-agent') || '';
-  const isCrawler = /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|googlebot|bingbot|slackbot|discordbot/i.test(userAgent);
+  const isSearchBot = /googlebot|bingbot|applebot|yandex|duckduckbot|baiduspider/i.test(userAgent);
+  const isSocialScraper = /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot/i.test(userAgent);
+  const isCrawler = isSearchBot || isSocialScraper;
   const canonicalBase = 'https://dalilmanzala.com';
 
   const isEn = url.pathname.startsWith('/en/') || url.searchParams.get('lang') === 'en';
   const langPrefix = isEn ? 'en' : 'ar';
 
-  // 0. Edge SSR Cache check for human visitors (Instant 15-30ms response from Cloudflare Edge)
+  // 0. Edge SSR Cache check (Instant 15-30ms response from Cloudflare Edge for humans & Googlebot)
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v6?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
-  if (!isCrawler && cache) {
+  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v7?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
+  if (cache) {
     try {
       const cachedResponse = await cache.match(ssrCacheKey);
       if (cachedResponse) {
@@ -6793,232 +6795,259 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   const alternateArUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
   const alternateEnUrl = `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}`;
 
-  // 4. Human visitors: Edge SSR & Instant Data Injection (Zero Skeleton, 0ms FCP)
-  if (!isCrawler) {
-    try {
-      let baseHtml = await getPlaceHtmlTemplate(request, isEn);
+  // 4. Edge SSR & Instant Data Injection (Zero Skeleton, 0ms FCP, 100% SEO-Ready for Googlebot, Bingbot & Humans)
+  try {
+    let baseHtml = await getPlaceHtmlTemplate(request, isEn);
 
-      if (baseHtml && baseHtml.includes('id="page-container"')) {
-        const phoneClean = (place.phone || '').replace(/[^\d+]/g, '').trim();
-        const waClean = (place.whatsapp || '').replace(/\D/g, '').replace(/^0+/, '').trim();
-        const isValidPh = phoneClean && !/^0+$/.test(phoneClean) && phoneClean.length >= 7;
-        const isValidWa = waClean && !/^0+$/.test(waClean) && waClean.length >= 7;
-        const coverImg = place.cover_image_url || '';
-        const logoImg = place.logo_url || '';
-        const placeArea = isEn
-          ? (place.area_en || (place.area === 'المطرية' ? 'El Matariya' : 'El Manzala'))
-          : (place.area || 'المنزلة والمطرية');
-        const placeAddr = isEn ? (place.address_en || place.address || '') : (place.address || '');
-        const rawCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
-        const placeCat = isEn ? toEnglishCategoryWorker(rawCat) : toArabicCategoryWorker(rawCat);
-        const placeRating = Number(place.rating || 0);
-        const placeReviewCount = Number(place.review_count || 0);
+    if (baseHtml && baseHtml.includes('id="page-container"')) {
+      const phoneClean = (place.phone || '').replace(/[^\d+]/g, '').trim();
+      const waClean = (place.whatsapp || '').replace(/\D/g, '').replace(/^0+/, '').trim();
+      const isValidPh = phoneClean && !/^0+$/.test(phoneClean) && phoneClean.length >= 7;
+      const isValidWa = waClean && !/^0+$/.test(waClean) && waClean.length >= 7;
+      const coverImg = place.cover_image_url || '';
+      const logoImg = place.logo_url || '';
+      const placeArea = isEn
+        ? (place.area_en || (place.area === 'المطرية' ? 'El Matariya' : 'El Manzala'))
+        : (place.area || 'المنزلة والمطرية');
+      const placeAddr = isEn ? (place.address_en || place.address || '') : (place.address || '');
+      const rawCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
+      const placeCat = isEn ? toEnglishCategoryWorker(rawCat) : toArabicCategoryWorker(rawCat);
+      const placeRating = Number(place.rating || 0);
+      const placeReviewCount = Number(place.review_count || 0);
 
-        const normalizedPlace = {
-          id: place.id,
-          _key: place.id,
-          name: place.name,
-          name_en: place.name_en || '',
-          nameEn: place.name_en || '',
-          slug: placeTargetSlug,
-          area: place.area || '',
-          area_en: place.area_en || '',
-          areaEn: place.area_en || '',
-          address: place.address || '',
-          address_en: place.address_en || '',
-          addressEn: place.address_en || '',
-          categoryId: place.category_id || '',
-          category_id: place.category_id || '',
-          customCategory: isEn ? toEnglishCategoryWorker(place.custom_category_en || place.custom_category || '') : toArabicCategoryWorker(place.custom_category || ''),
-          custom_category: isEn ? toEnglishCategoryWorker(place.custom_category_en || place.custom_category || '') : toArabicCategoryWorker(place.custom_category || ''),
-          customCategoryEn: toEnglishCategoryWorker(place.custom_category_en || place.custom_category || ''),
-          custom_category_en: toEnglishCategoryWorker(place.custom_category_en || place.custom_category || ''),
-          categoryName: placeCat,
-          phone: place.phone || '',
-          whatsapp: place.whatsapp || '',
-          coverImageUrl: coverImg,
-          cover_image_url: coverImg,
-          logoUrl: logoImg,
-          logo_url: logoImg,
-          description: place.description || '',
-          description_en: place.description_en || '',
-          descriptionEn: place.description_en || '',
-          isVerified: Boolean(place.is_verified),
-          is_verified: Boolean(place.is_verified),
-          verified: Boolean(place.is_verified),
-          isSponsored: Boolean(place.is_sponsored || place.is_featured),
-          is_sponsored: Boolean(place.is_sponsored || place.is_featured),
-          rating: placeRating,
-          reviewCount: placeReviewCount,
-          review_count: placeReviewCount,
-          workingHours: parseJson(place.working_hours_json, {}),
-          working_hours: parseJson(place.working_hours_json, {}),
-          services: parseJson(place.services_json, []),
-          servicesEn: parseJson(place.services_en_json, []),
-          services_en: parseJson(place.services_en_json, []),
-          social: parseJson(place.social_json, {}),
-          latitude: place.latitude || null,
-          longitude: place.longitude || null
+      const normalizedPlace = {
+        id: place.id,
+        _key: place.id,
+        name: place.name,
+        name_en: place.name_en || '',
+        nameEn: place.name_en || '',
+        slug: placeTargetSlug,
+        area: place.area || '',
+        area_en: place.area_en || '',
+        areaEn: place.area_en || '',
+        address: place.address || '',
+        address_en: place.address_en || '',
+        addressEn: place.address_en || '',
+        categoryId: place.category_id || '',
+        category_id: place.category_id || '',
+        customCategory: isEn ? toEnglishCategoryWorker(place.custom_category_en || place.custom_category || '') : toArabicCategoryWorker(place.custom_category || ''),
+        custom_category: isEn ? toEnglishCategoryWorker(place.custom_category_en || place.custom_category || '') : toArabicCategoryWorker(place.custom_category || ''),
+        customCategoryEn: toEnglishCategoryWorker(place.custom_category_en || place.custom_category || ''),
+        custom_category_en: toEnglishCategoryWorker(place.custom_category_en || place.custom_category || ''),
+        categoryName: placeCat,
+        phone: place.phone || '',
+        whatsapp: place.whatsapp || '',
+        coverImageUrl: coverImg,
+        cover_image_url: coverImg,
+        logoUrl: logoImg,
+        logo_url: logoImg,
+        description: place.description || '',
+        description_en: place.description_en || '',
+        descriptionEn: place.description_en || '',
+        isVerified: Boolean(place.is_verified),
+        is_verified: Boolean(place.is_verified),
+        verified: Boolean(place.is_verified),
+        isSponsored: Boolean(place.is_sponsored || place.is_featured),
+        is_sponsored: Boolean(place.is_sponsored || place.is_featured),
+        rating: placeRating,
+        reviewCount: placeReviewCount,
+        review_count: placeReviewCount,
+        workingHours: parseJson(place.working_hours_json, {}),
+        working_hours: parseJson(place.working_hours_json, {}),
+        services: parseJson(place.services_json, []),
+        servicesEn: parseJson(place.services_en_json, []),
+        services_en: parseJson(place.services_en_json, []),
+        social: parseJson(place.social_json, {}),
+        latitude: place.latitude || null,
+        longitude: place.longitude || null
+      };
+
+      // Working hours table for instant SSR view
+      let workingHoursHtml = '';
+      const wh = parseJson(place.working_hours_json, {});
+      if (wh && typeof wh === 'object' && Object.keys(wh).length > 0) {
+        const daysMap = isEn ? {
+          saturday: 'Saturday', sunday: 'Sunday', monday: 'Monday',
+          tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday'
+        } : {
+          saturday: 'السبت', sunday: 'الأحد', monday: 'الاثنين',
+          tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس', friday: 'الجمعة'
         };
-
-        // Working hours table for instant SSR view
-        let workingHoursHtml = '';
-        const wh = parseJson(place.working_hours_json, {});
-        if (wh && typeof wh === 'object' && Object.keys(wh).length > 0) {
-          const daysMap = isEn ? {
-            saturday: 'Saturday', sunday: 'Sunday', monday: 'Monday',
-            tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday'
-          } : {
-            saturday: 'السبت', sunday: 'الأحد', monday: 'الاثنين',
-            tuesday: 'الثلاثاء', wednesday: 'الأربعاء', thursday: 'الخميس', friday: 'الجمعة'
-          };
-          const rows = [];
-          for (const [dayKey, dayName] of Object.entries(daysMap)) {
-            const d = wh[dayKey];
-            if (d) {
-              const timeStr = d.closed ? (isEn ? 'Closed' : 'مغلق') : `${d.open || ''} - ${d.close || ''}`;
-              rows.push(`<tr><td style="padding:6px 12px;font-weight:700;border-bottom:1px solid rgba(0,0,0,0.05);">${dayName}</td><td style="padding:6px 12px;direction:ltr;text-align:${isEn ? 'left' : 'right'};border-bottom:1px solid rgba(0,0,0,0.05);">${escapeHtml(timeStr)}</td></tr>`);
-            }
-          }
-          if (rows.length > 0) {
-            workingHoursHtml = `
-              <div style="margin-top:1rem;padding:1.25rem;background:var(--surface,#fff);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border:1px solid var(--border,rgba(0,0,0,0.06));">
-                <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 10px 0;display:flex;align-items:center;gap:6px;color:var(--text-primary,#0f172a);">
-                  <span>🕒</span> <span>${isEn ? 'Working Hours' : 'مواعيد وساعات العمل'}</span>
-                </h2>
-                <table style="width:100%;border-collapse:collapse;font-size:0.92rem;">
-                  <tbody>${rows.join('')}</tbody>
-                </table>
-              </div>
-            `;
+        const rows = [];
+        for (const [dayKey, dayName] of Object.entries(daysMap)) {
+          const d = wh[dayKey];
+          if (d) {
+            const timeStr = d.closed ? (isEn ? 'Closed' : 'مغلق') : `${d.open || ''} - ${d.close || ''}`;
+            rows.push(`<tr><td style="padding:6px 12px;font-weight:700;border-bottom:1px solid rgba(0,0,0,0.05);">${dayName}</td><td style="padding:6px 12px;direction:ltr;text-align:${isEn ? 'left' : 'right'};border-bottom:1px solid rgba(0,0,0,0.05);">${escapeHtml(timeStr)}</td></tr>`);
           }
         }
-
-        const preRenderedContent = `
-          <!-- Edge SSR Instant Place View (0ms Perceived FCP) -->
-          <section class="place-hero animate-fade-in" style="min-height:220px;background:linear-gradient(135deg,#1B4F72 0%,#0E2F44 100%);position:relative;overflow:hidden">
-            ${coverImg ? `<img src="${escapeHtml(coverImg)}" alt="${escapeHtml(rawPlaceName)}" class="place-hero__cover" fetchpriority="high" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.85" />` : ''}
-            <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)"></div>
-          </section>
-          <div class="container" style="max-width:var(--container-xl, 1200px);margin:0 auto;padding:1rem;position:relative;z-index:10;">
-            <div class="place-header-card animate-fade-in-up" style="margin-top:-45px;padding:1.25rem;background:var(--surface,#fff);border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.08);border:1px solid var(--border,rgba(0,0,0,0.06));">
-              <div style="display:flex;align-items:center;gap:1rem;">
-                <div style="width:72px;height:72px;border-radius:50%;overflow:hidden;flex-shrink:0;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.12);background:var(--surface-2,#f1f5f9);display:flex;align-items:center;justify-content:center;font-size:28px">
-                  ${logoImg ? `<img src="${escapeHtml(logoImg)}" alt="${escapeHtml(rawPlaceName)}" style="width:100%;height:100%;object-fit:cover" loading="eager" decoding="async" />` : '📍'}
-                </div>
-                <div style="flex:1;min-width:0">
-                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                    <h1 style="margin:0 0 4px 0;font-size:1.35rem;font-weight:900;color:var(--text-primary,#0f172a);line-height:1.3">${escapeHtml(rawPlaceName)}</h1>
-                    ${place.is_verified ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,0.12);color:#16a34a;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:800">${isEn ? '✓ Officially Verified' : '✓ موثق رسمياً'}</span>` : ''}
-                  </div>
-                  <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary,#64748b);flex-wrap:wrap">
-                    <span>📍 ${escapeHtml(placeArea)}${placeAddr ? ' — ' + escapeHtml(placeAddr) : ''}</span>
-                    ${placeCat ? `<span style="display:inline-flex;padding:2px 8px;border-radius:6px;background:rgba(27,79,114,0.08);color:#1B4F72;font-size:11px;font-weight:700">${escapeHtml(placeCat)}</span>` : ''}
-                    ${placeRating > 0 ? `<span style="color:#F59E0B;font-weight:700">★ ${placeRating} (${placeReviewCount})</span>` : ''}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Instant Direct Call & WhatsApp Buttons -->
-              <div style="display:flex;gap:8px;margin-top:1.25rem;flex-wrap:wrap">
-                ${isValidPh ? `
-                  <a href="tel:${escapeHtml(phoneClean)}" class="btn btn-primary" style="flex:1;min-width:130px;justify-content:center;font-weight:800;gap:6px;text-decoration:none;display:inline-flex;align-items:center;padding:10px 16px;border-radius:12px;background:#1B4F72;color:#fff;">
-                    <span>📞</span> <span>${isEn ? 'Call Now' : 'اتصال مباشر'}</span>
-                  </a>
-                ` : ''}
-                ${isValidWa ? `
-                  <a href="https://wa.me/20${escapeHtml(waClean)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;min-width:130px;justify-content:center;font-weight:800;border:1.5px solid #25D366;color:#16A34A;gap:6px;text-decoration:none;display:inline-flex;align-items:center;padding:10px 16px;border-radius:12px;background:#fff;">
-                    <span>💬</span> <span>${isEn ? 'WhatsApp' : 'محادثة واتساب'}</span>
-                  </a>
-                ` : ''}
-              </div>
-            </div>
-
-            ${(place.description || place.description_en) ? `
-            <!-- Description Card -->
+        if (rows.length > 0) {
+          workingHoursHtml = `
             <div style="margin-top:1rem;padding:1.25rem;background:var(--surface,#fff);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border:1px solid var(--border,rgba(0,0,0,0.06));">
-              <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 8px 0;color:var(--text-primary,#0f172a);">${isEn ? 'About this Business' : 'عن المكان والنشاط'}</h2>
-              <p style="font-size:0.92rem;color:var(--text-secondary,#334155);line-height:1.7;margin:0;white-space:pre-line;">${escapeHtml((isEn && place.description_en) ? place.description_en : place.description)}</p>
+              <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 10px 0;display:flex;align-items:center;gap:6px;color:var(--text-primary,#0f172a);">
+                <span>🕒</span> <span>${isEn ? 'Working Hours' : 'مواعيد وساعات العمل'}</span>
+              </h2>
+              <table style="width:100%;border-collapse:collapse;font-size:0.92rem;">
+                <tbody>${rows.join('')}</tbody>
+              </table>
             </div>
-            ` : ''}
-
-            ${workingHoursHtml}
-          </div>
-        `;
-
-        // Inject hydrated data and pre-rendered card
-        let hydratedHtml = baseHtml;
-
-        // 1. Language and Direction Attributes
-        if (isEn) {
-          hydratedHtml = hydratedHtml.replace(/<html\s+lang=["']ar["']\s+dir=["']rtl["']/i, '<html lang="en" dir="ltr" class="has-instant-place" data-lang="en"');
-          hydratedHtml = hydratedHtml.replace(/<html(?![^>]*\blang=)/i, '<html lang="en" dir="ltr" class="has-instant-place" data-lang="en"');
-        } else {
-          hydratedHtml = hydratedHtml.replace('<html lang="ar" dir="rtl"', '<html lang="ar" dir="rtl" class="has-instant-place" data-lang="ar"');
+          `;
         }
+      }
 
-        // 2. Set title, canonical, and alternate hreflangs
-        hydratedHtml = hydratedHtml.replace(/<title>.*?<\/title>/i, `<title>${escapeHtml(fullShareTitle)}</title>`);
-        hydratedHtml = hydratedHtml.replace(/<link rel="canonical" id="place-canonical"[^>]*>/i, `<link rel="canonical" id="place-canonical" href="${escapeHtml(shareUrl)}"/>`);
-        hydratedHtml = hydratedHtml.replace(/<meta name="description" content="[^"]*"/i, `<meta name="description" content="${escapeHtml(placeDesc)}"`);
-        hydratedHtml = hydratedHtml.replace(/<meta property="og:title" content="[^"]*"/i, `<meta property="og:title" content="${escapeHtml(fullShareTitle)}"`);
-        hydratedHtml = hydratedHtml.replace(/<meta property="og:description" content="[^"]*"/i, `<meta property="og:description" content="${escapeHtml(placeDesc)}"`);
-        hydratedHtml = hydratedHtml.replace(/<meta property="og:url" content="[^"]*"/i, `<meta property="og:url" content="${escapeHtml(shareUrl)}"`);
-        hydratedHtml = hydratedHtml.replace(/<meta property="og:image" content="[^"]*"/i, `<meta property="og:image" content="${escapeHtml(placeImg)}"`);
-        hydratedHtml = hydratedHtml.replace(/<meta property="og:locale" content="[^"]*"/i, `<meta property="og:locale" content="${isEn ? 'en_US' : 'ar_EG'}"`);
-        hydratedHtml = hydratedHtml.replace(/<meta name="twitter:title" content="[^"]*"/i, `<meta name="twitter:title" content="${escapeHtml(fullShareTitle)}"`);
-        hydratedHtml = hydratedHtml.replace(/<meta name="twitter:description" content="[^"]*"/i, `<meta name="twitter:description" content="${escapeHtml(placeDesc)}"`);
-        hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
+      const preRenderedContent = `
+        <!-- Edge SSR Instant Place View (0ms Perceived FCP) -->
+        <section class="place-hero animate-fade-in" style="min-height:220px;background:linear-gradient(135deg,#1B4F72 0%,#0E2F44 100%);position:relative;overflow:hidden">
+          ${coverImg ? `<img src="${escapeHtml(coverImg)}" alt="${escapeHtml(rawPlaceName)}" class="place-hero__cover" fetchpriority="high" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.85" />` : ''}
+          <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)"></div>
+        </section>
+        <div class="container" style="max-width:var(--container-xl, 1200px);margin:0 auto;padding:1rem;position:relative;z-index:10;">
+          <div class="place-header-card animate-fade-in-up" style="margin-top:-45px;padding:1.25rem;background:var(--surface,#fff);border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.08);border:1px solid var(--border,rgba(0,0,0,0.06));">
+            <div style="display:flex;align-items:center;gap:1rem;">
+              <div style="width:72px;height:72px;border-radius:50%;overflow:hidden;flex-shrink:0;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.12);background:var(--surface-2,#f1f5f9);display:flex;align-items:center;justify-content:center;font-size:28px">
+                ${logoImg ? `<img src="${escapeHtml(logoImg)}" alt="${escapeHtml(rawPlaceName)}" style="width:100%;height:100%;object-fit:cover" loading="eager" decoding="async" />` : '📍'}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <h1 style="margin:0 0 4px 0;font-size:1.35rem;font-weight:900;color:var(--text-primary,#0f172a);line-height:1.3">${escapeHtml(rawPlaceName)}</h1>
+                  ${place.is_verified ? `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,0.12);color:#16a34a;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:800">${isEn ? '✓ Officially Verified' : '✓ موثق رسمياً'}</span>` : ''}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary,#64748b);flex-wrap:wrap">
+                  <span>📍 ${escapeHtml(placeArea)}${placeAddr ? ' — ' + escapeHtml(placeAddr) : ''}</span>
+                  ${placeCat ? `<span style="display:inline-flex;padding:2px 8px;border-radius:6px;background:rgba(27,79,114,0.08);color:#1B4F72;font-size:11px;font-weight:700">${escapeHtml(placeCat)}</span>` : ''}
+                  ${placeRating > 0 ? `<span style="color:#F59E0B;font-weight:700">★ ${placeRating} (${placeReviewCount})</span>` : ''}
+                </div>
+              </div>
+            </div>
 
-        // Inject hreflang alternate tags
-        const hreflangTags = `
+            <!-- Instant Direct Call & WhatsApp Buttons -->
+            <div style="display:flex;gap:8px;margin-top:1.25rem;flex-wrap:wrap">
+              ${isValidPh ? `
+                <a href="tel:${escapeHtml(phoneClean)}" class="btn btn-primary" style="flex:1;min-width:130px;justify-content:center;font-weight:800;gap:6px;text-decoration:none;display:inline-flex;align-items:center;padding:10px 16px;border-radius:12px;background:#1B4F72;color:#fff;">
+                  <span>📞</span> <span>${isEn ? 'Call Now' : 'اتصال مباشر'}</span>
+                </a>
+              ` : ''}
+              ${isValidWa ? `
+                <a href="https://wa.me/20${escapeHtml(waClean)}" target="_blank" rel="noopener" class="btn btn-outline" style="flex:1;min-width:130px;justify-content:center;font-weight:800;border:1.5px solid #25D366;color:#16A34A;gap:6px;text-decoration:none;display:inline-flex;align-items:center;padding:10px 16px;border-radius:12px;background:#fff;">
+                  <span>💬</span> <span>${isEn ? 'WhatsApp' : 'محادثة واتساب'}</span>
+                </a>
+              ` : ''}
+            </div>
+          </div>
+
+          ${(place.description || place.description_en) ? `
+          <!-- Description Card -->
+          <div style="margin-top:1rem;padding:1.25rem;background:var(--surface,#fff);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border:1px solid var(--border,rgba(0,0,0,0.06));">
+            <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 8px 0;color:var(--text-primary,#0f172a);">${isEn ? 'About this Business' : 'عن المكان والنشاط'}</h2>
+            <p style="font-size:0.92rem;color:var(--text-secondary,#334155);line-height:1.7;margin:0;white-space:pre-line;">${escapeHtml((isEn && place.description_en) ? place.description_en : place.description)}</p>
+          </div>
+          ` : ''}
+
+          ${workingHoursHtml}
+        </div>
+      `;
+
+      // Inject hydrated data and pre-rendered card
+      let hydratedHtml = baseHtml;
+
+      // 1. Language and Direction Attributes
+      if (isEn) {
+        hydratedHtml = hydratedHtml.replace(/<html\s+lang=["']ar["']\s+dir=["']rtl["']/i, '<html lang="en" dir="ltr" class="has-instant-place" data-lang="en"');
+        hydratedHtml = hydratedHtml.replace(/<html(?![^>]*\blang=)/i, '<html lang="en" dir="ltr" class="has-instant-place" data-lang="en"');
+      } else {
+        hydratedHtml = hydratedHtml.replace('<html lang="ar" dir="rtl"', '<html lang="ar" dir="rtl" class="has-instant-place" data-lang="ar"');
+      }
+
+      // 2. Set title, canonical, and alternate hreflangs
+      hydratedHtml = hydratedHtml.replace(/<title>.*?<\/title>/i, `<title>${escapeHtml(fullShareTitle)}</title>`);
+      hydratedHtml = hydratedHtml.replace(/<link rel="canonical" id="place-canonical"[^>]*>/i, `<link rel="canonical" id="place-canonical" href="${escapeHtml(shareUrl)}"/>`);
+      hydratedHtml = hydratedHtml.replace(/<meta name="description" content="[^"]*"/i, `<meta name="description" content="${escapeHtml(placeDesc)}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta property="og:title" content="[^"]*"/i, `<meta property="og:title" content="${escapeHtml(fullShareTitle)}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta property="og:description" content="[^"]*"/i, `<meta property="og:description" content="${escapeHtml(placeDesc)}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta property="og:url" content="[^"]*"/i, `<meta property="og:url" content="${escapeHtml(shareUrl)}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta property="og:image" content="[^"]*"/i, `<meta property="og:image" content="${escapeHtml(placeImg)}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta property="og:locale" content="[^"]*"/i, `<meta property="og:locale" content="${isEn ? 'en_US' : 'ar_EG'}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta name="twitter:title" content="[^"]*"/i, `<meta name="twitter:title" content="${escapeHtml(fullShareTitle)}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta name="twitter:description" content="[^"]*"/i, `<meta name="twitter:description" content="${escapeHtml(placeDesc)}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
+
+      // Inject hreflang alternate tags
+      const hreflangTags = `
   <link rel="alternate" hreflang="ar" href="${escapeHtml(alternateArUrl)}" />
   <link rel="alternate" hreflang="en" href="${escapeHtml(alternateEnUrl)}" />
   <link rel="alternate" hreflang="x-default" href="${escapeHtml(alternateArUrl)}" />
   <meta property="og:locale:alternate" content="${isEn ? 'ar_EG' : 'en_US'}" />`;
-        hydratedHtml = hydratedHtml.replace('</head>', `${hreflangTags}\n</head>`);
+      hydratedHtml = hydratedHtml.replace('</head>', `${hreflangTags}\n</head>`);
 
-        // 3. Inject instant place data into <head>
-        const injectionScript = `
-  <!-- Server-Injected Place SSR Hydration -->
+      // 3. Inject instant place data and LocalBusiness JSON-LD Schema into <head>
+      const jsonLdSchema = {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": rawPlaceName,
+        "description": placeDesc,
+        "image": placeImg,
+        "url": shareUrl,
+        "inLanguage": isEn ? "en" : "ar",
+        "telephone": place.phone || undefined,
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": (isEn && place.address_en) ? place.address_en : (place.address || undefined),
+          "addressLocality": (isEn && place.area_en) ? place.area_en : (place.area || (isEn ? 'El Manzala' : 'المنزلة والمطرية')),
+          "addressRegion": isEn ? 'Dakahlia' : 'الدقهلية',
+          "addressCountry": 'EG'
+        },
+        "geo": (place.latitude && place.longitude) ? {
+          "@type": "GeoCoordinates",
+          "latitude": place.latitude,
+          "longitude": place.longitude
+        } : undefined,
+        "aggregateRating": (place.review_count > 0) ? {
+          "@type": "AggregateRating",
+          "ratingValue": place.rating || 0,
+          "reviewCount": place.review_count || 0
+        } : undefined
+      };
+
+      const injectionScript = `
+  <!-- Server-Injected Place SSR Hydration & Schema.org Structured Data -->
   <script id="server-instant-place">
     window.__INSTANT_PLACE__ = ${JSON.stringify(normalizedPlace)};
     document.documentElement.classList.add('has-instant-place');
     document.title = ${JSON.stringify(fullShareTitle)};
+  </script>
+  <script type="application/ld+json">
+${JSON.stringify(jsonLdSchema, null, 2)}
   </script>`;
-        hydratedHtml = hydratedHtml.replace('</head>', `${injectionScript}\n</head>`);
+      hydratedHtml = hydratedHtml.replace('</head>', `${injectionScript}\n</head>`);
 
-        // 4. Replace skeleton inside <main id="page-container">
-        hydratedHtml = hydratedHtml.replace(/<main class="page-main" id="page-container"[^>]*>[\s\S]*?<\/main>/i, `<main class="page-main" id="page-container" role="main">\n${preRenderedContent}\n  </main>`);
+      // 4. Replace skeleton inside <main id="page-container">
+      hydratedHtml = hydratedHtml.replace(/<main class="page-main" id="page-container"[^>]*>[\s\S]*?<\/main>/i, `<main class="page-main" id="page-container" role="main">\n${preRenderedContent}\n  </main>`);
 
-        // 5. Suppress splash screen completely
-        hydratedHtml = hydratedHtml.replace(/<div id="splash" aria-hidden="true">/i, '<div id="splash" aria-hidden="true" style="display:none !important;">');
+      // 5. Suppress splash screen completely
+      hydratedHtml = hydratedHtml.replace(/<div id="splash" aria-hidden="true">/i, '<div id="splash" aria-hidden="true" style="display:none !important;">');
 
-        const ssrRes = new Response(hydratedHtml, {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'public, max-age=120, s-maxage=3600, stale-while-revalidate=86400',
-            'X-Edge-SSR': 'MISS',
-            'X-Content-Type-Options': 'nosniff',
-            'X-Localized-Route': langPrefix
-          }
-        });
-
-        if (cache && ctx && typeof ctx.waitUntil === 'function') {
-          ctx.waitUntil(cache.put(ssrCacheKey, ssrRes.clone()).catch(() => {}));
+      const ssrRes = new Response(hydratedHtml, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=120, s-maxage=3600, stale-while-revalidate=86400',
+          'X-Edge-SSR': 'MISS',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Localized-Route': langPrefix
         }
+      });
 
-        return ssrRes;
+      if (cache && ctx && typeof ctx.waitUntil === 'function') {
+        ctx.waitUntil(cache.put(ssrCacheKey, ssrRes.clone()).catch(() => {}));
       }
-    } catch (ssrErr) {
-      console.warn('[handleDynamicOpenGraph SSR Error]:', ssrErr?.message || ssrErr);
-    }
 
-    return Response.redirect(`${canonicalBase}/${isEn ? 'en/places' : 'place.html?slug=' + encodeURIComponent(placeTargetSlug)}`, 302);
+      return ssrRes;
+    }
+  } catch (ssrErr) {
+    console.warn('[handleDynamicOpenGraph SSR Error]:', ssrErr?.message || ssrErr);
   }
 
-  // 5. Social Media Crawlers (Open Graph HTML & JSON-LD)
+  // 5. High-Reliability Fallback: Return complete SEO-rich HTML if base template fetch fails
   const destinationUrl = isEn ? `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}` : `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
   const html = `<!DOCTYPE html>
 <html lang="${isEn ? 'en' : 'ar'}" dir="${isEn ? 'ltr' : 'rtl'}">
@@ -7049,41 +7078,44 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   <meta name="twitter:title" content="${escapeHtml(fullShareTitle)}">
   <meta name="twitter:description" content="${escapeHtml(placeDesc)}">
   <meta name="twitter:image" content="${escapeHtml(placeImg)}">
+  <script type="application/ld+json">${JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": rawPlaceName,
+    "description": placeDesc,
+    "image": placeImg,
+    "url": shareUrl,
+    "inLanguage": isEn ? "en" : "ar",
+    "telephone": place.phone || undefined,
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": (isEn && place.address_en) ? place.address_en : (place.address || undefined),
+      "addressLocality": (isEn && place.area_en) ? place.area_en : (place.area || (isEn ? 'El Manzala' : 'المنزلة والمطرية')),
+      "addressRegion": isEn ? 'Dakahlia' : 'الدقهلية',
+      "addressCountry": 'EG'
+    },
+    "geo": (place.latitude && place.longitude) ? {
+      "@type": "GeoCoordinates",
+      "latitude": place.latitude,
+      "longitude": place.longitude
+    } : undefined,
+    "aggregateRating": (place.review_count > 0) ? {
+      "@type": "AggregateRating",
+      "ratingValue": place.rating || 0,
+      "reviewCount": place.review_count || 0
+    } : undefined
+  })}</script>
 </head>
-<body style="font-family:Arial,sans-serif;text-align:center;padding:40px;direction:${isEn ? 'ltr' : 'rtl'};">
-  <h1>${escapeHtml(rawPlaceName)}</h1>
-  <p>
-    <script type="application/ld+json">${JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "LocalBusiness",
-      "name": rawPlaceName,
-      "description": placeDesc,
-      "image": placeImg,
-      "url": shareUrl,
-      "inLanguage": isEn ? "en" : "ar",
-      "telephone": place.phone || undefined,
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": (isEn && place.address_en) ? place.address_en : (place.address || undefined),
-        "addressLocality": (isEn && place.area_en) ? place.area_en : (place.area || (isEn ? 'El Manzala' : 'المنزلة والمطرية')),
-        "addressRegion": isEn ? 'Dakahlia' : 'الدقهلية',
-        "addressCountry": 'EG'
-      },
-      "geo": (place.latitude && place.longitude) ? {
-        "@type": "GeoCoordinates",
-        "latitude": place.latitude,
-        "longitude": place.longitude
-      } : undefined,
-      "aggregateRating": (place.review_count > 0) ? {
-        "@type": "AggregateRating",
-        "ratingValue": place.rating || 0,
-        "reviewCount": place.review_count || 0
-      } : undefined
-    })}</script>
-    ${isEn ? 'Redirecting to business profile...' : 'جاري تحويلك إلى صفحة المكان...'}
-  </p>
-  <p>
-    <a href="${escapeHtml(destinationUrl)}">${isEn ? 'Click here if not redirected automatically' : 'اضغط هنا للانتقال إلى صفحة المكان'}</a>
+<body style="font-family:Arial,sans-serif;padding:30px;max-width:850px;margin:0 auto;direction:${isEn ? 'ltr' : 'rtl'};line-height:1.7;">
+  <h1 style="color:#0f2744;font-size:1.8rem;margin-bottom:12px;">${escapeHtml(rawPlaceName)}</h1>
+  <p style="font-size:1.05rem;color:#334155;margin-bottom:16px;">${escapeHtml(placeDesc)}</p>
+  <p style="margin-bottom:8px;"><strong>${isEn ? 'Area:' : 'المنطقة:'}</strong> ${escapeHtml(place.area || 'المنزلة والمطرية')}</p>
+  ${place.address ? `<p style="margin-bottom:8px;"><strong>${isEn ? 'Address:' : 'العنوان:'}</strong> ${escapeHtml(place.address)}</p>` : ''}
+  ${place.phone ? `<p style="margin-bottom:8px;"><strong>${isEn ? 'Phone:' : 'الهاتف:'}</strong> <a href="tel:${escapeHtml(phoneClean)}" style="color:#0284c7;text-decoration:none;font-weight:700;">${escapeHtml(phoneClean)}</a></p>` : ''}
+  <p style="margin-top:24px;">
+    <a href="${escapeHtml(destinationUrl)}" style="display:inline-block;padding:10px 20px;border-radius:10px;background:#1B4F72;color:#ffffff;text-decoration:none;font-weight:bold;">
+      ${isEn ? 'View complete business profile, offers & working hours →' : 'تصفح صفحة المكان بالكامل والمواعيد والعروض ←'}
+    </a>
   </p>
 </body>
 </html>`;

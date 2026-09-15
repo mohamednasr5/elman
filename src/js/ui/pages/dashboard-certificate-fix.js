@@ -9,7 +9,7 @@ import { getPlace } from '../../core/db.js';
 // 5) Loads the certificate renderer lazily with a cache-busting URL so an old cached
 //    CertificateOfAppreciationModal.js can never block the dashboard action.
 
-const CERTIFICATE_MODULE_URL = new URL('../components/CertificateOfAppreciationModal.js?v=20260915_certfix_v2', import.meta.url).href;
+const CERTIFICATE_MODULE_URL = new URL('../components/CertificateOfAppreciationModal.js?v=20260915_certfix_v3', import.meta.url).href;
 
 let _certificateModulePromise = null;
 function loadCertificateModule() {
@@ -32,65 +32,67 @@ function installCertificatePreviewStyles() {
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      overflow: auto !important;
-      padding: 16px !important;
+      overflow: hidden !important;
+      padding: 14px 8px !important;
     }
 
     /* Keep the A4 artwork at its native 840x594 canvas size.
        Never resize the certificate itself: scale the complete canvas instead. */
-    .dashboard-cert-preview-stage {
+    .dashboard-cert-preview-stage,
+    .certificate-stage {
       position: relative !important;
       flex: 0 0 auto !important;
-      width: calc(840px * var(--cert-preview-scale, 1)) !important;
-      height: calc(594px * var(--cert-preview-scale, 1)) !important;
+      width: calc(840px * var(--cert-scale, var(--cert-preview-scale, 1))) !important;
+      height: calc(594px * var(--cert-scale, var(--cert-preview-scale, 1))) !important;
       min-width: 0 !important;
       min-height: 0 !important;
       display: block !important;
       overflow: visible !important;
+      margin: 0 auto !important;
     }
 
-    .dashboard-cert-preview-stage > .certificate-sheet {
+    .dashboard-cert-preview-stage > .certificate-sheet,
+    .certificate-stage > .certificate-sheet {
       position: absolute !important;
       left: 0 !important;
       top: 0 !important;
       width: 840px !important;
       height: 594px !important;
       min-width: 840px !important;
-      max-width: none !important;
+      max-width: 840px !important;
       min-height: 594px !important;
-      max-height: none !important;
+      max-height: 594px !important;
       aspect-ratio: auto !important;
       box-sizing: border-box !important;
       flex: none !important;
       margin: 0 !important;
-      transform: scale(var(--cert-preview-scale, 1)) !important;
+      transform: scale(var(--cert-scale, var(--cert-preview-scale, 1))) !important;
       transform-origin: top left !important;
     }
 
     @media (max-width: 700px) {
       .certificate-modal-overlay {
-        padding: 2px !important;
+        padding: 4px !important;
         align-items: center !important;
       }
       .certificate-modal-dialog {
         width: 100% !important;
         max-width: 100% !important;
-        max-height: calc(100vh - 4px) !important;
-        border-radius: 14px !important;
+        border-radius: 12px !important;
       }
       .certificate-modal-toolbar {
-        padding: 8px 9px !important;
-        gap: 6px !important;
+        padding: 8px 10px !important;
+        gap: 8px !important;
       }
       .certificate-modal-title {
-        font-size: 12px !important;
+        font-size: 11.5px !important;
         line-height: 1.3 !important;
       }
       .certificate-preview-container {
         width: 100% !important;
-        padding: 6px 4px !important;
-        overflow: auto !important;
-        align-items: flex-start !important;
+        padding: 8px 4px !important;
+        overflow: hidden !important;
+        align-items: center !important;
       }
     }
   `;
@@ -102,24 +104,29 @@ function setupCertificatePreviewScaling() {
   const sheet = container?.querySelector('.certificate-sheet');
   if (!container || !sheet) return;
 
-  let stage = sheet.parentElement?.classList.contains('dashboard-cert-preview-stage')
+  let stage = sheet.parentElement?.classList.contains('certificate-stage')
     ? sheet.parentElement
-    : null;
+    : (sheet.parentElement?.classList.contains('dashboard-cert-preview-stage') ? sheet.parentElement : null);
 
   if (!stage) {
     stage = document.createElement('div');
-    stage.className = 'dashboard-cert-preview-stage';
+    stage.className = 'certificate-stage dashboard-cert-preview-stage';
     sheet.parentNode.insertBefore(stage, sheet);
     stage.appendChild(sheet);
   }
 
   const update = () => {
-    const availableWidth = Math.max(1, container.clientWidth - 8);
-    const availableHeight = Math.max(1, container.clientHeight - 8);
-    const scaleByWidth = availableWidth / 840;
-    const scaleByHeight = availableHeight / 594;
-    const scale = Math.min(1.25, scaleByWidth, scaleByHeight);
-    stage.style.setProperty('--cert-preview-scale', String(Math.max(0.25, scale)));
+    const isMobile = window.innerWidth <= 640;
+    const padX = isMobile ? 8 : 24;
+    const availableWidth = Math.max(1, container.clientWidth - padX);
+    let scale = availableWidth / 840;
+    const topOffset = isMobile ? 110 : 140;
+    const availableHeight = Math.max(160, window.innerHeight - topOffset);
+    scale = Math.min(scale, availableHeight / 594);
+    scale = Math.min(1.0, Math.max(0.25, scale));
+
+    stage.style.setProperty('--cert-scale', String(scale));
+    stage.style.setProperty('--cert-preview-scale', String(scale));
   };
 
   update();
