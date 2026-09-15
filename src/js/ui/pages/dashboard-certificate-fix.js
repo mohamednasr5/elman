@@ -5,7 +5,8 @@ import { openCertificateOfAppreciationModal } from '../components/CertificateOfA
 // 1) Guarantees the certificate button opens even after dashboard re-renders.
 // 2) Fetches the exact place by ID when the local rendered list is stale.
 // 3) Keeps the on-screen A4 preview fully visible without changing export/print output.
-// 4) On phones, uses the available width instead of shrinking the A4 canvas excessively.
+// 4) Scales one fixed A4 canvas as a single unit so absolute-positioned seal/QR elements
+//    remain locked to the exact coordinates used by the certificate renderer/exporter.
 
 function installCertificatePreviewStyles() {
   if (document.getElementById('dashboard-certificate-preview-fix')) return;
@@ -23,16 +24,38 @@ function installCertificatePreviewStyles() {
       overflow: auto !important;
       padding: 16px !important;
     }
-    .certificate-preview-container .certificate-sheet {
-      width: min(840px, calc(100vw - 72px)) !important;
+
+    /* Keep the A4 artwork at its native 840x594 canvas size.
+       Never resize the certificate itself: scale the complete canvas instead. */
+    .dashboard-cert-preview-stage {
+      position: relative !important;
+      flex: 0 0 auto !important;
+      width: calc(840px * var(--cert-preview-scale, 1)) !important;
+      height: calc(594px * var(--cert-preview-scale, 1)) !important;
       min-width: 0 !important;
-      max-width: 100% !important;
-      height: auto !important;
-      max-height: calc(100vh - 190px) !important;
-      aspect-ratio: 297 / 210 !important;
-      box-sizing: border-box !important;
-      flex: 0 1 auto !important;
+      min-height: 0 !important;
+      display: block !important;
+      overflow: visible !important;
     }
+
+    .dashboard-cert-preview-stage > .certificate-sheet {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 840px !important;
+      height: 594px !important;
+      min-width: 840px !important;
+      max-width: none !important;
+      min-height: 594px !important;
+      max-height: none !important;
+      aspect-ratio: auto !important;
+      box-sizing: border-box !important;
+      flex: none !important;
+      margin: 0 !important;
+      transform: scale(var(--cert-preview-scale, 1)) !important;
+      transform-origin: top left !important;
+    }
+
     @media (max-width: 700px) {
       .certificate-modal-overlay {
         padding: 2px !important;
@@ -58,29 +81,46 @@ function installCertificatePreviewStyles() {
         overflow: auto !important;
         align-items: flex-start !important;
       }
-      .certificate-preview-container .certificate-sheet {
-        /* Fill the phone viewport horizontally; do not let the A4 canvas become a tiny thumbnail. */
-        width: calc(100vw - 14px) !important;
-        min-width: calc(100vw - 14px) !important;
-        max-width: calc(100vw - 14px) !important;
-        height: auto !important;
-        max-height: none !important;
-        aspect-ratio: 297 / 210 !important;
-        flex: 0 0 auto !important;
-      }
-    }
-
-    /* Very narrow phones: preserve readable width and allow vertical scrolling. */
-    @media (max-width: 380px) {
-      .certificate-preview-container { padding: 5px 2px !important; }
-      .certificate-preview-container .certificate-sheet {
-        width: calc(100vw - 8px) !important;
-        min-width: calc(100vw - 8px) !important;
-        max-width: calc(100vw - 8px) !important;
-      }
     }
   `;
   document.head.appendChild(style);
+}
+
+function setupCertificatePreviewScaling() {
+  const container = document.querySelector('#certificate-modal-overlay .certificate-preview-container');
+  const sheet = container?.querySelector('.certificate-sheet');
+  if (!container || !sheet) return;
+
+  let stage = sheet.parentElement?.classList.contains('dashboard-cert-preview-stage')
+    ? sheet.parentElement
+    : null;
+
+  if (!stage) {
+    stage = document.createElement('div');
+    stage.className = 'dashboard-cert-preview-stage';
+    sheet.parentNode.insertBefore(stage, sheet);
+    stage.appendChild(sheet);
+  }
+
+  const update = () => {
+    const availableWidth = Math.max(1, container.clientWidth - 8);
+    const availableHeight = Math.max(1, container.clientHeight - 8);
+    const scaleByWidth = availableWidth / 840;
+    const scaleByHeight = availableHeight / 594;
+    const scale = Math.min(1.25, scaleByWidth, scaleByHeight);
+    stage.style.setProperty('--cert-preview-scale', String(Math.max(0.25, scale)));
+  };
+
+  update();
+
+  if (!stage.__certResizeObserver && typeof ResizeObserver !== 'undefined') {
+    stage.__certResizeObserver = new ResizeObserver(update);
+    stage.__certResizeObserver.observe(container);
+  }
+  if (!stage.__certWindowResizeBound) {
+    window.addEventListener('resize', update, { passive: true });
+    stage.__certWindowResizeBound = true;
+  }
 }
 
 async function openDashboardCertificate(button) {
@@ -108,6 +148,13 @@ async function openDashboardCertificate(button) {
     }
 
     openCertificateOfAppreciationModal(place, {});
+
+    // The modal is injected synchronously, but one/two animation frames ensure
+    // the browser has established its real dimensions before calculating scale.
+    requestAnimationFrame(() => {
+      setupCertificatePreviewScaling();
+      requestAnimationFrame(setupCertificatePreviewScaling);
+    });
   } catch (err) {
     console.error('[Dashboard Certificate] open failed:', err);
     const message = 'تعذر فتح شهادة التقدير حالياً. أعد المحاولة بعد لحظات.';
