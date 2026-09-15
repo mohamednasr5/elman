@@ -1,5 +1,4 @@
 import { getPlace } from '../../core/db.js';
-import { openCertificateOfAppreciationModal } from '../components/CertificateOfAppreciationModal.js';
 
 // Dashboard certificate hardening:
 // 1) Guarantees the certificate button opens even after dashboard re-renders.
@@ -7,6 +6,18 @@ import { openCertificateOfAppreciationModal } from '../components/CertificateOfA
 // 3) Keeps the on-screen A4 preview fully visible without changing export/print output.
 // 4) Scales one fixed A4 canvas as a single unit so absolute-positioned seal/QR elements
 //    remain locked to the exact coordinates used by the certificate renderer/exporter.
+// 5) Loads the certificate renderer lazily with a cache-busting URL so an old cached
+//    CertificateOfAppreciationModal.js can never block the dashboard action.
+
+const CERTIFICATE_MODULE_URL = new URL('../components/CertificateOfAppreciationModal.js?v=20260915_certfix_v2', import.meta.url).href;
+
+let _certificateModulePromise = null;
+function loadCertificateModule() {
+  if (!_certificateModulePromise) {
+    _certificateModulePromise = import(CERTIFICATE_MODULE_URL);
+  }
+  return _certificateModulePromise;
+}
 
 function installCertificatePreviewStyles() {
   if (document.getElementById('dashboard-certificate-preview-fix')) return;
@@ -145,6 +156,13 @@ async function openDashboardCertificate(button) {
       const item = button.closest('.my-place-item');
       const name = item?.querySelector('.my-place-item__name')?.textContent?.trim() || '';
       place = { id: pid, name: name.replace(/🛡️|🏷️|🎖️/g, '').trim() };
+    }
+
+    // Lazy-load a fresh certificate module. This deliberately avoids the old
+    // static import path which could keep a stale module alive in a PWA cache.
+    const { openCertificateOfAppreciationModal } = await loadCertificateModule();
+    if (typeof openCertificateOfAppreciationModal !== 'function') {
+      throw new Error('Certificate renderer is unavailable');
     }
 
     openCertificateOfAppreciationModal(place, {});
