@@ -278,6 +278,13 @@ export async function renderHomePage($main, { user } = {}) {
         .catch(e => console.warn('[Home] WideAdsBanner load err:', e));
     } catch (_) {}
 
+    // Job Board Feed (طلبات العمل ووظائف متاحة - تكافؤ الفرص)
+    try {
+      import('../components/HomeJobBoardFeed.js')
+        .then(({ mountHomeJobBoardFeed }) => mountHomeJobBoardFeed('home-job-board-grid'))
+        .catch(e => console.warn('[Home] HomeJobBoardFeed load err:', e));
+    } catch (_) {}
+
     // First visit welcome video popup (1.mp4)
     try {
       checkAndShowFirstVisitVideo();
@@ -2036,6 +2043,35 @@ function getHomeHTML() {
           <a href="offers.html" class="section-link">عرض الكل ←</a>
         </div>
         <div class="offers-scroll" id="offers-scroll"></div>
+      </div>
+    </section>
+
+    <!-- Job Board Feed (طلبات العمل ووظائف متاحة) -->
+    <section class="section" id="home-job-board-section" style="background:var(--surface-2);padding-block:var(--space-10)">
+      <div class="container">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6);flex-wrap:wrap;gap:12px">
+          <div>
+            <h2 class="section-title" style="margin-bottom:4px">
+              <span>💼</span> طلبات العمل ووظائف متاحة
+            </h2>
+            <p style="margin:0;font-size:13px;color:var(--text-muted)">
+              فرص عمل وكوادر محلية متجددة في المنزلة والمطرية بتكافؤ الفرص في العرض
+            </p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <a href="job-seekers.html" class="btn btn-sm" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;text-decoration:none">
+              <span>طالبين عمل ↤</span>
+            </a>
+            <a href="jobs.html" class="btn btn-sm" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;text-decoration:none">
+              <span>وظائف شاغرة ↤</span>
+            </a>
+          </div>
+        </div>
+        <div class="home-jb-grid" id="home-job-board-grid">
+          <div style="grid-column:1/-1;text-align:center;padding:24px 0">
+            <div class="spinner spinner-sm"></div>
+          </div>
+        </div>
       </div>
     </section>
 

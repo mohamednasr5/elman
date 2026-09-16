@@ -195,7 +195,7 @@ async function sendDailyQuranReminder(env) {
   }
 }
 
-async function broadcastFcmNotification({ title, body, url, icon, tag }, env, ctx) {
+async function broadcastFcmNotification({ title, body, url, icon, tag, actionTitle }, env, ctx) {
   const task = async () => {
     try {
       if (!env.FCM_CLIENT_EMAIL || !env.FCM_PRIVATE_KEY || !env.FCM_PROJECT_ID) {
@@ -232,7 +232,8 @@ async function broadcastFcmNotification({ title, body, url, icon, tag }, env, ct
                   url: url || './now.html',
                   actionUrl: url || './now.html',
                   icon: icon || './icons/icon-192x192.png',
-                  tag: tag || ('fcm-' + Date.now())
+                  tag: tag || ('fcm-' + Date.now()),
+                  actionTitle: actionTitle || 'مشاهدة'
                 }
               }
             })
@@ -4163,22 +4164,17 @@ try {
     const age = Number(body.age);
     const gender = String(body.gender || '').trim();
     const phone = String(body.phone || '').trim();
-    const whatsapp = String(body.whatsapp || '').trim();
+    const whatsapp = String(body.whatsapp || body.phone || '').trim();
     const location = String(body.location || '').trim();
     const profession = String(body.profession || '').trim();
-    const experience = String(body.experience || '').trim();
-    const description = String(body.description || '').trim();
+    const experience = String(body.experience || (body.experience_years !== undefined ? (body.experience_years + ' سنوات') : '')).trim();
+    const description = String(body.description || body.bio || '').trim();
     const expectedSalary = body.expectedSalary !== undefined && body.expectedSalary !== '' && !isNaN(Number(body.expectedSalary)) ? Number(body.expectedSalary) : null;
 
     if (!name || name.length < 2) {
       return jsonResponse({ success: false, error: 'يرجى كتابة الاسم بشكل صحيح' }, 400, corsHeaders);
     }
-    if (isNaN(age) || age < 14 || age > 85) {
-      return jsonResponse({ success: false, error: 'يرجى إدخال سن صحيح بين 14 و 85 سنة' }, 400, corsHeaders);
-    }
-    if (!gender || (gender !== 'ذكر' && gender !== 'أنثى' && gender !== 'male' && gender !== 'female')) {
-      return jsonResponse({ success: false, error: 'يرجى تحديد الجنس (ذكر / أنثى)' }, 400, corsHeaders);
-    }
+    const cleanAge = (!isNaN(age) && age >= 14 && age <= 85) ? age : 24;
     const cleanGender = (gender === 'female' || gender === 'أنثى') ? 'أنثى' : 'ذكر';
 
     if (!phone || (!/^01[0125][0-9]{8}$/.test(phone) && !/^[0-9]{8,12}$/.test(phone))) {
@@ -4204,7 +4200,7 @@ try {
     await db.prepare(
       `INSERT INTO job_seekers (id, user_id, name, age, gender, phone, whatsapp, location, profession, experience, description, expected_salary, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
-    ).bind(id, authUser.uid, name, age, cleanGender, phone, whatsapp || phone, location, profession, experience, description, expectedSalary, now, now).run();
+    ).bind(id, authUser.uid, name, cleanAge, cleanGender, phone, whatsapp || phone, location, profession, experience, description, expectedSalary, now, now).run();
 
     safeBackgroundNotify('job_seeker_created', {
       id,
@@ -4213,6 +4209,16 @@ try {
       location,
       phone,
       userName: authUser.name || name
+    }, env, ctx);
+
+    // Instant FCM Push notification to all subscribers
+    broadcastFcmNotification({
+      title: `طلب عمل جديد — ${name}`,
+      body: `${name} من ${location} يطلب عمل`,
+      url: `./job-seekers.html?id=${id}`,
+      icon: './icons/icon-192x192.png',
+      tag: `job-seeker-${id}`,
+      actionTitle: 'مشاهدة الطلب'
     }, env, ctx);
 
     return jsonResponse({
@@ -4550,14 +4556,16 @@ try {
     }
 
     const body = await request.json().catch(() => ({}));
-    const workplaceName = String(body.workplaceName || '').trim();
+    const workplaceName = String(body.workplaceName || body.workplace || '').trim();
     const phone = String(body.phone || '').trim();
-    const whatsapp = String(body.whatsapp || '').trim();
+    const whatsapp = String(body.whatsapp || body.phone || '').trim();
     const location = String(body.location || '').trim();
     const profession = String(body.profession || '').trim();
-    const workingHours = Number(body.workingHours);
-    const salaryType = String(body.salaryType || 'specified').trim();
-    const salary = salaryType === 'interview' ? null : (body.salary !== undefined && body.salary !== '' && !isNaN(Number(body.salary)) ? Number(body.salary) : null);
+    const workingHoursRaw = body.workingHours !== undefined ? Number(body.workingHours) : 8;
+    const workingHours = (!isNaN(workingHoursRaw) && workingHoursRaw >= 1 && workingHoursRaw <= 24) ? workingHoursRaw : 8;
+    const salaryType = String(body.salaryType || body.salary_type || 'specified').trim();
+    const isNegotiable = salaryType === 'interview' || salaryType === 'negotiable';
+    const salary = isNegotiable ? null : (body.salary !== undefined && body.salary !== '' && !isNaN(Number(body.salary)) ? Number(body.salary) : null);
     const description = String(body.description || '').trim();
 
     if (!workplaceName || workplaceName.length < 2) {
@@ -4574,9 +4582,6 @@ try {
     }
     if (!profession) {
       return jsonResponse({ success: false, error: 'يرجى تحديد المهنة أو الصنعة المطلوبة' }, 400, corsHeaders);
-    }
-    if (isNaN(workingHours) || workingHours < 1 || workingHours > 24) {
-      return jsonResponse({ success: false, error: 'يرجى إدخال عدد ساعات العمل اليومية الفعلية (بين 1 و 24)' }, 400, corsHeaders);
     }
     if (salaryType === 'specified' && (salary === null || salary <= 0)) {
       return jsonResponse({ success: false, error: 'يرجى كتابة قيمة الراتب أو اختيار "يحدد بعد المقابلة"' }, 400, corsHeaders);
@@ -4601,6 +4606,17 @@ try {
       location,
       phone,
       userName: authUser.name || workplaceName
+    }, env, ctx);
+
+    // Instant FCM Push notification to all subscribers
+    const salaryDisplay = (salary && salary > 0) ? `${Number(salary).toLocaleString('ar-EG')} ج.م` : 'يحدد في المقابلة';
+    broadcastFcmNotification({
+      title: `وظيفة متاحة جديدة — ${workplaceName}`,
+      body: `${workplaceName} من ${location} لديه وظيفة براتب (${salaryDisplay})`,
+      url: `./jobs.html?id=${id}`,
+      icon: './icons/icon-192x192.png',
+      tag: `job-${id}`,
+      actionTitle: 'مشاهدة الوظيفة'
     }, env, ctx);
 
     return jsonResponse({
