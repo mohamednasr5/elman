@@ -3408,49 +3408,280 @@ async function renderAdminCategories($container) {
   });
 }
 
-function matchCategoryEmojiLocal(name = '') {
+function getCategoryCandidateEmojis(name = '') {
   const n = String(name || '').toLowerCase().trim();
-  if (!n) return '📁';
-  if (/سمك|أسماك|اسماك|سي فود|seafood|فسخاني|رنجة|جمبري|شواية سمك|فرن سمك|فرن وشواية سمك/.test(n)) return '🐟';
-  if (/مخبز|فرن|عيش|معجنات|فطائر|فطاطري|مخبوزات|حلواني|كيك|تورتة|حلويات/.test(n)) return '🥖';
-  if (/مشويات|شواية|كباب|كفتة|حاتي|مشوي|جزار|لحوم|مجزرة|كبدة/.test(n)) return '🥩';
-  if (/دواجن|فراخ|طيور|بط|دجاج/.test(n)) return '🍗';
-  if (/سوبر ماركت|ماركت|بقالة|تموين|هايبر|عطارة|مقلة|محمصة|لب|مكسرات/.test(n)) return '🛒';
-  if (/صيدلي|صيدلية|أدوية|دواء/.test(n)) return '💊';
-  if (/أسنان|اسنان|تبييض/.test(n)) return '🦷';
-  if (/عيون|بصريات|نظارات/.test(n)) return '👓';
-  if (/معمل|تحاليل|أشعة|اشعة/.test(n)) return '🔬';
-  if (/مستشفى|طوارئ|إسعاف/.test(n)) return '🏥';
-  if (/طبيب|دكتور|عيادة|استشاري|أخصائي|كشف|جراحة/.test(n)) return '🩺';
-  if (/كافيه|مقهى|قهوة|كوفي|شاي|عصير|عصائر/.test(n)) return '☕';
-  if (/مطعم|مأكولات|وجبات|سندوتش|فول|طعمية|فلافل|شاورما|برجر|بيتزا|كشري/.test(n)) return '🍽️';
-  if (/ملابس|أزياء|ازياء|فستان|بدل|رجالي|حريمي|أطفال|بوتيك/.test(n)) return '👔';
-  if (/أحذية|احذية|شوز|كوتشي|شنط|جلود/.test(n)) return '👟';
-  if (/ذهب|مجوهرات|صاغة|فضة|ساعات/.test(n)) return '💍';
-  if (/حلاق|حلاقة|صالون|كوافير|بيوتي|ميك اب|مكياج|عطور|برفان/.test(n)) return '✂️';
-  if (/نجار|نجارة|موبيليا|غرف نوم|أنتريه/.test(n)) return '🪚';
-  if (/سباك|سباكة|أدوات صحية/.test(n)) return '🔧';
-  if (/كهربا|كهربائي|إنارة/.test(n)) return '⚡';
-  if (/حداد|حدادة|كريتال/.test(n)) return '🔨';
-  if (/نقاش|نقاشة|دهان|بويات|ديكور/.test(n)) return '🎨';
-  if (/ألوميتال|الوميتال|سيكوريت|زجاج/.test(n)) return '🪟';
-  if (/تكييف|تبريد|صيانة أجهزة|غسالات|ثلاجات/.test(n)) return '❄️';
-  if (/موبايل|هاتف|اتصالات|تليفون/.test(n)) return '📱';
-  if (/كمبيوتر|لابتوب|برمجة|نت/.test(n)) return '💻';
-  if (/سيارات|ميكانيك|كاوتش|غسيل سيارات|بنزين/.test(n)) return '🚗';
-  if (/موتوسيكل|دراجة|عجلة/.test(n)) return '🏍️';
-  if (/مكتبة|تصوير|طباعة|كتب|ورق/.test(n)) return '📚';
-  if (/محامي|استشارات قانونية|قانون/.test(n)) return '⚖️';
-  if (/محاسب|ضرائب/.test(n)) return '📊';
-  if (/خياط|ترزي|تفصيل/.test(n)) return '🪡';
-  if (/زهور|ورد|هدايا/.test(n)) return '💐';
-  if (/جيم|رياضة|فتنس/.test(n)) return '🏋️';
-  if (/بلايستيشن|العاب|ألعاب/.test(n)) return '🎮';
-  if (/عقارات|شقق|سمسار/.test(n)) return '🏢';
-  return '📁';
+  if (!n) return [];
+  const candidates = [];
+
+  const add = (...emojis) => {
+    for (const e of emojis) {
+      if (e && !candidates.includes(e)) candidates.push(e);
+    }
+  };
+
+  // 1. Cashier, POS, Barcode, Accounting, Surveillance Cameras, Security & IT
+  if (/كاشير|كاش|نقاط بيع|pos/.test(n)) add('📟', '📠', '🖨️', '🧾', '💳', '💰');
+  if (/باركود|سكانر|قارئ باركود/.test(n)) add('🏷️', '📟', '📦', '📱');
+  if (/محاسب|محاسبة|برامج محاسبة|دفاتر|حسابات|ضرائب|مالي/.test(n)) add('📊', '📈', '🧮', '💻', '🧾', '💵');
+  if (/كاميرا|كاميرات|مراقبة|cctv|انذار|إنذار|امني|أمني|حراسة|سيكيورتي/.test(n)) add('📹', '🎥', '🛡️', '👁️', '📷', '🚨', '📡');
+  if (/برمجة|سوفتوير|أنظمة|برامج|تطبيقات|مواقع|شبكات|it|تقنية|ذكاء اصطناعي/.test(n)) add('💻', '🖥️', '⌨️', '🖱️', '💾', '🌐', '⚙️');
+
+  // 2. Fish & Seafood
+  if (/سمك|أسماك|اسماك|سي فود|seafood|فسخاني|رنجة|جمبري|شواية سمك|فرن سمك|فرن وشواية سمك|ماكولات بحرية/.test(n)) {
+    add('🐟', '🐠', '🦐', '🦀', '🦞', '🐙', '🦑', '🐡');
+  }
+
+  // 3. Bakery, Bread, Pastries, Sweets
+  if (/مخبز|فرن|عيش|معجنات|فطائر|فطاطري|مخبوزات|حلواني|كيك|تورتة|حلويات|بسبوسة|كنافة/.test(n)) {
+    add('🥖', '🍞', '🥐', '🥨', '🧁', '🍰', '🎂', '🍩', '🍪');
+  }
+
+  // 4. Meat, Poultry, Grill, Butcher
+  if (/مشويات|شواية|كباب|كفتة|حاتي|مشوي|جزار|لحوم|مجزرة|كبدة/.test(n)) {
+    add('🥩', '🍖', '🍗', '🥓', '🔪');
+  }
+  if (/دواجن|فراخ|طيور|بط|دجاج|حمام|أرانب/.test(n)) {
+    add('🍗', '🥩', '🍖');
+  }
+
+  // 5. Supermarket, Groceries, Roastery, Spices
+  if (/سوبر ماركت|ماركت|بقالة|تموين|هايبر|عطارة|مقلة|محمصة|لب|مكسرات|ألبان|جبن/.test(n)) {
+    add('🛒', '🛍️', '🏪', '🥫', '🧺', '🍏', '🧀', '📦');
+  }
+
+  // 6. Pharmacy & Medicine
+  if (/صيدلي|صيدلية|أدوية|دواء|مستلزمات طبية/.test(n)) {
+    add('💊', '💉', '🩹', '🩺', '🧪', '🏥');
+  }
+
+  // 7. Dental & Teeth
+  if (/أسنان|اسنان|تبييض|تقويم أسنان/.test(n)) {
+    add('🦷', '🪥', '🩺');
+  }
+
+  // 8. Eyes & Optics
+  if (/عيون|بصريات|نظارات|رمد|عدسات/.test(n)) {
+    add('👓', '🕶️', '🔬', '👁️');
+  }
+
+  // 9. Labs & Radiology
+  if (/معمل|تحاليل|أشعة|اشعة|رنين|سونار/.test(n)) {
+    add('🔬', '🧪', '🧫', '🧬', '📄');
+  }
+
+  // 10. Hospital, Clinics, Doctors
+  if (/مستشفى|طوارئ|إسعاف|مركز طبي/.test(n)) {
+    add('🏥', '🚑', '🩺', '⚕️');
+  }
+  if (/طبيب|دكتور|عيادة|استشاري|أخصائي|كشف|جراحة|باطنة|أطفال|نساء وتوليد|عظام|جلدية|مخ واعصاب/.test(n)) {
+    add('🩺', '🏥', '⚕️', '👨‍⚕️', '👩‍⚕️');
+  }
+
+  // 11. Cafe & Drinks
+  if (/كافيه|مقهى|قهوة|كوفي|شاي|عصير|عصائر|مشروبات/.test(n)) {
+    add('☕', '🍵', '🧃', '🥤', '🧋', '🥛', '🍹');
+  }
+
+  // 12. Restaurants & Fast Food
+  if (/مطعم|مأكولات|وجبات|سندوتش|فول|طعمية|فلافل|شاورما|برجر|بيتزا|كشري|كريب|حواوشي/.test(n)) {
+    add('🍽️', '🍴', '🍲', '🍳', '🌮', '🍔', '🍕', '🍟', '🍜');
+  }
+
+  // 13. Clothes, Tailor, Fashion
+  if (/ملابس|أزياء|ازياء|فستان|بدل|رجالي|حريمي|أطفال|بوتيك|دراسات|طرح|عبايات/.test(n)) {
+    add('👔', '👗', '🧥', '👚', '🥻', '👖', '🪡');
+  }
+  if (/خياط|ترزي|تفصيل|تطريز/.test(n)) {
+    add('🪡', '🧵', '✂️', '👔', '👗');
+  }
+
+  // 14. Shoes & Bags
+  if (/أحذية|احذية|شوز|كوتشي|شنط|جلود|محافظ/.test(n)) {
+    add('👟', '👠', '👞', '👡', '👢', '👜', '🎒');
+  }
+
+  // 15. Jewelry, Gold, Watches
+  if (/ذهب|مجوهرات|صاغة|فضة|ساعات|إكسسوارات|اكسسوارات/.test(n)) {
+    add('💍', '💎', '👑', '🪙', '✨', '⌚');
+  }
+
+  // 16. Barbershop, Salon, Cosmetics, Perfumes
+  if (/حلاق|حلاقة|صالون|كوافير|بيوتي|ميك اب|مكياج|عطور|برفان|تجميل/.test(n)) {
+    add('✂️', '💈', '💇‍♂️', '💇‍♀️', '💅', '💄', '🧴', '🪞');
+  }
+
+  // 17. Carpentry & Furniture
+  if (/نجار|نجارة|موبيليا|غرف نوم|أنتريه|صالون خشب|مطابخ|خشب/.test(n)) {
+    add('🪚', '🪵', '🛋️', '🪑', '🛏️', '🚪');
+  }
+
+  // 18. Plumbing & Sanitary
+  if (/سباك|سباكة|أدوات صحية|خلاطات|مواسير/.test(n)) {
+    add('🔧', '🚰', '🚿', '🛁', '🔩');
+  }
+
+  // 19. Electricity & Lighting
+  if (/كهربا|كهربائي|إنارة|لمبات|نجف|أدوات كهربائية/.test(n)) {
+    add('⚡', '💡', '🔌', '🔦');
+  }
+
+  // 20. Blacksmith & Metal
+  if (/حداد|حدادة|كريتال|فورفورجيه|حديد/.test(n)) {
+    add('🔨', '⚒️', '🛠️', '🗜️', '⚙️');
+  }
+
+  // 21. Painting, Paints & Decor
+  if (/نقاش|نقاشة|دهان|بويات|ديكور|ورق حائط|جبس|جبسون بورد/.test(n)) {
+    add('🎨', '🖌️', '🖼️', '🎭');
+  }
+
+  // 22. Glass & Aluminum
+  if (/ألوميتال|الوميتال|سيكوريت|زجاج|مرايات|واجهات/.test(n)) {
+    add('🪟', '🧊', '🏢');
+  }
+
+  // 23. AC & Refrigeration & Home Appliances
+  if (/تكييف|تبريد|صيانة أجهزة|غسالات|ثلاجات|بوتاجازات|أجهزة منزلية/.test(n)) {
+    add('❄️', '🌬️', '🧊', '📺', '📻');
+  }
+
+  // 24. Mobile & Telecom
+  if (/موبايل|هاتف|اتصالات|تليفون|صيانة موبايل|شواحن|جرابات/.test(n)) {
+    add('📱', '📲', '☎️', '📞', '🔋');
+  }
+
+  // 25. Computers & Tech
+  if (/كمبيوتر|لابتوب|طابعات|حبر|صيانة كمبيوتر/.test(n)) {
+    add('💻', '🖥️', '⌨️', '🖱️', '🖨️');
+  }
+
+  // 26. Cars & Vehicles
+  if (/سيارات|ميكانيك|كاوتش|غسيل سيارات|بنزين|قطع غيار سيارات|زيوت/.test(n)) {
+    add('🚗', '🚘', '🚙', '🏎️', '⛽', '🛞', '🔧');
+  }
+  if (/موتوسيكل|دراجة|عجلة|توكتوك|تروسيكل|قطع غيار موتوسيكل/.test(n)) {
+    add('🏍️', '🛵', '🚲');
+  }
+
+  // 27. Books, Stationery & Printing
+  if (/مكتبة|تصوير|طباعة|كتب|ورق|أدوات مكتبية|مذكرات/.test(n)) {
+    add('📚', '📖', '📝', '✏️', '✒️', '📄', '🖨️');
+  }
+
+  // 28. Law & Legal
+  if (/محامي|استشارات قانونية|قانون|مجلس الدولة|توثيق/.test(n)) {
+    add('⚖️', '📜', '🏛️');
+  }
+
+  // 29. Flowers & Gifts
+  if (/زهور|ورد|هدايا|تغليف|تحف/.test(n)) {
+    add('💐', '🌸', '🌹', '🌻', '🎁', '🎀');
+  }
+
+  // 30. Gym & Sports
+  if (/جيم|رياضة|فتنس|كمال أجسام|تخسيس|ملاعب|كرة قدم/.test(n)) {
+    add('🏋️', '🥊', '🥋', '⚽', '🏀', '🥇', '🏆');
+  }
+
+  // 31. Gaming & Entertainment
+  if (/بلايستيشن|العاب|ألعاب|بلاي ستيشن|gaming|vr/.test(n)) {
+    add('🎮', '🕹️', '🎲', '👾');
+  }
+
+  // 32. Real estate & Contracting
+  if (/عقارات|شقق|سمسار|مقاولات|بناء|هندسة|مكتب هندسي/.test(n)) {
+    add('🏢', '🏠', '🏡', '🏘️', '🏗️', '📐');
+  }
+
+  // 33. Education & Schools
+  if (/مدرسة|حضانة|سنتر|دروس|تعليم|أكاديمية|تدريب|كورسات/.test(n)) {
+    add('🎓', '🏫', '🎒', '✏️', '👩‍🏫');
+  }
+
+  // 34. Cleaning & Laundry
+  if (/مغسلة|دراي كلين|تنظيف|مكوجي|سجاد/.test(n)) {
+    add('🧺', '🧼', '🧹', '🧽');
+  }
+
+  // 35. Photography & Video Studios
+  if (/استوديو|تصوير فوتوغرافي|فوتوسيشن|سيشن|فيديو/.test(n)) {
+    add('📷', '📸', '🎥', '🎬');
+  }
+
+  return candidates;
+}
+
+function getBestUnusedCategoryEmoji(name = '', preferredEmoji = '', excludeCatId = null) {
+  const existingCats = adminCache.categories || [];
+  const usedIcons = new Set();
+  const iconToCatMap = new Map();
+
+  existingCats.forEach(c => {
+    const cid = c._key || c.slug || c.id;
+    if (excludeCatId && cid === excludeCatId) return;
+    const ic = (c.icon || '').trim();
+    if (ic && ic !== '📁') {
+      usedIcons.add(ic);
+      if (!iconToCatMap.has(ic)) iconToCatMap.set(ic, c.name || c.id);
+    }
+  });
+
+  const pref = (preferredEmoji || '').trim();
+
+  // If a valid preferred emoji was given and it is NOT used, keep it
+  if (pref && pref !== '📁' && !usedIcons.has(pref)) {
+    return { emoji: pref, replaced: false, prevOwner: null, original: pref };
+  }
+
+  const prevOwner = pref && usedIcons.has(pref) ? iconToCatMap.get(pref) : null;
+
+  // 1. Try domain-specific candidates
+  const candidates = getCategoryCandidateEmojis(name);
+  for (const emoji of candidates) {
+    if (emoji && !usedIcons.has(emoji)) {
+      return { emoji, replaced: Boolean(pref && pref !== emoji), prevOwner, original: pref };
+    }
+  }
+
+  // 2. High-quality general directory backup pool (ordered, distinctive)
+  const backupPool = [
+    '📟', '📠', '🖨️', '🧾', '💳', '📊', '🧮', '💻', '🖥️', '📹', '🛡️',
+    '🏪', '🧺', '🛍️', '🥫', '🍞', '🥐', '🥨', '🧁', '🍰', '🎂',
+    '🐠', '🦐', '🦀', '🐙', '🍖', '🥓', '🍵', '🧃', '🥤', '🍲',
+    '🍳', '🌮', '🌯', '🥙', '💉', '🩹', '🔬', '🧪', '👗', '🧥',
+    '👠', '👞', '👜', '🎒', '💎', '👑', '🪙', '💈', '💇‍♂️', '💅',
+    '🛋️', '🪑', '🚰', '🚿', '💡', '🔌', '🛠️', '🖌️', '🖼️', '🧊',
+    '📲', '☎️', '🚘', '🚙', '🛵', '🚲', '📖', '📝', '📜', '🏛️',
+    '📈', '💵', '🌸', '🌹', '🎁', '🥊', '🥋', '🕹️', '🎲', '🏠',
+    '🏡', '🏗️', '📐', '🎓', '🏫', '🚚', '🧼', '🧹', '📸', '🎬',
+    '⭐', '🌟', '✨', '🏷️', '🔖', '📌', '📍', '🧭', '🎯', '🛎️'
+  ];
+
+  for (const emoji of backupPool) {
+    if (!usedIcons.has(emoji)) {
+      return { emoji, replaced: Boolean(pref && pref !== emoji), prevOwner, original: pref };
+    }
+  }
+
+  return { emoji: '📁', replaced: false, prevOwner: null, original: pref };
+}
+
+function matchCategoryEmojiLocal(name = '') {
+  return getBestUnusedCategoryEmoji(name, '').emoji;
 }
 
 function showAddCategoryModal(onDone) {
+  const existingCats = adminCache.categories || [];
+  const usedIconsSet = new Set(existingCats.map(c => (c.icon || '').trim()).filter(Boolean));
+  const baseQuickEmojis = [
+    '🐟','🥖','🥩','🍗','🍽️','☕','🛒','💊','🩺','🦷',
+    '👔','🔧','⚡','🎨','🪚','📱','💻','🚗','📚','🏢',
+    '📟','🧾','📹','🛡️','📊','🧮','📦','🏷️','💍','✂️',
+    '👟','🪟','❄️','🏍️','⚖️','💐','🏋️','🎮','🧺','🧼'
+  ];
+  // Filter out any emojis already used in existing categories so only pristine available icons appear
+  const availableQuickEmojis = baseQuickEmojis.filter(e => !usedIconsSet.has(e)).slice(0, 20);
+
   const modal = showModal({
     title: 'إضافة تصنيف جديد للدليل',
     content: `
@@ -3472,8 +3703,8 @@ function showAddCategoryModal(onDone) {
           <button type="button" class="btn btn-secondary" id="btn-ai-cat-icon" style="white-space:nowrap">✨ AI أيقونة</button>
         </div>
         <div class="cat-quick-emojis" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.08)">
-          <span style="font-size:11px;color:#94a3b8;align-self:center;margin-left:4px">اقتراحات سريعة:</span>
-          ${['🐟','🥖','🥩','🍗','🍽️','☕','🛒','💊','🩺','🦷','👔','🔧','⚡','🎨','🪚','📱','💻','🚗','📚','🏢'].map(e => `<button type="button" class="btn-quick-cat-emoji" data-emoji="${e}" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;cursor:pointer;font-size:16px;padding:2px 7px;line-height:1.2">${e}</button>`).join('')}
+          <span style="font-size:11px;color:#94a3b8;align-self:center;margin-left:4px">اقتراحات سريعة غير مستخدمة:</span>
+          ${availableQuickEmojis.map(e => `<button type="button" class="btn-quick-cat-emoji" data-emoji="${e}" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;cursor:pointer;font-size:16px;padding:2px 7px;line-height:1.2">${e}</button>`).join('')}
         </div>
       </div>
     `,
@@ -3485,7 +3716,7 @@ function showAddCategoryModal(onDone) {
         onClick: async () => {
           const name = document.getElementById('cat-name-ar')?.value.trim();
           const slug = document.getElementById('cat-name-en')?.value.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-          const icon = document.getElementById('cat-icon')?.value.trim() || '📁';
+          let icon = document.getElementById('cat-icon')?.value.trim() || '📁';
 
           if (!name || !slug) {
             toast.warning('يرجى كتابة الاسم والـ Slug بالإنجليزية');
@@ -3504,11 +3735,17 @@ function showAddCategoryModal(onDone) {
             return;
           }
 
+          // If icon is already in use by another category, replace it immediately on the fly!
           if (icon && icon !== '📁') {
             const iconCollision = existingCats.find(c => (c.icon || '').trim() === icon);
             if (iconCollision) {
-              toast.warning(`عفواً، هذه الأيقونة (${icon}) مستخدمة بالفعل في تصنيف "${iconCollision.name}". يرجى اختيار أيقونة فريدة.`);
-              return;
+              const autoFix = getBestUnusedCategoryEmoji(name, '');
+              if (autoFix.emoji && autoFix.emoji !== '📁') {
+                icon = autoFix.emoji;
+                document.getElementById('cat-icon').value = autoFix.emoji;
+                toast.info(`الأيقونة كانت مستخدمة في "${iconCollision.name}"، تم استبدالها فوراً بـ (${autoFix.emoji})! اضغط حفظ مجدداً.`);
+                return;
+              }
             }
           }
 
@@ -3542,15 +3779,42 @@ function showAddCategoryModal(onDone) {
     ]
   });
 
-  // Attach quick emoji click handlers
+  // Attach quick emoji click handlers with immediate duplicate replacement
   document.querySelectorAll('.btn-quick-cat-emoji').forEach(btn => {
     btn.addEventListener('click', () => {
       const emoji = btn.dataset.emoji;
+      const catName = document.getElementById('cat-name-ar')?.value.trim() || '';
+      const check = getBestUnusedCategoryEmoji(catName, emoji);
       const iconInput = document.getElementById('cat-icon');
-      if (iconInput && emoji) iconInput.value = emoji;
+      if (iconInput) {
+        iconInput.value = check.emoji;
+        if (check.replaced && check.prevOwner) {
+          toast.info(`الأيقونة (${emoji}) مستخدمة بالفعل في تصنيف "${check.prevOwner}"، تم استبدالها فوراً بـ (${check.emoji}) ✨`);
+        }
+      }
     });
   });
 
+  // Auto-detect and replace used emojis when typing or changing the icon input
+  const iconInput = document.getElementById('cat-icon');
+  const catNameInput = document.getElementById('cat-name-ar');
+
+  const checkAndReplaceCurrentIcon = () => {
+    const val = iconInput?.value?.trim();
+    if (!val || val === '📁') return;
+    const catName = catNameInput?.value?.trim() || '';
+    const check = getBestUnusedCategoryEmoji(catName, val);
+    if (check.replaced && check.prevOwner) {
+      iconInput.value = check.emoji;
+      toast.info(`الأيقونة (${val}) مستخدمة في تصنيف "${check.prevOwner}"، تم استبدالها فوراً بأيقونة فريدة (${check.emoji}) ✨`);
+    }
+  };
+
+  iconInput?.addEventListener('input', checkAndReplaceCurrentIcon);
+  iconInput?.addEventListener('change', checkAndReplaceCurrentIcon);
+  iconInput?.addEventListener('blur', checkAndReplaceCurrentIcon);
+
+  // Translation with auto-suggesting guaranteed UNUSED icon
   document.getElementById('btn-ai-cat-translate')?.addEventListener('click', async () => {
     const name = document.getElementById('cat-name-ar')?.value.trim();
     const btn = document.getElementById('btn-ai-cat-translate');
@@ -3614,11 +3878,19 @@ function showAddCategoryModal(onDone) {
       const enInput = document.getElementById('cat-name-en');
       if (enInput) enInput.value = formatted;
 
-      // Auto-suggest icon if icon field is empty
-      const iconInput = document.getElementById('cat-icon');
-      if (iconInput && (!iconInput.value || iconInput.value === '📁')) {
-        const autoIcon = matchCategoryEmojiLocal(name);
-        if (autoIcon && autoIcon !== '📁') iconInput.value = autoIcon;
+      // Auto-suggest icon guaranteed unused
+      const curIconInput = document.getElementById('cat-icon');
+      if (curIconInput && (!curIconInput.value || curIconInput.value === '📁')) {
+        const autoIconCheck = getBestUnusedCategoryEmoji(name, '');
+        if (autoIconCheck.emoji && autoIconCheck.emoji !== '📁') {
+          curIconInput.value = autoIconCheck.emoji;
+        }
+      } else if (curIconInput && curIconInput.value) {
+        const autoIconCheck = getBestUnusedCategoryEmoji(name, curIconInput.value);
+        if (autoIconCheck.replaced && autoIconCheck.prevOwner) {
+          curIconInput.value = autoIconCheck.emoji;
+          toast.info(`الأيقونة (${autoIconCheck.original}) كانت مستخدمة في "${autoIconCheck.prevOwner}"، تم استبدالها فوراً بـ (${autoIconCheck.emoji}) ✨`);
+        }
       }
 
       toast.success('تمت الترجمة إلى الإنجليزية بنجاح ✨');
@@ -3630,22 +3902,23 @@ function showAddCategoryModal(onDone) {
     }
   });
 
+  // AI Icon generation with STRICT immediate replacement if used!
   document.getElementById('btn-ai-cat-icon')?.addEventListener('click', async () => {
     const name = document.getElementById('cat-name-ar')?.value.trim();
     const btn = document.getElementById('btn-ai-cat-icon');
     if (!name) { toast.warning('اكتب اسم التصنيف بالعربية أولاً'); return; }
     const old = btn.textContent; btn.disabled = true; btn.textContent = '⏳ جاري التوليد...';
     try {
-      let icon = '';
+      let candidate = '';
 
       // 1. Check local precision dictionary first
-      const localMatch = matchCategoryEmojiLocal(name);
-      if (localMatch && localMatch !== '📁') {
-        icon = localMatch;
+      const localCheck = getBestUnusedCategoryEmoji(name, '');
+      if (localCheck.emoji && localCheck.emoji !== '📁') {
+        candidate = localCheck.emoji;
       }
 
       // 2. Try Worker endpoint if not resolved
-      if (!icon) {
+      if (!candidate || candidate === '📁') {
         try {
           const token = await getIdToken();
           if (token) {
@@ -3656,15 +3929,22 @@ function showAddCategoryModal(onDone) {
             });
             const data = await res.json().catch(()=>({}));
             if (res.ok && data.success && data.icon) {
-              icon = data.icon;
+              candidate = data.icon;
             }
           }
         } catch (_) {}
       }
 
-      if (!icon) icon = '📁';
-      document.getElementById('cat-icon').value = icon;
-      toast.success('تم اختيار أيقونة مناسبة للنشاط ✨');
+      // 3. Guarantee that the chosen icon is strictly unused; replace immediately if used!
+      const finalCheck = getBestUnusedCategoryEmoji(name, candidate);
+      const finalIcon = finalCheck.emoji || '📁';
+      document.getElementById('cat-icon').value = finalIcon;
+
+      if (finalCheck.replaced && finalCheck.prevOwner) {
+        toast.info(`الأيقونة المقترحة (${finalCheck.original}) مستخدمة بالفعل في تصنيف "${finalCheck.prevOwner}"، تم استبدالها فوراً بأيقونة فريدة (${finalIcon}) ✨`);
+      } else {
+        toast.success(`تم اختيار أيقونة فريدة (${finalIcon}) مناسبة للنشاط ✨`);
+      }
     } catch(e) {
       toast.error(e.message || 'فشل توليد الأيقونة');
     } finally {
@@ -6673,7 +6953,7 @@ window.editCategoryAdmin = async (catId, currentName, currentIcon) => {
         closeOnClick: false,
         onClick: async () => {
           const name = document.getElementById('edit-cat-name')?.value.trim();
-          const icon = document.getElementById('edit-cat-icon')?.value.trim() || '📁';
+          let icon = document.getElementById('edit-cat-icon')?.value.trim() || '📁';
           if (!name) return;
 
           const existingCats = adminCache.categories || [];
@@ -6692,8 +6972,13 @@ window.editCategoryAdmin = async (catId, currentName, currentIcon) => {
           if (icon && icon !== '📁') {
             const iconCollision = existingCats.find(c => (c._key || c.slug || c.id) !== catId && (c.icon || '').trim() === icon);
             if (iconCollision) {
-              toast.warning(`عفواً، هذه الأيقونة (${icon}) مستخدمة بالفعل في تصنيف "${iconCollision.name}". يرجى اختيار أيقونة فريدة.`);
-              return;
+              const autoFix = getBestUnusedCategoryEmoji(name, '', catId);
+              if (autoFix.emoji && autoFix.emoji !== '📁') {
+                icon = autoFix.emoji;
+                document.getElementById('edit-cat-icon').value = autoFix.emoji;
+                toast.info(`الأيقونة كانت مستخدمة في "${iconCollision.name}"، تم استبدالها فوراً بأيقونة فريدة (${autoFix.emoji})! اضغط حفظ مجدداً.`);
+                return;
+              }
             }
           }
           try {
@@ -6719,17 +7004,35 @@ window.editCategoryAdmin = async (catId, currentName, currentIcon) => {
       { label: 'إلغاء', type: 'ghost', closeOnClick: true }
     ]
   });
+
+  // Auto-detect and replace if typed emoji is already used
+  const editIconInput = document.getElementById('edit-cat-icon');
+  const checkAndReplaceEditIcon = () => {
+    const val = editIconInput?.value?.trim();
+    if (val && val !== '📁') {
+      const editName = document.getElementById('edit-cat-name')?.value?.trim() || '';
+      const check = getBestUnusedCategoryEmoji(editName, val, catId);
+      if (check.replaced && check.prevOwner) {
+        editIconInput.value = check.emoji;
+        toast.info(`الأيقونة (${val}) مستخدمة في تصنيف "${check.prevOwner}"، تم استبدالها فوراً بأيقونة فريدة (${check.emoji}) ✨`);
+      }
+    }
+  };
+  editIconInput?.addEventListener('input', checkAndReplaceEditIcon);
+  editIconInput?.addEventListener('change', checkAndReplaceEditIcon);
+  editIconInput?.addEventListener('blur', checkAndReplaceEditIcon);
 };
 
 window.approveCategoryRequest = async (reqId, categoryName) => {
   try {
     const slug = 'cat_' + Date.now().toString(36);
+    const assignedIcon = getBestUnusedCategoryEmoji(categoryName, '').emoji || '✨';
     const newCat = {
       id: slug,
       slug,
       name: categoryName,
       nameEn: slug,
-      icon: '✨',
+      icon: assignedIcon,
       order: Date.now(),
       isActive: true,
       placeCount: 1,
@@ -6747,7 +7050,7 @@ window.approveCategoryRequest = async (reqId, categoryName) => {
       adminCache.categoryRequests[reqId].status = 'approved';
     }
 
-    toast.success(`تم اعتماد تصنيف "${categoryName}" وإضافته في الدليل بنجاح!`);
+    toast.success(`تم اعتماد تصنيف "${categoryName}" بالأيقونة الفريدة (${assignedIcon}) وإضافته في الدليل بنجاح!`);
     switchAdminSection('categories', false);
   } catch (err) {
     toast.error('فشل الاعتماد');
@@ -6755,6 +7058,7 @@ window.approveCategoryRequest = async (reqId, categoryName) => {
 };
 
 window.editAndApproveCategoryRequest = async (reqId, initialName) => {
+  const initialIcon = getBestUnusedCategoryEmoji(initialName, '').emoji || '✨';
   const modal = showModal({
     title: 'تعديل وتفعيل التصنيف المقترح',
     content: `
@@ -6764,7 +7068,7 @@ window.editAndApproveCategoryRequest = async (reqId, initialName) => {
       </div>
       <div class="form-group">
         <label class="form-label">اختر أيقونة مناسبة</label>
-        <input type="text" id="appr-cat-icon" class="form-input" value="✨" required />
+        <input type="text" id="appr-cat-icon" class="form-input" value="${escAttr(initialIcon)}" required />
       </div>
     `,
     buttons: [
@@ -6774,8 +7078,22 @@ window.editAndApproveCategoryRequest = async (reqId, initialName) => {
         closeOnClick: false,
         onClick: async () => {
           const name = document.getElementById('appr-cat-name')?.value.trim();
-          const icon = document.getElementById('appr-cat-icon')?.value.trim() || '📁';
+          let icon = document.getElementById('appr-cat-icon')?.value.trim() || '📁';
           if (!name) return;
+
+          const existingCats = adminCache.categories || [];
+          if (icon && icon !== '📁') {
+            const iconCollision = existingCats.find(c => (c.icon || '').trim() === icon);
+            if (iconCollision) {
+              const autoFix = getBestUnusedCategoryEmoji(name, '');
+              if (autoFix.emoji && autoFix.emoji !== '📁') {
+                icon = autoFix.emoji;
+                document.getElementById('appr-cat-icon').value = autoFix.emoji;
+                toast.info(`الأيقونة كانت مستخدمة في "${iconCollision.name}"، تم استبدالها فوراً بـ (${autoFix.emoji})! اضغط اعتماد مجدداً.`);
+                return;
+              }
+            }
+          }
 
           try {
             const slug = 'cat_' + Date.now().toString(36);
