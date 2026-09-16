@@ -1648,6 +1648,10 @@ function getHomeHTML() {
             <span class="command-card__orb"></span><span class="command-card__icon" aria-hidden="true">⌕</span>
             <span class="command-card__body"><strong>الباحث في القرآن الكريم</strong><small>ابحث بأي كلمة بذكاء</small></span><span class="command-card__arrow">←</span>
           </a>
+          <a class="command-card" href="qibla.html" aria-label="بوصلة القبلة">
+            <span class="command-card__orb"></span><span class="command-card__icon" aria-hidden="true">🧭</span>
+            <span class="command-card__body"><strong>اتجاه القبلة</strong><small>بوصلة 3D للكعبة المشرفة</small></span><span class="command-card__arrow">←</span>
+          </a>
         </div>
       </div>
     </section>

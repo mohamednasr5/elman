@@ -346,8 +346,8 @@
 .qr-ayah{
   position:relative;
   min-height:138px;
-  margin:12px 0;
-  padding:48px 22px 22px;
+  margin:14px 0;
+  padding:20px 22px 22px;
   border:1px solid var(--border);
   border-radius:var(--radius-xl);
   background:var(--surface);
@@ -358,15 +358,74 @@
   border-color:var(--primary-light);
   box-shadow:var(--shadow-card);
 }
-.qr-ayah > .qr-num{
-  position:absolute; top:18px; right:18px;
+.qr-ayah-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:16px;
+  direction:rtl;
+}
+.qr-ayah-header .qr-num, .qr-ayah > .qr-num{
+  position:static;
   width:38px; height:38px; margin:0;
   border:1px solid var(--secondary);
   border-radius:50%;
   color:var(--secondary-dark);
   background:rgba(243,156,18,.08);
-  font-family:Cairo,sans-serif; font-size:.78rem;
+  font-family:Cairo,sans-serif; font-size:.82rem; font-weight:700;
   display:grid; place-items:center; z-index:2;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.04);
+}
+.qr-ayah-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  direction:ltr;
+}
+.qr-ayah-btn{
+  width:38px; height:38px;
+  border-radius:var(--radius-md);
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text-secondary);
+  display:grid; place-items:center;
+  cursor:pointer;
+  transition:all .2s cubic-bezier(.22,1,.36,1);
+}
+.qr-ayah-btn:hover{
+  transform:translateY(-2px);
+  border-color:var(--secondary);
+  color:var(--secondary-dark);
+  background:rgba(243,156,18,.08);
+  box-shadow:var(--shadow-sm);
+}
+.qr-ayah-btn.is-favorited{
+  color:#EF4444!important;
+  border-color:rgba(239,68,68,0.4)!important;
+  background:rgba(239,68,68,0.12)!important;
+  animation:favPop .35s cubic-bezier(.175,.885,.32,1.275);
+}
+.qr-ayah-btn.is-favorited .qr-heart-icon{
+  fill:#EF4444;
+}
+@keyframes favPop{
+  0%{ transform:scale(.75); }
+  50%{ transform:scale(1.28); }
+  100%{ transform:scale(1); }
+}
+.qr-ayah.is-focused-bookmark{
+  animation:bookmarkFocusPulse 3.2s ease forwards;
+}
+@keyframes bookmarkFocusPulse{
+  0%, 100%{
+    border-color:var(--border);
+    box-shadow:var(--shadow-card);
+  }
+  25%, 75%{
+    border-color:var(--secondary);
+    box-shadow:0 0 0 3.5px rgba(243,156,18,.4), 0 0 34px rgba(243,156,18,.28);
+    background:linear-gradient(135deg, rgba(243,156,18,.10), var(--surface));
+  }
 }
 .qr-main{ display:flex; align-items:center; gap:14px; direction:ltr; width:100%; }
 .qr-text{
@@ -421,11 +480,12 @@
 @media(max-width:700px){
   .qr-head{ padding:18px; }
   .qr-title{ font-size:1.55rem; }
-  .qr-ayah{ min-height:125px; padding:44px 14px 18px; }
-  .qr-ayah > .qr-num{ top:14px; right:14px; width:34px; height:34px; }
+  .qr-ayah{ min-height:120px; padding:16px 14px 16px; }
+  .qr-ayah-header .qr-num, .qr-ayah > .qr-num{ width:34px; height:34px; font-size:.76rem; }
+  .qr-ayah-btn{ width:34px; height:34px; }
+  .qr-ayah-actions{ gap:6px; }
   .qr-main{ gap:9px; }
   .qr-text{ font-size:1.38rem; line-height:2.05; }
-  .qr-play{ flex-basis:40px; width:40px; height:40px; }
   .qr-actions>*{ flex:1 1 140px; }
 }
 
@@ -708,3 +768,511 @@
 /* ── Staggered entrance for grids/lists ── */
 .ih-surah-list .ih-surah:nth-child(n){ animation-delay:calc(var(--i,0) * 18ms); }
 .ih-book-grid .ih-book:nth-child(n){ animation-delay:calc(var(--i,0) * 25ms); }
+
+/* ── Last Read Tracker Banner ── */
+.ih-last-read-banner{
+  margin-bottom:20px;
+  border-radius:var(--radius-2xl);
+  border:1px solid rgba(243,156,18,.35);
+  background:linear-gradient(135deg, rgba(243,156,18,.09) 0%, rgba(27,79,114,.08) 100%), var(--surface-2);
+  box-shadow:0 10px 24px -6px rgba(0,0,0,.08), 0 0 16px rgba(243,156,18,.06);
+  padding:16px 20px;
+  animation:ihFadeUp .45s cubic-bezier(.22,1,.36,1) both;
+  transition:border-color .25s ease, box-shadow .25s ease;
+}
+.ih-last-read-banner:hover{
+  border-color:var(--secondary);
+  box-shadow:0 12px 28px -6px rgba(0,0,0,.12), 0 0 22px rgba(243,156,18,.12);
+}
+.ih-last-read-inner{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+.ih-last-read-emblem{
+  position:relative;
+  width:46px; height:46px;
+  border-radius:14px;
+  background:rgba(243,156,18,.14);
+  border:1px solid rgba(243,156,18,.3);
+  display:grid; place-items:center;
+  font-size:1.4rem;
+  flex-shrink:0;
+}
+.ih-last-read-body{
+  flex:1;
+  min-width:220px;
+}
+.ih-last-read-kicker{
+  display:block;
+  font-size:.8rem;
+  font-weight:800;
+  color:var(--secondary-dark);
+  margin-bottom:2px;
+}
+.ih-last-read-title{
+  display:block;
+  font-size:1.15rem;
+  font-weight:800;
+  color:var(--text-primary);
+  margin-bottom:3px;
+}
+.ih-last-read-snippet{
+  margin:0;
+  color:var(--text-secondary);
+  font-family:"Amiri","Noto Naskh Arabic",serif;
+  font-size:1.05rem;
+  line-height:1.6;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:550px;
+}
+.ih-last-read-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 18px;
+  border-radius:var(--radius-lg);
+  background:var(--primary);
+  color:#fff!important;
+  text-decoration:none;
+  font-weight:700;
+  font-size:.9rem;
+  box-shadow:0 4px 12px rgba(27,79,114,.25);
+  transition:all .2s cubic-bezier(.22,1,.36,1);
+  white-space:nowrap;
+  cursor:pointer;
+}
+.ih-last-read-btn:hover{
+  background:var(--primary-dark);
+  transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(27,79,114,.35);
+}
+.ih-last-read-arrow{
+  display:inline-block;
+  transition:transform .2s ease;
+}
+.ih-last-read-btn:hover .ih-last-read-arrow{
+  transform:translateX(-4px);
+}
+
+/* ── Quran Floating Toast ── */
+.qr-toast{
+  position:fixed;
+  bottom:26px;
+  left:50%;
+  transform:translate(-50%, 30px);
+  z-index:99999;
+  background:rgba(15,23,42,.92);
+  color:#fff;
+  border:1px solid rgba(243,156,18,.4);
+  border-radius:999px;
+  padding:12px 24px;
+  font-size:.92rem;
+  font-weight:700;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  box-shadow:0 16px 36px rgba(0,0,0,.35), 0 0 16px rgba(243,156,18,.18);
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .3s cubic-bezier(.16,1,.3,1), transform .3s cubic-bezier(.16,1,.3,1);
+  white-space:nowrap;
+  max-width:calc(100vw - 36px);
+  text-overflow:ellipsis;
+  overflow:hidden;
+}
+.qr-toast.is-visible{
+  opacity:1;
+  transform:translate(-50%, 0);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   3D Animated Qibla Compass — بوصلة اتجاه القبلة الشريفة
+   ═══════════════════════════════════════════════════════════ */
+
+.ih-qibla-view{
+  max-width:760px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:22px;
+}
+
+.qibla-header-strip{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:12px;
+}
+.qibla-location-pill{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:var(--surface-3);
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:8px 18px;
+  font-size:.88rem;
+  color:var(--text-secondary);
+  box-shadow:var(--shadow-sm);
+}
+.qibla-loc-angle strong{
+  color:var(--secondary-dark);
+}
+.qibla-gps-btn{
+  border-radius:999px;
+  padding:9px 20px;
+  font-size:.88rem;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+  box-shadow:var(--shadow-sm);
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.qibla-gps-btn:hover{
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-md);
+}
+
+.qibla-metrics-grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:14px;
+}
+.qibla-metric-card{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-xl);
+  padding:16px 14px;
+  text-align:center;
+  box-shadow:var(--shadow-sm);
+  transition:transform .25s ease, border-color .25s ease, background .25s ease;
+}
+.qibla-metric-card--active{
+  border-color:var(--secondary);
+  background:linear-gradient(145deg, rgba(243,156,18,.09), var(--surface-2));
+  box-shadow:0 0 16px rgba(243,156,18,.08);
+}
+.qibla-metric-label{
+  display:block;
+  font-size:.8rem;
+  font-weight:700;
+  color:var(--text-muted);
+  margin-bottom:6px;
+}
+.qibla-metric-val{
+  display:block;
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight:900;
+  color:var(--text-primary);
+  line-height:1.15;
+  letter-spacing:-.02em;
+}
+.qibla-metric-sub{
+  display:block;
+  font-size:.76rem;
+  color:var(--secondary-dark);
+  margin-top:4px;
+  font-weight:600;
+}
+
+/* 3D Compass Stage */
+.qibla-stage-3d{
+  position:relative;
+  perspective:1000px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:34px 0 28px;
+}
+
+.qibla-sightline{
+  position:absolute;
+  top:12px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:12;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.qibla-sightline-arrow{
+  width:0;
+  height:0;
+  border-left:9px solid transparent;
+  border-right:9px solid transparent;
+  border-top:15px solid #EF4444;
+  filter:drop-shadow(0 2px 5px rgba(239,68,68,.6));
+  animation:sightlineBounce 2s infinite ease-in-out;
+}
+@keyframes sightlineBounce{
+  0%, 100%{ transform:translateY(0); }
+  50%{ transform:translateY(-3px); }
+}
+
+.qibla-align-glow{
+  position:absolute;
+  width:320px;
+  height:320px;
+  border-radius:50%;
+  pointer-events:none;
+  z-index:1;
+  background:radial-gradient(circle, rgba(243,156,18,.25) 0%, transparent 68%);
+  opacity:.3;
+  transition:all .45s cubic-bezier(.22,1,.36,1);
+}
+.qibla-align-glow.is-aligned{
+  opacity:.95;
+  background:radial-gradient(circle, rgba(16,185,129,.55) 0%, rgba(16,185,129,.2) 48%, transparent 74%);
+  animation:qiblaPulseGlow 1.8s infinite ease-in-out;
+}
+@keyframes qiblaPulseGlow{
+  0%, 100%{ transform:scale(1); opacity:.85; }
+  50%{ transform:scale(1.12); opacity:1; }
+}
+
+.qibla-bezel{
+  position:relative;
+  width:min(320px, calc(100vw - 64px));
+  height:min(320px, calc(100vw - 64px));
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 25%, #2a3447 0%, #172033 60%, #0b1120 100%);
+  border:12px solid #1e293b;
+  box-shadow:
+    inset 0 3px 5px rgba(255,255,255,.25),
+    inset 0 -5px 10px rgba(0,0,0,.85),
+    0 24px 50px -10px rgba(0,0,0,.5),
+    0 0 0 2.5px rgba(243,156,18,.35);
+  display:grid;
+  place-items:center;
+  isolation:isolate;
+  z-index:2;
+  transition:border-color .4s ease, box-shadow .4s ease;
+}
+.qibla-align-glow.is-aligned + .qibla-bezel,
+.qibla-bezel.is-aligned{
+  border-color:#064E3B;
+  box-shadow:
+    inset 0 3px 5px rgba(255,255,255,.3),
+    inset 0 -5px 10px rgba(0,0,0,.85),
+    0 24px 50px -10px rgba(16,185,129,.35),
+    0 0 0 3px #10B981,
+    0 0 35px rgba(16,185,129,.4);
+}
+
+.qibla-glass-shine{
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  pointer-events:none;
+  z-index:6;
+  background:linear-gradient(135deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.02) 40%, transparent 60%);
+}
+
+.qibla-dial{
+  position:absolute;
+  inset:4px;
+  border-radius:50%;
+  transition:transform .18s cubic-bezier(.1,.9,.2,1);
+  will-change:transform;
+  z-index:2;
+}
+.qibla-dial-svg{
+  width:100%;
+  height:100%;
+  display:block;
+}
+.qibla-cardinal{
+  fill:#E2E8F0;
+  font-family:Cairo,sans-serif;
+  font-weight:800;
+  font-size:16px;
+}
+.qibla-cardinal--north{
+  fill:#EF4444;
+  font-weight:900;
+}
+.qibla-deg-num{
+  fill:rgba(255,255,255,.45);
+  font-family:system-ui,sans-serif;
+  font-size:8.5px;
+  font-weight:600;
+}
+
+/* Needle Assembly */
+.qibla-needle-assembly{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:4;
+  display:grid;
+  place-items:center;
+}
+.qibla-needle-north{
+  position:absolute;
+  bottom:50%;
+  left:50%;
+  transform:translateX(-50%);
+  width:9px;
+  height:100px;
+  background:linear-gradient(to top, #059669 0%, #10B981 65%, #6EE7B7 100%);
+  clip-path:polygon(50% 0%, 100% 100%, 0% 100%);
+  filter:drop-shadow(0 0 7px rgba(16,185,129,.7));
+}
+.qibla-needle-south{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translateX(-50%);
+  width:9px;
+  height:48px;
+  background:linear-gradient(to bottom, #475569 0%, #334155 100%);
+  clip-path:polygon(0% 0%, 100% 0%, 50% 100%);
+  opacity:.75;
+}
+.qibla-needle-pivot{
+  position:absolute;
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, #F5B041 0%, #D4AC0D 60%, #7D6608 100%);
+  box-shadow:0 4px 10px rgba(0,0,0,.65), inset 0 1px 2px rgba(255,255,255,.6);
+  display:grid;
+  place-items:center;
+}
+.qibla-needle-jewel{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, #34D399 0%, #059669 80%);
+  box-shadow:0 0 6px rgba(16,185,129,.8);
+}
+
+/* Banner */
+.qibla-banner{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-xl);
+  padding:18px 22px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  box-shadow:var(--shadow-card);
+  transition:all .3s cubic-bezier(.22,1,.36,1);
+}
+.qibla-banner.is-aligned{
+  border-color:#10B981;
+  background:linear-gradient(135deg, rgba(16,185,129,.14), var(--surface-2));
+  box-shadow:0 0 28px rgba(16,185,129,.22);
+}
+.qibla-banner-icon{
+  font-size:2rem;
+  flex-shrink:0;
+  animation:bannerIconFloat 2.5s infinite ease-in-out;
+}
+@keyframes bannerIconFloat{
+  0%, 100%{ transform:translateY(0); }
+  50%{ transform:translateY(-3px); }
+}
+.qibla-banner-text strong{
+  display:block;
+  font-size:1.15rem;
+  color:var(--text-primary);
+  margin-bottom:3px;
+}
+.qibla-banner-text p{
+  margin:0;
+  font-size:.88rem;
+  color:var(--text-secondary);
+  line-height:1.6;
+}
+
+/* Controls and Instructions */
+.qibla-controls-card,
+.qibla-tips-card{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-xl);
+  padding:20px;
+  box-shadow:var(--shadow-sm);
+}
+.qibla-sensor-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:12px;
+}
+.qibla-sensor-state{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:.88rem;
+  color:var(--text-secondary);
+}
+.qibla-sensor-dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:#F59E0B;
+}
+.qibla-sensor-state.is-active .qibla-sensor-dot{
+  background:#10B981;
+  box-shadow:0 0 8px #10B981;
+}
+.qibla-manual-slider-wrap{
+  margin-top:16px;
+  padding-top:14px;
+  border-top:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.qibla-slider-label{
+  display:flex;
+  justify-content:space-between;
+  font-size:.85rem;
+  color:var(--text-secondary);
+}
+.qibla-range-input{
+  width:100%;
+  accent-color:var(--secondary);
+  cursor:pointer;
+}
+
+.qibla-tips-title{
+  margin:0 0 12px;
+  font-size:1rem;
+  color:var(--text-primary);
+}
+.qibla-tips-list{
+  margin:0;
+  padding-right:20px;
+  color:var(--text-secondary);
+  font-size:.88rem;
+  line-height:1.8;
+}
+
+@media(max-width:650px){
+  .qibla-metrics-grid{
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+  .qibla-bezel{
+    width:270px;
+    height:270px;
+    border-width:9px;
+  }
+  .qibla-needle-north{
+    height:82px;
+  }
+  .qibla-needle-south{
+    height:40px;
+  }
+}
+

@@ -111,6 +111,8 @@
 /quran-search/      /quran-search.html  200
 /quran-surah        /quran-surah.html   200
 /quran-surah/       /quran-surah.html   200
+/qibla              /qibla.html         200
+/qibla/             /qibla.html         200
 /around-me          /around-me.html     200
 /around-me/         /around-me.html     200
 /favorites          /favorites.html     200
