@@ -1,20 +1,20 @@
-﻿/**
+/**
  * ActivityNotification.js — Real Local Activity / Social Proof Floating Card
  * دليل المنزلة والمطرية الرقمي
  *
  * Requirements:
  * 1. 100% REAL statistics from Turso database (visits, phone calls, WhatsApp contacts). No fake/random numbers.
- * 2. Strictly display each place AT MOST ONCE per calendar day per user/browser.
- * 3. Mobile safety: Never conflicts with or blocks bottom navigation (.bottom-nav) or floating action buttons.
+ * 2. Mobile safety: Raised above bottom navigation and mobile action pills (z-index 12080).
+ * 3. Rotates every 10 seconds with a DIFFERENT place each time ("مكان شكل").
  * 4. Clickable card navigating to the place detail page.
  */
 
 import { WORKER_URL } from '../../core/firebase.js';
 
 const CONFIG = {
-  INITIAL_DELAY: 10000,   // 10s after page load before first notification
-  DISPLAY_DURATION: 8500, // 8.5s visible
-  SHOW_INTERVAL: 42000,   // 42s between notifications
+  INITIAL_DELAY: 3000,    // 3s after page load before first notification
+  DISPLAY_DURATION: 5500, // 5.5s visible on screen
+  SHOW_INTERVAL: 10000,   // 10s repeat cycle between notifications
   STORAGE_KEY: 'dalil_activity_notification_history'
 };
 
@@ -22,6 +22,29 @@ let _timerId = null;
 let _dismissTimerId = null;
 let _activeCardEl = null;
 let _isInitialized = false;
+
+// Pool of candidate places for seamless cycling of diverse places ("مكان شكل")
+let _placesPool = [];
+let _poolIndex = 0;
+let _lastShownPlaceId = null;
+let _isFetching = false;
+
+function ensureStyles() {
+  if (document.getElementById('activity-notif-styles')) return;
+  const link = document.createElement('link');
+  link.id = 'activity-notif-styles';
+  link.rel = 'stylesheet';
+  link.href = '/src/css/components/activity-notification.css';
+  document.head.appendChild(link);
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
 
 function getTodayString() {
   const d = new Date();
@@ -40,7 +63,6 @@ function getDailyHistory() {
     if (parsed && parsed.date === today && Array.isArray(parsed.placeIds)) {
       return parsed;
     }
-    // New day: reset history
     const fresh = { date: today, placeIds: [] };
     localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(fresh));
     return fresh;
@@ -49,7 +71,7 @@ function getDailyHistory() {
   }
 }
 
-function markPlaceShownToday(placeId) {
+function markPlaceShown(placeId) {
   if (!placeId) return;
   try {
     const history = getDailyHistory();
@@ -60,10 +82,11 @@ function markPlaceShownToday(placeId) {
   } catch (_) {}
 }
 
-async function fetchEligiblePlaces(excludeIds = []) {
+async function fetchEligiblePlaces() {
+  if (_isFetching) return [];
+  _isFetching = true;
   try {
-    const query = excludeIds.length ? `?excludeIds=${encodeURIComponent(excludeIds.join(','))}` : '';
-    const res = await fetch(`${WORKER_URL}/api/activity-notifications${query}`, {
+    const res = await fetch(`${WORKER_URL}/api/activity-notifications`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
       signal: AbortSignal.timeout(6000)
@@ -74,7 +97,53 @@ async function fetchEligiblePlaces(excludeIds = []) {
     return json.places;
   } catch (_) {
     return [];
+  } finally {
+    _isFetching = false;
   }
+}
+
+/**
+ * Get the next diverse place candidate ("مكان شكل")
+ * Guarantees consecutive cards are never the same place.
+ */
+async function getNextCandidate() {
+  if (!_placesPool.length) {
+    const fresh = await fetchEligiblePlaces();
+    if (fresh && fresh.length) {
+      _placesPool = shuffleArray(fresh.slice());
+      _poolIndex = 0;
+    }
+  }
+
+  if (!_placesPool.length) return null;
+
+  // Cycle through the pool to find a candidate DIFFERENT from the last shown place
+  let attempts = 0;
+  while (attempts < _placesPool.length) {
+    if (_poolIndex >= _placesPool.length) {
+      // Loop around and reshuffle for maximum diversity
+      _poolIndex = 0;
+      shuffleArray(_placesPool);
+    }
+
+    const candidate = _placesPool[_poolIndex];
+    _poolIndex++;
+    attempts++;
+
+    if (candidate && candidate.place && candidate.place.id !== _lastShownPlaceId) {
+      _lastShownPlaceId = candidate.place.id;
+      return candidate;
+    }
+  }
+
+  // Fallback if pool has only 1 place
+  const fallback = _placesPool[0];
+  if (fallback && fallback.place) {
+    _lastShownPlaceId = fallback.place.id;
+    return fallback;
+  }
+
+  return null;
 }
 
 function renderNotificationCard(item) {
@@ -174,7 +243,7 @@ function resumeDismissal() {
   if (_activeCardEl && !_dismissTimerId) {
     _dismissTimerId = setTimeout(() => {
       dismissNotification(_activeCardEl);
-    }, 3500);
+    }, 3000);
   }
 }
 
@@ -190,7 +259,7 @@ function dismissNotification(cardEl) {
     if (_activeCardEl === cardEl) {
       _activeCardEl = null;
     }
-  }, 400);
+  }, 380);
 
   if (_dismissTimerId) {
     clearTimeout(_dismissTimerId);
@@ -199,29 +268,25 @@ function dismissNotification(cardEl) {
 }
 
 async function showNextActivityNotification() {
-  // Do not show if user is actively in a full-screen modal or sheet
+  // Do not show if user is actively in a full-screen modal, menu, or sheet
   if (
     document.body.classList.contains('mobile-more-open') ||
     document.body.classList.contains('voice-modal-open') ||
-    document.querySelector('.modal.open, .modal.active')
+    document.querySelector('.modal.open, .modal.active, .manzala-voice-modal-backdrop')
   ) {
     scheduleNext(CONFIG.SHOW_INTERVAL / 2);
     return;
   }
 
-  // Dismiss any existing card first
+  // Dismiss any existing card smoothly first
   if (_activeCardEl) {
     dismissNotification(_activeCardEl);
   }
 
-  const history = getDailyHistory();
-  const places = await fetchEligiblePlaces(history.placeIds);
-
-  // Filter out any place already seen today
-  const candidate = places.find(p => p && p.place && !history.placeIds.includes(p.place.id));
+  // Pick next candidate - guaranteed "مكان شكل" (different place each time)
+  const candidate = await getNextCandidate();
   if (!candidate) {
-    // No new places for today: wait longer before retrying
-    scheduleNext(CONFIG.SHOW_INTERVAL * 2);
+    scheduleNext(CONFIG.SHOW_INTERVAL);
     return;
   }
 
@@ -231,8 +296,7 @@ async function showNextActivityNotification() {
     return;
   }
 
-  // Record strictly in daily history
-  markPlaceShownToday(candidate.place.id);
+  markPlaceShown(candidate.place.id);
 
   // Append to container
   let container = document.getElementById('activity-notif-host');
@@ -258,7 +322,7 @@ async function showNextActivityNotification() {
     dismissNotification(cardEl);
   }, CONFIG.DISPLAY_DURATION);
 
-  // Schedule next notification cycle
+  // Schedule next notification cycle (every 10s repeats with a different place)
   scheduleNext(CONFIG.SHOW_INTERVAL);
 }
 
@@ -284,6 +348,8 @@ export function initActivityNotifications() {
   if (_isInitialized) return;
   _isInitialized = true;
 
-  // Delay first appearance so it doesn't distract immediately on load
+  ensureStyles();
+
+  // Delay first appearance so it doesn't distract immediately on initial render
   scheduleNext(CONFIG.INITIAL_DELAY);
 }

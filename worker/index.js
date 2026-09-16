@@ -5717,7 +5717,7 @@ try {
 
       return jsonResponse({
         success: true,
-        places: eligible.slice(0, 20)
+        places: eligible.slice(0, 35)
       }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
     } catch (err) {
       console.warn('[GET /api/activity-notifications error]:', err?.message || err);

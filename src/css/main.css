@@ -1166,7 +1166,7 @@ html[lang="en"] .form-input-icon {
   bottom: 24px;
   right: 24px;
   left: auto;
-  z-index: 10040;
+  z-index: 12080;
   pointer-events: none;
   direction: rtl;
   font-family: inherit;
@@ -1366,16 +1366,19 @@ html[lang="en"] .form-input-icon {
 
 @media (max-width: 767px) {
   .activity-notif-host {
-    bottom: calc(var(--bottom-nav-height, 70px) + 14px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--bottom-nav-height, 72px) + 64px + env(safe-area-inset-bottom, 0px));
     right: 12px;
     left: 12px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
+    align-items: center;
+    z-index: 12080;
+    pointer-events: none;
   }
 
   .activity-notif-card {
-    width: min(calc(100vw - 24px), 350px);
-    box-shadow: 0 10px 28px -4px rgba(15, 23, 42, 0.18), 0 3px 10px rgba(0, 0, 0, 0.06);
+    width: min(calc(100vw - 24px), 360px);
+    box-shadow: 0 14px 34px -4px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
   .activity-notif-inner {
@@ -1391,7 +1394,10 @@ html[lang="en"] .form-input-icon {
 
 body.mobile-more-open .activity-notif-host,
 body.voice-modal-open .activity-notif-host,
-body.modal-open .activity-notif-host {
+body.modal-open .activity-notif-host,
+body:has(.manzala-voice-modal-backdrop) .activity-notif-host,
+body:has(#manzala-push-prompt-card.visible) .activity-notif-host,
+body:has(.push-prompt-card.visible) .activity-notif-host {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
