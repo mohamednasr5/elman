@@ -676,11 +676,6 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                 ` : ''}
               </div>
 
-              <!-- Islamic Calligraphy Motif in Center -->
-              <div class="place-header-calligraphy-slot" title="وقل رب زدني علماً">
-                <span class="place-header-calligraphy-text">وَقُل رَّبِّ زِدْنِي عِلْمًا</span>
-              </div>
-
               <div class="place-card-meta-left">
                 ${trustScore ? `
                   <span class="place-trust-mini ${trustClass}" title="مؤشر نسبة استيفاء حقول ومعلومات هذا الملف">

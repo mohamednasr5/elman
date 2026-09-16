@@ -1,4 +1,4 @@
-﻿/* ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    DALIL EL-MANZALA — 3D VISUAL DESIGN SYSTEM (PLACE DETAILS)
    Inspired by Apple & High-End 3D Skewed Tactile Interfaces
    ═══════════════════════════════════════════════════════════════ */
@@ -70,7 +70,7 @@
   padding: 24px 22px 20px !important;
   margin-top: -55px !important;
   z-index: 15 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   box-sizing: border-box !important;
 }
 
