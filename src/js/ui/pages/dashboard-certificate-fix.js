@@ -1,4 +1,4 @@
-import { getPlace } from '../../core/db.js';
+﻿import { getPlace } from '../../core/db.js';
 
 // Dashboard certificate hardening:
 // 1) Guarantees the certificate button opens even after dashboard re-renders.
@@ -9,7 +9,7 @@ import { getPlace } from '../../core/db.js';
 // 5) Loads the certificate renderer lazily with a cache-busting URL so an old cached
 //    CertificateOfAppreciationModal.js can never block the dashboard action.
 
-const CERTIFICATE_MODULE_URL = new URL('../components/CertificateOfAppreciationModal.js?v=20260915_certfix_v3', import.meta.url).href;
+const CERTIFICATE_MODULE_URL = new URL('../components/CertificateOfAppreciationModal.js?v=1cb5fd97_certfix_v3', import.meta.url).href;
 
 let _certificateModulePromise = null;
 function loadCertificateModule() {

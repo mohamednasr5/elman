@@ -74,7 +74,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="/src/css/main.css?v=d4ce4ede_resilient1"/>
+  <link rel="stylesheet" href="/src/css/main.css?v=1cb5fd97_resilient1"/>
 </head>
 <body class="">
 <div id="app">
@@ -109,8 +109,8 @@
 <!-- Page Module -->
 <script type="module">
 
-  import { initPage } from '/src/js/core/page-shell.js?v=d4ce4ede_vehicles1';
-  import { renderCategoryPage } from '/src/js/ui/pages/categories.js?v=d4ce4ede_resilient1';
+  import { initPage } from '/src/js/core/page-shell.js?v=1cb5fd97_vehicles1';
+  import { renderCategoryPage } from '/src/js/ui/pages/categories.js?v=1cb5fd97_resilient1';
   await initPage('categories.html');
   let slug = new URLSearchParams(location.search).get('slug') || '';
   if (!slug) {
@@ -121,6 +121,6 @@
   }
   await renderCategoryPage(document.getElementById('page-container'), { slug });
 </script>
-<script type="module" src="/src/js/core/pwa-install.js?v=d4ce4ede"></script>
+<script type="module" src="/src/js/core/pwa-install.js?v=1cb5fd97"></script>
 </body>
 </html>
