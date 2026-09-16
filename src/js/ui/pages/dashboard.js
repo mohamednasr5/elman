@@ -1578,6 +1578,22 @@ async function renderPlaceFormSection($container, user, placeId = null) {
               ➕ إضافة الكلمة
             </button>
           </div>
+
+          <!-- Quick Suggestions Box -->
+          <div class="tags-suggestions-box" id="p-tags-suggestions-box" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:700;color:var(--text);display:inline-flex;align-items:center;gap:6px">
+                <span>⚡</span>
+                <span>اقتراحات سريعة لاختيارها بضغطة واحدة:</span>
+              </span>
+              <span style="font-size:11px;color:var(--text-muted)" id="p-tags-suggestions-hint">
+                اضغط على الكلمة لإضافتها مباشرة
+              </span>
+            </div>
+            <div id="p-tags-suggestions-list" style="display:flex;flex-wrap:wrap;gap:6px;max-height:130px;overflow-y:auto;padding-right:2px">
+              <!-- Rendered pills -->
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -2018,8 +2034,221 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     existingBranches.forEach(b => addBranchRow(b));
   }
 
-  // ── Services & Interactive Tags Management ──
+  // ── Services & Interactive Tags Management With Smart Suggestions ──
   let _currentTagsList = [...initialServices];
+  const KNOWN_TAGS_STORAGE_KEY = 'dm_known_services_tags';
+
+  // Rich contextual suggestions dictionary for common local categories & trades
+  const POPULAR_CATEGORY_TAGS = {
+    // Education & Nurseries
+    'education': ['حضانة أطفال', 'تأسيس قراءة وكتابة', 'نور بيان', 'منتسوري', 'أنشطة ترفيهية', 'رعاية أطفال', 'تعديل سلوك', 'باص توصيل', 'لغات', 'حساب ذهني', 'استقبال رضّع', 'تحفيظ قرآن', 'رعاية نهارية'],
+    'حضانة': ['تأسيس قراءة وكتابة', 'نور بيان', 'منتسوري', 'أنشطة ترفيهية', 'رعاية أطفال', 'تعديل سلوك', 'باص توصيل', 'لغات', 'حساب ذهني', 'استقبال رضّع', 'تحفيظ قرآن', 'تعليم مبكر'],
+    'تعليم': ['دروس خصوصية', 'تأسيس ابتدائي', 'مراجعات نهائية', 'شرح مناهج', 'لغات', 'رياضيات', 'علوم', 'لغة عربية', 'لغة إنجليزية', 'تنمية مهارات'],
+    'مدرسة': ['مناهج معتمدة', 'أنشطة مدرسية', 'تأسيس وتعليم', 'متابعة أولياء الأمور', 'باصات مدرسية'],
+
+    // Medical & Healthcare
+    'health': ['كشف واستشارة', 'حجز مسبق', 'عيادة تخصصية', 'متابعة دورية', 'سونار', 'علاج طبيعي', 'تحاليل طبية', 'أدوية ومستلزمات', 'طوارئ', 'أطفال وحديثي ولادة'],
+    'دكتور': ['كشف واستشارة', 'حجز مسبق', 'عيادة تخصصية', 'متابعة دورية', 'سونار', 'علاج طبيعي', 'طوارئ', 'باطنة وجهاز هضمي', 'عظام ومفاصل', 'أسنان وجراحة فموية'],
+    'طبيب': ['كشف واستشارة', 'حجز مسبق', 'متابعة دورية', 'علاج تخصصي', 'استشارة هاتفية'],
+    'عيادة': ['كشف تخصصي', 'سونار وأشعة', 'رعاية ومتابعة', 'حجز مواعيد', 'عمليات صغرى'],
+    'صيدلية': ['توصيل منازل 24 ساعة', 'قياس ضغط وسكر', 'أدوية مستوردة', 'مستحضرات تجميل', 'رعاية صحية', 'استشارات دوائية', 'حقن وتضميد'],
+    'معمل': ['تحاليل دم شاملة', 'نتائج سريعة', 'سحب عينات منزلي', 'تحاليل سكر ووظائف كبد', 'فحص شامل'],
+
+    // Restaurants & Cafes & Food
+    'restaurants': ['دليفري توصيل منازل', 'وجبات عائلية', 'مشاوي وفحم', 'سندوتشات سريعة', 'بيتزا وفطير', 'كريب وباستا', 'صالة مكيفة', 'عروض وتخفيضات', 'تجهيز عزومات وحفلات', 'إفطار وغداء'],
+    'مطعم': ['دليفري توصيل منازل', 'وجبات عائلية', 'مشاوي وفحم', 'سندوتشات سريعة', 'بيتزا وفطير', 'كريب وباستا', 'صالة مكيفة', 'عروض وتخفيضات'],
+    'كافيه': ['مشروبات ساخنة وباردة', 'عصائر فريش', 'واي فاي مجاني', 'شاشات مباريات', 'حلويات غربية', 'صالة عائلات', 'قهوة مختصة'],
+    'حلويات': ['حلويات شرقية', 'تورت وجاتوهات', 'كنافة وبسبوسة', 'حلويات غربية', 'آيس كريم', 'تورتات أعياد ميلاد', 'معجنات طازجة'],
+    'مخبز': ['عيش بلدي وفيزو', 'باتيه وفينو', 'مخبوزات طازجة', 'بقسماط وفطير', 'حلويات أفران'],
+    'أسماك': ['سمك مشوي ومقلي', 'جمبري وسيفود', 'طواجن بحرية', 'تنظيف وتجهيز', 'دليفري طازج'],
+    'جزارة': ['لحوم بلدي طازجة', 'كندوز وبتلو', 'لحم مفروم وسجق', 'كفتة مشوية', 'ذبح وتشفية'],
+
+    // Shopping & Retail
+    'shopping': ['توصيل طلبات', 'عروض وخصومات', 'أحدث صيحات الموضة', 'ملابس رجالي', 'ملابس حريمي', 'ملابس أطفال', 'مقاسات خاصة', 'خامات قطنية ممتازة'],
+    'سوبر ماركت': ['توصيل طلبات', 'عروض أسبوعية', 'مجمدات ومشروبات', 'ألبان وأجبان', 'منظفات منزلية', 'بقالة شاملة', 'عطارة وتوابل'],
+    'ملابس': ['ملابس رجالي', 'ملابس حريمي', 'ملابس أطفال', 'أحدث الموديلات', 'كاجوال وكلاسيك', 'مقاسات خاصة', 'خامات قطنية'],
+    'أحذية': ['أحذية رجالي', 'أحذية حريمي', 'أحذية أطفال', 'كوتشيات رياضية', 'شنط ومحافظ', 'جلد طبيعي'],
+    'موبايل': ['بيع وشراء هواتف', 'صيانة فورية', 'إكسسوارات وجرابات', 'شواحن وكابلات أصلية', 'سوفت وير وهارد وير', 'شاشات وبطاريات'],
+    'كمبيوتر': ['صيانة لابتوب وكمبيوتر', 'تنزيل ويندوز وبرامج', 'طابعات وأحبار', 'تجميعات جيمنج', 'شبكات وكاميرات مراقبة'],
+
+    // Crafts & Maintenance & Technical
+    'crafts': ['صيانة فورية', 'فني متخصص ومحترف', 'قطع غيار أصلية', 'تركيب وتأسيس', 'خدمة منزلية', 'ضمان على الشغل', 'طوارئ 24 ساعة', 'معاينة مجانية'],
+    'services': ['خدمة سريعة', 'توصيل منازل', 'أفضل الأسعار', 'جودة عالية', 'متاح يومياً', 'خدمة 24 ساعة', 'حجز مسبق'],
+    'سباكة': ['تأسيس وتشطيب سباكة', 'صيانة خلاطات ومحابس', 'تسليك مجاري وصرف', 'فني محترف', 'خدمة منزلية سريعة', 'قطع غيار أصلية'],
+    'كهرباء': ['تأسيس كهرباء منازل', 'صيانة أعطال فورية', 'تركيب نجف وليدات', 'لوحات تحكم وقواطع', 'صيانة فورية 24 ساعة'],
+    'صيانة': ['صيانة غسالات وثلاجات', 'صيانة تكييفات وشحن فريون', 'صيانة سخانات وبوتاجازات', 'فني متخصص بالمنزل', 'ضمان معتمد'],
+    'نجارة': ['غرف نوم وسفرة', 'أبواب وشبابيك', 'مطابخ خشب وألوميتال', 'فك وتركيب أثاث', 'تنجيد وتجديد صالونات'],
+    'دهانات': ['نقاشة ودهانات حديثة', 'ديكورات وجبس بورد', 'ورق حائط وتشطيبات', 'عزل أسطح ورطوبة'],
+    'سيارات': ['ميكانيكا وكهرباء سيارات', 'عفشة ومساعدين', 'تغيير زيت وسيرفس', 'غسيل وتلميع كيماوي', 'فحص كمبيوتر وضبط زوايا'],
+    'حلاقة': ['قصات شعر حديثة', 'حلاقة ذقن وعناية', 'تنظيف بشرة وماسكات', 'بروتين واستشوار', 'حلاقة أطفال'],
+    'كوافير': ['ميك أب وتجهيز عرائس', 'بروتين وبوتوكس للشعر', 'صبغات واستشوار', 'تنظيف بشرة وباديكير']
+  };
+
+  function getStoredTags() {
+    try {
+      const raw = localStorage.getItem(KNOWN_TAGS_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveStoredTags(newTags) {
+    try {
+      if (!Array.isArray(newTags) || newTags.length === 0) return;
+      const current = getStoredTags();
+      const set = new Set([...current]);
+      newTags.forEach(t => {
+        const trimmed = String(t || '').trim();
+        if (trimmed && trimmed.length >= 2 && trimmed.length <= 45) {
+          set.add(trimmed);
+        }
+      });
+      const merged = Array.from(set).slice(-250);
+      localStorage.setItem(KNOWN_TAGS_STORAGE_KEY, JSON.stringify(merged));
+    } catch (e) {}
+  }
+
+  // Pre-seed storage with initial services if available
+  if (initialServices && initialServices.length > 0) {
+    saveStoredTags(initialServices);
+  }
+
+  // Also collect tags from cached published places in memory
+  setTimeout(() => {
+    try {
+      const cachedPublished = (typeof getCached === 'function') ? getCached('published_100_') : null;
+      if (Array.isArray(cachedPublished?.places)) {
+        const extracted = [];
+        cachedPublished.places.forEach(p => {
+          if (Array.isArray(p.services)) extracted.push(...p.services);
+        });
+        if (extracted.length) saveStoredTags(extracted);
+      }
+    } catch (e) {}
+  }, 1000);
+
+  function getContextualCategoryTags() {
+    const catVal = (document.getElementById('p-category')?.value || '').toLowerCase();
+    const customCat = (document.getElementById('p-custom-category')?.value || '').toLowerCase();
+    const subcatVal = (document.getElementById('p-subcategory')?.value || '').toLowerCase();
+    const nameVal = (document.getElementById('p-name')?.value || '').toLowerCase();
+
+    const matchedPills = [];
+
+    // Check direct category slug
+    if (catVal && POPULAR_CATEGORY_TAGS[catVal]) {
+      matchedPills.push(...POPULAR_CATEGORY_TAGS[catVal]);
+    }
+
+    // Check keywords in name, custom category, subcategory
+    const combinedContext = `${nameVal} ${customCat} ${subcatVal} ${catVal}`;
+    Object.keys(POPULAR_CATEGORY_TAGS).forEach(key => {
+      if (key !== 'education' && key !== 'health' && key !== 'restaurants' && key !== 'shopping' && key !== 'crafts' && key !== 'services') {
+        if (combinedContext.includes(key)) {
+          matchedPills.push(...POPULAR_CATEGORY_TAGS[key]);
+        }
+      }
+    });
+
+    // Fallback general tags
+    matchedPills.push('خدمة سريعة', 'توصيل منازل', 'أفضل الأسعار', 'جودة عالية', 'عروض حصرية', 'متاح يومياً');
+
+    return Array.from(new Set(matchedPills));
+  }
+
+  function renderSuggestionsList(filterQuery = '') {
+    const box = document.getElementById('p-tags-suggestions-box');
+    const list = document.getElementById('p-tags-suggestions-list');
+    const hint = document.getElementById('p-tags-suggestions-hint');
+    if (!box || !list) return;
+
+    const q = (filterQuery || '').trim().toLowerCase();
+    const storedHistory = getStoredTags();
+    const contextualTags = getContextualCategoryTags();
+
+    // Prioritize history tags first, followed by contextual tags
+    const combined = [];
+    const historySet = new Set(storedHistory);
+
+    // Stored history in reverse (most recent first)
+    [...storedHistory].reverse().forEach(t => {
+      if (!_currentTagsList.includes(t)) combined.push({ tag: t, isHistory: true });
+    });
+
+    // Add contextual tags
+    contextualTags.forEach(t => {
+      if (!_currentTagsList.includes(t) && !combined.some(item => item.tag === t)) {
+        combined.push({ tag: t, isHistory: historySet.has(t) });
+      }
+    });
+
+    let filtered = combined;
+    if (q) {
+      filtered = combined.filter(item => item.tag.toLowerCase().includes(q));
+    }
+
+    // Limit to top 24 suggestions
+    const displayList = filtered.slice(0, 24);
+
+    let html = '';
+
+    // If typing something that doesn't exactly match any current tag or suggestion, show quick create chip
+    if (q && !_currentTagsList.includes(filterQuery.trim())) {
+      const exactMatch = displayList.some(item => item.tag.toLowerCase() === q);
+      if (!exactMatch) {
+        html += `
+          <button type="button" class="tag-suggestion-pill is-custom-add" data-tag-val="${escAttr(filterQuery.trim())}" title="إضافة هذه الكلمة">
+            <span class="pill-plus">➕</span>
+            <span>إضافة "${escHtml(filterQuery.trim())}"</span>
+          </button>
+        `;
+      }
+    }
+
+    if (displayList.length === 0 && !html) {
+      if (q) {
+        list.innerHTML = `<span style="font-size:11.5px;color:var(--text-muted);padding:4px">لا توجد اقتراحات مطابقة. اضغط Enter أو زر الإضافة بالأعلى لإدراجها.</span>`;
+      } else {
+        box.style.display = 'none';
+        return;
+      }
+    } else {
+      html += displayList.map(item => `
+        <button type="button" class="tag-suggestion-pill ${item.isHistory ? 'is-history' : ''}" data-tag-val="${escAttr(item.tag)}" title="${item.isHistory ? 'تم استخدامها سابقاً' : 'اقتراح شائع'}">
+          <span class="pill-plus">+</span>
+          <span>${escHtml(item.tag)}</span>
+        </button>
+      `).join('');
+
+      list.innerHTML = html;
+    }
+
+    box.style.display = 'block';
+    if (hint) {
+      hint.textContent = q ? `نتائج البحث عن "${q}"` : 'اختر من الكلمات السابقة أو الشائعة';
+    }
+
+    // Attach click events
+    list.querySelectorAll('.tag-suggestion-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const tagVal = btn.getAttribute('data-tag-val');
+        if (tagVal && !_currentTagsList.includes(tagVal)) {
+          _currentTagsList.push(tagVal);
+          saveStoredTags([tagVal]);
+          const tagInput = document.getElementById('p-service-tag-input');
+          if (tagInput) tagInput.value = '';
+          renderTagsList();
+          renderSuggestionsList('');
+          tagInput?.focus();
+        }
+      });
+    });
+  }
 
   function renderTagsList() {
     const listEl = document.getElementById('p-tags-list');
@@ -2027,9 +2256,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     if (!listEl) return;
 
     listEl.innerHTML = _currentTagsList.map((tag, idx) => `
-      <span class="tag-chip" style="display:inline-flex;align-items:center;gap:6px;background:rgba(2, 132, 199, 0.12);color:#0284C7;border:1px solid rgba(2, 132, 199, 0.3);padding:4px 10px;border-radius:9999px;font-size:12.5px;font-weight:700">
+      <span class="tag-chip">
         <span>${escHtml(tag)}</span>
-        <button type="button" class="btn-remove-tag" data-tag-index="${idx}" style="background:none;border:none;color:#0284C7;font-size:14px;cursor:pointer;padding:0;line-height:1" title="حذف">&times;</button>
+        <button type="button" class="btn-remove-tag" data-tag-index="${idx}" style="background:none;border:none;color:#0284C7;font-size:14px;cursor:pointer;padding:0;line-height:1;margin-right:2px" title="حذف">&times;</button>
       </span>
     `).join('');
 
@@ -2043,6 +2272,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         const i = parseInt(btn.getAttribute('data-tag-index'), 10);
         _currentTagsList.splice(i, 1);
         renderTagsList();
+        renderSuggestionsList(tagInputEl?.value?.trim() || '');
       });
     });
   }
@@ -2059,8 +2289,10 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         _currentTagsList.push(p);
       }
     });
+    saveStoredTags(parts);
     tagInput.value = '';
     renderTagsList();
+    renderSuggestionsList('');
   }
 
   const tagInputEl = document.getElementById('p-service-tag-input');
@@ -2071,13 +2303,28 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     }
   });
 
+  tagInputEl?.addEventListener('input', () => {
+    renderSuggestionsList(tagInputEl.value.trim());
+  });
+
+  tagInputEl?.addEventListener('focus', () => {
+    renderSuggestionsList(tagInputEl.value.trim());
+  });
+
   document.getElementById('btn-add-typed-tag')?.addEventListener('click', (e) => {
     e.preventDefault();
     addServiceTag();
   });
 
-  // Render initial tags into chips
+  // Render initial tags & suggestions
   renderTagsList();
+  renderSuggestionsList('');
+
+  // Re-render suggestions when place name changes
+  document.getElementById('p-name')?.addEventListener('input', () => {
+    renderSuggestionsList(tagInputEl?.value?.trim() || '');
+  });
+
 
   // Live Category Search Filter & Pill Selection
   const catSearchInput = document.getElementById('p-category-search-input');
@@ -2135,7 +2382,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           // Auto-add to service tags
           if (_currentTagsList && !_currentTagsList.includes(pName)) {
             _currentTagsList.unshift(pName);
+            saveStoredTags([pName]);
             renderTagsList();
+            renderSuggestionsList();
           }
         }
       });
@@ -2285,7 +2534,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
               if (selectedBadgeName) selectedBadgeName.textContent = `${cName} › ${pName}`;
               if (_currentTagsList && !_currentTagsList.includes(pName)) {
                 _currentTagsList.unshift(pName);
+                saveStoredTags([pName]);
                 renderTagsList();
+                renderSuggestionsList();
               }
               toast.success(`تم اختيار: ${pName} (${cName}) ✨`);
             }
@@ -2329,6 +2580,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
       // Render subprofessions for this category
       renderSubprofessions(catId);
+      renderSuggestionsList();
 
       const customCatGroup = document.getElementById('custom-category-group');
       updateDoctorSpecialtyVisibility(catId, customCatGroup?.querySelector('input')?.value, catName);
@@ -3133,6 +3385,10 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         if (profObj && !services.includes(profObj.name)) {
           services.unshift(profObj.name);
         }
+      }
+
+      if (services && services.length > 0) {
+        saveStoredTags(services);
       }
 
       if (categoryVal === 'other' && !customCategory) {

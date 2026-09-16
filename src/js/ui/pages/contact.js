@@ -984,7 +984,7 @@ async function initFairRotationShowcase() {
       renderCards(displayPlaces);
 
       if (statusText) {
-        statusText.innerHTML = `🟢 <b>تم تدوير الصدارة تلقائياً (${rotationCount}):</b> تتغير المراكز دورياً لضمان تكافؤ نسب المشاهدة لكافة المشتركين!`;
+        statusText.innerHTML = `<b>تدوير الصدارة الذكي (${rotationCount}):</b> كل الأماكن نسبة ظهورها وترتيبها واحدة بعدالة 100% ✨`;
       }
     }, 320);
   }, 4500);

@@ -610,7 +610,7 @@ function initHomeVerifiedShowcase(allPlaces = null) {
         renderCards(currentSlice);
 
         if (statusText) {
-          statusText.innerHTML = `🟢 <b>تم تدوير الصدارة تلقائياً (${rotationRound}):</b> تتغير المراكز دورياً لضمان تكافؤ نسب المشاهدة لكافة الأماكن الموثقة!`;
+          statusText.innerHTML = `<b>تدوير الصدارة الذكي (${rotationRound}):</b> كل الأماكن نسبة ظهورها وترتيبها واحدة بعدالة 100% ✨`;
         }
       }, 300);
     }, 4500);
@@ -1983,7 +1983,7 @@ function getHomeHTML() {
           <div class="home-verified-subbar">
             <div class="home-verified-status">
               <span class="home-verified-dot"></span>
-              <span id="home-verified-status-text">بث مباشر: تتغير مراكز الأماكن الموثقة تلقائياً كل 4.5 ثوانٍ لضمان عدالة الظهور</span>
+              <span id="home-verified-status-text">تدوير الصدارة الذكي: كل الأماكن نسبة ظهورها وترتيبها واحدة بعدالة 100% ✨</span>
             </div>
             <div class="home-verified-live-tag">
               <span>⚡ تدوير حي مستمر</span>
