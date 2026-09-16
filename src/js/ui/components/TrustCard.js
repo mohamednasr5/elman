@@ -20,7 +20,7 @@ export function renderTrustCard(place) {
   const waBase = String(place.adminWhatsapp || 'https://wa.me/wasendernew').trim();
   const waMessage = encodeURIComponent(`مرحباً، أنا صاحب مكان "${placeName}" وأود ربط المكان بحسابي على منصة المنزلة وناسها.`);
   const waUrl = waBase.includes('?') ? `${waBase}&text=${waMessage}` : `${waBase}?text=${waMessage}`;
-  const verificationUrl = `/contact.html?topic=verification&place=${encodeURIComponent(placeName)}#pricing`;
+  const verificationUrl = `/wallet.html#packages`;
 
   return `
     <div class="trust-card-container" style="position:relative;overflow:hidden">

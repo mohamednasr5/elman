@@ -52,7 +52,7 @@ export async function renderEnglishContactPage($container) {
             <h3 style="font-size:1.2rem;font-weight:800;margin-bottom:8px">Sponsored Promotion</h3>
             <p style="color:var(--text-secondary);font-size:14px;line-height:1.6;margin-bottom:16px">Put your business at the forefront for thousands of local customers across the region.</p>
           </div>
-          <a href="https://wa.me/wasendernew?text=Hello%2C%20I%20would%20like%20to%20start%20advertising%20on%20Dalil%20El%20Manzala" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%;justify-content:center">Start Advertising 📢</a>
+          <a href="/wallet.html#packages" class="btn btn-primary" style="width:100%;justify-content:center;text-decoration:none">Start Advertising 📢</a>
         </div>
 
         <div class="card pillar-card pillar-card--verify" id="pillar-verify" style="padding:24px;border:2px solid #F5A623;border-radius:var(--radius-xl);background:var(--surface);display:flex;flex-direction:column;justify-content:space-between;position:relative">
@@ -63,7 +63,7 @@ export async function renderEnglishContactPage($container) {
             <p style="color:var(--text-secondary);font-size:14px;line-height:1.6;margin-bottom:16px">Permanent blue verified badge, top ranking priority, product listings, and trusted customer status.</p>
           </div>
           <div style="display:flex;flex-direction:column;gap:8px">
-            <a href="https://wa.me/wasendernew?text=${waVerifyText}" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%;justify-content:center">Request Verification 🛡️</a>
+            <a href="/wallet.html#packages" class="btn btn-primary" style="width:100%;justify-content:center;text-decoration:none">Request Verification 🛡️</a>
             <a href="/en/free-verification/" class="btn btn-outline" style="width:100%;justify-content:center;font-size:12px;border-color:#10B981;color:#10B981">🎁 Free Verification for Store Owners</a>
           </div>
         </div>
@@ -75,7 +75,7 @@ export async function renderEnglishContactPage($container) {
             <h3 style="font-size:1.2rem;font-weight:800;margin-bottom:8px">Showcase Products</h3>
             <p style="color:var(--text-secondary);font-size:14px;line-height:1.6;margin-bottom:16px">Display your menu, catalog, and promotions directly to local shoppers.</p>
           </div>
-          <a href="https://wa.me/wasendernew?text=Hello%2C%20I%20would%20like%20to%20showcase%20products%20on%20Dalil%20El%20Manzala" target="_blank" rel="noopener" class="btn btn-secondary" style="width:100%;justify-content:center">Showcase Products 🔥</a>
+          <a href="/wallet.html#packages" class="btn btn-secondary" style="width:100%;justify-content:center;text-decoration:none">Showcase Products 🔥</a>
         </div>
       </section>
 

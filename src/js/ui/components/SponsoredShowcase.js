@@ -79,11 +79,9 @@ export function mountSponsoredShowcase(target, places = [], options = {}) {
         </div>
 
         <div class="sponsored-showcase-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <a href="https://wa.me/wasendernew?text=${encodeURIComponent(ctaMsg)}" 
-             target="_blank" 
-             rel="noopener" 
+          <a href="/wallet.html#packages" 
              class="btn btn-sm btn-secondary sponsored-cta-btn" 
-             style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;border-radius:var(--radius-full);white-space:nowrap;box-shadow:0 2px 10px rgba(245,166,35,0.25);transition:transform 0.2s">
+             style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;border-radius:var(--radius-full);white-space:nowrap;box-shadow:0 2px 10px rgba(245,166,35,0.25);transition:transform 0.2s;text-decoration:none">
             <span>📣</span>
             <span>${ctaText}</span>
           </a>

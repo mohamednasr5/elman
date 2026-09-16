@@ -1209,10 +1209,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
     document.getElementById('btn-request-verification')?.addEventListener('click', (e) => {
       e.preventDefault();
-      const targetUrl = isEn
-        ? `/en/contact/?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`
-        : `/contact.html?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`;
-      window.location.href = targetUrl;
+      window.location.href = '/wallet.html#packages';
     });
 
     document.getElementById('btn-claim-place')?.addEventListener('click', () => {
@@ -1737,10 +1734,7 @@ function showVerificationModal(place, user, waUrl) {
         label: '🛡️ عرض أسعار وباقات التوثيق',
         type: 'primary',
         onClick: () => {
-          const isEn = document.documentElement.lang === 'en' || location.pathname.includes('/en/');
-          window.location.href = isEn
-            ? `/en/contact/?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`
-            : `/contact.html?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`;
+          window.location.href = '/wallet.html#packages';
         },
         closeOnClick: true
       },

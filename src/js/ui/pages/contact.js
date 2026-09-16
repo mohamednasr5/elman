@@ -431,6 +431,10 @@ export async function renderContactPage($container, { user } = {}) {
             <span>🚀</span>
             <span>ابدأ طلبك الآن</span>
           </a>
+          <a href="/wallet.html#packages" class="cx-btn cx-btn--gold" style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;box-shadow:0 8px 24px rgba(245,158,11,0.35)">
+            <span>🪙</span>
+            <span>شراء ذهبيات الدليل</span>
+          </a>
           <a href="${escAttr(waLink)}" target="_blank" rel="noopener" class="cx-btn cx-btn--wa">
             <span>💬</span>
             <span>محادثة واتساب مباشرة</span>
@@ -448,7 +452,7 @@ export async function renderContactPage($container, { user } = {}) {
           <div class="pillar-price">💰 100 جنيه مصري / شهرياً</div>
           <h2 class="pillar-title">الإعلان والترويج المدفوع</h2>
           <p class="pillar-desc">اجعل نشاطك في الواجهة والصدارة أمام العملاء المحليين.</p>
-          <button type="button" class="btn btn-primary btn-block btn-select-topic" data-topic="ads">ابدأ إعلانك 📢</button>
+          <a href="/wallet.html#packages" class="btn btn-primary btn-block" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px">ابدأ إعلانك 📢</a>
         </div>
 
         <div class="pillar-card pillar-card--verify" id="pillar-verify">
@@ -456,7 +460,7 @@ export async function renderContactPage($container, { user } = {}) {
           <div class="pillar-price">💎 1000 جنيه مصري / مدى الحياة</div>
           <h2 class="pillar-title">توثيق حسابك ومكانك</h2>
           <p class="pillar-desc">توثيق رسمي بالعلامة المعتمدة يعزز الثقة والمصداقية التامة.</p>
-          <button type="button" class="btn btn-primary btn-block btn-select-topic" data-topic="verification">وثّق مكانك 🛡️</button>
+          <a href="/wallet.html#packages" class="btn btn-primary btn-block" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px">وثّق مكانك 🛡️</a>
           <a href="free-verification.html" class="btn btn-block btn-free-verification" title="احصل على التوثيق مجاناً بنشر إعلان الدليل داخل محلك">
             <span>🎁 عرض التوثيق المجاني لأصحاب المحلات</span>
           </a>
@@ -467,7 +471,7 @@ export async function renderContactPage($container, { user } = {}) {
           <div class="pillar-kicker">إبراز المنتجات والعروض 🛍️</div>
           <h2 class="pillar-title">ظهور منتجاتك وعروضك</h2>
           <p class="pillar-desc">حوّل منتجاتك وعروضك إلى سبب مباشر لزيارة محلك وزيادة مبيعاتك.</p>
-          <button type="button" class="btn btn-primary btn-block btn-select-topic" data-topic="showcase">إبراز المنتجات 🔥</button>
+          <a href="/wallet.html#packages" class="btn btn-primary btn-block" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px">إبراز المنتجات 🔥</a>
         </div>
       </section>
 
