@@ -47,7 +47,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=1cb5fd97_scanner_v1"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=1d36f2f9_scanner_v1"/>
 </head>
 <body class="auth-page">
 <div id="app">
@@ -86,14 +86,14 @@
 <!-- Page Module -->
 <script type="module">
 
-  import { initPage } from './src/js/core/page-shell.js?v=1cb5fd97_scanner_v1';
-  import { renderLoginPage } from './src/js/ui/pages/login.js?v=1cb5fd97_scanner_v1';
+  import { initPage } from './src/js/core/page-shell.js?v=1d36f2f9_scanner_v1';
+  import { renderLoginPage } from './src/js/ui/pages/login.js?v=1d36f2f9_scanner_v1';
   import { waitForAuth } from './src/js/core/auth.js';
   await initPage('login.html');
   const user = await waitForAuth();
   if (user) { window.location.replace('dashboard.html'); }
   else await renderLoginPage(document.getElementById('page-container'));
 </script>
-<script type="module" src="/src/js/core/pwa-install.js?v=1cb5fd97"></script>
+<script type="module" src="/src/js/core/pwa-install.js?v=1d36f2f9"></script>
 </body>
 </html>
