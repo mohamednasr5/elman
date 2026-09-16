@@ -748,3 +748,604 @@
     padding: 4px 10px !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   7. Info Cards & Section Content (About & Services)
+   ═══════════════════════════════════════════════════════════════ */
+.info-card {
+  position: relative !important;
+  background: var(--p3d-card-surface) !important;
+  border: 1.5px solid var(--p3d-card-border) !important;
+  border-radius: var(--p3d-radius-trio) !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 39, 77, 0.08), 0 3px 10px rgba(15, 39, 77, 0.03), inset 0 1px 0 #ffffff !important;
+  padding: 22px 24px !important;
+  margin-bottom: 20px !important;
+  transition: var(--p3d-transition) !important;
+  box-sizing: border-box !important;
+}
+
+.info-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 14px 30px -5px rgba(15, 39, 77, 0.12), 0 4px 12px rgba(15, 39, 77, 0.04), inset 0 1px 0 #ffffff !important;
+  border-color: rgba(203, 213, 225, 0.95) !important;
+}
+
+.info-card__title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  margin-top: 0 !important;
+  margin-bottom: 14px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1.5px dashed rgba(226, 232, 240, 0.8) !important;
+}
+
+.info-card__title span:first-child {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12)) !important;
+}
+
+/* 3D Services Chips & Badges */
+.services-tags {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  margin-top: 8px !important;
+}
+
+.services-tags .chip,
+.services-tags .chip--primary {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+  border: 1.5px solid #bae6fd !important;
+  color: #0369a1 !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  padding: 8px 16px !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 3px 8px rgba(2, 132, 199, 0.12), inset 0 1px 0 #ffffff !important;
+  transition: var(--p3d-transition) !important;
+  user-select: none !important;
+}
+
+.services-tags .chip:hover,
+.services-tags .chip--primary:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  border-color: #7dd3fc !important;
+  color: #0284c7 !important;
+  box-shadow: 0 6px 14px rgba(2, 132, 199, 0.22), inset 0 1px 0 #ffffff !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   8. Google-Style Rating Breakdown & Reviews Section
+   ═══════════════════════════════════════════════════════════════ */
+.reviews-section {
+  background: var(--p3d-card-surface) !important;
+  border: 1.5px solid var(--p3d-card-border) !important;
+  border-radius: var(--p3d-radius-trio) !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 39, 77, 0.08), 0 3px 10px rgba(15, 39, 77, 0.03), inset 0 1px 0 #ffffff !important;
+  padding: 24px !important;
+  margin-bottom: 24px !important;
+}
+
+/* 3D Google Rating Card */
+.google-rating-card {
+  position: relative !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  border: 1.5px solid rgba(226, 232, 240, 0.95) !important;
+  border-radius: var(--p3d-radius-trio) !important;
+  box-shadow: 0 8px 20px -4px rgba(15, 39, 77, 0.08), 0 2px 6px rgba(15, 39, 77, 0.03), inset 0 1.5px 0 #ffffff !important;
+  padding: 20px 24px !important;
+  margin-bottom: 20px !important;
+  display: grid !important;
+  grid-template-columns: 140px 1fr auto !important;
+  align-items: center !important;
+  gap: 24px !important;
+  transition: var(--p3d-transition) !important;
+}
+
+.google-rating-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 28px -4px rgba(15, 39, 77, 0.12), 0 3px 8px rgba(15, 39, 77, 0.04), inset 0 1.5px 0 #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.google-rating-score {
+  font-size: 54px !important;
+  font-weight: 900 !important;
+  color: #0f172a !important;
+  line-height: 1 !important;
+  letter-spacing: -1.5px !important;
+  text-shadow: 0 2px 4px rgba(15, 39, 77, 0.08) !important;
+}
+
+.google-rating-stars {
+  color: #f59e0b !important;
+  font-size: 20px !important;
+  letter-spacing: 2px !important;
+  margin: 6px 0 4px !important;
+  filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.35)) !important;
+}
+
+.google-rating-count {
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  color: #64748b !important;
+}
+
+/* 3D Progress Bar Tracks & Fills */
+.google-rating-bars {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+}
+
+.google-rating-bar-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  color: #64748b !important;
+}
+
+.bar-num {
+  width: 14px !important;
+  text-align: center !important;
+  flex-shrink: 0 !important;
+}
+
+.bar-track {
+  flex: 1 !important;
+  height: 11px !important;
+  background: #e2e8f0 !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  overflow: hidden !important;
+  position: relative !important;
+  box-shadow: inset 0 1.5px 3px rgba(15, 23, 42, 0.12) !important;
+}
+
+.bar-fill {
+  height: 100% !important;
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%) !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Write Review 3D Button */
+.btn-write-review {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 22px !important;
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+  border: 1.5px solid #38bdf8 !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  font-size: 13.5px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  box-shadow: 0 6px 16px -2px rgba(2, 132, 199, 0.4), inset 0 1.5px 1.5px rgba(255, 255, 255, 0.4) !important;
+  transition: var(--p3d-transition) !important;
+}
+
+.btn-write-review:hover {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 22px -3px rgba(2, 132, 199, 0.52), inset 0 1.5px 1.5px rgba(255, 255, 255, 0.5) !important;
+}
+
+.btn-write-review:active {
+  transform: translateY(1px) scale(0.98) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   9. Review Sentiment Filters & Individual Review Cards
+   ═══════════════════════════════════════════════════════════════ */
+.reviews-sentiment-tabs {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 16px !important;
+  flex-wrap: wrap !important;
+}
+
+.review-filter-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 6px 14px !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  border: 1.5px solid #e2e8f0 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05), inset 0 1px 0 #ffffff !important;
+  cursor: pointer !important;
+  transition: var(--p3d-transition) !important;
+  user-select: none !important;
+}
+
+.review-filter-tab:hover {
+  transform: translateY(-1px) !important;
+  border-color: #94a3b8 !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1), inset 0 1px 0 #ffffff !important;
+}
+
+.review-filter-tab.active {
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Individual Review Card 3D Foundation */
+.review-card {
+  position: relative !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  border: 1.5px solid rgba(226, 232, 240, 0.85) !important;
+  border-radius: 18px !important;
+  padding: 16px 18px !important;
+  box-shadow: 0 6px 18px -4px rgba(15, 39, 77, 0.06), 0 2px 6px rgba(15, 39, 77, 0.02), inset 0 1px 0 #ffffff !important;
+  transition: var(--p3d-transition) !important;
+}
+
+.review-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 22px -4px rgba(15, 39, 77, 0.1), 0 3px 8px rgba(15, 39, 77, 0.03), inset 0 1px 0 #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.review-card > div:last-of-type:not(.admin-review-compliant-note) {
+  /* Comment text container */
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   10. Sidebar Widgets (Spotlight, Working Hours, Social, Map)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 10.1 Spotlight Card (Hero Place/Person of the Day) */
+.spotlight-card {
+  position: relative !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%) !important;
+  border: 1.5px solid #86efac !important;
+  border-radius: var(--p3d-radius-trio) !important;
+  padding: 18px 20px !important;
+  box-shadow: 0 12px 28px -6px rgba(22, 101, 52, 0.1), 0 3px 10px rgba(0, 0, 0, 0.03), inset 0 1.5px 0 #ffffff !important;
+  margin-bottom: 20px !important;
+  transition: var(--p3d-transition) !important;
+}
+
+.spotlight-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 16px 32px -6px rgba(22, 101, 52, 0.15), 0 4px 12px rgba(0, 0, 0, 0.04), inset 0 1.5px 0 #ffffff !important;
+  border-color: #4ade80 !important;
+}
+
+.spotlight-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 14px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1.5px dashed rgba(134, 239, 172, 0.6) !important;
+}
+
+.spotlight-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  font-size: 14.5px !important;
+  font-weight: 800 !important;
+  color: #166534 !important;
+}
+
+.spotlight-profile-link {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  padding: 14px 10px !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border: 1.5px solid rgba(226, 232, 240, 0.9) !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05), inset 0 1px 0 #ffffff !important;
+  transition: var(--p3d-transition) !important;
+  text-decoration: none !important;
+  margin-bottom: 12px !important;
+}
+
+.spotlight-profile-link:hover {
+  transform: translateY(-2px) !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.15), inset 0 1px 0 #ffffff !important;
+}
+
+.spotlight-avatar-box {
+  width: 82px !important;
+  height: 82px !important;
+  border-radius: 20px !important;
+  border: 3.5px solid #ffffff !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14), inset 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden !important;
+  margin-bottom: 10px !important;
+}
+
+.btn-spotlight-claim {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 9px 14px !important;
+  background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%) !important;
+  border: 1.5px solid #4ade80 !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  color: #15803d !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  text-decoration: none !important;
+  box-shadow: 0 4px 10px rgba(22, 101, 52, 0.12), inset 0 1px 0 #ffffff !important;
+  transition: var(--p3d-transition) !important;
+}
+
+.btn-spotlight-claim:hover {
+  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%) !important;
+  color: #ffffff !important;
+  border-color: #15803d !important;
+  box-shadow: 0 8px 18px rgba(22, 101, 52, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 10.2 Working Hours Card */
+.working-hours {
+  position: relative !important;
+  background: var(--p3d-card-surface) !important;
+  border: 1.5px solid var(--p3d-card-border) !important;
+  border-radius: var(--p3d-radius-trio) !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 39, 77, 0.08), 0 3px 10px rgba(15, 39, 77, 0.03), inset 0 1.5px 0 #ffffff !important;
+  overflow: hidden !important;
+  margin-bottom: 20px !important;
+  transition: var(--p3d-transition) !important;
+}
+
+.working-hours:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 14px 30px -5px rgba(15, 39, 77, 0.12), 0 4px 12px rgba(15, 39, 77, 0.04), inset 0 1.5px 0 #ffffff !important;
+}
+
+.working-hours__header {
+  padding: 16px 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1.5px solid rgba(226, 232, 240, 0.8) !important;
+  cursor: pointer !important;
+}
+
+.working-hours__title {
+  font-size: 14.5px !important;
+  font-weight: 800 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: #0f172a !important;
+}
+
+.working-hours__status {
+  border-radius: var(--p3d-radius-pill) !important;
+  padding: 4px 13px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.working-hours__status--open {
+  background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%) !important;
+  border: 1.5px solid #6ee7b7 !important;
+  color: #065f46 !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15), inset 0 1px 0 #ffffff !important;
+}
+
+.working-hours__status--closed {
+  background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%) !important;
+  border: 1.5px solid #fca5a5 !important;
+  color: #991b1b !important;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.15), inset 0 1px 0 #ffffff !important;
+}
+
+.working-hours__row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 20px !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7) !important;
+}
+
+.working-hours__row--today {
+  background: linear-gradient(90deg, rgba(2, 132, 199, 0.09) 0%, rgba(2, 132, 199, 0.02) 100%) !important;
+  font-weight: 800 !important;
+  border-right: 3.5px solid #0284c7 !important;
+}
+
+/* 10.3 Social Media 3D Buttons */
+.social-brand-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 16px !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  text-decoration: none !important;
+  transition: var(--p3d-transition) !important;
+  border: 1.5px solid transparent !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  user-select: none !important;
+}
+
+.social-brand-btn:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+}
+
+.social-brand-btn svg {
+  width: 17px !important;
+  height: 17px !important;
+  fill: currentColor !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2)) !important;
+}
+
+.social-brand-btn--fb {
+  background: linear-gradient(180deg, #1877f2 0%, #0d65d9 100%) !important;
+  color: #ffffff !important;
+  border-color: #4294ff !important;
+  box-shadow: 0 4px 12px rgba(24, 119, 242, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.social-brand-btn--x {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.social-brand-btn--ig {
+  background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%) !important;
+  color: #ffffff !important;
+  border-color: #f472b6 !important;
+  box-shadow: 0 4px 12px rgba(225, 48, 108, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.social-brand-btn--tt {
+  background: linear-gradient(180deg, #000000 0%, #111827 100%) !important;
+  color: #ffffff !important;
+  border-color: #06b6d4 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.social-brand-btn--th {
+  background: linear-gradient(180deg, #1e293b 0%, #000000 100%) !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.social-brand-btn--yt {
+  background: linear-gradient(180deg, #ff0000 0%, #cc0000 100%) !important;
+  color: #ffffff !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 4px 12px rgba(255, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.social-brand-btn--web {
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 10.4 Map Card & Directions Button */
+.place-map-card .place-map {
+  border-radius: 16px !important;
+  border: 1.5px solid rgba(226, 232, 240, 0.9) !important;
+  box-shadow: inset 0 2px 5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+  overflow: hidden !important;
+}
+
+.btn-directions-gps {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 7px 16px !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
+  border: 1.5px solid #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  text-decoration: none !important;
+  transition: var(--p3d-transition) !important;
+  cursor: pointer !important;
+}
+
+.btn-directions-gps:hover {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important;
+  color: #ffffff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 18px rgba(2, 132, 199, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+.btn-directions-gps:active {
+  transform: translateY(1px) scale(0.98) !important;
+}
+
+.gps-arrow {
+  display: inline-block !important;
+  transition: transform 0.2s ease !important;
+}
+
+.btn-directions-gps:hover .gps-arrow {
+  transform: translateX(-3px) translateY(-2px) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   11. Dark Theme Compatibility
+   ═══════════════════════════════════════════════════════════════ */
+[data-theme="dark"] .info-card,
+[data-theme="dark"] .reviews-section,
+[data-theme="dark"] .google-rating-card,
+[data-theme="dark"] .working-hours,
+[data-theme="dark"] .spotlight-card,
+[data-theme="dark"] .review-card,
+body.dark-theme .info-card,
+body.dark-theme .reviews-section,
+body.dark-theme .google-rating-card,
+body.dark-theme .working-hours,
+body.dark-theme .spotlight-card,
+body.dark-theme .review-card {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+  border-color: rgba(51, 65, 85, 0.85) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .info-card__title,
+[data-theme="dark"] .google-rating-score,
+[data-theme="dark"] .working-hours__title,
+body.dark-theme .info-card__title,
+body.dark-theme .google-rating-score,
+body.dark-theme .working-hours__title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .spotlight-profile-link,
+body.dark-theme .spotlight-profile-link {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .review-filter-tab,
+body.dark-theme .review-filter-tab {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] .review-filter-tab.active,
+body.dark-theme .review-filter-tab.active {
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+}
+
