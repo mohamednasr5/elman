@@ -342,6 +342,12 @@ async function handleCallbackQuery(cb, env) {
   } else if (data.startsWith('view_place:')) {
     const placeId = data.replace('view_place:', '');
     await viewPlaceDetails(chatId, placeId, env);
+  } else if (data.startsWith('coin_approve:')) {
+    const purchaseId = data.replace('coin_approve:', '');
+    await handleTelegramCoinReview(chatId, purchaseId, 'approve', env, messageId);
+  } else if (data.startsWith('coin_reject:')) {
+    const purchaseId = data.replace('coin_reject:', '');
+    await handleTelegramCoinReview(chatId, purchaseId, 'reject', env, messageId);
   }
 }
 
@@ -850,6 +856,77 @@ async function addPlaceQuick(chatId, content, env) {
 }
 
 /**
+ * Handle Telegram Direct Review of Coin Purchases
+ */
+async function handleTelegramCoinReview(chatId, purchaseId, action, env, messageId) {
+  try {
+    const pur = await tursoFirst(env, "SELECT * FROM coin_purchases WHERE id = ? LIMIT 1", purchaseId);
+    if (!pur) {
+      return await telegramApi('sendMessage', {
+        chat_id: chatId,
+        text: `⚠️ لم يتم العثور على طلب الشحن رقم: <code>${tgEscape(purchaseId)}</code>`,
+        parse_mode: 'HTML'
+      }, env);
+    }
+
+    if (pur.status !== 'pending') {
+      return await telegramApi('sendMessage', {
+        chat_id: chatId,
+        text: `ℹ️ تم البت في هذا الطلب مسبقاً (الحالة الحالية: <b>${pur.status === 'approved' ? 'مقبول ومشحون ✅' : 'مرفوض ❌'}</b>)`,
+        parse_mode: 'HTML'
+      }, env);
+    }
+
+    const now = Date.now();
+    if (action === 'approve') {
+      const coins = Number(pur.coins) || 0;
+      await tursoRun(env, `
+        UPDATE coin_purchases 
+        SET status = 'approved', reviewed_by = 'telegram_admin', reviewed_at = ? 
+        WHERE id = ?
+      `, now, purchaseId);
+
+      await tursoRun(env, `
+        UPDATE users 
+        SET points = COALESCE(points, 0) + ? 
+        WHERE id = ?
+      `, coins, pur.user_id);
+
+      const histId = 'coin_pur_' + now + '_' + Math.random().toString(36).substring(2, 6);
+      await tursoRun(env, `
+        INSERT INTO loyalty_history (id, user_id, action, points, notes, created_at)
+        VALUES (?, ?, 'purchase', ?, ?, ?)
+      `, histId, pur.user_id, coins, `شحن باقة ${coins} ذهبية عبر تليجرام (فودافون كاش)`, now);
+
+      await telegramApi('sendMessage', {
+        chat_id: chatId,
+        text: `✅ <b>تم بنجاح اعتماد شحن الرصيد! 🎉</b>\n\n👤 <b>المستخدم:</b> <b>${tgEscape(pur.user_name || pur.user_id)}</b>\n🪙 <b>الرصيد المضاف:</b> <b>${coins.toLocaleString('ar-EG')} ذهبية</b>\n💵 <b>المبلغ:</b> <b>${pur.amount_egp} ج.م</b>\n🆔 <b>كود الطلب:</b> <code>${tgEscape(purchaseId)}</code>`,
+        parse_mode: 'HTML'
+      }, env);
+    } else {
+      await tursoRun(env, `
+        UPDATE coin_purchases 
+        SET status = 'rejected', rejection_reason = 'تم الرفض عبر تليجرام', reviewed_by = 'telegram_admin', reviewed_at = ? 
+        WHERE id = ?
+      `, now, purchaseId);
+
+      await telegramApi('sendMessage', {
+        chat_id: chatId,
+        text: `❌ <b>تم رفض طلب شحن الرصيد:</b>\n\n👤 <b>المستخدم:</b> <b>${tgEscape(pur.user_name || pur.user_id)}</b>\n🆔 <b>كود الطلب:</b> <code>${tgEscape(purchaseId)}</code>`,
+        parse_mode: 'HTML'
+      }, env);
+    }
+  } catch (err) {
+    console.error('[handleTelegramCoinReview Error]:', err);
+    await telegramApi('sendMessage', {
+      chat_id: chatId,
+      text: `⚠️ حدث خطأ أثناء معالجة الطلب: ${tgEscape(err.message)}`,
+      parse_mode: 'HTML'
+    }, env);
+  }
+}
+
+/**
  * Send Active Offers List
  */
 async function sendActiveOffers(chatId, env, editMessageId = null) {
@@ -1279,23 +1356,54 @@ export async function sendAdminPushNotification(type, payload, env) {
       `👤 <b>مُقدّم البلاغ:</b> ${tgEscape(payload.reporterName || 'مستخدم')}\n` +
       `⏰ <b>التوقيت:</b> ${timeStr}`;
   } else if (type === 'coin_purchase_request') {
-    text = `🪙 <b>طلب شراء ذهبيات الدليل ورد الآن!</b>\n\n` +
-      `👤 <b>المستخدم:</b> ${tgEscape(payload.userName || 'مستخدم')}\n` +
-      `📧 <b>البريد:</b> ${tgEscape(payload.userEmail || 'غير مسجل')}\n` +
-      `📞 <b>رقم المحفظة المُرسِل:</b> <code>${tgEscape(payload.vodafoneSenderNumber || 'غير محدد')}</code>\n` +
-      `💰 <b>الباقة المطلوبة:</b> <b>${tgEscape(payload.packageCoins)} ذهبية</b> (${tgEscape(payload.amountEgp)} ج.م)\n` +
-      (payload.receiptUrl ? `🧾 <b>رابط إيصال التحويل:</b> <a href="${tgEscape(payload.receiptUrl)}">اضغط هنا لعرض الإيصال</a>\n` : '') +
+    const isReceiptHttp = payload.receiptUrl && String(payload.receiptUrl).startsWith('http');
+    text = `🪙 <b>إشعار شراء ذهبيات الدليل (طلب جديد)!</b>\n\n` +
+      `👤 <b>اسم المشتري:</b> ${tgEscape(payload.userName || 'مستخدم')}\n` +
+      `📧 <b>البريد الإلكتروني:</b> ${tgEscape(payload.userEmail || 'غير مسجل')}\n` +
+      `📞 <b>رقم محفظة فودافون كاش:</b> <code>${tgEscape(payload.vodafoneSenderNumber || 'غير محدد')}</code>\n` +
+      `🪙 <b>عدد العملات:</b> <b>${Number(payload.packageCoins).toLocaleString('ar-EG')} ذهبية</b>\n` +
+      `💵 <b>المبلغ المستحق:</b> <b>${Number(payload.amountEgp).toLocaleString('ar-EG')} ج.م</b>\n` +
+      `💳 <b>طريقة الدفع:</b> فودافون كاش (Vodafone Cash)\n` +
+      `⏳ <b>حالة الدفع:</b> بانتظار مراجعة الإيصال والشحن\n` +
+      (isReceiptHttp ? `🧾 <b>رابط صورة الإيصال:</b> <a href="${tgEscape(payload.receiptUrl)}">اضغط هنا لفتح الإيصال</a>\n` : '') +
       `🆔 <b>كود الطلب:</b> <code>${tgEscape(payload.purchaseId)}</code>\n` +
       `⏰ <b>التوقيت:</b> ${timeStr}`;
 
-    const adminKeyboard = [];
-    if (payload.receiptUrl) {
-      adminKeyboard.push([{ text: '🧾 عرض الإيصال', url: payload.receiptUrl }]);
+    const waNum = (payload.vodafoneSenderNumber || '').replace(/\D/g, '');
+    const fullWa = waNum.startsWith('0') ? '2' + waNum : waNum;
+
+    const row1 = [];
+    if (isReceiptHttp) {
+      row1.push({ text: '🧾 فتح الإيصال بالحجم الكامل', url: payload.receiptUrl });
     }
-    adminKeyboard.push([
-      { text: '👑 لوحة تحكم الإدارة', url: 'https://dalilmanzala.com/admin.html#coin-purchases' }
-    ]);
-    keyboard = { inline_keyboard: adminKeyboard };
+    if (waNum) {
+      row1.push({ text: '💬 واتساب المحول', url: `https://wa.me/${fullWa}` });
+    }
+
+    keyboard = {
+      inline_keyboard: [
+        ...(row1.length ? [row1] : []),
+        [
+          { text: '✅ قبول وشحن فوري', callback_data: `coin_approve:${payload.purchaseId}` },
+          { text: '❌ رفض الطلب', callback_data: `coin_reject:${payload.purchaseId}` }
+        ],
+        [
+          { text: '👑 مراجعة في لوحة التحكم', url: 'https://dalilmanzala.com/admin.html?section=coin-purchases' }
+        ]
+      ]
+    };
+
+    if (isReceiptHttp) {
+      const captionText = text.length > 1024 ? text.substring(0, 1020) + '...' : text;
+      const photoRes = await telegramApi('sendPhoto', {
+        chat_id: chatId,
+        photo: payload.receiptUrl,
+        caption: captionText,
+        parse_mode: 'HTML',
+        reply_markup: keyboard
+      }, env);
+      if (photoRes?.ok) return photoRes;
+    }
   } else if (type === 'contact_message') {
     text = `📩 <b>رسالة جديدة من صفحة تواصل معنا!</b>\n\n` +
       `👤 <b>الاسم:</b> ${tgEscape(payload.name)}\n` +

@@ -2060,7 +2060,11 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     'كافيه': ['مشروبات ساخنة وباردة', 'عصائر فريش', 'واي فاي مجاني', 'شاشات مباريات', 'حلويات غربية', 'صالة عائلات', 'قهوة مختصة'],
     'حلويات': ['حلويات شرقية', 'تورت وجاتوهات', 'كنافة وبسبوسة', 'حلويات غربية', 'آيس كريم', 'تورتات أعياد ميلاد', 'معجنات طازجة'],
     'مخبز': ['عيش بلدي وفيزو', 'باتيه وفينو', 'مخبوزات طازجة', 'بقسماط وفطير', 'حلويات أفران'],
-    'أسماك': ['سمك مشوي ومقلي', 'جمبري وسيفود', 'طواجن بحرية', 'تنظيف وتجهيز', 'دليفري طازج'],
+    'أسماك': ['سمك مشوي', 'سمك مقلي', 'جمبري وسيفود', 'طواجن بحرية', 'بوري وطوبار', 'بلطي وقاروص', 'شوي فحم', 'شواية سمك', 'تنظيف وتجهيز', 'شوربة سي فود', 'دليفري طازج', 'وجبات سمك عائلية', 'مأكولات بحرية', 'شوي زيت وليمون', 'سنجاري ورشيدي', 'متاح يومياً'],
+    'سمك': ['سمك مشوي', 'سمك مقلي', 'جمبري وسيفود', 'طواجن بحرية', 'بوري وطوبار', 'بلطي وقاروص', 'شوي فحم', 'تنظيف وتجهيز', 'شوربة سي فود', 'دليفري طازج', 'مأكولات بحرية', 'سنجاري ورشيدي', 'شوي زيت وليمون'],
+    'فسخاني': ['فسيخ بلدي ممتاز', 'رنجة هولندي سوبر', 'سردين ومملحات', 'بطارخ فاخرة', 'تجهيز وتغليف دليفري', 'تنظيف وتقطيع', 'ملوحة أسواني'],
+    'شواية': ['شوي سمك فحم', 'سمك مشوي ردة', 'سمك مشوي زيت وليمون', 'تنظيف وتمليح', 'توصيل للمنازل'],
+    'ماكولات بحرية': ['جمبري مشوي ومقلي', 'طواجن سيفود', 'شوربة سي فود بالكريمة', 'سمك دنيس وقاروص', 'استاكوزا وكابوريا', 'وجبات سي فود فاخرة'],
     'جزارة': ['لحوم بلدي طازجة', 'كندوز وبتلو', 'لحم مفروم وسجق', 'كفتة مشوية', 'ذبح وتشفية'],
 
     // Shopping & Retail
@@ -2083,6 +2087,33 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     'حلاقة': ['قصات شعر حديثة', 'حلاقة ذقن وعناية', 'تنظيف بشرة وماسكات', 'بروتين واستشوار', 'حلاقة أطفال'],
     'كوافير': ['ميك أب وتجهيز عرائس', 'بروتين وبوتوكس للشعر', 'صبغات واستشوار', 'تنظيف بشرة وباديكير']
   };
+
+  // Group categories into domain clusters to prevent cross-contamination
+  const DOMAIN_CLUSTERS = {
+    food: ['restaurants', 'مطعم', 'كافيه', 'حلويات', 'مخبز', 'أسماك', 'سمك', 'فسخاني', 'شواية', 'ماكولات بحرية', 'جزارة', 'أغذية', 'طعام', 'فطير', 'بيتزا', 'مشاوي', 'كريب', 'بوري', 'طوبار', 'جرانة', 'جمبري'],
+    health: ['health', 'دكتور', 'طبيب', 'عيادة', 'صيدلية', 'معمل', 'أسنان', 'علاج', 'أدوية', 'طبي', 'صحة', 'مستشفى', 'باطنة', 'عظام', 'أطفال', 'سونار'],
+    shopping: ['shopping', 'سوبر ماركت', 'ملابس', 'أحذية', 'موبايل', 'كمبيوتر', 'إكسسوارات', 'أجهزة', 'عطارة', 'مكتبة', 'ذهب', 'فضة', 'لانجري', 'كاجوال'],
+    education: ['education', 'حضانة', 'تعليم', 'مدرسة', 'أطفال', 'سنتر', 'دروس', 'أكاديمية', 'لغات'],
+    crafts: ['crafts', 'services', 'سباكة', 'كهرباء', 'صيانة', 'نجارة', 'دهانات', 'سيارات', 'حلاقة', 'كوافير', 'ورشة', 'فني']
+  };
+
+  function detectActiveDomain(contextText) {
+    const text = normalizeArabic(contextText.toLowerCase());
+    let bestDomain = null;
+    let maxMatches = 0;
+
+    for (const [domain, keywords] of Object.entries(DOMAIN_CLUSTERS)) {
+      let matches = 0;
+      for (const kw of keywords) {
+        if (text.includes(normalizeArabic(kw))) matches++;
+      }
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestDomain = domain;
+      }
+    }
+    return bestDomain;
+  }
 
   function getStoredTags() {
     try {
@@ -2116,20 +2147,6 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     saveStoredTags(initialServices);
   }
 
-  // Also collect tags from cached published places in memory
-  setTimeout(() => {
-    try {
-      const cachedPublished = (typeof getCached === 'function') ? getCached('published_100_') : null;
-      if (Array.isArray(cachedPublished?.places)) {
-        const extracted = [];
-        cachedPublished.places.forEach(p => {
-          if (Array.isArray(p.services)) extracted.push(...p.services);
-        });
-        if (extracted.length) saveStoredTags(extracted);
-      }
-    } catch (e) {}
-  }, 1000);
-
   function getContextualCategoryTags() {
     const catVal = (document.getElementById('p-category')?.value || '').toLowerCase();
     const customCat = (document.getElementById('p-custom-category')?.value || '').toLowerCase();
@@ -2137,24 +2154,31 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     const nameVal = (document.getElementById('p-name')?.value || '').toLowerCase();
 
     const matchedPills = [];
+    const combinedContext = `${nameVal} ${customCat} ${subcatVal} ${catVal} ${_currentTagsList.join(' ')}`;
+    const activeDomain = detectActiveDomain(combinedContext);
 
-    // Check direct category slug
-    if (catVal && POPULAR_CATEGORY_TAGS[catVal]) {
-      matchedPills.push(...POPULAR_CATEGORY_TAGS[catVal]);
-    }
-
-    // Check keywords in name, custom category, subcategory
-    const combinedContext = `${nameVal} ${customCat} ${subcatVal} ${catVal}`;
-    Object.keys(POPULAR_CATEGORY_TAGS).forEach(key => {
-      if (key !== 'education' && key !== 'health' && key !== 'restaurants' && key !== 'shopping' && key !== 'crafts' && key !== 'services') {
+    // If specific domain detected, only include tags belonging to that domain's keys
+    if (activeDomain && DOMAIN_CLUSTERS[activeDomain]) {
+      const allowedKeys = DOMAIN_CLUSTERS[activeDomain];
+      allowedKeys.forEach(k => {
+        if (POPULAR_CATEGORY_TAGS[k]) {
+          matchedPills.push(...POPULAR_CATEGORY_TAGS[k]);
+        }
+      });
+    } else {
+      // Direct category slug check
+      if (catVal && POPULAR_CATEGORY_TAGS[catVal]) {
+        matchedPills.push(...POPULAR_CATEGORY_TAGS[catVal]);
+      }
+      Object.keys(POPULAR_CATEGORY_TAGS).forEach(key => {
         if (combinedContext.includes(key)) {
           matchedPills.push(...POPULAR_CATEGORY_TAGS[key]);
         }
-      }
-    });
+      });
+    }
 
-    // Fallback general tags
-    matchedPills.push('خدمة سريعة', 'توصيل منازل', 'أفضل الأسعار', 'جودة عالية', 'عروض حصرية', 'متاح يومياً');
+    // Fallback general tags (neutral only)
+    matchedPills.push('خدمة سريعة', 'أفضل الأسعار', 'جودة عالية', 'عروض حصرية', 'متاح يومياً');
 
     return Array.from(new Set(matchedPills));
   }
@@ -2166,28 +2190,43 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     if (!box || !list) return;
 
     const q = (filterQuery || '').trim().toLowerCase();
-    const storedHistory = getStoredTags();
     const contextualTags = getContextualCategoryTags();
+    const catVal = (document.getElementById('p-category')?.value || '').toLowerCase();
+    const customCat = (document.getElementById('p-custom-category')?.value || '').toLowerCase();
+    const subcatVal = (document.getElementById('p-subcategory')?.value || '').toLowerCase();
+    const nameVal = (document.getElementById('p-name')?.value || '').toLowerCase();
+    const combinedContext = `${nameVal} ${customCat} ${subcatVal} ${catVal} ${_currentTagsList.join(' ')}`;
+    const activeDomain = detectActiveDomain(combinedContext);
 
-    // Prioritize history tags first, followed by contextual tags
+    // Filter history tags so they DO NOT show irrelevant categories (e.g. pharmacy tags on fish place)
+    const storedHistory = getStoredTags().filter(t => {
+      if (q) return true; // if user typed, history search is allowed
+      if (!activeDomain) return true;
+      // Tag must match contextual list or domain keywords
+      return contextualTags.includes(t) || (DOMAIN_CLUSTERS[activeDomain] && DOMAIN_CLUSTERS[activeDomain].some(k => t.includes(k)));
+    });
+
     const combined = [];
     const historySet = new Set(storedHistory);
 
-    // Stored history in reverse (most recent first)
-    [...storedHistory].reverse().forEach(t => {
-      if (!_currentTagsList.includes(t)) combined.push({ tag: t, isHistory: true });
-    });
-
-    // Add contextual tags
+    // Prioritize strictly contextual tags first!
     contextualTags.forEach(t => {
       if (!_currentTagsList.includes(t) && !combined.some(item => item.tag === t)) {
         combined.push({ tag: t, isHistory: historySet.has(t) });
       }
     });
 
+    // Add relevant stored history tags that aren't already included
+    [...storedHistory].reverse().forEach(t => {
+      if (!_currentTagsList.includes(t) && !combined.some(item => item.tag === t)) {
+        combined.push({ tag: t, isHistory: true });
+      }
+    });
+
     let filtered = combined;
     if (q) {
       filtered = combined.filter(item => item.tag.toLowerCase().includes(q));
+    }
     }
 
     // Limit to top 24 suggestions

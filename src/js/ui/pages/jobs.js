@@ -627,9 +627,11 @@ function openAddJobModal() {
           </div>
 
           <div class="jb-modal-footer">
-            <button type="button" class="jb-btn-cancel" id="btn-cancel-add-job">إلغاء</button>
+            <button type="button" class="jb-btn-cancel" id="btn-cancel-add-job">
+              <span>✕ إلغاء</span>
+            </button>
             <button type="submit" class="jb-btn-submit" id="btn-submit-add-job">
-              <span>نشر الوظيفة الآن</span>
+              <span>🚀 نشر الوظيفة الآن</span>
             </button>
           </div>
         </form>
@@ -814,9 +816,11 @@ function openEditJobModal(item) {
           </div>
 
           <div class="jb-modal-footer">
-            <button type="button" class="jb-btn-cancel" id="btn-cancel-edit-job">إلغاء</button>
+            <button type="button" class="jb-btn-cancel" id="btn-cancel-edit-job">
+              <span>✕ إلغاء</span>
+            </button>
             <button type="submit" class="jb-btn-submit" id="btn-submit-edit-job">
-              <span>حفظ التعديلات</span>
+              <span>💾 حفظ التعديلات</span>
             </button>
           </div>
         </form>

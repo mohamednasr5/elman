@@ -84,9 +84,12 @@ const ICONS = {
 };
 
 function navLink(sectionKey, href, icon, label, active) {
-  return `<a href="${href}" data-section="${sectionKey}" class="dashboard-nav-item${active ? ' active' : ''}">
-    <span style="display:inline-flex;align-items:center">${icon}</span>
-    <span>${label}</span>
+  return `<a href="${href}" data-section="${sectionKey}" class="dashboard-nav-item${active ? ' active' : ''}" style="position:relative;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:inline-flex;align-items:center;gap:10px">
+      <span style="display:inline-flex;align-items:center">${icon}</span>
+      <span>${label}</span>
+    </div>
+    <span class="admin-nav-badge" data-badge-sec="${sectionKey}" style="display:none"></span>
   </a>`;
 }
 
@@ -180,22 +183,40 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
         <!-- Sticky Quick Jump Chip Bar for All Admin Sections -->
         <div class="admin-quick-nav-wrapper" id="admin-quick-nav-bar">
           <div class="admin-quick-nav-track">
-            <button type="button" class="admin-quick-chip ${section === 'overview' ? 'active' : ''}" data-admin-sec="overview">📊 الإحصائيات</button>
-            <button type="button" class="admin-quick-chip ${section === 'integrity' ? 'active' : ''}" data-admin-sec="integrity">🛡️ سلامة قاعدة البيانات</button>
-            <button type="button" class="admin-quick-chip ${section === 'places' ? 'active' : ''}" data-admin-sec="places">📍 الأماكن والأنشطة</button>
-            <button type="button" class="admin-quick-chip ${['reports', 'phone-suggestions'].includes(section) ? 'active' : ''}" data-admin-sec="reports">📞 تحديثات واقتراحات الأرقام</button>
-            <button type="button" class="admin-quick-chip ${section === 'job-seekers' ? 'active' : ''}" data-admin-sec="job-seekers">💼 الباحثون عن عمل</button>
-            <button type="button" class="admin-quick-chip ${section === 'jobs' ? 'active' : ''}" data-admin-sec="jobs">📢 الوظائف الشاغرة</button>
-            <button type="button" class="admin-quick-chip ${section === 'live-news' ? 'active' : ''}" data-admin-sec="live-news">🔥 يحدث الآن</button>
-            <button type="button" class="admin-quick-chip ${section === 'products' ? 'active' : ''}" data-admin-sec="products">🛍️ مراجعة المنتجات</button>
-            <button type="button" class="admin-quick-chip ${section === 'reviews' ? 'active' : ''}" data-admin-sec="reviews">⭐ التقييمات</button>
-            <button type="button" class="admin-quick-chip ${section === 'verification' ? 'active' : ''}" data-admin-sec="verification">🛡️ طلبات التوثيق</button>
-            <button type="button" class="admin-quick-chip ${section === 'categories' ? 'active' : ''}" data-admin-sec="categories">📁 التصنيفات</button>
-            <button type="button" class="admin-quick-chip ${section === 'users' ? 'active' : ''}" data-admin-sec="users">👥 المستخدمين والحظر</button>
-            <button type="button" class="admin-quick-chip ${section === 'coin-purchases' ? 'active' : ''}" data-admin-sec="coin-purchases">🪙 شراء الذهبيات</button>
-            <button type="button" class="admin-quick-chip ${section === 'offers' ? 'active' : ''}" data-admin-sec="offers">🏷️ العروض والخصومات</button>
-            <button type="button" class="admin-quick-chip ${section === 'ads' ? 'active' : ''}" data-admin-sec="ads">📢 الإعلانات والترويج</button>
-            <button type="button" class="admin-quick-chip ${section === 'settings' ? 'active' : ''}" data-admin-sec="settings">⚙️ الإعدادات العامة</button>
+            <button type="button" class="admin-quick-chip ${section === 'overview' ? 'active' : ''}" data-admin-sec="overview"><span>📊 الإحصائيات</span></button>
+            <button type="button" class="admin-quick-chip ${section === 'integrity' ? 'active' : ''}" data-admin-sec="integrity"><span>🛡️ سلامة قاعدة البيانات</span></button>
+            <button type="button" class="admin-quick-chip ${section === 'places' ? 'active' : ''}" data-admin-sec="places"><span>📍 الأماكن والأنشطة</span></button>
+            <button type="button" class="admin-quick-chip ${['reports', 'phone-suggestions'].includes(section) ? 'active' : ''}" data-admin-sec="reports">
+              <span>📞 اقتراحات الأرقام</span>
+              <span class="admin-nav-badge" data-badge-sec="reports" style="display:none"></span>
+            </button>
+            <button type="button" class="admin-quick-chip ${section === 'job-seekers' ? 'active' : ''}" data-admin-sec="job-seekers"><span>💼 الباحثون عن عمل</span></button>
+            <button type="button" class="admin-quick-chip ${section === 'jobs' ? 'active' : ''}" data-admin-sec="jobs"><span>📢 الوظائف الشاغرة</span></button>
+            <button type="button" class="admin-quick-chip ${section === 'live-news' ? 'active' : ''}" data-admin-sec="live-news"><span>🔥 يحدث الآن</span></button>
+            <button type="button" class="admin-quick-chip ${section === 'products' ? 'active' : ''}" data-admin-sec="products">
+              <span>🛍️ مراجعة المنتجات</span>
+              <span class="admin-nav-badge" data-badge-sec="products" style="display:none"></span>
+            </button>
+            <button type="button" class="admin-quick-chip ${section === 'reviews' ? 'active' : ''}" data-admin-sec="reviews">
+              <span>⭐ التقييمات</span>
+              <span class="admin-nav-badge" data-badge-sec="reviews" style="display:none"></span>
+            </button>
+            <button type="button" class="admin-quick-chip ${section === 'verification' ? 'active' : ''}" data-admin-sec="verification">
+              <span>🛡️ طلبات التوثيق</span>
+              <span class="admin-nav-badge" data-badge-sec="verification" style="display:none"></span>
+            </button>
+            <button type="button" class="admin-quick-chip ${section === 'categories' ? 'active' : ''}" data-admin-sec="categories">
+              <span>📁 التصنيفات</span>
+              <span class="admin-nav-badge" data-badge-sec="categories" style="display:none"></span>
+            </button>
+            <button type="button" class="admin-quick-chip ${section === 'users' ? 'active' : ''}" data-admin-sec="users"><span>👥 المستخدمين والحظر</span></button>
+            <button type="button" class="admin-quick-chip ${section === 'coin-purchases' ? 'active' : ''}" data-admin-sec="coin-purchases">
+              <span>🪙 شراء الذهبيات</span>
+              <span class="admin-nav-badge" data-badge-sec="coin-purchases" style="display:none"></span>
+            </button>
+            <button type="button" class="admin-quick-chip ${section === 'offers' ? 'active' : ''}" data-admin-sec="offers"><span>🏷️ العروض والخصومات</span></button>
+            <button type="button" class="admin-quick-chip ${section === 'ads' ? 'active' : ''}" data-admin-sec="ads"><span>📢 الإعلانات والترويج</span></button>
+            <button type="button" class="admin-quick-chip ${section === 'settings' ? 'active' : ''}" data-admin-sec="settings"><span>⚙️ الإعدادات العامة</span></button>
           </div>
         </div>
 
@@ -217,9 +238,10 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           <span class="admin-bottom-tab__icon">${ICONS.pin}</span>
           <span class="admin-bottom-tab__label">الأماكن</span>
         </button>
-        <button type="button" class="admin-bottom-tab ${section === 'verification' ? 'active' : ''}" data-admin-sec="verification">
+        <button type="button" class="admin-bottom-tab ${section === 'verification' ? 'active' : ''}" data-admin-sec="verification" style="position:relative">
           <span class="admin-bottom-tab__icon">${ICONS.shield}</span>
           <span class="admin-bottom-tab__label">التوثيق</span>
+          <span class="admin-nav-badge" data-badge-sec="verification" style="display:none"></span>
         </button>
         <button type="button" class="admin-bottom-tab ${section === 'ads' ? 'active' : ''}" data-admin-sec="ads">
           <span class="admin-bottom-tab__icon">${ICONS.megaphone}</span>
@@ -229,11 +251,12 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           <span class="admin-bottom-tab__icon">${ICONS.shield}</span>
           <span class="admin-bottom-tab__label">سلامة قاعدة البيانات</span>
         </button>
-        <button type="button" class="admin-bottom-tab ${['products', 'reviews', 'categories', 'users', 'offers', 'settings', 'live-news'].includes(section) ? 'active' : ''}" id="btn-admin-open-more-sheet" data-admin-action="open-more" aria-label="المزيد من الأقسام">
+        <button type="button" class="admin-bottom-tab ${['products', 'reviews', 'categories', 'users', 'offers', 'settings', 'live-news'].includes(section) ? 'active' : ''}" id="btn-admin-open-more-sheet" data-admin-action="open-more" aria-label="المزيد من الأقسام" style="position:relative">
           <span class="admin-bottom-tab__icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
           </span>
           <span class="admin-bottom-tab__label">المزيد ⋯</span>
+          <span class="admin-nav-badge" data-badge-sec="more" style="display:none"></span>
         </button>
       </nav>
 
@@ -250,13 +273,20 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           </div>
 
           <div class="admin-sheet-grid">
-            <button type="button" class="admin-sheet-item" data-admin-sec="reports" style="background:rgba(2,132,199,0.18);border-color:#0284C7">
+            <button type="button" class="admin-sheet-item" data-admin-sec="reports" style="position:relative;background:rgba(2,132,199,0.18);border-color:#0284C7">
               <span>📞</span>
               <span style="color:#38BDF8;font-weight:800">اقتراحات الأرقام</span>
+              <span class="admin-nav-badge" data-badge-sec="reports" style="display:none"></span>
             </button>
-            <button type="button" class="admin-sheet-item" data-admin-sec="verification" style="background:rgba(16,185,129,0.15);border-color:#10B981">
+            <button type="button" class="admin-sheet-item" data-admin-sec="verification" style="position:relative;background:rgba(16,185,129,0.15);border-color:#10B981">
               <span>🛡️</span>
               <span style="color:#10B981;font-weight:800">طلبات التوثيق</span>
+              <span class="admin-nav-badge" data-badge-sec="verification" style="display:none"></span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="coin-purchases" style="position:relative;background:rgba(245,166,35,0.18);border-color:#F5A623">
+              <span>🪙</span>
+              <span style="color:#F5A623;font-weight:800">شراء الذهبيات</span>
+              <span class="admin-nav-badge" data-badge-sec="coin-purchases" style="display:none"></span>
             </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="ads" style="background:rgba(245,166,35,0.15);border-color:#F5A623">
               <span>📢</span>
@@ -270,9 +300,10 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
               <span>📍</span>
               <span>الأماكن والأنشطة</span>
             </button>
-            <button type="button" class="admin-sheet-item" data-admin-sec="services-hub">
+            <button type="button" class="admin-sheet-item" data-admin-sec="services-hub" style="position:relative">
               <span>⚡</span>
               <span>الخدمات والمتاحين</span>
+              <span class="admin-nav-badge" data-badge-sec="services-hub" style="display:none"></span>
             </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="job-seekers">
               <span>💼</span>
@@ -282,25 +313,24 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
               <span>📢</span>
               <span>الوظائف الشاغرة</span>
             </button>
-            <button type="button" class="admin-sheet-item" data-admin-sec="reviews">
+            <button type="button" class="admin-sheet-item" data-admin-sec="reviews" style="position:relative">
               <span>⭐</span>
               <span>التقييمات</span>
+              <span class="admin-nav-badge" data-badge-sec="reviews" style="display:none"></span>
             </button>
-            <button type="button" class="admin-sheet-item" data-admin-sec="products">
+            <button type="button" class="admin-sheet-item" data-admin-sec="products" style="position:relative">
               <span>🛍️</span>
               <span>المنتجات</span>
+              <span class="admin-nav-badge" data-badge-sec="products" style="display:none"></span>
             </button>
-            <button type="button" class="admin-sheet-item" data-admin-sec="categories">
+            <button type="button" class="admin-sheet-item" data-admin-sec="categories" style="position:relative">
               <span>📁</span>
               <span>التصنيفات</span>
+              <span class="admin-nav-badge" data-badge-sec="categories" style="display:none"></span>
             </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="users">
               <span>👥</span>
               <span>المستخدمين</span>
-            </button>
-            <button type="button" class="admin-sheet-item" data-admin-sec="coin-purchases" style="background:rgba(245,166,35,0.18);border-color:#F5A623">
-              <span>🪙</span>
-              <span style="color:#F5A623;font-weight:800">شراء الذهبيات</span>
             </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="offers">
               <span>🏷️</span>
@@ -355,6 +385,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
   
   await switchAdminSection(_currentSection, false);
   preloadAdminData();
+  startAdminBadgesPolling();
 }
 
 /**
@@ -531,8 +562,166 @@ function setupAdminNavigation() {
   }
 }
 
+// ─────────────────────────────────────────────
+//  SMART ADMIN NOTIFICATION BADGE ENGINE
+// ─────────────────────────────────────────────
+let _adminBadgesTimer = null;
+
+function ensureAdminBadgeStyles() {
+  if (typeof document === 'undefined' || document.getElementById('admin-nav-badges-style')) return;
+  const s = document.createElement('style');
+  s.id = 'admin-nav-badges-style';
+  s.textContent = `
+    .admin-nav-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      font-size: 11px;
+      font-weight: 900;
+      border-radius: 9999px;
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+      color: #ffffff !important;
+      margin-right: auto;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.45);
+      animation: adminBadgePulse 2.2s infinite ease-in-out;
+      line-height: 1;
+      pointer-events: none;
+    }
+    @keyframes adminBadgePulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+      50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .admin-quick-chip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .admin-quick-chip .admin-nav-badge {
+      margin-right: 2px;
+      min-width: 17px;
+      height: 17px;
+      font-size: 10px;
+      padding: 0 4px;
+    }
+    .admin-bottom-tab {
+      position: relative;
+    }
+    .admin-bottom-tab .admin-nav-badge {
+      position: absolute;
+      top: 2px;
+      left: calc(50% - 18px);
+      min-width: 16px;
+      height: 16px;
+      font-size: 9.5px;
+      padding: 0 4px;
+    }
+    .admin-sheet-item {
+      position: relative;
+    }
+    .admin-sheet-item .admin-nav-badge {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      font-size: 10px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+    }
+  `;
+  document.head.appendChild(s);
+}
+
+function applyBadgeCount(sectionKey, count) {
+  const badges = document.querySelectorAll(`.admin-nav-badge[data-badge-sec="${sectionKey}"]`);
+  badges.forEach(badge => {
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.style.display = 'inline-flex';
+      badge.title = `${count} طلب جديد بانتظار المراجعة`;
+    } else {
+      badge.textContent = '';
+      badge.style.display = 'none';
+      badge.title = '';
+    }
+  });
+}
+
+async function updateAdminNotificationBadges() {
+  try {
+    ensureAdminBadgeStyles();
+    const token = await getIdToken().catch(() => null);
+    
+    // Fetch all pending indicators in parallel with graceful catch
+    const [purchasesRes, verifReqs, phoneReps, products, reviews, catReqs, serviceReqs] = await Promise.all([
+      token ? api.get('/api/coins/purchases', token).catch(() => ({ data: [] })) : { data: [] },
+      getVerificationRequestsTurso().catch(() => ({})),
+      getAdminPhoneReports().catch(() => []),
+      getAllProducts().catch(() => []),
+      getAllReviews().catch(() => []),
+      getCategoryRequestsTurso().catch(() => ({})),
+      fetchServiceRequests().catch(() => [])
+    ]);
+
+    // 1. Coin Purchases
+    const pendingPurchases = (purchasesRes?.data || []).filter(p => p.status === 'pending').length;
+    applyBadgeCount('coin-purchases', pendingPurchases);
+
+    // 2. Verifications
+    const verifList = Object.values(verifReqs || {});
+    const pendingVerifs = verifList.filter(v => v.status === 'pending').length;
+    applyBadgeCount('verification', pendingVerifs);
+
+    // 3. Phone Reports
+    const repList = Array.isArray(phoneReps) ? phoneReps : Object.values(phoneReps || {});
+    const pendingPhone = repList.filter(r => r.status === 'pending').length;
+    applyBadgeCount('reports', pendingPhone);
+
+    // 4. Products
+    const prodList = Array.isArray(products) ? products : Object.values(products || {});
+    const pendingProds = prodList.filter(p => p.status === 'pending').length;
+    applyBadgeCount('products', pendingProds);
+
+    // 5. Reviews
+    const revList = Array.isArray(reviews) ? reviews : Object.values(reviews || {});
+    const reportedReviews = revList.filter(r => r.isReported || r.is_reported || r.status === 'pending').length;
+    applyBadgeCount('reviews', reportedReviews);
+
+    // 6. Categories
+    const catList = Object.values(catReqs || {});
+    const pendingCats = catList.filter(c => c.status === 'pending').length;
+    applyBadgeCount('categories', pendingCats);
+
+    // 7. Services Hub
+    const sList = Array.isArray(serviceReqs) ? serviceReqs : Object.values(serviceReqs || {});
+    const pendingServices = sList.filter(s => s.status === 'pending').length;
+    applyBadgeCount('services-hub', pendingServices);
+
+    // Also update "المزيد" button badge if any section in the drawer has pending items!
+    const moreDrawerPending = pendingPurchases + pendingProds + reportedReviews + pendingCats;
+    applyBadgeCount('more', moreDrawerPending);
+  } catch (err) {
+    console.debug('[Admin Badges Error]:', err?.message || err);
+  }
+}
+
+function startAdminBadgesPolling() {
+  ensureAdminBadgeStyles();
+  updateAdminNotificationBadges();
+  if (_adminBadgesTimer) clearInterval(_adminBadgesTimer);
+  _adminBadgesTimer = setInterval(updateAdminNotificationBadges, 35000); // refresh every 35s
+}
+
 if (typeof window !== 'undefined') {
-  window.refreshCurrentAdminSection = () => switchAdminSection(_currentSection, false);
+  window.updateAdminNotificationBadges = updateAdminNotificationBadges;
+  window.refreshCurrentAdminSection = () => {
+    updateAdminNotificationBadges();
+    return switchAdminSection(_currentSection, false);
+  };
 
   window.adminBanPlaceAction = (placeId, placeName) => {
     const modal = showModal({
@@ -9746,6 +9935,7 @@ async function renderAdminCoinPurchases($container, filter = _adminCoinPurchases
             const tok = await getIdToken();
             await api.post(`/api/coins/purchases/${id}/review`, { action: 'approve' }, tok);
             toast.success(`تم شحن ${Number(coins).toLocaleString('ar-EG')} ذهبية بنجاح لحساب ${userName}! 🎉`);
+            updateAdminNotificationBadges();
             renderAdminCoinPurchases($container, _adminCoinPurchasesFilter);
           } catch (err) {
             toast.error(err.message || 'فشل اعتماد الشحن');
@@ -9770,6 +9960,7 @@ async function renderAdminCoinPurchases($container, filter = _adminCoinPurchases
             const tok = await getIdToken();
             await api.post(`/api/coins/purchases/${id}/review`, { action: 'reject', reason: reason.trim() }, tok);
             toast.info('تم رفض الطلب وتسجيل السبب');
+            updateAdminNotificationBadges();
             renderAdminCoinPurchases($container, _adminCoinPurchasesFilter);
           } catch (err) {
             toast.error(err.message || 'فشل رفض الطلب');

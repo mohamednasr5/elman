@@ -600,9 +600,11 @@ function openAddSeekerModal() {
           </div>
 
           <div class="jb-modal-footer">
-            <button type="button" class="jb-btn-cancel" id="btn-cancel-add-seeker">إلغاء</button>
+            <button type="button" class="jb-btn-cancel" id="btn-cancel-add-seeker">
+              <span>✕ إلغاء</span>
+            </button>
             <button type="submit" class="jb-btn-submit" id="btn-submit-add-seeker">
-              <span>نشر السيرة الذاتية</span>
+              <span>💼 نشر السيرة الذاتية الآن</span>
             </button>
           </div>
         </form>
@@ -792,9 +794,11 @@ function openEditSeekerModal(item) {
           `}
 
           <div class="jb-modal-footer">
-            <button type="button" class="jb-btn-cancel" id="btn-cancel-edit-modal">إلغاء</button>
+            <button type="button" class="jb-btn-cancel" id="btn-cancel-edit-modal">
+              <span>✕ إلغاء</span>
+            </button>
             <button type="submit" class="jb-btn-submit" id="btn-submit-edit-seeker">
-              <span>حفظ التعديلات</span>
+              <span>💾 حفظ التعديلات</span>
             </button>
           </div>
         </form>
