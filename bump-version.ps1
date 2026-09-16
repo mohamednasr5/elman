@@ -1,4 +1,4 @@
-﻿# ╔══════════════════════════════════════════════════════╗
+# ╔══════════════════════════════════════════════════════╗
 # ║  Auto Cache-Buster — يحدّث كل ?v= بـ git commit hash ║
 # ║  شغّله قبل كل push: .\bump-version.ps1              ║
 # ╚══════════════════════════════════════════════════════╝
@@ -14,7 +14,7 @@ $files = Get-ChildItem -Recurse -Include "*.html","*.js" -File |
 $updated = 0
 foreach ($file in $files) {
     $content = Get-Content $file.FullName -Raw -Encoding UTF8
-    $newContent = $content -replace '\?v=[a-zA-Z0-9.\-]+', "?v=$hash"
+    $newContent = $content -replace '\?v=[a-zA-Z0-9._\-]+', "?v=$hash"
     if ($newContent -ne $content) {
         Set-Content $file.FullName $newContent -NoNewline -Encoding UTF8
         Write-Host "  ✅ $($file.Name)" -ForegroundColor Green

@@ -8,14 +8,14 @@ import { translateCategory, toArabicCategory } from '../../utils/category-i18n.j
  */
 
 import { WORKER_URL } from '../../core/firebase.js';
-import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, submitPhoneSuggestion, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=1d36f2f9_v6';
+import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, submitPhoneSuggestion, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=b693182b';
 import { getCurrentUser, signInWithGoogle, isAdmin, onAuthStateChange } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
 import { formatPrice, calcDiscount } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
-import { submitVerificationRequest } from '../../services/places.service.js?v=1d36f2f9_v6';
+import { submitVerificationRequest } from '../../services/places.service.js?v=b693182b';
 import { toast } from '../components/Toast.js';
 import { openPlaceProfileCardModal } from '../components/PlaceProfileCardModal.js';
 import { openStorefrontQrModal } from '../components/StorefrontQrModal.js';
