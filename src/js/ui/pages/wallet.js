@@ -56,6 +56,10 @@ export async function renderWalletPage($container) {
       const res = await api.get('/api/coins/balance', token);
       if (res.success && res.data) {
         balanceData = res.data;
+        try {
+          localStorage.setItem('manzala_user_coins_balance', String(res.data.balance || 0));
+          window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: res.data.balance } }));
+        } catch (_) {}
       }
     } catch (err) {
       console.warn('[Wallet balance fetch error]:', err);
@@ -963,6 +967,10 @@ function bindWalletEvents($container, user, balanceData) {
         if (res.newBalance !== undefined) {
           const liveBal = document.getElementById('wallet-live-balance');
           if (liveBal) liveBal.textContent = Number(res.newBalance).toLocaleString('ar-EG');
+          try {
+            localStorage.setItem('manzala_user_coins_balance', String(res.newBalance));
+            window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: res.newBalance } }));
+          } catch (_) {}
         }
         formTransfer.reset();
         setTimeout(() => location.reload(), 1500);
@@ -987,6 +995,10 @@ function bindWalletEvents($container, user, balanceData) {
       if (res.success && res.data) {
         const liveBal = document.getElementById('wallet-live-balance');
         if (liveBal) liveBal.textContent = Number(res.data.balance || 0).toLocaleString('ar-EG');
+        try {
+          localStorage.setItem('manzala_user_coins_balance', String(res.data.balance || 0));
+          window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: res.data.balance } }));
+        } catch (_) {}
         toast.success('تم تحديث الرصيد بنجاح ✓');
       }
     } catch (_) {

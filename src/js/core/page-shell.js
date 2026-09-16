@@ -1,7 +1,8 @@
-﻿// Shared page shell — bilingual, responsive, and safe for dynamic content.
-import { initAuth, onAuthStateChange, waitForAuth, isAdmin, signOut } from './auth.js';
+// Shared page shell — bilingual, responsive, and safe for dynamic content.
+import { initAuth, onAuthStateChange, waitForAuth, isAdmin, signOut, getIdToken } from './auth.js';
 import { getLang, isEnglish, switchLanguage, applyLangToDOM } from './i18n.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
+import { api } from './api.js';
 
 function _escShell(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -14,6 +15,59 @@ function _getStoredUser() {
   } catch (_) { return null; }
 }
 
+function _getStoredCoinsBalance() {
+  try {
+    const raw = localStorage.getItem('manzala_user_coins_balance');
+    if (raw !== null && !isNaN(Number(raw))) {
+      return Number(raw);
+    }
+    const u = _getStoredUser();
+    if (u && typeof u.points === 'number') {
+      return u.points;
+    }
+    if (u && typeof u.coins === 'number') {
+      return u.coins;
+    }
+    return 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+async function _updateHeaderCoinsBalance() {
+  try {
+    const token = await getIdToken();
+    if (!token) return;
+    const res = await api.get('/api/coins/balance', token);
+    const balance = res?.data?.balance ?? res?.balance;
+    if (typeof balance === 'number') {
+      localStorage.setItem('manzala_user_coins_balance', String(balance));
+      const valEl = document.getElementById('header-coins-val');
+      if (valEl) {
+        const isEn = isEnglish();
+        valEl.textContent = Number(balance).toLocaleString(isEn ? 'en-US' : 'ar-EG');
+      }
+    }
+  } catch (_) {}
+}
+
+if (typeof window !== 'undefined' && !window.__headerCoinsListenerBound) {
+  window.__headerCoinsListenerBound = true;
+  window.addEventListener('coins:updated', (e) => {
+    const bal = e?.detail?.balance;
+    if (typeof bal === 'number') {
+      localStorage.setItem('manzala_user_coins_balance', String(bal));
+      const valEl = document.getElementById('header-coins-val');
+      if (valEl) {
+        const isEn = isEnglish();
+        valEl.textContent = Number(bal).toLocaleString(isEn ? 'en-US' : 'ar-EG');
+      }
+    } else {
+      _updateHeaderCoinsBalance();
+    }
+  });
+}
+
 function _renderHeaderUserSlot(user = null) {
   const isEn = isEnglish();
   const u = user || _getStoredUser();
@@ -22,7 +76,11 @@ function _renderHeaderUserSlot(user = null) {
     const firstName = name.split(/\s+/)[0] || (isEn ? 'Account' : 'حسابي');
     const photo = u.photoURL || u.photo_url || '/icons/icon-72x72.png';
     const isUserAdmin = isAdmin(u);
-    return `<div class="header__user" style="position:relative"><button class="header__user-btn" id="header-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" title="${_escShell(name)}"><img src="${_escShell(photo)}" alt="${_escShell(firstName)}" class="header__avatar" width="32" height="32" onerror="this.src='/icons/icon-72x72.png'"><span class="header__user-name">${_escShell(firstName)}</span><span aria-hidden="true" style="font-size:10px">▾</span></button><div class="header__dropdown" id="header-user-dropdown" role="menu"><a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800">🪙 ${isEn ? 'Wallet & Coins' : 'الرصيد والعملات الذهبية'}</a><a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="header__dropdown-item" role="menuitem">🏠 ${isEn ? 'Dashboard' : 'لوحة تحكمي'}</a><a href="${isEn ? '/en/dashboard/?section=places' : '/dashboard.html?section=places'}" class="header__dropdown-item" role="menuitem">📍 ${isEn ? 'My Places' : 'أماكني'}</a><a href="${isEn ? '/en/dashboard/?section=add' : '/dashboard.html?section=add'}" class="header__dropdown-item" role="menuitem">➕ ${isEn ? 'Add Place' : 'إضافة مكان'}</a><a href="${isEn ? '/en/dashboard/?section=loyalty' : '/dashboard.html?section=loyalty'}" class="header__dropdown-item" role="menuitem">🎁 ${isEn ? 'Loyalty Rewards' : 'نادي الولاء'}</a><a href="${isEn ? '/en/dashboard/?section=notifications' : '/dashboard.html?section=notifications'}" class="header__dropdown-item" role="menuitem">🔔 ${isEn ? 'Notifications' : 'الإشعارات'}</a>${isUserAdmin ? `<div class="header__dropdown-divider"></div><a href="/admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ ${isEn ? 'Administration' : 'لوحة الإدارة'}</a>` : ''}<div class="header__dropdown-divider"></div><button class="header__dropdown-item header__dropdown-item--danger" id="header-logout-btn" type="button" role="menuitem">🚪 ${isEn ? 'Sign Out' : 'تسجيل الخروج'}</button></div></div>`;
+    const balance = _getStoredCoinsBalance();
+    const balanceDisplay = Number(balance).toLocaleString(isEn ? 'en-US' : 'ar-EG');
+    const coinsTitle = isEn ? 'Dalil Gold Coins balance — Click to open Wallet' : 'رصيد ذهبيات الدليل — اضغط لفتح المحفظة';
+    const coinsUnit = isEn ? 'Coins' : 'ذهبية';
+    return `<div class="header__user-group"><a href="/wallet.html" class="header__coins-chip" id="header-coins-chip" title="${coinsTitle}" aria-label="${coinsTitle}"><span class="header__coins-chip-icon" aria-hidden="true">🪙</span><span class="header__coins-chip-val" id="header-coins-val">${balanceDisplay}</span><span class="header__coins-chip-unit">${coinsUnit}</span></a><div class="header__user" style="position:relative"><button class="header__user-btn" id="header-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" title="${_escShell(name)}"><img src="${_escShell(photo)}" alt="${_escShell(firstName)}" class="header__avatar" width="32" height="32" onerror="this.src='/icons/icon-72x72.png'"><span class="header__user-name">${_escShell(firstName)}</span><span aria-hidden="true" style="font-size:10px">▾</span></button><div class="header__dropdown" id="header-user-dropdown" role="menu"><a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800">🪙 ${isEn ? 'Wallet & Coins' : 'الرصيد والعملات الذهبية'}</a><a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="header__dropdown-item" role="menuitem">🏠 ${isEn ? 'Dashboard' : 'لوحة تحكمي'}</a><a href="${isEn ? '/en/dashboard/?section=places' : '/dashboard.html?section=places'}" class="header__dropdown-item" role="menuitem">📍 ${isEn ? 'My Places' : 'أماكني'}</a><a href="${isEn ? '/en/dashboard/?section=add' : '/dashboard.html?section=add'}" class="header__dropdown-item" role="menuitem">➕ ${isEn ? 'Add Place' : 'إضافة مكان'}</a><a href="${isEn ? '/en/dashboard/?section=loyalty' : '/dashboard.html?section=loyalty'}" class="header__dropdown-item" role="menuitem">🎁 ${isEn ? 'Loyalty Rewards' : 'نادي الولاء'}</a><a href="${isEn ? '/en/dashboard/?section=notifications' : '/dashboard.html?section=notifications'}" class="header__dropdown-item" role="menuitem">🔔 ${isEn ? 'Notifications' : 'الإشعارات'}</a>${isUserAdmin ? `<div class="header__dropdown-divider"></div><a href="/admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ ${isEn ? 'Administration' : 'لوحة الإدارة'}</a>` : ''}<div class="header__dropdown-divider"></div><button class="header__dropdown-item header__dropdown-item--danger" id="header-logout-btn" type="button" role="menuitem">🚪 ${isEn ? 'Sign Out' : 'تسجيل الخروج'}</button></div></div></div>`;
   }
   const loginHref = isEn ? '/en/login/' : '/login.html';
   const loginText = isEn ? 'Sign In' : 'دخول';
@@ -33,6 +91,11 @@ function _bindHeaderUserEvents(user = null) {
   const wrap = document.getElementById('header-user-section');
   if (!wrap) return;
   wrap.innerHTML = _renderHeaderUserSlot(user);
+
+  const u = user || _getStoredUser();
+  if (u && (u.uid || u.id)) {
+    _updateHeaderCoinsBalance();
+  }
 
   const btn = document.getElementById('header-user-menu-btn');
   const dropdown = document.getElementById('header-user-dropdown');
@@ -48,7 +111,10 @@ function _bindHeaderUserEvents(user = null) {
       btn.setAttribute('aria-expanded', 'false');
     });
     document.getElementById('header-logout-btn')?.addEventListener('click', async () => {
-      try { await signOut(); } catch (_) {}
+      try {
+        localStorage.removeItem('manzala_user_coins_balance');
+        await signOut();
+      } catch (_) {}
       window.location.reload();
     });
   }

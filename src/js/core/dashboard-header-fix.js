@@ -3,10 +3,11 @@
  * Keeps the dashboard header synchronized with Firebase/Turso auth and the
  * shared notification engine used by the standalone pages.
  */
-import { initAuth, waitForAuth, onAuthStateChange, signInWithGoogle, signOut, isAdmin } from './auth.js';
+import { initAuth, waitForAuth, onAuthStateChange, signInWithGoogle, signOut, isAdmin, getIdToken } from './auth.js';
 import { initGlobalRealtimeNotificationsListener, updateAllNotificationBadges } from '../services/notification.service.js';
 import { initFcmMessaging } from '../services/fcm.service.js';
 import { toast } from '../ui/components/Toast.js';
+import { api } from './api.js';
 
 let _bound = false;
 let _notificationsInitializedFor = undefined;
@@ -19,6 +20,28 @@ function esc(value) {
 
 function notificationsHref() {
   return 'dashboard.html?section=notifications';
+}
+
+function getStoredCoins() {
+  try {
+    const raw = localStorage.getItem('manzala_user_coins_balance');
+    if (raw !== null && !isNaN(Number(raw))) return Number(raw);
+  } catch (_) {}
+  return 0;
+}
+
+async function fetchLiveCoins() {
+  try {
+    const token = await getIdToken();
+    if (!token) return;
+    const res = await api.get('/api/coins/balance', token);
+    const bal = res?.data?.balance ?? res?.balance;
+    if (typeof bal === 'number') {
+      localStorage.setItem('manzala_user_coins_balance', String(bal));
+      const val = document.getElementById('header-coins-val');
+      if (val) val.textContent = Number(bal).toLocaleString('ar-EG');
+    }
+  } catch (_) {}
 }
 
 function ensureNotificationBell() {
@@ -63,28 +86,39 @@ function renderHeader(user) {
   const name = esc(rawName);
   const firstName = esc(rawName.split(/\s+/)[0] || rawName);
   const photo = esc(user.photoURL || './icons/icon-72x72.png');
+  const coins = typeof user.points === 'number' ? user.points : (typeof user.coins === 'number' ? user.coins : getStoredCoins());
+  const coinsDisplay = Number(coins).toLocaleString('ar-EG');
   const adminLink = isAdmin(user)
     ? '<div class="header__dropdown-divider"></div><a href="admin/index.html" class="header__dropdown-item" role="menuitem">⚙️ الإدارة</a>'
     : '';
 
   wrap.innerHTML = `
-    <div class="header__user" style="position:relative">
-      <button class="header__user-btn" id="dashboard-user-menu-btn" aria-haspopup="true" aria-expanded="false">
-        <img src="${photo}" alt="${name}" class="header__avatar" width="32" height="32" onerror="this.src='./icons/icon-72x72.png'" />
-        <span class="header__user-name">${firstName}</span>
-        <span aria-hidden="true">▾</span>
-      </button>
-      <div class="header__dropdown" id="dashboard-user-dropdown" role="menu">
-        <a href="dashboard.html" class="header__dropdown-item" role="menuitem">🏠 لوحة تحكمي</a>
-        <a href="dashboard.html?section=places" class="header__dropdown-item" role="menuitem">📍 أماكني</a>
-        <a href="dashboard.html?section=add" class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>
-        <a href="${notificationsHref()}" class="header__dropdown-item" role="menuitem">🔔 الإشعارات</a>
-        ${adminLink}
-        <div class="header__dropdown-divider"></div>
-        <button class="header__dropdown-item header__dropdown-item--danger" id="dashboard-logout-btn" role="menuitem">🚪 تسجيل الخروج</button>
+    <div class="header__user-group">
+      <a href="/wallet.html" class="header__coins-chip" id="header-coins-chip" title="رصيد ذهبيات الدليل — اضغط لفتح المحفظة" aria-label="رصيد ذهبيات الدليل — اضغط لفتح المحفظة">
+        <span class="header__coins-chip-icon" aria-hidden="true">🪙</span>
+        <span class="header__coins-chip-val" id="header-coins-val">${coinsDisplay}</span>
+        <span class="header__coins-chip-unit">ذهبية</span>
+      </a>
+      <div class="header__user" style="position:relative">
+        <button class="header__user-btn" id="dashboard-user-menu-btn" aria-haspopup="true" aria-expanded="false">
+          <img src="${photo}" alt="${name}" class="header__avatar" width="32" height="32" onerror="this.src='./icons/icon-72x72.png'" />
+          <span class="header__user-name">${firstName}</span>
+          <span aria-hidden="true">▾</span>
+        </button>
+        <div class="header__dropdown" id="dashboard-user-dropdown" role="menu">
+          <a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800">🪙 الرصيد والعملات الذهبية</a>
+          <a href="dashboard.html" class="header__dropdown-item" role="menuitem">🏠 لوحة تحكمي</a>
+          <a href="dashboard.html?section=places" class="header__dropdown-item" role="menuitem">📍 أماكني</a>
+          <a href="dashboard.html?section=add" class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>
+          <a href="${notificationsHref()}" class="header__dropdown-item" role="menuitem">🔔 الإشعارات</a>
+          ${adminLink}
+          <div class="header__dropdown-divider"></div>
+          <button class="header__dropdown-item header__dropdown-item--danger" id="dashboard-logout-btn" role="menuitem">🚪 تسجيل الخروج</button>
+        </div>
       </div>
     </div>
   `;
+  fetchLiveCoins();
 
   const menuBtn = document.getElementById('dashboard-user-menu-btn');
   const dropdown = document.getElementById('dashboard-user-dropdown');
