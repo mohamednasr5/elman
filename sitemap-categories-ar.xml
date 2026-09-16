@@ -441,12 +441,28 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/institutes-and-colleges"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/category/juice-press</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/juice-press"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/juice-press"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/juice-press"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/category/kg-kindergarten</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/kg-kindergarten"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/kg-kindergarten"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/kg-kindergarten"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/category/knife-and-scissors-sharpening--shaving-machines</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/knife-and-scissors-sharpening--shaving-machines"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/knife-and-scissors-sharpening--shaving-machines"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/knife-and-scissors-sharpening--shaving-machines"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/category/laser-engraving-and-work</loc>
