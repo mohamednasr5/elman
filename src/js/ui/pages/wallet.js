@@ -1,6 +1,6 @@
-﻿/**
- * wallet.js — Dalil Gold Coins Economy & User Wallet Page
- * "ذهبيات الدليل" — الرصيد، شحن باقات فودافون كاش، تحويل رصيد P2P، ودليل أسعار التمييز
+/**
+ * wallet.js — Dalil Gold Coins Economy & Luxury 3D Digital Wallet
+ * "ذهبيات الدليل" — الرصيد، شحن باقات إنستاباي وفودافون كاش، تحويل رصيد P2P، ودليل أسعار التمييز
  */
 
 import { waitForAuth, getCurrentUser, signInWithGoogle, getIdToken } from '../../core/auth.js';
@@ -18,13 +18,21 @@ function escHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+const PACKAGES = [
+  { id: 'pkg-500', coins: 500, price: 100, tag: '', savings: '' },
+  { id: 'pkg-1000', coins: 1000, price: 190, tag: 'شائعة', savings: 'وفر 10 ج.م 🎁', tagClass: 'wallet-pkg-card__tag--popular' },
+  { id: 'pkg-2000', coins: 2000, price: 350, tag: 'الأكثر طلباً 👑', savings: 'وفر 50 ج.م 🎁', featured: true, tagClass: 'wallet-pkg-card__tag--top' },
+  { id: 'pkg-5000', coins: 5000, price: 850, tag: 'باقة التوفير 🌟', savings: 'وفر 150 ج.م 🎁', tagClass: 'wallet-pkg-card__tag--savings' },
+  { id: 'pkg-7000', coins: 7000, price: 1000, tag: 'العرض الأكبر 🔥', savings: 'وفر 400 ج.م 🎁', tagClass: 'wallet-pkg-card__tag--top' }
+];
+
 export async function renderWalletPage($container) {
   if (!$container) return;
 
   $container.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:1rem">
-      <div class="spinner spinner-lg"></div>
-      <p style="color:var(--text-muted);font-size:.9rem">جاري فتح محفظة ذهبيات الدليل...</p>
+    <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;flex-direction:column;gap:1.2rem;background:#050B14;color:#E2E8F0">
+      <div class="spinner spinner-lg" style="border-color:#F5A623;border-top-color:transparent"></div>
+      <p style="color:#FDE68A;font-size:1rem;font-weight:700">جاري فتح محفظة ذهبيات الدليل الرقمية...</p>
     </div>
   `;
 
@@ -57,57 +65,75 @@ export async function renderWalletPage($container) {
   } catch (err) {
     console.error('[renderWalletPage error]:', err);
     $container.innerHTML = `
-      <div class="empty-state" style="padding:4rem 1rem;text-align:center">
+      <div class="empty-state" style="padding:4rem 1rem;text-align:center;background:#050B14;color:#fff">
         <div style="font-size:3rem;margin-bottom:1rem">⚠️</div>
         <h3>تعذر تحميل بيانات المحفظة</h3>
-        <p style="color:var(--text-muted)">حدث خطأ أثناء تحميل بيانات رصيدك، يرجى المحاولة مرة أخرى.</p>
-        <button class="btn btn-primary" onclick="location.reload()" style="margin-top:1rem">إعادة المحاولة</button>
+        <p style="color:#94A3B8">حدث خطأ أثناء تحميل بيانات رصيدك، يرجى المحاولة مرة أخرى.</p>
+        <button class="wallet-btn-gold" onclick="location.reload()" style="margin-top:1rem">إعادة المحاولة</button>
       </div>
     `;
   }
 }
 
+/**
+ * Guest Wallet View (When user is not logged in)
+ */
 function renderGuestWallet($container) {
   $container.innerHTML = `
-    <div class="container" style="max-width:760px;margin:24px auto;padding:0 16px">
-      <!-- 3D Gold Coin Presentation -->
-      <div class="coin-3d-scene">
-        <div class="coin-3d">
-          <div class="coin-face">
-            <div class="coin-title-arc">DALIL GOLD COIN</div>
-            <div class="coin-symbol">🪙</div>
-            <div class="coin-sub-arc">دليل المنزلة والمطرية</div>
+    <div id="wallet-main-wrapper">
+      <div class="wallet-container">
+
+        <!-- 1. Hero Banner Matching Reference Image -->
+        ${renderHeroBannerHTML()}
+
+        <!-- 2. Guest Login Capsule Card -->
+        <div class="wallet-capsule-card">
+          <div class="wallet-capsule__brand">
+            <div class="wallet-capsule__script">Dalil Gold Coin</div>
+            <div class="wallet-capsule__subscript">عملة محلية.. لمستقبل أفضل</div>
           </div>
-          <div class="coin-face coin-face--back">
-            <div class="coin-title-arc">DALIL GOLD COIN</div>
-            <div class="coin-symbol">👑</div>
-            <div class="coin-sub-arc">المنزلة والمطرية</div>
+
+          <div class="wallet-capsule__center">
+            <span class="wallet-capsule__badge">👑 محفظتي الرقمية المعتمدة</span>
+            <div class="wallet-capsule__sublabel">سجّل دخولك بحساب جوجل لفتح محفظتك وشحن ذهبياتك فوراً</div>
+            
+            <div style="margin-top:14px">
+              <button type="button" class="wallet-btn-gold" id="btn-wallet-guest-login" style="font-size:1.05rem;padding:14px 32px">
+                <span>🔑 تسجيل الدخول لفتح محفظتك</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="wallet-capsule__medallion">
+            <img src="/assets/images/dalil-gold-coin.jpg" alt="Dalil Gold Coin" class="wallet-capsule__medallion-img" />
           </div>
         </div>
-      </div>
 
-      <div class="wallet-hero">
-        <span class="wallet-hero__badge">✨ اقتصاد المنصة الرقمي</span>
-        <h1 style="font-size:26px;font-weight:900;margin:0 0 10px;color:#fff">ذهبيات الدليل (Dalil Gold Coins)</h1>
-        <p style="font-size:14px;color:rgba(255,255,255,0.8);max-width:540px;margin:0 auto 20px;line-height:1.6">
-          العملة الرقمية الرسمية لدليل المنزلة والمطرية. استخدم ذهبياتك في تمييز أنشطتك، إعلانات الوظائف، وتوثيق ملفك التجاري بالعلامة الزرقاء الملكية.
-        </p>
-        <button type="button" class="wallet-btn-gold" id="btn-wallet-guest-login">
-          <span>🔑 تسجيل الدخول لفتح محفظتك</span>
-        </button>
-      </div>
+        <!-- 3. Packages Section Preview -->
+        <div class="wallet-sec-header" id="packages-section">
+          <h2 class="wallet-sec-title">
+            <span class="wallet-sec-title__icon">💳</span>
+            <span>باقات شحن ذهبيات الدليل</span>
+          </h2>
+          <span class="wallet-sec-badge">دفع فوري عبر إنستاباي وفودافون كاش 📱</span>
+        </div>
 
-      <!-- Packages Preview -->
-      <div class="wallet-sec-header">
-        <h2 class="wallet-sec-title"><span>💰</span> باقات شحن العملات الذهبية</h2>
-      </div>
-      ${renderPackagesCardsHTML()}
+        ${renderPackagesCardsHTML(2000)}
 
-      <!-- Services Preview -->
-      <div class="wallet-sec-header">
-        <h2 class="wallet-sec-title"><span>🌟</span> خدمات التمييز والتوثيق المتاحة</h2>
+        <!-- 4. Services Catalog Preview -->
+        <div class="wallet-sec-header">
+          <h2 class="wallet-sec-title">
+            <span class="wallet-sec-title__icon">🌟</span>
+            <span>خدمات وأسعار التمييز بالعملات الذهبية</span>
+          </h2>
+        </div>
+
+        ${renderServicesGuideHTML()}
+
+        <!-- 5. Bottom Trust & Community Strip -->
+        ${renderTrustStripHTML()}
+
       </div>
-      ${renderServicesGuideHTML()}
     </div>
   `;
 
@@ -119,241 +145,404 @@ function renderGuestWallet($container) {
       toast.error('تعذر إتمام تسجيل الدخول: ' + (err.message || ''));
     }
   });
+
+  // Attach click events on package cards to prompt login
+  $container.querySelectorAll('.btn-select-package').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('btn-wallet-guest-login')?.click();
+    });
+  });
 }
 
+/**
+ * Logged In User Wallet View
+ */
 function renderUserWallet($container, user, balanceData) {
   const currentBalance = Number(balanceData.balance || 0);
+  const defaultCoins = 2000;
+  const defaultPrice = 350;
 
   $container.innerHTML = `
-    <div class="container" style="max-width:880px;margin:24px auto;padding:0 16px">
+    <div id="wallet-main-wrapper">
+      <div class="wallet-container">
 
-      <!-- 3D Gold Coin Visual -->
-      <div class="coin-3d-scene">
-        <div class="coin-3d" title="انقر لتثبيت / تحريك العملة">
-          <div class="coin-face">
-            <div class="coin-title-arc">DALIL GOLD COIN</div>
-            <div class="coin-symbol">🪙</div>
-            <div class="coin-sub-arc">دليل المنزلة والمطرية</div>
+        <!-- 1. Hero Banner Matching Reference Design -->
+        ${renderHeroBannerHTML()}
+
+        <!-- 2. Capsule Wallet Balance Card -->
+        <div class="wallet-capsule-card">
+          <div class="wallet-capsule__brand">
+            <div class="wallet-capsule__script">Dalil Gold Coin</div>
+            <div class="wallet-capsule__subscript">عملة محلية.. لمستقبل أفضل</div>
           </div>
-          <div class="coin-face coin-face--back">
-            <div class="coin-title-arc">DALIL GOLD COIN</div>
-            <div class="coin-symbol">👑</div>
-            <div class="coin-sub-arc">المنزلة والمطرية</div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Hero Balance Card -->
-      <div class="wallet-hero">
-        <span class="wallet-hero__badge">🪙 محفظتي الرقمية المعتمدة</span>
-        <div class="wallet-hero__balance-val">
-          <span id="wallet-live-balance">${currentBalance.toLocaleString('ar-EG')}</span>
-          <span style="font-size:32px">🪙</span>
-        </div>
-        <div class="wallet-hero__balance-label">رصيدك الحالي من ذهبيات الدليل</div>
-
-        <div class="wallet-hero__actions">
-          <a href="#packages-section" class="wallet-btn-gold">
-            <span>⚡ شحن الرصيد الآن</span>
-          </a>
-          <a href="#transfer-section" class="wallet-btn-glass">
-            <span>↗️ تحويل لصديق</span>
-          </a>
-          <button type="button" class="wallet-btn-glass" id="btn-refresh-balance">
-            <span>🔄 تحديث الرصيد</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Packages Section -->
-      <div class="wallet-sec-header" id="packages-section">
-        <h2 class="wallet-sec-title">
-          <span>💳</span>
-          <span>باقات شحن ذهبيات الدليل</span>
-        </h2>
-        <span style="font-size:12px;color:var(--text-muted);font-weight:700">دفع فوري عبر فودافون كاش</span>
-      </div>
-
-      ${renderPackagesCardsHTML()}
-
-      <!-- Vodafone Cash Form Box -->
-      <div class="voda-box" id="vodafone-cash-box">
-        <div class="voda-box__head">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="voda-badge">📱 فودافون كاش</span>
-            <strong style="font-size:15px;color:var(--text-primary)">بيانات التحويل الرسمي المعتمد</strong>
-          </div>
-          <span style="font-size:11.5px;color:var(--text-muted);font-weight:700">تأكيد فوري خلال دقائق</span>
-        </div>
-
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:12px;margin-bottom:16px">
-          <!-- Number Card -->
-          <div class="voda-info-card">
-            <div>
-              <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:2px">رقم محفظة فودافون كاش للتحويل:</div>
-              <div class="voda-number" id="voda-phone-display">01279934735</div>
+          <div class="wallet-capsule__center">
+            <span class="wallet-capsule__badge">👑 محفظتي الرقمية المعتمدة</span>
+            <div class="wallet-capsule__sublabel">رصيدك الحالي من ذهبيات الدليل</div>
+            
+            <div class="wallet-capsule__balance-row">
+              <img src="/assets/images/dalil-gold-coin.jpg" alt="Coin Icon" class="wallet-capsule__coin-icon" />
+              <div class="wallet-capsule__amount" id="wallet-live-balance">${currentBalance.toLocaleString('ar-EG')}</div>
             </div>
-            <button type="button" class="btn-copy" id="btn-copy-voda-phone" data-copy="01279934735">
-              <span>📋 نسخ الرقم</span>
+
+            <div class="wallet-capsule__actions">
+              <a href="#packages-section" class="wallet-btn-gold">
+                <span>⚡ شحن الرصيد الآن</span>
+              </a>
+              <a href="#transfer-section" class="wallet-btn-blue">
+                <span>🔁 تحويل لصديق</span>
+              </a>
+              <button type="button" class="wallet-btn-glass" id="btn-refresh-balance" title="تحديث الرصيد فوراً">
+                <span>🔄 تحديث الرصيد</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="wallet-capsule__medallion">
+            <img src="/assets/images/dalil-gold-coin.jpg" alt="Dalil Gold Coin Medallion" class="wallet-capsule__medallion-img" />
+          </div>
+        </div>
+
+        <!-- 3. Recharge Packages Section -->
+        <div class="wallet-sec-header" id="packages-section">
+          <h2 class="wallet-sec-title">
+            <span class="wallet-sec-title__icon">💳</span>
+            <span>باقات شحن ذهبيات الدليل</span>
+          </h2>
+          <span class="wallet-sec-badge">دفع فوري عبر إنستاباي وفودافون كاش 📱</span>
+        </div>
+
+        ${renderPackagesCardsHTML(defaultCoins)}
+
+        <!-- 4. Dedicated 3D Payment Hub (InstaPay & Vodafone Cash) -->
+        <div class="wallet-payment-hub" id="payment-hub-box">
+
+          <!-- Method Selection Tabs -->
+          <div class="wallet-payment-tabs">
+            <button type="button" class="wallet-tab-btn is-active" id="tab-btn-instapay" data-tab="instapay">
+              <span style="font-size:1.1rem">⚡</span>
+              <span>الدفع المباشر عبر إنستاباي (InstaPay)</span>
+            </button>
+            <button type="button" class="wallet-tab-btn" id="tab-btn-vodafone" data-tab="vodafone">
+              <span style="font-size:1.1rem">📱</span>
+              <span>محفظة فودافون كاش (Vodafone Cash)</span>
             </button>
           </div>
 
-          <!-- Name Card -->
-          <div class="voda-info-card">
-            <div>
-              <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:2px">اسم صاحب المحفظة المستلم:</div>
-              <div style="font-size:18px;font-weight:900;color:var(--text-primary)" id="voda-name-display">محمد نصر</div>
+          <!-- Selected Package Live Status -->
+          <div class="wallet-selected-summary">
+            <div class="wallet-selected-summary__info">
+              <img src="/assets/images/dalil-gold-coin.jpg" alt="Coin Icon" class="wallet-selected-summary__icon" />
+              <div>
+                <div class="wallet-selected-summary__title">
+                  الباقة المختارة: <strong id="selected-coins-display" style="color:#FDE68A">${defaultCoins.toLocaleString('ar-EG')}</strong> عملة ذهبية
+                </div>
+                <div class="wallet-selected-summary__sub">تأكيد تلقائي للشحن في محفظتك المعتمدة</div>
+              </div>
             </div>
-            <button type="button" class="btn-copy" id="btn-copy-voda-name" data-copy="محمد نصر">
-              <span>📋 نسخ الاسم</span>
+
+            <div class="wallet-selected-summary__price-box">
+              <span class="wallet-selected-summary__price-val" id="selected-price-display">${defaultPrice}</span>
+              <span class="wallet-selected-summary__price-lbl">جنيه مصري</span>
+            </div>
+          </div>
+
+          <!-- TAB CONTENT A: INSTAPAY -->
+          <div id="tab-content-instapay">
+            <!-- Direct InstaPay CTA Button -->
+            <a href="https://ipn.eg/S/01279934735" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="wallet-instapay-direct-btn" 
+               id="btn-instapay-direct">
+              <span style="font-size:1.4rem">⚡</span>
+              <span>اضغط هنا للدفع مباشرة عبر إنستاباي (<span id="instapay-btn-price">${defaultPrice}</span> ج.م) ↗</span>
+            </a>
+
+            <!-- InstaPay Account Details Cards -->
+            <div class="wallet-account-info-grid">
+              <div class="wallet-info-card">
+                <div>
+                  <div class="wallet-info-card__label">رقم الحساب / الهاتف في إنستاباي:</div>
+                  <div class="wallet-info-card__val" id="instapay-phone-display">01279934735</div>
+                </div>
+                <button type="button" class="wallet-btn-copy btn-copy" data-copy="01279934735">
+                  <span>📋 نسخ الرقم</span>
+                </button>
+              </div>
+
+              <div class="wallet-info-card">
+                <div>
+                  <div class="wallet-info-card__label">اسم صاحب الحساب المستلم:</div>
+                  <div class="wallet-info-card__val" style="direction:rtl;text-align:right" id="instapay-name-display">محمد نصر نصر</div>
+                </div>
+                <button type="button" class="wallet-btn-copy btn-copy" data-copy="محمد نصر نصر">
+                  <span>📋 نسخ الاسم</span>
+                </button>
+              </div>
+
+              <div class="wallet-info-card">
+                <div>
+                  <div class="wallet-info-card__label">الشبكة المعتمدة:</div>
+                  <div class="wallet-info-card__val" style="direction:rtl;text-align:right;font-size:0.95rem;color:#FDE68A">شبكة المدفوعات اللحظية IPN 🇪🇬</div>
+                </div>
+                <span style="font-size:1.3rem">🏦</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB CONTENT B: VODAFONE CASH -->
+          <div id="tab-content-vodafone" style="display:none">
+            <div class="wallet-account-info-grid">
+              <div class="wallet-info-card">
+                <div>
+                  <div class="wallet-info-card__label">رقم محفظة فودافون كاش للتحويل:</div>
+                  <div class="wallet-info-card__val">01279934735</div>
+                </div>
+                <button type="button" class="wallet-btn-copy btn-copy" data-copy="01279934735">
+                  <span>📋 نسخ الرقم</span>
+                </button>
+              </div>
+
+              <div class="wallet-info-card">
+                <div>
+                  <div class="wallet-info-card__label">اسم صاحب المحفظة المستلم:</div>
+                  <div class="wallet-info-card__val" style="direction:rtl;text-align:right">محمد نصر</div>
+                </div>
+                <button type="button" class="wallet-btn-copy btn-copy" data-copy="محمد نصر">
+                  <span>📋 نسخ الاسم</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Unified Receipt Submission Form (Authorized Server Verification) -->
+          <form class="wallet-purchase-form" id="form-coin-purchase">
+            <div class="wallet-purchase-form__title">
+              <span>📝</span>
+              <span id="purchase-form-heading">تأكيد التحويل وإرسال الإيصال للشحن المعتمد</span>
+            </div>
+
+            <!-- Hidden Inputs to bind selected package dynamically -->
+            <input type="hidden" id="purchase-coins-input" name="packageCoins" value="${defaultCoins}" />
+            <input type="hidden" id="purchase-price-input" name="amountEgp" value="${defaultPrice}" />
+            <input type="hidden" id="purchase-method-input" name="paymentMethod" value="instapay" />
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:14px;margin-bottom:14px">
+              <div class="wallet-form-group" style="margin:0">
+                <label class="wallet-form-label">الباقة المطلوبة <span style="color:#EF4444">*</span></label>
+                <select class="wallet-form-select" id="purchase-package-select">
+                  ${PACKAGES.map(p => `
+                    <option value="${p.coins}-${p.price}" ${p.coins === defaultCoins ? 'selected' : ''}>
+                      ${p.coins.toLocaleString('ar-EG')} ذهبية — ${p.price} ج.م ${p.savings ? '(' + p.savings + ')' : ''}
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <div class="wallet-form-group" style="margin:0">
+                <label class="wallet-form-label">
+                  <span id="sender-input-label">رقم الهاتف أو الحساب المحول منه</span> <span style="color:#EF4444">*</span>
+                </label>
+                <input type="tel" class="wallet-form-input" id="purchase-sender-phone" required placeholder="01xxxxxxxxx" style="direction:ltr;text-align:right" />
+              </div>
+            </div>
+
+            <!-- Receipt File Upload -->
+            <div class="wallet-form-group">
+              <label class="wallet-form-label">صورة إيصال التحويل أو لقطة الشاشة <span style="color:#EF4444">*</span></label>
+              <input type="file" id="purchase-receipt-file" accept="image/*" class="wallet-form-input" required />
+              <small style="color:#94A3B8;font-size:0.8rem;display:block;margin-top:5px">
+                📸 التقط لقطة شاشة لرسالة تأكيد التحويل من تطبيق إنستاباي أو فودافون كاش
+              </small>
+              <div id="receipt-preview-wrap" style="display:none;margin-top:12px;text-align:center">
+                <img id="receipt-preview-img" src="" alt="معاينة الإيصال" style="max-height:160px;border-radius:12px;border:1.5px solid #F5A623;box-shadow:0 4px 14px rgba(0,0,0,0.4)" />
+              </div>
+            </div>
+
+            <button type="submit" class="wallet-btn-gold" id="btn-submit-purchase" style="width:100%;font-size:1.05rem;padding:14px">
+              <span>✅ إرسال إشعار التحويل واعتماد الشحن</span>
             </button>
+          </form>
+
+        </div>
+
+        <!-- 5. P2P Coin Transfer Section -->
+        <div class="wallet-sec-header" id="transfer-section">
+          <h2 class="wallet-sec-title">
+            <span class="wallet-sec-title__icon">🤝</span>
+            <span>تحويل ذهبيات الدليل من شخص لآخر</span>
+          </h2>
+          <span class="wallet-sec-badge">تحويل فوري بدون أي رسوم</span>
+        </div>
+
+        <div class="wallet-transfer-box">
+          <form id="form-p2p-transfer">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:14px;margin-bottom:14px">
+              <div class="wallet-form-group" style="margin:0">
+                <label class="wallet-form-label">رقم هاتف أو بريد المستلم <span style="color:#EF4444">*</span></label>
+                <input type="text" class="wallet-form-input" id="transfer-recipient-input" placeholder="01xxxxxxxxx أو user@gmail.com" required />
+              </div>
+
+              <div class="wallet-form-group" style="margin:0">
+                <label class="wallet-form-label">عدد العملات الذهبية للتحويل <span style="color:#EF4444">*</span></label>
+                <input type="number" class="wallet-form-input" id="transfer-amount-input" min="10" max="50000" placeholder="الحد الأدنى 10 ذهبيات" required />
+              </div>
+            </div>
+
+            <div class="wallet-form-group" style="margin-bottom:18px">
+              <label class="wallet-form-label">ملاحظة أو رسالة إهداء (اختياري)</label>
+              <input type="text" class="wallet-form-input" id="transfer-note-input" placeholder="مثال: شكر وتقدير / تمييز إعلان / هدية" maxlength="150" />
+            </div>
+
+            <button type="submit" class="wallet-btn-blue" id="btn-submit-transfer" style="width:100%;font-size:1rem;padding:12px">
+              <span>↗️ تأكيد وتحويل العملات فوراً</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- 6. Services & Pricing Catalog -->
+        <div class="wallet-sec-header">
+          <h2 class="wallet-sec-title">
+            <span class="wallet-sec-title__icon">🌟</span>
+            <span>خدمات وأسعار التمييز بالعملات الذهبية</span>
+          </h2>
+        </div>
+
+        ${renderServicesGuideHTML()}
+
+        <!-- 7. Policy Alert -->
+        <div class="wallet-policy-alert">
+          <span style="font-size:1.8rem;line-height:1">⚠️</span>
+          <div style="font-size:0.88rem;line-height:1.6">
+            <strong style="display:block;font-size:0.95rem;margin-bottom:2px;color:#FDE68A">تنبيه هام وقاطع لجميع المستخدمين:</strong>
+            العملات الذهبية المستخدمة في تمييز الأنشطة أو الوظائف أو التوثيق <strong>غير قابلة للاسترداد نهائياً وأبداً</strong> بعد تفعيل أي إعلان أو تعديل بياناته أو حذفه من قبل صاحب الشأن.
           </div>
         </div>
 
-        <!-- Purchase Submission Form -->
-        <form id="form-coin-purchase" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
-          <div style="font-weight:900;font-size:14px;margin-bottom:12px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
-            <span>📝</span>
-            <span>تأكيد التحويل وإرسال الإيصال للشحن الفوري</span>
-          </div>
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:12px">
-            <div class="form-group" style="margin:0">
-              <label class="form-label" style="font-weight:800;font-size:12.5px">الباقة المختارة <span style="color:#ef4444">*</span></label>
-              <select class="form-select" id="purchase-package-select" name="package" required style="width:100%;font-weight:700">
-                <option value="500-100">500 ذهبية — 100 ج.م</option>
-                <option value="1000-190" selected>1,000 ذهبية — 190 ج.م (توفير 10 ج)</option>
-                <option value="2000-350">2,000 ذهبية — 350 ج.م (توفير 50 ج ⭐)</option>
-                <option value="5000-850">5,000 ذهبية — 850 ج.م (باقة التوثيق 👑)</option>
-                <option value="7000-1000">7,000 ذهبية — 1,000 ج.م (العرض الأكبر 🔥)</option>
-              </select>
-            </div>
-
-            <div class="form-group" style="margin:0">
-              <label class="form-label" style="font-weight:800;font-size:12.5px">رقم المحفظة التي قمت بالتحويل منها <span style="color:#ef4444">*</span></label>
-              <input type="tel" class="form-input" id="purchase-sender-phone" name="senderPhone" placeholder="01xxxxxxxxx" required pattern="^01[0125][0-9]{8}$" style="direction:ltr;text-align:right" />
-            </div>
-          </div>
-
-          <!-- Receipt Upload -->
-          <div class="form-group" style="margin-bottom:14px">
-            <label class="form-label" style="font-weight:800;font-size:12.5px">صورة سكرين شوت أو إيصال التحويل <span style="color:#ef4444">*</span></label>
-            <input type="file" id="purchase-receipt-file" accept="image/*" class="form-input" required />
-            <small style="color:var(--text-muted);font-size:11px;display:block;margin-top:4px">
-              📸 التقط صورة أو لقطة شاشة لرسالة تأكيد التحويل من تطبيق فودافون كاش أو رسالة SMS
-            </small>
-            <div id="receipt-preview-wrap" style="display:none;margin-top:10px;text-align:center">
-              <img id="receipt-preview-img" src="" alt="معاينة الإيصال" style="max-height:160px;border-radius:10px;border:1.5px solid var(--border);box-shadow:0 2px 10px rgba(0,0,0,0.1)" />
-            </div>
-          </div>
-
-          <button type="submit" class="wallet-btn-gold" id="btn-submit-purchase" style="width:100%;justify-content:center;font-size:15px">
-            <span>✅ إرسال إشعار التحويل وشحن الرصيد</span>
-          </button>
-        </form>
-      </div>
-
-      <!-- P2P Coin Transfer Section -->
-      <div class="wallet-sec-header" id="transfer-section">
-        <h2 class="wallet-sec-title">
-          <span>🤝</span>
-          <span>تحويل ذهبيات الدليل من شخص لآخر</span>
-        </h2>
-        <span style="font-size:12px;color:var(--text-muted);font-weight:700">تحويل فوري بدون رسوم</span>
-      </div>
-
-      <div class="wallet-transfer-box">
-        <form id="form-p2p-transfer">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-bottom:14px">
-            <div class="form-group" style="margin:0">
-              <label class="form-label" style="font-weight:800;font-size:12.5px">رقم هاتف أو بريد المستلم <span style="color:#ef4444">*</span></label>
-              <input type="text" class="form-input" id="transfer-recipient-input" placeholder="01xxxxxxxxx أو user@gmail.com" required />
-            </div>
-
-            <div class="form-group" style="margin:0">
-              <label class="form-label" style="font-weight:800;font-size:12.5px">عدد العملات الذهبية للتحويل <span style="color:#ef4444">*</span></label>
-              <input type="number" class="form-input" id="transfer-amount-input" min="10" max="50000" placeholder="الحد الأدنى 10 ذهبيات" required />
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom:16px">
-            <label class="form-label" style="font-weight:800;font-size:12.5px">ملاحظة أو رسالة إهداء (اختياري)</label>
-            <input type="text" class="form-input" id="transfer-note-input" placeholder="مثال: شكر وتقدير / تمييز إعلان / دعم" maxlength="150" />
-          </div>
-
-          <button type="submit" class="btn btn-primary" id="btn-submit-transfer" style="width:100%;padding:12px;font-weight:900;border-radius:12px">
-            <span>↗️ تأكيد وتحويل العملات فوراً</span>
-          </button>
-        </form>
-      </div>
-
-      <!-- Services & Pricing Catalog -->
-      <div class="wallet-sec-header">
-        <h2 class="wallet-sec-title">
-          <span>🌟</span>
-          <span>خدمات وأسعار التمييز بالعملات الذهبية</span>
-        </h2>
-      </div>
-
-      ${renderServicesGuideHTML()}
-
-      <!-- Non-Refundable Policy Alert -->
-      <div class="wallet-policy-alert">
-        <span style="font-size:24px;line-height:1">⚠️</span>
-        <div style="font-size:12.5px;line-height:1.6">
-          <strong style="display:block;font-size:13.5px;margin-bottom:2px">تأكيد هام وقاطع لجميع المستخدمين:</strong>
-          العملات الذهبية المستخدمة في تمييز الأنشطة أو الوظائف أو التوثيق <strong>غير قابلة للاسترداد نهائياً وأبداً</strong> بعد تفعيل أي إعلان أو تعديل بياناته أو حذفه من قبل صاحب الشأن.
+        <!-- 8. Transaction & Request History -->
+        <div class="wallet-sec-header">
+          <h2 class="wallet-sec-title">
+            <span class="wallet-sec-title__icon">📜</span>
+            <span>سجل المعاملات والشحن</span>
+          </h2>
         </div>
-      </div>
 
-      <!-- Transaction & Request History -->
-      <div class="wallet-sec-header">
-        <h2 class="wallet-sec-title">
-          <span>📜</span>
-          <span>سجل المعاملات والشحن</span>
-        </h2>
-      </div>
+        <div class="wallet-history-wrap">
+          ${renderHistoryHTML(balanceData)}
+        </div>
 
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow-x:auto;padding:8px">
-        ${renderHistoryHTML(balanceData)}
-      </div>
+        <!-- 9. Bottom Trust & Community Strip -->
+        ${renderTrustStripHTML()}
 
+      </div>
     </div>
   `;
 
   bindWalletEvents($container, user, balanceData);
 }
 
-function renderPackagesCardsHTML() {
-  const packages = [
-    { coins: 500, price: 100, tag: '', savings: '' },
-    { coins: 1000, price: 190, tag: 'شائعة', savings: 'وفر 10 ج' },
-    { coins: 2000, price: 350, tag: 'الأكثر طلباً ⭐', savings: 'وفر 50 ج', featured: true },
-    { coins: 5000, price: 850, tag: 'باقة التوثيق 👑', savings: 'وفر 150 ج' },
-    { coins: 7000, price: 1000, tag: 'العرض الأكبر 🔥', savings: 'وفر 400 ج' }
-  ];
-
+/**
+ * 1. Hero Banner Component
+ */
+function renderHeroBannerHTML() {
   return `
-    <div class="wallet-packages-grid">
-      ${packages.map(p => `
-        <div class="wallet-pkg-card ${p.featured ? 'wallet-pkg-card--featured' : ''}">
-          ${p.tag ? `<span class="wallet-pkg-tag">${p.tag}</span>` : ''}
-          <div class="wallet-pkg-coins">
-            <span>${p.coins.toLocaleString('ar-EG')}</span>
-            <span style="font-size:22px">🪙</span>
+    <div class="wallet-hero-banner">
+      <div class="wallet-hero-banner__grid">
+        
+        <!-- Left: Tagline & Community Chips -->
+        <div class="wallet-hero-col--left">
+          <h1 class="wallet-hero-tagline">عملة أهل بلدنا</h1>
+          <div class="wallet-hero-subtag">لدعم دليل المنزلة والمطرية الرقمي</div>
+          
+          <div class="wallet-hero-chips">
+            <span class="wallet-hero-chip"><span class="wallet-hero-chip__icon">💎</span> ثقة</span>
+            <span class="wallet-hero-chip"><span class="wallet-hero-chip__icon">👥</span> مشاركة</span>
+            <span class="wallet-hero-chip"><span class="wallet-hero-chip__icon">📈</span> نمو</span>
+            <span class="wallet-hero-chip"><span class="wallet-hero-chip__icon">🛡️</span> دعم محلي</span>
           </div>
-          <div class="wallet-pkg-coins-label">عملة ذهبية</div>
-          <div class="wallet-pkg-price">${p.price} ج.م</div>
-          ${p.savings ? `<div class="wallet-pkg-savings">🎁 ${p.savings}</div>` : '<div style="height:22px"></div>'}
-          <button type="button" class="wallet-pkg-btn btn-select-package" data-coins="${p.coins}" data-price="${p.price}">
-            <span>شحن الباقة ↤</span>
-          </button>
         </div>
-      `).join('')}
+
+        <!-- Center: 3D Grand Coin & Podium -->
+        <div class="wallet-hero-col--center">
+          <div class="wallet-hero-spotlight"></div>
+          
+          <div class="wallet-hero-coin-wrap">
+            <img src="/assets/images/dalil-gold-coin.jpg" alt="Dalil Gold Coin 3D" class="wallet-hero-coin-img" />
+          </div>
+
+          <div class="wallet-hero-podium">
+            <div class="wallet-hero-podium__tier wallet-hero-podium__tier--top"></div>
+            <div class="wallet-hero-podium__tier wallet-hero-podium__tier--base"></div>
+          </div>
+        </div>
+
+        <!-- Right: Vision & Verified Points -->
+        <div class="wallet-hero-col--right">
+          <h2 class="wallet-hero-tagline" style="font-size:clamp(1.6rem, 2.8vw, 2.1rem)">معاً.. نبني دليلاً أقوى</h2>
+          
+          <div class="wallet-hero-points">
+            <div class="wallet-hero-point">
+              <span class="wallet-hero-point__check">✓</span>
+              <span>عملة رقمية محلية معتمدة</span>
+            </div>
+            <div class="wallet-hero-point">
+              <span class="wallet-hero-point__check">✓</span>
+              <span>استخدامات متعددة داخل الدليل</span>
+            </div>
+            <div class="wallet-hero-point">
+              <span class="wallet-hero-point__check">✓</span>
+              <span>دعم الأعمال المحلية والمجتمع</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   `;
 }
 
+/**
+ * 2. 3D Recharge Packages Component
+ */
+function renderPackagesCardsHTML(selectedCoins = 2000) {
+  return `
+    <div class="wallet-packages-grid">
+      ${PACKAGES.map(p => {
+        const isSelected = p.coins === selectedCoins;
+        return `
+          <div class="wallet-pkg-card ${p.featured ? 'wallet-pkg-card--featured' : ''} ${isSelected ? 'is-selected' : ''}" 
+               data-coins="${p.coins}" 
+               data-price="${p.price}" 
+               id="pkg-card-${p.coins}">
+            
+            ${p.tag ? `<span class="wallet-pkg-card__tag ${p.tagClass || ''}">${p.tag}</span>` : ''}
+            
+            <img src="/assets/images/dalil-gold-coin.jpg" alt="Gold Coins Stack" class="wallet-pkg-card__coin-img" />
+            
+            <div class="wallet-pkg-card__coins-wrap">
+              <span class="wallet-pkg-card__coins-num">${p.coins.toLocaleString('ar-EG')}</span>
+              <span style="font-size:1.2rem">🪙</span>
+            </div>
+            <div class="wallet-pkg-card__coins-lbl">عملة ذهبية</div>
+
+            <div class="wallet-pkg-card__price">${p.price} ج.م</div>
+
+            ${p.savings ? `<span class="wallet-pkg-card__savings">${p.savings}</span>` : `<div class="wallet-pkg-card__savings-placeholder"></div>`}
+
+            <button type="button" class="wallet-pkg-card__btn btn-select-package" data-coins="${p.coins}" data-price="${p.price}">
+              <span>اختر هذه الباقة 🛒</span>
+            </button>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+/**
+ * 3. Services Catalog Component
+ */
 function renderServicesGuideHTML() {
   return `
     <div class="wallet-services-grid">
@@ -362,9 +551,9 @@ function renderServicesGuideHTML() {
           <h3 class="wallet-srv-card__title">👑 توثيق المكان بالعلامة الزرقاء</h3>
           <span class="wallet-srv-card__cost">5,000 ذهبية</span>
         </div>
-        <div class="wallet-srv-card__duration">المدة: مدى الحياة (دائم)</div>
-        <p style="font-size:12px;color:var(--text-muted);margin:0;line-height:1.5">
-          توثيق رسمي يمنح نشاطك الشارة الملكية الزرقاء وإشعار فوري لجميع متابعي المنصة وظهور في صدارة البحث.
+        <div class="wallet-srv-card__duration">المدة: مدى الحياة (توثيق دائم)</div>
+        <p class="wallet-srv-card__desc">
+          شارة توثيق رسمية تعزز الثقة والمصداقية وتمنح ملفك صدارة نتائج البحث وظهور مميز أمام كافة العملاء.
         </p>
       </div>
 
@@ -374,42 +563,45 @@ function renderServicesGuideHTML() {
           <span class="wallet-srv-card__cost">500 ذهبية</span>
         </div>
         <div class="wallet-srv-card__duration">المدة: شهر كامل (30 يوماً)</div>
-        <p style="font-size:12px;color:var(--text-muted);margin:0;line-height:1.5">
-          تصعيد المكان في القسم المخصص للإعلانات المميزة بالصفحة الرئيسية وتصنيفه بالأولوية الذهبية.
+        <p class="wallet-srv-card__desc">
+          ظهور إعلاني بارز في الواجهة الرئيسية وتصنيفه بالأولوية الذهبية لجذب آلاف الزوار المحليين طوال الشهر.
         </p>
       </div>
 
       <div class="wallet-srv-card" style="border-color:#10B981">
         <div class="wallet-srv-card__head">
-          <h3 class="wallet-srv-card__title">💼 تمييز طالب عمل (كادر محلي)</h3>
+          <h3 class="wallet-srv-card__title">💼 تمييز طالب عمل (سيرة ذاتية)</h3>
           <span class="wallet-srv-card__cost">500 ذهبية</span>
         </div>
-        <div class="wallet-srv-card__duration">المدة: 3 أيام</div>
-        <p style="font-size:12px;color:var(--text-muted);margin:0;line-height:1.5">
-          عرض سيرتك الذاتية في بطاقات الأماكن الدوارة والصفحة الرئيسية بأولوية مطلقة لأصحاب العمل.
+        <div class="wallet-srv-card__duration">المدة: 3 أيام متتالية</div>
+        <p class="wallet-srv-card__desc">
+          عرض سيرتك الذاتية في بطاقات الأماكن الدوارة وبصدر لوحة الكوادر لتصل لأصحاب العمل بشكل فوري.
         </p>
       </div>
 
-      <div class="wallet-srv-card" style="border-color:#6366F1">
+      <div class="wallet-srv-card" style="border-color:#818CF8">
         <div class="wallet-srv-card__head">
-          <h3 class="wallet-srv-card__title">📢 تمييز فرصة عمل شاغرة</h3>
+          <h3 class="wallet-srv-card__title">📢 تمييز وظيفة شاغرة</h3>
           <span class="wallet-srv-card__cost">500 ذهبية</span>
         </div>
-        <div class="wallet-srv-card__duration">المدة: 3 أيام</div>
-        <p style="font-size:12px;color:var(--text-muted);margin:0;line-height:1.5">
-          إبراز الوظيفة الشاغرة في صدارة لوحة الوظائف وبطاقات الأماكن لإيجاد الموظف المطلوب بسرعة قياسية.
+        <div class="wallet-srv-card__duration">المدة: 3 أيام متتالية</div>
+        <p class="wallet-srv-card__desc">
+          إبراز فرصة العمل في صدارة لوحة الوظائف وبطاقات الأماكن لإيجاد الموظف المطلوب بسرعة قياسية.
         </p>
       </div>
     </div>
   `;
 }
 
+/**
+ * 4. Transaction History Table
+ */
 function renderHistoryHTML(balanceData) {
   const history = balanceData.history || [];
   const purchases = balanceData.purchases || [];
 
   if (history.length === 0 && purchases.length === 0) {
-    return `<div style="text-align:center;padding:32px 16px;color:var(--text-muted);font-size:13.5px">لا توجد معاملات سابقة حتى الآن. ابدأ بشحن رصيدك واستمتع بالخدمات!</div>`;
+    return `<div style="text-align:center;padding:36px 16px;color:#94A3B8;font-size:0.95rem">لا توجد معاملات سابقة حتى الآن. اختر باقتك المفضلة وابدأ بشحن رصيدك واستمتع بمزايا الدليل!</div>`;
   }
 
   return `
@@ -417,7 +609,7 @@ function renderHistoryHTML(balanceData) {
       <thead>
         <tr>
           <th>التاريخ</th>
-          <th>البيان والنوع</th>
+          <th>البيان والتفاصيل</th>
           <th>القيمة</th>
           <th>الحالة</th>
         </tr>
@@ -425,17 +617,17 @@ function renderHistoryHTML(balanceData) {
       <tbody>
         ${purchases.map(p => {
           const statusLabels = {
-            pending: '<span class="badge" style="background:rgba(245,166,35,0.15);color:#D97706;padding:2px 8px;border-radius:6px;font-weight:800">⏳ قيد المراجعة</span>',
-            approved: '<span class="badge" style="background:rgba(16,185,129,0.15);color:#10B981;padding:2px 8px;border-radius:6px;font-weight:800">✅ تم الشحن</span>',
-            rejected: '<span class="badge" style="background:rgba(239,68,68,0.15);color:#EF4444;padding:2px 8px;border-radius:6px;font-weight:800">❌ مرفوض</span>'
+            pending: '<span class="badge" style="background:rgba(245,166,35,0.15);color:#F5A623;padding:4px 10px;border-radius:8px;font-weight:800">⏳ قيد المراجعة</span>',
+            approved: '<span class="badge" style="background:rgba(16,185,129,0.15);color:#10B981;padding:4px 10px;border-radius:8px;font-weight:800">✅ تم الشحن</span>',
+            rejected: '<span class="badge" style="background:rgba(239,68,68,0.15);color:#EF4444;padding:4px 10px;border-radius:8px;font-weight:800">❌ مرفوض</span>'
           };
           const dateStr = p.created_at ? new Date(p.created_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
           return `
             <tr>
-              <td style="color:var(--text-muted);font-size:12px">${dateStr}</td>
+              <td style="color:#94A3B8;font-size:0.85rem">${dateStr}</td>
               <td>
-                <div style="font-weight:800;color:var(--text-primary)">شحن ${p.package_coins} ذهبية</div>
-                <div style="font-size:11px;color:var(--text-muted)">فودافون كاش (${p.amount_egp} ج.م) • من: ${p.vodafone_sender_number || ''}</div>
+                <div style="font-weight:800;color:#FFFFFF">شحن ${p.package_coins} ذهبية</div>
+                <div style="font-size:0.8rem;color:#94A3B8">المبلغ: ${p.amount_egp} ج.م • من: ${p.vodafone_sender_number || 'تحويل إلكتروني'}</div>
               </td>
               <td style="font-weight:900;color:#10B981">+${p.package_coins} 🪙</td>
               <td>${statusLabels[p.status] || p.status}</td>
@@ -448,14 +640,14 @@ function renderHistoryHTML(balanceData) {
           const dateStr = h.created_at ? new Date(h.created_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
           return `
             <tr>
-              <td style="color:var(--text-muted);font-size:12px">${dateStr}</td>
+              <td style="color:#94A3B8;font-size:0.85rem">${dateStr}</td>
               <td>
-                <div style="font-weight:700;color:var(--text-primary)">${escHtml(h.label || h.rule_key || 'معاملة')}</div>
+                <div style="font-weight:700;color:#FFFFFF">${escHtml(h.label || h.rule_key || 'معاملة رصيد')}</div>
               </td>
               <td style="font-weight:900;color:${isPositive ? '#10B981' : '#EF4444'}">
                 ${isPositive ? '+' : ''}${h.amount} 🪙
               </td>
-              <td><span style="color:#10B981;font-size:12px;font-weight:700">مكتملة</span></td>
+              <td><span style="color:#10B981;font-size:0.85rem;font-weight:800">مكتملة ✓</span></td>
             </tr>
           `;
         }).join('')}
@@ -464,7 +656,44 @@ function renderHistoryHTML(balanceData) {
   `;
 }
 
+/**
+ * 5. Trust & Community Footer Strip
+ */
+function renderTrustStripHTML() {
+  return `
+    <div class="wallet-trust-strip">
+      <div class="wallet-trust-item">
+        <span>🎧</span>
+        <span>دعم فني سريع</span>
+      </div>
+      <div class="wallet-trust-item">
+        <span>🛡️</span>
+        <span>معاملات فورية وآمنة</span>
+      </div>
+      <div class="wallet-trust-item">
+        <span>📍</span>
+        <span>استخدام داخل دليل المنزلة والمطرية</span>
+      </div>
+      <div class="wallet-trust-item">
+        <span>👥</span>
+        <span>ادعم مجتمعك المحلي</span>
+      </div>
+      <div class="wallet-trust-item" style="margin-right:auto">
+        <span class="wallet-trust-item__heart">🤍</span>
+        <span style="color:#FDE68A">كل ذهبية .. تصنع فرقاً</span>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Event Bindings & Payment Logic
+ */
 function bindWalletEvents($container, user, balanceData) {
+  let activeCoins = 2000;
+  let activePrice = 350;
+  let activeMethod = 'instapay';
+
   // 1. Copy Buttons
   $container.querySelectorAll('.btn-copy').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -484,27 +713,109 @@ function bindWalletEvents($container, user, balanceData) {
     });
   });
 
-  // 2. Select Package from Grid
+  // 2. Tab Toggles (InstaPay / Vodafone Cash)
+  const tabBtnInsta = document.getElementById('tab-btn-instapay');
+  const tabBtnVoda = document.getElementById('tab-btn-vodafone');
+  const tabContentInsta = document.getElementById('tab-content-instapay');
+  const tabContentVoda = document.getElementById('tab-content-vodafone');
+  const methodInput = document.getElementById('purchase-method-input');
+  const senderInputLabel = document.getElementById('sender-input-label');
+  const formHeading = document.getElementById('purchase-form-heading');
+
+  function setPaymentMethod(method) {
+    activeMethod = method;
+    if (methodInput) methodInput.value = method;
+
+    if (method === 'instapay') {
+      tabBtnInsta?.classList.add('is-active');
+      tabBtnVoda?.classList.remove('is-active');
+      if (tabContentInsta) tabContentInsta.style.display = 'block';
+      if (tabContentVoda) tabContentVoda.style.display = 'none';
+      if (senderInputLabel) senderInputLabel.textContent = 'رقم الحساب أو الهاتف المحول منه عبر إنستاباي';
+      if (formHeading) formHeading.textContent = 'تأكيد تحويل إنستاباي وإرسال الإيصال للشحن المعتمد';
+    } else {
+      tabBtnVoda?.classList.add('is-active');
+      tabBtnInsta?.classList.remove('is-active');
+      if (tabContentVoda) tabContentVoda.style.display = 'block';
+      if (tabContentInsta) tabContentInsta.style.display = 'none';
+      if (senderInputLabel) senderInputLabel.textContent = 'رقم محفظة فودافون كاش التي قمت بالتحويل منها';
+      if (formHeading) formHeading.textContent = 'تأكيد تحويل فودافون كاش وإرسال الإيصال للشحن المعتمد';
+    }
+  }
+
+  tabBtnInsta?.addEventListener('click', () => setPaymentMethod('instapay'));
+  tabBtnVoda?.addEventListener('click', () => setPaymentMethod('vodafone'));
+
+  // 3. Update Selected Package State dynamically
+  function updateSelectedPackage(coins, price, shouldScroll = true) {
+    activeCoins = parseInt(coins, 10);
+    activePrice = parseInt(price, 10);
+
+    // Update active class on package cards
+    $container.querySelectorAll('.wallet-pkg-card').forEach(card => {
+      if (parseInt(card.getAttribute('data-coins'), 10) === activeCoins) {
+        card.classList.add('is-selected');
+      } else {
+        card.classList.remove('is-selected');
+      }
+    });
+
+    // Update Summary Card
+    const coinsDisplay = document.getElementById('selected-coins-display');
+    const priceDisplay = document.getElementById('selected-price-display');
+    const instaBtnPrice = document.getElementById('instapay-btn-price');
+
+    if (coinsDisplay) coinsDisplay.textContent = activeCoins.toLocaleString('ar-EG');
+    if (priceDisplay) priceDisplay.textContent = String(activePrice);
+    if (instaBtnPrice) instaBtnPrice.textContent = String(activePrice);
+
+    // Update Form Inputs
+    const coinsInput = document.getElementById('purchase-coins-input');
+    const priceInput = document.getElementById('purchase-price-input');
+    const select = document.getElementById('purchase-package-select');
+
+    if (coinsInput) coinsInput.value = activeCoins;
+    if (priceInput) priceInput.value = activePrice;
+    if (select) select.value = `${activeCoins}-${activePrice}`;
+
+    // Scroll to payment hub if requested
+    if (shouldScroll) {
+      const hub = document.getElementById('payment-hub-box');
+      if (hub) {
+        hub.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        hub.style.transition = 'outline 0.3s ease';
+        hub.style.outline = '3px solid #F5A623';
+        setTimeout(() => { hub.style.outline = 'none'; }, 1600);
+      }
+    }
+  }
+
+  // 4. Select Package Click Handlers
   $container.querySelectorAll('.btn-select-package').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const coins = btn.getAttribute('data-coins');
       const price = btn.getAttribute('data-price');
-      const select = document.getElementById('purchase-package-select');
-      if (select) {
-        const targetVal = `${coins}-${price}`;
-        select.value = targetVal;
-        const box = document.getElementById('vodafone-cash-box');
-        if (box) {
-          box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          box.style.transition = 'outline 0.3s';
-          box.style.outline = '3px solid #F5A623';
-          setTimeout(() => { box.style.outline = 'none'; }, 1500);
-        }
-      }
+      updateSelectedPackage(coins, price, true);
     });
   });
 
-  // 3. Receipt Preview Handler
+  $container.querySelectorAll('.wallet-pkg-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const coins = card.getAttribute('data-coins');
+      const price = card.getAttribute('data-price');
+      updateSelectedPackage(coins, price, true);
+    });
+  });
+
+  // When dropdown select changes
+  const select = document.getElementById('purchase-package-select');
+  select?.addEventListener('change', () => {
+    const [c, p] = select.value.split('-');
+    updateSelectedPackage(c, p, false);
+  });
+
+  // 5. Receipt Preview Handler
   const fileInput = document.getElementById('purchase-receipt-file');
   const previewWrap = document.getElementById('receipt-preview-wrap');
   const previewImg = document.getElementById('receipt-preview-img');
@@ -523,27 +834,31 @@ function bindWalletEvents($container, user, balanceData) {
     }
   });
 
-  // 4. Submit Purchase Request Form
+  // 6. Direct InstaPay Payment Button click feedback
+  const instaBtn = document.getElementById('btn-instapay-direct');
+  instaBtn?.addEventListener('click', () => {
+    toast.info(`جاري فتح إنستاباي لدفع ${activePrice} ج.م... تذكر التقاط صورة إيصال التحويل!`);
+  });
+
+  // 7. Submit Purchase Request Form (Authoritative Server Verification)
   const formPurchase = document.getElementById('form-coin-purchase');
   formPurchase?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btnSubmit = document.getElementById('btn-submit-purchase');
     if (btnSubmit) {
       btnSubmit.disabled = true;
-      btnSubmit.innerHTML = '<span>جاري رفع الإيصال والتحقق...</span>';
+      btnSubmit.innerHTML = '<span>جاري رفع الإيصال والتحقق المعتمد...</span>';
     }
 
     try {
-      const selectVal = document.getElementById('purchase-package-select')?.value || '1000-190';
-      const [coinsStr, priceStr] = selectVal.split('-');
-      const coins = parseInt(coinsStr, 10);
-      const price = parseInt(priceStr, 10);
+      const coins = activeCoins;
+      const price = activePrice;
       const senderPhone = (document.getElementById('purchase-sender-phone')?.value || '').trim();
       const file = fileInput?.files?.[0];
 
       if (!file) throw new Error('يرجى اختيار صورة إيصال التحويل');
-      if (!/^01[0125][0-9]{8}$/.test(senderPhone)) {
-        throw new Error('يرجى إدخال رقم هاتف فودافون كاش مصري صحيح (11 رقم)');
+      if (!senderPhone || senderPhone.length < 4) {
+        throw new Error('يرجى إدخال رقم هاتف أو حساب صحيح للمحول');
       }
 
       // Step A: Upload Receipt image to R2 via /api/upload
@@ -571,27 +886,27 @@ function bindWalletEvents($container, user, balanceData) {
       const purchaseRes = await api.post('/api/coins/purchase-request', {
         packageCoins: coins,
         amountEgp: price,
-        vodafoneSenderNumber: senderPhone,
+        vodafoneSenderNumber: `${activeMethod === 'instapay' ? 'InstaPay: ' : 'Vodafone: '}${senderPhone}`,
         receiptUrl
       }, token);
 
       if (purchaseRes.success) {
         showModal({
-          title: '🎉 تم إرسال طلب الشحن بنجاح',
+          title: '🎉 تم استلام طلب الشحن بنجاح',
           content: `
-            <div style="text-align:center;padding:16px">
-              <div style="font-size:48px;margin-bottom:10px">🪙</div>
-              <h3 style="font-weight:900;color:#10B981;margin-bottom:8px">طلب شحن ${coins.toLocaleString('ar-EG')} ذهبية قيد المراجعة</h3>
-              <p style="font-size:13.5px;color:var(--text-muted);line-height:1.6;margin-bottom:14px">
-                تم استلام إيصالك بنجاح من الرقم (${senderPhone}). سيتم مراجعة التحويل من قبل الإدارة وإيداع الذهبيات في محفظتك خلال دقائق معدودة!
+            <div style="text-align:center;padding:16px;background:#050B14;color:#fff;border-radius:16px">
+              <div style="font-size:48px;margin-bottom:12px">🪙</div>
+              <h3 style="font-weight:900;color:#FDE68A;margin-bottom:8px">طلب شحن ${coins.toLocaleString('ar-EG')} ذهبية قيد المراجعة</h3>
+              <p style="font-size:0.9rem;color:#CBD5E1;line-height:1.6;margin-bottom:14px">
+                تم استلام إيصال التحويل بمبلغ (${price} ج.م) بنجاح. سيتم مراجعة العملية من قبل الإدارة وإيداع الذهبيات في محفظتك المعتمدة خلال دقائق معدودة!
               </p>
-              <div style="background:var(--surface-2);border-radius:10px;padding:10px;font-size:12px;color:var(--text-primary)">
-                كود الطلب: <code>${purchaseRes.purchaseId}</code>
+              <div style="background:rgba(229,169,60,0.12);border:1px solid rgba(229,169,60,0.3);border-radius:10px;padding:10px;font-size:0.85rem;color:#FDE68A">
+                كود العملية: <code>${purchaseRes.purchaseId}</code>
               </div>
             </div>
           `,
           buttons: [{
-            label: 'رائع، شكراً لك',
+            label: 'تم، شكراً لك',
             type: 'primary',
             closeOnClick: true,
             onClick: () => location.reload()
@@ -603,12 +918,12 @@ function bindWalletEvents($container, user, balanceData) {
       toast.error(err.message || 'فشل إرسال طلب الشحن');
       if (btnSubmit) {
         btnSubmit.disabled = false;
-        btnSubmit.innerHTML = '<span>✅ إرسال إشعار التحويل وشحن الرصيد</span>';
+        btnSubmit.innerHTML = '<span>✅ إرسال إشعار التحويل واعتماد الشحن</span>';
       }
     }
   });
 
-  // 5. P2P Transfer Submit
+  // 8. P2P Transfer Submit
   const formTransfer = document.getElementById('form-p2p-transfer');
   formTransfer?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -626,13 +941,13 @@ function bindWalletEvents($container, user, balanceData) {
       return;
     }
 
-    if (!confirm(`هل أنت متأكد من رغبتك في تحويل ${amount} ذهبية إلى (${recipient})؟\n\nالعملية فورية ولا يمكن الرجوع عنها.`)) {
+    if (!confirm(`هل أنت متأكد من رغبتك في تحويل ${amount} ذهبية إلى (${recipient})؟\n\nالعملية فورية ومحمية ولا يمكن الرجوع عنها بعد التأكيد.`)) {
       return;
     }
 
     if (btnSubmit) {
       btnSubmit.disabled = true;
-      btnSubmit.innerHTML = '<span>جاري إتمام التحويل...</span>';
+      btnSubmit.innerHTML = '<span>جاري إتمام التحويل الآمن...</span>';
     }
 
     try {
@@ -662,8 +977,22 @@ function bindWalletEvents($container, user, balanceData) {
     }
   });
 
-  // 6. Refresh balance button
-  document.getElementById('btn-refresh-balance')?.addEventListener('click', () => {
-    location.reload();
+  // 9. Refresh balance button
+  document.getElementById('btn-refresh-balance')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-refresh-balance');
+    if (btn) btn.innerHTML = '<span>⏳ جاري التحديث...</span>';
+    try {
+      const token = await getIdToken();
+      const res = await api.get('/api/coins/balance', token);
+      if (res.success && res.data) {
+        const liveBal = document.getElementById('wallet-live-balance');
+        if (liveBal) liveBal.textContent = Number(res.data.balance || 0).toLocaleString('ar-EG');
+        toast.success('تم تحديث الرصيد بنجاح ✓');
+      }
+    } catch (_) {
+      location.reload();
+    } finally {
+      if (btn) btn.innerHTML = '<span>🔄 تحديث الرصيد</span>';
+    }
   });
 }
