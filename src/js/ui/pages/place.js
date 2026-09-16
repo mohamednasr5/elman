@@ -62,6 +62,154 @@ export function renderAvailabilityBadge(status) {
   return '';
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   3D Tactile Graphic Generators (High-Fidelity Vector System)
+   ═══════════════════════════════════════════════════════════════ */
+function getWhatsApp3dSvg() {
+  return `
+    <svg class="p3d-dish-svg" viewBox="0 0 54 54" width="46" height="46" aria-hidden="true">
+      <defs>
+        <radialGradient id="p3dWaDish" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#34d399"/>
+          <stop offset="55%" stop-color="#059669"/>
+          <stop offset="100%" stop-color="#047857"/>
+        </radialGradient>
+      </defs>
+      <circle cx="27" cy="27" r="24" fill="url(#p3dWaDish)"/>
+      <circle cx="27" cy="27" r="22.5" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
+      <path fill="#ffffff" filter="drop-shadow(0 2px 3px rgba(0,0,0,0.25))" d="M27 12c-7.7 0-14 6.3-14 14 0 2.6.7 5.1 2 7.3L13 41l8-2.1c2.1 1.2 4.5 1.8 6.9 1.8 7.7 0 14-6.3 14-14s-6.3-14-14-14zm7.2 19.8c-.3.8-1.7 1.6-2.4 1.7-.6.1-1.4.2-4.5-1.1-3.7-1.5-6-5.3-6.2-5.5-.2-.3-1.6-2.1-1.6-4.1s1-2.9 1.4-3.3c.4-.4.8-.5 1.1-.5.3 0 .5 0 .8.1.3.1.7.1.9.7.3.7 1 2.5 1.1 2.7.1.2.1.4 0 .6-.1.2-.2.4-.4.6-.2.2-.4.4-.6.6-.2.2-.4.4-.2.8.2.4.9 1.6 2 2.6 1.4 1.2 2.6 1.6 3 1.8.4.2.6.1.8-.1.3-.3 1.1-1.3 1.4-1.7.3-.4.6-.3 1-.2.4.2 2.5 1.2 2.9 1.4.4.2.7.3.8.5.1.2.1 1.2-.2 2z"/>
+    </svg>
+  `;
+}
+
+function getPhone3dSvg() {
+  return `
+    <svg class="p3d-dish-svg" viewBox="0 0 54 54" width="46" height="46" aria-hidden="true">
+      <defs>
+        <radialGradient id="p3dCallDish" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#38bdf8"/>
+          <stop offset="55%" stop-color="#0284c7"/>
+          <stop offset="100%" stop-color="#0369a1"/>
+        </radialGradient>
+        <linearGradient id="p3dPhoneRed" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ff7b7b"/>
+          <stop offset="45%" stop-color="#ef4444"/>
+          <stop offset="100%" stop-color="#b91c1c"/>
+        </linearGradient>
+      </defs>
+      <circle cx="27" cy="27" r="24" fill="url(#p3dCallDish)"/>
+      <circle cx="27" cy="27" r="22.5" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+      <g transform="translate(14, 13) scale(1.15)">
+        <path fill="url(#p3dPhoneRed)" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.35))" d="M19.5 15.5c-1.2 0-2.4-.2-3.5-.6-.4-.1-.8 0-1.1.3l-2.2 2.2c-2.8-1.4-5.1-3.7-6.5-6.5l2.2-2.2c.3-.3.4-.7.3-1.1-.4-1.1-.6-2.3-.6-3.5 0-.6-.4-1-1-1H3.6c-.6 0-1 .4-1 1 0 9.4 7.6 17 17 17 .6 0 1-.4 1-1v-3.5c-.1-.6-.5-1.1-1.1-1.1z"/>
+        <path fill="rgba(255,255,255,0.4)" d="M5 4.5c0-.3.2-.5.5-.5h2c.3 0 .5.2.5.5v1.5c0 .3-.2.5-.5.5h-2c-.3 0-.5-.2-.5-.5v-1.5z"/>
+      </g>
+    </svg>
+  `;
+}
+
+function getDownload3dSvg() {
+  return `
+    <svg class="p3d-tool-svg" viewBox="0 0 68 68" width="56" height="56" aria-hidden="true">
+      <defs>
+        <linearGradient id="p3dDlPed" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#bae6fd"/>
+          <stop offset="50%" stop-color="#38bdf8"/>
+          <stop offset="100%" stop-color="#0284c7"/>
+        </linearGradient>
+        <linearGradient id="p3dDlCard" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="100%" stop-color="#f0f9ff"/>
+        </linearGradient>
+      </defs>
+      <!-- 3D Pedestal Dish -->
+      <ellipse cx="34" cy="54" rx="26" ry="9" fill="url(#p3dDlPed)" filter="drop-shadow(0 3px 6px rgba(2,132,199,0.4))"/>
+      <ellipse cx="34" cy="51" rx="24.5" ry="7.5" fill="#e0f2fe"/>
+      <!-- 3D Profile ID Card on top -->
+      <g transform="translate(17, 15) rotate(-2 17 14)" filter="drop-shadow(0 5px 8px rgba(3,105,161,0.45))">
+        <rect x="0" y="0" width="34" height="25" rx="4.5" fill="url(#p3dDlCard)" stroke="#38bdf8" stroke-width="1.2"/>
+        <path d="M0 4.5 Q0 0 4.5 0 L29.5 0 Q34 0 34 4.5 L34 7 L0 7 Z" fill="#0284c7"/>
+        <rect x="3.5" y="9.5" width="9" height="11.5" rx="2" fill="#e2e8f0"/>
+        <circle cx="8" cy="13.2" r="2.2" fill="#64748b"/>
+        <path d="M5 19.5 C5 17 11 17 11 19.5 Z" fill="#64748b"/>
+        <rect x="15" y="10.5" width="15" height="2.2" rx="1" fill="#0284c7"/>
+        <rect x="15" y="14.5" width="12" height="1.8" rx="0.9" fill="#94a3b8"/>
+        <rect x="15" y="18" width="14" height="1.8" rx="0.9" fill="#cbd5e1"/>
+      </g>
+    </svg>
+  `;
+}
+
+function getQr3dSvg() {
+  return `
+    <svg class="p3d-tool-svg" viewBox="0 0 68 68" width="56" height="56" aria-hidden="true">
+      <defs>
+        <linearGradient id="p3dQrPed" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#faf5ff"/>
+          <stop offset="50%" stop-color="#e9d5ff"/>
+          <stop offset="100%" stop-color="#a855f7"/>
+        </linearGradient>
+        <linearGradient id="p3dQrMachine" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#a855f7"/>
+          <stop offset="60%" stop-color="#7e22ce"/>
+          <stop offset="100%" stop-color="#581c87"/>
+        </linearGradient>
+      </defs>
+      <!-- 3D Pedestal Dish -->
+      <ellipse cx="34" cy="54" rx="26" ry="9" fill="url(#p3dQrPed)" filter="drop-shadow(0 3px 6px rgba(126,34,206,0.3))"/>
+      <ellipse cx="34" cy="51" rx="24.5" ry="7.5" fill="#faf5ff"/>
+      <!-- Machine Connector -->
+      <path d="M28 44 L31 52 L37 52 L40 44 Z" fill="#581c87"/>
+      <!-- 3D Terminal Body -->
+      <rect x="20" y="22" width="28" height="23" rx="5.5" fill="url(#p3dQrMachine)" filter="drop-shadow(0 4px 6px rgba(88,28,135,0.35))"/>
+      <rect x="23" y="18" width="22" height="6" rx="2.5" fill="#4c1d95"/>
+      <!-- White Paper with QR -->
+      <g filter="drop-shadow(0 2px 4px rgba(0,0,0,0.18))">
+        <rect x="25" y="11" width="18" height="21" rx="2.5" fill="#ffffff" stroke="#e9d5ff" stroke-width="0.8"/>
+        <rect x="27.5" y="13.5" width="4" height="4" fill="#1e1b4b"/>
+        <rect x="36.5" y="13.5" width="4" height="4" fill="#1e1b4b"/>
+        <rect x="27.5" y="22.5" width="4" height="4" fill="#1e1b4b"/>
+        <rect x="34.5" y="20.5" width="2.2" height="2.2" fill="#1e1b4b"/>
+        <rect x="37.5" y="23.5" width="3" height="3" fill="#1e1b4b"/>
+        <rect x="33.5" y="25" width="2.2" height="2.2" fill="#1e1b4b"/>
+      </g>
+    </svg>
+  `;
+}
+
+function getCert3dSvg() {
+  return `
+    <svg class="p3d-tool-svg" viewBox="0 0 68 68" width="56" height="56" aria-hidden="true">
+      <defs>
+        <linearGradient id="p3dCertPed" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#fffbeb"/>
+          <stop offset="50%" stop-color="#fed7aa"/>
+          <stop offset="100%" stop-color="#f59e0b"/>
+        </linearGradient>
+        <linearGradient id="p3dCertGold" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#fef08a"/>
+          <stop offset="40%" stop-color="#f59e0b"/>
+          <stop offset="100%" stop-color="#d97706"/>
+        </linearGradient>
+        <linearGradient id="p3dCertRib" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#f87171"/>
+          <stop offset="100%" stop-color="#dc2626"/>
+        </linearGradient>
+      </defs>
+      <!-- 3D Pedestal Dish -->
+      <ellipse cx="34" cy="54" rx="26" ry="9" fill="url(#p3dCertPed)" filter="drop-shadow(0 3px 6px rgba(217,119,6,0.3))"/>
+      <ellipse cx="34" cy="51" rx="24.5" ry="7.5" fill="#fffdf5"/>
+      <!-- Ribbon Tails -->
+      <path fill="url(#p3dCertRib)" d="M26 38 L20 54 L27 51 L31 54 L30 38 Z" filter="drop-shadow(0 2px 3px rgba(0,0,0,0.18))"/>
+      <path fill="url(#p3dCertRib)" d="M38 38 L37 54 L41 51 L48 54 L42 38 Z" filter="drop-shadow(0 2px 3px rgba(0,0,0,0.18))"/>
+      <!-- Gold Medal Coin -->
+      <circle cx="34" cy="27" r="17.5" fill="url(#p3dCertGold)" filter="drop-shadow(0 4px 6px rgba(180,83,9,0.35))"/>
+      <circle cx="34" cy="27" r="14.5" fill="none" stroke="#fef08a" stroke-width="1.2" stroke-dasharray="2 1"/>
+      <!-- Star in center -->
+      <path fill="#ffffff" filter="drop-shadow(0 1px 2px rgba(0,0,0,0.25))" d="M34 17 L36.8 23.6 L44 24.2 L38.6 28.8 L40.2 35.8 L34 32.1 L27.8 35.8 L29.4 28.8 L24 24.2 L31.2 23.6 Z"/>
+    </svg>
+  `;
+}
+
 export function normalizePlace(p) {
   if (!p || typeof p !== 'object') return p;
   const logo = p.logoUrl || p.logo_url || p.logo || null;
@@ -494,11 +642,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               </div>
             </div>
 
-            <!-- Row 2: Category, Rating Inline & Profile Completeness -->
+            <!-- Row 2: Category, Rating Inline, Calligraphy Banner & Profile Completeness -->
             <div class="place-card-row-meta">
               <div class="place-card-meta-tags">
                 <a href="category.html?slug=${encodeURIComponent(catInfo?.slug || place.categoryId || 'other')}" class="place-category-tag">
-                  ${craftCatSvg || catInfo?.icon || '🏪'} ${escHtml(catInfo?.name || 'تصنيف')}
+                  <span style="color:#0284c7;font-weight:900;font-size:14px">✚</span>
+                  <span>${escHtml(catInfo?.name || 'تصنيف')}</span>
                 </a>
                 ${!isAtm ? `
                   <div id="place-header-rating-badge" class="place-rating-badge-inline">
@@ -507,8 +656,9 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                       <span class="rating-val">${avgRating > 0 ? avgRating.toFixed(1) : '5.0'}</span>
                       <span class="rating-sub">(${totalReviews} تقييم)</span>
                     ` : `
-                      <span class="rating-star-empty">✨</span>
-                      <span class="rating-none">لا توجد تقييمات بعد</span>
+                      <span class="rating-star">★</span>
+                      <span class="rating-val">5.0</span>
+                      <span class="rating-sub">() تقييم)</span>
                     `}
                   </div>
                 ` : ''}
@@ -525,16 +675,29 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   </span>
                 ` : ''}
               </div>
+
+              <!-- Islamic Calligraphy Motif in Center -->
+              <div class="place-header-calligraphy-slot" title="وقل رب زدني علماً">
+                <span class="place-header-calligraphy-text">وَقُل رَّبِّ زِدْنِي عِلْمًا</span>
+              </div>
+
               <div class="place-card-meta-left">
-                ${trustScore ? `<span class="place-trust-mini ${trustClass}" title="مؤشر نسبة استيفاء حقول ومعلومات هذا الملف">📋 اكتمال الملف ${trustScore}%</span>` : ''}
+                ${trustScore ? `
+                  <span class="place-trust-mini ${trustClass}" title="مؤشر نسبة استيفاء حقول ومعلومات هذا الملف">
+                    <span class="trust-check-badge">✓</span>
+                    <span>%${trustScore}</span>
+                    <span>اكتمال الملف</span>
+                    <span style="font-size:13px">📋</span>
+                  </span>
+                ` : ''}
               </div>
             </div>
 
             <!-- Row 3: Full Address (Spans cleanly without crowding) -->
             <div class="place-card-row-address-rating">
               <div class="place-address">
-                <span>📍</span>
                 <span>${escHtml(place.address || place.area || 'مدينة المنزلة')}</span>
+                <span class="addr-pin">📍</span>
               </div>
             </div>
 
@@ -542,11 +705,14 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             <div class="place-card-row-contact">
               ${hasValidPhone ? `
                 <a href="tel:${cleanPhone(place.phone)}" class="place-btn-contact place-btn-contact--call" onclick="trackStat('${escAttr(placeId)}', 'phoneClicks')" title="اتصال هاتفي">
-                  <div class="place-btn-contact__icon">📞</div>
+                  <div class="place-btn-contact__icon">
+                    ${getPhone3dSvg()}
+                  </div>
                   <div class="place-btn-contact__text">
                     <span class="place-btn-contact__label">اتصال هاتفي</span>
                     <span class="place-btn-contact__val" dir="ltr">${escHtml(place.phone)}</span>
                   </div>
+                  <div class="place-btn-contact__arrow">‹</div>
                 </a>
               ` : `
                 <button type="button" class="place-btn-contact place-btn-contact--suggest" onclick="window.openSuggestPhoneNumber({ placeId: '${escAttr(placeId)}', placeName: '${escAttr(place.name || '')}' })" title="اقتراح رقم هاتف لهذا المكان">
@@ -555,6 +721,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                     <span class="place-btn-contact__label">هل تعرف رقم المكان؟</span>
                     <span class="place-btn-contact__sub">اضغط هنا واكتبه فوراً</span>
                   </div>
+                  <div class="place-btn-contact__arrow">‹</div>
                 </button>
               `}
 
@@ -566,12 +733,13 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                    onclick="trackStat('${escAttr(placeId)}', 'whatsappClicks')" 
                    title="محادثة واتساب">
                   <div class="place-btn-contact__icon">
-                    <img src="./icons/whatsapp.png" alt="WhatsApp" style="width:24px;height:24px;object-fit:contain" onerror="this.outerHTML='💬'" />
+                    ${getWhatsApp3dSvg()}
                   </div>
                   <div class="place-btn-contact__text">
                     <span class="place-btn-contact__label">التواصل عبر الواتساب</span>
                     <span class="place-btn-contact__sub">شات وتواصل فوري</span>
                   </div>
+                  <div class="place-btn-contact__arrow">›</div>
                 </a>
               ` : ((!isAtm && (place.allowAppointments === true || (place.allowAppointments !== false && (place.categoryId === 'doctor' || place.categoryId?.includes('clinic') || place.categoryId === 'health')))) ? `
                 <button type="button" class="place-btn-contact place-btn-contact--appointment" id="btn-book-appointment" title="طلب حجز موعد / استشارة">
@@ -580,6 +748,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                     <span class="place-btn-contact__label">حجز موعد</span>
                     <span class="place-btn-contact__sub">طلب مسبق واستشارة</span>
                   </div>
+                  <div class="place-btn-contact__arrow">›</div>
                 </button>
               ` : `
                 <button type="button" class="place-btn-contact place-btn-contact--share btn-share-place-trigger" title="مشاركة بطاقة هذا المكان">
@@ -588,6 +757,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                     <span class="place-btn-contact__label">مشاركة المكان</span>
                     <span class="place-btn-contact__sub">إرسال للأصدقاء</span>
                   </div>
+                  <div class="place-btn-contact__arrow">›</div>
                 </button>
               `)}
             </div>
@@ -596,41 +766,44 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             <div class="place-card-row-tools-trio">
               <!-- Card 1: Download Profile Card (Sapphire Tech 3D) -->
               <button type="button" class="place-tool-card place-tool-card--download btn-download-profile-trigger" id="btn-download-profile-card" data-pid="${escAttr(placeId)}" title="تحميل البطاقة التعريفية لمشاركتها كصورة">
-                <div class="place-tool-card__icon-box">🪪</div>
-                <div class="place-tool-card__title">تحميل البطاقة</div>
-                <div class="place-tool-card__hint">صورة جاهزة للمشاركة</div>
+                <div class="place-tool-card__icon-box">
+                  ${getDownload3dSvg()}
+                </div>
+                <div class="place-tool-card__body">
+                  <div class="place-tool-card__title">تحميل البطاقة</div>
+                  <div class="place-tool-card__hint">صورة جاهزة للمشاركة</div>
+                </div>
+                <div class="place-tool-card__arrow">›</div>
               </button>
 
               <!-- Card 2: Storefront QR Poster (Royal Purple 3D) -->
               <button type="button" class="place-tool-card place-tool-card--qr btn-open-storefront-qr" id="btn-open-storefront-qr" title="طباعة لوحة QR ذكية لواجهة المحل">
-                <div class="place-tool-card__icon-box">🖨️</div>
-                <div class="place-tool-card__title">لوحة QR المحل</div>
-                <div class="place-tool-card__hint">لطباعتها على الواجهة</div>
+                <div class="place-tool-card__icon-box">
+                  ${getQr3dSvg()}
+                </div>
+                <div class="place-tool-card__body">
+                  <div class="place-tool-card__title">لوحة QR المحل</div>
+                  <div class="place-tool-card__hint">لطباعتها على الواجهة</div>
+                </div>
+                <div class="place-tool-card__arrow">›</div>
               </button>
 
               <!-- Card 3: Certificate of Appreciation (Prestige Gold 3D) -->
               <button type="button" class="place-tool-card place-tool-card--cert btn-appreciation-certificate" id="btn-appreciation-certificate-header" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك (A4)">
-                <div class="place-tool-card__icon-box">🎖️</div>
-                <div class="place-tool-card__title">شهادة تقدير</div>
-                <div class="place-tool-card__hint">شهادة رسمية A4</div>
+                <div class="place-tool-card__icon-box">
+                  ${getCert3dSvg()}
+                </div>
+                <div class="place-tool-card__body">
+                  <div class="place-tool-card__title">شهادة تقدير</div>
+                  <div class="place-tool-card__hint">شهادة رسمية A4</div>
+                </div>
+                <div class="place-tool-card__arrow">›</div>
               </button>
             </div>
 
             <!-- Row 6: Management & Availability Status & Quick Actions -->
             <div class="place-card-row-bottom">
               <div class="place-card-row-bottom__right">
-                ${isOwner ? `
-                  <a href="dashboard.html?section=places&id=${escAttr(placeId)}" class="place-pill-btn place-pill-btn--manage" title="لوحة تحكم وإدارة المكان">
-                    <span>⚙️</span>
-                    <span>إدارة وتعديل المكان</span>
-                  </a>
-                ` : `
-                  <button type="button" class="place-pill-btn place-pill-btn--claim" id="btn-claim-place" title="المطالبة بملكية هذا النشاط التجاري">
-                    <span>🛡️</span>
-                    <span>أنا صاحب هذا المكان</span>
-                  </button>
-                `}
-
                 ${(isOwner || currentUser?.isAdmin) ? `
                   <select id="quick-availability-select" class="place-quick-availability-select" title="تعديل حالة التوافر الفوري">
                     <option value="available" ${(place.availabilityStatus || place.availability_status) === 'available' ? 'selected' : ''}>🟢 متاح الآن</option>
@@ -642,16 +815,28 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                     ${renderAvailabilityBadge(place.availabilityStatus || place.availability_status)}
                   </div>
                 `}
+
+                ${isOwner ? `
+                  <a href="dashboard.html?section=places&id=${escAttr(placeId)}" class="place-pill-btn place-pill-btn--manage" title="لوحة تحكم وإدارة المكان">
+                    <span style="font-size:14px">⚙️</span>
+                    <span>إدارة وتعديل المكان</span>
+                  </a>
+                ` : `
+                  <button type="button" class="place-pill-btn place-pill-btn--claim" id="btn-claim-place" title="المطالبة بملكية هذا النشاط التجاري">
+                    <span>🛡️</span>
+                    <span>أنا صاحب هذا المكان</span>
+                  </button>
+                `}
               </div>
 
               <div class="place-card-row-bottom__left">
                 <button type="button" class="place-pill-btn btn-share-place-trigger" title="مشاركة هذا المكان">
-                  <span>📤</span>
+                  <span style="font-size:14px">👥</span>
                   <span>مشاركة</span>
                 </button>
 
                 <button type="button" class="place-pill-btn btn-follow-place-trigger ${isFollowing ? 'following' : ''}" id="btn-follow-place" data-pid="${escAttr(placeId)}" title="متابعة المكان ومشاهدة أحدث عروضه">
-                  <span class="follow-icon">${isFollowing ? '✓' : '🔔'}</span>
+                  <span class="follow-icon" style="color:#eab308;font-size:14px">${isFollowing ? '✓' : '🔔'}</span>
                   <span class="follow-label">${isFollowing ? 'متابع' : 'متابعة'}</span>
                   ${place.followersCount ? `<span class="follow-count-badge" style="opacity:0.8;font-size:11px">(${place.followersCount})</span>` : ''}
                 </button>

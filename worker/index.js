@@ -7193,9 +7193,9 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:description" content="[^"]*"/i, `<meta name="twitter:description" content="${escapeHtml(placeDesc)}"`);
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
 
-      // Ensure Google Fonts Cairo & Tajawal are present in SSR HTML
+      // Ensure Google Fonts Cairo, Tajawal & Amiri are present in SSR HTML
       if (!hydratedHtml.includes('family=Cairo')) {
-        hydratedHtml = hydratedHtml.replace('<head>', `<head>\n  <link rel="preconnect" href="https://fonts.googleapis.com"/>\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>\n  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap"/>`);
+        hydratedHtml = hydratedHtml.replace('<head>', `<head>\n  <link rel="preconnect" href="https://fonts.googleapis.com"/>\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>\n  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&display=swap"/>`);
       }
 
       // Inject hreflang alternate tags

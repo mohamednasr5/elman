@@ -1,0 +1,750 @@
+﻿/* ═══════════════════════════════════════════════════════════════
+   DALIL EL-MANZALA — 3D VISUAL DESIGN SYSTEM (PLACE DETAILS)
+   Inspired by Apple & High-End 3D Skewed Tactile Interfaces
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── 1. Border Radii ── */
+  --p3d-radius-card: 26px;
+  --p3d-radius-hero-btn: 26px;
+  --p3d-radius-trio: 20px;
+  --p3d-radius-pill: 9999px;
+  --p3d-radius-dish: 50%;
+
+  /* ── 2. 3D Depths & Elevations ── */
+  --p3d-depth-card: 0 18px 45px -10px rgba(15, 39, 77, 0.12), 0 4px 16px rgba(15, 39, 77, 0.04);
+  --p3d-depth-wa: 0 10px 24px -4px rgba(5, 150, 105, 0.42), 0 3px 8px rgba(0, 0, 0, 0.06);
+  --p3d-depth-call: 0 10px 24px -4px rgba(2, 132, 199, 0.42), 0 3px 8px rgba(0, 0, 0, 0.06);
+  --p3d-depth-download: 0 12px 28px -4px rgba(2, 132, 199, 0.38), 0 3px 8px rgba(0, 0, 0, 0.04);
+  --p3d-depth-qr: 0 10px 24px -5px rgba(147, 51, 234, 0.14), 0 3px 8px rgba(0, 0, 0, 0.03);
+  --p3d-depth-cert: 0 10px 24px -5px rgba(217, 119, 6, 0.14), 0 3px 8px rgba(0, 0, 0, 0.03);
+  --p3d-depth-pill: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --p3d-depth-manage: 0 5px 16px rgba(15, 23, 42, 0.28);
+
+  /* ── 3. Specular Highlights & Bevels ── */
+  --p3d-bevel-gloss: inset 0 2px 2px rgba(255, 255, 255, 0.5), inset 0 -3px 4px rgba(0, 0, 0, 0.22);
+  --p3d-bevel-light: inset 0 1.5px 1.5px rgba(255, 255, 255, 0.95), inset 0 -1px 2px rgba(0, 0, 0, 0.04);
+  --p3d-bevel-dish: inset 0 2.5px 3.5px rgba(255, 255, 255, 0.65), inset 0 -3px 4px rgba(0, 0, 0, 0.3);
+
+  /* ── 4. Surfaces & Gradients ── */
+  --p3d-card-surface: linear-gradient(180deg, #ffffff 0%, #f4f8fc 100%);
+  --p3d-card-border: rgba(226, 232, 240, 0.85);
+
+  --p3d-grad-wa: linear-gradient(180deg, #10b981 0%, #059669 45%, #047857 100%);
+  --p3d-grad-wa-hover: linear-gradient(180deg, #34d399 0%, #10b981 45%, #059669 100%);
+
+  --p3d-grad-call: linear-gradient(180deg, #0284c7 0%, #0369a1 45%, #075985 100%);
+  --p3d-grad-call-hover: linear-gradient(180deg, #38bdf8 0%, #0284c7 45%, #0369a1 100%);
+
+  --p3d-grad-download: linear-gradient(180deg, #0284c7 0%, #0369a1 50%, #075985 100%);
+  --p3d-grad-download-hover: linear-gradient(180deg, #38bdf8 0%, #0284c7 50%, #0369a1 100%);
+
+  --p3d-grad-qr: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+  --p3d-grad-cert: linear-gradient(180deg, #ffffff 0%, #fffdf5 100%);
+  --p3d-grad-manage: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+
+  /* ── 5. Accent Borders ── */
+  --p3d-border-wa: #34d399;
+  --p3d-border-call: #38bdf8;
+  --p3d-border-download: #38bdf8;
+  --p3d-border-qr: #e9d5ff;
+  --p3d-border-cert: #fde68a;
+  --p3d-border-pill: #e2e8f0;
+  --p3d-border-manage: #334155;
+
+  /* ── 6. Hover & Transitions ── */
+  --p3d-hover-transform: translateY(-3px);
+  --p3d-active-transform: translateY(1px) scale(0.985);
+  --p3d-transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   1. Place Header Card 3D Foundation
+   ═══════════════════════════════════════════════════════════════ */
+.place-header-card {
+  position: relative !important;
+  background: var(--p3d-card-surface) !important;
+  border: 1.5px solid var(--p3d-card-border) !important;
+  border-radius: var(--p3d-radius-card) !important;
+  box-shadow: var(--p3d-depth-card) !important;
+  padding: 24px 22px 20px !important;
+  margin-top: -55px !important;
+  z-index: 15 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Subtle architectural/light ambiance background */
+.place-header-card::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 120px !important;
+  background: radial-gradient(ellipse 70% 60px at 50% 0%, rgba(2, 132, 199, 0.08) 0%, transparent 80%) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+.place-header-card > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2. Top Meta & Calligraphy Row
+   ═══════════════════════════════════════════════════════════════ */
+.place-card-row-meta {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 8px !important;
+}
+
+.place-card-meta-tags {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+/* 3D Category Tag */
+.place-category-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: linear-gradient(180deg, #f0f7ff 0%, #e0effe 100%) !important;
+  border: 1.5px solid #bfdbfe !important;
+  color: #1d4ed8 !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  text-decoration: none !important;
+  box-shadow: 0 2px 6px rgba(29, 78, 216, 0.08), inset 0 1px 0 #ffffff !important;
+  transition: var(--p3d-transition) !important;
+}
+
+.place-category-tag:hover {
+  transform: translateY(-1px) !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.15), inset 0 1px 0 #ffffff !important;
+}
+
+/* 3D Rating Inline Badge */
+.place-rating-badge-inline {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%) !important;
+  border: 1.5px solid #fde68a !important;
+  color: #92400e !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  padding: 6px 13px !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.1), inset 0 1px 0 #ffffff !important;
+}
+
+.place-rating-badge-inline .rating-star {
+  color: #f59e0b !important;
+  font-size: 14px !important;
+  filter: drop-shadow(0 1px 2px rgba(245, 158, 11, 0.4));
+}
+
+.place-rating-badge-inline .rating-val {
+  font-weight: 900 !important;
+  color: #78350f !important;
+}
+
+.place-rating-badge-inline .rating-sub {
+  font-size: 11.5px !important;
+  color: #92400e !important;
+  font-weight: 700 !important;
+}
+
+/* Profile Completeness Pill (Left Side in RTL) */
+.place-trust-mini {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%) !important;
+  border: 1.5px solid #86efac !important;
+  color: #166534 !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  padding: 6px 14px !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 3px 10px rgba(22, 101, 52, 0.12), inset 0 1px 0 #ffffff !important;
+}
+
+.place-trust-mini .trust-check-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.3);
+}
+
+/* Islamic Calligraphy Banner in Center of Header */
+.place-header-calligraphy-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  padding: 0 10px;
+}
+
+.place-header-calligraphy-text {
+  font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade New', 'Cairo', serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: #854d0e;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9), 0 2px 6px rgba(180, 83, 9, 0.15);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.place-header-calligraphy-text::before,
+.place-header-calligraphy-text::after {
+  content: "❖";
+  font-size: 10px;
+  color: #d97706;
+  opacity: 0.75;
+}
+
+/* Full Address Row */
+.place-card-row-address-rating {
+  margin-bottom: 16px !important;
+}
+
+.place-address {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #334155 !important;
+  background: rgba(241, 245, 249, 0.7) !important;
+  padding: 5px 12px !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.place-address .addr-pin {
+  font-size: 15px !important;
+  filter: drop-shadow(0 2px 3px rgba(239, 68, 68, 0.35));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3. Primary Contact Actions (Row 4) — 3D Capsule Buttons
+   ═══════════════════════════════════════════════════════════════ */
+.place-card-row-contact {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 14px !important;
+  width: 100% !important;
+  margin-top: 6px !important;
+  margin-bottom: 16px !important;
+}
+
+.place-btn-contact {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 9px 12px 9px 14px !important;
+  border-radius: var(--p3d-radius-hero-btn) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  border: 1.5px solid transparent !important;
+  min-height: 64px !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  transition: var(--p3d-transition) !important;
+  overflow: hidden !important;
+}
+
+.place-btn-contact:hover {
+  transform: var(--p3d-hover-transform) !important;
+}
+
+.place-btn-contact:active {
+  transform: var(--p3d-active-transform) !important;
+}
+
+/* Phone Button (Royal Sapphire Blue 3D) */
+.place-btn-contact--call {
+  background: var(--p3d-grad-call) !important;
+  border-color: var(--p3d-border-call) !important;
+  box-shadow: var(--p3d-depth-call), var(--p3d-bevel-gloss) !important;
+  color: #ffffff !important;
+}
+
+.place-btn-contact--call:hover {
+  background: var(--p3d-grad-call-hover) !important;
+  box-shadow: 0 14px 30px -4px rgba(2, 132, 199, 0.52), var(--p3d-bevel-gloss) !important;
+}
+
+/* WhatsApp Button (Emerald Green 3D) */
+.place-btn-contact--wa {
+  background: var(--p3d-grad-wa) !important;
+  border-color: var(--p3d-border-wa) !important;
+  box-shadow: var(--p3d-depth-wa), var(--p3d-bevel-gloss) !important;
+  color: #ffffff !important;
+}
+
+.place-btn-contact--wa:hover {
+  background: var(--p3d-grad-wa-hover) !important;
+  box-shadow: 0 14px 30px -4px rgba(5, 150, 105, 0.52), var(--p3d-bevel-gloss) !important;
+}
+
+/* 3D Circular Icon Dishes */
+.place-btn-contact__icon {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: var(--p3d-radius-dish) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  box-shadow: var(--p3d-bevel-dish), 0 3px 8px rgba(0, 0, 0, 0.22) !important;
+}
+
+.place-btn-contact--call .place-btn-contact__icon {
+  background: radial-gradient(circle at 35% 30%, #38bdf8 0%, #0284c7 60%, #0369a1 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+}
+
+.place-btn-contact--wa .place-btn-contact__icon {
+  background: radial-gradient(circle at 35% 30%, #34d399 0%, #059669 60%, #047857 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+}
+
+.place-btn-contact__text {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: right !important;
+  flex: 1 !important;
+  margin: 0 12px !important;
+  min-width: 0 !important;
+}
+
+.place-btn-contact__label {
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  line-height: 1.2 !important;
+  margin-bottom: 2px !important;
+}
+
+.place-btn-contact__val {
+  font-size: 17.5px !important;
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  letter-spacing: 0.5px !important;
+  line-height: 1.2 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+.place-btn-contact__sub {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  line-height: 1.2 !important;
+}
+
+/* Circular Chevron Arrow Indicator */
+.place-btn-contact__arrow {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.place-btn-contact:hover .place-btn-contact__arrow {
+  transform: scale(1.1) translateX(-2px) !important;
+  background: rgba(255, 255, 255, 0.28) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4. Secondary Trio Cards (Row 5) — Horizontal 3D Showcase
+   ═══════════════════════════════════════════════════════════════ */
+.place-card-row-tools-trio {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin-top: 4px !important;
+  margin-bottom: 16px !important;
+}
+
+.place-tool-card {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 10px 12px !important;
+  border-radius: var(--p3d-radius-trio) !important;
+  min-height: 80px !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  box-sizing: border-box !important;
+  transition: var(--p3d-transition) !important;
+  overflow: hidden !important;
+}
+
+.place-tool-card:hover {
+  transform: var(--p3d-hover-transform) !important;
+}
+
+.place-tool-card:active {
+  transform: var(--p3d-active-transform) !important;
+}
+
+/* Card 3: Download Card (Vibrant Ocean Blue 3D) */
+.place-tool-card--download {
+  background: var(--p3d-grad-download) !important;
+  border: 1.5px solid var(--p3d-border-download) !important;
+  box-shadow: var(--p3d-depth-download), var(--p3d-bevel-gloss) !important;
+  color: #ffffff !important;
+}
+
+.place-tool-card--download:hover {
+  background: var(--p3d-grad-download-hover) !important;
+  box-shadow: 0 16px 34px -4px rgba(2, 132, 199, 0.5), var(--p3d-bevel-gloss) !important;
+}
+
+.place-tool-card--download .place-tool-card__title {
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  font-size: 14.5px !important;
+  line-height: 1.2 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+.place-tool-card--download .place-tool-card__hint,
+.place-tool-card--download .place-tool-card__sub {
+  color: #bae6fd !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+
+.place-tool-card--download .place-tool-card__arrow {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Card 2: Storefront QR Card (Pearl Lavender 3D) */
+.place-tool-card--qr {
+  background: var(--p3d-grad-qr) !important;
+  border: 1.5px solid var(--p3d-border-qr) !important;
+  box-shadow: var(--p3d-depth-qr), var(--p3d-bevel-light) !important;
+  color: #0f172a !important;
+}
+
+.place-tool-card--qr:hover {
+  border-color: #c084fc !important;
+  box-shadow: 0 14px 30px -4px rgba(147, 51, 234, 0.22), var(--p3d-bevel-light) !important;
+}
+
+.place-tool-card--qr .place-tool-card__title {
+  color: #0f172a !important;
+  font-weight: 900 !important;
+  font-size: 14.5px !important;
+  line-height: 1.2 !important;
+}
+
+.place-tool-card--qr .place-tool-card__hint,
+.place-tool-card--qr .place-tool-card__sub {
+  color: #7e22ce !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+
+.place-tool-card--qr .place-tool-card__arrow {
+  background: #f3e8ff !important;
+  color: #9333ea !important;
+  border-color: #e9d5ff !important;
+}
+
+/* Card 1: Certificate of Appreciation (Pearl Warm Gold 3D) */
+.place-tool-card--cert {
+  background: var(--p3d-grad-cert) !important;
+  border: 1.5px solid var(--p3d-border-cert) !important;
+  box-shadow: var(--p3d-depth-cert), var(--p3d-bevel-light) !important;
+  color: #0f172a !important;
+}
+
+.place-tool-card--cert:hover {
+  border-color: #f59e0b !important;
+  box-shadow: 0 14px 30px -4px rgba(217, 119, 6, 0.22), var(--p3d-bevel-light) !important;
+}
+
+.place-tool-card--cert .place-tool-card__title {
+  color: #0f172a !important;
+  font-weight: 900 !important;
+  font-size: 14.5px !important;
+  line-height: 1.2 !important;
+}
+
+.place-tool-card--cert .place-tool-card__hint,
+.place-tool-card--cert .place-tool-card__sub {
+  color: #c2410c !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+
+.place-tool-card--cert .place-tool-card__arrow {
+  background: #ffedd5 !important;
+  color: #ea580c !important;
+  border-color: #fed7aa !important;
+}
+
+/* Trio Card Internal Layout */
+.place-tool-card__icon-box {
+  width: 52px !important;
+  height: 52px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+.place-tool-card:hover .place-tool-card__icon-box {
+  transform: scale(1.08) translateY(-2px) !important;
+}
+
+.place-tool-card__body {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: right !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.place-tool-card__arrow {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 50% !important;
+  border: 1px solid transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.place-tool-card:hover .place-tool-card__arrow {
+  transform: scale(1.12) translateX(-2px) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5. Management & Utility Row (Row 6)
+   ═══════════════════════════════════════════════════════════════ */
+.place-card-row-bottom {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  width: 100% !important;
+  padding-top: 14px !important;
+  border-top: 1.5px dashed rgba(226, 232, 240, 0.8) !important;
+}
+
+.place-card-row-bottom__right,
+.place-card-row-bottom__left {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+/* Pill Buttons */
+.place-pill-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 7px 16px !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 1.5px solid var(--p3d-border-pill) !important;
+  box-shadow: var(--p3d-depth-pill), inset 0 1px 0 #ffffff !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: var(--p3d-transition) !important;
+}
+
+.place-pill-btn:hover {
+  transform: translateY(-1px) !important;
+  border-color: #0284c7 !important;
+  color: #0284c7 !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12), inset 0 1px 0 #ffffff !important;
+}
+
+/* Manage Button (Dark Obsidian 3D) */
+.place-pill-btn--manage {
+  background: var(--p3d-grad-manage) !important;
+  color: #ffffff !important;
+  border-color: var(--p3d-border-manage) !important;
+  box-shadow: var(--p3d-depth-manage), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.place-pill-btn--manage:hover {
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%) !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Quick Availability Select */
+.place-quick-availability-select {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 7px 16px 7px 28px !important;
+  border-radius: var(--p3d-radius-pill) !important;
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  background-color: #ffffff !important;
+  color: #166534 !important;
+  border: 1.5px solid var(--p3d-border-pill) !important;
+  box-shadow: var(--p3d-depth-pill), inset 0 1px 0 #ffffff !important;
+  cursor: pointer !important;
+  outline: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 10px center !important;
+  transition: var(--p3d-transition) !important;
+}
+
+.place-quick-availability-select:hover {
+  border-color: #10b981 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   6. Responsive Layout Breakpoints
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .place-card-row-tools-trio {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .place-tool-card {
+    padding: 8px 10px !important;
+  }
+  .place-tool-card__icon-box {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .place-tool-card__title {
+    font-size: 13px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .place-header-card {
+    padding: 16px 14px !important;
+    border-radius: 20px !important;
+    margin-top: -38px !important;
+  }
+
+  .place-card-row-contact {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .place-btn-contact {
+    min-height: 58px !important;
+    padding: 8px 12px !important;
+  }
+
+  .place-btn-contact__icon {
+    width: 42px !important;
+    height: 42px !important;
+  }
+
+  .place-card-row-tools-trio {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .place-tool-card {
+    min-height: 64px !important;
+    padding: 8px 12px !important;
+  }
+
+  .place-header-calligraphy-slot {
+    order: -1;
+    width: 100%;
+    margin-bottom: 6px;
+  }
+
+  .place-card-row-bottom {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .place-card-row-bottom__right,
+  .place-card-row-bottom__left {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .place-card-meta-tags {
+    gap: 5px !important;
+  }
+  .place-category-tag,
+  .place-rating-badge-inline,
+  .place-trust-mini {
+    font-size: 11.5px !important;
+    padding: 4px 10px !important;
+  }
+}
