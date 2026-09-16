@@ -103,6 +103,33 @@ function renderLastReadBanner(currentSurah=null){
   </div>`;
 }
 
+const QURAN_RECITERS = {
+  alafasy: { name: 'مشاري راشد العفاسي (مرتل نقي)', cdn: 'https://everyayah.com/data/Alafasy_128kbps' },
+  abdulbasit: { name: 'عبد الباسط عبد الصمد (مرتل)', cdn: 'https://everyayah.com/data/Abdul_Basit_Murattal_192kbps' },
+  ghamadi: { name: 'سعد الغامدي (سريع ومحلي)', cdn: 'https://everyayah.com/data/Ghamadi_40kbps' },
+  husary: { name: 'محمود خليل الحصري (معلم)', cdn: 'https://everyayah.com/data/Husary_128kbps' },
+  muaiqly: { name: 'ماهر المعيقلي (الحرم المكي)', cdn: 'https://everyayah.com/data/Maher_AlMuaiqly_64kbps' },
+  minshawy: { name: 'محمد صديق المنشاوي (خاشع)', cdn: 'https://everyayah.com/data/Minshawy_Murattal_128kbps' }
+};
+
+function getAyahAudioCandidates(surahNum, ayahNum, reciter = 'alafasy') {
+  const s = String(surahNum).padStart(3, '0');
+  const a = String(ayahNum).padStart(3, '0');
+  let localUrl;
+  try {
+    localUrl = new URL(`quran/source/audio/${s}/${a}.mp3`, document.baseURI || window.location.href).href;
+  } catch (_) {
+    localUrl = `./quran/source/audio/${s}/${a}.mp3`;
+  }
+  const info = QURAN_RECITERS[reciter] || QURAN_RECITERS.alafasy;
+  const cdnUrl = `${info.cdn}/${s}${a}.mp3`;
+  const universalFallback = `https://everyayah.com/data/Alafasy_128kbps/${s}${a}.mp3`;
+  if (reciter === 'ghamadi') {
+    return [localUrl, cdnUrl, universalFallback];
+  }
+  return [cdnUrl, localUrl, universalFallback];
+}
+
 function norm(v){
   return String(v??'').normalize('NFKD')
     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g,'')
@@ -163,8 +190,14 @@ async function loadQuranMeta(){
 }
 async function loadSurah(n){
  const raw=await getJson(QURAN_SURAH_URL(n));
- const verses=Object.entries(raw?.verse||{}).map(([k,text],i)=>({n:Number(k.replace(/\D/g,''))||i+1,text:String(text||'').replace(/^\uFEFF/, '')})).filter(x=>x.text);
- return {number:Number(raw.index)||n,name:raw.name||'',ayahs:verses};
+ const rawVerses=raw?.verse||{};
+ const hasVerse0=n!==1&&n!==9&&Boolean(rawVerses.verse_0);
+ const basmalah=hasVerse0?String(rawVerses.verse_0).replace(/^\uFEFF/,'').trim():'';
+ const verses=Object.entries(rawVerses)
+   .filter(([k])=>k!=='verse_0')
+   .map(([k,text])=>({n:Number(k.replace(/\D/g,'')),text:String(text||'').replace(/^\uFEFF/,'').trim()}))
+   .filter(x=>x.text&&x.n>0);
+ return {number:Number(raw.index)||n,name:raw.name||'',basmalah,ayahs:verses};
 }
 async function loadAllQuran(){
  if(cache.has('__all_quran__')) return cache.get('__all_quran__');
@@ -196,11 +229,9 @@ async function renderQuranSearch(container){
    if(index)return index;
    count.textContent='جاري تجهيز الفهرس…';
    const surahs=await loadAllQuran();
-   const rows=await Promise.all(surahs.map(async s=>{
-     const ai=await loadAudioIndex(s.number);
-     const av=ai?.verse||{};
-     return s.ayahs.map(a=>({sn:s.number,snName:s.name,n:a.n,text:a.text,key:norm(a.text),file:av['verse_'+a.n]?.file||av['verse_'+(a.n-1)]?.file||''}));
-   }));
+   const rows=surahs.map(s=>{
+     return s.ayahs.map(a=>({sn:s.number,snName:s.name,n:a.n,text:a.text,key:norm(a.text)}));
+   });
    index=rows.flat();
    return index;
  };
@@ -211,23 +242,34 @@ async function renderQuranSearch(container){
    return parts.map(p=>norm(p).includes(nq)?'<mark>'+p+'</mark>':p).join('');
  };
  const stopAudio=()=>{
-   if(activeAudio){activeAudio.pause();activeAudio.currentTime=0;activeAudio=null;}
+   if(activeAudio){activeAudio.pause();activeAudio.removeAttribute('src');activeAudio=null;}
    out.querySelectorAll('.ih-result').forEach(x=>x.classList.remove('is-playing'));
    out.querySelectorAll('.ih-result-play').forEach(x=>x.textContent='▶');
  };
  const playResult=(v,card,button)=>{
-   if(!v.file)return;
-   if(activeAudio&&activeAudio.src===new URL('./quran/source/audio/'+String(v.sn).padStart(3,'0')+'/'+encodeURIComponent(v.file),location.href).href&&!activeAudio.paused){stopAudio();return;}
+   const key=`${v.sn}:${v.n}`;
+   if(activeAudio&&activeAudio._key===key&&!activeAudio.paused){stopAudio();return;}
    stopAudio();
-   const audio=document.createElement('audio');
-   audio.preload='metadata';
-   audio.src='./quran/source/audio/'+String(v.sn).padStart(3,'0')+'/'+encodeURIComponent(v.file);
-   audio.addEventListener('ended',()=>{card.classList.remove('is-playing');button.textContent='▶';activeAudio=null;});
-   audio.addEventListener('error',()=>{card.classList.remove('is-playing');button.textContent='▶';activeAudio=null;});
+   const candidates=getAyahAudioCandidates(v.sn,v.n,'alafasy');
+   let cIdx=0;
+   const audio=new Audio();
+   activeAudio=audio;
+   audio._key=key;
    card.classList.add('is-playing');
    button.textContent='❚❚';
-   activeAudio=audio;
-   audio.play().catch(()=>{card.classList.remove('is-playing');button.textContent='▶';activeAudio=null;});
+
+   const tryPlay=()=>{
+     if(cIdx>=candidates.length){
+       stopAudio();
+       showToast('تعذر تشغيل الصوت لهذه الآية.');
+       return;
+     }
+     audio.src=candidates[cIdx++];
+     audio.onended=stopAudio;
+     audio.onerror=tryPlay;
+     audio.play().catch(err=>{if(err.name!=='AbortError')tryPlay();});
+   };
+   tryPlay();
  };
  const draw=async()=>{
    const q=norm(input.value);
@@ -302,10 +344,11 @@ async function renderQuranSurah(container){
   '<div id="ih-last-read-slot">'+renderLastReadBanner(n)+'</div>'+
   '<div class="qr-head"><h2 class="qr-title">سورة '+esc(info.name||s.name)+'</h2><p class="qr-sub">'+s.ayahs.length+' آية · '+esc(info.type||'القرآن الكريم')+'</p>'+ 
   '<div class="qr-surah-picker" aria-label="التنقل بين السور"><button id="qr-prev-surah" class="qr-surah-arrow" type="button" aria-label="السورة السابقة" title="السورة السابقة" '+(n<=1?'disabled':'')+'>‹</button><div class="qr-surah-select-wrap"><label for="qr-surah-select">اختر السورة</label><select id="qr-surah-select" class="qr-select" aria-label="اختيار السورة">'+meta.map(m=>'<option value="'+m.number+'"'+(m.number===n?' selected':'')+'>'+m.number+' — سورة '+esc(m.name)+'</option>').join('')+'</select></div><button id="qr-next-surah" class="qr-surah-arrow" type="button" aria-label="السورة التالية" title="السورة التالية" '+(n>=114?'disabled':'')+'>›</button></div><div class="qr-actions"><select id="qr-font" class="qr-select"><option value="1">حجم الخط: متوسط</option><option value="1.15">حجم الخط: كبير</option><option value=".9">حجم الخط: صغير</option></select>'+ 
-  '<select id="qr-reciter" class="qr-select" aria-label="اختيار القارئ"><option value="local">التلاوة المحلية المتاحة</option></select><select id="qr-lang" class="qr-select" aria-label="عرض الترجمة"><option value="ar">العربية</option><option value="en">English · الترجمة الإنجليزية</option><option value="both">العربية + English</option></select><button id="qr-play-all" class="qr-btn" type="button">▶ تشغيل السورة</button><button id="qr-tw" class="qr-btn" type="button">تفعيل التجويد</button><a class="qr-btn" href="quran.html">السور</a><a class="qr-btn" href="qibla.html">🧭 القبلة</a><a class="qr-btn" href="quran-search.html">الباحث</a></div>'+ 
+  '<select id="qr-reciter" class="qr-select" aria-label="اختيار القارئ">'+Object.entries(QURAN_RECITERS).map(([k,r])=>'<option value="'+k+'">'+esc(r.name)+'</option>').join('')+'</select><select id="qr-lang" class="qr-select" aria-label="عرض الترجمة"><option value="ar">العربية</option><option value="en">English · الترجمة الإنجليزية</option><option value="both">العربية + English</option></select><button id="qr-play-all" class="qr-btn" type="button">▶ تشغيل السورة</button><button id="qr-tw" class="qr-btn" type="button">تفعيل التجويد</button><a class="qr-btn" href="quran.html">السور</a><a class="qr-btn" href="qibla.html">🧭 القبلة</a><a class="qr-btn" href="quran-search.html">الباحث</a></div>'+ 
   '<div class="qr-legend" id="qr-legend" hidden><span>الأزرق: همزة وصل</span><span>الذهبي: لام شمسية</span><span>البنفسجي: مد</span></div></div>'+ 
+  (s.basmalah ? '<div class="qr-basmalah-wrap" aria-label="بسم الله الرحمن الرحيم"><div class="qr-basmalah-text">'+esc(s.basmalah)+'</div></div>' : '')+
   '<div id="qr-list">'+s.ayahs.map(a=>{
-    const f=av['verse_'+a.n]?.file||av['verse_'+(a.n-1)]?.file,et=ev['verse_'+a.n]||ev['verse_'+(a.n-1)]||'';
+    const et=ev['verse_'+a.n]||ev['verse_'+(a.n-1)]||'';
     const faved=isFavAyah(a.n);
     return '<article class="qr-ayah" id="ayah-'+a.n+'" data-ayah="'+a.n+'">'+
       '<div class="qr-ayah-header">'+
@@ -322,7 +365,6 @@ async function renderQuranSurah(container){
       '</div>'+
       '<div class="qr-main"><div class="qr-text" data-base="'+esc(a.text)+'">'+esc(a.text)+'</div></div>'+
       (et?'<div class="qr-translation" data-en="'+esc(et)+'">'+esc(et)+'</div>':'')+
-      (f?'<audio class="qr-audio" preload="metadata" src="./quran/source/audio/'+String(n).padStart(3,'0')+'/'+encodeURIComponent(f)+'"></audio>':'<audio class="qr-audio" preload="none"></audio>')+
     '</article>'
   }).join('')+'</div>'+ 
   '<div class="qr-nav">'+(n>1?'<a class="qr-btn" href="quran-surah.html?surah='+(n-1)+'">السورة السابقة</a>':'<span></span>')+(n<114?'<a class="qr-btn" href="quran-surah.html?surah='+(n+1)+'">السورة التالية</a>':'<span></span>')+'</div></div>';
@@ -420,17 +462,172 @@ async function renderQuranSurah(container){
   };
   checkHash();
 
-  const surahSelect=box.querySelector('#qr-surah-select'); const goSurah=target=>{target=Math.min(114,Math.max(1,Number(target)||1));if(target!==n)location.href='quran-surah.html?surah='+target}; surahSelect.onchange=e=>goSurah(e.target.value); box.querySelector('#qr-prev-surah').onclick=()=>goSurah(n-1); box.querySelector('#qr-next-surah').onclick=()=>goSurah(n+1);
-  let twOn=false,activeIndex=-1,playingAll=false;
-  const cards=[...box.querySelectorAll('.qr-ayah')],texts=[...box.querySelectorAll('.qr-text')],audios=[...box.querySelectorAll('.qr-audio')],plays=[...box.querySelectorAll('.qr-play')];
-  const clearActive=()=>{cards.forEach(c=>c.classList.remove('is-playing'));texts.forEach(t=>t.classList.remove('is-reading'));plays.forEach(b=>b.textContent='▶')};
+  let twOn=false, activeIndex=-1, playingAll=false, audioPlayer=null;
+  const cards=[...box.querySelectorAll('.qr-ayah')];
+  const texts=[...box.querySelectorAll('.qr-text')];
+  const plays=[...box.querySelectorAll('.qr-play')];
+  const playAllBtn=box.querySelector('#qr-play-all');
+  const reciterSelect=box.querySelector('#qr-reciter');
+
+  const savedReciter=localStorage.getItem('manzala_quran_reciter')||'alafasy';
+  if(reciterSelect && QURAN_RECITERS[savedReciter]){
+    reciterSelect.value=savedReciter;
+  }
+
+  const clearActive=()=>{
+    cards.forEach(c=>c.classList.remove('is-playing'));
+    texts.forEach(t=>t.classList.remove('is-reading'));
+    plays.forEach(b=>{b.textContent='▶';b.classList.remove('is-active');});
+  };
+
+  const stopAudio=()=>{
+    if(audioPlayer){
+      try{audioPlayer.pause();}catch(_){}
+      audioPlayer.removeAttribute('src');
+      try{audioPlayer.load();}catch(_){}
+      audioPlayer=null;
+    }
+    clearActive();
+    activeIndex=-1;
+  };
+
   const scrollTo=i=>cards[i]?.scrollIntoView({behavior:'smooth',block:'center'});
-  const start=async i=>{if(i<0||i>=audios.length)return;audios.forEach((a,j)=>{if(j!==i){a.pause();a.currentTime=0}});clearActive();activeIndex=i;cards[i].classList.add('is-playing');texts[i].classList.add('is-reading');plays[i].textContent='❚❚';scrollTo(i);if(!audios[i].src){clearActive();activeIndex=-1;return}try{audios[i].currentTime=0;await audios[i].play()}catch(_){clearActive();activeIndex=-1;playingAll=false}};
-  const next=async()=>{const ni=activeIndex+1;if(playingAll&&ni<audios.length){await start(ni);return}playingAll=false;box.querySelector('#qr-play-all').textContent='▶ تشغيل السورة';clearActive();activeIndex=-1};
-  audios.forEach((a,i)=>{a.addEventListener('ended',()=>{if(activeIndex===i)next()});a.addEventListener('play',()=>{clearActive();activeIndex=i;cards[i].classList.add('is-playing');texts[i].classList.add('is-reading');plays[i].textContent='❚❚'})});
-  plays.forEach((b,i)=>b.addEventListener('click',async()=>{if(activeIndex===i&&!audios[i].paused){playingAll=false;audios[i].pause();clearActive();activeIndex=-1;return}playingAll=false;await start(i)}));
-  box.querySelector('#qr-play-all').onclick=async()=>{if(playingAll){playingAll=false;audios[activeIndex]?.pause();box.querySelector('#qr-play-all').textContent='▶ تشغيل السورة';clearActive();activeIndex=-1;return}const first=audios.findIndex(a=>!!a.src);if(first<0)return;playingAll=true;box.querySelector('#qr-play-all').textContent='❚❚ إيقاف السورة';await start(first)};
-  box.querySelector('#qr-reciter').onchange=()=>{audios.forEach(a=>{a.pause();a.currentTime=0});playingAll=false;clearActive();activeIndex=-1};
+
+  const playAyah=async(index,candidateIdx=0)=>{
+    if(index<0||index>=s.ayahs.length){
+      stopAudio();
+      playingAll=false;
+      if(playAllBtn)playAllBtn.textContent='▶ تشغيل السورة';
+      return;
+    }
+    const a=s.ayahs[index];
+    const reciter=reciterSelect?.value||'alafasy';
+    const candidates=getAyahAudioCandidates(n,a.n,reciter);
+
+    if(candidateIdx>=candidates.length){
+      console.warn('[IslamicHub] All audio candidates failed for Surah',n,'Ayah',a.n);
+      showToast('تعذر تشغيل صوت الآية '+a.n);
+      if(playingAll && index+1<s.ayahs.length){
+        setTimeout(()=>playAyah(index+1,0),400);
+        return;
+      }
+      stopAudio();
+      playingAll=false;
+      if(playAllBtn)playAllBtn.textContent='▶ تشغيل السورة';
+      return;
+    }
+
+    const src=candidates[candidateIdx];
+    if(!audioPlayer){
+      audioPlayer=new Audio();
+    }else{
+      try{audioPlayer.pause();}catch(_){}
+    }
+
+    clearActive();
+    activeIndex=index;
+    cards[index]?.classList.add('is-playing');
+    texts[index]?.classList.add('is-reading');
+    if(plays[index]){
+      plays[index].textContent='❚❚';
+      plays[index].classList.add('is-active');
+    }
+    scrollTo(index);
+
+    audioPlayer.onended=()=>{
+      if(playingAll){
+        playAyah(index+1,0);
+      }else{
+        stopAudio();
+      }
+    };
+
+    audioPlayer.onerror=()=>{
+      console.warn('[IslamicHub] Audio candidate '+candidateIdx+' failed ('+src+'), trying next candidate...');
+      playAyah(index,candidateIdx+1);
+    };
+
+    try{
+      audioPlayer.src=src;
+      await audioPlayer.play();
+    }catch(err){
+      if(err.name==='AbortError')return;
+      console.warn('[IslamicHub] Audio play error, trying candidate '+(candidateIdx+1),err);
+      playAyah(index,candidateIdx+1);
+    }
+  };
+
+  plays.forEach((btn,i)=>{
+    btn.addEventListener('click',async e=>{
+      e.stopPropagation();
+      if(activeIndex===i && audioPlayer && !audioPlayer.paused){
+        audioPlayer.pause();
+        playingAll=false;
+        if(playAllBtn)playAllBtn.textContent='▶ تشغيل السورة';
+        btn.textContent='▶';
+        btn.classList.remove('is-active');
+        cards[i]?.classList.remove('is-playing');
+        texts[i]?.classList.remove('is-reading');
+        return;
+      }
+      if(activeIndex===i && audioPlayer && audioPlayer.paused){
+        try{
+          await audioPlayer.play();
+          cards[i]?.classList.add('is-playing');
+          texts[i]?.classList.add('is-reading');
+          btn.textContent='❚❚';
+          btn.classList.add('is-active');
+          return;
+        }catch(_){}
+      }
+      playingAll=false;
+      if(playAllBtn)playAllBtn.textContent='▶ تشغيل السورة';
+      playAyah(i,0);
+    });
+  });
+
+  if(playAllBtn){
+    playAllBtn.onclick=()=>{
+      if(playingAll && audioPlayer && !audioPlayer.paused){
+        stopAudio();
+        playingAll=false;
+        playAllBtn.textContent='▶ تشغيل السورة';
+        return;
+      }
+      playingAll=true;
+      playAllBtn.textContent='❚❚ إيقاف السورة';
+      const startIdx=activeIndex>=0?activeIndex:0;
+      playAyah(startIdx,0);
+    };
+  }
+
+  if(reciterSelect){
+    reciterSelect.onchange=()=>{
+      localStorage.setItem('manzala_quran_reciter',reciterSelect.value);
+      if(activeIndex>=0){
+        const wasPlaying=audioPlayer && !audioPlayer.paused;
+        if(wasPlaying||playingAll){
+          playAyah(activeIndex,0);
+        }else{
+          stopAudio();
+        }
+      }
+    };
+  }
+
+  const surahSelect=box.querySelector('#qr-surah-select');
+  const goSurah=target=>{
+    target=Math.min(114,Math.max(1,Number(target)||1));
+    if(target!==n){
+      stopAudio();
+      location.href='quran-surah.html?surah='+target;
+    }
+  };
+  if(surahSelect)surahSelect.onchange=e=>goSurah(e.target.value);
+  const prevSurahBtn=box.querySelector('#qr-prev-surah');
+  if(prevSurahBtn)prevSurahBtn.onclick=()=>goSurah(n-1);
+  const nextSurahBtn=box.querySelector('#qr-next-surah');
+  if(nextSurahBtn)nextSurahBtn.onclick=()=>goSurah(n+1);
   const applyLanguage=()=>{const mode=box.querySelector('#qr-lang').value;cards.forEach(card=>{const ar=card.querySelector('.qr-text'),en=card.querySelector('.qr-translation');if(!en)return;ar.style.display=mode==='en'?'none':'block';en.style.display=mode==='ar'?'none':'block'})};box.querySelector('#qr-lang').onchange=applyLanguage;applyLanguage();
   const renderTw=()=>{texts.forEach((el,i)=>{const a=s.ayahs[i];el.innerHTML=twOn?'<span class="qr-tajweed">'+tajweedHtml(a.text,rules['verse_'+a.n])+'</span>':esc(a.text)});box.querySelector('#qr-legend').hidden=!twOn};
   box.querySelector('#qr-tw').onclick=()=>{twOn=!twOn;box.querySelector('#qr-tw').textContent=twOn?'إيقاف التجويد':'تفعيل التجويد';renderTw()};

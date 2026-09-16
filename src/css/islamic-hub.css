@@ -343,6 +343,38 @@
 .qr-btn:hover{ border-color:var(--secondary); transform:translateY(-1px); box-shadow:var(--shadow-sm); }
 .qr-select:focus{ outline:none; border-color:var(--border-focus); box-shadow:0 0 0 3px var(--primary-alpha); }
 
+.qr-basmalah-wrap{
+  margin:24px auto 16px;
+  text-align:center;
+  padding:16px 24px;
+  border-radius:var(--radius-xl);
+  background:linear-gradient(135deg, rgba(243,156,18,0.08), rgba(16,185,129,0.05));
+  border:1px solid rgba(243,156,18,0.24);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-sm);
+  position:relative;
+  overflow:hidden;
+  animation:ihFadeUp .4s cubic-bezier(.22,1,.36,1) both;
+}
+.qr-basmalah-wrap::before{
+  content:"";
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse at center, rgba(243,156,18,0.12), transparent 70%);
+  pointer-events:none;
+}
+.qr-basmalah-text{
+  font-family:"Amiri", serif;
+  font-size:1.9rem;
+  font-weight:700;
+  line-height:2.2;
+  color:var(--secondary-dark);
+  text-shadow:0 1px 2px rgba(0,0,0,0.15);
+  direction:rtl;
+}
+@media(max-width:640px){
+  .qr-basmalah-text{ font-size:1.45rem; line-height:2; }
+  .qr-basmalah-wrap{ padding:12px 16px; margin:18px auto 12px; }
+}
+
 .qr-ayah{
   position:relative;
   min-height:138px;
