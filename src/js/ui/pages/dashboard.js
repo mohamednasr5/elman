@@ -1,4 +1,4 @@
-﻿import { initPlaceFormWizard } from '../components/AddPlaceOnboardingModal.js';
+import { initPlaceFormWizard } from '../components/AddPlaceOnboardingModal.js';
 import { 
   fetchManagedUserNotifications, 
   getCachedManagedUserNotifications,
@@ -2226,7 +2226,6 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     let filtered = combined;
     if (q) {
       filtered = combined.filter(item => item.tag.toLowerCase().includes(q));
-    }
     }
 
     // Limit to top 24 suggestions
