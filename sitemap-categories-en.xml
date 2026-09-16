@@ -57,6 +57,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/banner-and-advertising-printing"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/barcode-cash-register-systems-accounting-software-and-surveillance-cameras</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/barcode-cash-register-systems-accounting-software-and-surveillance-cameras"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/barcode-cash-register-systems-accounting-software-and-surveillance-cameras"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/barcode-cash-register-systems-accounting-software-and-surveillance-cameras"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/bookstore</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -591,6 +599,14 @@
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/roastery"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/roastery"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/roastery"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/category/sale-of-computers-and-laptops</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/sale-of-computers-and-laptops"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/sale-of-computers-and-laptops"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/sale-of-computers-and-laptops"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/category/sharia-notary</loc>
