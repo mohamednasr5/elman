@@ -1308,3 +1308,291 @@
   }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Google Qibla Finder AR Camera & High-Accuracy Experience
+   ═══════════════════════════════════════════════════════════ */
+
+.qibla-mode-switcher{
+  display:flex;
+  background:var(--surface-3);
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:4px;
+  gap:4px;
+  margin:0 auto;
+  max-width:360px;
+  width:100%;
+}
+.qibla-mode-btn{
+  flex:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:10px 16px;
+  border-radius:999px;
+  border:none;
+  background:transparent;
+  color:var(--text-secondary);
+  font-size:.9rem;
+  font-weight:700;
+  cursor:pointer;
+  transition:all .2s ease;
+}
+.qibla-mode-btn.is-active{
+  background:var(--secondary);
+  color:#fff;
+  box-shadow:var(--shadow-sm);
+}
+
+/* AR Viewport Container */
+.qibla-ar-container{
+  position:relative;
+  width:100%;
+  height:min(70vh, 560px);
+  min-height:380px;
+  background:#090d16;
+  border-radius:24px;
+  overflow:hidden;
+  box-shadow:0 18px 45px rgba(0,0,0,0.25);
+  border:1px solid rgba(255,255,255,0.1);
+  display:none;
+}
+.qibla-ar-container.is-active{
+  display:block;
+}
+
+.qibla-camera-video{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.qibla-ar-overlay{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:16px;
+}
+
+.qibla-ar-top-hud{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  background:rgba(15,23,42,0.72);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-radius:16px;
+  padding:10px 14px;
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.12);
+  pointer-events:auto;
+}
+
+.qibla-ar-hud-item{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:.84rem;
+  font-weight:600;
+}
+.qibla-ar-hud-item strong{
+  color:var(--ih-gold, #F59E0B);
+  font-size:.95rem;
+}
+
+/* AR Center Target Crosshair */
+.qibla-ar-crosshair{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  width:90px;
+  height:90px;
+  border:2px dashed rgba(255,255,255,0.4);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all .25s ease;
+  pointer-events:none;
+}
+.qibla-ar-crosshair::before,
+.qibla-ar-crosshair::after{
+  content:'';
+  position:absolute;
+  background:rgba(255,255,255,0.5);
+}
+.qibla-ar-crosshair::before{
+  width:1px;
+  height:24px;
+}
+.qibla-ar-crosshair::after{
+  width:24px;
+  height:1px;
+}
+.qibla-ar-crosshair.is-aligned{
+  border:3px solid #10B981;
+  box-shadow:0 0 28px rgba(16,185,129,0.8), inset 0 0 20px rgba(16,185,129,0.4);
+  animation:crosshairPulse 1.5s infinite ease-in-out;
+}
+@keyframes crosshairPulse{
+  0%, 100%{ transform:translate(-50%, -50%) scale(1); }
+  50%{ transform:translate(-50%, -50%) scale(1.08); }
+}
+
+/* Floating 3D Kaaba in AR Viewport */
+.qibla-ar-kaaba-wrap{
+  position:absolute;
+  top:45%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  transition:transform 0.08s linear;
+  pointer-events:none;
+}
+
+.qibla-ar-kaaba-card{
+  background:linear-gradient(135deg, rgba(20,24,33,0.92), rgba(11,15,25,0.98));
+  border:2px solid var(--ih-gold, #F59E0B);
+  box-shadow:0 10px 30px rgba(0,0,0,0.6), 0 0 25px rgba(245,158,11,0.35);
+  border-radius:20px;
+  padding:12px 18px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  color:#fff;
+}
+.qibla-ar-kaaba-icon{
+  font-size:42px;
+  line-height:1;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+}
+.qibla-ar-kaaba-card.is-aligned{
+  border-color:#10B981;
+  box-shadow:0 12px 35px rgba(0,0,0,0.6), 0 0 35px rgba(16,185,129,0.8);
+  animation:kaabaPop 0.4s ease-out;
+}
+@keyframes kaabaPop{
+  0%{ transform:scale(0.85); }
+  50%{ transform:scale(1.12); }
+  100%{ transform:scale(1); }
+}
+
+.qibla-ar-kaaba-label{
+  font-size:.85rem;
+  font-weight:800;
+  letter-spacing:-.2px;
+}
+.qibla-ar-kaaba-sub{
+  font-size:.72rem;
+  color:#FBBF24;
+}
+
+/* Offscreen direction pointers */
+.qibla-ar-hint{
+  position:absolute;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(15,23,42,0.88);
+  backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:999px;
+  padding:10px 22px;
+  color:#fff;
+  font-size:.88rem;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.35);
+  white-space:nowrap;
+}
+.qibla-ar-hint.is-aligned{
+  background:rgba(16,185,129,0.92);
+  border-color:#10B981;
+  box-shadow:0 8px 28px rgba(16,185,129,0.5);
+}
+
+/* Camera fallback message */
+.qibla-camera-msg{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:24px;
+  color:#fff;
+  background:#0f172a;
+  gap:14px;
+}
+.qibla-camera-msg-btn{
+  background:var(--secondary);
+  color:#fff;
+  border:none;
+  padding:10px 22px;
+  border-radius:999px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+/* Calibration Helper Modal */
+.qibla-calib-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.82);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  z-index:10070;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s ease;
+}
+.qibla-calib-modal.is-open{
+  opacity:1;
+  pointer-events:auto;
+}
+.qibla-calib-content{
+  background:var(--surface,#fff);
+  border-radius:24px;
+  max-width:380px;
+  width:100%;
+  padding:24px;
+  text-align:center;
+  box-shadow:var(--shadow-xl);
+  border:1px solid var(--border);
+}
+.qibla-calib-svg{
+  width:140px;
+  height:90px;
+  margin:10px auto 16px;
+}
+.qibla-calib-phone{
+  animation:figure8 3.5s infinite ease-in-out;
+  transform-origin:center;
+}
+@keyframes figure8{
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(35px, -15px) rotate(20deg); }
+  50% { transform: translate(0, 0) rotate(0deg); }
+  75% { transform: translate(-35px, 15px) rotate(-20deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+

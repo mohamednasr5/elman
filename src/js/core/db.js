@@ -1975,7 +1975,29 @@ export async function trackPlaceStat(placeId, stat, extra = {}) {
   if (!placeId) return;
   if (stat && !allowed.includes(stat) && !extra.keyword) return;
 
-  // Primary: Turso via Worker
+  // Session identification for deduplication
+  let sessionId = '';
+  try {
+    sessionId = sessionStorage.getItem('manzala_anon_session_id') || '';
+    if (!sessionId) {
+      sessionId = 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+      sessionStorage.setItem('manzala_anon_session_id', sessionId);
+    }
+  } catch (_) {}
+
+  // Deduplicate page visits within 30 minutes in browser
+  if (stat === 'views') {
+    try {
+      const now = Date.now();
+      const lastView = Number(sessionStorage.getItem(`view_ts_${placeId}`) || 0);
+      if (lastView && (now - lastView < 30 * 60 * 1000)) {
+        return; // Skip duplicate count on rapid refresh
+      }
+      sessionStorage.setItem(`view_ts_${placeId}`, String(now));
+    } catch (_) {}
+  }
+
+  // 1. Primary: Turso via Worker track-stat
   try {
     fetch(`${WORKER_URL}/api/places/track-stat`, {
       method: 'POST',
@@ -1984,6 +2006,19 @@ export async function trackPlaceStat(placeId, stat, extra = {}) {
       signal: AbortSignal.timeout(3000)
     }).catch(() => {});
   } catch (_) {}
+
+  // 2. Real High-Resolution Event Logging in Turso place_events
+  if (stat === 'views' || stat === 'phoneClicks' || stat === 'whatsappClicks') {
+    try {
+      const eventType = stat === 'views' ? 'page_view' : (stat === 'phoneClicks' ? 'phone_click' : 'whatsapp_click');
+      fetch(`${WORKER_URL}/api/places/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placeId, eventType, sessionId }),
+        signal: AbortSignal.timeout(3000)
+      }).catch(() => {});
+    } catch (_) {}
+  }
 }
 
 /** Update place availability status ('available' | 'busy' | 'unavailable') */

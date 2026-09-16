@@ -410,5 +410,10 @@ export async function initPage(activeFile=''){
       _bindHeaderUserEvents(user);
     });
   }catch(_){}
+  try{
+    import('../ui/components/ActivityNotification.js').then(m => {
+      m.initActivityNotifications();
+    }).catch(()=>{});
+  }catch(_){}
 }
 export { waitForAuth, isAdmin };

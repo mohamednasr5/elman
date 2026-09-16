@@ -516,17 +516,20 @@ function openAddJobModal() {
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="jb-form-group">
-              <label class="jb-label">المدينة / المنطقة <span style="color:#ef4444">*</span></label>
-              <select name="location" class="jb-select" style="width:100%" required>
-                <option value="المنزلة">المنزلة</option>
-                <option value="المطرية">المطرية</option>
-                <option value="العزيزة">العزيزة</option>
-                <option value="البصراط">البصراط</option>
-                <option value="الفروسات">الفروسات</option>
-                <option value="ميت مرجا">ميت مرجا</option>
-                <option value="الجمالية">الجمالية وضواحيها</option>
-                <option value="أخرى">قرى وضواحي أخرى</option>
-              </select>
+              <label class="jb-label">المدينة / القرية / مكان العمل <span style="color:#ef4444">*</span></label>
+              <input type="text" name="location" list="job-location-suggestions" class="jb-input" placeholder="اكتب المدينة أو القرية أو العنوان..." required autocomplete="off" />
+              <datalist id="job-location-suggestions">
+                <option value="المنزلة"></option>
+                <option value="المطرية"></option>
+                <option value="العزيزة"></option>
+                <option value="البصراط"></option>
+                <option value="الفروسات"></option>
+                <option value="ميت مرجا"></option>
+                <option value="الجمالية"></option>
+                <option value="الروضة"></option>
+                <option value="بني عبيد"></option>
+                <option value="دكرنس"></option>
+              </datalist>
             </div>
             <div class="jb-form-group">
               <label class="jb-label">مواعيد وساعات العمل <span style="color:#ef4444">*</span></label>
@@ -666,12 +669,20 @@ function openEditJobModal(item) {
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="jb-form-group">
-              <label class="jb-label">المدينة / المنطقة <span style="color:#ef4444">*</span></label>
-              <select name="location" class="jb-select" style="width:100%" required>
-                ${['المنزلة', 'المطرية', 'العزيزة', 'البصراط', 'الفروسات', 'ميت مرجا', 'الجمالية', 'أخرى'].map(loc => `
-                  <option value="${loc}" ${item.location === loc ? 'selected' : ''}>${loc}</option>
-                `).join('')}
-              </select>
+              <label class="jb-label">المدينة / القرية / مكان العمل <span style="color:#ef4444">*</span></label>
+              <input type="text" name="location" list="job-edit-location-suggestions" class="jb-input" value="${escapeHtml(item.location || '')}" placeholder="اكتب المدينة أو القرية أو العنوان..." required autocomplete="off" />
+              <datalist id="job-edit-location-suggestions">
+                <option value="المنزلة"></option>
+                <option value="المطرية"></option>
+                <option value="العزيزة"></option>
+                <option value="البصراط"></option>
+                <option value="الفروسات"></option>
+                <option value="ميت مرجا"></option>
+                <option value="الجمالية"></option>
+                <option value="الروضة"></option>
+                <option value="بني عبيد"></option>
+                <option value="دكرنس"></option>
+              </datalist>
             </div>
             <div class="jb-form-group">
               <label class="jb-label">مواعيد العمل <span style="color:#ef4444">*</span></label>

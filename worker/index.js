@@ -4026,6 +4026,78 @@ try {
     return jsonResponse({ success: true, id, message: 'تم إرسال طلب الحجز بنجاح' }, 201, corsHeaders);
   }
 
+  // ── Turso Schemas: Job Board & Place Events ──
+  let _hasEnsuredJobBoardSchema = false;
+  async function ensureJobBoardSchema(db) {
+    if (_hasEnsuredJobBoardSchema || !db) return;
+    try {
+      await db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        age INTEGER NOT NULL,
+        gender TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        whatsapp TEXT,
+        location TEXT NOT NULL,
+        profession TEXT NOT NULL,
+        experience TEXT,
+        description TEXT NOT NULL,
+        expected_salary REAL,
+        status TEXT DEFAULT 'active',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`).run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_status_created ON job_seekers(status, created_at DESC)").run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_user ON job_seekers(user_id)").run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_profession ON job_seekers(profession)").run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_location ON job_seekers(location)").run().catch(() => {});
+
+      await db.prepare(`CREATE TABLE IF NOT EXISTS jobs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        workplace_name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        whatsapp TEXT,
+        location TEXT NOT NULL,
+        profession TEXT NOT NULL,
+        working_hours REAL NOT NULL,
+        salary_type TEXT DEFAULT 'specified',
+        salary REAL,
+        description TEXT NOT NULL,
+        status TEXT DEFAULT 'active',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )`).run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)").run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)").run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)").run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location)").run().catch(() => {});
+      _hasEnsuredJobBoardSchema = true;
+    } catch (err) {
+      console.warn('[ensureJobBoardSchema error]:', err?.message || err);
+    }
+  }
+
+  let _hasEnsuredPlaceEventsSchema = false;
+  async function ensurePlaceEventsSchema(db) {
+    if (_hasEnsuredPlaceEventsSchema || !db) return;
+    try {
+      await db.prepare(`CREATE TABLE IF NOT EXISTS place_events (
+        id TEXT PRIMARY KEY,
+        place_id TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        session_id TEXT,
+        created_at INTEGER NOT NULL
+      )`).run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_place_events_place_type_time ON place_events(place_id, event_type, created_at)").run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_place_events_time_type ON place_events(created_at, event_type)").run().catch(() => {});
+      _hasEnsuredPlaceEventsSchema = true;
+    } catch (err) {
+      console.warn('[ensurePlaceEventsSchema error]:', err?.message || err);
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════
   // ── JOB SEEKERS («باحث عن عمل في المنزلة والمطرية») ──
   // ═══════════════════════════════════════════════════════════
@@ -4101,12 +4173,13 @@ try {
       const orderClause = sort === 'oldest' ? 'ORDER BY created_at ASC' : 'ORDER BY created_at DESC';
 
       const db = createTursoDB(env);
+      await ensureJobBoardSchema(db);
       const countSql = `SELECT COUNT(*) as total FROM job_seekers ${whereClause}`;
       const totalRow = await db.prepare(countSql).bind(...args).first().catch(() => ({ total: 0 }));
       const total = Number(totalRow?.total || 0);
 
       const sql = `SELECT * FROM job_seekers ${whereClause} ${orderClause} LIMIT ? OFFSET ?`;
-      const rows = (await db.prepare(sql).bind(...args, limit, offset).all()).results || [];
+      const rows = (await db.prepare(sql).bind(...args, limit, offset).all().catch(() => ({ results: [] }))).results || [];
 
       const data = rows.map(r => {
         const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
@@ -4159,6 +4232,9 @@ try {
       return jsonResponse({ success: false, error: 'يجب تسجيل الدخول أولاً لتتمكن من إضافة طلب بحث عن عمل' }, 401, corsHeaders);
     }
 
+    const db = createTursoDB(env);
+    await ensureJobBoardSchema(db);
+
     const body = await request.json().catch(() => ({}));
     const name = String(body.name || '').trim();
     const age = Number(body.age);
@@ -4196,7 +4272,6 @@ try {
     const id = 'seeker_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6);
     const now = Date.now();
 
-    const db = createTursoDB(env);
     await db.prepare(
       `INSERT INTO job_seekers (id, user_id, name, age, gender, phone, whatsapp, location, profession, experience, description, expected_salary, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
@@ -4498,12 +4573,13 @@ try {
       const orderClause = sort === 'oldest' ? 'ORDER BY created_at ASC' : 'ORDER BY created_at DESC';
 
       const db = createTursoDB(env);
+      await ensureJobBoardSchema(db);
       const countSql = `SELECT COUNT(*) as total FROM jobs ${whereClause}`;
       const totalRow = await db.prepare(countSql).bind(...args).first().catch(() => ({ total: 0 }));
       const total = Number(totalRow?.total || 0);
 
       const sql = `SELECT * FROM jobs ${whereClause} ${orderClause} LIMIT ? OFFSET ?`;
-      const rows = (await db.prepare(sql).bind(...args, limit, offset).all()).results || [];
+      const rows = (await db.prepare(sql).bind(...args, limit, offset).all().catch(() => ({ results: [] }))).results || [];
 
       const data = rows.map(r => {
         const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
@@ -4594,6 +4670,7 @@ try {
     const now = Date.now();
 
     const db = createTursoDB(env);
+    await ensureJobBoardSchema(db);
     await db.prepare(
       `INSERT INTO jobs (id, user_id, workplace_name, phone, whatsapp, location, profession, working_hours, salary_type, salary, description, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
@@ -5481,6 +5558,12 @@ try {
               stats.topKeywords[cleanKw] = (stats.topKeywords[cleanKw] || 0) + 1;
             }
           }
+          if (stat === 'views' || stat === 'phoneClicks' || stat === 'whatsappClicks') {
+            await ensurePlaceEventsSchema(db);
+            const evType = stat === 'views' ? 'page_view' : (stat === 'phoneClicks' ? 'phone_click' : 'whatsapp_click');
+            const eventId = 'pe_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+            await db.prepare("INSERT INTO place_events (id, place_id, event_type, session_id, created_at) VALUES (?, ?, ?, ?, ?)").bind(eventId, place.id || placeId, evType, null, Date.now()).run().catch(() => {});
+          }
           await db.prepare(`UPDATE places SET stats_json = ?, updated_at = ? WHERE id = ? OR slug = ?`).bind(JSON.stringify(stats), Date.now(), placeId, placeId).run();
         }
       }
@@ -5488,6 +5571,157 @@ try {
     } catch (err) {
       console.warn('[POST /api/places/track-stat notice]:', err?.message || err);
       return jsonResponse({ success: true, tracked: false }, 200, corsHeaders);
+    }
+  }
+
+  // ── High-Resolution Real Place Events (POST /api/places/events) ────
+  if (url.pathname === '/api/places/events' && request.method === 'POST') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const placeId = String(body.placeId || body.id || '').trim();
+      let eventType = String(body.eventType || body.event || body.stat || '').trim().toLowerCase();
+      const sessionId = String(body.sessionId || body.session_id || '').trim().slice(0, 100);
+
+      if (eventType === 'views' || eventType === 'view') eventType = 'page_view';
+      if (eventType === 'phoneclicks' || eventType === 'phone') eventType = 'phone_click';
+      if (eventType === 'whatsappclicks' || eventType === 'whatsapp') eventType = 'whatsapp_click';
+
+      const validEvents = ['page_view', 'phone_click', 'whatsapp_click'];
+      if (!placeId || !validEvents.includes(eventType)) {
+        return jsonResponse({ success: false, error: 'معرف المكان ونوع الحدث مطلوبان وصالحان' }, 400, corsHeaders);
+      }
+
+      const db = createTursoDB(env);
+      await ensurePlaceEventsSchema(db);
+
+      const place = await db.prepare("SELECT id, stats_json FROM places WHERE (id = ? OR slug = ?) AND status = 'published' LIMIT 1").bind(placeId, placeId).first();
+      if (!place) {
+        return jsonResponse({ success: false, error: 'المكان غير موجود أو غير منشور' }, 404, corsHeaders);
+      }
+      const actualPlaceId = place.id;
+      const now = Date.now();
+
+      // Deduplicate page_view within 30 minutes for the same session
+      if (eventType === 'page_view' && sessionId) {
+        const recent = await db.prepare(
+          "SELECT id FROM place_events WHERE place_id = ? AND event_type = 'page_view' AND session_id = ? AND created_at > ? LIMIT 1"
+        ).bind(actualPlaceId, sessionId, now - (30 * 60 * 1000)).first().catch(() => null);
+
+        if (recent) {
+          return jsonResponse({ success: true, deduplicated: true }, 200, corsHeaders);
+        }
+      }
+
+      const eventId = 'pe_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+      await db.prepare(
+        "INSERT INTO place_events (id, place_id, event_type, session_id, created_at) VALUES (?, ?, ?, ?, ?)"
+      ).bind(eventId, actualPlaceId, eventType, sessionId || null, now).run();
+
+      let stats = parseJson(place.stats_json, {});
+      if (!stats || typeof stats !== 'object' || Array.isArray(stats)) stats = {};
+      if (eventType === 'page_view') stats.views = (Number(stats.views) || 0) + 1;
+      else if (eventType === 'phone_click') stats.phoneClicks = (Number(stats.phoneClicks) || 0) + 1;
+      else if (eventType === 'whatsapp_click') stats.whatsappClicks = (Number(stats.whatsappClicks) || 0) + 1;
+
+      await db.prepare("UPDATE places SET stats_json = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(stats), now, actualPlaceId).run().catch(() => {});
+
+      return jsonResponse({ success: true, eventId }, 201, corsHeaders);
+    } catch (err) {
+      console.warn('[POST /api/places/events error]:', err?.message || err);
+      return jsonResponse({ success: false, error: 'تعذر تسجيل الحدث' }, 500, corsHeaders);
+    }
+  }
+
+  // ── Real Local Activity / Social Proof Notifications (GET /api/activity-notifications) ──
+  if (url.pathname === '/api/activity-notifications' && request.method === 'GET') {
+    try {
+      const db = createTursoDB(env);
+      await ensurePlaceEventsSchema(db);
+
+      const excludeParam = (url.searchParams.get('excludeIds') || '').trim();
+      const excludeIds = excludeParam ? excludeParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+
+      // Query real event counts grouped by place_id for the last 30 days
+      const eventRows = (await db.prepare(`
+        SELECT 
+          place_id,
+          SUM(CASE WHEN event_type = 'page_view' THEN 1 ELSE 0 END) as recent_views,
+          SUM(CASE WHEN event_type = 'phone_click' THEN 1 ELSE 0 END) as recent_phone,
+          SUM(CASE WHEN event_type = 'whatsapp_click' THEN 1 ELSE 0 END) as recent_whatsapp,
+          COUNT(*) as total_events
+        FROM place_events
+        WHERE created_at >= ?
+        GROUP BY place_id
+        ORDER BY total_events DESC
+        LIMIT 60
+      `).bind(thirtyDaysAgo).all().catch(() => ({ results: [] }))).results || [];
+
+      const eventMap = new Map();
+      for (const r of eventRows) {
+        eventMap.set(r.place_id, {
+          views: Number(r.recent_views || 0),
+          phoneClicks: Number(r.recent_phone || 0),
+          whatsappClicks: Number(r.recent_whatsapp || 0)
+        });
+      }
+
+      // Query published places with valid names
+      const placesRows = (await db.prepare(`
+        SELECT id, name, slug, logo_url, cover_image_url, category_id, custom_category, stats_json
+        FROM places
+        WHERE status = 'published' AND name IS NOT NULL AND TRIM(name) != ''
+        ORDER BY updated_at DESC
+        LIMIT 100
+      `).all().catch(() => ({ results: [] }))).results || [];
+
+      const eligible = [];
+      for (const p of placesRows) {
+        if (excludeIds.includes(p.id) || (p.slug && excludeIds.includes(p.slug))) continue;
+
+        const ev = eventMap.get(p.id) || { views: 0, phoneClicks: 0, whatsappClicks: 0 };
+        const storedStats = parseJson(p.stats_json, {}) || {};
+
+        // Real statistics ONLY: strictly based on real database records
+        const visits = Math.max(ev.views, Number(storedStats.views || 0));
+        const phoneClicks = Math.max(ev.phoneClicks, Number(storedStats.phoneClicks || 0));
+        const whatsappClicks = Math.max(ev.whatsappClicks, Number(storedStats.whatsappClicks || 0));
+        const totalActivity = visits + phoneClicks + whatsappClicks;
+
+        // Skip places with zero real activity
+        if (totalActivity <= 0) continue;
+
+        const logo = p.logo_url || p.cover_image_url || '/icons/icon-96x96.png';
+        const placeUrl = p.slug ? `/place.html?id=${encodeURIComponent(p.id)}&slug=${encodeURIComponent(p.slug)}` : `/place.html?id=${encodeURIComponent(p.id)}`;
+
+        eligible.push({
+          place: {
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+            logo,
+            category: p.custom_category || p.category_id || '',
+            url: placeUrl
+          },
+          stats: {
+            visits,
+            phoneClicks,
+            whatsappClicks
+          },
+          totalActivity
+        });
+      }
+
+      eligible.sort((a, b) => b.totalActivity - a.totalActivity);
+
+      return jsonResponse({
+        success: true,
+        places: eligible.slice(0, 20)
+      }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+    } catch (err) {
+      console.warn('[GET /api/activity-notifications error]:', err?.message || err);
+      return jsonResponse({ success: false, error: 'تعذر جلب إشعارات النشاط' }, 500, corsHeaders);
     }
   }
 
