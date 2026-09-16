@@ -211,6 +211,15 @@ async function broadcastFcmNotification({ title, body, url, icon, tag, actionTit
       const endpoint = 'https://fcm.googleapis.com/v1/projects/' +
         encodeURIComponent(env.FCM_PROJECT_ID) + '/messages:send';
 
+      const origin = 'https://dalilmanzala.com';
+      const cleanUrl = String(url || 'now.html').replace(/^\.?\//, '');
+      const fullUrl = cleanUrl.startsWith('http') ? cleanUrl : `${origin}/${cleanUrl}`;
+      const cleanIcon = String(icon || 'icons/icon-192x192.png').replace(/^\.?\//, '');
+      const fullIcon = cleanIcon.startsWith('http') ? cleanIcon : `${origin}/${cleanIcon}`;
+      const fullBadge = `${origin}/icons/icon-96x96.png`;
+      const notifTag = String(tag || ('fcm-' + Date.now())).slice(0, 64);
+      const safeActionTitle = actionTitle || 'مشاهدة';
+
       for (let i = 0; i < rows.length; i += 50) {
         await Promise.all(rows.slice(i, i + 50).map(async row => {
           const response = await fetch(endpoint, {
@@ -229,11 +238,40 @@ async function broadcastFcmNotification({ title, body, url, icon, tag, actionTit
                 data: {
                   title,
                   body,
-                  url: url || './now.html',
-                  actionUrl: url || './now.html',
-                  icon: icon || './icons/icon-192x192.png',
-                  tag: tag || ('fcm-' + Date.now()),
-                  actionTitle: actionTitle || 'مشاهدة'
+                  url: fullUrl,
+                  actionUrl: fullUrl,
+                  icon: fullIcon,
+                  tag: notifTag,
+                  actionTitle: safeActionTitle
+                },
+                webpush: {
+                  headers: {
+                    Urgency: 'high',
+                    TTL: '86400'
+                  },
+                  notification: {
+                    title,
+                    body,
+                    icon: fullIcon,
+                    badge: fullBadge,
+                    dir: 'rtl',
+                    lang: 'ar',
+                    tag: notifTag,
+                    renotify: true
+                  },
+                  fcm_options: {
+                    link: fullUrl
+                  }
+                },
+                android: {
+                  priority: 'high',
+                  notification: {
+                    title,
+                    body,
+                    icon: 'notification_icon',
+                    color: '#0284c7',
+                    tag: notifTag
+                  }
                 }
               }
             })
@@ -2017,9 +2055,34 @@ try {
             ownerEmail: auth.user.email || body.ownerEmail || '',
             slug: slug || placeId
           }, env, ctx);
+
+          // Broadcast FCM push notification for newly joined place
+          const placeDisplayName = name || body.name || 'نشاط جديد';
+          const placeDisplayLoc = [area || body.area, address || body.address].filter(Boolean).join(' - ') || 'المنزلة والمطرية';
+          broadcastFcmNotification({
+            title: `🎉 انضمام نشاط جديد: ${placeDisplayName}`,
+            body: `(${placeDisplayName}) من (${placeDisplayLoc}) انضم حديثاً إلى دليل المنزلة والمطرية — تصفح المكان الآن`,
+            url: `./place.html?slug=${encodeURIComponent(slug || placeId)}`,
+            icon: logoUrl || './icons/icon-192x192.png',
+            tag: `new-place-${placeId}`,
+            actionTitle: 'مشاهدة المكان'
+          }, env, ctx);
         } catch (notifErr) {
           console.warn('[new_place notification error handled]:', notifErr?.message || notifErr);
         }
+      }
+
+      // If place is newly verified, broadcast official verification push
+      if (isVerified === 1 && (!existingPlace || Number(existingPlace.is_verified) !== 1)) {
+        const placeDisplayName = name || body.name || existingPlace?.name || 'مكان';
+        broadcastFcmNotification({
+          title: `👑 توثيق رسمي جديد: ${placeDisplayName}`,
+          body: `تم توثيق (${placeDisplayName}) رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!`,
+          url: `./place.html?slug=${encodeURIComponent(slug || placeId)}`,
+          icon: logoUrl || existingPlace?.logo_url || './icons/icon-192x192.png',
+          tag: `verified-${placeId}`,
+          actionTitle: 'مشاهدة المكان الموثق'
+        }, env, ctx);
       }
 
       // Real-time IndexNow notification for newly added or updated published place
@@ -2717,6 +2780,17 @@ try {
       discount: Number(body.discountPercent ?? body.discount_percent ?? 0),
       price: Number(body.newPrice ?? body.new_price ?? 0)
     }, env, ctx);
+
+    // Instant Android Push Notification for New Offer
+    broadcastFcmNotification({
+      title: `🔥 عرض وخصم جديد: ${place.name || 'عرض جديد'}`,
+      body: `${String(body.title || 'عرض خاص').trim()}${body.discountPercent ? ` (خصم ${body.discountPercent}%)` : ''} في ${place.name || 'المكان'} — شاهد العرض`,
+      url: `./place.html?slug=${encodeURIComponent(place.slug || placeId)}#offers`,
+      icon: String(body.imageUrl || body.image_url || './icons/icon-192x192.png'),
+      tag: `offer-${id}`,
+      actionTitle: 'مشاهدة العرض'
+    }, env, ctx);
+
     return jsonResponse({success:true,id,message:'تم حفظ العرض بنجاح'},201,corsHeaders);
   }
 
@@ -3180,6 +3254,18 @@ try {
         userName,
         rating,
         comment
+      }, env, ctx);
+
+      // Instant Android Push Notification for Reviews & Comments
+      const starText = '⭐'.repeat(Math.min(5, Math.max(1, Number(rating) || 5)));
+      const commentSnippet = comment ? ` — "${comment.length > 70 ? comment.slice(0, 70) + '...' : comment}"` : '';
+      broadcastFcmNotification({
+        title: `💬 تعليق وتقييم جديد: ${userName}`,
+        body: `قام ${userName} بتقييم (${cPlaceName}) بـ ${starText}${commentSnippet}`,
+        url: `./place.html?slug=${encodeURIComponent(cPlaceSlug || cPlaceId)}#reviews`,
+        icon: './icons/icon-192x192.png',
+        tag: `review-${reviewId}`,
+        actionTitle: 'مشاهدة التعليق'
       }, env, ctx);
 
       return jsonResponse({
@@ -5008,6 +5094,16 @@ try {
           .bind(logId,uid,'redeem','REDEEM_VERIFICATION',-cost,'استبدال 5000 نقطة بتوثيق رسمي',place.id,place.name,now).run();
         await db.prepare('INSERT INTO loyalty_redemptions (id,user_id,place_id,place_name,points_redeemed,created_at) VALUES (?,?,?,?,?,?)')
           .bind('lr_'+crypto.randomUUID(),uid,place.id,place.name,cost,now).run();
+
+        // Broadcast official verification push to all subscribers
+        broadcastFcmNotification({
+          title: `👑 توثيق رسمي جديد: ${place.name}`,
+          body: `تم توثيق (${place.name}) رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!`,
+          url: `./place.html?slug=${encodeURIComponent(place.slug || place.id)}`,
+          icon: './icons/icon-192x192.png',
+          tag: `verified-${place.id}`,
+          actionTitle: 'مشاهدة المكان الموثق'
+        }, env, ctx);
       } catch (err) {
         await db.prepare('UPDATE users SET points=COALESCE(points,0)+?,updated_at=? WHERE id=?').bind(cost,Date.now(),uid).run();
         throw err;
@@ -5419,6 +5515,27 @@ try {
       await createTursoDB(env).prepare(`
         UPDATE verification_requests SET status = ?, verified_until = ?, reviewed_at = ? WHERE id = ?
       `).bind(status, verifiedUntil, now, id).run();
+
+      if (status === 'approved') {
+        const reqRow = await createTursoDB(env).prepare(
+          'SELECT place_id, place_name FROM verification_requests WHERE id = ? LIMIT 1'
+        ).bind(id).first();
+        if (reqRow && reqRow.place_id) {
+          await createTursoDB(env).prepare(
+            "UPDATE places SET is_verified = 1, verification_status = 'verified', updated_at = ? WHERE id = ?"
+          ).bind(now, reqRow.place_id).run().catch(() => {});
+          bumpDataVersion(env, ctx);
+          broadcastFcmNotification({
+            title: `👑 توثيق رسمي جديد: ${reqRow.place_name || 'مكان موثق'}`,
+            body: `تم توثيق (${reqRow.place_name || 'المكان'}) رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!`,
+            url: `./place.html?id=${encodeURIComponent(reqRow.place_id)}`,
+            icon: './icons/icon-192x192.png',
+            tag: `verified-${reqRow.place_id}`,
+            actionTitle: 'مشاهدة المكان الموثق'
+          }, env, ctx);
+        }
+      }
+
       return jsonResponse({ success: true, message: 'تم تحديث حالة طلب التوثيق' }, 200, corsHeaders);
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
@@ -6232,6 +6349,7 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
       // ── 8. Telegram Bot Webhook (POST /api/telegram/webhook) ──
       if ((url.pathname === '/api/telegram/webhook' || url.pathname === '/telegram/webhook') && request.method === 'POST') {
+        env._broadcastFcmNotification = (opts) => broadcastFcmNotification(opts, env, ctx);
         return handleTelegramWebhook(request, env);
       }
 

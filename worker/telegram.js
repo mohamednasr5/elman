@@ -569,6 +569,17 @@ async function togglePlaceVerification(chatId, placeId, isVerified, env, editMes
     // Update places table
     await tursoRun(env, 'UPDATE places SET is_verified = ?, verification_status = ?, updated_at = ? WHERE id = ?', isVerified ? 1 : 0, isVerified ? 'verified' : 'unverified', Date.now(), targetPlaceId).catch(() => {});
 
+    if (isVerified && typeof env._broadcastFcmNotification === 'function') {
+      env._broadcastFcmNotification({
+        title: `👑 توثيق رسمي جديد: ${placeName || 'مكان موثق'}`,
+        body: `تم توثيق (${placeName || 'المكان'}) رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!`,
+        url: `./place.html?id=${encodeURIComponent(targetPlaceId)}`,
+        icon: './icons/icon-192x192.png',
+        tag: `verified-${targetPlaceId}`,
+        actionTitle: 'مشاهدة المكان الموثق'
+      });
+    }
+
     const statusText = isVerified 
       ? `✅ تم اعتماد التوثيق وتفعيل الشارة الرسمية بنجاح! 🛡️` 
       : `⚠️ تم إلغاء توثيق المكان.`;

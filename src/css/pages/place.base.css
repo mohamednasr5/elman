@@ -481,20 +481,22 @@
 }
 
 .place-btn-contact--suggest {
-  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
-  border: 1.5px dashed #F59E0B;
-  color: #92400E;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12);
+  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%);
+  border: 1.5px dashed #D97706;
+  color: #78350F;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.22);
 }
 .place-btn-contact--suggest .place-btn-contact__label {
-  color: #B45309;
+  color: #78350F;
+  font-weight: 800;
 }
 .place-btn-contact--suggest .place-btn-contact__sub {
-  color: #D97706;
+  color: #92400E;
+  font-weight: 700;
 }
 .place-btn-contact--suggest:hover {
   background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-  border-color: #D97706;
+  border-color: #B45309;
 }
 
 .place-btn-contact--appointment {

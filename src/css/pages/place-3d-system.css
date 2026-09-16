@@ -390,6 +390,81 @@
   background: rgba(255, 255, 255, 0.28) !important;
 }
 
+/* Suggest Phone Number Card Override (Ensures 100% text contrast & visibility) */
+.place-btn-contact--suggest {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%) !important;
+  border: 1.5px dashed #d97706 !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.22) !important;
+}
+
+.place-btn-contact--suggest:hover {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  border-color: #b45309 !important;
+  box-shadow: 0 6px 18px rgba(217, 119, 6, 0.28) !important;
+}
+
+.place-btn-contact--suggest .place-btn-contact__icon {
+  background: #fef3c7 !important;
+  border: 1.5px solid #d97706 !important;
+  font-size: 22px !important;
+}
+
+.place-btn-contact--suggest .place-btn-contact__label {
+  font-size: 14.5px !important;
+  font-weight: 900 !important;
+  color: #78350f !important; /* Deep Rich Amber - 100% readable */
+  text-shadow: none !important;
+}
+
+.place-btn-contact--suggest .place-btn-contact__sub {
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  color: #92400e !important; /* Solid Dark Amber */
+  text-shadow: none !important;
+}
+
+.place-btn-contact--suggest .place-btn-contact__arrow {
+  background: rgba(217, 119, 6, 0.16) !important;
+  border: 1px solid rgba(217, 119, 6, 0.45) !important;
+  color: #78350f !important;
+}
+
+.place-btn-contact--suggest:hover .place-btn-contact__arrow {
+  background: rgba(217, 119, 6, 0.28) !important;
+  color: #451a03 !important;
+}
+
+/* Dark Mode for Suggest Phone Button */
+[data-theme="dark"] .place-btn-contact--suggest,
+body.dark .place-btn-contact--suggest {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(217, 119, 6, 0.32) 100%) !important;
+  border: 1.5px dashed #f59e0b !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="dark"] .place-btn-contact--suggest .place-btn-contact__icon,
+body.dark .place-btn-contact--suggest .place-btn-contact__icon {
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .place-btn-contact--suggest .place-btn-contact__label,
+body.dark .place-btn-contact--suggest .place-btn-contact__label {
+  color: #fef3c7 !important;
+}
+
+[data-theme="dark"] .place-btn-contact--suggest .place-btn-contact__sub,
+body.dark .place-btn-contact--suggest .place-btn-contact__sub {
+  color: #fde68a !important;
+}
+
+[data-theme="dark"] .place-btn-contact--suggest .place-btn-contact__arrow,
+body.dark .place-btn-contact--suggest .place-btn-contact__arrow {
+  background: rgba(251, 191, 36, 0.2) !important;
+  border-color: rgba(251, 191, 36, 0.4) !important;
+  color: #fef3c7 !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    4. Secondary Trio Cards (Row 5) — Horizontal 3D Showcase
    ═══════════════════════════════════════════════════════════════ */

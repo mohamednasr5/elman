@@ -6,6 +6,7 @@
 
 import { getPublishedPlaces } from '../core/db.js';
 import { fetchLiveCraftsmen, fetchServiceRequests } from './interactive-hub.service.js';
+import { WORKER_URL } from '../core/firebase.js';
 
 // ── Web Audio API Synthesized Crystal Bell Chime ──
 let _audioCtx = null;
@@ -489,10 +490,13 @@ export function initLiveNotificationSubscriber(uid) {
   });
   window.addEventListener('focus', refresh);
 
-  // Lightweight reconciliation for places, craftsmen, and service requests.
+  // Lightweight reconciliation for places, craftsmen, service requests, jobs, job seekers, and reviews.
   let previous = new Map();
   let previousCraftsmen = new Map();
   let previousRequests = new Map();
+  let previousJobs = new Map();
+  let previousJobSeekers = new Map();
+  let previousReviews = new Map();
 
   const poll = async () => {
     try {
@@ -567,6 +571,80 @@ export function initLiveNotificationSubscriber(uid) {
         previousRequests = currentReqs;
       } catch (_) {}
 
+      // Reconcile Newly Posted Jobs (الوظائف المتاحة)
+      try {
+        const jRes = await fetch(`${WORKER_URL}/api/jobs?limit=10`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(4000) });
+        if (jRes.ok) {
+          const jData = await jRes.json().catch(() => ({}));
+          const currentJobs = new Map((jData.jobs || []).map(j => [String(j.id), j]));
+          if (previousJobs.size) {
+            for (const [id, j] of currentJobs) {
+              if (!previousJobs.has(id)) {
+                const salaryDisp = (j.salary && Number(j.salary) > 0) ? `${Number(j.salary).toLocaleString('ar-EG')} ج.م` : 'يحدد في المقابلة';
+                showLiveNotificationPopup({
+                  id: 'notif_job_' + id,
+                  type: 'job',
+                  title: `💼 وظيفة متاحة جديدة: ${j.workplaceName}`,
+                  message: `${j.workplaceName} في ${j.location || 'المنزلة'} بحاجة إلى (${j.profession}) براتب (${salaryDisp})`,
+                  actionUrl: `/jobs.html?id=${id}`,
+                  createdAt: Number(j.createdAt || now)
+                }, uid);
+              }
+            }
+          }
+          previousJobs = currentJobs;
+        }
+      } catch (_) {}
+
+      // Reconcile Newly Posted Job Seekers (فرص العمل / طلبات العمل)
+      try {
+        const sRes = await fetch(`${WORKER_URL}/api/job-seekers?limit=10`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(4000) });
+        if (sRes.ok) {
+          const sData = await sRes.json().catch(() => ({}));
+          const currentSeekers = new Map((sData.seekers || []).map(s => [String(s.id), s]));
+          if (previousJobSeekers.size) {
+            for (const [id, s] of currentSeekers) {
+              if (!previousJobSeekers.has(id)) {
+                showLiveNotificationPopup({
+                  id: 'notif_seeker_' + id,
+                  type: 'job_seeker',
+                  title: `🤝 طلب عمل جديد: ${s.name}`,
+                  message: `${s.name} من ${s.location || 'المنزلة'} يطلب عملاً في مهنة (${s.profession}) — تواصل معه`,
+                  actionUrl: `/job-seekers.html?id=${id}`,
+                  createdAt: Number(s.createdAt || now)
+                }, uid);
+              }
+            }
+          }
+          previousJobSeekers = currentSeekers;
+        }
+      } catch (_) {}
+
+      // Reconcile Recent Reviews (التعليقات والتقييمات)
+      try {
+        const rRes = await fetch(`${WORKER_URL}/api/reviews?limit=10`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(4000) });
+        if (rRes.ok) {
+          const rData = await rRes.json().catch(() => ({}));
+          const currentReviews = new Map((rData.reviews || rData.data || []).map(r => [String(r.id), r]));
+          if (previousReviews.size) {
+            for (const [id, r] of currentReviews) {
+              if (!previousReviews.has(id)) {
+                const commentText = r.comment ? `"${r.comment.slice(0, 60)}${r.comment.length > 60 ? '...' : ''}"` : 'تقييم جديد بالنجوم';
+                showLiveNotificationPopup({
+                  id: 'notif_review_' + id,
+                  type: 'place_review',
+                  title: `💬 تعليق جديد: ${r.userName || 'مستخدم'}`,
+                  message: `قام ${r.userName || 'مستخدم'} بالتعليق على (${r.placeName || 'مكان'}): ${commentText}`,
+                  actionUrl: `/place.html?slug=${encodeURIComponent(r.placeSlug || r.placeId)}#reviews`,
+                  createdAt: Number(r.createdAt || now)
+                }, uid);
+              }
+            }
+          }
+          previousReviews = currentReviews;
+        }
+      } catch (_) {}
+
       refresh();
     } catch (_) {}
   };
@@ -594,6 +672,31 @@ export function showLiveNotificationPopup(notification, uid) {
   }
 
   playNotificationSound();
+
+  // Trigger Native Android/Browser Notification via Service Worker (PWA Push)
+  try {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        if (reg && reg.showNotification) {
+          const orig = (typeof location !== 'undefined' && location.origin) ? location.origin : 'https://dalilmanzala.com';
+          const notifUrl = notification.actionUrl || notification.url || '/';
+          const fullNotifUrl = notifUrl.startsWith('http') ? notifUrl : (orig + (notifUrl.startsWith('/') ? '' : '/') + notifUrl);
+          const iconUrl = notification.icon || (orig + '/icons/icon-192x192.png');
+          reg.showNotification(notification.title || 'دليل المنزلة والمطرية 🔔', {
+            body: notification.message || notification.body || '',
+            icon: iconUrl,
+            badge: orig + '/icons/icon-96x96.png',
+            dir: 'rtl',
+            lang: 'ar',
+            vibrate: [200, 100, 200],
+            tag: notification.id || ('manzala-notif-' + Date.now()),
+            renotify: true,
+            data: { url: fullNotifUrl }
+          });
+        }
+      }).catch(() => {});
+    }
+  } catch (_) {}
 
   let popupBox = document.getElementById('manzala-live-notifs-container');
   if (!popupBox) {
@@ -623,9 +726,9 @@ export function showLiveNotificationPopup(notification, uid) {
     titleColor = '#FBBF24';
     borderColor = '#EAB308';
   } else if (notification.type === 'place_review') {
-    iconEmoji = notification.isPositive ? '⭐' : '⚠️';
-    titleColor = notification.isPositive ? '#34D399' : '#F87171';
-    borderColor = notification.isPositive ? '#10B981' : '#EF4444';
+    iconEmoji = notification.isPositive ? '⭐' : '💬';
+    titleColor = notification.isPositive ? '#34D399' : '#38BDF8';
+    borderColor = notification.isPositive ? '#10B981' : '#0284C7';
   } else if (notification.type === 'craftsman_live') {
     iconEmoji = '⚡';
     titleColor = '#FBBF24';
@@ -634,6 +737,18 @@ export function showLiveNotificationPopup(notification, uid) {
     iconEmoji = '📢';
     titleColor = '#34D399';
     borderColor = '#10B981';
+  } else if (notification.type === 'job') {
+    iconEmoji = '💼';
+    titleColor = '#60A5FA';
+    borderColor = '#2563EB';
+  } else if (notification.type === 'job_seeker') {
+    iconEmoji = '🤝';
+    titleColor = '#34D399';
+    borderColor = '#059669';
+  } else if (notification.type === 'new_offer') {
+    iconEmoji = '🔥';
+    titleColor = '#F87171';
+    borderColor = '#EF4444';
   }
 
   const notifEl = document.createElement('div');
