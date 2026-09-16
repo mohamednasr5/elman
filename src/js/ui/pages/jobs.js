@@ -292,16 +292,20 @@ async function loadJobs() {
 function renderJobCardHTML(item) {
   const isOwner = currentUser && (currentUser.uid === item.owner_uid || isAdmin(currentUser));
   const isFilled = item.status === 'filled';
+  const isFeatured = Boolean(item.isFeatured);
   const salaryDisplay = item.salary_type === 'specified' && item.salary
     ? `${Number(item.salary).toLocaleString('ar-EG')} ج.م`
     : 'الراتب يحدد في المقابلة';
   const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) : '';
 
   return `
-    <div class="jb-card ${isFilled ? 'jb-card--inactive' : ''}" data-id="${item.id}">
+    <div class="jb-card ${isFilled ? 'jb-card--inactive' : ''} ${isFeatured ? 'jb-card--featured' : ''}" data-id="${item.id}" style="${isFeatured ? 'border:2px solid #F5A623;box-shadow:0 6px 22px rgba(245,166,35,0.22);' : ''}">
       <div class="jb-card-head">
         <div class="jb-card-title-wrap">
-          <h2 class="jb-card-name">${escapeHtml(item.title)}</h2>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <h2 class="jb-card-name">${escapeHtml(item.title)}</h2>
+            ${isFeatured ? '<span class="jb-badge-featured" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:900;display:inline-flex;align-items:center;gap:3px">⭐ إعلان مميز</span>' : ''}
+          </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:3px">
             <span class="jb-badge-profession">💼 ${escapeHtml(item.profession)}</span>
             <span style="font-size:12px;font-weight:700;color:var(--text-secondary);background:var(--surface-2,#f8fafc);padding:2px 8px;border-radius:6px;border:1px solid var(--border,#e2e8f0)">
@@ -338,6 +342,15 @@ function renderJobCardHTML(item) {
         <div class="jb-owner-banner" style="margin-top:10px">
           <span>👑 تحكم صاحب الإعلان:</span>
           <div class="jb-owner-actions">
+            ${!isFeatured ? `
+              <button type="button" class="jb-owner-btn btn-promote-job" data-id="${item.id}" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;font-weight:900;border:none">
+                ⭐ تمييز (500 🪙)
+              </button>
+            ` : `
+              <span style="background:rgba(245,166,35,0.15);color:#D97706;border:1px solid #F5A623;font-size:11px;font-weight:900;padding:4px 8px;border-radius:6px">
+                ⭐ مميز في الصدارة
+              </span>
+            `}
             <button type="button" class="jb-owner-btn ${isFilled ? '' : 'jb-owner-btn--success'} btn-toggle-job-filled" data-id="${item.id}" data-status="${item.status}">
               ${isFilled ? 'إعادة الإعلان' : 'تم العثور على شخص بالفعل 🎉'}
             </button>
@@ -412,6 +425,40 @@ function attachJobCardEvents($container) {
       const id = btn.getAttribute('data-id');
       if (!confirm('هل أنت متأكد من حذف هذا الإعلان الوظيفي؟')) return;
       await deleteJob(id);
+    });
+  });
+
+  // Promote Job Click
+  $container.querySelectorAll('.btn-promote-job').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-id');
+      if (!confirm('هل ترغب في تمييز هذه الوظيفة بأولوية الظهور في صدارة الموقع والصفحات لمدة 3 أيام مقابل 500 ذهبية؟\n\nتأكيد: العملات غير قابلة للاسترداد نهائياً بعد التفعيل.')) return;
+      try {
+        const token = await getIdToken();
+        if (!token) throw new Error('يرجى تسجيل الدخول أولاً');
+        const res = await api.post('/api/coins/promote', { targetType: 'job', targetId: id }, token);
+        if (res.success) {
+          showToast('تم تمييز الإعلان بنجاح في صدارة الموقع لمدة 3 أيام! ⭐', 'success');
+          await loadJobs();
+        }
+      } catch (err) {
+        console.warn('[Promote Job Error]:', err);
+        showModal({
+          title: '🪙 رصيد العملات غير كافٍ',
+          content: `
+            <div style="text-align:center;padding:12px">
+              <div style="font-size:40px;margin-bottom:8px">🪙</div>
+              <h4 style="font-size:15px;font-weight:800;color:#D97706;margin-bottom:6px">يلزم 500 ذهبية لتمييز هذا الإعلان</h4>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">رصيدك الحالي غير كافٍ لإتمام التمييز. يمكنك شحن رصيدك فوراً عبر فودافون كاش.</p>
+              <a href="/wallet.html" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#F5A623,#D97706);color:#fff">
+                <span>🪙 شحن رصيد الذهبيات الآن</span>
+              </a>
+            </div>
+          `,
+          buttons: [{ label: 'إغلاق', type: 'ghost', closeOnClick: true }]
+        });
+      }
     });
   });
 }
@@ -564,6 +611,21 @@ function openAddJobModal() {
             <textarea name="description" class="jb-textarea" rows="4" required placeholder="اكتب شروط الوظيفة بوضوح: المؤهل، الخبرة المطلوبة، المهام، أيام الإجازة، عنوان المحل بالتفصيل..."></textarea>
           </div>
 
+          <div class="jb-featured-box" style="background:linear-gradient(135deg,rgba(245,166,35,0.12),rgba(217,119,6,0.06));border:1.5px solid #F5A623;border-radius:12px;padding:12px 14px;margin:14px 0">
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+              <input type="checkbox" name="is_featured" id="add-job-is-featured" value="1" style="width:18px;height:18px;margin-top:2px;accent-color:#F5A623" />
+              <div>
+                <div style="font-weight:900;font-size:13.5px;color:#D97706;display:flex;align-items:center;gap:6px">
+                  <span>⭐ تمييز الإعلان بأولوية الظهور</span>
+                  <span style="background:#F5A623;color:#0B1E30;font-size:10.5px;padding:1px 6px;border-radius:999px;font-weight:900">500 ذهبية / 3 أيام</span>
+                </div>
+                <p style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0 0;line-height:1.5">
+                  يمنح وظيفتك صدارة العرض في بطاقات الأماكن والصفحة الرئيسية مع إطار ذهبي لافت للأنظار.
+                </p>
+              </div>
+            </label>
+          </div>
+
           <div class="jb-modal-footer">
             <button type="button" class="jb-btn-cancel" id="btn-cancel-add-job">إلغاء</button>
             <button type="submit" class="jb-btn-submit" id="btn-submit-add-job">
@@ -602,6 +664,7 @@ function openAddJobModal() {
       const fd = new FormData($form);
       const salaryType = fd.get('salary_type');
       const salaryRaw = fd.get('salary');
+      const wantsFeatured = fd.get('is_featured') === '1';
 
       const payload = {
         title: fd.get('title').trim(),
@@ -623,8 +686,36 @@ function openAddJobModal() {
       const token = await getIdToken();
       if (!token) throw new Error('يرجى تسجيل الدخول أولاً');
 
-      await api.post('/api/jobs', payload, token);
-      showToast('تم نشر إعلان الوظيفة بنجاح 🎉', 'success');
+      const jobRes = await api.post('/api/jobs', payload, token);
+      const newJobId = jobRes.id || (jobRes.data && jobRes.data.id);
+
+      if (wantsFeatured && newJobId) {
+        try {
+          const promoRes = await api.post('/api/coins/promote', { targetType: 'job', targetId: newJobId }, token);
+          if (promoRes.success) {
+            showToast('تم نشر وتمييز إعلان الوظيفة بنجاح في صدارة الموقع 👑⭐', 'success');
+          }
+        } catch (promoErr) {
+          console.warn('[Auto promote job warning]:', promoErr);
+          showModal({
+            title: '⚠️ تنبيه بخصوص تمييز الإعلان',
+            content: `
+              <div style="text-align:center;padding:12px">
+                <div style="font-size:40px;margin-bottom:8px">🪙</div>
+                <h4 style="font-size:15px;font-weight:800;color:#D97706;margin-bottom:6px">تم نشر الوظيفة بنجاح، ولكن رصيدك غير كافٍ للتمييز!</h4>
+                <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">يلزم 500 ذهبية لتمييز الإعلان لمدة 3 أيام. يمكنك شحن رصيدك بسهولة عبر فودافون كاش.</p>
+                <a href="/wallet.html" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#F5A623,#D97706);color:#fff">
+                  <span>🪙 شحن رصيد الذهبيات الآن</span>
+                </a>
+              </div>
+            `,
+            buttons: [{ label: 'حسناً، فهمت', type: 'ghost', closeOnClick: true }]
+          });
+        }
+      } else {
+        showToast('تم نشر إعلان الوظيفة بنجاح 🎉', 'success');
+      }
+
       close();
       await loadJobs();
     } catch (err) {

@@ -4158,10 +4158,49 @@ try {
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)").run().catch(() => {});
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)").run().catch(() => {});
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)").run().catch(() => {});
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location)").run().catch(() => {});
+      await db.prepare("ALTER TABLE job_seekers ADD COLUMN is_featured INTEGER DEFAULT 0").run().catch(() => {});
+      await db.prepare("ALTER TABLE job_seekers ADD COLUMN featured_until INTEGER DEFAULT 0").run().catch(() => {});
+      await db.prepare("ALTER TABLE jobs ADD COLUMN is_featured INTEGER DEFAULT 0").run().catch(() => {});
+      await db.prepare("ALTER TABLE jobs ADD COLUMN featured_until INTEGER DEFAULT 0").run().catch(() => {});
+
       _hasEnsuredJobBoardSchema = true;
     } catch (err) {
       console.warn('[ensureJobBoardSchema error]:', err?.message || err);
+    }
+  }
+
+  let _hasEnsuredCoinEconomySchema = false;
+  async function ensureCoinEconomySchema(db) {
+    if (_hasEnsuredCoinEconomySchema || !db) return;
+    try {
+      await db.prepare(`CREATE TABLE IF NOT EXISTS coin_purchases (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        user_name TEXT,
+        user_email TEXT,
+        user_phone TEXT,
+        package_coins INTEGER NOT NULL,
+        amount_egp INTEGER NOT NULL,
+        receipt_url TEXT,
+        payment_method TEXT DEFAULT 'vodafone_cash',
+        vodafone_sender_number TEXT,
+        status TEXT DEFAULT 'pending',
+        admin_notes TEXT,
+        created_at INTEGER NOT NULL,
+        reviewed_at INTEGER,
+        reviewed_by TEXT
+      )`).run();
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_coin_purchases_status ON coin_purchases(status, created_at DESC)").run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_coin_purchases_user ON coin_purchases(user_id)").run().catch(() => {});
+
+      // Ensure users table has points / coins columns
+      await db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run().catch(() => {});
+      await db.prepare("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0").run().catch(() => {});
+      await db.prepare("ALTER TABLE users ADD COLUMN total_earned INTEGER DEFAULT 0").run().catch(() => {});
+
+      _hasEnsuredCoinEconomySchema = true;
+    } catch (err) {
+      console.warn('[ensureCoinEconomySchema error]:', err?.message || err);
     }
   }
 
@@ -4256,7 +4295,11 @@ try {
       }
 
       const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-      const orderClause = sort === 'oldest' ? 'ORDER BY created_at ASC' : 'ORDER BY created_at DESC';
+      const nowMs = Date.now();
+      const featuredOrder = `(CASE WHEN is_featured = 1 AND (featured_until IS NULL OR featured_until > ${nowMs}) THEN 1 ELSE 0 END) DESC`;
+      const orderClause = sort === 'oldest' 
+        ? `ORDER BY ${featuredOrder}, created_at ASC` 
+        : `ORDER BY ${featuredOrder}, created_at DESC`;
 
       const db = createTursoDB(env);
       await ensureJobBoardSchema(db);
@@ -4273,6 +4316,7 @@ try {
         if (r.phone && r.phone.length >= 7) {
           maskedPhone = r.phone.slice(0, 3) + '******' + r.phone.slice(-2);
         }
+        const isFeatured = Boolean(r.is_featured === 1 && (!r.featured_until || Number(r.featured_until) > nowMs));
         return {
           id: r.id,
           userId: r.user_id,
@@ -4288,6 +4332,8 @@ try {
           description: r.description,
           expectedSalary: r.expected_salary !== null && r.expected_salary !== undefined ? Number(r.expected_salary) : null,
           status: r.status,
+          isFeatured,
+          featuredUntil: r.featured_until || null,
           isOwner: Boolean(isOwner),
           createdAt: Number(r.created_at || 0),
           updatedAt: Number(r.updated_at || 0)
@@ -4656,7 +4702,11 @@ try {
       }
 
       const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
-      const orderClause = sort === 'oldest' ? 'ORDER BY created_at ASC' : 'ORDER BY created_at DESC';
+      const nowMs = Date.now();
+      const featuredOrder = `(CASE WHEN is_featured = 1 AND (featured_until IS NULL OR featured_until > ${nowMs}) THEN 1 ELSE 0 END) DESC`;
+      const orderClause = sort === 'oldest' 
+        ? `ORDER BY ${featuredOrder}, created_at ASC` 
+        : `ORDER BY ${featuredOrder}, created_at DESC`;
 
       const db = createTursoDB(env);
       await ensureJobBoardSchema(db);
@@ -4673,6 +4723,7 @@ try {
         if (r.phone && r.phone.length >= 7) {
           maskedPhone = r.phone.slice(0, 3) + '******' + r.phone.slice(-2);
         }
+        const isFeatured = Boolean(r.is_featured === 1 && (!r.featured_until || Number(r.featured_until) > nowMs));
         return {
           id: r.id,
           userId: r.user_id,
@@ -4687,6 +4738,8 @@ try {
           salary: r.salary !== null && r.salary !== undefined ? Number(r.salary) : null,
           description: r.description,
           status: r.status,
+          isFeatured,
+          featuredUntil: r.featured_until || null,
           isOwner: Boolean(isOwner),
           createdAt: Number(r.created_at || 0),
           updatedAt: Number(r.updated_at || 0)
@@ -5113,6 +5166,464 @@ try {
     }
 
     return jsonResponse({success:false,error:'إجراء loyalty غير معروف'},400,corsHeaders);
+  }
+
+  // ── Turso: Dalil Gold Coins - Balance & History (GET /api/coins/balance) ──
+  if ((url.pathname === '/api/coins/balance' || url.pathname === '/api/coins/me') && request.method === 'GET') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const db = createTursoDB(env);
+    await ensureCoinEconomySchema(db);
+
+    const uid = auth.user.uid;
+    let user = await db.prepare('SELECT points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first();
+    if (!user) {
+      const now = Date.now();
+      await db.prepare(`
+        INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+        VALUES (?, ?, ?, 'user', 'active', 0, 0, ?, ?)
+        ON CONFLICT(id) DO NOTHING
+      `).bind(uid, auth.user.name || 'مستخدم', (auth.user.email || '').toLowerCase(), now, now).run().catch(() => {});
+      user = await db.prepare('SELECT points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first() || { points: 0, total_earned: 0 };
+    }
+
+    const history = (await db.prepare(`
+      SELECT id, type, rule_key, amount, label, place_id, place_name, meta_json, created_at
+      FROM loyalty_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 100
+    `).bind(uid).all()).results || [];
+
+    const purchases = (await db.prepare(`
+      SELECT id, package_coins, amount_egp, receipt_url, payment_method, vodafone_sender_number, status, admin_notes, created_at, reviewed_at
+      FROM coin_purchases WHERE user_id = ? ORDER BY created_at DESC LIMIT 50
+    `).bind(uid).all()).results || [];
+
+    return jsonResponse({
+      success: true,
+      data: {
+        balance: Number(user.points || 0),
+        totalEarned: Number(user.total_earned || 0),
+        history,
+        purchases
+      }
+    }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+  }
+
+  // ── Turso: Dalil Gold Coins - Purchase Request (POST /api/coins/purchase-request) ──
+  if (url.pathname === '/api/coins/purchase-request' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const packageCoins = Number(body.packageCoins || body.coins || 0);
+    const amountEgp = Number(body.amountEgp || body.amount || 0);
+    const vodafoneSenderNumber = String(body.vodafoneSenderNumber || body.senderPhone || '').trim();
+    const receiptUrl = String(body.receiptUrl || '').trim();
+
+    const validPackages = {
+      500: 100,
+      1000: 190,
+      2000: 350,
+      5000: 850,
+      7000: 1000
+    };
+
+    if (!validPackages[packageCoins] || validPackages[packageCoins] !== amountEgp) {
+      return jsonResponse({ success: false, error: 'باقة الشراء المحددة غير صحيحة' }, 400, corsHeaders);
+    }
+    if (!vodafoneSenderNumber || vodafoneSenderNumber.length < 9) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال رقم فودافون كاش الذي تم التحويل منه بشكل صحيح' }, 400, corsHeaders);
+    }
+    if (!receiptUrl) {
+      return jsonResponse({ success: false, error: 'يرجى إرفاق صورة إيصال أو لقطة شاشة التحويل' }, 400, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    await ensureCoinEconomySchema(db);
+
+    const purchaseId = 'cp_' + crypto.randomUUID();
+    const now = Date.now();
+
+    await db.prepare(`
+      INSERT INTO coin_purchases (id, user_id, user_name, user_email, user_phone, package_coins, amount_egp, receipt_url, payment_method, vodafone_sender_number, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'vodafone_cash', ?, 'pending', ?)
+    `).bind(
+      purchaseId,
+      auth.user.uid,
+      auth.user.name || 'مستخدم',
+      auth.user.email || '',
+      auth.user.phone || '',
+      packageCoins,
+      amountEgp,
+      receiptUrl,
+      vodafoneSenderNumber,
+      now
+    ).run();
+
+    // Send Telegram alert to admin
+    ctx.waitUntil(sendAdminPushNotification('coin_purchase_request', {
+      purchaseId,
+      userId: auth.user.uid,
+      userName: auth.user.name,
+      userEmail: auth.user.email,
+      packageCoins,
+      amountEgp,
+      vodafoneSenderNumber,
+      receiptUrl
+    }, env));
+
+    return jsonResponse({
+      success: true,
+      purchaseId,
+      message: 'تم إرسال طلب الشحن بنجاح! سيتم مراجعة الإيصال وشحن رصيدك فوراً.'
+    }, 200, corsHeaders);
+  }
+
+  // ── Turso: Dalil Gold Coins - Admin List Purchases (GET /api/coins/purchases) ──
+  if (url.pathname === '/api/coins/purchases' && request.method === 'GET') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
+    const db = createTursoDB(env);
+    await ensureCoinEconomySchema(db);
+
+    const status = url.searchParams.get('status');
+    let query = 'SELECT * FROM coin_purchases';
+    const params = [];
+    if (status) {
+      query += ' WHERE status = ?';
+      params.push(status);
+    }
+    query += ' ORDER BY created_at DESC LIMIT 200';
+
+    const purchases = (await db.prepare(query).bind(...params).all()).results || [];
+    return jsonResponse({ success: true, data: purchases }, 200, corsHeaders);
+  }
+
+  // ── Turso: Dalil Gold Coins - Admin Review Purchase (POST /api/coins/purchases/:id/review) ──
+  if (url.pathname.startsWith('/api/coins/purchases/') && url.pathname.endsWith('/review') && request.method === 'POST') {
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
+    const purchaseId = url.pathname.replace('/api/coins/purchases/', '').replace('/review', '').trim();
+    const body = await request.json().catch(() => ({}));
+    const action = String(body.action || '').trim().toLowerCase(); // 'approve' or 'reject'
+    const adminNotes = String(body.adminNotes || body.notes || '').trim();
+
+    if (!['approve', 'reject'].includes(action)) {
+      return jsonResponse({ success: false, error: 'إجراء غير صالح (approve أو reject)' }, 400, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    await ensureCoinEconomySchema(db);
+
+    const purchase = await db.prepare('SELECT * FROM coin_purchases WHERE id = ? LIMIT 1').bind(purchaseId).first();
+    if (!purchase) {
+      return jsonResponse({ success: false, error: 'طلب الشراء غير موجود' }, 404, corsHeaders);
+    }
+    if (purchase.status !== 'pending') {
+      return jsonResponse({ success: false, error: `تمت مراجعة هذا الطلب مسبقاً (${purchase.status})` }, 400, corsHeaders);
+    }
+
+    const now = Date.now();
+    const reviewer = auth.user.email || auth.user.name || 'إدارة الدليل';
+
+    if (action === 'approve') {
+      const coins = Number(purchase.package_coins);
+      await db.prepare(`
+        INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+        VALUES (?, ?, ?, 'user', 'active', ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET points = COALESCE(points, 0) + ?, total_earned = COALESCE(total_earned, 0) + ?, updated_at = ?
+      `).bind(
+        purchase.user_id,
+        purchase.user_name || 'مستخدم',
+        purchase.user_email || '',
+        coins,
+        coins,
+        now,
+        now,
+        coins,
+        coins,
+        now
+      ).run();
+
+      const logId = 'lh_' + crypto.randomUUID();
+      await db.prepare(`
+        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
+        VALUES (?, ?, 'purchase', 'COIN_PURCHASE', ?, ?, ?, ?)
+      `).bind(
+        logId,
+        purchase.user_id,
+        coins,
+        `شحن ${coins} من ذهبيات الدليل (فودافون كاش)`,
+        JSON.stringify({ purchaseId, amountEgp: purchase.amount_egp, sender: purchase.vodafone_sender_number }),
+        now
+      ).run().catch(() => {});
+
+      await db.prepare(`
+        UPDATE coin_purchases
+        SET status = 'approved', reviewed_at = ?, reviewed_by = ?, admin_notes = ?
+        WHERE id = ?
+      `).bind(now, reviewer, adminNotes || 'تم قبول الطلب وشحن الرصيد', purchaseId).run();
+
+      return jsonResponse({ success: true, message: `تم قبول الطلب وشحن ${coins} ذهبية بنجاح للمستخدم` }, 200, corsHeaders);
+    } else {
+      await db.prepare(`
+        UPDATE coin_purchases
+        SET status = 'rejected', reviewed_at = ?, reviewed_by = ?, admin_notes = ?
+        WHERE id = ?
+      `).bind(now, reviewer, adminNotes || 'تم رفض الطلب لعدم تطابق التحويل', purchaseId).run();
+
+      return jsonResponse({ success: true, message: 'تم رفض طلب الشراء' }, 200, corsHeaders);
+    }
+  }
+
+  // ── Turso: Dalil Gold Coins - P2P Transfer (POST /api/coins/transfer) ──
+  if (url.pathname === '/api/coins/transfer' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const recipientQuery = String(body.recipient || body.to || '').trim();
+    const amount = Math.floor(Number(body.amount || 0));
+    const note = String(body.note || '').trim().slice(0, 200);
+
+    if (amount < 10) {
+      return jsonResponse({ success: false, error: 'الحد الأدنى للتحويل هو 10 ذهبيات' }, 400, corsHeaders);
+    }
+    if (!recipientQuery) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال رقم هاتف أو بريد المستلم' }, 400, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    await ensureCoinEconomySchema(db);
+
+    const sender = await db.prepare('SELECT id, name, email, phone, points FROM users WHERE id = ? LIMIT 1').bind(auth.user.uid).first();
+    if (!sender || Number(sender.points || 0) < amount) {
+      return jsonResponse({ success: false, error: 'رصيدك الحالي من ذهبيات الدليل غير كافٍ لإتمام هذا التحويل' }, 400, corsHeaders);
+    }
+
+    const recipient = await db.prepare(`
+      SELECT id, name, email, phone, points FROM users
+      WHERE (LOWER(email) = LOWER(?) OR phone = ?) AND id != ?
+      LIMIT 1
+    `).bind(recipientQuery, recipientQuery, auth.user.uid).first();
+
+    if (!recipient) {
+      return jsonResponse({ success: false, error: 'لم يتم العثور على حساب مسجل بهذا الرقم أو البريد الإلكتروني' }, 404, corsHeaders);
+    }
+
+    const now = Date.now();
+    const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
+      .bind(amount, now, auth.user.uid, amount).run();
+
+    if (Number(deduct?.meta?.changes || 0) !== 1) {
+      return jsonResponse({ success: false, error: 'تعذر إتمام التحويل، تحقق من رصيدك' }, 400, corsHeaders);
+    }
+
+    await db.prepare('UPDATE users SET points = COALESCE(points, 0) + ?, updated_at = ? WHERE id = ?')
+      .bind(amount, now, recipient.id).run();
+
+    const logSender = 'lh_' + crypto.randomUUID();
+    const logRecipient = 'lh_' + crypto.randomUUID();
+    const senderLabel = `تحويل ${amount} ذهبية إلى ${recipient.name || recipient.email || recipient.phone}${note ? ' (' + note + ')' : ''}`;
+    const recipientLabel = `استلام ${amount} ذهبية من ${sender.name || sender.email || sender.phone}${note ? ' (' + note + ')' : ''}`;
+
+    await db.prepare(`
+      INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
+      VALUES (?, ?, 'transfer_out', 'TRANSFER_OUT', ?, ?, ?, ?)
+    `).bind(logSender, auth.user.uid, -amount, senderLabel, JSON.stringify({ toUserId: recipient.id, note }), now).run().catch(() => {});
+
+    await db.prepare(`
+      INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
+      VALUES (?, ?, 'transfer_in', 'TRANSFER_IN', ?, ?, ?, ?)
+    `).bind(logRecipient, recipient.id, amount, recipientLabel, JSON.stringify({ fromUserId: auth.user.uid, note }), now).run().catch(() => {});
+
+    const updatedSender = await db.prepare('SELECT points FROM users WHERE id = ?').bind(auth.user.uid).first();
+
+    return jsonResponse({
+      success: true,
+      newBalance: Number(updatedSender?.points || 0),
+      transferred: amount,
+      recipientName: recipient.name || recipient.email,
+      message: `تم تحويل ${amount} ذهبية بنجاح إلى ${recipient.name || recipient.email || 'المستلم'}`
+    }, 200, corsHeaders);
+  }
+
+  // ── Turso: Dalil Gold Coins - Spend / Promote Services (POST /api/coins/promote) ──
+  if (url.pathname === '/api/coins/promote' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    const body = await request.json().catch(() => ({}));
+    const targetType = String(body.targetType || '').trim().toLowerCase(); // 'job', 'job_seeker', 'place', 'verification'
+    const targetId = String(body.targetId || '').trim();
+
+    if (!['job', 'job_seeker', 'place', 'verification'].includes(targetType) || !targetId) {
+      return jsonResponse({ success: false, error: 'نوع التمييز أو المعرّف غير صحيح' }, 400, corsHeaders);
+    }
+
+    const costs = {
+      job: 500,
+      job_seeker: 500,
+      place: 500,
+      verification: 5000
+    };
+    const cost = costs[targetType];
+
+    const db = createTursoDB(env);
+    await ensureCoinEconomySchema(db);
+    await ensureJobBoardSchema(db);
+
+    const user = await db.prepare('SELECT points FROM users WHERE id = ? LIMIT 1').bind(auth.user.uid).first();
+    const currentBalance = Number(user?.points || 0);
+    if (currentBalance < cost) {
+      return jsonResponse({
+        success: false,
+        code: 'INSUFFICIENT_COINS',
+        error: `رصيدك الحالي (${currentBalance} ذهبية) غير كافٍ. يلزم ${cost} ذهبية لتفعيل هذه الخدمة.`,
+        required: cost,
+        balance: currentBalance
+      }, 400, corsHeaders);
+    }
+
+    const now = Date.now();
+
+    if (targetType === 'job') {
+      const job = await db.prepare('SELECT id, user_id, title, featured_until FROM jobs WHERE id = ? LIMIT 1').bind(targetId).first();
+      if (!job) return jsonResponse({ success: false, error: 'الوظيفة غير موجودة' }, 404, corsHeaders);
+      if (!auth.user.isAdmin && job.user_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذه الوظيفة' }, 403, corsHeaders);
+      const targetTitle = job.title || 'إعلان وظيفة';
+
+      const currentUntil = Number(job.featured_until || 0);
+      const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
+
+      const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
+        .bind(cost, now, auth.user.uid, cost).run();
+      if (Number(deduct?.meta?.changes || 0) !== 1) {
+        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
+      }
+
+      await db.prepare('UPDATE jobs SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ?')
+        .bind(newUntil, now, job.id).run();
+
+      const logId = 'lh_' + crypto.randomUUID();
+      await db.prepare(`
+        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
+        VALUES (?, ?, 'redeem', 'FEATURED_JOB', ?, ?, ?, ?)
+      `).bind(logId, auth.user.uid, -cost, `تمييز وظيفة "${targetTitle}" لمدة 3 أيام`, JSON.stringify({ jobId: job.id, until: newUntil }), now).run();
+
+      const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').bind(auth.user.uid).first();
+      return jsonResponse({
+        success: true,
+        message: `تم تمييز الوظيفة بنجاح وتصديرها لمدة 3 أيام!`,
+        featuredUntil: newUntil,
+        newBalance: Number(updatedUser?.points || 0)
+      }, 200, corsHeaders);
+    }
+
+    if (targetType === 'job_seeker') {
+      const seeker = await db.prepare('SELECT id, user_id, name, profession, featured_until FROM job_seekers WHERE id = ? LIMIT 1').bind(targetId).first();
+      if (!seeker) return jsonResponse({ success: false, error: 'طلب العمل غير موجود' }, 404, corsHeaders);
+      if (!auth.user.isAdmin && seeker.user_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذا الطلب' }, 403, corsHeaders);
+      const targetTitle = `${seeker.name || ''} (${seeker.profession || ''})`;
+
+      const currentUntil = Number(seeker.featured_until || 0);
+      const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
+
+      const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
+        .bind(cost, now, auth.user.uid, cost).run();
+      if (Number(deduct?.meta?.changes || 0) !== 1) {
+        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
+      }
+
+      await db.prepare('UPDATE job_seekers SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ?')
+        .bind(newUntil, now, seeker.id).run();
+
+      const logId = 'lh_' + crypto.randomUUID();
+      await db.prepare(`
+        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
+        VALUES (?, ?, 'redeem', 'FEATURED_SEEKER', ?, ?, ?, ?)
+      `).bind(logId, auth.user.uid, -cost, `تمييز طلب كادر عمل "${targetTitle}" لمدة 3 أيام`, JSON.stringify({ seekerId: seeker.id, until: newUntil }), now).run();
+
+      const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').bind(auth.user.uid).first();
+      return jsonResponse({
+        success: true,
+        message: `تم تمييز طلب العمل بنجاح وتصديره بأولوية العرض لمدة 3 أيام!`,
+        featuredUntil: newUntil,
+        newBalance: Number(updatedUser?.points || 0)
+      }, 200, corsHeaders);
+    }
+
+    if (targetType === 'place') {
+      const place = await db.prepare('SELECT id, name, slug, owner_id, sponsored_until FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
+      if (!place) return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
+      if (!auth.user.isAdmin && place.owner_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذا المكان' }, 403, corsHeaders);
+      const targetTitle = place.name;
+
+      const currentUntil = Number(place.sponsored_until || 0);
+      const newUntil = Math.max(now, currentUntil) + (30 * 86400000); // 30 days / month
+
+      const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
+        .bind(cost, now, auth.user.uid, cost).run();
+      if (Number(deduct?.meta?.changes || 0) !== 1) {
+        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
+      }
+
+      await db.prepare('UPDATE places SET is_sponsored = 1, sponsored_until = ?, updated_at = ? WHERE id = ?')
+        .bind(newUntil, now, place.id).run();
+
+      const logId = 'lh_' + crypto.randomUUID();
+      await db.prepare(`
+        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, place_id, place_name, created_at)
+        VALUES (?, ?, 'redeem', 'SPONSORED_PLACE', ?, ?, ?, ?, ?)
+      `).bind(logId, auth.user.uid, -cost, `ترقية المكان "${targetTitle}" لإعلان مميز لمدة شهر`, place.id, place.name, now).run();
+
+      const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').bind(auth.user.uid).first();
+      return jsonResponse({
+        success: true,
+        message: `تم ترقية المكان كإعلان مميز لمدة 30 يوماً بنجاح!`,
+        sponsoredUntil: newUntil,
+        newBalance: Number(updatedUser?.points || 0)
+      }, 200, corsHeaders);
+    }
+
+    if (targetType === 'verification') {
+      const place = await db.prepare('SELECT id, name, slug, owner_id, is_verified FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
+      if (!place) return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
+      if (!auth.user.isAdmin && place.owner_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذا المكان' }, 403, corsHeaders);
+      if (place.is_verified) return jsonResponse({ success: false, error: 'هذا المكان موثق بالفعل بالعلامة الزرقاء' }, 400, corsHeaders);
+
+      const deduct = await db.prepare('UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?')
+        .bind(cost, now, now, auth.user.uid, cost).run();
+      if (Number(deduct?.meta?.changes || 0) !== 1) {
+        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
+      }
+
+      await db.prepare('UPDATE places SET is_verified = 1, verification_status = ?, updated_at = ? WHERE id = ?')
+        .bind('verified', now, place.id).run();
+
+      const logId = 'lh_' + crypto.randomUUID();
+      await db.prepare(`
+        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, place_id, place_name, created_at)
+        VALUES (?, ?, 'redeem', 'REDEEM_VERIFICATION', ?, ?, ?, ?, ?)
+      `).bind(logId, auth.user.uid, -cost, `استبدال 5000 ذهبية بتوثيق رسمي مدى الحياة`, place.id, place.name, now).run();
+
+      await db.prepare(`
+        INSERT INTO loyalty_redemptions (id, user_id, place_id, place_name, points_redeemed, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind('lr_' + crypto.randomUUID(), auth.user.uid, place.id, place.name, cost, now).run().catch(() => {});
+
+      broadcastFcmNotification({
+        title: `👑 توثيق رسمي جديد: ${place.name}`,
+        body: `تم توثيق (${place.name}) رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!`,
+        url: `./place.html?slug=${encodeURIComponent(place.slug || place.id)}`,
+        icon: './icons/icon-192x192.png',
+        tag: `verified-${place.id}`,
+        actionTitle: 'مشاهدة المكان الموثق'
+      }, env, ctx);
+
+      const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').bind(auth.user.uid).first();
+      return jsonResponse({
+        success: true,
+        message: `تهانينا! تم توثيق المكان بالعلامة الزرقاء مدى الحياة بنجاح 👑`,
+        newBalance: Number(updatedUser?.points || 0)
+      }, 200, corsHeaders);
+    }
   }
 
   // ── Turso: Get Single User by ID (GET /api/users/:id) ──

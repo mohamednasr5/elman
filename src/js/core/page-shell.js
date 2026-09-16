@@ -22,7 +22,7 @@ function _renderHeaderUserSlot(user = null) {
     const firstName = name.split(/\s+/)[0] || (isEn ? 'Account' : 'حسابي');
     const photo = u.photoURL || u.photo_url || '/icons/icon-72x72.png';
     const isUserAdmin = isAdmin(u);
-    return `<div class="header__user" style="position:relative"><button class="header__user-btn" id="header-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" title="${_escShell(name)}"><img src="${_escShell(photo)}" alt="${_escShell(firstName)}" class="header__avatar" width="32" height="32" onerror="this.src='/icons/icon-72x72.png'"><span class="header__user-name">${_escShell(firstName)}</span><span aria-hidden="true" style="font-size:10px">▾</span></button><div class="header__dropdown" id="header-user-dropdown" role="menu"><a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="header__dropdown-item" role="menuitem">🏠 ${isEn ? 'Dashboard' : 'لوحة تحكمي'}</a><a href="${isEn ? '/en/dashboard/?section=places' : '/dashboard.html?section=places'}" class="header__dropdown-item" role="menuitem">📍 ${isEn ? 'My Places' : 'أماكني'}</a><a href="${isEn ? '/en/dashboard/?section=add' : '/dashboard.html?section=add'}" class="header__dropdown-item" role="menuitem">➕ ${isEn ? 'Add Place' : 'إضافة مكان'}</a><a href="${isEn ? '/en/dashboard/?section=loyalty' : '/dashboard.html?section=loyalty'}" class="header__dropdown-item" role="menuitem">🎁 ${isEn ? 'Loyalty Rewards' : 'نادي الولاء'}</a><a href="${isEn ? '/en/dashboard/?section=notifications' : '/dashboard.html?section=notifications'}" class="header__dropdown-item" role="menuitem">🔔 ${isEn ? 'Notifications' : 'الإشعارات'}</a>${isUserAdmin ? `<div class="header__dropdown-divider"></div><a href="/admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ ${isEn ? 'Administration' : 'لوحة الإدارة'}</a>` : ''}<div class="header__dropdown-divider"></div><button class="header__dropdown-item header__dropdown-item--danger" id="header-logout-btn" type="button" role="menuitem">🚪 ${isEn ? 'Sign Out' : 'تسجيل الخروج'}</button></div></div>`;
+    return `<div class="header__user" style="position:relative"><button class="header__user-btn" id="header-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" title="${_escShell(name)}"><img src="${_escShell(photo)}" alt="${_escShell(firstName)}" class="header__avatar" width="32" height="32" onerror="this.src='/icons/icon-72x72.png'"><span class="header__user-name">${_escShell(firstName)}</span><span aria-hidden="true" style="font-size:10px">▾</span></button><div class="header__dropdown" id="header-user-dropdown" role="menu"><a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800">🪙 ${isEn ? 'Wallet & Coins' : 'الرصيد والعملات الذهبية'}</a><a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="header__dropdown-item" role="menuitem">🏠 ${isEn ? 'Dashboard' : 'لوحة تحكمي'}</a><a href="${isEn ? '/en/dashboard/?section=places' : '/dashboard.html?section=places'}" class="header__dropdown-item" role="menuitem">📍 ${isEn ? 'My Places' : 'أماكني'}</a><a href="${isEn ? '/en/dashboard/?section=add' : '/dashboard.html?section=add'}" class="header__dropdown-item" role="menuitem">➕ ${isEn ? 'Add Place' : 'إضافة مكان'}</a><a href="${isEn ? '/en/dashboard/?section=loyalty' : '/dashboard.html?section=loyalty'}" class="header__dropdown-item" role="menuitem">🎁 ${isEn ? 'Loyalty Rewards' : 'نادي الولاء'}</a><a href="${isEn ? '/en/dashboard/?section=notifications' : '/dashboard.html?section=notifications'}" class="header__dropdown-item" role="menuitem">🔔 ${isEn ? 'Notifications' : 'الإشعارات'}</a>${isUserAdmin ? `<div class="header__dropdown-divider"></div><a href="/admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ ${isEn ? 'Administration' : 'لوحة الإدارة'}</a>` : ''}<div class="header__dropdown-divider"></div><button class="header__dropdown-item header__dropdown-item--danger" id="header-logout-btn" type="button" role="menuitem">🚪 ${isEn ? 'Sign Out' : 'تسجيل الخروج'}</button></div></div>`;
   }
   const loginHref = isEn ? '/en/login/' : '/login.html';
   const loginText = isEn ? 'Sign In' : 'دخول';
@@ -177,6 +177,7 @@ function _bindMoreMenu(){
       { url: '/en/matariya/', icon: '🌊', label: 'About El Matariya' },
       { url: '/en/contact/', icon: '✉️', label: 'Contact Us' }
     ] : [
+      { url: '/wallet.html', icon: '🪙', label: 'الرصيد وذهبيات الدليل', cls: 'mobile-more-card--accent' },
       { url: '/places.html', icon: '📍', label: 'دليل الأماكن' },
       { url: '/categories.html', icon: '📋', label: 'التصنيفات' },
       { url: '/popular.html', icon: '🔥', label: 'الأكثر شعبية' },
@@ -194,6 +195,7 @@ function _bindMoreMenu(){
     ];
 
     const dashLinks = isEn ? [
+      { url: '/wallet.html', icon: '🪙', label: 'Wallet & Gold Coins', cls: 'mobile-more-card--accent' },
       { url: '/en/dashboard/?section=overview', icon: '🏠', label: 'Overview' },
       { url: '/en/dashboard/?section=places', icon: '📍', label: 'My Places' },
       { url: '/en/dashboard/?section=add', icon: '➕', label: 'Add a Place', cls: 'mobile-more-card--accent' },
@@ -204,6 +206,7 @@ function _bindMoreMenu(){
       { url: '/en/dashboard/?section=following', icon: '⭐', label: 'My Following' },
       { url: '/en/dashboard/?section=verification', icon: '🛡️', label: 'Verification Badge' }
     ] : [
+      { url: '/wallet.html', icon: '🪙', label: 'الرصيد والعملات الذهبية', cls: 'mobile-more-card--accent' },
       { url: '/dashboard.html?section=overview', icon: '🏠', label: 'نظرة عامة' },
       { url: '/dashboard.html?section=places', icon: '📍', label: 'أماكني' },
       { url: '/dashboard.html?section=add', icon: '➕', label: 'إضافة مكان', cls: 'mobile-more-card--accent' },

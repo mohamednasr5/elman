@@ -291,11 +291,16 @@ function renderSeekerCardHTML(item) {
   const expStr = item.experience_years ? `خبرة ${item.experience_years} سنوات` : 'مبتدئ / خبرة حديثة';
   const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) : '';
 
+  const isFeatured = Boolean(item.isFeatured);
+
   return `
-    <div class="jb-card ${isEmployed ? 'jb-card--inactive' : ''}" data-id="${item.id}">
+    <div class="jb-card ${isEmployed ? 'jb-card--inactive' : ''} ${isFeatured ? 'jb-card--featured' : ''}" data-id="${item.id}" style="${isFeatured ? 'border:2px solid #F5A623;box-shadow:0 6px 22px rgba(245,166,35,0.22);' : ''}">
       <div class="jb-card-head">
         <div class="jb-card-title-wrap">
-          <h2 class="jb-card-name">${escapeHtml(item.name)}</h2>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <h2 class="jb-card-name">${escapeHtml(item.name)}</h2>
+            ${isFeatured ? '<span class="jb-badge-featured" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:900;display:inline-flex;align-items:center;gap:3px">⭐ إعلان مميز</span>' : ''}
+          </div>
           <span class="jb-badge-profession">💼 ${escapeHtml(item.profession)}</span>
         </div>
         <span class="jb-card-status-pill ${isEmployed ? 'jb-status--employed' : 'jb-status--active'}">
@@ -327,6 +332,15 @@ function renderSeekerCardHTML(item) {
         <div class="jb-owner-banner" style="margin-top:10px">
           <span>👑 تحكم صاحب الإعلان:</span>
           <div class="jb-owner-actions">
+            ${!isFeatured ? `
+              <button type="button" class="jb-owner-btn btn-promote-seeker" data-id="${item.id}" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;font-weight:900;border:none">
+                ⭐ تمييز (500 🪙)
+              </button>
+            ` : `
+              <span style="background:rgba(245,166,35,0.15);color:#D97706;border:1px solid #F5A623;font-size:11px;font-weight:900;padding:4px 8px;border-radius:6px">
+                ⭐ مميز في الصدارة
+              </span>
+            `}
             <button type="button" class="jb-owner-btn ${isEmployed ? '' : 'jb-owner-btn--success'} btn-toggle-employed" data-id="${item.id}" data-status="${item.status}">
               ${isEmployed ? 'إعادة التفعيل' : 'وجدت عمل بالفعل 🎉'}
             </button>
@@ -370,6 +384,40 @@ function attachSeekerCardEvents($container) {
       const id = card.getAttribute('data-id');
       const item = cachedSeekers.find(s => String(s.id) === String(id));
       if (item) openSeekerDetailsModal(item);
+    });
+  });
+
+  // Promote Seeker Click
+  $container.querySelectorAll('.btn-promote-seeker').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-id');
+      if (!confirm('هل ترغب في تمييز طلبك بأولوية الظهور في صدارة الموقع والصفحات لمدة 3 أيام مقابل 500 ذهبية؟\n\nتأكيد: العملات غير قابلة للاسترداد نهائياً بعد التفعيل.')) return;
+      try {
+        const token = await getIdToken();
+        if (!token) throw new Error('يرجى تسجيل الدخول أولاً');
+        const res = await api.post('/api/coins/promote', { targetType: 'job_seeker', targetId: id }, token);
+        if (res.success) {
+          showToast('تم تمييز طلب العمل بنجاح في صدارة الموقع لمدة 3 أيام! ⭐', 'success');
+          await loadSeekers();
+        }
+      } catch (err) {
+        console.warn('[Promote Seeker Error]:', err);
+        showModal({
+          title: '🪙 رصيد العملات غير كافٍ',
+          content: `
+            <div style="text-align:center;padding:12px">
+              <div style="font-size:40px;margin-bottom:8px">🪙</div>
+              <h4 style="font-size:15px;font-weight:800;color:#D97706;margin-bottom:6px">يلزم 500 ذهبية لتمييز هذا الطلب</h4>
+              <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">رصيدك الحالي غير كافٍ لإتمام التمييز. يمكنك شحن رصيدك فوراً عبر فودافون كاش.</p>
+              <a href="/wallet.html" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#F5A623,#D97706);color:#fff">
+                <span>🪙 شحن رصيد الذهبيات الآن</span>
+              </a>
+            </div>
+          `,
+          buttons: [{ label: 'إغلاق', type: 'ghost', closeOnClick: true }]
+        });
+      }
     });
   });
 
@@ -536,6 +584,21 @@ function openAddSeekerModal() {
             <textarea name="bio" class="jb-textarea" rows="4" required placeholder="اكتب نبذة واضحة وموجزة: دراستك، الدورات، الأماكن التي عملت بها سابقاً، مواعيد العمل المناسبة لك، إلخ..."></textarea>
           </div>
 
+          <div class="jb-featured-box" style="background:linear-gradient(135deg,rgba(245,166,35,0.12),rgba(217,119,6,0.06));border:1.5px solid #F5A623;border-radius:12px;padding:12px 14px;margin:14px 0">
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+              <input type="checkbox" name="is_featured" id="add-seeker-is-featured" value="1" style="width:18px;height:18px;margin-top:2px;accent-color:#F5A623" />
+              <div>
+                <div style="font-weight:900;font-size:13.5px;color:#D97706;display:flex;align-items:center;gap:6px">
+                  <span>⭐ تمييز طلبي بأولوية الظهور في الصدارة</span>
+                  <span style="background:#F5A623;color:#0B1E30;font-size:10.5px;padding:1px 6px;border-radius:999px;font-weight:900">500 ذهبية / 3 أيام</span>
+                </div>
+                <p style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0 0;line-height:1.5">
+                  يمنح سيرتك الذاتية صدارة العرض في بطاقات الأماكن والصفحة الرئيسية مع إطار ذهبي لافت لأصحاب الأعمال.
+                </p>
+              </div>
+            </label>
+          </div>
+
           <div class="jb-modal-footer">
             <button type="button" class="jb-btn-cancel" id="btn-cancel-add-seeker">إلغاء</button>
             <button type="submit" class="jb-btn-submit" id="btn-submit-add-seeker">
@@ -564,6 +627,8 @@ function openAddSeekerModal() {
 
     try {
       const fd = new FormData($form);
+      const wantsFeatured = fd.get('is_featured') === '1';
+
       const payload = {
         name: fd.get('name').trim(),
         profession: fd.get('profession').trim(),
@@ -583,8 +648,36 @@ function openAddSeekerModal() {
       const token = await getIdToken();
       if (!token) throw new Error('يرجى تسجيل الدخول أولاً');
 
-      await api.post('/api/job-seekers', payload, token);
-      showToast('تمت إضافة سيرتك الذاتية بنجاح وستظهر فوراً للجميع 🎉', 'success');
+      const seekerRes = await api.post('/api/job-seekers', payload, token);
+      const newSeekerId = seekerRes.id || (seekerRes.data && seekerRes.data.id);
+
+      if (wantsFeatured && newSeekerId) {
+        try {
+          const promoRes = await api.post('/api/coins/promote', { targetType: 'job_seeker', targetId: newSeekerId }, token);
+          if (promoRes.success) {
+            showToast('تم نشر وتمييز سيرتك الذاتية في صدارة الموقع بنجاح 👑⭐', 'success');
+          }
+        } catch (promoErr) {
+          console.warn('[Auto promote seeker warning]:', promoErr);
+          showModal({
+            title: '⚠️ تنبيه بخصوص تمييز الإعلان',
+            content: `
+              <div style="text-align:center;padding:12px">
+                <div style="font-size:40px;margin-bottom:8px">🪙</div>
+                <h4 style="font-size:15px;font-weight:800;color:#D97706;margin-bottom:6px">تمت إضافة سيرتك الذاتية، ولكن رصيدك غير كافٍ للتمييز!</h4>
+                <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">يلزم 500 ذهبية لتمييز الطلب لمدة 3 أيام. يمكنك شحن رصيدك بسهولة عبر فودافون كاش.</p>
+                <a href="/wallet.html" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#F5A623,#D97706);color:#fff">
+                  <span>🪙 شحن رصيد الذهبيات الآن</span>
+                </a>
+              </div>
+            `,
+            buttons: [{ label: 'حسناً، فهمت', type: 'ghost', closeOnClick: true }]
+          });
+        }
+      } else {
+        showToast('تمت إضافة سيرتك الذاتية بنجاح وستظهر فوراً للجميع 🎉', 'success');
+      }
+
       close();
       await loadSeekers();
     } catch (err) {
@@ -676,6 +769,28 @@ function openEditSeekerModal(item) {
             <textarea name="bio" class="jb-textarea" rows="4" required>${escapeHtml(item.bio || '')}</textarea>
           </div>
 
+          ${!item.isFeatured ? `
+            <div class="jb-featured-box" style="background:linear-gradient(135deg,rgba(245,166,35,0.12),rgba(217,119,6,0.06));border:1.5px solid #F5A623;border-radius:12px;padding:12px 14px;margin:14px 0">
+              <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+                <input type="checkbox" name="is_featured" id="edit-seeker-is-featured" value="1" style="width:18px;height:18px;margin-top:2px;accent-color:#F5A623" />
+                <div>
+                  <div style="font-weight:900;font-size:13.5px;color:#D97706;display:flex;align-items:center;gap:6px">
+                    <span>⭐ تمييز طلبي بأولوية الظهور في الصدارة</span>
+                    <span style="background:#F5A623;color:#0B1E30;font-size:10.5px;padding:1px 6px;border-radius:999px;font-weight:900">500 ذهبية / 3 أيام</span>
+                  </div>
+                  <p style="font-size:11.5px;color:var(--text-muted);margin:4px 0 0 0;line-height:1.5">
+                    يمنح سيرتك الذاتية صدارة العرض في بطاقات الأماكن والصفحة الرئيسية مع إطار ذهبي لافت.
+                  </p>
+                </div>
+              </label>
+            </div>
+          ` : `
+            <div style="background:rgba(245,166,35,0.12);border:1px solid #F5A623;border-radius:10px;padding:10px 14px;margin:12px 0;font-size:12.5px;color:#D97706;font-weight:800;display:flex;align-items:center;gap:6px">
+              <span>⭐</span>
+              <span>هذا الطلب مميز حالياً في صدارة الموقع والصفحات!</span>
+            </div>
+          `}
+
           <div class="jb-modal-footer">
             <button type="button" class="jb-btn-cancel" id="btn-cancel-edit-modal">إلغاء</button>
             <button type="submit" class="jb-btn-submit" id="btn-submit-edit-seeker">
@@ -704,6 +819,8 @@ function openEditSeekerModal(item) {
 
     try {
       const fd = new FormData($form);
+      const wantsFeatured = fd.get('is_featured') === '1';
+
       const payload = {
         name: fd.get('name').trim(),
         profession: fd.get('profession').trim(),
@@ -727,7 +844,21 @@ function openEditSeekerModal(item) {
       if (!token) throw new Error('يرجى تسجيل الدخول أولاً');
 
       await api.put(`/api/job-seekers/${item.id}`, payload, token);
-      showToast('تم تحديث السيرة الذاتية بنجاح ✨', 'success');
+
+      if (wantsFeatured) {
+        try {
+          const promoRes = await api.post('/api/coins/promote', { targetType: 'job_seeker', targetId: item.id }, token);
+          if (promoRes.success) {
+            showToast('تم تحديث السيرة وتمييزها في صدارة الموقع بنجاح! ⭐', 'success');
+          }
+        } catch (err) {
+          console.warn('[Promote Seeker Error in Edit]:', err);
+          showToast('تم تحديث البيانات، ولكن لم يتم التمييز لعدم كفاية رصيد الذهبيات (يلزم 500 ذهبية)', 'warning');
+        }
+      } else {
+        showToast('تم تحديث السيرة الذاتية بنجاح ✨', 'success');
+      }
+
       close();
       await loadSeekers();
     } catch (err) {

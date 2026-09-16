@@ -815,9 +815,30 @@
   background: linear-gradient(135deg, #F5A623 0%, #D97706 100%);
 }
 
+.place-jb-card--interactive {
+  animation: jbFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.place-jb-card--featured {
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.08) 0%, rgba(217, 119, 6, 0.04) 100%), var(--surface, #fff);
+  border: 1.5px solid #F5A623 !important;
+  box-shadow: 0 4px 20px rgba(245, 166, 35, 0.18) !important;
+}
+
+[data-theme="dark"] .place-jb-card--featured {
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.14) 0%, rgba(15, 23, 42, 0.85) 100%);
+  border-color: #F5A623 !important;
+  box-shadow: 0 4px 20px rgba(245, 166, 35, 0.25) !important;
+}
+
+.place-jb-arrow:hover {
+  background: var(--surface-hover, rgba(0, 0, 0, 0.05)) !important;
+  transform: scale(1.08);
+}
+
 @keyframes jbFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes jbSlideUp {

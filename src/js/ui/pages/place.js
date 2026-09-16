@@ -7,6 +7,7 @@ import { translateCategory, toArabicCategory } from '../../utils/category-i18n.j
  * contact buttons, Google Maps, offers, products, photo gallery, and verification request.
  */
 
+import { WORKER_URL } from '../../core/firebase.js';
 import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, submitPhoneSuggestion, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=d4ce4ede_v6';
 import { getCurrentUser, signInWithGoogle, isAdmin, onAuthStateChange } from '../../core/auth.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
@@ -1422,6 +1423,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
           waUrl = settings.contact.whatsappLink;
         }
         mountSpotlightPlaceWidget(allPublished, placeId, waUrl);
+        mountPlaceJobBoardWidget(place);
       }).catch(() => {});
     };
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
@@ -2497,39 +2499,235 @@ function renderWorkingHoursSectionHTML({ isOpen, workingHoursList }) {
   `;
 }
 
+let _jbRotationTimer = null;
+
 function renderPlaceJobBoardCardsHTML(place) {
   const loc = encodeURIComponent(place.area || place.city || 'المنزلة');
   const workplace = encodeURIComponent(place.name || '');
 
   return `
-    <!-- بطاقة طالب عمل -->
-    <div class="place-jb-card">
-      <div class="place-jb-card__head">
-        <span class="place-jb-card__icon">💼</span>
-        <div>
-          <h4 class="place-jb-card__title">طالب عمل أو كادر محلي؟</h4>
-          <p class="place-jb-card__desc">تصفح الباحثين عن عمل في هذه المنطقة أو اعرض سيرتك الذاتية لأصحاب المحل.</p>
+    <div id="place-jb-showcase-container" class="place-jb-widget-wrapper">
+      <!-- بطاقة طالب عمل -->
+      <div class="place-jb-card">
+        <div class="place-jb-card__head">
+          <span class="place-jb-card__icon">💼</span>
+          <div>
+            <h4 class="place-jb-card__title">طالب عمل أو كادر محلي؟</h4>
+            <p class="place-jb-card__desc">تصفح الباحثين عن عمل في هذه المنطقة أو اعرض سيرتك الذاتية لأصحاب المحل.</p>
+          </div>
         </div>
+        <a href="/job-seekers.html?location=${loc}" class="place-jb-card__btn place-jb-card__btn--amber">
+          <span>استعراض الباحثين عن عمل ↤</span>
+        </a>
       </div>
-      <a href="/job-seekers.html?location=${loc}" class="place-jb-card__btn place-jb-card__btn--amber">
-        <span>استعراض الباحثين عن عمل ↤</span>
-      </a>
-    </div>
 
-    <!-- بطاقة وظيفة متاحة -->
-    <div class="place-jb-card">
-      <div class="place-jb-card__head">
-        <span class="place-jb-card__icon">📢</span>
-        <div>
-          <h4 class="place-jb-card__title">فرص عمل ووظائف متاحة</h4>
-          <p class="place-jb-card__desc">هل تبحث عن عمل هنا أو أعلن المكان عن شاغر وظيفي؟ استعرض الوظائف الشاغرة.</p>
+      <!-- بطاقة وظيفة متاحة -->
+      <div class="place-jb-card">
+        <div class="place-jb-card__head">
+          <span class="place-jb-card__icon">📢</span>
+          <div>
+            <h4 class="place-jb-card__title">فرص عمل ووظائف متاحة</h4>
+            <p class="place-jb-card__desc">هل تبحث عن عمل هنا أو أعلن المكان عن شاغر وظيفي؟ استعرض الوظائف الشاغرة.</p>
+          </div>
         </div>
+        <a href="/jobs.html?workplace=${workplace}&location=${loc}" class="place-jb-card__btn">
+          <span>الوظائف الشاغرة والتقديم ↤</span>
+        </a>
       </div>
-      <a href="/jobs.html?workplace=${workplace}&location=${loc}" class="place-jb-card__btn">
-        <span>الوظائف الشاغرة والتقديم ↤</span>
-      </a>
     </div>
   `;
+}
+
+async function mountPlaceJobBoardWidget(place) {
+  const container = document.getElementById('place-jb-showcase-container');
+  if (!container || !place) return;
+
+  if (_jbRotationTimer) {
+    clearInterval(_jbRotationTimer);
+    _jbRotationTimer = null;
+  }
+
+  const targetArea = (place.area || place.city || 'المنزلة').trim();
+  const workplaceName = (place.name || '').trim();
+
+  try {
+    const [jobsRes, seekersRes] = await Promise.allSettled([
+      fetch(`${WORKER_URL}/api/jobs?status=active`, { signal: AbortSignal.timeout(5000) }).then(r => r.json()),
+      fetch(`${WORKER_URL}/api/job-seekers?status=active`, { signal: AbortSignal.timeout(5000) }).then(r => r.json())
+    ]);
+
+    const rawJobs = jobsRes.status === 'fulfilled' && Array.isArray(jobsRes.value?.data) ? jobsRes.value.data : [];
+    const rawSeekers = seekersRes.status === 'fulfilled' && Array.isArray(seekersRes.value?.data) ? seekersRes.value.data : [];
+
+    // Featured items get absolute top priority across the entire website!
+    const featuredJobs = rawJobs.filter(j => j.isFeatured);
+    const featuredSeekers = rawSeekers.filter(s => s.isFeatured);
+
+    // Matching by area or workplace
+    const localJobs = rawJobs.filter(j => !j.isFeatured && (
+      (j.workplace && j.workplace.toLowerCase() === workplaceName.toLowerCase()) ||
+      (j.location && (j.location.includes(targetArea) || targetArea.includes(j.location)))
+    ));
+
+    const localSeekers = rawSeekers.filter(s => !s.isFeatured && (
+      s.location && (s.location.includes(targetArea) || targetArea.includes(s.location))
+    ));
+
+    // Other active items
+    const otherJobs = rawJobs.filter(j => !j.isFeatured && !localJobs.includes(j)).slice(0, 4);
+    const otherSeekers = rawSeekers.filter(s => !s.isFeatured && !localSeekers.includes(s)).slice(0, 4);
+
+    const playlist = [
+      ...featuredJobs.map(j => ({ type: 'job', data: j, isFeatured: true })),
+      ...featuredSeekers.map(s => ({ type: 'seeker', data: s, isFeatured: true })),
+      ...localJobs.map(j => ({ type: 'job', data: j, isFeatured: false })),
+      ...localSeekers.map(s => ({ type: 'seeker', data: s, isFeatured: false })),
+      ...otherJobs.map(j => ({ type: 'job', data: j, isFeatured: false })),
+      ...otherSeekers.map(s => ({ type: 'seeker', data: s, isFeatured: false }))
+    ];
+
+    if (playlist.length === 0) return;
+
+    let currentIndex = 0;
+
+    const renderCurrentCard = (index) => {
+      const item = playlist[index];
+      if (!item) return;
+
+      const isJob = item.type === 'job';
+      const d = item.data;
+      const isFeatured = item.isFeatured || Boolean(d.isFeatured);
+      const total = playlist.length;
+
+      let cardHtml = '';
+      if (isJob) {
+        const salaryText = d.salary ? `${Number(d.salary).toLocaleString('ar-EG')} ج.م` : 'يحدد في المقابلة';
+        cardHtml = `
+          <div class="place-jb-card place-jb-card--interactive ${isFeatured ? 'place-jb-card--featured' : ''}" style="${isFeatured ? 'border: 2px solid #F5A623; box-shadow: 0 0 20px rgba(245,166,35,0.22);' : ''}">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+              <span class="place-jb-badge place-jb-badge--job" style="font-size:11px;font-weight:800;background:rgba(2,132,199,0.12);color:#0284C7;padding:3px 8px;border-radius:6px">📢 فرصة عمل متاحة</span>
+              ${isFeatured ? '<span class="place-jb-badge place-jb-badge--featured" style="font-size:11px;font-weight:900;background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:3px">⭐ إعلان مميز</span>' : ''}
+              <span style="font-size:11px;color:var(--text-muted);font-weight:700">📍 ${escHtml(d.location || targetArea)}</span>
+            </div>
+
+            <div class="place-jb-card__head" style="margin-top:6px">
+              <span class="place-jb-card__icon" style="font-size:24px">🏢</span>
+              <div style="min-width:0">
+                <h4 class="place-jb-card__title" style="font-size:15px;line-height:1.4">${escHtml(d.title)}</h4>
+                <div style="font-size:12px;color:var(--primary);font-weight:800;margin-top:2px">${escHtml(d.workplace || d.workplaceName || workplaceName)}</div>
+              </div>
+            </div>
+
+            <div class="place-jb-card__meta" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;font-size:11.5px">
+              <span style="background:rgba(0,0,0,0.04);padding:2px 8px;border-radius:4px">💼 ${escHtml(d.profession || 'عام')}</span>
+              <span style="background:rgba(0,0,0,0.04);padding:2px 8px;border-radius:4px">💵 ${salaryText}</span>
+              ${d.working_hours || d.workingHours ? `<span style="background:rgba(0,0,0,0.04);padding:2px 8px;border-radius:4px">⏱️ ${d.working_hours || d.workingHours} ساعات</span>` : ''}
+            </div>
+
+            <p class="place-jb-card__desc" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml(d.description || 'فرصة عمل متاحة للتواصل والتقديم المباشر.')}</p>
+
+            <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+              <a href="/jobs.html?id=${encodeURIComponent(d.id)}" class="place-jb-card__btn" style="flex:1;text-align:center">
+                <span>التفاصيل والتقديم ↤</span>
+              </a>
+              ${d.phone ? `<a href="tel:${escAttr(d.phone)}" class="place-jb-btn-icon" title="اتصال بالمسؤول" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:rgba(16,185,129,0.12);color:#10B981;border-radius:8px;text-decoration:none;font-size:15px">📞</a>` : ''}
+              ${d.whatsapp ? `<a href="https://wa.me/2${escAttr(String(d.whatsapp).replace(/^0/, ''))}" target="_blank" rel="noopener" class="place-jb-btn-icon" title="تواصل واتساب" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:rgba(37,211,102,0.12);color:#25D366;border-radius:8px;text-decoration:none;font-size:15px">💬</a>` : ''}
+            </div>
+
+            ${total > 1 ? `
+              <div class="place-jb-nav" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.06)">
+                <span class="place-jb-nav__counter" style="font-size:11px;color:var(--text-muted);font-weight:700">
+                  إعلان ${index + 1} من ${total} • ⏱️ تبديل كل دقيقتين
+                </span>
+                <div style="display:flex;gap:6px">
+                  <button type="button" class="place-jb-arrow" id="btn-place-jb-prev" title="السابق" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:800;font-size:14px;color:var(--text-primary)">‹</button>
+                  <button type="button" class="place-jb-arrow" id="btn-place-jb-next" title="التالي" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:800;font-size:14px;color:var(--text-primary)">›</button>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        const expText = d.experience_years ? `خبرة ${d.experience_years} سنوات` : 'كادر طموح / باحث عن عمل';
+        cardHtml = `
+          <div class="place-jb-card place-jb-card--interactive ${isFeatured ? 'place-jb-card--featured' : ''}" style="${isFeatured ? 'border: 2px solid #F5A623; box-shadow: 0 0 20px rgba(245,166,35,0.22);' : ''}">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+              <span class="place-jb-badge place-jb-badge--seeker" style="font-size:11px;font-weight:800;background:rgba(245,166,35,0.15);color:#D97706;padding:3px 8px;border-radius:6px">💼 باحث عن عمل وكادر محلي</span>
+              ${isFeatured ? '<span class="place-jb-badge place-jb-badge--featured" style="font-size:11px;font-weight:900;background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:3px">⭐ إعلان مميز</span>' : ''}
+              <span style="font-size:11px;color:var(--text-muted);font-weight:700">📍 ${escHtml(d.location || targetArea)}</span>
+            </div>
+
+            <div class="place-jb-card__head" style="margin-top:6px">
+              <span class="place-jb-card__icon" style="font-size:24px">👤</span>
+              <div style="min-width:0">
+                <h4 class="place-jb-card__title" style="font-size:15px;line-height:1.4">${escHtml(d.name)}</h4>
+                <div style="font-size:12px;color:#D97706;font-weight:800;margin-top:2px">المهنة: ${escHtml(d.profession)}</div>
+              </div>
+            </div>
+
+            <div class="place-jb-card__meta" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;font-size:11.5px">
+              <span style="background:rgba(0,0,0,0.04);padding:2px 8px;border-radius:4px">⏳ ${expText}</span>
+              ${d.expectedSalary || d.expected_salary ? `<span style="background:rgba(0,0,0,0.04);padding:2px 8px;border-radius:4px">💵 متوقع: ${Number(d.expectedSalary || d.expected_salary).toLocaleString('ar-EG')} ج.م</span>` : ''}
+            </div>
+
+            <p class="place-jb-card__desc" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml(d.bio || d.description || 'كادر محلي يبحث عن فرصة عمل تناسب مهاراته.')}</p>
+
+            <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+              <a href="/job-seekers.html?id=${encodeURIComponent(d.id)}" class="place-jb-card__btn place-jb-card__btn--amber" style="flex:1;text-align:center">
+                <span>استعراض السيرة والتواصل ↤</span>
+              </a>
+              ${d.phone ? `<a href="tel:${escAttr(d.phone)}" class="place-jb-btn-icon" title="اتصال بالكادر" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:rgba(16,185,129,0.12);color:#10B981;border-radius:8px;text-decoration:none;font-size:15px">📞</a>` : ''}
+            </div>
+
+            ${total > 1 ? `
+              <div class="place-jb-nav" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.06)">
+                <span class="place-jb-nav__counter" style="font-size:11px;color:var(--text-muted);font-weight:700">
+                  إعلان ${index + 1} من ${total} • ⏱️ تبديل كل دقيقتين
+                </span>
+                <div style="display:flex;gap:6px">
+                  <button type="button" class="place-jb-arrow" id="btn-place-jb-prev" title="السابق" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:800;font-size:14px;color:var(--text-primary)">‹</button>
+                  <button type="button" class="place-jb-arrow" id="btn-place-jb-next" title="التالي" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:800;font-size:14px;color:var(--text-primary)">›</button>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      container.innerHTML = cardHtml;
+
+      if (total > 1) {
+        document.getElementById('btn-place-jb-prev')?.addEventListener('click', (e) => {
+          e.preventDefault();
+          currentIndex = (currentIndex - 1 + total) % total;
+          renderCurrentCard(currentIndex);
+          resetTimer();
+        });
+        document.getElementById('btn-place-jb-next')?.addEventListener('click', (e) => {
+          e.preventDefault();
+          currentIndex = (currentIndex + 1) % total;
+          renderCurrentCard(currentIndex);
+          resetTimer();
+        });
+      }
+    };
+
+    const resetTimer = () => {
+      if (_jbRotationTimer) clearInterval(_jbRotationTimer);
+      if (playlist.length > 1) {
+        _jbRotationTimer = setInterval(() => {
+          currentIndex = (currentIndex + 1) % playlist.length;
+          renderCurrentCard(currentIndex);
+        }, 120000); // 2 minutes auto-rotate
+      }
+    };
+
+    renderCurrentCard(currentIndex);
+    resetTimer();
+
+  } catch (err) {
+    console.warn('[mountPlaceJobBoardWidget Error]:', err);
+  }
 }
 
 export function renderSingleReviewCard(r, currentUser = null, place = {}, placeName = '') {

@@ -1278,6 +1278,24 @@ export async function sendAdminPushNotification(type, payload, env) {
       `⚠️ <b>سبب الإبلاغ:</b> ${tgEscape(payload.reason || 'محتوى غير لائق')}\n` +
       `👤 <b>مُقدّم البلاغ:</b> ${tgEscape(payload.reporterName || 'مستخدم')}\n` +
       `⏰ <b>التوقيت:</b> ${timeStr}`;
+  } else if (type === 'coin_purchase_request') {
+    text = `🪙 <b>طلب شراء ذهبيات الدليل ورد الآن!</b>\n\n` +
+      `👤 <b>المستخدم:</b> ${tgEscape(payload.userName || 'مستخدم')}\n` +
+      `📧 <b>البريد:</b> ${tgEscape(payload.userEmail || 'غير مسجل')}\n` +
+      `📞 <b>رقم المحفظة المُرسِل:</b> <code>${tgEscape(payload.vodafoneSenderNumber || 'غير محدد')}</code>\n` +
+      `💰 <b>الباقة المطلوبة:</b> <b>${tgEscape(payload.packageCoins)} ذهبية</b> (${tgEscape(payload.amountEgp)} ج.م)\n` +
+      (payload.receiptUrl ? `🧾 <b>رابط إيصال التحويل:</b> <a href="${tgEscape(payload.receiptUrl)}">اضغط هنا لعرض الإيصال</a>\n` : '') +
+      `🆔 <b>كود الطلب:</b> <code>${tgEscape(payload.purchaseId)}</code>\n` +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
+
+    const adminKeyboard = [];
+    if (payload.receiptUrl) {
+      adminKeyboard.push([{ text: '🧾 عرض الإيصال', url: payload.receiptUrl }]);
+    }
+    adminKeyboard.push([
+      { text: '👑 لوحة تحكم الإدارة', url: 'https://dalilmanzala.com/admin.html#coin-purchases' }
+    ]);
+    keyboard = { inline_keyboard: adminKeyboard };
   } else if (type === 'contact_message') {
     text = `📩 <b>رسالة جديدة من صفحة تواصل معنا!</b>\n\n` +
       `👤 <b>الاسم:</b> ${tgEscape(payload.name)}\n` +

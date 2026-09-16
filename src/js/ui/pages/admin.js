@@ -79,7 +79,8 @@ const ICONS = {
   star:      svgIcon('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
   clock:     svgIcon('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
   bullhorn:  svgIcon('<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>'),
-  briefcase: svgIcon('<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>')
+  briefcase: svgIcon('<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>'),
+  coins:     svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2.5 0 0 1 5 0c0 2-2.5 2.5-2.5 3.5"/>')
 };
 
 function navLink(sectionKey, href, icon, label, active) {
@@ -139,6 +140,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           ${navLink('verification',  '#', ICONS.shield,    'طلبات التوثيق',  section === 'verification')}
           ${navLink('categories',    '#', ICONS.folder,    'التصنيفات',       section === 'categories')}
           ${navLink('users',         '#', ICONS.users,     'المستخدمون',      section === 'users')}
+          ${navLink('coin-purchases','#', ICONS.coins,     'شراء الذهبيات 🪙', section === 'coin-purchases')}
           ${navLink('offers',        '#', ICONS.tag,       'العروض',          section === 'offers')}
           ${navLink('ads',           '#', ICONS.megaphone, 'الإعلانات والترويج', section === 'ads')}
           ${navLink('settings',      '#', ICONS.cog,       'الإعدادات',       section === 'settings')}
@@ -190,6 +192,7 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
             <button type="button" class="admin-quick-chip ${section === 'verification' ? 'active' : ''}" data-admin-sec="verification">🛡️ طلبات التوثيق</button>
             <button type="button" class="admin-quick-chip ${section === 'categories' ? 'active' : ''}" data-admin-sec="categories">📁 التصنيفات</button>
             <button type="button" class="admin-quick-chip ${section === 'users' ? 'active' : ''}" data-admin-sec="users">👥 المستخدمين والحظر</button>
+            <button type="button" class="admin-quick-chip ${section === 'coin-purchases' ? 'active' : ''}" data-admin-sec="coin-purchases">🪙 شراء الذهبيات</button>
             <button type="button" class="admin-quick-chip ${section === 'offers' ? 'active' : ''}" data-admin-sec="offers">🏷️ العروض والخصومات</button>
             <button type="button" class="admin-quick-chip ${section === 'ads' ? 'active' : ''}" data-admin-sec="ads">📢 الإعلانات والترويج</button>
             <button type="button" class="admin-quick-chip ${section === 'settings' ? 'active' : ''}" data-admin-sec="settings">⚙️ الإعدادات العامة</button>
@@ -295,6 +298,10 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
               <span>👥</span>
               <span>المستخدمين</span>
             </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="coin-purchases" style="background:rgba(245,166,35,0.18);border-color:#F5A623">
+              <span>🪙</span>
+              <span style="color:#F5A623;font-weight:800">شراء الذهبيات</span>
+            </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="offers">
               <span>🏷️</span>
               <span>العروض</span>
@@ -390,6 +397,7 @@ async function switchAdminSection(sectionName, pushState = true) {
     else if (sectionName === 'reports' || sectionName === 'phone-suggestions') await renderAdminReports($main);
     else if (sectionName === 'categories')    await renderAdminCategories($main);
     else if (sectionName === 'users')         await renderAdminUsers($main);
+    else if (sectionName === 'coin-purchases') await renderAdminCoinPurchases($main);
     else if (sectionName === 'offers')        await renderAdminOffers($main);
     else if (sectionName === 'ads')           await renderAdminAds($main);
     else if (sectionName === 'settings')      await renderAdminSettings($main);
@@ -4292,15 +4300,15 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
   const currentPts = parseInt(currentPoints, 10) || 0;
 
   const modal = showModal({
-    title: `🎁 تعديل نقاط ورتبة: ${escHtml(userName)}`,
+    title: `🪙 تعديل رصيد الذهبيات والنقاط: ${escHtml(userName)}`,
     size: 'md',
     content: `
       <form id="form-admin-user-points" style="display:flex;flex-direction:column;gap:16px" onsubmit="return false">
         
         <div style="background:rgba(245,166,35,0.08);border:1.5px solid rgba(245,166,35,0.3);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
           <div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.7)">الرصيد الحالي للمستخدم:</div>
-            <div style="font-size:1.7rem;font-weight:900;color:#F5A623" id="admin-user-live-pts-display">${currentPts.toLocaleString('ar-EG')} نقطة</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.7)">الرصيد الحالي من ذهبيات الدليل والنقاط:</div>
+            <div style="font-size:1.7rem;font-weight:900;color:#F5A623" id="admin-user-live-pts-display">${currentPts.toLocaleString('ar-EG')} ذهبية 🪙</div>
           </div>
           <div style="text-align:left">
             <span class="badge" style="font-size:13px;font-weight:800;padding:5px 12px;background:#F5A623;color:#0B1E30;border-radius:9999px" id="admin-user-live-lvl-badge">
@@ -4313,18 +4321,18 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
         <div class="form-group" style="margin:0">
           <label class="form-label" style="font-weight:800">ترقية مباشرة إلى رتبة:</label>
           <select id="select-admin-target-rank" class="form-select" style="font-weight:700">
-            <option value="">-- اختر رتبة لتحديد النقاط تلقائياً --</option>
-            <option value="5000">👑 نخبة المنزلة والمطرية VIP (5,000+ نقطة - يفتح التوثيق الفوري)</option>
-            <option value="3500">💎 مساهم موثوق ذهبي (3,500 نقطة)</option>
-            <option value="1500">🥇 خبير المنزلة والمطرية (1,500 نقطة)</option>
-            <option value="500">🥈 مساهم نشط (500 نقطة)</option>
-            <option value="0">🥉 مستكشف مبتدئ (0 نقطة)</option>
+            <option value="">-- اختر رتبة لتحديد النقاط والذهبيات تلقائياً --</option>
+            <option value="5000">👑 نخبة المنزلة والمطرية VIP (5,000+ ذهبية - يفتح التوثيق الفوري)</option>
+            <option value="3500">💎 مساهم موثوق ذهبي (3,500 ذهبية)</option>
+            <option value="1500">🥇 خبير المنزلة والمطرية (1,500 ذهبية)</option>
+            <option value="500">🥈 مساهم نشط (500 ذهبية)</option>
+            <option value="0">🥉 مستكشف مبتدئ (0 ذهبية)</option>
           </select>
         </div>
 
         <!-- Direct Points Input -->
         <div class="form-group" style="margin:0">
-          <label class="form-label" style="font-weight:800">أو حدد إجمالي رصيد النقاط الجديد:</label>
+          <label class="form-label" style="font-weight:800">أو حدد إجمالي الرصيد الجديد (ذهبيات / نقاط):</label>
           <input type="number" id="input-admin-new-points" class="form-input" value="${currentPts}" min="0" max="100000" step="10" required style="font-weight:800;font-size:15px" />
         </div>
 
@@ -4333,8 +4341,8 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
           <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:6px;font-weight:700">إضافة سريعة للرصيد الحالي:</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="100" style="border-radius:8px;font-weight:700">+100</button>
-            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="500" style="border-radius:8px;font-weight:700">+500</button>
-            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="1000" style="border-radius:8px;font-weight:700">+1,000</button>
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="500" style="border-radius:8px;font-weight:700">+500 🪙</button>
+            <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="1000" style="border-radius:8px;font-weight:700">+1,000 🪙</button>
             <button type="button" class="btn btn-xs btn-outline btn-quick-add-pts" data-add="5000" style="color:#10B981;border-color:#10B981;font-weight:800;border-radius:8px">+5,000 (توثيق فوري 👑)</button>
           </div>
         </div>
@@ -5003,9 +5011,11 @@ function renderAdminOffersTableRows(offers) {
 //  7. Ads & Place Promotion (إدارة الإعلانات والترويج)
 // ─────────────────────────────────────────────
 async function renderAdminAds($container) {
-  const [adsMap, placesMap] = await Promise.all([
+  const [adsMap, placesMap, jobsRes, seekersRes] = await Promise.all([
     dbGet('ads', false),
-    dbGet('places', false)
+    dbGet('places', false),
+    api.get('/api/jobs?status=all').catch(() => ({ data: [] })),
+    api.get('/api/job-seekers?status=all').catch(() => ({ data: [] }))
   ]);
   adminCache.ads = adsMap || {};
   adminCache.places = placesMap || {};
@@ -5016,6 +5026,9 @@ async function renderAdminAds($container) {
   const sponsoredPlaces = Object.entries(adminCache.places || {})
     .map(([id, p]) => ({ ...p, _id: id }))
     .filter(p => p.isSponsored || p.isFeatured || p.is_sponsored || p.is_featured || p.isPromoted);
+
+  const featuredJobs = (jobsRes?.data || []).filter(j => j.isFeatured || j.is_featured);
+  const featuredSeekers = (seekersRes?.data || []).filter(s => s.isFeatured || s.is_featured);
 
   $container.innerHTML = `
     <div class="admin-fade-in">
@@ -5202,6 +5215,76 @@ async function renderAdminAds($container) {
                   </td>
                 </tr>
               `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2.5. Featured Spotlight Listings (Jobs, Seekers & Places) -->
+      <div class="form-section" style="margin-bottom:24px;border:1.5px solid #F5A623;border-radius:14px;background:rgba(245,166,35,0.03)">
+        <h2 class="form-section__title" style="color:#F5A623;display:flex;align-items:center;gap:8px">
+          <span>🪙</span> إعلانات مميزة بذهبيات الدليل (الوظائف والكوادر والأنشطة) (${featuredJobs.length + featuredSeekers.length + sponsoredPlaces.length})
+        </h2>
+        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+          هذه الإعلانات تم تمييزها بأولوية الظهور في الموقع وصفحات الأماكن وتتبدل كل دقيقتين تلقائياً
+        </div>
+        <div class="dashboard-table-wrapper">
+          <table class="dashboard-table">
+            <thead>
+              <tr>
+                <th>نوع الإعلان</th>
+                <th>العنوان / الاسم</th>
+                <th>رقم التواصل</th>
+                <th>تاريخ الانتهاء</th>
+                <th>حالة التمييز</th>
+                <th>معاينة</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(featuredJobs.length === 0 && featuredSeekers.length === 0 && sponsoredPlaces.length === 0) ? `
+                <tr><td colspan="6" class="text-center" style="padding:24px">لا توجد إعلانات مميزة نشطة حالياً</td></tr>
+              ` : `
+                ${featuredJobs.map(j => {
+                  const until = j.featuredUntil || j.featured_until;
+                  const msLeft = until ? (until - Date.now()) : 0;
+                  const daysLeft = msLeft > 0 ? Math.ceil(msLeft / 86400000) : 0;
+                  return `
+                    <tr>
+                      <td><span class="badge" style="background:#0284C7;color:#fff;font-size:11px;font-weight:700">📢 وظيفة شاغرة</span></td>
+                      <td><strong>${escHtml(j.title)}</strong><div style="font-size:11px;color:var(--text-muted)">${escHtml(j.company || '')}</div></td>
+                      <td><span style="direction:ltr;font-family:monospace">${escHtml(j.phone || '-')}</span></td>
+                      <td>${until ? `${new Date(until).toLocaleDateString('ar-EG')} (${daysLeft > 0 ? `${daysLeft} يوم متبقي` : 'منتهي'})` : 'دائم'}</td>
+                      <td><span style="color:#F5A623;font-weight:800">⭐ مميز (صدارة)</span></td>
+                      <td><a href="/jobs.html" target="_blank" class="btn btn-xs btn-outline">عرض ↗</a></td>
+                    </tr>
+                  `;
+                }).join('')}
+                ${featuredSeekers.map(s => {
+                  const until = s.featuredUntil || s.featured_until;
+                  const msLeft = until ? (until - Date.now()) : 0;
+                  const daysLeft = msLeft > 0 ? Math.ceil(msLeft / 86400000) : 0;
+                  return `
+                    <tr>
+                      <td><span class="badge" style="background:#10B981;color:#fff;font-size:11px;font-weight:700">💼 باحث عن عمل</span></td>
+                      <td><strong>${escHtml(s.name)}</strong><div style="font-size:11px;color:var(--text-muted)">${escHtml(s.profession || '')}</div></td>
+                      <td><span style="direction:ltr;font-family:monospace">${escHtml(s.phone || '-')}</span></td>
+                      <td>${until ? `${new Date(until).toLocaleDateString('ar-EG')} (${daysLeft > 0 ? `${daysLeft} يوم متبقي` : 'منتهي'})` : 'دائم'}</td>
+                      <td><span style="color:#F5A623;font-weight:800">⭐ مميز (صدارة)</span></td>
+                      <td><a href="/job-seekers.html" target="_blank" class="btn btn-xs btn-outline">عرض ↗</a></td>
+                    </tr>
+                  `;
+                }).join('')}
+                ${sponsoredPlaces.map(p => `
+                  <tr>
+                    <td><span class="badge" style="background:#F5A623;color:#0B1E30;font-size:11px;font-weight:800">📍 مكان تجاري</span></td>
+                    <td><strong>${escHtml(p.name)}</strong></td>
+                    <td><span style="direction:ltr;font-family:monospace">${escHtml(p.phone || '-')}</span></td>
+                    <td>${(p.featuredUntil || p.featured_until) ? new Date(p.featuredUntil || p.featured_until).toLocaleDateString('ar-EG') : 'إعلان مدفوع'}</td>
+                    <td><span style="color:#F5A623;font-weight:800">⭐ مميز (صدارة)</span></td>
+                    <td><a href="${escAttr(getPlaceUrl(p.slug || p.id || p._id))}" target="_blank" class="btn btn-xs btn-outline">عرض ↗</a></td>
+                  </tr>
+                `).join('')}
+              `}
             </tbody>
           </table>
         </div>
@@ -9367,4 +9450,348 @@ async function renderAdminJobs($container) {
     `;
   }
 }
+
+// ─────────────────────────────────────────────
+//  SECTION: COIN PURCHASES (طلبات شراء ذهبيات الدليل)
+// ─────────────────────────────────────────────
+let _adminCoinPurchasesFilter = 'pending';
+let _adminCoinPurchasesSearch = '';
+
+async function renderAdminCoinPurchases($container, filter = _adminCoinPurchasesFilter) {
+  _adminCoinPurchasesFilter = filter;
+  $container.innerHTML = '<div class="spinner spinner-lg" style="margin:4rem auto"></div>';
+
+  try {
+    const token = await getIdToken();
+    const res = await api.get('/api/coins/purchases', token);
+    const purchases = (res && res.data) ? res.data : [];
+
+    function renderUI() {
+      const totalCount = purchases.length;
+      const pendingCount = purchases.filter(p => p.status === 'pending').length;
+      const approvedCount = purchases.filter(p => p.status === 'approved').length;
+      const rejectedCount = purchases.filter(p => p.status === 'rejected').length;
+
+      const totalEgp = purchases
+        .filter(p => p.status === 'approved')
+        .reduce((sum, p) => sum + (Number(p.amount_egp) || 0), 0);
+
+      const totalCoins = purchases
+        .filter(p => p.status === 'approved')
+        .reduce((sum, p) => sum + (Number(p.coins) || 0), 0);
+
+      const filtered = purchases.filter(p => {
+        if (_adminCoinPurchasesFilter !== 'all' && p.status !== _adminCoinPurchasesFilter) return false;
+        if (_adminCoinPurchasesSearch) {
+          const q = normalizeArabic(_adminCoinPurchasesSearch.toLowerCase().trim());
+          const hay = normalizeArabic(`${p.user_name || ''} ${p.user_email || ''} ${p.user_phone || ''} ${p.sender_phone || ''} ${p.package_id || ''}`.toLowerCase());
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      $container.innerHTML = `
+        <div class="admin-fade-in" id="admin-sec-coin-purchases">
+          <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:22px">
+            <div>
+              <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:900;display:flex;align-items:center;gap:10px">
+                <span style="color:#F5A623">🪙</span>
+                <span>طلبات شراء وشحن ذهبيات الدليل (${totalCount})</span>
+              </h1>
+              <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
+                مراجعة إيصالات تحويل فودافون كاش، مطابقة أرقام المرسلين، واعتماد شحن الرصيد للحسابات فوراً
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <a href="/wallet.html" target="_blank" class="btn" style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.3);border-radius:12px;font-weight:800;font-size:13px;text-decoration:none">
+                🪙 صفحة الرصيد العامة
+              </a>
+              <button type="button" class="btn btn-outline" id="btn-refresh-coins-admin" style="font-size:13px;font-weight:700">
+                🔄 تحديث
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Stats Grid -->
+          <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:14px;margin-bottom:22px">
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(255,255,255,0.1)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي الطلبات</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#38BDF8;margin-top:4px">${totalCount}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid ${pendingCount > 0 ? '#F5A623' : 'rgba(255,255,255,0.1)'};box-shadow:${pendingCount > 0 ? '0 0 16px rgba(245,166,35,0.2)' : 'none'}">
+              <div style="font-size:12px;color:${pendingCount > 0 ? '#F5A623' : 'rgba(255,255,255,0.6)'};font-weight:800">بانتظار المراجعة والشحن ⏳</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#F5A623;margin-top:4px">${pendingCount}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(16,185,129,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي الإيرادات المعتمدة</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#10B981;margin-top:4px">${totalEgp.toLocaleString('ar-EG')} <span style="font-size:14px">ج.م</span></div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(245,166,35,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي الذهبيات المصدرة</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#F5A623;margin-top:4px">${totalCoins.toLocaleString('ar-EG')} 🪙</div>
+            </div>
+          </div>
+
+          <!-- Controls: Filter Tabs & Search -->
+          <div style="background:#0F273D;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.08);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm ${filter === 'pending' ? 'btn-primary' : 'btn-outline'} btn-cp-filter" data-status="pending" style="${filter === 'pending' ? 'background:#F5A623;border-color:#F5A623;color:#0B1E30;font-weight:800' : ''}">
+                ⏳ قيد المراجعة (${pendingCount})
+              </button>
+              <button type="button" class="btn btn-sm ${filter === 'approved' ? 'btn-primary' : 'btn-outline'} btn-cp-filter" data-status="approved">
+                ✅ تم الشحن (${approvedCount})
+              </button>
+              <button type="button" class="btn btn-sm ${filter === 'rejected' ? 'btn-primary' : 'btn-outline'} btn-cp-filter" data-status="rejected">
+                ❌ مرفوض (${rejectedCount})
+              </button>
+              <button type="button" class="btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-outline'} btn-cp-filter" data-status="all">
+                كل الطلبات (${totalCount})
+              </button>
+            </div>
+
+            <div style="min-width:240px;flex:1;max-width:380px">
+              <input type="search" id="input-search-coin-purchases" class="form-input" placeholder="🔍 بحث باسم، هاتف، أو رقم المحول منه..." value="${escAttr(_adminCoinPurchasesSearch)}" style="padding:7px 12px;font-size:13px;border-radius:10px" />
+            </div>
+          </div>
+
+          <!-- Purchases Table / Cards -->
+          <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.08);overflow:hidden">
+            <table class="dashboard-table">
+              <thead>
+                <tr>
+                  <th style="width:80px">إيصال التحويل</th>
+                  <th>المستخدم الحساب</th>
+                  <th>الباقة المطلوبة</th>
+                  <th>المبلغ المحول</th>
+                  <th>رقم محفظة فودافون كاش</th>
+                  <th>تاريخ الطلب</th>
+                  <th>الحالة</th>
+                  <th style="width:190px">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filtered.length === 0 ? `
+                  <tr>
+                    <td colspan="8" class="text-center" style="padding:48px 16px">
+                      <div style="font-size:36px;margin-bottom:10px">🪙</div>
+                      <div style="font-weight:800;font-size:15px;color:#fff">لا توجد طلبات شراء مطابقة</div>
+                      <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-top:4px">
+                        ${_adminCoinPurchasesSearch ? 'جرب البحث بكلمات مختلفة' : 'لا توجد طلبات في هذا التبويب حالياً'}
+                      </div>
+                    </td>
+                  </tr>
+                ` : filtered.map(p => {
+                  const createdAtFormatted = p.created_at ? new Date(p.created_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                  const isPending = p.status === 'pending';
+                  const isApproved = p.status === 'approved';
+                  const isRejected = p.status === 'rejected';
+
+                  let statusBadge = '';
+                  if (isPending) {
+                    statusBadge = '<span class="badge" style="background:rgba(245,166,35,0.2);color:#F5A623;border:1px solid rgba(245,166,35,0.4);font-weight:800;padding:4px 10px;font-size:11.5px">⏳ بانتظار الشحن</span>';
+                  } else if (isApproved) {
+                    statusBadge = '<span class="badge" style="background:rgba(16,185,129,0.2);color:#10B981;border:1px solid rgba(16,185,129,0.4);font-weight:800;padding:4px 10px;font-size:11.5px">✅ تم الشحن</span>';
+                  } else {
+                    statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.2);color:#EF4444;border:1px solid rgba(239,68,68,0.4);font-weight:800;padding:4px 10px;font-size:11.5px">❌ مرفوض</span>`;
+                  }
+
+                  return `
+                    <tr data-purchase-id="${escAttr(p.id)}">
+                      <td>
+                        ${p.receipt_url ? `
+                          <div class="receipt-thumb-wrap" style="position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1.5px solid rgba(245,166,35,0.4);cursor:pointer;background:#000" data-img="${escAttr(p.receipt_url)}" title="اضغط لتكبير الإيصال">
+                            <img src="${escAttr(p.receipt_url)}" alt="إيصال" style="width:100%;height:100%;object-fit:cover" />
+                            <div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;opacity:0;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">🔍</div>
+                          </div>
+                        ` : `
+                          <div style="width:64px;height:64px;border-radius:10px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:11px;text-align:center">بدون إيصال</div>
+                        `}
+                      </td>
+                      <td>
+                        <strong style="color:#fff;font-size:13.5px">${escHtml(p.user_name || 'مستخدم')}</strong>
+                        <div style="font-size:11.5px;color:rgba(255,255,255,0.6)">${escHtml(p.user_email || p.user_phone || p.user_id)}</div>
+                        <div style="font-size:11px;color:#F5A623;margin-top:2px">الرصيد الحالي: <strong>${(Number(p.current_points) || 0).toLocaleString('ar-EG')} 🪙</strong></div>
+                      </td>
+                      <td>
+                        <div style="display:flex;align-items:center;gap:6px">
+                          <span style="font-size:17px">🪙</span>
+                          <div>
+                            <strong style="color:#F5A623;font-size:14px">${Number(p.coins).toLocaleString('ar-EG')} ذهبية</strong>
+                            <div style="font-size:10.5px;color:rgba(255,255,255,0.5)">${escHtml(p.package_id || '')}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <strong style="font-size:14px;color:#10B981">${Number(p.amount_egp).toLocaleString('ar-EG')} ج.م</strong>
+                        <div style="font-size:10.5px;color:rgba(255,255,255,0.5)">فودافون كاش</div>
+                      </td>
+                      <td>
+                        <div style="display:flex;align-items:center;gap:6px">
+                          <span style="direction:ltr;font-family:monospace;font-size:13px;font-weight:700;color:#38BDF8">${escHtml(p.sender_phone || '-')}</span>
+                          ${p.sender_phone ? `
+                            <button type="button" class="btn-copy-phone" data-phone="${escAttr(p.sender_phone)}" title="نسخ الرقم" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:13px;padding:2px">📋</button>
+                          ` : ''}
+                        </div>
+                      </td>
+                      <td>
+                        <span style="font-size:12px;color:rgba(255,255,255,0.8)">${createdAtFormatted}</span>
+                      </td>
+                      <td>
+                        ${statusBadge}
+                        ${(isRejected && p.rejection_reason) ? `
+                          <div style="font-size:11px;color:#EF4444;margin-top:4px;max-width:160px;line-height:1.3">${escHtml(p.rejection_reason)}</div>
+                        ` : ''}
+                      </td>
+                      <td>
+                        ${isPending ? `
+                          <div style="display:flex;flex-direction:column;gap:6px">
+                            <button type="button" class="btn btn-xs btn-approve-purchase" data-id="${escAttr(p.id)}" data-coins="${escAttr(p.coins)}" data-name="${escAttr(p.user_name || 'المستخدم')}" style="background:#10B981;color:#fff;border:none;font-weight:800;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(16,185,129,0.3)">
+                              قبول وشحن الرصيد ✅
+                            </button>
+                            <button type="button" class="btn btn-xs btn-reject-purchase" data-id="${escAttr(p.id)}" data-name="${escAttr(p.user_name || 'المستخدم')}" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);font-weight:700;border-radius:8px;padding:4px 10px">
+                              رفض الطلب ❌
+                            </button>
+                          </div>
+                        ` : `
+                          <div style="font-size:11.5px;color:rgba(255,255,255,0.5)">
+                            ${isApproved ? 'تمت إضافة الرصيد بنجاح' : 'تم الرفض'}
+                          </div>
+                        `}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Event: Filter Pills
+      $container.querySelectorAll('.btn-cp-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const st = btn.getAttribute('data-status');
+          _adminCoinPurchasesFilter = st;
+          renderUI();
+        });
+      });
+
+      // Event: Search Input
+      const searchInput = $container.querySelector('#input-search-coin-purchases');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          _adminCoinPurchasesSearch = e.target.value;
+          renderUI();
+        });
+      }
+
+      // Event: Refresh
+      $container.querySelector('#btn-refresh-coins-admin')?.addEventListener('click', () => {
+        renderAdminCoinPurchases($container, _adminCoinPurchasesFilter);
+      });
+
+      // Event: Copy Phone
+      $container.querySelectorAll('.btn-copy-phone').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const ph = btn.getAttribute('data-phone');
+          if (ph && navigator.clipboard) {
+            navigator.clipboard.writeText(ph);
+            toast.success('تم نسخ الرقم: ' + ph);
+          }
+        });
+      });
+
+      // Event: View Receipt Full Resolution
+      $container.querySelectorAll('.receipt-thumb-wrap').forEach(el => {
+        el.addEventListener('click', () => {
+          const imgUrl = el.getAttribute('data-img');
+          if (!imgUrl) return;
+          showModal({
+            title: '🔎 إيصال التحويل البنكي / المحفظة',
+            size: 'md',
+            content: `
+              <div style="text-align:center">
+                <div style="max-height:75vh;overflow:auto;border-radius:12px;background:#000;padding:4px;border:1px solid rgba(255,255,255,0.1)">
+                  <img src="${escAttr(imgUrl)}" alt="إيصال التحويل" style="max-width:100%;height:auto;border-radius:8px;display:block;margin:0 auto" />
+                </div>
+                <div style="margin-top:14px;display:flex;gap:10px;justify-content:center">
+                  <a href="${escAttr(imgUrl)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+                    فتح بالحجم الكامل في نافذة جديدة ↗
+                  </a>
+                </div>
+              </div>
+            `
+          });
+        });
+      });
+
+      // Event: Approve Purchase Request
+      $container.querySelectorAll('.btn-approve-purchase').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const coins = btn.getAttribute('data-coins');
+          const userName = btn.getAttribute('data-name');
+
+          const ok = await showConfirm({
+            title: 'تأكيد شحن الرصيد',
+            message: `هل تأكدت من استلام المبلغ على محفظة فودافون كاش وتريد شحن (${Number(coins).toLocaleString('ar-EG')} ذهبية) فوراً لحساب ${userName}؟\nسيتم قيد المعاملة وزيادة رصيد المستخدم فوراً وإشعاره.`,
+            confirmText: 'نعم، شحن الرصيد فوراً ✅',
+            cancelText: 'تراجع'
+          });
+          if (!ok) return;
+
+          try {
+            btn.disabled = true;
+            btn.textContent = 'جاري الشحن...';
+            const tok = await getIdToken();
+            await api.post(`/api/coins/purchases/${id}/review`, { action: 'approve' }, tok);
+            toast.success(`تم شحن ${Number(coins).toLocaleString('ar-EG')} ذهبية بنجاح لحساب ${userName}! 🎉`);
+            renderAdminCoinPurchases($container, _adminCoinPurchasesFilter);
+          } catch (err) {
+            toast.error(err.message || 'فشل اعتماد الشحن');
+            btn.disabled = false;
+            btn.textContent = 'قبول وشحن الرصيد ✅';
+          }
+        });
+      });
+
+      // Event: Reject Purchase Request
+      $container.querySelectorAll('.btn-reject-purchase').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const userName = btn.getAttribute('data-name');
+
+          const reason = prompt(`الرجاء إدخال سبب رفض طلب شحن ${userName}:`, 'لم يتم العثور على التحويل في محفظة فودافون كاش أو الإيصال غير مطابق');
+          if (reason === null) return; // user cancelled prompt
+
+          try {
+            btn.disabled = true;
+            btn.textContent = 'جاري الرفض...';
+            const tok = await getIdToken();
+            await api.post(`/api/coins/purchases/${id}/review`, { action: 'reject', reason: reason.trim() }, tok);
+            toast.info('تم رفض الطلب وتسجيل السبب');
+            renderAdminCoinPurchases($container, _adminCoinPurchasesFilter);
+          } catch (err) {
+            toast.error(err.message || 'فشل رفض الطلب');
+            btn.disabled = false;
+            btn.textContent = 'رفض الطلب ❌';
+          }
+        });
+      });
+    }
+
+    renderUI();
+  } catch (err) {
+    console.error('[Admin Coin Purchases Error]:', err);
+    $container.innerHTML = `
+      <div class="empty-state" style="margin-top:40px">
+        <span class="empty-state__icon">⚠️</span>
+        <h3>تعذر تحميل طلبات شراء الذهبيات</h3>
+        <p style="color:var(--danger)">${escHtml(err.message || 'خطأ في الاتصال بالخادم')}</p>
+        <button class="btn btn-primary" onclick="window.refreshCurrentAdminSection()">إعادة المحاولة</button>
+      </div>
+    `;
+  }
+}
+
 
