@@ -1652,6 +1652,14 @@ function getHomeHTML() {
             <span class="command-card__orb"></span><span class="command-card__icon" aria-hidden="true">🧭</span>
             <span class="command-card__body"><strong>اتجاه القبلة</strong><small>بوصلة 3D للكعبة المشرفة</small></span><span class="command-card__arrow">←</span>
           </a>
+          <a class="command-card command-card--job-seekers" href="job-seekers.html" aria-label="باحث عن عمل">
+            <span class="command-card__orb"></span><span class="command-card__icon" aria-hidden="true">💼</span>
+            <span class="command-card__body"><strong>باحث عن عمل</strong><small>ابحث عن فرصة عمل تناسب مهنتك وخبرتك</small></span><span class="command-card__arrow">←</span>
+          </a>
+          <a class="command-card command-card--jobs" href="jobs.html" aria-label="وظيفة متاحة">
+            <span class="command-card__orb"></span><span class="command-card__icon" aria-hidden="true">📢</span>
+            <span class="command-card__body"><strong>وظيفة متاحة</strong><small>وظائف وفرص عمل متاحة في المنزلة والمطرية</small></span><span class="command-card__arrow">←</span>
+          </a>
         </div>
       </div>
     </section>

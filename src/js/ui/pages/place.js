@@ -944,6 +944,9 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
           <!-- Working Hours Card (Hidden for ATMs) -->
           ${!isAtm ? renderWorkingHoursSectionHTML({ isOpen, workingHoursList }) : ''}
 
+          <!-- Job Board Sidebar Cards (طالب عمل / وظيفة متاحة) -->
+          ${!isAtm ? renderPlaceJobBoardCardsHTML(place) : ''}
+
           <!-- Social Media Links (وسائل التواصل الاجتماعي) -->
           ${hasSocial(place.social) ? `
             <div class="info-card">
@@ -2490,6 +2493,41 @@ function renderWorkingHoursSectionHTML({ isOpen, workingHoursList }) {
           </div>
         `).join('')}
       </div>
+    </div>
+  `;
+}
+
+function renderPlaceJobBoardCardsHTML(place) {
+  const loc = encodeURIComponent(place.area || place.city || 'المنزلة');
+  const workplace = encodeURIComponent(place.name || '');
+
+  return `
+    <!-- بطاقة طالب عمل -->
+    <div class="place-jb-card">
+      <div class="place-jb-card__head">
+        <span class="place-jb-card__icon">💼</span>
+        <div>
+          <h4 class="place-jb-card__title">طالب عمل أو كادر محلي؟</h4>
+          <p class="place-jb-card__desc">تصفح الباحثين عن عمل في هذه المنطقة أو اعرض سيرتك الذاتية لأصحاب المحل.</p>
+        </div>
+      </div>
+      <a href="/job-seekers.html?location=${loc}" class="place-jb-card__btn place-jb-card__btn--amber">
+        <span>استعراض الباحثين عن عمل ↤</span>
+      </a>
+    </div>
+
+    <!-- بطاقة وظيفة متاحة -->
+    <div class="place-jb-card">
+      <div class="place-jb-card__head">
+        <span class="place-jb-card__icon">📢</span>
+        <div>
+          <h4 class="place-jb-card__title">فرص عمل ووظائف متاحة</h4>
+          <p class="place-jb-card__desc">هل تبحث عن عمل هنا أو أعلن المكان عن شاغر وظيفي؟ استعرض الوظائف الشاغرة.</p>
+        </div>
+      </div>
+      <a href="/jobs.html?workplace=${workplace}&location=${loc}" class="place-jb-card__btn">
+        <span>الوظائف الشاغرة والتقديم ↤</span>
+      </a>
     </div>
   `;
 }

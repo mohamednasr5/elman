@@ -73,12 +73,18 @@
 /ar/contact         /contact.html       200
 /ar/offers          /offers.html        200
 /ar/now             /now.html           200
+/ar/job-seekers     /job-seekers.html   200
+/ar/jobs            /jobs.html          200
 /ar/around-me       /around-me.html     200
 /ar/free-verification /free-verification.html 200
 
 # Static Pages Clean Routing
 /admin              /admin.html         200
 /admin/             /admin.html         200
+/job-seekers        /job-seekers.html   200
+/job-seekers/       /job-seekers.html   200
+/jobs               /jobs.html          200
+/jobs/              /jobs.html          200
 /places             /places.html        200
 /places/            /places.html        200
 /categories         /categories.html    200

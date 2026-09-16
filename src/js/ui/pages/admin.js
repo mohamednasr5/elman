@@ -6,6 +6,7 @@
 
 import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso, getPlaceAnalyticsReport, getAdminPhoneReports, actOnPhoneReport } from '../../core/db.js?v=d4ce4ede';
 import { WORKER_URL } from '../../core/firebase.js';
+import { api } from '../../core/api.js';
 import { isAdmin, getCurrentUser, getIdToken } from '../../core/auth.js';
 import { uploadImage } from '../../services/upload.service.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
@@ -77,7 +78,8 @@ const ICONS = {
   plus:      svgIcon('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
   star:      svgIcon('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
   clock:     svgIcon('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
-  bullhorn:  svgIcon('<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>')
+  bullhorn:  svgIcon('<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>'),
+  briefcase: svgIcon('<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>')
 };
 
 function navLink(sectionKey, href, icon, label, active) {
@@ -129,6 +131,8 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
           ${navLink('places',        '#', ICONS.pin,       'الأماكن',         section === 'places')}
           ${navLink('integrity',     '#', ICONS.shield,    'سلامة قاعدة البيانات', section === 'integrity')}
           ${navLink('services-hub',  '#', ICONS.bullhorn,  'طلبات الخدمات والمتاحين ⚡', ['services-hub', 'live-news'].includes(section))}
+          ${navLink('job-seekers',   '#', ICONS.briefcase, 'الباحثون عن عمل 💼', section === 'job-seekers')}
+          ${navLink('jobs',          '#', ICONS.bullhorn,  'الوظائف الشاغرة 📢', section === 'jobs')}
           ${navLink('products',      '#', ICONS.tag,       'المنتجات والمراجعة 🛍️', section === 'products')}
           ${navLink('reviews',       '#', ICONS.star,      'التقييمات ⭐',    section === 'reviews')}
           ${navLink('reports',       '#', ICONS.phone,     'تحديثات واقتراحات الأرقام 📞', ['reports', 'phone-suggestions'].includes(section))}
@@ -178,6 +182,8 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
             <button type="button" class="admin-quick-chip ${section === 'integrity' ? 'active' : ''}" data-admin-sec="integrity">🛡️ سلامة قاعدة البيانات</button>
             <button type="button" class="admin-quick-chip ${section === 'places' ? 'active' : ''}" data-admin-sec="places">📍 الأماكن والأنشطة</button>
             <button type="button" class="admin-quick-chip ${['reports', 'phone-suggestions'].includes(section) ? 'active' : ''}" data-admin-sec="reports">📞 تحديثات واقتراحات الأرقام</button>
+            <button type="button" class="admin-quick-chip ${section === 'job-seekers' ? 'active' : ''}" data-admin-sec="job-seekers">💼 الباحثون عن عمل</button>
+            <button type="button" class="admin-quick-chip ${section === 'jobs' ? 'active' : ''}" data-admin-sec="jobs">📢 الوظائف الشاغرة</button>
             <button type="button" class="admin-quick-chip ${section === 'live-news' ? 'active' : ''}" data-admin-sec="live-news">🔥 يحدث الآن</button>
             <button type="button" class="admin-quick-chip ${section === 'products' ? 'active' : ''}" data-admin-sec="products">🛍️ مراجعة المنتجات</button>
             <button type="button" class="admin-quick-chip ${section === 'reviews' ? 'active' : ''}" data-admin-sec="reviews">⭐ التقييمات</button>
@@ -264,6 +270,14 @@ export async function renderAdmin($container, { user, section = 'overview' }) {
             <button type="button" class="admin-sheet-item" data-admin-sec="services-hub">
               <span>⚡</span>
               <span>الخدمات والمتاحين</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="job-seekers">
+              <span>💼</span>
+              <span>الباحثون عن عمل</span>
+            </button>
+            <button type="button" class="admin-sheet-item" data-admin-sec="jobs">
+              <span>📢</span>
+              <span>الوظائف الشاغرة</span>
             </button>
             <button type="button" class="admin-sheet-item" data-admin-sec="reviews">
               <span>⭐</span>
@@ -369,6 +383,8 @@ async function switchAdminSection(sectionName, pushState = true) {
     else if (sectionName === 'places')        await renderAdminPlaces($main);
     else if (sectionName === 'products')      await renderAdminProducts($main);
     else if (sectionName === 'services-hub' || sectionName === 'live-news') await renderAdminServicesHub($main);
+    else if (sectionName === 'job-seekers')   await renderAdminJobSeekers($main);
+    else if (sectionName === 'jobs')          await renderAdminJobs($main);
     else if (sectionName === 'reviews')       await renderAdminReviews($main);
     else if (sectionName === 'verification')  await renderAdminVerification($main);
     else if (sectionName === 'reports' || sectionName === 'phone-suggestions') await renderAdminReports($main);
@@ -8922,5 +8938,433 @@ async function renderAdminIntegrity($container) {
     toast.success('تم تفريغ الكاش وتحديث كافة الجداول مع Turso بنجاح! ✨');
     renderAdminIntegrity($container);
   });
+}
+
+// ─────────────────────────────────────────────
+//  SECTION: JOB SEEKERS (الباحثون عن عمل)
+// ─────────────────────────────────────────────
+async function renderAdminJobSeekers($container) {
+  $container.innerHTML = '<div class="spinner spinner-lg" style="margin:4rem auto"></div>';
+
+  try {
+    const token = await getIdToken();
+    const res = await api.get('/api/job-seekers?status=all', token);
+    const seekers = res.data || [];
+
+    let statusFilter = 'all';
+    let searchQuery = '';
+
+    function renderUI() {
+      const activeCount = seekers.filter(s => s.status === 'active').length;
+      const employedCount = seekers.filter(s => s.status === 'employed').length;
+      const deletedCount = seekers.filter(s => s.status === 'deleted').length;
+
+      const filtered = seekers.filter(s => {
+        if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+        if (searchQuery) {
+          const q = normalizeArabic(searchQuery.toLowerCase());
+          const hay = normalizeArabic(`${s.name} ${s.profession} ${s.location || ''} ${s.phone || ''} ${s.bio || ''}`.toLowerCase());
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      $container.innerHTML = `
+        <div class="admin-fade-in">
+          <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:22px">
+            <div>
+              <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:900;display:flex;align-items:center;gap:10px">
+                <span style="color:#F5A623">💼</span>
+                <span>إدارة الباحثين عن عمل والكوادر المحلية</span>
+              </h1>
+              <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
+                مراجعة بيانات الباحثين عن عمل، التواصل عبر أرقام هواتفهم الكاملة، وتغيير الحالات أو الحذف
+              </div>
+            </div>
+            <a href="/job-seekers.html" target="_blank" class="btn" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:12px;font-weight:800;font-size:13px;text-decoration:none">
+              🌐 عرض الصفحة العامة
+            </a>
+          </div>
+
+          <!-- Quick Stats Grid -->
+          <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px;margin-bottom:22px">
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(255,255,255,0.1)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي الباحثين عن عمل</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#38BDF8;margin-top:4px">${seekers.length}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(16,185,129,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">يبحثون عن عمل حالياً</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#10B981;margin-top:4px">${activeCount}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(245,166,35,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">تم التوظيف بنجاح</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#F5A623;margin-top:4px">${employedCount}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(239,68,68,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">سجلات محذوفة</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#EF4444;margin-top:4px">${deletedCount}</div>
+            </div>
+          </div>
+
+          <!-- Controls Bar -->
+          <div style="background:#0F273D;border-radius:16px;padding:16px;border:1px solid rgba(255,255,255,0.1);display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <div style="display:flex;gap:10px;flex:1;min-width:260px">
+              <input type="text" id="admin-seeker-search" placeholder="ابحث بالاسم، المهنة، الهاتف، أو المكان..." value="${escHtml(searchQuery)}" class="form-input" style="background:#091926;border-color:rgba(255,255,255,0.15);color:#fff" />
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm btn-filter-seeker-status ${statusFilter === 'all' ? 'btn-primary' : 'btn-outline'}" data-status="all">الكل (${seekers.length})</button>
+              <button type="button" class="btn btn-sm btn-filter-seeker-status ${statusFilter === 'active' ? 'btn-primary' : 'btn-outline'}" data-status="active">متاح (${activeCount})</button>
+              <button type="button" class="btn btn-sm btn-filter-seeker-status ${statusFilter === 'employed' ? 'btn-primary' : 'btn-outline'}" data-status="employed">تم التوظيف (${employedCount})</button>
+              <button type="button" class="btn btn-sm btn-filter-seeker-status ${statusFilter === 'deleted' ? 'btn-primary' : 'btn-outline'}" data-status="deleted">محذوف (${deletedCount})</button>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="table-responsive" style="background:#0F273D;border-radius:16px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
+            <table class="table" style="color:#fff;margin:0;width:100%;font-size:13.5px">
+              <thead>
+                <tr style="background:rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.1);color:#94A3B8;text-align:right">
+                  <th style="padding:12px 14px">#</th>
+                  <th style="padding:12px 14px">الاسم والمهنة</th>
+                  <th style="padding:12px 14px">النوع / العمر</th>
+                  <th style="padding:12px 14px">المكان / الخبرة</th>
+                  <th style="padding:12px 14px">رقم الهاتف (غير مشفر)</th>
+                  <th style="padding:12px 14px">الحالة</th>
+                  <th style="padding:12px 14px">تاريخ الإضافة</th>
+                  <th style="padding:12px 14px;text-align:center">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filtered.length === 0 ? `
+                  <tr><td colspan="8" style="text-align:center;padding:3rem;color:rgba(255,255,255,0.5)">لا توجد سجلات مطابقة</td></tr>
+                ` : filtered.map((s, idx) => `
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.06);background:${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)'}">
+                    <td style="padding:12px 14px;color:rgba(255,255,255,0.5);font-size:12px">${s.id}</td>
+                    <td style="padding:12px 14px">
+                      <div style="font-weight:800;color:#fff">${escHtml(s.name)}</div>
+                      <span class="badge" style="font-size:11px;background:rgba(2,132,199,0.2);color:#38BDF8;border:1px solid rgba(2,132,199,0.3);margin-top:2px">💼 ${escHtml(s.profession)}</span>
+                    </td>
+                    <td style="padding:12px 14px">
+                      <div>${s.gender === 'female' ? 'أنثى' : 'ذكر'}</div>
+                      <div style="font-size:11.5px;color:rgba(255,255,255,0.6)">${s.age ? `${s.age} سنة` : 'غير محدد'}</div>
+                    </td>
+                    <td style="padding:12px 14px">
+                      <div>📍 ${escHtml(s.location || 'المنزلة')}</div>
+                      <div style="font-size:11.5px;color:rgba(255,255,255,0.6)">${s.experience_years ? `خبرة ${s.experience_years} سنوات` : 'مبتدئ'}</div>
+                    </td>
+                    <td style="padding:12px 14px">
+                      <div style="font-family:monospace;font-size:13.5px;font-weight:700;color:#FCD34D;direction:ltr;text-align:right">
+                        ${escHtml(s.phone || '—')}
+                      </div>
+                      <div style="display:flex;gap:6px;margin-top:4px">
+                        ${s.phone ? `
+                          <a href="https://wa.me/2${s.phone}" target="_blank" class="btn btn-xs" style="background:#25D366;color:#fff;border-radius:6px;font-size:11px;padding:2px 8px;text-decoration:none">واتساب</a>
+                          <a href="tel:${s.phone}" class="btn btn-xs" style="background:#0284C7;color:#fff;border-radius:6px;font-size:11px;padding:2px 8px;text-decoration:none">اتصال</a>
+                        ` : ''}
+                      </div>
+                    </td>
+                    <td style="padding:12px 14px">
+                      <span class="badge" style="font-size:11px;${s.status === 'active' ? 'background:rgba(16,185,129,0.2);color:#10B981;border:1px solid rgba(16,185,129,0.4)' : s.status === 'employed' ? 'background:rgba(245,166,35,0.2);color:#F5A623;border:1px solid rgba(245,166,35,0.4)' : 'background:rgba(239,68,68,0.2);color:#EF4444;border:1px solid rgba(239,68,68,0.4)'}">
+                        ${s.status === 'active' ? '⚡ متاح للعمل' : s.status === 'employed' ? '🎉 تم التوظيف' : '🗑️ محذوف'}
+                      </span>
+                    </td>
+                    <td style="padding:12px 14px;color:rgba(255,255,255,0.6);font-size:12px">
+                      ${formatDate(s.created_at || Date.now())}
+                    </td>
+                    <td style="padding:12px 14px;text-align:center">
+                      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+                        ${s.status !== 'active' ? `
+                          <button type="button" class="btn btn-xs btn-outline btn-set-seeker-status" data-id="${s.id}" data-status="active" style="border-color:#10B981;color:#10B981">تفعيل</button>
+                        ` : `
+                          <button type="button" class="btn btn-xs btn-outline btn-set-seeker-status" data-id="${s.id}" data-status="employed" style="border-color:#F5A623;color:#F5A623">توظيف 🎉</button>
+                        `}
+                        ${s.status !== 'deleted' ? `
+                          <button type="button" class="btn btn-xs btn-outline btn-delete-seeker-admin" data-id="${s.id}" style="border-color:#EF4444;color:#EF4444">حذف</button>
+                        ` : ''}
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Event handlers
+      const $searchInput = document.getElementById('admin-seeker-search');
+      $searchInput?.addEventListener('input', () => {
+        searchQuery = $searchInput.value.trim();
+        renderUI();
+      });
+
+      $container.querySelectorAll('.btn-filter-seeker-status').forEach(btn => {
+        btn.addEventListener('click', () => {
+          statusFilter = btn.getAttribute('data-status');
+          renderUI();
+        });
+      });
+
+      $container.querySelectorAll('.btn-set-seeker-status').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const targetStatus = btn.getAttribute('data-status');
+          try {
+            const tok = await getIdToken();
+            await api.post(`/api/job-seekers/${id}/status`, { status: targetStatus }, tok);
+            toast.success('تم تحديث حالة الباحث عن عمل بنجاح');
+            const item = seekers.find(x => String(x.id) === String(id));
+            if (item) item.status = targetStatus;
+            renderUI();
+          } catch (err) {
+            toast.error(err.message || 'فشل تحديث الحالة');
+          }
+        });
+      });
+
+      $container.querySelectorAll('.btn-delete-seeker-admin').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          if (!confirm('هل أنت متأكد من حذف هذه السيرة الذاتية؟')) return;
+          try {
+            const tok = await getIdToken();
+            await api.delete(`/api/job-seekers/${id}`, tok);
+            toast.success('تم حذف السيرة الذاتية');
+            const item = seekers.find(x => String(x.id) === String(id));
+            if (item) item.status = 'deleted';
+            renderUI();
+          } catch (err) {
+            toast.error(err.message || 'فشل الحذف');
+          }
+        });
+      });
+    }
+
+    renderUI();
+  } catch (err) {
+    console.error('[Admin Job Seekers Error]:', err);
+    $container.innerHTML = `
+      <div class="empty-state" style="margin-top:40px">
+        <span class="empty-state__icon">⚠️</span>
+        <h3>تعذر تحميل بيانات الباحثين عن عمل</h3>
+        <p style="color:var(--danger)">${escHtml(err.message || 'خطأ في الاتصال')}</p>
+        <button class="btn btn-primary" onclick="window.refreshCurrentAdminSection()">إعادة المحاولة</button>
+      </div>
+    `;
+  }
+}
+
+// ─────────────────────────────────────────────
+//  SECTION: JOBS (الوظائف الشاغرة)
+// ─────────────────────────────────────────────
+async function renderAdminJobs($container) {
+  $container.innerHTML = '<div class="spinner spinner-lg" style="margin:4rem auto"></div>';
+
+  try {
+    const token = await getIdToken();
+    const res = await api.get('/api/jobs?status=all', token);
+    const jobs = res.data || [];
+
+    let statusFilter = 'all';
+    let searchQuery = '';
+
+    function renderUI() {
+      const activeCount = jobs.filter(j => j.status === 'active').length;
+      const filledCount = jobs.filter(j => j.status === 'filled').length;
+      const deletedCount = jobs.filter(j => j.status === 'deleted').length;
+
+      const filtered = jobs.filter(j => {
+        if (statusFilter !== 'all' && j.status !== statusFilter) return false;
+        if (searchQuery) {
+          const q = normalizeArabic(searchQuery.toLowerCase());
+          const hay = normalizeArabic(`${j.title} ${j.workplace} ${j.profession} ${j.location || ''} ${j.phone || ''} ${j.description || ''}`.toLowerCase());
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      $container.innerHTML = `
+        <div class="admin-fade-in">
+          <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:22px">
+            <div>
+              <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:900;display:flex;align-items:center;gap:10px">
+                <span style="color:#F5A623">📢</span>
+                <span>إدارة الوظائف الشاغرة وفرص العمل</span>
+              </h1>
+              <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
+                مراجعة إعلانات الوظائف المنشورة في المنزلة والمطرية، التحكم بحالاتها وحذف المخالف منها
+              </div>
+            </div>
+            <a href="/jobs.html" target="_blank" class="btn" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:12px;font-weight:800;font-size:13px;text-decoration:none">
+              🌐 عرض لوحة الوظائف العامة
+            </a>
+          </div>
+
+          <!-- Quick Stats Grid -->
+          <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px;margin-bottom:22px">
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(255,255,255,0.1)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي إعلانات الوظائف</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#38BDF8;margin-top:4px">${jobs.length}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(16,185,129,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">متاحة للتقديم الآن</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#10B981;margin-top:4px">${activeCount}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(245,166,35,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">تم شغل الوظيفة</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#F5A623;margin-top:4px">${filledCount}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(239,68,68,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">وظائف محذوفة</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#EF4444;margin-top:4px">${deletedCount}</div>
+            </div>
+          </div>
+
+          <!-- Controls Bar -->
+          <div style="background:#0F273D;border-radius:16px;padding:16px;border:1px solid rgba(255,255,255,0.1);display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <div style="display:flex;gap:10px;flex:1;min-width:260px">
+              <input type="text" id="admin-job-search" placeholder="ابحث بعنوان الوظيفة، مكان العمل، الهاتف..." value="${escHtml(searchQuery)}" class="form-input" style="background:#091926;border-color:rgba(255,255,255,0.15);color:#fff" />
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm btn-filter-job-status ${statusFilter === 'all' ? 'btn-primary' : 'btn-outline'}" data-status="all">الكل (${jobs.length})</button>
+              <button type="button" class="btn btn-sm btn-filter-job-status ${statusFilter === 'active' ? 'btn-primary' : 'btn-outline'}" data-status="active">متاحة (${activeCount})</button>
+              <button type="button" class="btn btn-sm btn-filter-job-status ${statusFilter === 'filled' ? 'btn-primary' : 'btn-outline'}" data-status="filled">تم شغلها (${filledCount})</button>
+              <button type="button" class="btn btn-sm btn-filter-job-status ${statusFilter === 'deleted' ? 'btn-primary' : 'btn-outline'}" data-status="deleted">محذوفة (${deletedCount})</button>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="table-responsive" style="background:#0F273D;border-radius:16px;border:1px solid rgba(255,255,255,0.1);overflow:hidden">
+            <table class="table" style="color:#fff;margin:0;width:100%;font-size:13.5px">
+              <thead>
+                <tr style="background:rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.1);color:#94A3B8;text-align:right">
+                  <th style="padding:12px 14px">#</th>
+                  <th style="padding:12px 14px">عنوان الوظيفة وجهة العمل</th>
+                  <th style="padding:12px 14px">النشاط / المكان</th>
+                  <th style="padding:12px 14px">الراتب ومواعيد العمل</th>
+                  <th style="padding:12px 14px">رقم التواصل (معلن)</th>
+                  <th style="padding:12px 14px">الحالة</th>
+                  <th style="padding:12px 14px">تاريخ النشر</th>
+                  <th style="padding:12px 14px;text-align:center">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filtered.length === 0 ? `
+                  <tr><td colspan="8" style="text-align:center;padding:3rem;color:rgba(255,255,255,0.5)">لا توجد سجلات مطابقة</td></tr>
+                ` : filtered.map((j, idx) => `
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.06);background:${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)'}">
+                    <td style="padding:12px 14px;color:rgba(255,255,255,0.5);font-size:12px">${j.id}</td>
+                    <td style="padding:12px 14px">
+                      <div style="font-weight:800;color:#fff">${escHtml(j.title)}</div>
+                      <div style="font-size:12px;color:#FCD34D;margin-top:2px">🏢 ${escHtml(j.workplace)}</div>
+                    </td>
+                    <td style="padding:12px 14px">
+                      <span class="badge" style="font-size:11px;background:rgba(2,132,199,0.2);color:#38BDF8;border:1px solid rgba(2,132,199,0.3)">💼 ${escHtml(j.profession)}</span>
+                      <div style="font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:2px">📍 ${escHtml(j.location || 'المنزلة')}</div>
+                    </td>
+                    <td style="padding:12px 14px">
+                      <div style="font-weight:700;color:#10B981">${j.salary_type === 'specified' && j.salary ? `${Number(j.salary).toLocaleString('ar-EG')} ج.م` : 'يحدد في المقابلة'}</div>
+                      <div style="font-size:11.5px;color:rgba(255,255,255,0.6)">⏰ ${escHtml(j.working_hours || 'غير محدد')}</div>
+                    </td>
+                    <td style="padding:12px 14px">
+                      <div style="font-family:monospace;font-size:13.5px;font-weight:700;color:#FCD34D;direction:ltr;text-align:right">
+                        ${escHtml(j.phone || '—')}
+                      </div>
+                      <div style="display:flex;gap:6px;margin-top:4px">
+                        ${j.phone ? `
+                          <a href="https://wa.me/2${j.phone}" target="_blank" class="btn btn-xs" style="background:#25D366;color:#fff;border-radius:6px;font-size:11px;padding:2px 8px;text-decoration:none">واتساب</a>
+                          <a href="tel:${j.phone}" class="btn btn-xs" style="background:#0284C7;color:#fff;border-radius:6px;font-size:11px;padding:2px 8px;text-decoration:none">اتصال</a>
+                        ` : ''}
+                      </div>
+                    </td>
+                    <td style="padding:12px 14px">
+                      <span class="badge" style="font-size:11px;${j.status === 'active' ? 'background:rgba(16,185,129,0.2);color:#10B981;border:1px solid rgba(16,185,129,0.4)' : j.status === 'filled' ? 'background:rgba(245,166,35,0.2);color:#F5A623;border:1px solid rgba(245,166,35,0.4)' : 'background:rgba(239,68,68,0.2);color:#EF4444;border:1px solid rgba(239,68,68,0.4)'}">
+                        ${j.status === 'active' ? '⚡ متاحة للتقديم' : j.status === 'filled' ? '🎉 تم شغلها' : '🗑️ محذوفة'}
+                      </span>
+                    </td>
+                    <td style="padding:12px 14px;color:rgba(255,255,255,0.6);font-size:12px">
+                      ${formatDate(j.created_at || Date.now())}
+                    </td>
+                    <td style="padding:12px 14px;text-align:center">
+                      <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+                        ${j.status !== 'active' ? `
+                          <button type="button" class="btn btn-xs btn-outline btn-set-job-status" data-id="${j.id}" data-status="active" style="border-color:#10B981;color:#10B981">تفعيل</button>
+                        ` : `
+                          <button type="button" class="btn btn-xs btn-outline btn-set-job-status" data-id="${j.id}" data-status="filled" style="border-color:#F5A623;color:#F5A623">تم شغلها 🎉</button>
+                        `}
+                        ${j.status !== 'deleted' ? `
+                          <button type="button" class="btn btn-xs btn-outline btn-delete-job-admin" data-id="${j.id}" style="border-color:#EF4444;color:#EF4444">حذف</button>
+                        ` : ''}
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Event handlers
+      const $searchInput = document.getElementById('admin-job-search');
+      $searchInput?.addEventListener('input', () => {
+        searchQuery = $searchInput.value.trim();
+        renderUI();
+      });
+
+      $container.querySelectorAll('.btn-filter-job-status').forEach(btn => {
+        btn.addEventListener('click', () => {
+          statusFilter = btn.getAttribute('data-status');
+          renderUI();
+        });
+      });
+
+      $container.querySelectorAll('.btn-set-job-status').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const targetStatus = btn.getAttribute('data-status');
+          try {
+            const tok = await getIdToken();
+            await api.post(`/api/jobs/${id}/status`, { status: targetStatus }, tok);
+            toast.success('تم تحديث حالة الوظيفة بنجاح');
+            const item = jobs.find(x => String(x.id) === String(id));
+            if (item) item.status = targetStatus;
+            renderUI();
+          } catch (err) {
+            toast.error(err.message || 'فشل تحديث الحالة');
+          }
+        });
+      });
+
+      $container.querySelectorAll('.btn-delete-job-admin').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          if (!confirm('هل أنت متأكد من حذف هذا الإعلان الوظيفي؟')) return;
+          try {
+            const tok = await getIdToken();
+            await api.delete(`/api/jobs/${id}`, tok);
+            toast.success('تم حذف الوظيفة');
+            const item = jobs.find(x => String(x.id) === String(id));
+            if (item) item.status = 'deleted';
+            renderUI();
+          } catch (err) {
+            toast.error(err.message || 'فشل الحذف');
+          }
+        });
+      });
+    }
+
+    renderUI();
+  } catch (err) {
+    console.error('[Admin Jobs Error]:', err);
+    $container.innerHTML = `
+      <div class="empty-state" style="margin-top:40px">
+        <span class="empty-state__icon">⚠️</span>
+        <h3>تعذر تحميل بيانات الوظائف الشاغرة</h3>
+        <p style="color:var(--danger)">${escHtml(err.message || 'خطأ في الاتصال')}</p>
+        <button class="btn btn-primary" onclick="window.refreshCurrentAdminSection()">إعادة المحاولة</button>
+      </div>
+    `;
+  }
 }
 

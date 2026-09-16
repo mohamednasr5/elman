@@ -56,12 +56,28 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/now.html</loc>
-    <lastmod>2026-09-13</lastmod>
+    <lastmod>2026-09-16</lastmod>
     <changefreq>hourly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/now.html"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/now/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/now.html"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/job-seekers.html</loc>
+    <lastmod>2026-09-16</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/job-seekers.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/job-seekers.html"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/jobs.html</loc>
+    <lastmod>2026-09-16</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/jobs.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/jobs.html"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/emergency.html</loc>

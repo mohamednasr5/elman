@@ -4025,6 +4025,769 @@ try {
     return jsonResponse({ success: true, id, message: 'تم إرسال طلب الحجز بنجاح' }, 201, corsHeaders);
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // ── JOB SEEKERS («باحث عن عمل في المنزلة والمطرية») ──
+  // ═══════════════════════════════════════════════════════════
+
+  // GET /api/job-seekers (List / search with pagination & privacy protection)
+  if (url.pathname === '/api/job-seekers' && request.method === 'GET') {
+    try {
+      const q = (url.searchParams.get('q') || '').trim();
+      const profession = (url.searchParams.get('profession') || '').trim();
+      const gender = (url.searchParams.get('gender') || '').trim();
+      const location = (url.searchParams.get('location') || '').trim();
+      const minAge = Number(url.searchParams.get('min_age') || 0);
+      const maxAge = Number(url.searchParams.get('max_age') || 0);
+      const userId = (url.searchParams.get('user_id') || '').trim();
+      const statusParam = (url.searchParams.get('status') || 'active').trim();
+      const sort = (url.searchParams.get('sort') || 'newest').trim();
+      const page = Math.max(1, Number(url.searchParams.get('page') || 1));
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 20)));
+      const offset = (page - 1) * limit;
+
+      let clientUser = null;
+      try { clientUser = await authenticateRequest(request, env); } catch (_) {}
+
+      const where = [];
+      const args = [];
+
+      if (statusParam === 'all' && (clientUser?.isAdmin || (clientUser && clientUser.uid === userId))) {
+        // no status filter for admin or owner reviewing own items
+      } else if (statusParam && (clientUser?.isAdmin || (clientUser && clientUser.uid === userId))) {
+        where.push('status = ?');
+        args.push(statusParam);
+      } else {
+        where.push("status = 'active'");
+      }
+
+      if (userId) {
+        where.push('user_id = ?');
+        args.push(userId);
+      }
+
+      if (profession) {
+        where.push('profession LIKE ?');
+        args.push(`%${profession}%`);
+      }
+
+      if (gender) {
+        where.push('gender = ?');
+        args.push(gender);
+      }
+
+      if (location) {
+        where.push('location LIKE ?');
+        args.push(`%${location}%`);
+      }
+
+      if (minAge > 0) {
+        where.push('age >= ?');
+        args.push(minAge);
+      }
+
+      if (maxAge > 0) {
+        where.push('age <= ?');
+        args.push(maxAge);
+      }
+
+      if (q) {
+        where.push('(name LIKE ? OR profession LIKE ? OR description LIKE ? OR experience LIKE ? OR location LIKE ?)');
+        const term = `%${q}%`;
+        args.push(term, term, term, term, term);
+      }
+
+      const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+      const orderClause = sort === 'oldest' ? 'ORDER BY created_at ASC' : 'ORDER BY created_at DESC';
+
+      const db = createTursoDB(env);
+      const countSql = `SELECT COUNT(*) as total FROM job_seekers ${whereClause}`;
+      const totalRow = await db.prepare(countSql).bind(...args).first().catch(() => ({ total: 0 }));
+      const total = Number(totalRow?.total || 0);
+
+      const sql = `SELECT * FROM job_seekers ${whereClause} ${orderClause} LIMIT ? OFFSET ?`;
+      const rows = (await db.prepare(sql).bind(...args, limit, offset).all()).results || [];
+
+      const data = rows.map(r => {
+        const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
+        let maskedPhone = null;
+        if (r.phone && r.phone.length >= 7) {
+          maskedPhone = r.phone.slice(0, 3) + '******' + r.phone.slice(-2);
+        }
+        return {
+          id: r.id,
+          userId: r.user_id,
+          name: r.name,
+          age: Number(r.age),
+          gender: r.gender,
+          phone: isOwner ? r.phone : maskedPhone,
+          rawPhone: isOwner ? r.phone : null,
+          hasWhatsapp: Boolean(r.whatsapp),
+          location: r.location,
+          profession: r.profession,
+          experience: r.experience,
+          description: r.description,
+          expectedSalary: r.expected_salary !== null && r.expected_salary !== undefined ? Number(r.expected_salary) : null,
+          status: r.status,
+          isOwner: Boolean(isOwner),
+          createdAt: Number(r.created_at || 0),
+          updatedAt: Number(r.updated_at || 0)
+        };
+      });
+
+      return jsonResponse({
+        success: true,
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1
+        }
+      }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+    } catch (err) {
+      console.warn('[GET /api/job-seekers error]:', err?.message || err);
+      return jsonResponse({ success: false, error: 'تعذر جلب الباحثين عن عمل' }, 500, corsHeaders);
+    }
+  }
+
+  // POST /api/job-seekers (Create new job seeker profile)
+  if (url.pathname === '/api/job-seekers' && request.method === 'POST') {
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser || !authUser.uid) {
+      return jsonResponse({ success: false, error: 'يجب تسجيل الدخول أولاً لتتمكن من إضافة طلب بحث عن عمل' }, 401, corsHeaders);
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const name = String(body.name || '').trim();
+    const age = Number(body.age);
+    const gender = String(body.gender || '').trim();
+    const phone = String(body.phone || '').trim();
+    const whatsapp = String(body.whatsapp || '').trim();
+    const location = String(body.location || '').trim();
+    const profession = String(body.profession || '').trim();
+    const experience = String(body.experience || '').trim();
+    const description = String(body.description || '').trim();
+    const expectedSalary = body.expectedSalary !== undefined && body.expectedSalary !== '' && !isNaN(Number(body.expectedSalary)) ? Number(body.expectedSalary) : null;
+
+    if (!name || name.length < 2) {
+      return jsonResponse({ success: false, error: 'يرجى كتابة الاسم بشكل صحيح' }, 400, corsHeaders);
+    }
+    if (isNaN(age) || age < 14 || age > 85) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال سن صحيح بين 14 و 85 سنة' }, 400, corsHeaders);
+    }
+    if (!gender || (gender !== 'ذكر' && gender !== 'أنثى' && gender !== 'male' && gender !== 'female')) {
+      return jsonResponse({ success: false, error: 'يرجى تحديد الجنس (ذكر / أنثى)' }, 400, corsHeaders);
+    }
+    const cleanGender = (gender === 'female' || gender === 'أنثى') ? 'أنثى' : 'ذكر';
+
+    if (!phone || (!/^01[0125][0-9]{8}$/.test(phone) && !/^[0-9]{8,12}$/.test(phone))) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال رقم هاتف محمول مصري صحيح (مثال: 01012345678)' }, 400, corsHeaders);
+    }
+    if (whatsapp && !/^[0-9+]{8,15}$/.test(whatsapp)) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال رقم واتساب صحيح أو تركه فارغاً' }, 400, corsHeaders);
+    }
+    if (!location) {
+      return jsonResponse({ success: false, error: 'يرجى ذكر المدينة أو القرية أو مكان العمل المفضل' }, 400, corsHeaders);
+    }
+    if (!profession) {
+      return jsonResponse({ success: false, error: 'يرجى تحديد المهنة أو الصنعة' }, 400, corsHeaders);
+    }
+    if (!description || description.length < 5) {
+      return jsonResponse({ success: false, error: 'يرجى كتابة وصف المطلوب والمهارات والعمل الذي تبحث عنه' }, 400, corsHeaders);
+    }
+
+    const id = 'seeker_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6);
+    const now = Date.now();
+
+    const db = createTursoDB(env);
+    await db.prepare(
+      `INSERT INTO job_seekers (id, user_id, name, age, gender, phone, whatsapp, location, profession, experience, description, expected_salary, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+    ).bind(id, authUser.uid, name, age, cleanGender, phone, whatsapp || phone, location, profession, experience, description, expectedSalary, now, now).run();
+
+    safeBackgroundNotify('job_seeker_created', {
+      id,
+      name,
+      profession,
+      location,
+      phone,
+      userName: authUser.name || name
+    }, env, ctx);
+
+    return jsonResponse({
+      success: true,
+      id,
+      message: 'تم نشر طلب البحث عن عمل بنجاح! نسأل الله لك التوفيق والسداد.'
+    }, 201, corsHeaders);
+  }
+
+  // GET /api/job-seekers/:id (Single profile details)
+  if (url.pathname.startsWith('/api/job-seekers/') && !url.pathname.endsWith('/status') && !url.pathname.endsWith('/contact') && request.method === 'GET') {
+    const id = decodeURIComponent(url.pathname.replace('/api/job-seekers/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الطلب مطلوب' }, 400, corsHeaders);
+
+    let clientUser = null;
+    try { clientUser = await authenticateRequest(request, env); } catch (_) {}
+
+    const db = createTursoDB(env);
+    const r = await db.prepare('SELECT * FROM job_seekers WHERE id = ?').bind(id).first();
+    if (!r) return jsonResponse({ success: false, error: 'الطلب غير موجود أو تم حذفه' }, 404, corsHeaders);
+
+    const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
+    let maskedPhone = null;
+    if (r.phone && r.phone.length >= 7) {
+      maskedPhone = r.phone.slice(0, 3) + '******' + r.phone.slice(-2);
+    }
+
+    return jsonResponse({
+      success: true,
+      data: {
+        id: r.id,
+        userId: r.user_id,
+        name: r.name,
+        age: Number(r.age),
+        gender: r.gender,
+        phone: isOwner ? r.phone : maskedPhone,
+        rawPhone: isOwner ? r.phone : null,
+        hasWhatsapp: Boolean(r.whatsapp),
+        location: r.location,
+        profession: r.profession,
+        experience: r.experience,
+        description: r.description,
+        expectedSalary: r.expected_salary !== null && r.expected_salary !== undefined ? Number(r.expected_salary) : null,
+        status: r.status,
+        isOwner: Boolean(isOwner),
+        createdAt: Number(r.created_at || 0),
+        updatedAt: Number(r.updated_at || 0)
+      }
+    }, 200, corsHeaders);
+  }
+
+  // GET /api/job-seekers/:id/contact (Secure contact action & prefilled WhatsApp URL)
+  if (url.pathname.startsWith('/api/job-seekers/') && url.pathname.endsWith('/contact') && request.method === 'GET') {
+    const id = decodeURIComponent(url.pathname.replace('/api/job-seekers/', '').replace('/contact', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الطلب مطلوب' }, 400, corsHeaders);
+
+    const db = createTursoDB(env);
+    const r = await db.prepare('SELECT id, name, phone, whatsapp, profession, status FROM job_seekers WHERE id = ?').bind(id).first();
+    if (!r || r.status === 'deleted') return jsonResponse({ success: false, error: 'الملف غير متاح حالياً' }, 404, corsHeaders);
+
+    const rawPhone = r.phone || '';
+    const rawWa = r.whatsapp || r.phone || '';
+    let waNumber = rawWa.replace(/\D/g, '');
+    if (waNumber.startsWith('01')) waNumber = '20' + waNumber.slice(1);
+    else if (waNumber.startsWith('1') && waNumber.length === 10) waNumber = '20' + waNumber;
+
+    const message = `السلام عليكم، لقد شاهدت أنك تبحث عن عمل على دليل المنزلة والمطرية الرقمي\nhttps://dalilmanzala.com/\nوأرغب في التواصل معك بخصوص فرصة العمل.`;
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(message)}`;
+
+    return jsonResponse({
+      success: true,
+      contact: {
+        name: r.name,
+        phone: rawPhone,
+        whatsappUrl
+      }
+    }, 200, corsHeaders);
+  }
+
+  // PUT /api/job-seekers/:id (Update job seeker profile - owner or admin)
+  if (url.pathname.startsWith('/api/job-seekers/') && !url.pathname.endsWith('/status') && !url.pathname.endsWith('/contact') && request.method === 'PUT') {
+    const id = decodeURIComponent(url.pathname.replace('/api/job-seekers/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الطلب مطلوب' }, 400, corsHeaders);
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser || !authUser.uid) {
+      return jsonResponse({ success: false, error: 'يجب تسجيل الدخول لتعديل هذا الطلب' }, 401, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const existing = await db.prepare('SELECT user_id FROM job_seekers WHERE id = ?').bind(id).first();
+    if (!existing) return jsonResponse({ success: false, error: 'الطلب غير موجود' }, 404, corsHeaders);
+    if (!authUser.isAdmin && authUser.uid !== existing.user_id) {
+      return jsonResponse({ success: false, error: 'غير مصرح لك بتعديل هذا الملف' }, 403, corsHeaders);
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const updates = [];
+    const args = [];
+
+    if (body.name) { updates.push('name = ?'); args.push(String(body.name).trim()); }
+    if (body.age) { updates.push('age = ?'); args.push(Number(body.age)); }
+    if (body.gender) {
+      const g = (body.gender === 'female' || body.gender === 'أنثى') ? 'أنثى' : 'ذكر';
+      updates.push('gender = ?'); args.push(g);
+    }
+    if (body.phone) { updates.push('phone = ?'); args.push(String(body.phone).trim()); }
+    if (body.whatsapp !== undefined) { updates.push('whatsapp = ?'); args.push(String(body.whatsapp || '').trim()); }
+    if (body.location) { updates.push('location = ?'); args.push(String(body.location).trim()); }
+    if (body.profession) { updates.push('profession = ?'); args.push(String(body.profession).trim()); }
+    if (body.experience !== undefined) { updates.push('experience = ?'); args.push(String(body.experience || '').trim()); }
+    if (body.description) { updates.push('description = ?'); args.push(String(body.description).trim()); }
+    if (body.expectedSalary !== undefined) {
+      const sal = body.expectedSalary === '' || isNaN(Number(body.expectedSalary)) ? null : Number(body.expectedSalary);
+      updates.push('expected_salary = ?'); args.push(sal);
+    }
+    if (body.status && (authUser.isAdmin || ['active', 'employed', 'deleted'].includes(body.status))) {
+      updates.push('status = ?'); args.push(String(body.status).trim());
+    }
+
+    updates.push('updated_at = ?');
+    args.push(Date.now());
+
+    args.push(id);
+    await db.prepare(`UPDATE job_seekers SET ${updates.join(', ')} WHERE id = ?`).bind(...args).run();
+
+    return jsonResponse({ success: true, message: 'تم تحديث بيانات طلب البحث عن عمل بنجاح' }, 200, corsHeaders);
+  }
+
+  // POST /api/job-seekers/:id/status (Status transition: active, employed, deleted)
+  if (url.pathname.startsWith('/api/job-seekers/') && url.pathname.endsWith('/status') && request.method === 'POST') {
+    const id = decodeURIComponent(url.pathname.replace('/api/job-seekers/', '').replace('/status', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الطلب مطلوب' }, 400, corsHeaders);
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser || !authUser.uid) {
+      return jsonResponse({ success: false, error: 'يجب تسجيل الدخول لتحديث الحالة' }, 401, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const existing = await db.prepare('SELECT user_id, status FROM job_seekers WHERE id = ?').bind(id).first();
+    if (!existing) return jsonResponse({ success: false, error: 'الطلب غير موجود' }, 404, corsHeaders);
+    if (!authUser.isAdmin && authUser.uid !== existing.user_id) {
+      return jsonResponse({ success: false, error: 'غير مصرح لك بتغيير حالة هذا الملف' }, 403, corsHeaders);
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const newStatus = String(body.status || '').trim();
+    if (!['active', 'employed', 'deleted'].includes(newStatus)) {
+      return jsonResponse({ success: false, error: 'حالة غير صالحة' }, 400, corsHeaders);
+    }
+
+    const now = Date.now();
+    await db.prepare('UPDATE job_seekers SET status = ?, updated_at = ? WHERE id = ?').bind(newStatus, now, id).run();
+
+    const msg = newStatus === 'employed'
+      ? 'مبارك حصولك على عمل! تم تحديث حالة ملفك بنجاح وسيتوقف ظهوره في القوائم النشطة.'
+      : (newStatus === 'deleted' ? 'تم حذف الملف بنجاح.' : 'تم تفعيل الملف بنجاح.');
+
+    return jsonResponse({ success: true, status: newStatus, message: msg }, 200, corsHeaders);
+  }
+
+  // DELETE /api/job-seekers/:id (Delete listing)
+  if (url.pathname.startsWith('/api/job-seekers/') && !url.pathname.endsWith('/status') && !url.pathname.endsWith('/contact') && request.method === 'DELETE') {
+    const id = decodeURIComponent(url.pathname.replace('/api/job-seekers/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الطلب مطلوب' }, 400, corsHeaders);
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser || !authUser.uid) {
+      return jsonResponse({ success: false, error: 'يجب تسجيل الدخول للحذف' }, 401, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const existing = await db.prepare('SELECT user_id FROM job_seekers WHERE id = ?').bind(id).first();
+    if (!existing) return jsonResponse({ success: false, error: 'الطلب غير موجود' }, 404, corsHeaders);
+    if (!authUser.isAdmin && authUser.uid !== existing.user_id) {
+      return jsonResponse({ success: false, error: 'غير مصرح لك بحذف هذا الملف' }, 403, corsHeaders);
+    }
+
+    if (authUser.isAdmin && url.searchParams.get('hard') === 'true') {
+      await db.prepare('DELETE FROM job_seekers WHERE id = ?').bind(id).run();
+    } else {
+      await db.prepare("UPDATE job_seekers SET status = 'deleted', updated_at = ? WHERE id = ?").bind(Date.now(), id).run();
+    }
+
+    return jsonResponse({ success: true, message: 'تم حذف طلب البحث عن عمل بنجاح' }, 200, corsHeaders);
+  }
+
+
+  // ═══════════════════════════════════════════════════════════
+  // ── AVAILABLE JOBS («وظائف متاحة في المنزلة والمطرية») ──
+  // ═══════════════════════════════════════════════════════════
+
+  // GET /api/jobs (List / search with pagination & privacy protection)
+  if (url.pathname === '/api/jobs' && request.method === 'GET') {
+    try {
+      const q = (url.searchParams.get('q') || '').trim();
+      const profession = (url.searchParams.get('profession') || '').trim();
+      const workplace = (url.searchParams.get('workplace') || '').trim();
+      const location = (url.searchParams.get('location') || '').trim();
+      const salaryType = (url.searchParams.get('salary_type') || '').trim();
+      const minSalary = Number(url.searchParams.get('min_salary') || 0);
+      const maxSalary = Number(url.searchParams.get('max_salary') || 0);
+      const maxWorkingHours = Number(url.searchParams.get('max_hours') || 0);
+      const userId = (url.searchParams.get('user_id') || '').trim();
+      const statusParam = (url.searchParams.get('status') || 'active').trim();
+      const sort = (url.searchParams.get('sort') || 'newest').trim();
+      const page = Math.max(1, Number(url.searchParams.get('page') || 1));
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 20)));
+      const offset = (page - 1) * limit;
+
+      let clientUser = null;
+      try { clientUser = await authenticateRequest(request, env); } catch (_) {}
+
+      const where = [];
+      const args = [];
+
+      if (statusParam === 'all' && (clientUser?.isAdmin || (clientUser && clientUser.uid === userId))) {
+        // all statuses
+      } else if (statusParam && (clientUser?.isAdmin || (clientUser && clientUser.uid === userId))) {
+        where.push('status = ?');
+        args.push(statusParam);
+      } else {
+        where.push("status = 'active'");
+      }
+
+      if (userId) {
+        where.push('user_id = ?');
+        args.push(userId);
+      }
+
+      if (profession) {
+        where.push('profession LIKE ?');
+        args.push(`%${profession}%`);
+      }
+
+      if (workplace) {
+        where.push('workplace_name LIKE ?');
+        args.push(`%${workplace}%`);
+      }
+
+      if (location) {
+        where.push('location LIKE ?');
+        args.push(`%${location}%`);
+      }
+
+      if (salaryType) {
+        where.push('salary_type = ?');
+        args.push(salaryType);
+      }
+
+      if (minSalary > 0) {
+        where.push('salary >= ?');
+        args.push(minSalary);
+      }
+
+      if (maxSalary > 0) {
+        where.push('salary <= ?');
+        args.push(maxSalary);
+      }
+
+      if (maxWorkingHours > 0) {
+        where.push('working_hours <= ?');
+        args.push(maxWorkingHours);
+      }
+
+      if (q) {
+        where.push('(workplace_name LIKE ? OR profession LIKE ? OR description LIKE ? OR location LIKE ?)');
+        const term = `%${q}%`;
+        args.push(term, term, term, term);
+      }
+
+      const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+      const orderClause = sort === 'oldest' ? 'ORDER BY created_at ASC' : 'ORDER BY created_at DESC';
+
+      const db = createTursoDB(env);
+      const countSql = `SELECT COUNT(*) as total FROM jobs ${whereClause}`;
+      const totalRow = await db.prepare(countSql).bind(...args).first().catch(() => ({ total: 0 }));
+      const total = Number(totalRow?.total || 0);
+
+      const sql = `SELECT * FROM jobs ${whereClause} ${orderClause} LIMIT ? OFFSET ?`;
+      const rows = (await db.prepare(sql).bind(...args, limit, offset).all()).results || [];
+
+      const data = rows.map(r => {
+        const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
+        let maskedPhone = null;
+        if (r.phone && r.phone.length >= 7) {
+          maskedPhone = r.phone.slice(0, 3) + '******' + r.phone.slice(-2);
+        }
+        return {
+          id: r.id,
+          userId: r.user_id,
+          workplaceName: r.workplace_name,
+          phone: isOwner ? r.phone : maskedPhone,
+          rawPhone: isOwner ? r.phone : null,
+          hasWhatsapp: Boolean(r.whatsapp),
+          location: r.location,
+          profession: r.profession,
+          workingHours: Number(r.working_hours),
+          salaryType: r.salary_type,
+          salary: r.salary !== null && r.salary !== undefined ? Number(r.salary) : null,
+          description: r.description,
+          status: r.status,
+          isOwner: Boolean(isOwner),
+          createdAt: Number(r.created_at || 0),
+          updatedAt: Number(r.updated_at || 0)
+        };
+      });
+
+      return jsonResponse({
+        success: true,
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1
+        }
+      }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+    } catch (err) {
+      console.warn('[GET /api/jobs error]:', err?.message || err);
+      return jsonResponse({ success: false, error: 'تعذر جلب الوظائف المتاحة' }, 500, corsHeaders);
+    }
+  }
+
+  // POST /api/jobs (Publish new available job)
+  if (url.pathname === '/api/jobs' && request.method === 'POST') {
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser || !authUser.uid) {
+      return jsonResponse({ success: false, error: 'يجب تسجيل الدخول أولاً لتتمكن من إضافة فرصة عمل' }, 401, corsHeaders);
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const workplaceName = String(body.workplaceName || '').trim();
+    const phone = String(body.phone || '').trim();
+    const whatsapp = String(body.whatsapp || '').trim();
+    const location = String(body.location || '').trim();
+    const profession = String(body.profession || '').trim();
+    const workingHours = Number(body.workingHours);
+    const salaryType = String(body.salaryType || 'specified').trim();
+    const salary = salaryType === 'interview' ? null : (body.salary !== undefined && body.salary !== '' && !isNaN(Number(body.salary)) ? Number(body.salary) : null);
+    const description = String(body.description || '').trim();
+
+    if (!workplaceName || workplaceName.length < 2) {
+      return jsonResponse({ success: false, error: 'يرجى كتابة اسم مكان العمل بشكل صحيح' }, 400, corsHeaders);
+    }
+    if (!phone || (!/^01[0125][0-9]{8}$/.test(phone) && !/^[0-9]{8,12}$/.test(phone))) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال رقم هاتف محمول مصري صحيح للتواصل' }, 400, corsHeaders);
+    }
+    if (whatsapp && !/^[0-9+]{8,15}$/.test(whatsapp)) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال رقم واتساب صحيح أو تركه فارغاً' }, 400, corsHeaders);
+    }
+    if (!location) {
+      return jsonResponse({ success: false, error: 'يرجى ذكر مكان العمل أو المدينة أو المنطقة' }, 400, corsHeaders);
+    }
+    if (!profession) {
+      return jsonResponse({ success: false, error: 'يرجى تحديد المهنة أو الصنعة المطلوبة' }, 400, corsHeaders);
+    }
+    if (isNaN(workingHours) || workingHours < 1 || workingHours > 24) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال عدد ساعات العمل اليومية الفعلية (بين 1 و 24)' }, 400, corsHeaders);
+    }
+    if (salaryType === 'specified' && (salary === null || salary <= 0)) {
+      return jsonResponse({ success: false, error: 'يرجى كتابة قيمة الراتب أو اختيار "يحدد بعد المقابلة"' }, 400, corsHeaders);
+    }
+    if (!description || description.length < 5) {
+      return jsonResponse({ success: false, error: 'يرجى كتابة وصف الوظيفة ومسؤوليات العمل والشروط' }, 400, corsHeaders);
+    }
+
+    const id = 'job_' + Date.now() + '_' + crypto.randomUUID().slice(0, 6);
+    const now = Date.now();
+
+    const db = createTursoDB(env);
+    await db.prepare(
+      `INSERT INTO jobs (id, user_id, workplace_name, phone, whatsapp, location, profession, working_hours, salary_type, salary, description, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+    ).bind(id, authUser.uid, workplaceName, phone, whatsapp || phone, location, profession, workingHours, salaryType, salary, description, now, now).run();
+
+    safeBackgroundNotify('job_created', {
+      id,
+      workplaceName,
+      profession,
+      location,
+      phone,
+      userName: authUser.name || workplaceName
+    }, env, ctx);
+
+    return jsonResponse({
+      success: true,
+      id,
+      message: 'تم نشر الوظيفة المتاحة بنجاح! سيتمكن الباحثون عن عمل من التقديم والتواصل معكم.'
+    }, 201, corsHeaders);
+  }
+
+  // GET /api/jobs/:id (Single job details)
+  if (url.pathname.startsWith('/api/jobs/') && !url.pathname.endsWith('/status') && !url.pathname.endsWith('/contact') && request.method === 'GET') {
+    const id = decodeURIComponent(url.pathname.replace('/api/jobs/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الوظيفة مطلوب' }, 400, corsHeaders);
+
+    let clientUser = null;
+    try { clientUser = await authenticateRequest(request, env); } catch (_) {}
+
+    const db = createTursoDB(env);
+    const r = await db.prepare('SELECT * FROM jobs WHERE id = ?').bind(id).first();
+    if (!r) return jsonResponse({ success: false, error: 'الوظيفة غير موجودة أو تم حذفها' }, 404, corsHeaders);
+
+    const isOwner = clientUser && (clientUser.uid === r.user_id || clientUser.isAdmin);
+    let maskedPhone = null;
+    if (r.phone && r.phone.length >= 7) {
+      maskedPhone = r.phone.slice(0, 3) + '******' + r.phone.slice(-2);
+    }
+
+    return jsonResponse({
+      success: true,
+      data: {
+        id: r.id,
+        userId: r.user_id,
+        workplaceName: r.workplace_name,
+        phone: isOwner ? r.phone : maskedPhone,
+        rawPhone: isOwner ? r.phone : null,
+        hasWhatsapp: Boolean(r.whatsapp),
+        location: r.location,
+        profession: r.profession,
+        workingHours: Number(r.working_hours),
+        salaryType: r.salary_type,
+        salary: r.salary !== null && r.salary !== undefined ? Number(r.salary) : null,
+        description: r.description,
+        status: r.status,
+        isOwner: Boolean(isOwner),
+        createdAt: Number(r.created_at || 0),
+        updatedAt: Number(r.updated_at || 0)
+      }
+    }, 200, corsHeaders);
+  }
+
+  // GET /api/jobs/:id/contact (Secure contact action & prefilled WhatsApp URL)
+  if (url.pathname.startsWith('/api/jobs/') && url.pathname.endsWith('/contact') && request.method === 'GET') {
+    const id = decodeURIComponent(url.pathname.replace('/api/jobs/', '').replace('/contact', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الوظيفة مطلوب' }, 400, corsHeaders);
+
+    const db = createTursoDB(env);
+    const r = await db.prepare('SELECT id, workplace_name, phone, whatsapp, profession, status FROM jobs WHERE id = ?').bind(id).first();
+    if (!r || r.status === 'deleted') return jsonResponse({ success: false, error: 'الوظيفة غير متاحة حالياً' }, 404, corsHeaders);
+
+    const rawPhone = r.phone || '';
+    const rawWa = r.whatsapp || r.phone || '';
+    let waNumber = rawWa.replace(/\D/g, '');
+    if (waNumber.startsWith('01')) waNumber = '20' + waNumber.slice(1);
+    else if (waNumber.startsWith('1') && waNumber.length === 10) waNumber = '20' + waNumber;
+
+    const message = `السلام عليكم، لقد شاهدت أن هناك وظيفة عمل على دليل المنزلة والمطرية الرقمي\nhttps://dalilmanzala.com/\nوأرغب في الاستفسار عن الوظيفة والتقديم عليها.`;
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(message)}`;
+
+    return jsonResponse({
+      success: true,
+      contact: {
+        workplaceName: r.workplace_name,
+        phone: rawPhone,
+        whatsappUrl
+      }
+    }, 200, corsHeaders);
+  }
+
+  // PUT /api/jobs/:id (Update job - owner or admin)
+  if (url.pathname.startsWith('/api/jobs/') && !url.pathname.endsWith('/status') && !url.pathname.endsWith('/contact') && request.method === 'PUT') {
+    const id = decodeURIComponent(url.pathname.replace('/api/jobs/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الوظيفة مطلوب' }, 400, corsHeaders);
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser || !authUser.uid) {
+      return jsonResponse({ success: false, error: 'يجب تسجيل الدخول لتعديل هذه الوظيفة' }, 401, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const existing = await db.prepare('SELECT user_id FROM jobs WHERE id = ?').bind(id).first();
+    if (!existing) return jsonResponse({ success: false, error: 'الوظيفة غير موجودة' }, 404, corsHeaders);
+    if (!authUser.isAdmin && authUser.uid !== existing.user_id) {
+      return jsonResponse({ success: false, error: 'غير مصرح لك بتعديل هذه الوظيفة' }, 403, corsHeaders);
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const updates = [];
+    const args = [];
+
+    if (body.workplaceName) { updates.push('workplace_name = ?'); args.push(String(body.workplaceName).trim()); }
+    if (body.phone) { updates.push('phone = ?'); args.push(String(body.phone).trim()); }
+    if (body.whatsapp !== undefined) { updates.push('whatsapp = ?'); args.push(String(body.whatsapp || '').trim()); }
+    if (body.location) { updates.push('location = ?'); args.push(String(body.location).trim()); }
+    if (body.profession) { updates.push('profession = ?'); args.push(String(body.profession).trim()); }
+    if (body.workingHours) { updates.push('working_hours = ?'); args.push(Number(body.workingHours)); }
+    if (body.salaryType) { updates.push('salary_type = ?'); args.push(String(body.salaryType).trim()); }
+    if (body.salary !== undefined) {
+      const sal = (body.salary === '' || isNaN(Number(body.salary))) ? null : Number(body.salary);
+      updates.push('salary = ?'); args.push(sal);
+    }
+    if (body.description) { updates.push('description = ?'); args.push(String(body.description).trim()); }
+    if (body.status && (authUser.isAdmin || ['active', 'filled', 'deleted'].includes(body.status))) {
+      updates.push('status = ?'); args.push(String(body.status).trim());
+    }
+
+    updates.push('updated_at = ?');
+    args.push(Date.now());
+
+    args.push(id);
+    await db.prepare(`UPDATE jobs SET ${updates.join(', ')} WHERE id = ?`).bind(...args).run();
+
+    return jsonResponse({ success: true, message: 'تم تحديث بيانات الوظيفة بنجاح' }, 200, corsHeaders);
+  }
+
+  // POST /api/jobs/:id/status (Status transition: active, filled, deleted)
+  if (url.pathname.startsWith('/api/jobs/') && url.pathname.endsWith('/status') && request.method === 'POST') {
+    const id = decodeURIComponent(url.pathname.replace('/api/jobs/', '').replace('/status', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الوظيفة مطلوب' }, 400, corsHeaders);
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser || !authUser.uid) {
+      return jsonResponse({ success: false, error: 'يجب تسجيل الدخول لتحديث الحالة' }, 401, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const existing = await db.prepare('SELECT user_id, status FROM jobs WHERE id = ?').bind(id).first();
+    if (!existing) return jsonResponse({ success: false, error: 'الوظيفة غير موجودة' }, 404, corsHeaders);
+    if (!authUser.isAdmin && authUser.uid !== existing.user_id) {
+      return jsonResponse({ success: false, error: 'غير مصرح لك بتغيير حالة هذه الوظيفة' }, 403, corsHeaders);
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const newStatus = String(body.status || '').trim();
+    if (!['active', 'filled', 'deleted'].includes(newStatus)) {
+      return jsonResponse({ success: false, error: 'حالة غير صالحة' }, 400, corsHeaders);
+    }
+
+    const now = Date.now();
+    await db.prepare('UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?').bind(newStatus, now, id).run();
+
+    const msg = newStatus === 'filled'
+      ? 'تم تسجيل العثور على شخص لشغل الوظيفة بنجاح وإغلاق الإعلان من القوائم النشطة.'
+      : (newStatus === 'deleted' ? 'تم حذف إعلان الوظيفة بنجاح.' : 'تم تفعيل إعلان الوظيفة بنجاح.');
+
+    return jsonResponse({ success: true, status: newStatus, message: msg }, 200, corsHeaders);
+  }
+
+  // DELETE /api/jobs/:id (Delete job)
+  if (url.pathname.startsWith('/api/jobs/') && !url.pathname.endsWith('/status') && !url.pathname.endsWith('/contact') && request.method === 'DELETE') {
+    const id = decodeURIComponent(url.pathname.replace('/api/jobs/', '')).trim();
+    if (!id) return jsonResponse({ success: false, error: 'معرف الوظيفة مطلوب' }, 400, corsHeaders);
+
+    let authUser = null;
+    try { authUser = await authenticateRequest(request, env); } catch (_) {}
+    if (!authUser || !authUser.uid) {
+      return jsonResponse({ success: false, error: 'يجب تسجيل الدخول للحذف' }, 401, corsHeaders);
+    }
+
+    const db = createTursoDB(env);
+    const existing = await db.prepare('SELECT user_id FROM jobs WHERE id = ?').bind(id).first();
+    if (!existing) return jsonResponse({ success: false, error: 'الوظيفة غير موجودة' }, 404, corsHeaders);
+    if (!authUser.isAdmin && authUser.uid !== existing.user_id) {
+      return jsonResponse({ success: false, error: 'غير مصرح لك بحذف هذه الوظيفة' }, 403, corsHeaders);
+    }
+
+    if (authUser.isAdmin && url.searchParams.get('hard') === 'true') {
+      await db.prepare('DELETE FROM jobs WHERE id = ?').bind(id).run();
+    } else {
+      await db.prepare("UPDATE jobs SET status = 'deleted', updated_at = ? WHERE id = ?").bind(Date.now(), id).run();
+    }
+
+    return jsonResponse({ success: true, message: 'تم حذف إعلان الوظيفة بنجاح' }, 200, corsHeaders);
+  }
+
+
   // ── Turso: User Profile Sync (POST /api/users/sync) ──
   // Architecture: Turso is the source of truth for role/status. Firebase Auth provides uid/name/email/photo only.
   if (url.pathname === '/api/users/sync' && request.method === 'POST') {
@@ -6677,6 +7440,50 @@ async function ensureNewSchemaColumnsInTurso(env) {
       PRIMARY KEY (user_id, notif_id)
     )`).run().catch(() => {});
     await db.prepare("CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)").run().catch(() => {});
+
+    // Job Seekers & Available Jobs (باحث عن عمل & وظائف متاحة)
+    await db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      age INTEGER NOT NULL,
+      gender TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      whatsapp TEXT,
+      location TEXT NOT NULL,
+      profession TEXT NOT NULL,
+      experience TEXT,
+      description TEXT NOT NULL,
+      expected_salary REAL,
+      status TEXT DEFAULT 'active',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_status_created ON job_seekers(status, created_at DESC)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_user ON job_seekers(user_id)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_profession ON job_seekers(profession)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_location ON job_seekers(location)").run().catch(() => {});
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS jobs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      workplace_name TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      whatsapp TEXT,
+      location TEXT NOT NULL,
+      profession TEXT NOT NULL,
+      working_hours REAL NOT NULL,
+      salary_type TEXT DEFAULT 'specified',
+      salary REAL,
+      description TEXT NOT NULL,
+      status TEXT DEFAULT 'active',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`).run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)").run().catch(() => {});
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location)").run().catch(() => {});
   } catch (err) {
     console.warn('[ensureNewSchemaColumnsInTurso] Notice:', err.message);
   }
