@@ -365,10 +365,10 @@ async function notifyIndexNow(urls) {
 async function ensureRecentPlacesIndexed(env) {
   try {
     const db = createTursoDB(env);
-    const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
     const rows = (await db.prepare(
-      "SELECT slug, id FROM places WHERE status = 'published' AND updated_at > ? LIMIT 100"
-    ).bind(twoHoursAgo).all().catch(() => ({ results: [] }))).results || [];
+      "SELECT slug, id FROM places WHERE status = 'published' AND updated_at > ? LIMIT 500"
+    ).bind(oneDayAgo).all().catch(() => ({ results: [] }))).results || [];
     if (rows.length > 0) {
       const urls = [];
       for (const r of rows) {
@@ -431,7 +431,13 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     ['/hadith.html', '/en/hadith/', 'weekly', '0.7'],
     ['/quran.html', '/en/quran/', 'weekly', '0.7'],
     ['/quran-search.html', '/en/quran-search/', 'weekly', '0.7'],
-    ['/quran-surah.html', '/en/quran-surah/', 'weekly', '0.7']
+    ['/quran-surah.html', '/en/quran-surah/', 'weekly', '0.7'],
+    ['/qibla.html', '/en/qibla/', 'weekly', '0.7'],
+    ['/jobs.html', '/en/jobs/', 'daily', '0.8'],
+    ['/job-seekers.html', '/en/job-seekers/', 'daily', '0.8'],
+    ['/popular.html', '/en/popular/', 'daily', '0.7'],
+    ['/wallet.html', '/en/wallet/', 'weekly', '0.7'],
+    ['/free-verification.html', '/en/free-verification/', 'monthly', '0.7']
   ];
 
   let xml = '';
@@ -8639,6 +8645,166 @@ async function getPlaceHtmlTemplate(request, isEn = false) {
 }
 
 /**
+ * Generate rich Schema.org JSON-LD structured data with BreadcrumbList & specific LocalBusiness subtype
+ */
+function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, shareUrl, isEn, placeCat, placeTargetSlug) {
+  const canonicalBase = 'https://dalilmanzala.com';
+  const rawCategory = String(place.custom_category || place.category_id || '').toLowerCase();
+  
+  // Specific Schema.org type mapping for Google & AI Search Knowledge Graph
+  let schemaType = 'LocalBusiness';
+  if (/doctor|clinic|عيادة|طبيب|دكتور|استشاري|اخصائي/.test(rawCategory)) schemaType = 'Physician';
+  else if (/dentist|اسنان|أسنان/.test(rawCategory)) schemaType = 'Dentist';
+  else if (/pharmacy|صيدلية|صيدليه/.test(rawCategory)) schemaType = 'Pharmacy';
+  else if (/restaurant|مطعم|مشويات|وجبات|كريب|شاورما|بيتزا/.test(rawCategory)) schemaType = 'Restaurant';
+  else if (/cafe|coffee|كافيه|قهوة|مقهى/.test(rawCategory)) schemaType = 'CafeOrCoffeeShop';
+  else if (/bakery|مخبز|حلواني|معجنات/.test(rawCategory)) schemaType = 'Bakery';
+  else if (/plumb|سباك|سباكة|electric|كهرباء|كهربائي|carpenter|نجار|blacksmith|حداد/.test(rawCategory)) schemaType = 'HomeAndConstructionBusiness';
+  else if (/clothing|ملابس|بدل|عبايات|فساتين/.test(rawCategory)) schemaType = 'ClothingStore';
+  else if (/shoe|احذية|أحذية/.test(rawCategory)) schemaType = 'ShoeStore';
+  else if (/gold|jewel|ذهب|مجوهرات|صاغة/.test(rawCategory)) schemaType = 'JewelryStore';
+  else if (/supermarket|بقالة|هايبر|ماركت/.test(rawCategory)) schemaType = 'GroceryStore';
+  else if (/car|ميكانيكي|تصليح سيارات|كاوتش|غسيل سيارات/.test(rawCategory)) schemaType = 'AutoRepair';
+  else if (/barber|حلاق|كوافير|بيوتي سنتر|صالون/.test(rawCategory)) schemaType = 'BeautySalon';
+  else if (/hotel|فندق|لوكاندا/.test(rawCategory)) schemaType = 'Hotel';
+  else if (/real.*estate|عقارات|شقق/.test(rawCategory)) schemaType = 'RealEstateAgent';
+  else if (/store|محل|معرض|بيع|phones|هواتف/.test(rawCategory)) schemaType = 'Store';
+
+  // Parse social links for sameAs
+  let sameAs = [];
+  if (place.social_json) {
+    try {
+      const parsedSoc = typeof place.social_json === 'string' ? JSON.parse(place.social_json) : place.social_json;
+      if (parsedSoc && typeof parsedSoc === 'object') {
+        for (const v of Object.values(parsedSoc)) {
+          if (typeof v === 'string' && v.startsWith('http')) sameAs.push(v.trim());
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Parse services for knowsAbout
+  let services = [];
+  if (place.services_json) {
+    try {
+      const parsedSvc = typeof place.services_json === 'string' ? JSON.parse(place.services_json) : place.services_json;
+      if (Array.isArray(parsedSvc)) {
+        services = parsedSvc.filter(s => typeof s === 'string' && s.trim().length > 0).map(s => s.trim());
+      }
+    } catch (_) {}
+  }
+
+  // Parse opening hours specification
+  let openingHoursSpecs = [];
+  if (place.working_hours_json) {
+    try {
+      const parsedWh = typeof place.working_hours_json === 'string' ? JSON.parse(place.working_hours_json) : place.working_hours_json;
+      if (parsedWh && typeof parsedWh === 'object') {
+        const dayMap = {
+          saturday: 'Saturday', sunday: 'Sunday', monday: 'Monday',
+          tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday'
+        };
+        for (const [dayKey, dayVal] of Object.entries(parsedWh)) {
+          const schemaDay = dayMap[dayKey.toLowerCase()];
+          if (schemaDay && dayVal && !dayVal.closed && dayVal.open && dayVal.close) {
+            openingHoursSpecs.push({
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": schemaDay,
+              "opens": dayVal.open,
+              "closes": dayVal.close
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  const categorySlug = encodeURIComponent(String(place.custom_category || place.category_id || 'places').toLowerCase().replace(/\s+/g, '-'));
+
+  const breadcrumbList = {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": isEn ? "Home" : "الرئيسية",
+        "item": isEn ? `${canonicalBase}/en/` : `${canonicalBase}/`
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": isEn ? "Directory" : "دليل الأماكن",
+        "item": isEn ? `${canonicalBase}/en/places/` : `${canonicalBase}/places.html`
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": placeCat || (isEn ? "Category" : "التصنيف"),
+        "item": isEn ? `${canonicalBase}/en/category/${categorySlug}` : `${canonicalBase}/category/${categorySlug}`
+      },
+      {
+        "@type": "ListItem",
+        "position": 4,
+        "name": rawPlaceName,
+        "item": shareUrl
+      }
+    ]
+  };
+
+  const businessEntity = {
+    "@type": schemaType,
+    "@id": `${shareUrl}#business`,
+    "name": rawPlaceName,
+    "description": placeDesc,
+    "image": placeImg,
+    "url": shareUrl,
+    "inLanguage": isEn ? "en" : "ar",
+    "telephone": place.phone || undefined,
+    "currenciesAccepted": "EGP",
+    "priceRange": "$$",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": (isEn && place.address_en) ? place.address_en : (place.address || undefined),
+      "addressLocality": (isEn && place.area_en) ? place.area_en : (place.area || (isEn ? 'El Manzala' : 'المنزلة والمطرية')),
+      "addressRegion": isEn ? 'Dakahlia' : 'الدقهلية',
+      "addressCountry": 'EG'
+    },
+    "geo": (place.latitude && place.longitude && Number(place.latitude) > 20) ? {
+      "@type": "GeoCoordinates",
+      "latitude": Number(place.latitude),
+      "longitude": Number(place.longitude)
+    } : undefined,
+    "hasMap": place.maps_link || undefined,
+    "sameAs": sameAs.length > 0 ? sameAs : undefined,
+    "knowsAbout": services.length > 0 ? services : undefined,
+    "openingHoursSpecification": openingHoursSpecs.length > 0 ? openingHoursSpecs : undefined,
+    "aggregateRating": (place.review_count > 0 && place.rating > 0) ? {
+      "@type": "AggregateRating",
+      "ratingValue": place.rating || 0,
+      "reviewCount": place.review_count || 0,
+      "bestRating": 5,
+      "worstRating": 1
+    } : undefined
+  };
+
+  const cleanObj = (obj) => {
+    const res = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v !== undefined) res[k] = v;
+    }
+    return res;
+  };
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      breadcrumbList,
+      cleanObj(businessEntity)
+    ]
+  };
+}
+
+/**
  * Dynamic OpenGraph / Social Media Crawler Preview & Edge SSR Place Hydration (Instant 0ms Mobile Load)
  */
 async function handleDynamicOpenGraph(slug, request, env, ctx) {
@@ -8653,7 +8819,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   }
 
   const userAgent = request.headers.get('user-agent') || '';
-  const isSearchBot = /googlebot|bingbot|applebot|yandex|duckduckbot|baiduspider/i.test(userAgent);
+  const isSearchBot = /googlebot|bingbot|applebot|yandex|duckduckbot|baiduspider|oai-searchbot|gptbot|claudebot|perplexitybot|meta-externalagent|cohere-ai|amazonbot|youbot/i.test(userAgent);
   const isSocialScraper = /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot/i.test(userAgent);
   const isCrawler = isSearchBot || isSocialScraper;
   const canonicalBase = 'https://dalilmanzala.com';
@@ -8925,34 +9091,8 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   <meta property="og:locale:alternate" content="${isEn ? 'ar_EG' : 'en_US'}" />`;
       hydratedHtml = hydratedHtml.replace('</head>', `${hreflangTags}\n</head>`);
 
-      // 3. Inject instant place data and LocalBusiness JSON-LD Schema into <head>
-      const jsonLdSchema = {
-        "@context": "https://schema.org",
-        "@type": "LocalBusiness",
-        "name": rawPlaceName,
-        "description": placeDesc,
-        "image": placeImg,
-        "url": shareUrl,
-        "inLanguage": isEn ? "en" : "ar",
-        "telephone": place.phone || undefined,
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": (isEn && place.address_en) ? place.address_en : (place.address || undefined),
-          "addressLocality": (isEn && place.area_en) ? place.area_en : (place.area || (isEn ? 'El Manzala' : 'المنزلة والمطرية')),
-          "addressRegion": isEn ? 'Dakahlia' : 'الدقهلية',
-          "addressCountry": 'EG'
-        },
-        "geo": (place.latitude && place.longitude) ? {
-          "@type": "GeoCoordinates",
-          "latitude": place.latitude,
-          "longitude": place.longitude
-        } : undefined,
-        "aggregateRating": (place.review_count > 0) ? {
-          "@type": "AggregateRating",
-          "ratingValue": place.rating || 0,
-          "reviewCount": place.review_count || 0
-        } : undefined
-      };
+      // 3. Inject instant place data and rich Schema.org JSON-LD (LocalBusiness + BreadcrumbList) into <head>
+      const jsonLdSchema = generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, shareUrl, isEn, placeCat, placeTargetSlug);
 
       const injectionScript = `
   <!-- Server-Injected Place SSR Hydration & Schema.org Structured Data -->
@@ -8993,7 +9133,8 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
     console.warn('[handleDynamicOpenGraph SSR Error]:', ssrErr?.message || ssrErr);
   }
 
-  // 5. High-Reliability Fallback: Return complete SEO-rich HTML if base template fetch fails
+  const fallbackRawCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
+  const fallbackPlaceCat = isEn ? toEnglishCategoryWorker(fallbackRawCat) : toArabicCategoryWorker(fallbackRawCat);
   const destinationUrl = isEn ? `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}` : `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
   const html = `<!DOCTYPE html>
 <html lang="${isEn ? 'en' : 'ar'}" dir="${isEn ? 'ltr' : 'rtl'}">
@@ -9024,33 +9165,9 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
   <meta name="twitter:title" content="${escapeHtml(fullShareTitle)}">
   <meta name="twitter:description" content="${escapeHtml(placeDesc)}">
   <meta name="twitter:image" content="${escapeHtml(placeImg)}">
-  <script type="application/ld+json">${JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "name": rawPlaceName,
-    "description": placeDesc,
-    "image": placeImg,
-    "url": shareUrl,
-    "inLanguage": isEn ? "en" : "ar",
-    "telephone": place.phone || undefined,
-    "address": {
-      "@type": "PostalAddress",
-      "streetAddress": (isEn && place.address_en) ? place.address_en : (place.address || undefined),
-      "addressLocality": (isEn && place.area_en) ? place.area_en : (place.area || (isEn ? 'El Manzala' : 'المنزلة والمطرية')),
-      "addressRegion": isEn ? 'Dakahlia' : 'الدقهلية',
-      "addressCountry": 'EG'
-    },
-    "geo": (place.latitude && place.longitude) ? {
-      "@type": "GeoCoordinates",
-      "latitude": place.latitude,
-      "longitude": place.longitude
-    } : undefined,
-    "aggregateRating": (place.review_count > 0) ? {
-      "@type": "AggregateRating",
-      "ratingValue": place.rating || 0,
-      "reviewCount": place.review_count || 0
-    } : undefined
-  })}</script>
+  <script type="application/ld+json">
+${JSON.stringify(generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, shareUrl, isEn, fallbackPlaceCat, placeTargetSlug), null, 2)}
+  </script>
 </head>
 <body style="font-family:Arial,sans-serif;padding:30px;max-width:850px;margin:0 auto;direction:${isEn ? 'ltr' : 'rtl'};line-height:1.7;">
   <h1 style="color:#0f2744;font-size:1.8rem;margin-bottom:12px;">${escapeHtml(rawPlaceName)}</h1>

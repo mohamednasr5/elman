@@ -11,6 +11,12 @@
 - [يحدث الآن](https://dalilmanzala.com/now.html): الخدمات والأماكن المفتوحة والحالات المحلية اللحظية
 - [بالقرب مني](https://dalilmanzala.com/around-me.html): استكشاف الأماكن القريبة حسب الموقع الجغرافي
 - [الطوارئ](https://dalilmanzala.com/emergency.html): أرقام الطوارئ والخدمات العاجلة
+- [وظائف وفرص عمل](https://dalilmanzala.com/jobs.html): دليل وظائف وفرص العمل الشاغرة بالمنزلة والمطرية
+- [الباحثون عن عمل](https://dalilmanzala.com/job-seekers.html): كوادر وكفاءات تبحث عن عمل
+- [مواقيت الصلاة والقبلة](https://dalilmanzala.com/qibla.html): أوقات الصلاة واتجاه القبلة بالمنزلة والمطرية
+- [القرآن الكريم](https://dalilmanzala.com/quran.html): المصحف الشريف والتلاوات
+- [الحديث الشريف](https://dalilmanzala.com/hadith.html): الأحاديث النبوية الصحيحة
+- [محفظة العملات](https://dalilmanzala.com/wallet.html): محفظة العملات والمكافآت
 - [المنزلة](https://dalilmanzala.com/manzala.html): دليل مدينة المنزلة والقرى والخدمات
 - [المطرية](https://dalilmanzala.com/matariya.html): دليل مدينة المطرية والقرى والخدمات
 - [عن الدليل](https://dalilmanzala.com/about.html): من نحن ورؤية المنصة والمهندس محمد حماد مطور المنصة

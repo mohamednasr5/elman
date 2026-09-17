@@ -13,6 +13,12 @@
 - [Open Now](https://dalilmanzala.com/en/now/): Places currently open
 - [Nearby](https://dalilmanzala.com/en/around-me/): Nearby places using location
 - [Emergency](https://dalilmanzala.com/en/emergency/): Emergency and important local numbers
+- [Jobs & Vacancies](https://dalilmanzala.com/jobs.html): Local job listings and career opportunities
+- [Job Seekers](https://dalilmanzala.com/job-seekers.html): Local talent and job candidates directory
+- [Qibla & Prayer Times](https://dalilmanzala.com/qibla.html): Prayer times and Qibla direction
+- [Holy Quran](https://dalilmanzala.com/quran.html): Holy Quran readings and recitations
+- [Prophetic Hadith](https://dalilmanzala.com/hadith.html): Verified prophetic traditions
+- [Digital Wallet](https://dalilmanzala.com/wallet.html): Digital wallet, coins, and rewards
 - [Products](https://dalilmanzala.com/en/products/): Local products and prices
 - [Contact](https://dalilmanzala.com/en/contact/): Directory support and listing corrections
 - [About Us](https://dalilmanzala.com/en/about.html): Platform mission, local vision and developer profile (Eng. Mohamed Hammad)

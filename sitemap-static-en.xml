@@ -180,4 +180,49 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/qibla.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/qibla.html"/>
   </url>
+  <url>
+    <loc>https://dalilmanzala.com/jobs.html</loc>
+    <lastmod>2026-09-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/jobs.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/jobs.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/jobs.html"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/job-seekers.html</loc>
+    <lastmod>2026-09-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/job-seekers.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/job-seekers.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/job-seekers.html"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/popular.html</loc>
+    <lastmod>2026-09-17</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/popular.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/popular.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/popular.html"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/wallet.html</loc>
+    <lastmod>2026-09-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/wallet.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/wallet.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/wallet.html"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/free-verification.html</loc>
+    <lastmod>2026-09-17</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/free-verification.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/free-verification.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/free-verification.html"/>
+  </url>
 </urlset>

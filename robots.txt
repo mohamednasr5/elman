@@ -130,6 +130,71 @@ Disallow: /favorites.html
 Disallow: /favorites/
 Disallow: /api/
 
+# Meta AI search crawler.
+User-agent: Meta-ExternalAgent
+Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
+
+# Cohere AI
+User-agent: cohere-ai
+Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
+
+# Common Crawl AI foundation
+User-agent: CCBot
+Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
+
+# Amazon / Alexa AI
+User-agent: Amazonbot
+Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
+
+# You.com AI Search
+User-agent: YouBot
+Allow: /
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /dashboard.html
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
+
 # AI-readable discovery files.
 Allow: /llms.txt
 Allow: /llms-full.txt

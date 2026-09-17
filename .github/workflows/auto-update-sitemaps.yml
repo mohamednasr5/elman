@@ -23,6 +23,10 @@ jobs:
       - name: Generate updated SEO assets & Sitemaps
         run: node scripts/generate-seo-assets.mjs
 
+      - name: Submit URLs to IndexNow (Bing & Search Engines)
+        run: node scripts/submit-indexnow.mjs
+        continue-on-error: true
+
       - name: Commit and push updated sitemaps if changed
         run: |
           if git diff --quiet -- sitemap*.xml .indexnow-urls.json; then
