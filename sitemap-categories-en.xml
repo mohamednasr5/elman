@@ -633,6 +633,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/sale-of-computers-and-laptops"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/satellite-dish-%26-receiver-installation-%26-maintenance</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/satellite-dish-%26-receiver-installation-%26-maintenance"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/satellite-dish-%26-receiver-installation-%26-maintenance"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/satellite-dish-%26-receiver-installation-%26-maintenance"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/sharia-notary</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
