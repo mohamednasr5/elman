@@ -5,6 +5,8 @@
  * without removing or duplicating any of the existing fields/handlers.
  */
 
+import { isIncompleteMobilePhone, isValidPhoneNumber } from '../../utils/phone.js';
+
 const STORAGE_KEY = 'manzala_seen_add_place_onboarding_v2';
 const WIZARD_KEY = 'manzala_place_form_wizard_v1';
 
@@ -278,6 +280,46 @@ export function initPlaceFormWizard() {
         if (customCat && !customCat.value.trim()) {
           customCat.focus();
           customCat.reportValidity();
+          return false;
+        }
+      }
+    }
+
+    if (current === 1) {
+      const isPhoneUnavailable = Boolean(document.getElementById('p-phone-unavailable')?.checked);
+      const phoneInput = document.getElementById('p-phone');
+      const phoneVal = (phoneInput?.value || '').trim();
+      if (!isPhoneUnavailable && phoneVal) {
+        if (isIncompleteMobilePhone(phoneVal)) {
+          import('../components/Toast.js').then(({ toast }) => {
+            toast.warning('⚠️ رقم الهاتف ناقص! لقد كتبت 10 أرقام فقط لرقم موبايل، ورقم الموبايل المصري يتكون من 11 رقماً.');
+          }).catch(() => {});
+          phoneInput?.focus();
+          return false;
+        }
+        if (!isValidPhoneNumber(phoneVal)) {
+          import('../components/Toast.js').then(({ toast }) => {
+            toast.warning('يرجى إدخال رقم هاتف صحيح ومفعل (موبايل 11 رقم، أرضي، أو رقم موحد).');
+          }).catch(() => {});
+          phoneInput?.focus();
+          return false;
+        }
+      }
+      const waInput = document.getElementById('p-whatsapp');
+      const waVal = (waInput?.value || '').trim();
+      if (waVal) {
+        if (isIncompleteMobilePhone(waVal)) {
+          import('../components/Toast.js').then(({ toast }) => {
+            toast.warning('⚠️ رقم WhatsApp ناقص! لقد كتبت 10 أرقام فقط، ورقم الموبايل المصري يتكون من 11 رقماً.');
+          }).catch(() => {});
+          waInput?.focus();
+          return false;
+        }
+        if (!isValidPhoneNumber(waVal)) {
+          import('../components/Toast.js').then(({ toast }) => {
+            toast.warning('يرجى إدخال رقم واتساب صحيح ومفعل.');
+          }).catch(() => {});
+          waInput?.focus();
           return false;
         }
       }

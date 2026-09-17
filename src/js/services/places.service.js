@@ -10,7 +10,7 @@ import { normalizeArabic } from '../utils/arabic.js';
 import { isAtmPlace } from '../utils/atm.js';
 import { WORKER_URL } from '../core/firebase.js';
 import { getIdToken } from '../core/auth.js';
-import { isValidPhoneNumber, normalizePhoneNumber } from '../utils/phone.js';
+import { isValidPhoneNumber, normalizePhoneNumber, isIncompleteMobilePhone } from '../utils/phone.js';
 import { awardPoints } from './loyalty.service.js';
 
 export function extractBrandRoot(name) {
@@ -59,8 +59,13 @@ export async function validatePlaceUniqueness({ name, phone, excludePlaceId = nu
   const cleanPhoneNum = normalizePhoneNumber(phone || '');
   if (!normName) throw new Error(isAtm ? 'يرجى إدخال اسم البنك' : 'اسم المكان مطلوب');
   if (isAtm) return;
-  if (!isPhoneUnavailable && !isValidPhoneNumber(phone)) {
-    throw new Error('يرجى إدخال رقم هاتف مصري صحيح ومفعل (موبايل 11 رقم أو أرضي أو رقم موحد)، أو تحديد خيار "رقم التواصل غير متوفر حالياً".');
+  if (!isPhoneUnavailable) {
+    if (isIncompleteMobilePhone(phone)) {
+      throw new Error('⚠️ رقم الهاتف ناقص! يبدو أنك أدخلت 10 أرقام فقط لرقم موبايل، ورقم الموبايل المصري يتكون من 11 رقماً (مثال: 01xxxxxxxxx).');
+    }
+    if (!isValidPhoneNumber(phone)) {
+      throw new Error('يرجى إدخال رقم هاتف مصري صحيح ومفعل (موبايل 11 رقم أو أرضي أو رقم موحد)، أو تحديد خيار "رقم التواصل غير متوفر حالياً".');
+    }
   }
   let allPlaces = [];
   try {

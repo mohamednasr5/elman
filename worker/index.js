@@ -1828,9 +1828,14 @@ try {
       }
       function sanitizeWorkerPhone(p) {
         if (!p) return null;
-        const norm = String(p).replace(/\D/g, '');
+        let norm = String(p).replace(/\D/g, '');
+        if (norm.startsWith('0020')) norm = norm.slice(4);
+        else if (norm.startsWith('20') && (norm.startsWith('201') || norm.length >= 11)) norm = norm.slice(2);
+        if (norm.startsWith('1') && norm.length >= 9) norm = '0' + norm;
         if (!norm || /^0+$/.test(norm) || /^(\d)\1+$/.test(norm) || norm.length < 4 || norm.length > 15) return null;
         if (norm === '12345678' || norm === '123456789' || norm === '01234567890') return null;
+        // Strict Egyptian mobile validation: if starting with 01, must have 11 digits
+        if (norm.startsWith('01') && norm.length !== 11) return null;
         return String(p).trim();
       }
       const phone = sanitizeWorkerPhone(body.phone !== undefined ? body.phone : (existingPlace?.phone || ''));

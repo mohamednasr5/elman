@@ -33,41 +33,103 @@ export function normalizePhoneNumber(raw = '') {
 }
 
 /**
+ * Checks specifically if a phone number appears to be an incomplete Egyptian mobile number
+ * (e.g. 10 digits starting with 01, where an 11-digit mobile was clearly intended)
+ */
+export function isIncompleteMobilePhone(raw = '') {
+  if (!raw) return false;
+  let s = toAsciiDigits(raw).replace(/\D/g, '');
+  if (s.startsWith('0020')) s = s.slice(4);
+  else if (s.startsWith('20') && (s.startsWith('201') || s.length >= 11)) s = s.slice(2);
+
+  if (s.startsWith('1') && !s.startsWith('01') && (s.length === 9 || s.length === 10)) {
+    if (/^1[0125]/.test(s)) s = '0' + s;
+  }
+
+  // If it starts with 01 (Egyptian mobile prefix: 010, 011, 012, 015) and has 10 digits
+  if (s.startsWith('01') && s.length === 10) {
+    return true;
+  }
+  // Also detect 9-digit attempts starting with 01[0125]
+  if (/^01[0125]\d{6}$/.test(s)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Returns detailed validation status and human-friendly messages
+ */
+export function getPhoneValidationStatus(raw = '') {
+  if (!raw) return { isValid: false, isEmpty: true, message: '' };
+  const norm = normalizePhoneNumber(raw);
+  if (!norm) return { isValid: false, isEmpty: true, message: '' };
+
+  // 1. Incomplete mobile check (10 digits starting with 01)
+  if (isIncompleteMobilePhone(raw) || (norm.startsWith('01') && norm.length === 10)) {
+    return {
+      isValid: false,
+      isIncompleteMobile: true,
+      message: '⚠️ رقم الهاتف ناقص! لقد كتبت 10 أرقام فقط لرقم موبايل، ورقم الموبايل المصري يتكون من 11 رقماً (مثال: 01xxxxxxxxx).'
+    };
+  }
+
+  // 2. Dummy numbers check
+  if (/^0+$/.test(norm) || /^(\d)\1+$/.test(norm) || /^0?(\d)\1+$/.test(norm)) {
+    return { isValid: false, isDummy: true, message: 'رقم الهاتف غير صحيح (أرقام مكررة).' };
+  }
+  if (/^01[0125](\d)\1{7}$/.test(norm) || /^01\d00000000$/.test(norm)) {
+    return { isValid: false, isDummy: true, message: 'رقم الهاتف غير صحيح (أرقام وهمية).' };
+  }
+  if (norm === '12345678' || norm === '123456789' || norm === '01234567890') {
+    return { isValid: false, isDummy: true, message: 'رقم الهاتف غير صحيح.' };
+  }
+
+  // 3. Egyptian Mobile: exactly 11 digits starting with 010, 011, 012, 015
+  if (/^01[0125]\d{8}$/.test(norm)) {
+    return { isValid: true, type: 'mobile', message: '' };
+  }
+
+  // If it starts with 01 but is not 11 digits, it is strictly INVALID
+  if (norm.startsWith('01')) {
+    return {
+      isValid: false,
+      isIncompleteMobile: norm.length < 11,
+      message: `رقم الموبايل غير مكتمل (${norm.length} أرقام من 11).`
+    };
+  }
+
+  // 4. Hotlines & Unified numbers: 4 to 7 digits (e.g. 17555, 19xxx, 16xxx, 15xxx, corporate short numbers)
+  if (norm.length >= 4 && norm.length <= 7 && !norm.startsWith('0')) {
+    return { isValid: true, type: 'unified', message: '' };
+  }
+
+  // 5. Egyptian Landlines: starting with 02, 03, 04x, 05x, 06x, 08x, 09x (8 to 10 digits)
+  if (/^0[2-9]\d{6,8}$/.test(norm)) {
+    return { isValid: true, type: 'landline', message: '' };
+  }
+
+  // 6. Local Landlines (without area code, 6-8 digits):
+  if (/^[2-8]\d{5,7}$/.test(norm)) {
+    return { isValid: true, type: 'landline_local', message: '' };
+  }
+
+  // 7. General valid international number (8 to 15 digits, not starting with 01)
+  if (!norm.startsWith('01') && norm.length >= 8 && norm.length <= 15 && !/^(\d)\1+$/.test(norm)) {
+    return { isValid: true, type: 'international', message: '' };
+  }
+
+  return { isValid: false, message: 'رقم الهاتف غير صحيح.' };
+}
+
+/**
  * Validates whether a phone number is a realistic, non-dummy number.
- * Filters out dummy numbers (e.g. 00000000000, 11111111111, 01000000000).
+ * Supports Egyptian mobiles (11 digits), Landlines (8-10 digits), and Unified/Hotlines (4-7 digits).
+ * Strictly flags incomplete 10-digit mobile numbers as invalid.
  */
 export function isValidPhoneNumber(raw = '') {
   if (!raw) return false;
-  const norm = normalizePhoneNumber(raw);
-  if (!norm || norm.length < 4 || norm.length > 15) return false;
-
-  // Rejects all zeros (00000000000)
-  if (/^0+$/.test(norm)) return false;
-
-  // Rejects single repeated digit (99999999999, 11111111111, 01111111111)
-  if (/^(\d)\1+$/.test(norm) || /^0?(\d)\1+$/.test(norm)) return false;
-  if (/^01[0125](\d)\1{7}$/.test(norm)) return false;
-
-  // Rejects common dummy sequences
-  if (/^01\d00000000$/.test(norm)) return false;
-  if (/^01[0125](\d)\1{7}$/.test(norm)) return false;
-  if (norm === '12345678' || norm === '123456789' || norm === '01234567890') return false;
-
-  // Egyptian Hotline: 4-5 digits (15xxx, 16xxx, 17xxx, 19xxx)
-  if (/^1[5-9]\d{3,4}$/.test(norm)) return true;
-
-  // Egyptian Mobile: 010, 011, 012, 015 + 8 digits = 11 digits
-  if (/^01[0125]\d{8}$/.test(norm)) return true;
-
-  // Egyptian Landline: 050, 057, 02, 03, etc.
-  if (/^0[2-9]\d{6,9}$/.test(norm)) return true;
-
-  // General valid international number
-  if (norm.length >= 8 && norm.length <= 15 && !/^(\d)\1+$/.test(norm)) {
-    return true;
-  }
-
-  return false;
+  return getPhoneValidationStatus(raw).isValid;
 }
 
 /**

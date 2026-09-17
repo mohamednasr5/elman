@@ -41,7 +41,7 @@ import { isAdmin } from '../../core/auth.js';
 import { openCertificateOfAppreciationModal } from '../components/CertificateOfAppreciationModal.js';
 import { formatPrice, arabicMatch, normalizeArabic, stripAl, arabicScore, matchArabicCategoryTokens } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
-import { normalizePhoneNumber, extractPlacePhoneNumbers, toAsciiDigits } from '../../utils/phone.js';
+import { normalizePhoneNumber, extractPlacePhoneNumbers, toAsciiDigits, isValidPhoneNumber, isIncompleteMobilePhone, getPhoneValidationStatus } from '../../utils/phone.js';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm.js';
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { formatDate } from '../../utils/date.js';
@@ -1496,7 +1496,8 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           <div class="form-group">
             <label class="form-label" id="p-phone-label">رقم الهاتف <span class="required" id="p-phone-required-star">*</span></label>
             <input type="tel" id="p-phone" class="form-input" required placeholder="01********* (11 رقم أو خط ساخن)" maxlength="11" value="${escAttr(place?.phone || '')}" style="direction:ltr;text-align:right" />
-            <p style="font-size:11px;color:var(--text-muted);margin-top:3px">يدعم أرقام الموبايل، الأرضي، والخطوط الساخنة والأرقام الموحدة (مثل 17555). مسموح لنفس الرقم بمكانين كحد أقصى.</p>
+            <div id="p-phone-warning" class="phone-validation-hint" style="display:none;margin-top:6px;font-size:12px;font-weight:800;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:6px 10px;line-height:1.5;"></div>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:3px">يدعم أرقام الموبايل (11 رقماً)، الأرضي، والخطوط الساخنة والأرقام الموحدة (مثل 17555 أو 19xxx). مسموح لنفس الرقم بمكانين كحد أقصى.</p>
             <label class="form-check-label" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;margin-top:8px;font-size:12.5px;color:var(--text-secondary);font-weight:700;user-select:none">
               <input type="checkbox" id="p-phone-unavailable" style="width:17px;height:17px;accent-color:var(--primary);cursor:pointer" ${(place?.phoneUnavailable || (isEdit && !place?.phone)) ? 'checked' : ''} />
               <span>🚫 رقم التواصل غير متوفر حالياً لهذا المكان</span>
@@ -1506,6 +1507,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           <div class="form-group">
             <label class="form-label">رقم WhatsApp للتواصل المباشر</label>
             <input type="tel" id="p-whatsapp" class="form-input" placeholder="01********* (11 رقم)" maxlength="11" value="${escAttr(place?.whatsapp || '')}" style="direction:ltr;text-align:right" />
+            <div id="p-whatsapp-warning" class="phone-validation-hint" style="display:none;margin-top:6px;font-size:12px;font-weight:800;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:6px 10px;line-height:1.5;"></div>
           </div>
         </div>
 
@@ -3464,12 +3466,48 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     }
   }
 
-  // Restrict phone and WhatsApp inputs to digits only and max 11 digits with instant Arabic conversion
+  function updatePhoneValidationUI(inputEl, warningElId) {
+    if (!inputEl) return;
+    const val = (inputEl.value || '').trim();
+    const warningEl = document.getElementById(warningElId);
+    if (!val) {
+      if (warningEl) {
+        warningEl.style.display = 'none';
+        warningEl.textContent = '';
+      }
+      inputEl.style.borderColor = '';
+      inputEl.style.boxShadow = '';
+      return;
+    }
+
+    if (isIncompleteMobilePhone(val)) {
+      if (warningEl) {
+        warningEl.innerHTML = '⚠️ <strong>رقم الهاتف ناقص!</strong> يبدو أنك أدخلت 10 أرقام لرقم موبايل، ورقم الموبايل المصري يتكون من 11 رقماً (مثال: 01xxxxxxxxx).';
+        warningEl.style.display = 'block';
+      }
+      inputEl.style.borderColor = '#ef4444';
+      inputEl.style.boxShadow = '0 0 0 1px #ef4444';
+    } else {
+      if (warningEl) {
+        warningEl.style.display = 'none';
+        warningEl.textContent = '';
+      }
+      inputEl.style.borderColor = '';
+      inputEl.style.boxShadow = '';
+    }
+  }
+
+  // Restrict phone and WhatsApp inputs to digits only and max 11 digits with instant Arabic conversion & live feedback
   ['p-phone', 'p-whatsapp'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      el.addEventListener('input', () => formatPhoneInput(el, 11));
-      el.addEventListener('paste', () => requestAnimationFrame(() => formatPhoneInput(el, 11)));
+      const handleInput = () => {
+        formatPhoneInput(el, 11);
+        updatePhoneValidationUI(el, `${id}-warning`);
+      };
+      el.addEventListener('input', handleInput);
+      el.addEventListener('blur', () => updatePhoneValidationUI(el, `${id}-warning`));
+      el.addEventListener('paste', () => requestAnimationFrame(handleInput));
     }
   });
   // Event delegation for dynamically added branch phone/whatsapp fields
@@ -3679,7 +3717,43 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       }
 
       const isPhoneUnavailable = Boolean(document.getElementById('p-phone-unavailable')?.checked);
-      const rawPhone = isPhoneUnavailable ? '' : (document.getElementById('p-phone')?.value || '');
+      const rawPhone = isPhoneUnavailable ? '' : (document.getElementById('p-phone')?.value || '').trim();
+
+      if (!isPhoneUnavailable) {
+        if (!rawPhone) {
+          toast.warning('يرجى إدخال رقم الهاتف للتواصل أو تحديد "رقم التواصل غير متوفر حالياً".');
+          document.getElementById('p-phone')?.focus();
+          return;
+        }
+        if (isIncompleteMobilePhone(rawPhone)) {
+          toast.error('⚠️ رقم الهاتف ناقص! لقد كتبت 10 أرقام فقط لرقم موبايل، ورقم الموبايل المصري يتكون من 11 رقماً (مثال: 01xxxxxxxxx).');
+          const pInput = document.getElementById('p-phone');
+          pInput?.focus();
+          pInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        if (!isValidPhoneNumber(rawPhone)) {
+          toast.error('يرجى إدخال رقم هاتف صحيح ومفعل (موبايل 11 رقم، أرضي، أو رقم موحد/خط ساخن).');
+          document.getElementById('p-phone')?.focus();
+          return;
+        }
+      }
+
+      const rawWhatsapp = (document.getElementById('p-whatsapp')?.value || '').trim();
+      if (rawWhatsapp) {
+        if (isIncompleteMobilePhone(rawWhatsapp)) {
+          toast.error('⚠️ رقم WhatsApp ناقص! لقد كتبت 10 أرقام فقط لرقم موبايل، ورقم الموبايل المصري يتكون من 11 رقماً.');
+          const wInput = document.getElementById('p-whatsapp');
+          wInput?.focus();
+          wInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        if (!isValidPhoneNumber(rawWhatsapp)) {
+          toast.error('يرجى إدخال رقم واتساب صحيح ومفعل.');
+          document.getElementById('p-whatsapp')?.focus();
+          return;
+        }
+      }
 
       const placeData = {
         name: document.getElementById('p-name').value,
