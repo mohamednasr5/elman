@@ -54,8 +54,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"/></noscript>
-  <link rel="stylesheet" href="./src/css/main.css?v=b693182b"/>
-  <link rel="stylesheet" href="./src/css/pages/wallet.css?v=b693182b"/>
+  <link rel="stylesheet" href="./src/css/main.css?v=128bb341"/>
+  <link rel="stylesheet" href="./src/css/pages/wallet.css?v=128bb341"/>
 
   <script type="application/ld+json">
   {
@@ -98,8 +98,8 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from './src/js/core/page-shell.js?v=b693182b';
-  import { renderWalletPage } from './src/js/ui/pages/wallet.js?v=b693182b';
+  import { initPage } from './src/js/core/page-shell.js?v=128bb341';
+  import { renderWalletPage } from './src/js/ui/pages/wallet.js?v=128bb341';
 
   const pc = document.getElementById('page-container');
   initPage('wallet.html').catch(err => console.warn('[PageShell Error]:', err));
@@ -108,6 +108,6 @@
     if (pc) pc.innerHTML = '<div style="text-align:center;padding:40px 16px;color:#ef4444">حدث خطأ أثناء تحميل محفظة الرصيد. يرجى إعادة المحاولة.</div>';
   });
 </script>
-<script type="module" src="/src/js/core/pwa-install.js?v=b693182b"></script>
+<script type="module" src="/src/js/core/pwa-install.js?v=128bb341"></script>
 </body>
 </html>

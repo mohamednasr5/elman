@@ -190,7 +190,7 @@ function _loadShellCSS(){
     const l=document.createElement('link');
     l.id='shell-mobile-fixes-css';
     l.rel='stylesheet';
-    l.href='/src/css/mobile-shell-fixes.css?v=b693182b';
+    l.href='/src/css/mobile-shell-fixes.css?v=128bb341';
     document.head.appendChild(l);
   }
   // Critical fallback: the More sheet must never become a normal block in document flow
