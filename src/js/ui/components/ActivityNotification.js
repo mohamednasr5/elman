@@ -2,19 +2,19 @@
  * ActivityNotification.js — Real Local Activity / Social Proof Floating Card
  * دليل المنزلة والمطرية الرقمي
  *
- * Requirements:
- * 1. 100% REAL statistics from Turso database (visits, phone calls, WhatsApp contacts). No fake/random numbers.
- * 2. Mobile safety: Raised above bottom navigation and mobile action pills (z-index 12080).
- * 3. Rotates every 10 seconds with a DIFFERENT place each time ("مكان شكل").
- * 4. Clickable card navigating to the place detail page.
+ * Controlled Frequency & Smart Suppression Rules:
+ * 1. Shows ONLY ONCE per page visit / navigation (طالما ظهرتها في الصفحة مرة خلاص).
+ * 2. Absolutely NEVER shown on the wallet / buy coins page (/wallet.html or #packages).
+ * 3. Absolutely NEVER shown while the Smart Voice Assistant modal is open.
+ * 4. Dismisses immediately if the user opens the Voice Assistant or navigates to the wallet page.
+ * 5. 100% REAL statistics from Turso database (visits, phone calls, WhatsApp contacts).
  */
 
 import { WORKER_URL } from '../../core/firebase.js';
 
 const CONFIG = {
-  INITIAL_DELAY: 3000,    // 3s after page load before first notification
-  DISPLAY_DURATION: 5500, // 5.5s visible on screen
-  SHOW_INTERVAL: 10000,   // 10s repeat cycle between notifications
+  INITIAL_DELAY: 4500,    // 4.5s after entering the page before the single notification appears
+  DISPLAY_DURATION: 5000, // 5s visible on screen before smooth auto-dismissal
   STORAGE_KEY: 'dalil_activity_notification_history'
 };
 
@@ -22,6 +22,47 @@ let _timerId = null;
 let _dismissTimerId = null;
 let _activeCardEl = null;
 let _isInitialized = false;
+let _hasShownOnCurrentPage = false;
+let _currentPageKey = (typeof window !== 'undefined') ? (window.location.pathname + window.location.search) : '';
+
+export function isWalletOrCoinsPage() {
+  if (typeof window === 'undefined') return true;
+  const path = (window.location.pathname || '').toLowerCase();
+  const hash = (window.location.hash || '').toLowerCase();
+  const search = (window.location.search || '').toLowerCase();
+  return (
+    path.includes('wallet') ||
+    path.includes('coins') ||
+    hash.includes('wallet') ||
+    hash.includes('packages') ||
+    search.includes('wallet') ||
+    search.includes('coins') ||
+    Boolean(document.getElementById('wallet-container') || document.querySelector('.wallet-page-hero'))
+  );
+}
+
+export function isVoiceAssistantOrModalOpen() {
+  if (typeof document === 'undefined') return false;
+  return (
+    document.body.classList.contains('voice-modal-open') ||
+    document.body.classList.contains('mobile-more-open') ||
+    Boolean(document.getElementById('manzala-voice-modal')) ||
+    Boolean(document.querySelector('.manzala-voice-modal-backdrop')) ||
+    Boolean(document.querySelector('.mvm-backdrop')) ||
+    Boolean(document.querySelector('.modal.open, .modal.active, .swal2-shown')) ||
+    Boolean(window.__voiceAssistantActive)
+  );
+}
+
+export function dismissActivityNotificationImmediately() {
+  if (_activeCardEl) {
+    dismissNotification(_activeCardEl);
+  }
+  if (_timerId) {
+    clearTimeout(_timerId);
+    _timerId = null;
+  }
+}
 
 // Pool of candidate places for seamless cycling of diverse places ("مكان شكل")
 let _placesPool = [];
@@ -268,13 +309,21 @@ function dismissNotification(cardEl) {
 }
 
 async function showNextActivityNotification() {
-  // Do not show if user is actively in a full-screen modal, menu, or sheet
-  if (
-    document.body.classList.contains('mobile-more-open') ||
-    document.body.classList.contains('voice-modal-open') ||
-    document.querySelector('.modal.open, .modal.active, .manzala-voice-modal-backdrop')
-  ) {
-    scheduleNext(CONFIG.SHOW_INTERVAL / 2);
+  // 1. Strictly suppressed on wallet / coins purchase page
+  if (isWalletOrCoinsPage()) {
+    dismissActivityNotificationImmediately();
+    return;
+  }
+
+  // 2. Controlled frequency: Only ONE appearance per page navigation / load
+  if (_hasShownOnCurrentPage) {
+    return;
+  }
+
+  // 3. Strictly suppressed if Smart Voice Assistant or modal is open
+  if (isVoiceAssistantOrModalOpen()) {
+    // Retry in 4s in case user closes assistant, but ONLY if we haven't shown on this page yet
+    scheduleNext(4000);
     return;
   }
 
@@ -286,17 +335,21 @@ async function showNextActivityNotification() {
   // Pick next candidate - guaranteed "مكان شكل" (different place each time)
   const candidate = await getNextCandidate();
   if (!candidate) {
-    scheduleNext(CONFIG.SHOW_INTERVAL);
+    return;
+  }
+
+  // Double check again before rendering (user might have clicked assistant or navigated while fetching)
+  if (isWalletOrCoinsPage() || isVoiceAssistantOrModalOpen() || _hasShownOnCurrentPage) {
     return;
   }
 
   const cardEl = renderNotificationCard(candidate);
   if (!cardEl) {
-    scheduleNext(CONFIG.SHOW_INTERVAL);
     return;
   }
 
   markPlaceShown(candidate.place.id);
+  _hasShownOnCurrentPage = true; // MARKED AS SHOWN FOR THIS PAGE!
 
   // Append to container
   let container = document.getElementById('activity-notif-host');
@@ -322,13 +375,40 @@ async function showNextActivityNotification() {
     dismissNotification(cardEl);
   }, CONFIG.DISPLAY_DURATION);
 
-  // Schedule next notification cycle (every 10s repeats with a different place)
-  scheduleNext(CONFIG.SHOW_INTERVAL);
+  // NOTICE: NO MORE scheduleNext()!
+  // Once shown on the current page, it will NEVER show again on this page.
 }
 
 function scheduleNext(delayMs) {
   if (_timerId) clearTimeout(_timerId);
   _timerId = setTimeout(showNextActivityNotification, delayMs);
+}
+
+function setupObserverAndListeners() {
+  if (typeof document === 'undefined') return;
+
+  // Listen to popstate / history navigation
+  window.addEventListener('popstate', () => {
+    const newKey = window.location.pathname + window.location.search;
+    if (newKey !== _currentPageKey) {
+      _currentPageKey = newKey;
+      _hasShownOnCurrentPage = false;
+      if (isWalletOrCoinsPage()) {
+        dismissActivityNotificationImmediately();
+      } else if (!isVoiceAssistantOrModalOpen()) {
+        scheduleNext(CONFIG.INITIAL_DELAY);
+      }
+    }
+  });
+
+  // Observe class mutations on document.body to instantly kill notification when voice assistant or wallet opens
+  const observer = new MutationObserver(() => {
+    if (isWalletOrCoinsPage() || isVoiceAssistantOrModalOpen()) {
+      dismissActivityNotificationImmediately();
+    }
+  });
+
+  observer.observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true });
 }
 
 function escapeHtml(str) {
@@ -345,11 +425,26 @@ function escapeHtml(str) {
  * Safely invoked on page boot
  */
 export function initActivityNotifications() {
-  if (_isInitialized) return;
-  _isInitialized = true;
+  if (isWalletOrCoinsPage()) {
+    dismissActivityNotificationImmediately();
+    return;
+  }
 
   ensureStyles();
 
-  // Delay first appearance so it doesn't distract immediately on initial render
-  scheduleNext(CONFIG.INITIAL_DELAY);
+  if (!_isInitialized) {
+    _isInitialized = true;
+    setupObserverAndListeners();
+  }
+
+  // Check if this is a fresh page navigation
+  const currentKey = (typeof window !== 'undefined') ? (window.location.pathname + window.location.search) : '';
+  if (currentKey !== _currentPageKey) {
+    _currentPageKey = currentKey;
+    _hasShownOnCurrentPage = false;
+  }
+
+  if (!_hasShownOnCurrentPage && !isVoiceAssistantOrModalOpen()) {
+    scheduleNext(CONFIG.INITIAL_DELAY);
+  }
 }

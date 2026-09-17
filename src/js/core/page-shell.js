@@ -539,9 +539,12 @@ export async function initPage(activeFile=''){
     });
   }catch(_){}
   try{
-    import('../ui/components/ActivityNotification.js').then(m => {
-      m.initActivityNotifications();
-    }).catch(()=>{});
+    const isWallet = activeFile === 'wallet.html' || (typeof window !== 'undefined' && window.location.pathname.includes('wallet'));
+    if (!isWallet) {
+      import('../ui/components/ActivityNotification.js').then(m => {
+        m.initActivityNotifications();
+      }).catch(()=>{});
+    }
   }catch(_){}
 }
 export { waitForAuth, isAdmin };

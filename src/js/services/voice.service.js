@@ -375,6 +375,15 @@ export async function openManzalaVoiceAssistantModal() {
 
   document.body.classList.add('voice-modal-open');
 
+  // Immediately suppress and dismiss any activity notification
+  try {
+    const host = document.getElementById('activity-notif-host');
+    if (host) host.style.setProperty('display', 'none', 'important');
+    import('../ui/components/ActivityNotification.js').then(m => {
+      m.dismissActivityNotificationImmediately?.();
+    }).catch(() => {});
+  } catch (_) {}
+
   const texts = isEn ? {
     title: 'El Manzala & El Matariya AI Voice Assistant',
     subtitle: 'Speak freely.. We will find places and services instantly',
@@ -953,6 +962,8 @@ function speakAssistantVoiceResponse(topResult, totalCount, query) {
 export function closeManzalaVoiceAssistantModal() {
   try {
     document.body.classList.remove('voice-modal-open');
+    const host = document.getElementById('activity-notif-host');
+    if (host) host.style.removeProperty('display');
   } catch (_) {}
   if (_modalVoiceInstance) {
     try {

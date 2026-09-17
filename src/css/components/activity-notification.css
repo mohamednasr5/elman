@@ -310,3 +310,20 @@ body.dark .activity-notif-close-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #f8fafc;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   STRICT CONTEXT SUPPRESSION (Voice Assistant & Wallet / Coins)
+   ═══════════════════════════════════════════════════════════════ */
+body.voice-modal-open #activity-notif-host,
+body.voice-modal-open .activity-notif-card,
+body.mobile-more-open #activity-notif-host,
+body.mobile-more-open .activity-notif-card,
+body.wallet-page #activity-notif-host,
+.wallet-page #activity-notif-host,
+#wallet-container #activity-notif-host,
+[data-page="wallet"] #activity-notif-host {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
