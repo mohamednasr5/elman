@@ -117,4 +117,37 @@ await addMissingColumns('users', {
   last_redemption_at: 'INTEGER'
 });
 
+await run(`CREATE TABLE IF NOT EXISTS coin_purchases (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  user_name TEXT,
+  user_email TEXT,
+  user_phone TEXT,
+  package_coins INTEGER NOT NULL,
+  amount_egp INTEGER NOT NULL,
+  receipt_url TEXT,
+  payment_method TEXT DEFAULT 'vodafone_cash',
+  vodafone_sender_number TEXT,
+  status TEXT DEFAULT 'pending',
+  admin_notes TEXT,
+  created_at INTEGER NOT NULL,
+  reviewed_at INTEGER,
+  reviewed_by TEXT
+)`);
+await run('CREATE INDEX IF NOT EXISTS idx_coin_purchases_status ON coin_purchases(status, created_at DESC)');
+await run('CREATE INDEX IF NOT EXISTS idx_coin_purchases_user ON coin_purchases(user_id)');
+
+await run(`CREATE TABLE IF NOT EXISTS loyalty_history (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  rule_key TEXT,
+  amount INTEGER NOT NULL,
+  label TEXT,
+  meta_json TEXT,
+  created_at INTEGER NOT NULL
+)`);
+await run('CREATE INDEX IF NOT EXISTS idx_loyalty_history_user ON loyalty_history(user_id, created_at DESC)');
+
 console.log('[schema] Turso public-place API schema repair completed successfully');
+

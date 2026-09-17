@@ -4,7 +4,7 @@
  * and complete Sponsored Place / Paid Ad priority controls.
  */
 
-import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso, getPlaceAnalyticsReport, getAdminPhoneReports, actOnPhoneReport } from '../../core/db.js?v=a58f9ed6';
+import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTimestamp, getSettings, updateSettings, getCategories, saveCategoryTurso, deleteCategoryTurso, getPublishedPlaces, getAdminPlacesTurso, getAllReviews, adminAddReview, adminUpdateReview, adminDeleteReview, adminBulkDeleteReviews, parseBulkReviews, adminBulkAddReviews, generateSyntheticReviews, isPlaceBanned, adminBanPlace, adminUnbanPlace, getAllProducts, adminApproveProduct, adminRejectProduct, adminDeleteProduct, adminApproveReportedReview, HAMMAD_TESTIMONIALS, HAMMAD_PLACE_SLUG, broadcastNewPlaceNotification, broadcastPlaceVerifiedNotification, adminBanIp, adminUnbanIp, getAllBannedIps, syncPlaceToWorkerTurso, invalidateLocalPlaceCache, getAllUsersTurso, getCategoryRequestsTurso, updateCategoryRequestTurso, getVerificationRequestsTurso, updateVerificationRequestTurso, updateUserTurso, getPlaceAnalyticsReport, getAdminPhoneReports, actOnPhoneReport } from '../../core/db.js?v=b181a3ca';
 import { WORKER_URL } from '../../core/firebase.js';
 import { api } from '../../core/api.js';
 import { isAdmin, getCurrentUser, getIdToken } from '../../core/auth.js';
@@ -4195,9 +4195,11 @@ async function renderAdminUsers($container) {
     const userReviews = allReviews.filter(r => r.userId === uid || (r.userEmail && u.email && r.userEmail.toLowerCase() === u.email.toLowerCase()));
     const clientIp = u.lastIp || u.registrationIp || null;
     const isIpBlocked = clientIp && bannedIpsMap.has(clientIp);
+    const pts = Number(u.points ?? u.loyalty?.points ?? 0);
     return {
       uid,
       ...u,
+      points: pts,
       userPlaces,
       userReviews,
       clientIp,
@@ -4206,21 +4208,62 @@ async function renderAdminUsers($container) {
     };
   });
 
+  const totalUsers = users.length;
+  const totalGoldCoins = users.reduce((sum, u) => sum + (Number(u.points) || 0), 0);
+  const usersWithCoins = users.filter(u => (Number(u.points) || 0) > 0);
+  const usersWithCoinsCount = usersWithCoins.length;
+  const vipUsersCount = users.filter(u => (Number(u.points) || 0) >= 1500).length;
+
+  let _activeUserFilter = 'all';
+  let _activeUserSort = 'newest';
+
+  function applyFiltersAndSort(query = '') {
+    let list = [...users];
+    if (query) {
+      const q = normalizeArabic(query.trim().toLowerCase());
+      list = list.filter(u => {
+        const name = normalizeArabic((u.name || '').toLowerCase());
+        const email = (u.email || '').toLowerCase();
+        const uid = (u.uid || '').toLowerCase();
+        const ip = (u.clientIp || '').toLowerCase();
+        return name.includes(q) || email.includes(q) || uid.includes(q) || ip.includes(q);
+      });
+    }
+    if (_activeUserFilter === 'coins') {
+      list = list.filter(u => (Number(u.points) || 0) > 0);
+    } else if (_activeUserFilter === 'vip') {
+      list = list.filter(u => (Number(u.points) || 0) >= 1500);
+    } else if (_activeUserFilter === 'places') {
+      list = list.filter(u => u.userPlaces && u.userPlaces.length > 0);
+    } else if (_activeUserFilter === 'banned') {
+      list = list.filter(u => u.isIpBlocked || u.status === 'suspended');
+    }
+
+    if (_activeUserSort === 'coins') {
+      list.sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0));
+    } else if (_activeUserSort === 'places') {
+      list.sort((a, b) => (b.userPlaces?.length || 0) - (a.userPlaces?.length || 0));
+    } else if (_activeUserSort === 'reviews') {
+      list.sort((a, b) => (b.userReviews?.length || 0) - (a.userReviews?.length || 0));
+    }
+    return list;
+  }
+
   $container.innerHTML = `
     <div class="admin-fade-in">
-      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div class="dashboard-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px">
         <div>
-          <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:800;display:flex;align-items:center;gap:8px">
+          <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:900;display:flex;align-items:center;gap:10px">
             <span>👥</span>
-            <span>إدارة المستخدمين والرقابة الكاملة (${users.length})</span>
+            <span>إدارة المستخدمين ورصيد الذهبيات (${totalUsers})</span>
           </h1>
           <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
-            تحكم شامل في الأماكن، مراجعة وتعديل وحذف التعليقات، حظر الـ IP، وتعديل النقاط والصلاحيات
+            معرفة رصيد كل مستخدم من ذهبيات الدليل 🪙، شحن وتعديل الأرصدة، الرقابة على التعليقات والأماكن، وحظر الـ IP
           </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn btn-sm btn-outline" id="btn-admin-show-banned-ips" style="border-radius:8px;font-weight:800;border-color:rgba(239,68,68,0.5);color:#EF4444">
-            🚫 سجل الـ IP المحظورة (${bannedIps.length})
+            🚫 المحظورين (${bannedIps.length})
           </button>
           <button class="btn btn-sm btn-outline" id="btn-admin-refresh-users" style="border-radius:8px;font-weight:700">
             🔄 تحديث
@@ -4228,9 +4271,56 @@ async function renderAdminUsers($container) {
         </div>
       </div>
 
-      <!-- Search & Filter Bar -->
-      <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
-        <input type="text" id="admin-user-search-input" class="form-input" placeholder="🔍 ابحث بالاسم، البريد الإلكتروني، معرف المستخدم UID، أو عنوان IP..." style="flex:1;min-width:280px;background:#0F273D;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 14px" />
+      <!-- Quick Stats Grid -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:12px;margin-bottom:20px">
+        <div class="stat-card" style="background:#0F273D;padding:15px;border-radius:14px;border:1.5px solid rgba(255,255,255,0.08)">
+          <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي المستخدمين المسجلين</div>
+          <div style="font-size:1.7rem;font-weight:900;color:#38BDF8;margin-top:4px">${totalUsers.toLocaleString('ar-EG')}</div>
+        </div>
+        <div class="stat-card" style="background:#0F273D;padding:15px;border-radius:14px;border:1.5px solid rgba(245,166,35,0.35);box-shadow:0 0 16px rgba(245,166,35,0.12)">
+          <div style="font-size:12px;color:#F5A623;font-weight:800">إجمالي ذهبيات المستخدمين 🪙</div>
+          <div style="font-size:1.7rem;font-weight:900;color:#F5A623;margin-top:4px">${totalGoldCoins.toLocaleString('ar-EG')} <span style="font-size:13px">ذهبية</span></div>
+        </div>
+        <div class="stat-card" style="background:#0F273D;padding:15px;border-radius:14px;border:1.5px solid rgba(16,185,129,0.25)">
+          <div style="font-size:12px;color:rgba(255,255,255,0.6)">محافظ بها رصيد نشط 👛</div>
+          <div style="font-size:1.7rem;font-weight:900;color:#10B981;margin-top:4px">${usersWithCoinsCount.toLocaleString('ar-EG')} <span style="font-size:13px">مستخدم</span></div>
+        </div>
+        <div class="stat-card" style="background:#0F273D;padding:15px;border-radius:14px;border:1.5px solid rgba(147,51,234,0.25)">
+          <div style="font-size:12px;color:rgba(255,255,255,0.6)">رتب VIP والخبراء (1,500+) 👑</div>
+          <div style="font-size:1.7rem;font-weight:900;color:#C084FC;margin-top:4px">${vipUsersCount.toLocaleString('ar-EG')} <span style="font-size:13px">عضو</span></div>
+        </div>
+      </div>
+
+      <!-- Search & Filter Controls Bar -->
+      <div style="background:#0F273D;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.08);margin-bottom:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <input type="text" id="admin-user-search-input" class="form-input" placeholder="🔍 ابحث بالاسم، البريد، الهاتف، معرف UID، أو عنوان IP..." style="flex:1;min-width:260px;background:rgba(0,0,0,0.25);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:9px 14px;font-size:13px" />
+          
+          <select id="select-admin-user-sort" class="form-select" style="width:auto;min-width:180px;background:rgba(0,0,0,0.25);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700">
+            <option value="newest">ترتيب: الأحدث تسجيلاً</option>
+            <option value="coins">ترتيب: الأكثر ذهبيات 🪙</option>
+            <option value="places">ترتيب: الأكثر أماكن 🏪</option>
+            <option value="reviews">ترتيب: الأكثر تعليقات ⭐</option>
+          </select>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-xs btn-user-filter active" data-filter="all" style="border-radius:8px;padding:5px 12px;font-weight:800;background:#38BDF8;color:#0B1E30;border:none">
+            🔘 الكل (${totalUsers})
+          </button>
+          <button type="button" class="btn btn-xs btn-user-filter" data-filter="coins" style="border-radius:8px;padding:5px 12px;font-weight:800;background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.3)">
+            🪙 أصحاب الرصيد الذهبي (${usersWithCoinsCount})
+          </button>
+          <button type="button" class="btn btn-xs btn-user-filter" data-filter="vip" style="border-radius:8px;padding:5px 12px;font-weight:800;background:rgba(147,51,234,0.15);color:#C084FC;border:1px solid rgba(147,51,234,0.3)">
+            👑 رتب VIP (${vipUsersCount})
+          </button>
+          <button type="button" class="btn btn-xs btn-user-filter" data-filter="places" style="border-radius:8px;padding:5px 12px;font-weight:800;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.15)">
+            🏪 أصحاب الأنشطة
+          </button>
+          <button type="button" class="btn btn-xs btn-user-filter" data-filter="banned" style="border-radius:8px;padding:5px 12px;font-weight:800;background:rgba(239,68,68,0.12);color:#EF4444;border:1px solid rgba(239,68,68,0.3)">
+            🚫 المحظورين IP
+          </button>
+        </div>
       </div>
 
       <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.1);overflow-x:auto">
@@ -4240,7 +4330,7 @@ async function renderAdminUsers($container) {
               <th style="padding:12px;text-align:right">المستخدم والـ IP</th>
               <th style="padding:12px;text-align:center">الأماكن التابعة 🏪</th>
               <th style="padding:12px;text-align:center">التعليقات ⭐</th>
-              <th style="padding:12px;text-align:center">الرتبة والنقاط 🏆</th>
+              <th style="padding:12px;text-align:center">رصيد الذهبيات والرتبة 🪙</th>
               <th style="padding:12px;text-align:center">الصلاحية</th>
               <th style="padding:12px;text-align:center">الحالة</th>
               <th style="text-align:center;padding:12px">لوحة التحكم السريعة</th>
@@ -4254,24 +4344,41 @@ async function renderAdminUsers($container) {
     </div>
   `;
 
-  // Search Filter Handler
-  const searchInput = $container.querySelector('#admin-user-search-input');
-  searchInput?.addEventListener('input', () => {
-    const q = normalizeArabic(searchInput.value.trim().toLowerCase());
-    if (!q) {
-      $container.querySelector('#admin-users-tbody').innerHTML = _buildAdminUserRows(users);
-      _bindAdminUserRowEvents($container, users);
-      return;
-    }
-    const filtered = users.filter(u => {
-      const name = normalizeArabic((u.name || '').toLowerCase());
-      const email = (u.email || '').toLowerCase();
-      const uid = (u.uid || '').toLowerCase();
-      const ip = (u.clientIp || '').toLowerCase();
-      return name.includes(q) || email.includes(q) || uid.includes(q) || ip.includes(q);
-    });
+  function updateTable() {
+    const searchVal = $container.querySelector('#admin-user-search-input')?.value || '';
+    const filtered = applyFiltersAndSort(searchVal);
     $container.querySelector('#admin-users-tbody').innerHTML = _buildAdminUserRows(filtered);
     _bindAdminUserRowEvents($container, filtered);
+  }
+
+  // Filter Pills Handler
+  $container.querySelectorAll('.btn-user-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $container.querySelectorAll('.btn-user-filter').forEach(b => {
+        b.classList.remove('active');
+        b.style.background = 'rgba(255,255,255,0.06)';
+        b.style.color = 'rgba(255,255,255,0.8)';
+        b.style.border = '1px solid rgba(255,255,255,0.15)';
+      });
+      btn.classList.add('active');
+      btn.style.background = '#38BDF8';
+      btn.style.color = '#0B1E30';
+      btn.style.border = 'none';
+      _activeUserFilter = btn.dataset.filter;
+      updateTable();
+    });
+  });
+
+  // Sort Dropdown Handler
+  $container.querySelector('#select-admin-user-sort')?.addEventListener('change', (e) => {
+    _activeUserSort = e.target.value;
+    updateTable();
+  });
+
+  // Search Input Handler
+  const searchInput = $container.querySelector('#admin-user-search-input');
+  searchInput?.addEventListener('input', () => {
+    updateTable();
   });
 
   // Refresh Button
@@ -4298,11 +4405,11 @@ function _buildAdminUserRows(usersList) {
   }
 
   return usersList.map(u => {
-    const pts = Number(u.loyalty?.points ?? u.points ?? 0);
+    const pts = Number(u.points ?? u.loyalty?.points ?? 0);
     const lvlInfo = getLoyaltyLevelInfo(pts);
     const lvl = lvlInfo.currentLevel;
-    const placesCount = u.userPlaces.length;
-    const reviewsCount = u.userReviews.length;
+    const placesCount = u.userPlaces?.length || u.placesCount || 0;
+    const reviewsCount = u.userReviews?.length || 0;
 
     return `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
@@ -4311,10 +4418,10 @@ function _buildAdminUserRows(usersList) {
           <div style="display:flex;align-items:center;gap:10px">
             <img src="${u.photoURL || './icons/icon-72x72.png'}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.2);flex-shrink:0" />
             <div style="min-width:0">
-              <strong style="color:#fff;font-size:13.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(u.name || 'مستخدم')}</strong>
-              <div style="font-size:11.5px;color:rgba(255,255,255,0.65)">${escHtml(u.email || 'بدون بريد')}</div>
+              <strong style="color:#fff;font-size:13.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(u.name || u.displayName || 'مستخدم')}</strong>
+              <div style="font-size:11.5px;color:rgba(255,255,255,0.65)">${escHtml(u.email || u.phone || 'بدون بريد')}</div>
               <div style="display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap">
-                <span style="font-size:10px;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;color:rgba(255,255,255,0.5)">UID: ${escHtml((u.uid || '').slice(0, 8))}...</span>
+                <span style="font-size:10px;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:4px;color:rgba(255,255,255,0.5)">UID: ${escHtml((u.uid || u.id || '').slice(0, 8))}...</span>
                 ${u.clientIp ? `
                   <span class="badge ${u.isIpBlocked ? 'badge--rejected' : ''}" style="font-size:10px;padding:1px 6px;border-radius:4px;background:${u.isIpBlocked ? '#EF4444' : 'rgba(14,165,233,0.15)'};color:${u.isIpBlocked ? '#fff' : '#38BDF8'}">
                     IP: ${escHtml(u.clientIp)} ${u.isIpBlocked ? '🚫 محظور' : ''}
@@ -4327,31 +4434,35 @@ function _buildAdminUserRows(usersList) {
 
         <!-- Places Button -->
         <td style="text-align:center;padding:10px">
-          <button class="btn btn-xs btn-user-places-modal" data-uid="${escAttr(u.uid)}" style="background:rgba(14,165,233,0.15);color:#38BDF8;border:1px solid rgba(14,165,233,0.3);border-radius:8px;font-weight:800;padding:4px 10px;font-size:11.5px">
+          <button class="btn btn-xs btn-user-places-modal" data-uid="${escAttr(u.uid || u.id)}" style="background:rgba(14,165,233,0.15);color:#38BDF8;border:1px solid rgba(14,165,233,0.3);border-radius:8px;font-weight:800;padding:4px 10px;font-size:11.5px">
             🏪 ${placesCount} ${placesCount === 1 ? 'مكان' : 'أماكن'}
           </button>
         </td>
 
         <!-- Reviews Button -->
         <td style="text-align:center;padding:10px">
-          <button class="btn btn-xs btn-user-reviews-modal" data-uid="${escAttr(u.uid)}" style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.3);border-radius:8px;font-weight:800;padding:4px 10px;font-size:11.5px">
+          <button class="btn btn-xs btn-user-reviews-modal" data-uid="${escAttr(u.uid || u.id)}" style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.3);border-radius:8px;font-weight:800;padding:4px 10px;font-size:11.5px">
             💬 ${reviewsCount} ${reviewsCount === 1 ? 'تعليق' : 'تعليقات'}
           </button>
         </td>
 
-        <!-- Rank & Points -->
+        <!-- Dalil Gold Coins & Rank -->
         <td style="text-align:center;padding:10px">
-          <div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">
-            <span class="badge" style="background:rgba(245,166,35,0.15);color:${lvl.color};border:1px solid ${lvl.color}40;font-weight:800;padding:2px 8px;border-radius:6px;font-size:11px">
+          <div style="display:inline-flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(245,166,35,0.12);border:1.5px solid rgba(245,166,35,0.35);padding:3px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(245,166,35,0.15)">
+              <span style="font-size:14px">🪙</span>
+              <strong style="font-size:14px;color:#F5A623">${pts.toLocaleString('ar-EG')}</strong>
+              <span style="font-size:10.5px;color:rgba(255,255,255,0.75)">ذهبية</span>
+            </div>
+            <span class="badge" style="background:rgba(255,255,255,0.06);color:${lvl.color};border:1px solid ${lvl.color}40;font-weight:800;padding:2px 8px;border-radius:6px;font-size:10.5px">
               ${lvl.icon} ${lvl.name}
             </span>
-            <span style="font-size:11.5px;font-weight:700;color:#F5A623">${pts.toLocaleString('ar-EG')} نقطة</span>
           </div>
         </td>
 
         <!-- Role -->
         <td style="text-align:center;padding:10px">
-          <button class="btn btn-xs btn-user-toggle-role" data-uid="${escAttr(u.uid)}" data-role="${escAttr(u.role || 'user')}" title="انقر لتبديل الصلاحية" style="font-size:11px;padding:3px 8px;border-radius:6px;border:none;background:${u.role === 'admin' || u.role === 'superadmin' ? '#F5A623' : 'rgba(255,255,255,0.1)'};color:${u.role === 'admin' || u.role === 'superadmin' ? '#0B1E30' : '#fff'};font-weight:800">
+          <button class="btn btn-xs btn-user-toggle-role" data-uid="${escAttr(u.uid || u.id)}" data-role="${escAttr(u.role || 'user')}" title="انقر لتبديل الصلاحية" style="font-size:11px;padding:3px 8px;border-radius:6px;border:none;background:${u.role === 'admin' || u.role === 'superadmin' ? '#F5A623' : 'rgba(255,255,255,0.1)'};color:${u.role === 'admin' || u.role === 'superadmin' ? '#0B1E30' : '#fff'};font-weight:800">
             ${u.role === 'superadmin' ? '👑 سوبر آدمن' : (u.role === 'admin' ? '⭐ مشرف' : 'عضو')}
           </button>
         </td>
@@ -4367,18 +4478,18 @@ function _buildAdminUserRows(usersList) {
         <!-- Actions -->
         <td style="text-align:center;padding:10px;white-space:nowrap">
           <div style="display:inline-flex;gap:5px;align-items:center">
-            <!-- Points Modal Button -->
-            <button class="btn btn-xs btn-edit-user-points" data-uid="${escAttr(u.uid)}" data-name="${escAttr(u.name)}" data-pts="${pts}" title="تعديل النقاط والرتبة" style="background:#F5A623;color:#0B1E30;font-weight:800;border:none;border-radius:6px;padding:4px 8px;font-size:11.5px">
-              🎁 نقاط
+            <!-- Points / Coins Modal Button -->
+            <button class="btn btn-xs btn-edit-user-points" data-uid="${escAttr(u.uid || u.id)}" data-name="${escAttr(u.name || u.displayName || 'المستخدم')}" data-pts="${pts}" title="شحن وتعديل رصيد الذهبيات" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#0B1E30;font-weight:900;border:none;border-radius:8px;padding:5px 9px;font-size:11.5px;box-shadow:0 2px 8px rgba(245,166,35,0.25);cursor:pointer">
+              🪙 شحن/تعديل
             </button>
 
             <!-- Suspend / Activate Account -->
-            <button class="btn btn-xs ${u.status === 'suspended' ? 'btn-success' : 'btn-outline'}" onclick="toggleUserStatus('${escAttr(u.uid)}', '${u.status === 'suspended' ? 'active' : 'suspended'}')" title="${u.status === 'suspended' ? 'تفعيل الحساب' : 'إيقاف الحساب'}" style="border-radius:6px;padding:4px 8px;font-size:11.5px;${u.status === 'suspended' ? '' : 'color:#EF4444;border-color:rgba(239,68,68,0.4)'}">
+            <button class="btn btn-xs ${u.status === 'suspended' ? 'btn-success' : 'btn-outline'}" onclick="toggleUserStatus('${escAttr(u.uid || u.id)}', '${u.status === 'suspended' ? 'active' : 'suspended'}')" title="${u.status === 'suspended' ? 'تفعيل الحساب' : 'إيقاف الحساب'}" style="border-radius:6px;padding:4px 8px;font-size:11.5px;${u.status === 'suspended' ? '' : 'color:#EF4444;border-color:rgba(239,68,68,0.4)'}">
               ${u.status === 'suspended' ? '✓ تفعيل' : '✕ إيقاف'}
             </button>
 
             <!-- IP Ban Modal Button -->
-            <button class="btn btn-xs btn-ban-user-ip" data-uid="${escAttr(u.uid)}" data-name="${escAttr(u.name)}" data-ip="${escAttr(u.clientIp || '')}" title="حظر شامل لعنوان IP والجهاز" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.4);border-radius:6px;padding:4px 8px;font-size:11.5px;font-weight:800">
+            <button class="btn btn-xs btn-ban-user-ip" data-uid="${escAttr(u.uid || u.id)}" data-name="${escAttr(u.name || u.displayName || 'المستخدم')}" data-ip="${escAttr(u.clientIp || '')}" title="حظر شامل لعنوان IP والجهاز" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.4);border-radius:6px;padding:4px 8px;font-size:11.5px;font-weight:800">
               🚫 حظر IP
             </button>
           </div>
@@ -9652,8 +9763,23 @@ async function renderAdminCoinPurchases($container, filter = _adminCoinPurchases
 
   try {
     const token = await getIdToken();
-    const res = await api.get('/api/coins/purchases', token);
-    const purchases = (res && res.data) ? res.data : [];
+    const [purchasesRes, usersMap] = await Promise.all([
+      api.get('/api/coins/purchases', token).catch(err => {
+        console.warn('[Admin Coins] Purchases fetch failed:', err);
+        return { success: false, data: [] };
+      }),
+      getAllUsersTurso().catch(err => {
+        console.warn('[Admin Coins] Users fetch failed:', err);
+        return {};
+      })
+    ]);
+
+    const purchases = (purchasesRes && purchasesRes.data && Array.isArray(purchasesRes.data)) ? purchasesRes.data : [];
+    const usersList = Object.values(usersMap || {}).map(u => ({
+      ...u,
+      points: Number(u.points || 0),
+      totalEarned: Number(u.totalEarned || 0)
+    })).sort((a, b) => (b.points || 0) - (a.points || 0));
 
     function renderUI() {
       const totalCount = purchases.length;
@@ -9665,19 +9791,37 @@ async function renderAdminCoinPurchases($container, filter = _adminCoinPurchases
         .filter(p => p.status === 'approved')
         .reduce((sum, p) => sum + (Number(p.amount_egp) || 0), 0);
 
-      const totalCoins = purchases
+      const totalCoinsIssued = purchases
         .filter(p => p.status === 'approved')
-        .reduce((sum, p) => sum + (Number(p.coins) || 0), 0);
+        .reduce((sum, p) => sum + (Number(p.coins || p.package_coins) || 0), 0);
 
-      const filtered = purchases.filter(p => {
-        if (_adminCoinPurchasesFilter !== 'all' && p.status !== _adminCoinPurchasesFilter) return false;
-        if (_adminCoinPurchasesSearch) {
-          const q = normalizeArabic(_adminCoinPurchasesSearch.toLowerCase().trim());
-          const hay = normalizeArabic(`${p.user_name || ''} ${p.user_email || ''} ${p.user_phone || ''} ${p.sender_phone || ''} ${p.package_id || ''}`.toLowerCase());
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      });
+      const totalCirculatingCoins = usersList.reduce((sum, u) => sum + (Number(u.points) || 0), 0);
+      const usersWithCoinsCount = usersList.filter(u => (Number(u.points) || 0) > 0).length;
+
+      // Filter logic
+      let filteredPurchases = [];
+      let filteredUsers = [];
+
+      if (_adminCoinPurchasesFilter === 'balances') {
+        filteredUsers = usersList.filter(u => {
+          if (_adminCoinPurchasesSearch) {
+            const q = normalizeArabic(_adminCoinPurchasesSearch.toLowerCase().trim());
+            const hay = normalizeArabic(`${u.displayName || u.name || ''} ${u.email || ''} ${u.phone || ''} ${u.id || ''}`.toLowerCase());
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+      } else {
+        filteredPurchases = purchases.filter(p => {
+          if (_adminCoinPurchasesFilter !== 'all' && p.status !== _adminCoinPurchasesFilter) return false;
+          if (_adminCoinPurchasesSearch) {
+            const q = normalizeArabic(_adminCoinPurchasesSearch.toLowerCase().trim());
+            const hay = normalizeArabic(`${p.user_name || ''} ${p.user_email || ''} ${p.user_phone || ''} ${p.sender_phone || p.vodafone_sender_number || ''} ${p.package_id || ''}`.toLowerCase());
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+      }
 
       $container.innerHTML = `
         <div class="admin-fade-in" id="admin-sec-coin-purchases">
@@ -9685,15 +9829,15 @@ async function renderAdminCoinPurchases($container, filter = _adminCoinPurchases
             <div>
               <h1 class="dashboard-header__title" style="color:#fff;font-size:1.6rem;font-weight:900;display:flex;align-items:center;gap:10px">
                 <span style="color:#F5A623">🪙</span>
-                <span>طلبات شراء وشحن ذهبيات الدليل (${totalCount})</span>
+                <span>نظام وإدارة ذهبيات الدليل (${totalCount} طلب / ${usersList.length} مستخدم)</span>
               </h1>
               <div class="dashboard-header__subtitle" style="color:rgba(255,255,255,0.7);font-size:13px">
-                مراجعة إيصالات تحويل فودافون كاش، مطابقة أرقام المرسلين، واعتماد شحن الرصيد للحسابات فوراً
+                مراجعة إيصالات فودافون كاش، اعتماد الشحن، ومتابعة رصيد كل مستخدم وشحنه يدوياً
               </div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
               <a href="/wallet.html" target="_blank" class="btn" style="background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.3);border-radius:12px;font-weight:800;font-size:13px;text-decoration:none">
-                🪙 صفحة الرصيد العامة
+                🪙 صفحة المحفظة العامة
               </a>
               <button type="button" class="btn btn-outline" id="btn-refresh-coins-admin" style="font-size:13px;font-weight:700">
                 🔄 تحديث
@@ -9702,22 +9846,22 @@ async function renderAdminCoinPurchases($container, filter = _adminCoinPurchases
           </div>
 
           <!-- Quick Stats Grid -->
-          <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:14px;margin-bottom:22px">
-            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(255,255,255,0.1)">
-              <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي الطلبات</div>
-              <div style="font-size:1.8rem;font-weight:900;color:#38BDF8;margin-top:4px">${totalCount}</div>
-            </div>
-            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid ${pendingCount > 0 ? '#F5A623' : 'rgba(255,255,255,0.1)'};box-shadow:${pendingCount > 0 ? '0 0 16px rgba(245,166,35,0.2)' : 'none'}">
+          <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;margin-bottom:22px">
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid ${pendingCount > 0 ? '#F5A623' : 'rgba(255,255,255,0.1)'};box-shadow:${pendingCount > 0 ? '0 0 16px rgba(245,166,35,0.25)' : 'none'}">
               <div style="font-size:12px;color:${pendingCount > 0 ? '#F5A623' : 'rgba(255,255,255,0.6)'};font-weight:800">بانتظار المراجعة والشحن ⏳</div>
               <div style="font-size:1.8rem;font-weight:900;color:#F5A623;margin-top:4px">${pendingCount}</div>
+            </div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(245,166,35,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي رصيد المستخدمين الحالي 🪙</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#F5A623;margin-top:4px">${totalCirculatingCoins.toLocaleString('ar-EG')} <span style="font-size:13px;color:rgba(255,255,255,0.5)">(${usersWithCoinsCount} حساب)</span></div>
             </div>
             <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(16,185,129,0.3)">
               <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي الإيرادات المعتمدة</div>
               <div style="font-size:1.8rem;font-weight:900;color:#10B981;margin-top:4px">${totalEgp.toLocaleString('ar-EG')} <span style="font-size:14px">ج.م</span></div>
             </div>
-            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(245,166,35,0.3)">
-              <div style="font-size:12px;color:rgba(255,255,255,0.6)">إجمالي الذهبيات المصدرة</div>
-              <div style="font-size:1.8rem;font-weight:900;color:#F5A623;margin-top:4px">${totalCoins.toLocaleString('ar-EG')} 🪙</div>
+            <div class="stat-card" style="background:#0F273D;padding:16px;border-radius:14px;border:1.5px solid rgba(56,189,248,0.3)">
+              <div style="font-size:12px;color:rgba(255,255,255,0.6)">الذهبيات المشحونة عبر الباقات</div>
+              <div style="font-size:1.8rem;font-weight:900;color:#38BDF8;margin-top:4px">${totalCoinsIssued.toLocaleString('ar-EG')} 🪙</div>
             </div>
           </div>
 
@@ -9736,123 +9880,203 @@ async function renderAdminCoinPurchases($container, filter = _adminCoinPurchases
               <button type="button" class="btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-outline'} btn-cp-filter" data-status="all">
                 كل الطلبات (${totalCount})
               </button>
+              <button type="button" class="btn btn-sm ${filter === 'balances' ? 'btn-primary' : 'btn-outline'} btn-cp-filter" data-status="balances" style="${filter === 'balances' ? 'background:#38BDF8;border-color:#38BDF8;color:#0B1E30;font-weight:800' : 'border-color:rgba(56,189,248,0.4);color:#38BDF8'}">
+                👥 أرصدة كافة المستخدمين (${usersList.length})
+              </button>
             </div>
 
             <div style="min-width:240px;flex:1;max-width:380px">
-              <input type="search" id="input-search-coin-purchases" class="form-input" placeholder="🔍 بحث باسم، هاتف، أو رقم المحول منه..." value="${escAttr(_adminCoinPurchasesSearch)}" style="padding:7px 12px;font-size:13px;border-radius:10px" />
+              <input type="search" id="input-search-coin-purchases" class="form-input" placeholder="${filter === 'balances' ? '🔍 بحث باسم، هاتف أو بريد المستخدم...' : '🔍 بحث باسم، هاتف، أو رقم المحول منه...'}" value="${escAttr(_adminCoinPurchasesSearch)}" style="padding:7px 12px;font-size:13px;border-radius:10px" />
             </div>
           </div>
 
-          <!-- Purchases Table / Cards -->
-          <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.08);overflow:hidden">
-            <table class="dashboard-table">
-              <thead>
-                <tr>
-                  <th style="width:80px">إيصال التحويل</th>
-                  <th>المستخدم الحساب</th>
-                  <th>الباقة المطلوبة</th>
-                  <th>المبلغ المحول</th>
-                  <th>رقم محفظة فودافون كاش</th>
-                  <th>تاريخ الطلب</th>
-                  <th>الحالة</th>
-                  <th style="width:190px">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${filtered.length === 0 ? `
+          <!-- Content: Purchases Table OR Users Balances View -->
+          ${_adminCoinPurchasesFilter === 'balances' ? `
+            <!-- USERS BALANCES VIEW -->
+            <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.08);overflow:hidden">
+              <table class="dashboard-table">
+                <thead>
                   <tr>
-                    <td colspan="8" class="text-center" style="padding:48px 16px">
-                      <div style="font-size:36px;margin-bottom:10px">🪙</div>
-                      <div style="font-weight:800;font-size:15px;color:#fff">لا توجد طلبات شراء مطابقة</div>
-                      <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-top:4px">
-                        ${_adminCoinPurchasesSearch ? 'جرب البحث بكلمات مختلفة' : 'لا توجد طلبات في هذا التبويب حالياً'}
-                      </div>
-                    </td>
+                    <th style="width:60px">#</th>
+                    <th>المستخدم</th>
+                    <th>رصيد الذهبيات الحالي 🪙</th>
+                    <th>الرتبة والولاء</th>
+                    <th>إجمالي المكتسب</th>
+                    <th>الأماكن المسجلة</th>
+                    <th style="width:160px">إجراءات الرصيد</th>
                   </tr>
-                ` : filtered.map(p => {
-                  const createdAtFormatted = p.created_at ? new Date(p.created_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : '-';
-                  const isPending = p.status === 'pending';
-                  const isApproved = p.status === 'approved';
-                  const isRejected = p.status === 'rejected';
-
-                  let statusBadge = '';
-                  if (isPending) {
-                    statusBadge = '<span class="badge" style="background:rgba(245,166,35,0.2);color:#F5A623;border:1px solid rgba(245,166,35,0.4);font-weight:800;padding:4px 10px;font-size:11.5px">⏳ بانتظار الشحن</span>';
-                  } else if (isApproved) {
-                    statusBadge = '<span class="badge" style="background:rgba(16,185,129,0.2);color:#10B981;border:1px solid rgba(16,185,129,0.4);font-weight:800;padding:4px 10px;font-size:11.5px">✅ تم الشحن</span>';
-                  } else {
-                    statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.2);color:#EF4444;border:1px solid rgba(239,68,68,0.4);font-weight:800;padding:4px 10px;font-size:11.5px">❌ مرفوض</span>`;
-                  }
-
-                  return `
-                    <tr data-purchase-id="${escAttr(p.id)}">
-                      <td>
-                        ${p.receipt_url ? `
-                          <div class="receipt-thumb-wrap" style="position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1.5px solid rgba(245,166,35,0.4);cursor:pointer;background:#000" data-img="${escAttr(p.receipt_url)}" title="اضغط لتكبير الإيصال">
-                            <img src="${escAttr(p.receipt_url)}" alt="إيصال" style="width:100%;height:100%;object-fit:cover" />
-                            <div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;opacity:0;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">🔍</div>
-                          </div>
-                        ` : `
-                          <div style="width:64px;height:64px;border-radius:10px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:11px;text-align:center">بدون إيصال</div>
-                        `}
-                      </td>
-                      <td>
-                        <strong style="color:#fff;font-size:13.5px">${escHtml(p.user_name || 'مستخدم')}</strong>
-                        <div style="font-size:11.5px;color:rgba(255,255,255,0.6)">${escHtml(p.user_email || p.user_phone || p.user_id)}</div>
-                        <div style="font-size:11px;color:#F5A623;margin-top:2px">الرصيد الحالي: <strong>${(Number(p.current_points) || 0).toLocaleString('ar-EG')} 🪙</strong></div>
-                      </td>
-                      <td>
-                        <div style="display:flex;align-items:center;gap:6px">
-                          <span style="font-size:17px">🪙</span>
-                          <div>
-                            <strong style="color:#F5A623;font-size:14px">${Number(p.coins).toLocaleString('ar-EG')} ذهبية</strong>
-                            <div style="font-size:10.5px;color:rgba(255,255,255,0.5)">${escHtml(p.package_id || '')}</div>
-                          </div>
+                </thead>
+                <tbody>
+                  ${filteredUsers.length === 0 ? `
+                    <tr>
+                      <td colspan="7" class="text-center" style="padding:48px 16px">
+                        <div style="font-size:36px;margin-bottom:10px">👥</div>
+                        <div style="font-weight:800;font-size:15px;color:#fff">لا يوجد مستخدمون مطابقون</div>
+                        <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-top:4px">
+                          ${_adminCoinPurchasesSearch ? 'جرب البحث بكلمات مختلفة' : 'لا يوجد مستخدمون مسجلون بعد'}
                         </div>
-                      </td>
-                      <td>
-                        <strong style="font-size:14px;color:#10B981">${Number(p.amount_egp).toLocaleString('ar-EG')} ج.م</strong>
-                        <div style="font-size:10.5px;color:rgba(255,255,255,0.5)">فودافون كاش</div>
-                      </td>
-                      <td>
-                        <div style="display:flex;align-items:center;gap:6px">
-                          <span style="direction:ltr;font-family:monospace;font-size:13px;font-weight:700;color:#38BDF8">${escHtml(p.sender_phone || '-')}</span>
-                          ${p.sender_phone ? `
-                            <button type="button" class="btn-copy-phone" data-phone="${escAttr(p.sender_phone)}" title="نسخ الرقم" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:13px;padding:2px">📋</button>
-                          ` : ''}
-                        </div>
-                      </td>
-                      <td>
-                        <span style="font-size:12px;color:rgba(255,255,255,0.8)">${createdAtFormatted}</span>
-                      </td>
-                      <td>
-                        ${statusBadge}
-                        ${(isRejected && p.rejection_reason) ? `
-                          <div style="font-size:11px;color:#EF4444;margin-top:4px;max-width:160px;line-height:1.3">${escHtml(p.rejection_reason)}</div>
-                        ` : ''}
-                      </td>
-                      <td>
-                        ${isPending ? `
-                          <div style="display:flex;flex-direction:column;gap:6px">
-                            <button type="button" class="btn btn-xs btn-approve-purchase" data-id="${escAttr(p.id)}" data-coins="${escAttr(p.coins)}" data-name="${escAttr(p.user_name || 'المستخدم')}" style="background:#10B981;color:#fff;border:none;font-weight:800;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(16,185,129,0.3)">
-                              قبول وشحن الرصيد ✅
-                            </button>
-                            <button type="button" class="btn btn-xs btn-reject-purchase" data-id="${escAttr(p.id)}" data-name="${escAttr(p.user_name || 'المستخدم')}" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);font-weight:700;border-radius:8px;padding:4px 10px">
-                              رفض الطلب ❌
-                            </button>
-                          </div>
-                        ` : `
-                          <div style="font-size:11.5px;color:rgba(255,255,255,0.5)">
-                            ${isApproved ? 'تمت إضافة الرصيد بنجاح' : 'تم الرفض'}
-                          </div>
-                        `}
                       </td>
                     </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
+                  ` : filteredUsers.map((u, idx) => {
+                    const uPoints = Number(u.points || 0);
+                    const lvlInfo = getLoyaltyLevelInfo(uPoints);
+                    const avatarUrl = u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName || u.name || 'U')}&background=0F273D&color=F5A623`;
+                    return `
+                      <tr data-user-id="${escAttr(u.id)}">
+                        <td style="color:rgba(255,255,255,0.4);font-weight:800;font-size:12px">${idx + 1}</td>
+                        <td>
+                          <div style="display:flex;align-items:center;gap:10px">
+                            <img src="${escAttr(avatarUrl)}" alt="Avatar" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid ${uPoints > 0 ? '#F5A623' : 'rgba(255,255,255,0.2)'}" onerror="this.src='https://ui-avatars.com/api/?name=U&background=0F273D&color=fff'" />
+                            <div>
+                              <strong style="color:#fff;font-size:13.5px">${escHtml(u.displayName || u.name || 'مستخدم بدون اسم')}</strong>
+                              <div style="font-size:11.5px;color:rgba(255,255,255,0.6)">${escHtml(u.email || u.phone || u.id)}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);padding:4px 10px;border-radius:10px">
+                            <span style="font-size:16px">🪙</span>
+                            <span style="font-size:14px;font-weight:900;color:#F5A623">${uPoints.toLocaleString('ar-EG')} ذهبية</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span class="badge" style="background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.15);font-weight:700;font-size:11.5px;padding:3px 8px">
+                            ${lvlInfo.currentLevel.icon} ${lvlInfo.currentLevel.name}
+                          </span>
+                        </td>
+                        <td>
+                          <span style="font-size:12.5px;color:rgba(255,255,255,0.7)">${(Number(u.totalEarned) || 0).toLocaleString('ar-EG')} 🪙</span>
+                        </td>
+                        <td>
+                          <span style="font-size:12.5px;color:rgba(255,255,255,0.7)">${Number(u.placesCount || 0).toLocaleString('ar-EG')} مكان</span>
+                        </td>
+                        <td>
+                          <button type="button" class="btn btn-xs btn-open-user-points" data-uid="${escAttr(u.id)}" data-name="${escAttr(u.displayName || u.name || 'المستخدم')}" data-points="${uPoints}" style="background:rgba(245,166,35,0.18);border:1px solid #F5A623;color:#F5A623;font-weight:800;border-radius:8px;padding:5px 10px">
+                            🪙 شحن / تعديل الرصيد
+                          </button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          ` : `
+            <!-- PURCHASES TABLE -->
+            <div class="dashboard-table-wrapper" style="background:#0F273D;border-radius:14px;border:1px solid rgba(255,255,255,0.08);overflow:hidden">
+              <table class="dashboard-table">
+                <thead>
+                  <tr>
+                    <th style="width:80px">إيصال التحويل</th>
+                    <th>المستخدم الحساب</th>
+                    <th>الباقة المطلوبة</th>
+                    <th>المبلغ المحول</th>
+                    <th>رقم محفظة فودافون كاش</th>
+                    <th>تاريخ الطلب</th>
+                    <th>الحالة</th>
+                    <th style="width:190px">الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${filteredPurchases.length === 0 ? `
+                    <tr>
+                      <td colspan="8" class="text-center" style="padding:48px 16px">
+                        <div style="font-size:36px;margin-bottom:10px">🪙</div>
+                        <div style="font-weight:800;font-size:15px;color:#fff">لا توجد طلبات شراء مطابقة</div>
+                        <div style="font-size:12.5px;color:rgba(255,255,255,0.6);margin-top:4px">
+                          ${_adminCoinPurchasesSearch ? 'جرب البحث بكلمات مختلفة' : 'لا توجد طلبات في هذا التبويب حالياً'}
+                        </div>
+                      </td>
+                    </tr>
+                  ` : filteredPurchases.map(p => {
+                    const createdAtFormatted = p.created_at ? new Date(p.created_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                    const isPending = p.status === 'pending';
+                    const isApproved = p.status === 'approved';
+                    const isRejected = p.status === 'rejected';
+
+                    const userLivePoints = usersMap[p.user_id]?.points ?? p.current_points ?? 0;
+                    const senderPhone = p.sender_phone || p.vodafone_sender_number || '';
+                    const coinsCount = Number(p.coins || p.package_coins) || 0;
+
+                    let statusBadge = '';
+                    if (isPending) {
+                      statusBadge = '<span class="badge" style="background:rgba(245,166,35,0.2);color:#F5A623;border:1px solid rgba(245,166,35,0.4);font-weight:800;padding:4px 10px;font-size:11.5px">⏳ بانتظار الشحن</span>';
+                    } else if (isApproved) {
+                      statusBadge = '<span class="badge" style="background:rgba(16,185,129,0.2);color:#10B981;border:1px solid rgba(16,185,129,0.4);font-weight:800;padding:4px 10px;font-size:11.5px">✅ تم الشحن</span>';
+                    } else {
+                      statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.2);color:#EF4444;border:1px solid rgba(239,68,68,0.4);font-weight:800;padding:4px 10px;font-size:11.5px">❌ مرفوض</span>`;
+                    }
+
+                    return `
+                      <tr data-purchase-id="${escAttr(p.id)}">
+                        <td>
+                          ${p.receipt_url ? `
+                            <div class="receipt-thumb-wrap" style="position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1.5px solid rgba(245,166,35,0.4);cursor:pointer;background:#000" data-img="${escAttr(p.receipt_url)}" title="اضغط لتكبير الإيصال">
+                              <img src="${escAttr(p.receipt_url)}" alt="إيصال" style="width:100%;height:100%;object-fit:cover" />
+                              <div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;opacity:0;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">🔍</div>
+                            </div>
+                          ` : `
+                            <div style="width:64px;height:64px;border-radius:10px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);font-size:11px;text-align:center">بدون إيصال</div>
+                          `}
+                        </td>
+                        <td>
+                          <strong style="color:#fff;font-size:13.5px">${escHtml(p.user_name || 'مستخدم')}</strong>
+                          <div style="font-size:11.5px;color:rgba(255,255,255,0.6)">${escHtml(p.user_email || p.user_phone || p.user_id)}</div>
+                          <div style="font-size:11px;color:#F5A623;margin-top:2px">الرصيد الحالي: <strong>${Number(userLivePoints).toLocaleString('ar-EG')} 🪙</strong></div>
+                        </td>
+                        <td>
+                          <div style="display:flex;align-items:center;gap:6px">
+                            <span style="font-size:17px">🪙</span>
+                            <div>
+                              <strong style="color:#F5A623;font-size:14px">${coinsCount.toLocaleString('ar-EG')} ذهبية</strong>
+                              <div style="font-size:10.5px;color:rgba(255,255,255,0.5)">${escHtml(p.package_id || '')}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <strong style="font-size:14px;color:#10B981">${Number(p.amount_egp).toLocaleString('ar-EG')} ج.م</strong>
+                          <div style="font-size:10.5px;color:rgba(255,255,255,0.5)">فودافون كاش</div>
+                        </td>
+                        <td>
+                          <div style="display:flex;align-items:center;gap:6px">
+                            <span style="direction:ltr;font-family:monospace;font-size:13px;font-weight:700;color:#38BDF8">${escHtml(senderPhone || '-')}</span>
+                            ${senderPhone ? `
+                              <button type="button" class="btn-copy-phone" data-phone="${escAttr(senderPhone)}" title="نسخ الرقم" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:13px;padding:2px">📋</button>
+                            ` : ''}
+                          </div>
+                        </td>
+                        <td>
+                          <span style="font-size:12px;color:rgba(255,255,255,0.8)">${createdAtFormatted}</span>
+                        </td>
+                        <td>
+                          ${statusBadge}
+                          ${(isRejected && p.rejection_reason) ? `
+                            <div style="font-size:11px;color:#EF4444;margin-top:4px;max-width:160px;line-height:1.3">${escHtml(p.rejection_reason)}</div>
+                          ` : ''}
+                        </td>
+                        <td>
+                          ${isPending ? `
+                            <div style="display:flex;flex-direction:column;gap:6px">
+                              <button type="button" class="btn btn-xs btn-approve-purchase" data-id="${escAttr(p.id)}" data-coins="${escAttr(coinsCount)}" data-name="${escAttr(p.user_name || 'المستخدم')}" style="background:#10B981;color:#fff;border:none;font-weight:800;border-radius:8px;padding:6px 12px;box-shadow:0 2px 8px rgba(16,185,129,0.3)">
+                                قبول وشحن الرصيد ✅
+                              </button>
+                              <button type="button" class="btn btn-xs btn-reject-purchase" data-id="${escAttr(p.id)}" data-name="${escAttr(p.user_name || 'المستخدم')}" style="background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);font-weight:700;border-radius:8px;padding:4px 10px">
+                                رفض الطلب ❌
+                              </button>
+                            </div>
+                          ` : `
+                            <div style="font-size:11.5px;color:rgba(255,255,255,0.5)">
+                              ${isApproved ? 'تمت إضافة الرصيد بنجاح' : 'تم الرفض'}
+                            </div>
+                          `}
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
         </div>
       `;
 
@@ -9877,6 +10101,18 @@ async function renderAdminCoinPurchases($container, filter = _adminCoinPurchases
       // Event: Refresh
       $container.querySelector('#btn-refresh-coins-admin')?.addEventListener('click', () => {
         renderAdminCoinPurchases($container, _adminCoinPurchasesFilter);
+      });
+
+      // Event: Open User Points Modal (from User Balances View)
+      $container.querySelectorAll('.btn-open-user-points').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uid = btn.getAttribute('data-uid');
+          const name = btn.getAttribute('data-name');
+          const curPts = parseInt(btn.getAttribute('data-points'), 10) || 0;
+          openAdminUserPointsModal(uid, name, curPts, () => {
+            renderAdminCoinPurchases($container, _adminCoinPurchasesFilter);
+          });
+        });
       });
 
       // Event: Copy Phone
@@ -9977,7 +10213,7 @@ async function renderAdminCoinPurchases($container, filter = _adminCoinPurchases
     $container.innerHTML = `
       <div class="empty-state" style="margin-top:40px">
         <span class="empty-state__icon">⚠️</span>
-        <h3>تعذر تحميل طلبات شراء الذهبيات</h3>
+        <h3>تعذر تحميل بيانات الذهبيات والطلبات</h3>
         <p style="color:var(--danger)">${escHtml(err.message || 'خطأ في الاتصال بالخادم')}</p>
         <button class="btn btn-primary" onclick="window.refreshCurrentAdminSection()">إعادة المحاولة</button>
       </div>

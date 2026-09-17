@@ -5281,20 +5281,48 @@ try {
   if (url.pathname === '/api/coins/purchases' && request.method === 'GET') {
     const auth = await requireAdmin(request, env);
     if (auth.response) return auth.response;
-    const db = createTursoDB(env);
-    await ensureCoinEconomySchema(db);
+    try {
+      const db = createTursoDB(env);
+      await ensureCoinEconomySchema(db);
 
-    const status = url.searchParams.get('status');
-    let query = 'SELECT * FROM coin_purchases';
-    const params = [];
-    if (status) {
-      query += ' WHERE status = ?';
-      params.push(status);
+      const status = url.searchParams.get('status');
+      let query = `
+        SELECT 
+          cp.*,
+          COALESCE(u.points, 0) AS current_points
+        FROM coin_purchases cp
+        LEFT JOIN users u ON u.id = cp.user_id
+      `;
+      const params = [];
+      if (status && status !== 'all') {
+        query += ' WHERE cp.status = ?';
+        params.push(status);
+      }
+      query += ' ORDER BY cp.created_at DESC LIMIT 200';
+
+      let rows = [];
+      try {
+        const res = await db.prepare(query).bind(...params).all();
+        rows = res.results || [];
+      } catch (qErr) {
+        console.warn('[Admin List Purchases Query Fallback]:', qErr?.message || qErr);
+        const fallbackRes = await db.prepare('SELECT * FROM coin_purchases ORDER BY created_at DESC LIMIT 200').all();
+        rows = fallbackRes.results || [];
+      }
+
+      const purchases = rows.map(p => ({
+        ...p,
+        coins: p.package_coins || p.coins || 0,
+        amount_egp: p.amount_egp || 0,
+        sender_phone: p.vodafone_sender_number || p.sender_phone || '',
+        current_points: p.current_points || 0
+      }));
+
+      return jsonResponse({ success: true, data: purchases }, 200, corsHeaders);
+    } catch (err) {
+      console.error('[Admin List Purchases Error]:', err);
+      return jsonResponse({ success: true, data: [] }, 200, corsHeaders);
     }
-    query += ' ORDER BY created_at DESC LIMIT 200';
-
-    const purchases = (await db.prepare(query).bind(...params).all()).results || [];
-    return jsonResponse({ success: true, data: purchases }, 200, corsHeaders);
   }
 
   // ── Turso: Dalil Gold Coins - Admin Review Purchase (POST /api/coins/purchases/:id/review) ──
@@ -5690,12 +5718,14 @@ try {
   // ── Turso: Get Users List (GET /api/users) ──
   if (url.pathname === '/api/users' && request.method === 'GET') {
     const auth = await requireAdmin(request, env);
-    if (auth.response) return auth.response
+    if (auth.response) return auth.response;
     try {
-      // Join with places count per user
+      // Join with places count per user and include Dalil Gold Coins (points)
       const result = await createTursoDB(env).prepare(`
         SELECT
           u.id, u.name, u.email, u.photo_url, u.phone, u.role, u.status,
+          COALESCE(u.points, 0) AS points,
+          COALESCE(u.total_earned, 0) AS total_earned,
           u.created_at, u.updated_at,
           COUNT(p.id) AS places_count
         FROM users u
@@ -5709,7 +5739,10 @@ try {
       // Fallback without JOIN if places table schema differs
       try {
         const result = await createTursoDB(env).prepare(`
-          SELECT id, name, email, photo_url, phone, role, status, created_at, updated_at
+          SELECT id, name, email, photo_url, phone, role, status,
+                 COALESCE(points, 0) AS points,
+                 COALESCE(total_earned, 0) AS total_earned,
+                 created_at, updated_at
           FROM users ORDER BY created_at DESC LIMIT 500
         `).all();
         return jsonResponse({ success: true, data: result.results || [] }, 200, corsHeaders);

@@ -35,7 +35,17 @@ async function _apiFetch(method, path, body = null, idToken = null, opts = {}) {
   }
 
   const res = await fetch(`${WORKER_URL}${path}`, fetchOpts);
-  const data = await res.json().catch(() => ({ success: false, error: 'Invalid JSON response' }));
+  let data;
+  try {
+    data = await res.json();
+  } catch (_) {
+    data = {
+      success: false,
+      error: res.status >= 500 
+        ? `خطأ في استجابة الخادم (${res.status})` 
+        : (res.status === 404 ? 'الرابط المطلوب غير متوفر حالياً' : 'تعذر معالجة استجابة الخادم')
+    };
+  }
 
   if (!res.ok && !data.success) {
     const err = new Error(data.error || data.message || `HTTP ${res.status}`);

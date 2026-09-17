@@ -493,6 +493,9 @@ export async function getAllUsersTurso() {
           phone: u.phone,
           role: u.role,
           status: u.status,
+          points: Number(u.points) || 0,
+          totalEarned: Number(u.total_earned) || 0,
+          placesCount: Number(u.places_count) || 0,
           createdAt: u.created_at,
           updatedAt: u.updated_at
         };
