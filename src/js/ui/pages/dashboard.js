@@ -1,4 +1,4 @@
-﻿import { initPlaceFormWizard } from '../components/AddPlaceOnboardingModal.js';
+import { initPlaceFormWizard } from '../components/AddPlaceOnboardingModal.js';
 import { 
   fetchManagedUserNotifications, 
   getCachedManagedUserNotifications,
@@ -1759,13 +1759,14 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         </div>
       </div>
 
-      <!-- Social Media & Website Links (3D Experience) -->
-      <div class="social-3d-section" id="p-social-section">
+      <!-- 6. Social Media & Website Links (Step 6) -->
+      <div class="form-section social-3d-section" id="p-social-section">
+        <h2 class="form-section__title"><span>🌐</span> وسائل التواصل الاجتماعي والموقع</h2>
         <div class="social-3d-header">
           <div class="social-3d-header__title-wrap">
             <div class="social-3d-header__icon-badge">🌐</div>
             <div>
-              <h2 class="social-3d-header__title">وسائل التواصل الاجتماعي والموقع</h2>
+              <h3 class="social-3d-header__title" style="margin:0;font-size:16px;font-weight:800">حسابات التواصل والموقع الإلكتروني</h3>
               <div style="font-size:12px;color:var(--text-muted);margin-top:2px">اربط صفحاتك الرسمية لتظهر بأيقونات 3D مميزة وجذابة للزوار في صفحة تفاصيل المكان</div>
             </div>
           </div>

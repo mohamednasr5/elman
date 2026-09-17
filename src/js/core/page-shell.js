@@ -1,4 +1,4 @@
-﻿// Shared page shell — bilingual, responsive, and safe for dynamic content.
+// Shared page shell — bilingual, responsive, and safe for dynamic content.
 import { initAuth, onAuthStateChange, waitForAuth, isAdmin, signOut, getIdToken } from './auth.js';
 import { getLang, isEnglish, switchLanguage, applyLangToDOM } from './i18n.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
@@ -42,13 +42,18 @@ async function _updateHeaderCoinsBalance() {
     const balance = res?.data?.balance ?? res?.balance;
     if (typeof balance === 'number') {
       localStorage.setItem('manzala_user_coins_balance', String(balance));
-      const valEl = document.getElementById('header-coins-val');
-      if (valEl) {
-        const isEn = isEnglish();
-        valEl.textContent = Number(balance).toLocaleString(isEn ? 'en-US' : 'ar-EG');
-      }
+      _applyCoinsBalanceToUI(balance);
     }
   } catch (_) {}
+}
+
+function _applyCoinsBalanceToUI(balance) {
+  const isEn = isEnglish();
+  const valStr = Number(balance).toLocaleString(isEn ? 'en-US' : 'ar-EG');
+  const valEl = document.getElementById('header-coins-val');
+  if (valEl) valEl.textContent = valStr;
+  const moreValEl = document.getElementById('more-coins-balance-val');
+  if (moreValEl) moreValEl.textContent = valStr;
 }
 
 if (typeof window !== 'undefined' && !window.__headerCoinsListenerBound) {
@@ -57,11 +62,7 @@ if (typeof window !== 'undefined' && !window.__headerCoinsListenerBound) {
     const bal = e?.detail?.balance;
     if (typeof bal === 'number') {
       localStorage.setItem('manzala_user_coins_balance', String(bal));
-      const valEl = document.getElementById('header-coins-val');
-      if (valEl) {
-        const isEn = isEnglish();
-        valEl.textContent = Number(bal).toLocaleString(isEn ? 'en-US' : 'ar-EG');
-      }
+      _applyCoinsBalanceToUI(bal);
     } else {
       _updateHeaderCoinsBalance();
     }
@@ -76,11 +77,7 @@ function _renderHeaderUserSlot(user = null) {
     const firstName = name.split(/\s+/)[0] || (isEn ? 'Account' : 'حسابي');
     const photo = u.photoURL || u.photo_url || '/icons/icon-72x72.png';
     const isUserAdmin = isAdmin(u);
-    const balance = _getStoredCoinsBalance();
-    const balanceDisplay = Number(balance).toLocaleString(isEn ? 'en-US' : 'ar-EG');
-    const coinsTitle = isEn ? 'Dalil Gold Coins balance — Click to open Wallet' : 'رصيد ذهبيات الدليل — اضغط لفتح المحفظة';
-    const coinsUnit = isEn ? 'Coins' : 'ذهبية';
-    return `<div class="header__user-group"><a href="/wallet.html" class="header__coins-chip" id="header-coins-chip" title="${coinsTitle}" aria-label="${coinsTitle}"><span class="header__coins-chip-icon" aria-hidden="true">🪙</span><span class="header__coins-chip-val" id="header-coins-val">${balanceDisplay}</span><span class="header__coins-chip-unit">${coinsUnit}</span></a><div class="header__user" style="position:relative"><button class="header__user-btn" id="header-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" title="${_escShell(name)}"><img src="${_escShell(photo)}" alt="${_escShell(firstName)}" class="header__avatar" width="32" height="32" onerror="this.src='/icons/icon-72x72.png'"><span class="header__user-name">${_escShell(firstName)}</span><span aria-hidden="true" style="font-size:10px">▾</span></button><div class="header__dropdown" id="header-user-dropdown" role="menu"><a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800">🪙 ${isEn ? 'Wallet & Coins' : 'الرصيد والعملات الذهبية'}</a><a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="header__dropdown-item" role="menuitem">🏠 ${isEn ? 'Dashboard' : 'لوحة تحكمي'}</a><a href="${isEn ? '/en/dashboard/?section=places' : '/dashboard.html?section=places'}" class="header__dropdown-item" role="menuitem">📍 ${isEn ? 'My Places' : 'أماكني'}</a><a href="${isEn ? '/en/dashboard/?section=add' : '/dashboard.html?section=add'}" class="header__dropdown-item" role="menuitem">➕ ${isEn ? 'Add Place' : 'إضافة مكان'}</a><a href="${isEn ? '/en/dashboard/?section=loyalty' : '/dashboard.html?section=loyalty'}" class="header__dropdown-item" role="menuitem">🎁 ${isEn ? 'Loyalty Rewards' : 'نادي الولاء'}</a><a href="${isEn ? '/en/dashboard/?section=notifications' : '/dashboard.html?section=notifications'}" class="header__dropdown-item" role="menuitem">🔔 ${isEn ? 'Notifications' : 'الإشعارات'}</a>${isUserAdmin ? `<div class="header__dropdown-divider"></div><a href="/admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ ${isEn ? 'Administration' : 'لوحة الإدارة'}</a>` : ''}<div class="header__dropdown-divider"></div><button class="header__dropdown-item header__dropdown-item--danger" id="header-logout-btn" type="button" role="menuitem">🚪 ${isEn ? 'Sign Out' : 'تسجيل الخروج'}</button></div></div></div>`;
+    return `<div class="header__user-group"><div class="header__user" style="position:relative"><button class="header__user-btn" id="header-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" title="${_escShell(name)}"><img src="${_escShell(photo)}" alt="${_escShell(firstName)}" class="header__avatar" width="32" height="32" onerror="this.src='/icons/icon-72x72.png'"><span class="header__user-name">${_escShell(firstName)}</span><span aria-hidden="true" style="font-size:10px">▾</span></button><div class="header__dropdown" id="header-user-dropdown" role="menu"><a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800">🪙 ${isEn ? 'Wallet & Coins' : 'الرصيد والعملات الذهبية'}</a><a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="header__dropdown-item" role="menuitem">🏠 ${isEn ? 'Dashboard' : 'لوحة تحكمي'}</a><a href="${isEn ? '/en/dashboard/?section=places' : '/dashboard.html?section=places'}" class="header__dropdown-item" role="menuitem">📍 ${isEn ? 'My Places' : 'أماكني'}</a><a href="${isEn ? '/en/dashboard/?section=add' : '/dashboard.html?section=add'}" class="header__dropdown-item" role="menuitem">➕ ${isEn ? 'Add Place' : 'إضافة مكان'}</a><a href="${isEn ? '/en/dashboard/?section=loyalty' : '/dashboard.html?section=loyalty'}" class="header__dropdown-item" role="menuitem">🎁 ${isEn ? 'Loyalty Rewards' : 'نادي الولاء'}</a><a href="${isEn ? '/en/dashboard/?section=notifications' : '/dashboard.html?section=notifications'}" class="header__dropdown-item" role="menuitem">🔔 ${isEn ? 'Notifications' : 'الإشعارات'}</a>${isUserAdmin ? `<div class="header__dropdown-divider"></div><a href="/admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ ${isEn ? 'Administration' : 'لوحة الإدارة'}</a>` : ''}<div class="header__dropdown-divider"></div><button class="header__dropdown-item header__dropdown-item--danger" id="header-logout-btn" type="button" role="menuitem">🚪 ${isEn ? 'Sign Out' : 'تسجيل الخروج'}</button></div></div></div>`;
   }
   const loginHref = isEn ? '/en/login/' : '/login.html';
   const loginText = isEn ? 'Sign In' : 'دخول';
@@ -203,8 +200,19 @@ function _loadShellCSS(){
       .mobile-more-sheet.is-open{visibility:visible!important;pointer-events:auto!important}
       .mobile-more-sheet__backdrop{position:absolute!important;inset:0!important;display:block!important;background:rgba(15,23,42,.62)!important;backdrop-filter:blur(6px)!important;-webkit-backdrop-filter:blur(6px)!important;opacity:0!important}
       .mobile-more-sheet.is-open .mobile-more-sheet__backdrop{opacity:1!important}
-      .mobile-more-sheet__panel{position:absolute!important;left:8px!important;right:8px!important;bottom:calc(var(--bottom-nav-height,64px) + 8px + env(safe-area-inset-bottom))!important;max-height:min(84dvh,720px)!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;background:var(--surface,#fff)!important;border-radius:24px!important;padding:10px 14px 14px!important;box-sizing:border-box!important;transform:translateY(24px)!important;opacity:0!important;transition:transform .24s cubic-bezier(.16,1,.3,1),opacity .24s ease!important}
+      .mobile-more-sheet__panel{position:absolute!important;left:8px!important;right:8px!important;bottom:calc(var(--bottom-nav-height,64px) + 8px + env(safe-area-inset-bottom))!important;max-height:min(84dvh,720px)!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;background:var(--surface,#fff)!important;border-radius:24px!important;padding:10px 14px 14px!important;box-sizing:border-box!important;transform:translateY(24px)!important;opacity:0!important;transition:transform .22s cubic-bezier(.16,1,.3,1),opacity .22s ease!important}
       .mobile-more-sheet.is-open .mobile-more-sheet__panel{transform:translateY(0)!important;opacity:1!important}
+      .mobile-more-coins-card{display:block!important;text-decoration:none!important;margin:8px 0 12px!important;border-radius:16px!important;background:linear-gradient(135deg,#0F273D 0%,#163756 100%)!important;border:1.5px solid rgba(245,166,35,0.4)!important;box-shadow:0 6px 18px rgba(245,166,35,0.18),0 2px 4px rgba(0,0,0,0.12)!important;position:relative!important;overflow:hidden!important;transition:transform .18s cubic-bezier(.2,0,0,1),box-shadow .18s ease!important;-webkit-tap-highlight-color:transparent!important}
+      .mobile-more-coins-card:active{transform:scale(0.98)!important}
+      .mobile-more-coins-card__inner{display:flex!important;align-items:center!important;justify-content:space-between!important;padding:10px 14px!important;position:relative!important;z-index:2!important}
+      .mobile-more-coins-card__left{display:flex!important;align-items:center!important;gap:10px!important}
+      .mobile-more-coins-card__icon{font-size:26px!important;line-height:1!important;filter:drop-shadow(0 2px 6px rgba(245,166,35,0.4))!important}
+      .mobile-more-coins-card__text{display:flex!important;flex-direction:column!important;text-align:right!important}
+      .mobile-more-coins-card__label{font-size:11.5px!important;font-weight:700!important;color:rgba(255,255,255,0.75)!important}
+      .mobile-more-coins-card__val{font-size:17px!important;font-weight:900!important;color:#F5A623!important;letter-spacing:-.3px!important;display:flex!important;align-items:baseline!important;gap:4px!important}
+      .mobile-more-coins-card__val small{font-size:11.5px!important;font-weight:700!important;color:rgba(255,255,255,0.7)!important}
+      .mobile-more-coins-card__btn{display:inline-flex!important;align-items:center!important;gap:4px!important;background:rgba(245,166,35,0.2)!important;border:1px solid rgba(245,166,35,0.5)!important;color:#F5A623!important;font-size:11.5px!important;font-weight:900!important;padding:5px 12px!important;border-radius:999px!important}
+      .mobile-more-coins-card__arrow{font-size:14px!important;font-weight:900!important}
       body.mobile-more-open{overflow:hidden!important}
       body.mobile-more-open #mobile-action-hints,body.mobile-more-open .pwa-banner,body.mobile-more-open #manzala-push-prompt-card,body.mobile-more-open .push-prompt-card{display:none!important;opacity:0!important;pointer-events:none!important;visibility:hidden!important}
       @media(min-width:768px){.mobile-more-sheet{display:none!important}}`;
@@ -243,7 +251,6 @@ function _bindMoreMenu(){
       { url: '/en/matariya/', icon: '🌊', label: 'About El Matariya' },
       { url: '/en/contact/', icon: '✉️', label: 'Contact Us' }
     ] : [
-      { url: '/wallet.html', icon: '🪙', label: 'الرصيد وذهبيات الدليل', cls: 'mobile-more-card--accent' },
       { url: '/places.html', icon: '📍', label: 'دليل الأماكن' },
       { url: '/categories.html', icon: '📋', label: 'التصنيفات' },
       { url: '/popular.html', icon: '🔥', label: 'الأكثر شعبية' },
@@ -261,7 +268,6 @@ function _bindMoreMenu(){
     ];
 
     const dashLinks = isEn ? [
-      { url: '/wallet.html', icon: '🪙', label: 'Wallet & Gold Coins', cls: 'mobile-more-card--accent' },
       { url: '/en/dashboard/?section=overview', icon: '🏠', label: 'Overview' },
       { url: '/en/dashboard/?section=places', icon: '📍', label: 'My Places' },
       { url: '/en/dashboard/?section=add', icon: '➕', label: 'Add a Place', cls: 'mobile-more-card--accent' },
@@ -272,7 +278,6 @@ function _bindMoreMenu(){
       { url: '/en/dashboard/?section=following', icon: '⭐', label: 'My Following' },
       { url: '/en/dashboard/?section=verification', icon: '🛡️', label: 'Verification Badge' }
     ] : [
-      { url: '/wallet.html', icon: '🪙', label: 'الرصيد والعملات الذهبية', cls: 'mobile-more-card--accent' },
       { url: '/dashboard.html?section=overview', icon: '🏠', label: 'نظرة عامة' },
       { url: '/dashboard.html?section=places', icon: '📍', label: 'أماكني' },
       { url: '/dashboard.html?section=add', icon: '➕', label: 'إضافة مكان', cls: 'mobile-more-card--accent' },
@@ -304,6 +309,11 @@ function _bindMoreMenu(){
       const uName = user.name || user.displayName || (isEn ? 'User' : 'مستخدم');
       const uAvatar = user.photoURL || '/icons/icon-72x72.png';
       const uRole = isUserAdmin ? (isEn ? 'Admin ⭐' : 'مدير المنصة ⭐') : (isEn ? 'Business Owner' : 'صاحب نشاط');
+      const balance = _getStoredCoinsBalance();
+      const balanceDisplay = Number(balance).toLocaleString(isEn ? 'en-US' : 'ar-EG');
+      const coinsUnit = isEn ? 'Coins' : 'ذهبية';
+      const coinsTitle = isEn ? 'Dalil Gold Coins balance — Click to open Wallet' : 'رصيد ذهبيات الدليل — اضغط لفتح المحفظة';
+
       userHeaderHtml = `
         <div class="mobile-more-sheet__user">
           <img src="${escapeHtml(uAvatar)}" class="mobile-more-sheet__avatar" alt="${escapeHtml(uName)}" onerror="this.src='/icons/icon-72x72.png'">
@@ -313,6 +323,24 @@ function _bindMoreMenu(){
           </div>
           <a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="mobile-more-sheet__dash-link">${isEn ? 'Dashboard ›' : 'لوحتي ›'}</a>
         </div>
+
+        <!-- Coins Balance Card Directly Below Name -->
+        <a href="/wallet.html" class="mobile-more-coins-card" id="mobile-more-coins-card" title="${escapeHtml(coinsTitle)}" aria-label="${escapeHtml(coinsTitle)}">
+          <div class="mobile-more-coins-card__inner">
+            <div class="mobile-more-coins-card__left">
+              <span class="mobile-more-coins-card__icon">🪙</span>
+              <div class="mobile-more-coins-card__text">
+                <span class="mobile-more-coins-card__label">${isEn ? 'Dalil Gold Coins Balance' : 'رصيد ذهبيات الدليل'}</span>
+                <span class="mobile-more-coins-card__val"><strong id="more-coins-balance-val">${balanceDisplay}</strong> <small>${coinsUnit}</small></span>
+              </div>
+            </div>
+            <div class="mobile-more-coins-card__btn">
+              <span>${isEn ? 'Wallet' : 'المحفظة'}</span>
+              <span class="mobile-more-coins-card__arrow">›</span>
+            </div>
+          </div>
+        </a>
+
         <div class="mobile-more-sheet__section-title">📊 ${isEn ? 'Dashboard & Tools' : 'لوحة التحكم وأدواتك'}</div>
         <div class="mobile-more-sheet__grid">${renderCards(dashLinks)}</div>
       `;
@@ -364,7 +392,7 @@ function _bindMoreMenu(){
       el.onclick = e => { e.preventDefault(); e.stopPropagation(); close(); };
     });
 
-    sheet.querySelectorAll('.mobile-more-card').forEach(card => {
+    sheet.querySelectorAll('.mobile-more-card, #mobile-more-coins-card').forEach(card => {
       card.onclick = () => { close(); };
     });
 
@@ -460,6 +488,36 @@ function _bindGlobalPhoneAutoFormat() {
   }, true);
 }
 
+// ── Speculative Instant Link Prefetcher (Instant Sub-Second Navigation) ──
+const _prefetchedHrefs = new Set();
+export function setupInstantLinkPrefetcher() {
+  if (typeof window === 'undefined' || window.__linkPrefetcherBound) return;
+  window.__linkPrefetcherBound = true;
+
+  const prefetchUrl = (url) => {
+    if (!url || _prefetchedHrefs.has(url)) return;
+    if (url.startsWith('#') || url.startsWith('javascript:') || url.startsWith('tel:') || url.startsWith('mailto:')) return;
+    try {
+      const u = new URL(url, window.location.origin);
+      if (u.origin !== window.location.origin) return;
+      _prefetchedHrefs.add(url);
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = u.href;
+      link.as = 'document';
+      document.head.appendChild(link);
+    } catch (_) {}
+  };
+
+  const onPointerOver = (e) => {
+    const anchor = e.target.closest?.('a[href]');
+    if (anchor) prefetchUrl(anchor.getAttribute('href'));
+  };
+
+  document.addEventListener('pointerover', onPointerOver, { passive: true });
+  document.addEventListener('touchstart', onPointerOver, { passive: true });
+}
+
 export async function initPage(activeFile=''){
   applyLangToDOM(getLang());
   _loadShellCSS();
@@ -472,6 +530,7 @@ export async function initPage(activeFile=''){
   _bindMoreMenu();
   _bindHeaderUserEvents();
   _bindGlobalPhoneAutoFormat();
+  setupInstantLinkPrefetcher();
   try{bindGlobalVoiceAssistantFab()}catch(_){}
   try{
     initAuth();
@@ -486,3 +545,4 @@ export async function initPage(activeFile=''){
   }catch(_){}
 }
 export { waitForAuth, isAdmin };
+

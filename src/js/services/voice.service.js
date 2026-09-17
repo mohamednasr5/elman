@@ -929,9 +929,17 @@ function speakAssistantVoiceResponse(topResult, totalCount, query) {
     try {
       window.speechSynthesis.cancel();
       const pName = topResult.name || 'المكان';
-      const text = totalCount === 1 
-        ? `يُوجد مكان واحد بدليل المَنْزَلَةَ والمطرية الرقمي، وهو ${pName}` 
-        : `يُوجد ${totalCount} أماكن بدليل المَنْزَلَةَ والمطرية الرقمي، أول نتيجة هي ${pName}`;
+      let text = '';
+      if (topResult.matchedReason && topResult.matchedReason.includes('خدمة:')) {
+        const cleanService = topResult.matchedReason.replace(/^[^\w\u0600-\u06FF]+/, '').replace(/^خدمة:\s*/, '');
+        text = totalCount === 1
+          ? `يوجد مكان واحد يوفر ${cleanService} وهو ${pName}`
+          : `وجدنا ${totalCount} أماكن توفر ${cleanService}، أول نتيجة هي ${pName}`;
+      } else {
+        text = totalCount === 1 
+          ? `يُوجد مكان واحد بدليل المَنْزَلَةَ والمطرية الرقمي، وهو ${pName}` 
+          : `يُوجد ${totalCount} أماكن بدليل المَنْزَلَةَ والمطرية الرقمي، أول نتيجة هي ${pName}`;
+      }
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ar-EG';

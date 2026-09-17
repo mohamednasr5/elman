@@ -16,6 +16,7 @@ import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../uti
 import { isPhoneSearchQuery, normalizePhoneNumber, matchPlaceByPhone, formatPhoneNumberForDisplay } from '../../utils/phone.js';
 import { toast } from '../components/Toast.js';
 import { getPlaceLiveStatus } from '../../utils/live-hours.js';
+import { SERVICES_FEATURES_SYNONYMS } from '../../services/search-engine.service.js';
 
 let _searchUserLocation = null;
 
@@ -791,11 +792,43 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
         }
 
         let serviceScore = 0;
-        if (Array.isArray(place.services)) {
-          place.services.forEach(s => {
-            const ns = normalizeArabic(s);
-            if (ns.includes(normalQ) || normalQ.includes(ns)) serviceScore = Math.max(serviceScore, 90);
+        const placeServicesList = [];
+        if (Array.isArray(place.services)) placeServicesList.push(...place.services);
+        else if (typeof place.services === 'string' && place.services) placeServicesList.push(...place.services.split(/[،,]+/));
+        if (Array.isArray(place.features)) placeServicesList.push(...place.features);
+        if (Array.isArray(place.amenities)) placeServicesList.push(...place.amenities);
+        if (Array.isArray(place.tags)) placeServicesList.push(...place.tags);
+        if (Array.isArray(place.keywords)) placeServicesList.push(...place.keywords);
+        if (place.delivery || place.hasDelivery || place.deliveryType) placeServicesList.push('توصيل منازل دليفري delivery');
+        if (place.is24Hours || place.open24h) placeServicesList.push('24 ساعة طوارئ');
+        if (place.hasWifi || place.wifi) placeServicesList.push('واي فاي نت wifi');
+        if (place.hasKidsArea || place.kidsArea) placeServicesList.push('العاب اطفال كيدز اريا kids area');
+        if (place.hasAirConditioning || place.ac) placeServicesList.push('تكييف صالة مكيفة');
+        if (place.acceptsCards || place.acceptsVisa || place.visa) placeServicesList.push('دفع فيزا كروت بنكية visa');
+        if (place.acceptsVodafoneCash || place.vodafoneCash) placeServicesList.push('فودافون كاش انستاباي');
+        if (place.hasHomeVisit || place.homeVisit) placeServicesList.push('كشف منزلي زيارة منزلية');
+        if (place.hasSonar || place.sonar) placeServicesList.push('سونار اشعة رسم قلب');
+        if (place.hasParking || place.parking) placeServicesList.push('موقف سيارات باركينج جراج');
+        if (place.allowsBooking || place.hasBooking) placeServicesList.push('حجز اونلاين مواعيد');
+
+        const allServicesText = normalizeArabic(placeServicesList.join(' ')).toLowerCase();
+
+        for (const [fKey, fData] of Object.entries(SERVICES_FEATURES_SYNONYMS)) {
+          const isQueryForFeature = fData.synonyms.some(syn => {
+            const nSyn = normalizeArabic(syn);
+            return normalQ.includes(nSyn) || rawClean.includes(nSyn) || queryIntents.includes(nSyn);
           });
+          if (isQueryForFeature) {
+            const hasFeature = fData.synonyms.some(syn => allServicesText.includes(normalizeArabic(syn)));
+            if (hasFeature) {
+              serviceScore = 98;
+              break;
+            }
+          }
+        }
+
+        if (serviceScore === 0 && allServicesText && (allServicesText.includes(normalQ) || (normalQ.length >= 3 && normalQ.split(/\s+/).some(w => w.length >= 3 && allServicesText.includes(w))))) {
+          serviceScore = 92;
         }
 
         const addressScore = place.address ? Math.max(arabicScore(place.address, q), arabicScore(place.address, rawClean)) * 0.9 : 0;

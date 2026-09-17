@@ -116,12 +116,96 @@ export const EGYPTIAN_DIALECT_SYNONYMS = {
   }
 };
 
+export const SERVICES_FEATURES_SYNONYMS = {
+  wifi: {
+    canonical: 'واي فاي وإنترنت مجاني',
+    icon: '📶',
+    synonyms: ['واي فاي', 'واى فاى', 'واي-فاي', 'وايفاي', 'نت', 'انترنت', 'إنترنت', 'انترنت مجاني', 'wifi', 'wi-fi', 'free wifi', 'شبكة نت', 'نت مجاني', 'شغال نت']
+  },
+  kids_area: {
+    canonical: 'منطقة ألعاب أطفال (Kids Area)',
+    icon: '🧸',
+    synonyms: ['العاب اطفال', 'ألعاب أطفال', 'العاب للاطفال', 'كيدز اريا', 'كيدزاريا', 'كيدز إريا', 'kids area', 'kidsarea', 'منطقة العاب', 'منطقة ألعاب', 'ملاهي اطفال', 'العاب صغار', 'العاب']
+  },
+  visa_card: {
+    canonical: 'دفع إلكتروني وكروت فيزا',
+    icon: '💳',
+    synonyms: ['فيزا', 'ماستر كارد', 'ماستركارد', 'دفع فيزا', 'دفع بالفيزا', 'دفع كارت', 'دفع الكتروني', 'دفع إلكتروني', 'ماكينة فيزا', 'pos', 'visa', 'mastercard', 'بطاقة بنكية', 'كارت']
+  },
+  vodafone_cash: {
+    canonical: 'فودافون كاش ومحافظ إلكترونية',
+    icon: '📱',
+    synonyms: ['فودافون كاش', 'فودافون', 'اورنج كاش', 'اتصالات كاش', 'وي باي', 'محفظة ذكية', 'محافظ الكترونية', 'كاش موبايل', 'انستاباي', 'انستا باي', 'instapay', 'تحويل بنكي']
+  },
+  delivery: {
+    canonical: 'خدمة توصيل للمنازل (دليفري)',
+    icon: '🛵',
+    synonyms: ['توصيل', 'توصيل منازل', 'توصيل للمنازل', 'دليفري', 'دليفرى', 'طلبات', 'شحن', 'توصيل سريع', 'delivery', 'توصيل لحد البيت', 'خدمة توصيل', 'بيوصل', 'توصيل مجاني']
+  },
+  air_conditioning: {
+    canonical: 'صالة مكيفة وتكييف مركزي',
+    icon: '❄️',
+    synonyms: ['تكييف', 'مكيف', 'صالة مكيفة', 'صاله مكيفه', 'مكيفه', 'مكيفات', 'air conditioning', 'ac']
+  },
+  home_visit: {
+    canonical: 'كشف منزلي وزيارة بالبيت',
+    icon: '🩺',
+    synonyms: ['كشف منزلي', 'كشف منزلى', 'زيارة منزلية', 'زياره منزليه', 'طبيب منزلي', 'دكتور يجي البيت', 'كشف في البيت', 'زيارات منزلية', 'تمريض منزلي']
+  },
+  sonar_xray: {
+    canonical: 'سونار وأشعة ورسم قلب',
+    icon: '🩻',
+    synonyms: ['سونار', 'اشعة', 'أشعة', 'اشعه', 'أشعه', 'ايكو', 'إيكو', 'اشعة تليفزيونية', 'اشعه تلفزيونيه', 'رسم قلب', 'تحاليل', 'معمل تحاليل', 'x-ray', 'sonar', 'موجات صوتية', 'فحص سونار']
+  },
+  parking: {
+    canonical: 'موقف وركنة سيارات (Parking)',
+    icon: '🅿️',
+    synonyms: ['ركنة', 'ركنه', 'باركينج', 'باركنج', 'جراج', 'موقف سيارات', 'سايس', 'parking', 'جراج خاص', 'موقف عربيات', 'ركنة عربيات']
+  },
+  screens_matches: {
+    canonical: 'شاشات عرض مباريات',
+    icon: '📺',
+    synonyms: ['شاشات', 'شاشات عرض', 'ماتشات', 'ماتش', 'عرض مباريات', 'شاشة ماتشات', 'بي ان سبورت', 'bein', 'عرض ماتشات', 'مباريات اليوم', 'كورة']
+  },
+  swimming_pool: {
+    canonical: 'حمام سباحة وبسين',
+    icon: '🏊',
+    synonyms: ['حمام سباحة', 'حمام سباحه', 'بسين', 'pool', 'swimming pool', 'مسبح']
+  },
+  families_section: {
+    canonical: 'قسم وجلسات عائلية',
+    icon: '👨‍👩‍👧',
+    synonyms: ['عائلات', 'مكان عائلي', 'قسم عائلات', 'جلسات عائلية', 'جلسات عائليه', 'عوائل', 'family', 'سكن عائلي', 'خصوصية', 'قسم العائلات']
+  },
+  open_24h: {
+    canonical: 'مفتوح 24 ساعة وطوارئ',
+    icon: '🌙',
+    synonyms: ['24 ساعة', '24 ساعه', '٢٤ ساعة', '٢٤ ساعه', 'طوارئ', 'مفتوح 24', 'طول الليل', 'خدمة ليلية', 'شغال بالليل', '24h', '24/7', 'طول اليوم']
+  },
+  online_booking: {
+    canonical: 'حجز مسبق ومواعيد أونلاين',
+    icon: '📅',
+    synonyms: ['حجز اونلاين', 'حجز أونلاين', 'حجز مسبق', 'حجز موعد', 'كشف بحجز', 'احجز موعدك', 'booking', 'حجز استشارة', 'حجز مواعيد']
+  },
+  installments: {
+    canonical: 'تقسيط وتسهيلات دفع',
+    icon: '🏷️',
+    synonyms: ['تقسيط', 'بدون فوائد', 'تقسيط فيزا', 'فاليو', 'valu', 'امان', 'أمان', 'سهولة', 'فرصة', 'قسط', 'تقسيط مباشر']
+  },
+  outdoor_seating: {
+    canonical: 'جلسات خارجية وأوت دور',
+    icon: '🌿',
+    synonyms: ['اوت دور', 'أوت دور', 'قعدة خارجية', 'جلسات خارجية', 'قعدة برة', 'outdoor', 'روف', 'في الهواء الطلق', 'حديقة']
+  }
+};
+
 export function deconstructQuery(query = '') {
   const norm = normalizeArabic(query).trim().toLowerCase();
   
   // Clean conversational prefixes (e.g. "عاوز", "عايز", "محتاج", "بدور على", "فين", "مكان")
   let cleanQuery = norm
     .replace(/^(عاوز|عايز|عاوزه|عايزه|محتاج|محتاجه|محتاجين|بدور على|بدور علي|ابحث عن|شوفلي|هاتلي|قولي على|قولي علي|فين|مكان|دكان|محل|معرض|رقم|تليفون)\s+/g, '')
+    .replace(/^(فيه|فيها|عنده|عندهم|بيعمل|بيوفر|بيوفروا|متاح|متاحة|خدمة)\s+/g, '')
     .trim();
 
   // Detect Egyptian craftsman/technician prefix ("فني", "بتاع", "صنايعي", "معلم")
@@ -185,7 +269,37 @@ export class SearchIndex {
       const pAddr = place.address || '';
       const pArea = place.area || 'المنزلة';
       const pCity = place.city || (pArea.includes('المطرية') ? 'المطرية' : 'المنزلة');
-      const pServices = Array.isArray(place.services) ? place.services.join(' ') : (place.services || '');
+      // ── Parse & Aggregate all services, features, amenities, and flags ──
+      const rawServicesArray = [];
+      if (Array.isArray(place.services)) rawServicesArray.push(...place.services);
+      else if (typeof place.services === 'string' && place.services) rawServicesArray.push(...place.services.split(/[،,]+/));
+
+      if (Array.isArray(place.features)) rawServicesArray.push(...place.features);
+      else if (typeof place.features === 'string' && place.features) rawServicesArray.push(...place.features.split(/[،,]+/));
+
+      if (Array.isArray(place.amenities)) rawServicesArray.push(...place.amenities);
+      else if (typeof place.amenities === 'string' && place.amenities) rawServicesArray.push(...place.amenities.split(/[،,]+/));
+
+      if (Array.isArray(place.tags)) rawServicesArray.push(...place.tags);
+      else if (typeof place.tags === 'string' && place.tags) rawServicesArray.push(...place.tags.split(/[،,]+/));
+
+      if (Array.isArray(place.keywords)) rawServicesArray.push(...place.keywords);
+      else if (typeof place.keywords === 'string' && place.keywords) rawServicesArray.push(...place.keywords.split(/[،,]+/));
+
+      if (place.delivery || place.hasDelivery || place.deliveryType) rawServicesArray.push('توصيل منازل دليفري delivery');
+      if (place.is24Hours || place.open24h) rawServicesArray.push('24 ساعة طوارئ 24h');
+      if (place.hasWifi || place.wifi) rawServicesArray.push('واي فاي نت wifi');
+      if (place.hasKidsArea || place.kidsArea) rawServicesArray.push('منطقة العاب اطفال كيدز اريا kids area');
+      if (place.hasAirConditioning || place.ac) rawServicesArray.push('تكييف صالة مكيفة');
+      if (place.acceptsCards || place.acceptsVisa || place.visa) rawServicesArray.push('دفع فيزا كروت بنكية visa mastercard');
+      if (place.acceptsVodafoneCash || place.vodafoneCash) rawServicesArray.push('فودافون كاش انستاباي instapay');
+      if (place.hasHomeVisit || place.homeVisit) rawServicesArray.push('كشف منزلي زيارة منزلية');
+      if (place.hasSonar || place.sonar) rawServicesArray.push('سونار اشعة رسم قلب');
+      if (place.hasParking || place.parking) rawServicesArray.push('موقف سيارات باركينج جراج');
+      if (place.allowsBooking || place.hasBooking) rawServicesArray.push('حجز اونلاين مواعيد');
+
+      const cleanServicesList = rawServicesArray.map(s => String(s || '').trim()).filter(Boolean);
+      const pServices = cleanServicesList.join(' ');
       const pKeywords = Array.isArray(place.keywords) ? place.keywords.join(' ') : '';
       const pPhone = place.phone || '';
 
@@ -238,7 +352,8 @@ export class SearchIndex {
         city: pCity,
         village: village,
         services: pServices,
-        servicesNorm: normalizeArabic(pServices),
+        servicesList: cleanServicesList,
+        servicesNorm: normalizeArabic(pServices).toLowerCase(),
         phone: pPhone,
         isVerified: Boolean(place.isVerified),
         rating: Number(place.avgRating || place.rating || 5.0),
@@ -398,6 +513,41 @@ export class SearchIndex {
         if (!matchedReason) matchedReason = doc.category;
       } else if (isSingleChar && doc.categoryNorm && doc.categoryNorm.includes(effectiveQuery)) {
         score += 120;
+      }
+
+      // ── 3.5 SERVICES & FEATURES EXACT & SYNONYM BOOST (+2800 PTS) ──
+      if (!isSingleChar) {
+        const queryTermsToCheck = [normQ, effectiveQuery, cleanNoAl].filter(Boolean);
+        for (const [featKey, featData] of Object.entries(SERVICES_FEATURES_SYNONYMS)) {
+          const isQueryAskingForFeature = featData.synonyms.some(syn => {
+            const nSyn = normalizeArabic(syn);
+            return queryTermsToCheck.some(qt => qt === nSyn || qt.startsWith(nSyn + ' ') || qt.endsWith(' ' + nSyn) || qt.includes(' ' + nSyn + ' '));
+          });
+
+          if (isQueryAskingForFeature) {
+            const docOffersFeature = featData.synonyms.some(syn => {
+              const nSyn = normalizeArabic(syn);
+              return doc.servicesNorm.includes(nSyn) || doc.descriptionNorm.includes(nSyn) || doc.searchText.includes(nSyn);
+            });
+
+            if (docOffersFeature) {
+              score += 2900;
+              if (!matchedReason) matchedReason = `${featData.icon} خدمة: ${featData.canonical}`;
+              break;
+            }
+          }
+        }
+
+        // Direct match inside place custom services list
+        if (score < 2500 && doc.servicesNorm && effectiveQuery.length >= 3) {
+          if (doc.servicesNorm.includes(effectiveQuery) || doc.servicesNorm.includes(normQ)) {
+            score += 2700;
+            if (!matchedReason) {
+              const matchedWord = doc.servicesList?.find(s => normalizeArabic(s).includes(effectiveQuery) || normalizeArabic(s).includes(normQ));
+              matchedReason = `⚡ خدمة: ${matchedWord || effectiveQuery}`;
+            }
+          }
+        }
       }
 
       // ── 4. EGYPTIAN DIALECT & SYNONYM CLUSTERS (+900 PTS) ──

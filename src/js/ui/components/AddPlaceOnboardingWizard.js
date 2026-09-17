@@ -196,6 +196,7 @@ export function initPlaceFormWizard() {
       .place-wizard-progress__item.is-done span{background:#0284c7;color:#fff}
       .premium-place-wizard-form .form-section{display:none!important;opacity:0;transform:translateX(-18px)}
       .premium-place-wizard-form .form-section.place-wizard-active{display:block!important;opacity:1!important;transform:none!important;animation:placeWizardIn .42s cubic-bezier(.2,.8,.2,1) forwards}
+      .premium-place-wizard-form #p-social-section:not(.place-wizard-active){display:none!important}
       .premium-place-wizard-form .form-section.place-wizard-active .form-section__title{margin-top:0}
       .place-wizard-scanner{margin-bottom:18px}
       .premium-place-wizard-form .place-wizard-scanner{display:none!important}
