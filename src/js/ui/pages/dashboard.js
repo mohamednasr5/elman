@@ -1949,28 +1949,30 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 6. Appointments & Bookings Setting -->
-      <div class="form-section" id="p-appointments-section">
-        <h2 class="form-section__title"><span>📅</span> خدمة حجز المواعيد والاستشارات</h2>
-        <div style="background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px">
-          <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0">
-            <input 
-              type="checkbox" 
-              id="allow-appointments-toggle" 
-              style="width:20px;height:20px;accent-color:var(--primary);margin-top:2px;cursor:pointer" 
-              ${(place?.allowAppointments === true || (place?.allowAppointments !== false && (place?.categoryId === 'doctor' || place?.categoryId?.includes('clinic') || place?.categoryId === 'health'))) ? 'checked' : ''} 
-            />
-            <div style="flex:1">
-              <span style="font-weight:800;font-size:14px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
-                <span>⚡</span> تفعيل زر «طلب حجز موعد / استشارة» على صفحة المكان
-              </span>
-              <span style="font-size:12px;color:var(--text-secondary);line-height:1.6;display:block;margin-top:4px">
-                يتيح للزوار والعملاء طلب موعد مسبق أو كشف أو استشارة وتحديد الاسم واليوم والوقت المطلوب مع إشعارك مباشرة عبر واتساب. يمكنك تفعيلها أو إيقافها في أي وقت.
-              </span>
-            </div>
-          </label>
+        <!-- Appointments & Bookings Setting Inside Step 6 -->
+        <div style="margin-top:22px;padding-top:18px;border-top:1.5px dashed var(--border,#e2e8f0)">
+          <div style="font-weight:800;font-size:15px;color:var(--text-primary);margin-bottom:8px;display:flex;align-items:center;gap:8px">
+            <span>📅</span> خدمة حجز المواعيد والاستشارات
+          </div>
+          <div style="background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px">
+            <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0">
+              <input 
+                type="checkbox" 
+                id="allow-appointments-toggle" 
+                style="width:20px;height:20px;accent-color:var(--primary);margin-top:2px;cursor:pointer" 
+                ${(place?.allowAppointments === true || (place?.allowAppointments !== false && (place?.categoryId === 'doctor' || place?.categoryId?.includes('clinic') || place?.categoryId === 'health'))) ? 'checked' : ''} 
+              />
+              <div style="flex:1">
+                <span style="font-weight:800;font-size:14px;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                  <span>⚡</span> تفعيل زر «طلب حجز موعد / استشارة» على صفحة المكان
+                </span>
+                <span style="font-size:12px;color:var(--text-secondary);line-height:1.6;display:block;margin-top:4px">
+                  يتيح للزوار والعملاء طلب موعد مسبق أو كشف أو استشارة وتحديد الاسم واليوم والوقت المطلوب مع إشعارك مباشرة عبر واتساب. يمكنك تفعيلها أو إيقافها في أي وقت.
+                </span>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
 
