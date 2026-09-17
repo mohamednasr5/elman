@@ -352,15 +352,60 @@ function renderUserWallet($container, user, balanceData) {
               </div>
             </div>
 
-            <!-- Receipt File Upload -->
+            <!-- Receipt File Upload (3D Animated Dropzone) -->
             <div class="wallet-form-group">
-              <label class="wallet-form-label">صورة إيصال التحويل أو لقطة الشاشة <span style="color:#EF4444">*</span></label>
-              <input type="file" id="purchase-receipt-file" accept="image/*" class="wallet-form-input" required />
-              <small style="color:#94A3B8;font-size:0.8rem;display:block;margin-top:5px">
-                📸 التقط لقطة شاشة لرسالة تأكيد التحويل من تطبيق إنستاباي أو فودافون كاش
-              </small>
-              <div id="receipt-preview-wrap" style="display:none;margin-top:12px;text-align:center">
-                <img id="receipt-preview-img" src="" alt="معاينة الإيصال" style="max-height:160px;border-radius:12px;border:1.5px solid #F5A623;box-shadow:0 4px 14px rgba(0,0,0,0.4)" />
+              <label class="wallet-form-label" style="display:flex;align-items:center;justify-content:space-between">
+                <span>صورة إيصال التحويل أو لقطة الشاشة <span style="color:#EF4444">*</span></span>
+                <span style="font-size:0.75rem;color:#F5A623;font-weight:700">⚡ سحب وإفلات أو اختيار مباشر</span>
+              </label>
+              
+              <div class="wallet-receipt-dropzone" id="wallet-receipt-dropzone" role="button" tabindex="0" aria-label="رفع إيصال التحويل">
+                <input type="file" id="purchase-receipt-file" accept="image/jpeg,image/png,image/webp,image/jpg" class="wallet-receipt-input" required />
+                
+                <!-- State 1: Prompt to Upload -->
+                <div class="wallet-receipt-prompt" id="wallet-receipt-prompt">
+                  <div class="wallet-receipt-icon-box">
+                    <span class="wallet-receipt-icon">🧾</span>
+                    <div class="wallet-receipt-icon-glow"></div>
+                  </div>
+                  <div class="wallet-receipt-texts">
+                    <strong class="wallet-receipt-main-text">اضغط هنا لاختيار صورة الإيصال أو اسحبها إلى هنا</strong>
+                    <p class="wallet-receipt-sub-text">التقط لقطة شاشة لرسالة تأكيد التحويل من إنستاباي أو محفظة فودافون كاش</p>
+                  </div>
+                  <div class="wallet-receipt-badge">
+                    <span>📸 استعراض من الجهاز (PNG, JPG, WebP)</span>
+                  </div>
+                </div>
+
+                <!-- State 2: 3D Preview Card -->
+                <div class="wallet-receipt-preview" id="wallet-receipt-preview" style="display:none">
+                  <div class="wallet-receipt-preview-card">
+                    <div class="wallet-receipt-img-frame">
+                      <img id="receipt-preview-img" src="" alt="معاينة إيصال التحويل" />
+                      <div class="wallet-receipt-img-overlay">
+                        <span class="receipt-overlay-tag">✓ إيصال معتمد</span>
+                      </div>
+                    </div>
+                    <div class="wallet-receipt-meta">
+                      <div class="wallet-receipt-meta-header">
+                        <span class="wallet-receipt-file-name" id="receipt-file-name">receipt.jpg</span>
+                        <span class="wallet-receipt-file-size" id="receipt-file-size">0 KB</span>
+                      </div>
+                      <div class="wallet-receipt-status-pill">
+                        <span class="pulse-dot"></span>
+                        <span>جاهز للاعتماد الفوري</span>
+                      </div>
+                      <div class="wallet-receipt-actions">
+                        <button type="button" class="wallet-receipt-btn-change" id="btn-change-receipt">
+                          <span>🔄 تغيير الصورة</span>
+                        </button>
+                        <button type="button" class="wallet-receipt-btn-remove" id="btn-remove-receipt">
+                          <span>✕ إزالة</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -819,23 +864,91 @@ function bindWalletEvents($container, user, balanceData) {
     updateSelectedPackage(c, p, false);
   });
 
-  // 5. Receipt Preview Handler
+  // 5. 3D Receipt Dropzone & Preview Handler
+  const dropzone = document.getElementById('wallet-receipt-dropzone');
   const fileInput = document.getElementById('purchase-receipt-file');
-  const previewWrap = document.getElementById('receipt-preview-wrap');
+  const promptEl = document.getElementById('wallet-receipt-prompt');
+  const previewWrap = document.getElementById('wallet-receipt-preview');
   const previewImg = document.getElementById('receipt-preview-img');
+  const fileNameEl = document.getElementById('receipt-file-name');
+  const fileSizeEl = document.getElementById('receipt-file-size');
+  const btnChange = document.getElementById('btn-change-receipt');
+  const btnRemove = document.getElementById('btn-remove-receipt');
+
+  function formatFileSize(bytes) {
+    if (!bytes) return '0 KB';
+    const kb = bytes / 1024;
+    if (kb < 1024) return Math.round(kb) + ' KB';
+    return (kb / 1024).toFixed(1) + ' MB';
+  }
+
+  function handleReceiptFile(file) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('يرجى اختيار ملف صورة صالح (PNG, JPG, WebP)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (previewImg) previewImg.src = e.target.result;
+      if (fileNameEl) fileNameEl.textContent = file.name || 'receipt_screenshot.png';
+      if (fileSizeEl) fileSizeEl.textContent = formatFileSize(file.size);
+      if (promptEl) promptEl.style.display = 'none';
+      if (previewWrap) previewWrap.style.display = 'block';
+      dropzone?.classList.add('has-file');
+      dropzone?.classList.remove('drag-over');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function resetReceiptUpload() {
+    if (fileInput) fileInput.value = '';
+    if (previewImg) previewImg.src = '';
+    if (promptEl) promptEl.style.display = 'flex';
+    if (previewWrap) previewWrap.style.display = 'none';
+    dropzone?.classList.remove('has-file', 'drag-over');
+  }
 
   fileInput?.addEventListener('change', () => {
     const file = fileInput.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (previewImg && previewWrap) {
-          previewImg.src = e.target.result;
-          previewWrap.style.display = 'block';
-        }
-      };
-      reader.readAsDataURL(file);
+    if (file) handleReceiptFile(file);
+  });
+
+  // Drag and drop events
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropzone?.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add('drag-over');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropzone?.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('drag-over');
+    });
+  });
+
+  dropzone?.addEventListener('drop', (e) => {
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      if (fileInput) {
+        fileInput.files = files;
+      }
+      handleReceiptFile(files[0]);
     }
+  });
+
+  btnChange?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fileInput?.click();
+  });
+
+  btnRemove?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetReceiptUpload();
   });
 
   // 6. Direct InstaPay Payment Button click feedback
