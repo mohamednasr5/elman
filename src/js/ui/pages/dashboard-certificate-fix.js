@@ -9,7 +9,7 @@
 // 5) Loads the certificate renderer lazily with a cache-busting URL so an old cached
 //    CertificateOfAppreciationModal.js can never block the dashboard action.
 
-const CERTIFICATE_MODULE_URL = new URL('../components/CertificateOfAppreciationModal.js?v=128bb341', import.meta.url).href;
+const CERTIFICATE_MODULE_URL = new URL('../components/CertificateOfAppreciationModal.js?v=a58f9ed6', import.meta.url).href;
 
 let _certificateModulePromise = null;
 function loadCertificateModule() {

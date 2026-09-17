@@ -30,7 +30,7 @@ import {
  */
 
 import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace, clearDbCache, getPublishedPlaces, submitCategoryRequestTurso, updatePlaceAvailability, getPlaceBranches, getPlaceAnalyticsReport } from '../../core/db.js';
-import { createPlace, updatePlace, deletePlace, addOffer, updateOffer, deleteOffer, addProduct, updateProduct, deleteProduct, submitVerificationRequest } from '../../services/places.service.js?v=128bb341';
+import { createPlace, updatePlace, deletePlace, addOffer, updateOffer, deleteOffer, addProduct, updateProduct, deleteProduct, submitVerificationRequest } from '../../services/places.service.js?v=a58f9ed6';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { uploadImage } from '../../services/upload.service.js';
 import { translatePlaceName, generateCoverImage, generatePlaceLogo, generateSeoDescription, generateSeoServices } from '../../services/ai.service.js';
@@ -46,8 +46,8 @@ import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { formatDate } from '../../utils/date.js';
 import { getUserLoyaltyProfile, getLoyaltyLevelInfo, redeemPointsForVerification, claimDailyBonus, LOYALTY_LEVELS, POINTS_RULES, VERIFICATION_POINTS_COST } from '../../services/loyalty.service.js';
-import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=128bb341';
-import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=128bb341';
+import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=a58f9ed6';
+import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=a58f9ed6';
 
 let _dashUser = null;
 let _dashPlacesCache = null;
@@ -1759,52 +1759,194 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         </div>
       </div>
 
-      <!-- Social Media & Website Links -->
-      <div class="form-section" id="p-social-section">
-        <h2 class="form-section__title"><span>🌐</span> وسائل التواصل الاجتماعي والموقع</h2>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-3);line-height:1.6">
-          يدعم النظام الذكي إضافة اسم الحساب فقط (مثل: <code style="direction:ltr;display:inline-block;padding:1px 5px;background:var(--surface-sunken);border-radius:4px">djmrpoop</code> أو <code style="direction:ltr;display:inline-block;padding:1px 5px;background:var(--surface-sunken);border-radius:4px">@djmrpoop</code>) أو الرابط كاملاً، وسيتم تحويله تلقائياً لرابط رسمي وتفعيل الأيقونة في صفحة المكان:
-        </p>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">📘 رابط أو يوزر Facebook</label>
-            <input type="text" inputmode="url" id="p-social-facebook" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://facebook.com/..." value="${escAttr(place?.social?.facebook || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
+      <!-- Social Media & Website Links (3D Experience) -->
+      <div class="social-3d-section" id="p-social-section">
+        <div class="social-3d-header">
+          <div class="social-3d-header__title-wrap">
+            <div class="social-3d-header__icon-badge">🌐</div>
+            <div>
+              <h2 class="social-3d-header__title">وسائل التواصل الاجتماعي والموقع</h2>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">اربط صفحاتك الرسمية لتظهر بأيقونات 3D مميزة وجذابة للزوار في صفحة تفاصيل المكان</div>
+            </div>
           </div>
-
-          <div class="form-group">
-            <label class="form-label">✖️ رابط أو يوزر منصة X (تويتر)</label>
-            <input type="text" inputmode="url" id="p-social-x" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://x.com/..." value="${escAttr(place?.social?.x || place?.social?.twitter || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
+          <div class="social-3d-counter-badge ${((place?.social?.facebook ? 1 : 0) + ((place?.social?.x || place?.social?.twitter) ? 1 : 0) + (place?.social?.instagram ? 1 : 0) + (place?.social?.tiktok ? 1 : 0) + (place?.social?.threads ? 1 : 0) + (place?.social?.youtube ? 1 : 0) + (place?.social?.website ? 1 : 0)) > 0 ? 'has-active' : ''}" id="social-3d-counter">
+            <span>⚡</span>
+            <span id="social-3d-counter-text">${((place?.social?.facebook ? 1 : 0) + ((place?.social?.x || place?.social?.twitter) ? 1 : 0) + (place?.social?.instagram ? 1 : 0) + (place?.social?.tiktok ? 1 : 0) + (place?.social?.threads ? 1 : 0) + (place?.social?.youtube ? 1 : 0) + (place?.social?.website ? 1 : 0)) > 0 ? `تم ربط ${((place?.social?.facebook ? 1 : 0) + ((place?.social?.x || place?.social?.twitter) ? 1 : 0) + (place?.social?.instagram ? 1 : 0) + (place?.social?.tiktok ? 1 : 0) + (place?.social?.threads ? 1 : 0) + (place?.social?.youtube ? 1 : 0) + (place?.social?.website ? 1 : 0))} من 7 منصات` : 'لم يتم ربط أي منصة بعد'}</span>
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">📷 رابط أو يوزر Instagram</label>
-            <input type="text" inputmode="url" id="p-social-instagram" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://instagram.com/..." value="${escAttr(place?.social?.instagram || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">🎵 رابط أو يوزر TikTok</label>
-            <input type="text" inputmode="url" id="p-social-tiktok" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://tiktok.com/@..." value="${escAttr(place?.social?.tiktok || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
-          </div>
+        <div class="social-3d-intro">
+          💡 <strong>يدعم النظام الذكي إضافة اسم الحساب فقط</strong> (مثل: <code style="direction:ltr;display:inline-block;padding:1px 6px;background:rgba(0,0,0,0.06);border-radius:4px;font-weight:700">djmrpoop</code> أو <code style="direction:ltr;display:inline-block;padding:1px 6px;background:rgba(0,0,0,0.06);border-radius:4px;font-weight:700">@djmrpoop</code>) أو الرابط كاملاً، وسيقوم النظام فوراً بتحويله إلى رابط رسمي معتمد وتفعيله بضغطة واحدة!
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">🧵 رابط أو يوزر Threads</label>
-            <input type="text" inputmode="url" id="p-social-threads" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://threads.net/@..." value="${escAttr(place?.social?.threads || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
+        <div class="social-3d-grid">
+          <!-- Facebook Card -->
+          <div class="social-3d-card social-3d-card--facebook ${place?.social?.facebook ? 'has-value' : ''}" data-platform="facebook">
+            <div class="social-3d-card__top">
+              <div class="social-3d-card__badge">
+                <div class="social-3d-card__icon-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                </div>
+                <span>فيسبوك (Facebook)</span>
+              </div>
+              <span class="social-3d-card__status" id="status-p-social-facebook">${place?.social?.facebook ? '🟢 نشط ومربوط' : '⚪ غير مضاف'}</span>
+            </div>
+            <div class="social-3d-input-wrap">
+              <span class="social-3d-prefix">fb.com/</span>
+              <input type="text" inputmode="url" id="p-social-facebook" class="social-3d-input" placeholder="اسم الصفحة أو المعرف أو الرابط" value="${escAttr(place?.social?.facebook || '')}" autocomplete="off" />
+              <div class="social-3d-actions">
+                <button type="button" class="social-3d-btn social-3d-btn--clear" data-target="p-social-facebook" title="مسح" style="${place?.social?.facebook ? '' : 'display:none'}">✕</button>
+                <a href="${escAttr(place?.social?.facebook || '#')}" target="_blank" rel="noopener noreferrer" class="social-3d-btn social-3d-btn--test" id="test-p-social-facebook" title="معاينة الرابط في صفحة جديدة" style="${place?.social?.facebook ? '' : 'display:none'}">↗</a>
+              </div>
+            </div>
+            <div class="social-3d-preview ${place?.social?.facebook ? 'active' : ''}" id="preview-p-social-facebook">
+              <span>🔗</span> <a href="${escAttr(place?.social?.facebook || '#')}" target="_blank" rel="noopener noreferrer">${escAttr(place?.social?.facebook || '')}</a>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">▶️ رابط أو يوزر YouTube</label>
-            <input type="text" inputmode="url" id="p-social-youtube" class="form-input" placeholder="djmrpoop أو @djmrpoop أو https://youtube.com/@..." value="${escAttr(place?.social?.youtube || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
+          <!-- X (Twitter) Card -->
+          <div class="social-3d-card social-3d-card--x ${(place?.social?.x || place?.social?.twitter) ? 'has-value' : ''}" data-platform="x">
+            <div class="social-3d-card__top">
+              <div class="social-3d-card__badge">
+                <div class="social-3d-card__icon-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </div>
+                <span>منصة إكس (Twitter سابقاً)</span>
+              </div>
+              <span class="social-3d-card__status" id="status-p-social-x">${(place?.social?.x || place?.social?.twitter) ? '🟢 نشط ومربوط' : '⚪ غير مضاف'}</span>
+            </div>
+            <div class="social-3d-input-wrap">
+              <span class="social-3d-prefix">x.com/</span>
+              <input type="text" inputmode="url" id="p-social-x" class="social-3d-input" placeholder="اسم المستخدم أو الرابط" value="${escAttr(place?.social?.x || place?.social?.twitter || '')}" autocomplete="off" />
+              <div class="social-3d-actions">
+                <button type="button" class="social-3d-btn social-3d-btn--clear" data-target="p-social-x" title="مسح" style="${(place?.social?.x || place?.social?.twitter) ? '' : 'display:none'}">✕</button>
+                <a href="${escAttr(place?.social?.x || place?.social?.twitter || '#')}" target="_blank" rel="noopener noreferrer" class="social-3d-btn social-3d-btn--test" id="test-p-social-x" title="معاينة الرابط في صفحة جديدة" style="${(place?.social?.x || place?.social?.twitter) ? '' : 'display:none'}">↗</a>
+              </div>
+            </div>
+            <div class="social-3d-preview ${(place?.social?.x || place?.social?.twitter) ? 'active' : ''}" id="preview-p-social-x">
+              <span>🔗</span> <a href="${escAttr(place?.social?.x || place?.social?.twitter || '#')}" target="_blank" rel="noopener noreferrer">${escAttr(place?.social?.x || place?.social?.twitter || '')}</a>
+            </div>
           </div>
-        </div>
 
-        <div class="form-group">
-          <label class="form-label">🌍 رابط الموقع الإلكتروني الرسمي (Website)</label>
-          <input type="text" inputmode="url" id="p-social-website" class="form-input" placeholder="yoursite.com أو https://..." value="${escAttr(place?.social?.website || '')}" style="direction:ltr;text-align:left" autocomplete="off" />
+          <!-- Instagram Card -->
+          <div class="social-3d-card social-3d-card--instagram ${place?.social?.instagram ? 'has-value' : ''}" data-platform="instagram">
+            <div class="social-3d-card__top">
+              <div class="social-3d-card__badge">
+                <div class="social-3d-card__icon-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"><rect width="20" height="20" x="2" y="2" rx="5" fill="url(#ig-grad-dash)"/><path fill="#fff" d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zm5.2-8.4a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0z"/><defs><linearGradient id="ig-grad-dash" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse"><stop stop-color="#f09433"/><stop offset=".25" stop-color="#e6683c"/><stop offset=".5" stop-color="#dc2743"/><stop offset=".75" stop-color="#cc2366"/><stop offset="1" stop-color="#bc1888"/></linearGradient></defs></svg>
+                </div>
+                <span>انستغرام (Instagram)</span>
+              </div>
+              <span class="social-3d-card__status" id="status-p-social-instagram">${place?.social?.instagram ? '🟢 نشط ومربوط' : '⚪ غير مضاف'}</span>
+            </div>
+            <div class="social-3d-input-wrap">
+              <span class="social-3d-prefix">instagram.com/</span>
+              <input type="text" inputmode="url" id="p-social-instagram" class="social-3d-input" placeholder="اليوزر بدون @ أو الرابط" value="${escAttr(place?.social?.instagram || '')}" autocomplete="off" />
+              <div class="social-3d-actions">
+                <button type="button" class="social-3d-btn social-3d-btn--clear" data-target="p-social-instagram" title="مسح" style="${place?.social?.instagram ? '' : 'display:none'}">✕</button>
+                <a href="${escAttr(place?.social?.instagram || '#')}" target="_blank" rel="noopener noreferrer" class="social-3d-btn social-3d-btn--test" id="test-p-social-instagram" title="معاينة الرابط في صفحة جديدة" style="${place?.social?.instagram ? '' : 'display:none'}">↗</a>
+              </div>
+            </div>
+            <div class="social-3d-preview ${place?.social?.instagram ? 'active' : ''}" id="preview-p-social-instagram">
+              <span>🔗</span> <a href="${escAttr(place?.social?.instagram || '#')}" target="_blank" rel="noopener noreferrer">${escAttr(place?.social?.instagram || '')}</a>
+            </div>
+          </div>
+
+          <!-- TikTok Card -->
+          <div class="social-3d-card social-3d-card--tiktok ${place?.social?.tiktok ? 'has-value' : ''}" data-platform="tiktok">
+            <div class="social-3d-card__top">
+              <div class="social-3d-card__badge">
+                <div class="social-3d-card__icon-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.89 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3 15.67 6.34 6.34 0 0 0 9.34 22a6.34 6.34 0 0 0 6.34-6.33V9.28a8.28 8.28 0 0 0 3.91 1.05v-3.45a4.85 4.85 0 0 1-.02-.19z"/></svg>
+                </div>
+                <span>تيك توك (TikTok)</span>
+              </div>
+              <span class="social-3d-card__status" id="status-p-social-tiktok">${place?.social?.tiktok ? '🟢 نشط ومربوط' : '⚪ غير مضاف'}</span>
+            </div>
+            <div class="social-3d-input-wrap">
+              <span class="social-3d-prefix">tiktok.com/@</span>
+              <input type="text" inputmode="url" id="p-social-tiktok" class="social-3d-input" placeholder="اليوزر أو الرابط" value="${escAttr(place?.social?.tiktok || '')}" autocomplete="off" />
+              <div class="social-3d-actions">
+                <button type="button" class="social-3d-btn social-3d-btn--clear" data-target="p-social-tiktok" title="مسح" style="${place?.social?.tiktok ? '' : 'display:none'}">✕</button>
+                <a href="${escAttr(place?.social?.tiktok || '#')}" target="_blank" rel="noopener noreferrer" class="social-3d-btn social-3d-btn--test" id="test-p-social-tiktok" title="معاينة الرابط في صفحة جديدة" style="${place?.social?.tiktok ? '' : 'display:none'}">↗</a>
+              </div>
+            </div>
+            <div class="social-3d-preview ${place?.social?.tiktok ? 'active' : ''}" id="preview-p-social-tiktok">
+              <span>🔗</span> <a href="${escAttr(place?.social?.tiktok || '#')}" target="_blank" rel="noopener noreferrer">${escAttr(place?.social?.tiktok || '')}</a>
+            </div>
+          </div>
+
+          <!-- Threads Card -->
+          <div class="social-3d-card social-3d-card--threads ${place?.social?.threads ? 'has-value' : ''}" data-platform="threads">
+            <div class="social-3d-card__top">
+              <div class="social-3d-card__badge">
+                <div class="social-3d-card__icon-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12.186 24C5.467 24 .017 18.598.017 11.933.017 5.268 5.467-.134 12.186-.134c6.72 0 12.17 5.402 12.17 12.067 0 6.665-5.45 12.067-12.17 12.067zm0-2.317c5.441 0 9.853-4.366 9.853-9.75 0-5.385-4.412-9.75-9.853-9.75-5.441 0-9.853 4.365-9.853 9.75 0 5.384 4.412 9.75 9.853 9.75zm1.536-5.834c-1.39 0-2.333-.708-2.333-2.023 0-1.314.943-2.023 2.333-2.023 1.39 0 2.333.709 2.333 2.023 0 1.315-.943 2.023-2.333 2.023z"/></svg>
+                </div>
+                <span>ثريدز (Threads)</span>
+              </div>
+              <span class="social-3d-card__status" id="status-p-social-threads">${place?.social?.threads ? '🟢 نشط ومربوط' : '⚪ غير مضاف'}</span>
+            </div>
+            <div class="social-3d-input-wrap">
+              <span class="social-3d-prefix">threads.net/@</span>
+              <input type="text" inputmode="url" id="p-social-threads" class="social-3d-input" placeholder="اليوزر أو الرابط" value="${escAttr(place?.social?.threads || '')}" autocomplete="off" />
+              <div class="social-3d-actions">
+                <button type="button" class="social-3d-btn social-3d-btn--clear" data-target="p-social-threads" title="مسح" style="${place?.social?.threads ? '' : 'display:none'}">✕</button>
+                <a href="${escAttr(place?.social?.threads || '#')}" target="_blank" rel="noopener noreferrer" class="social-3d-btn social-3d-btn--test" id="test-p-social-threads" title="معاينة الرابط في صفحة جديدة" style="${place?.social?.threads ? '' : 'display:none'}">↗</a>
+              </div>
+            </div>
+            <div class="social-3d-preview ${place?.social?.threads ? 'active' : ''}" id="preview-p-social-threads">
+              <span>🔗</span> <a href="${escAttr(place?.social?.threads || '#')}" target="_blank" rel="noopener noreferrer">${escAttr(place?.social?.threads || '')}</a>
+            </div>
+          </div>
+
+          <!-- YouTube Card -->
+          <div class="social-3d-card social-3d-card--youtube ${place?.social?.youtube ? 'has-value' : ''}" data-platform="youtube">
+            <div class="social-3d-card__top">
+              <div class="social-3d-card__badge">
+                <div class="social-3d-card__icon-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                </div>
+                <span>يوتيوب (YouTube)</span>
+              </div>
+              <span class="social-3d-card__status" id="status-p-social-youtube">${place?.social?.youtube ? '🟢 نشط ومربوط' : '⚪ غير مضاف'}</span>
+            </div>
+            <div class="social-3d-input-wrap">
+              <span class="social-3d-prefix">youtube.com/</span>
+              <input type="text" inputmode="url" id="p-social-youtube" class="social-3d-input" placeholder="اسم القناة (@channel) أو رابط الفيديو/القناة" value="${escAttr(place?.social?.youtube || '')}" autocomplete="off" />
+              <div class="social-3d-actions">
+                <button type="button" class="social-3d-btn social-3d-btn--clear" data-target="p-social-youtube" title="مسح" style="${place?.social?.youtube ? '' : 'display:none'}">✕</button>
+                <a href="${escAttr(place?.social?.youtube || '#')}" target="_blank" rel="noopener noreferrer" class="social-3d-btn social-3d-btn--test" id="test-p-social-youtube" title="معاينة الرابط في صفحة جديدة" style="${place?.social?.youtube ? '' : 'display:none'}">↗</a>
+              </div>
+            </div>
+            <div class="social-3d-preview ${place?.social?.youtube ? 'active' : ''}" id="preview-p-social-youtube">
+              <span>🔗</span> <a href="${escAttr(place?.social?.youtube || '#')}" target="_blank" rel="noopener noreferrer">${escAttr(place?.social?.youtube || '')}</a>
+            </div>
+          </div>
+
+          <!-- Website Card (Full width on 2 cols) -->
+          <div class="social-3d-card social-3d-card--website social-3d-card--full ${place?.social?.website ? 'has-value' : ''}" data-platform="website">
+            <div class="social-3d-card__top">
+              <div class="social-3d-card__badge">
+                <div class="social-3d-card__icon-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </div>
+                <span>الموقع الإلكتروني الرسمي (Website)</span>
+              </div>
+              <span class="social-3d-card__status" id="status-p-social-website">${place?.social?.website ? '🟢 نشط ومربوط' : '⚪ غير مضاف'}</span>
+            </div>
+            <div class="social-3d-input-wrap">
+              <span class="social-3d-prefix">https://</span>
+              <input type="text" inputmode="url" id="p-social-website" class="social-3d-input" placeholder="رابط موقعك (مثل: yoursite.com أو متجرك الإلكتروني)" value="${escAttr(place?.social?.website || '')}" autocomplete="off" />
+              <div class="social-3d-actions">
+                <button type="button" class="social-3d-btn social-3d-btn--clear" data-target="p-social-website" title="مسح" style="${place?.social?.website ? '' : 'display:none'}">✕</button>
+                <a href="${escAttr(place?.social?.website || '#')}" target="_blank" rel="noopener noreferrer" class="social-3d-btn social-3d-btn--test" id="test-p-social-website" title="معاينة الرابط في صفحة جديدة" style="${place?.social?.website ? '' : 'display:none'}">↗</a>
+              </div>
+            </div>
+            <div class="social-3d-preview ${place?.social?.website ? 'active' : ''}" id="preview-p-social-website">
+              <span>🔗</span> <a href="${escAttr(place?.social?.website || '#')}" target="_blank" rel="noopener noreferrer">${escAttr(place?.social?.website || '')}</a>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3334,10 +3476,82 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     }
   });
 
-  // Attach smart auto-normalization to all social input fields (handles @handle, handle, or full URL)
-  ['facebook', 'x', 'instagram', 'tiktok', 'threads', 'youtube', 'website'].forEach(plat => {
+  // Attach smart auto-normalization, live preview & reactive 3D state to all social input fields
+  const socialPlatforms = ['facebook', 'x', 'instagram', 'tiktok', 'threads', 'youtube', 'website'];
+  
+  function updateSocialCardState(plat) {
     const el = document.getElementById(`p-social-${plat}`);
-    if (el) attachSmartSocialInput(el, plat);
+    if (!el) return;
+    const card = el.closest('.social-3d-card');
+    const statusEl = document.getElementById(`status-p-social-${plat}`);
+    const previewEl = document.getElementById(`preview-p-social-${plat}`);
+    const testBtn = document.getElementById(`test-p-social-${plat}`);
+    const clearBtn = card?.querySelector('.social-3d-btn--clear');
+    const val = (el.value || '').trim();
+
+    if (val) {
+      card?.classList.add('has-value');
+      if (statusEl) statusEl.textContent = '🟢 نشط ومربوط';
+      const cleanUrl = normalizeSocialLink(plat, val) || val;
+      if (previewEl) {
+        previewEl.classList.add('active');
+        const link = previewEl.querySelector('a');
+        if (link) {
+          link.href = cleanUrl;
+          link.textContent = cleanUrl;
+        }
+      }
+      if (testBtn) {
+        testBtn.href = cleanUrl;
+        testBtn.style.display = 'inline-flex';
+      }
+      if (clearBtn) clearBtn.style.display = 'inline-flex';
+    } else {
+      card?.classList.remove('has-value');
+      if (statusEl) statusEl.textContent = '⚪ غير مضاف';
+      if (previewEl) previewEl.classList.remove('active');
+      if (testBtn) testBtn.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'none';
+    }
+
+    // Update global section count
+    const activeCount = socialPlatforms.filter(p => !!(document.getElementById(`p-social-${p}`)?.value || '').trim()).length;
+    const counterBadge = document.getElementById('social-3d-counter');
+    const counterText = document.getElementById('social-3d-counter-text');
+    if (counterBadge && counterText) {
+      if (activeCount > 0) {
+        counterBadge.classList.add('has-active');
+        counterText.textContent = `تم ربط ${activeCount} من 7 منصات`;
+      } else {
+        counterBadge.classList.remove('has-active');
+        counterText.textContent = 'لم يتم ربط أي منصة بعد';
+      }
+    }
+  }
+
+  socialPlatforms.forEach(plat => {
+    const el = document.getElementById(`p-social-${plat}`);
+    if (el) {
+      attachSmartSocialInput(el, plat);
+      el.addEventListener('input', () => updateSocialCardState(plat));
+      el.addEventListener('change', () => updateSocialCardState(plat));
+      // Initial state sync
+      updateSocialCardState(plat);
+    }
+  });
+
+  // Handle Clear Buttons
+  document.getElementById('p-social-section')?.addEventListener('click', (e) => {
+    const clearBtn = e.target.closest('.social-3d-btn--clear');
+    if (clearBtn) {
+      const targetId = clearBtn.dataset.target;
+      const targetInput = document.getElementById(targetId);
+      if (targetInput) {
+        targetInput.value = '';
+        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+        targetInput.focus();
+      }
+    }
   });
 
   // Toggle phone unavailable logic
