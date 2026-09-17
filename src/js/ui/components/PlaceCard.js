@@ -135,8 +135,9 @@ export function renderPlaceCard(place) {
   const rawCover = place.coverImageUrl || (isAtm ? ATM_UNIFIED_COVER : defaultAssets.coverImageUrl);
   const rawLogo = place.logoUrl || (isAtm ? ATM_UNIFIED_LOGO : defaultAssets.logoUrl);
 
-  const finalCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.THUMB);
-  const finalLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.LOGO);
+  const placeVersion = place.updatedAt || place.updated_at || null;
+  const finalCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.THUMB, placeVersion);
+  const finalLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.LOGO, placeVersion);
 
   const coverImg = finalCover
     ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" width="280" height="160" loading="lazy" decoding="async" />`

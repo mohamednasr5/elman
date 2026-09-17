@@ -118,6 +118,9 @@ export async function renderEnglishPlacePage($container, { slug, user, initialPl
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
                 <span class="badge" style="background:var(--surface-2);color:var(--text-secondary);font-size:12px;padding:3px 8px;border-radius:4px">🏷️ ${escHtml(cat)}</span>
                 <span class="badge" style="background:var(--surface-2);color:var(--text-secondary);font-size:12px;padding:3px 8px;border-radius:4px">📍 ${escHtml(area)}</span>
+                <button type="button" id="place-en-rating-badge" class="badge" style="background:#fef3c7;color:#b45309;font-size:12px;padding:3px 8px;border-radius:4px;border:none;cursor:pointer;font-weight:700" title="Click to jump to customer reviews">
+                  ⭐ Reviews
+                </button>
                 ${liveHoursBadge}
               </div>
               <h1 class="place-detail-title">
@@ -240,6 +243,15 @@ export async function renderEnglishPlacePage($container, { slug, user, initialPl
     } else {
       navigator.clipboard?.writeText(window.location.href);
       alert('Link copied to clipboard!');
+    }
+  });
+
+  document.getElementById('place-en-rating-badge')?.addEventListener('click', () => {
+    const card = document.getElementById('place-reviews-card');
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      card.classList.add('review-scroll-highlight');
+      setTimeout(() => card.classList.remove('review-scroll-highlight'), 1800);
     }
   });
 

@@ -13,7 +13,8 @@ export function renderEnglishPlaceCard(source={}){
   const fallbackCover=normalizeAsset(assets.coverImageUrl||assets.cover,'/assets/images/default-cover.jpg');
   const fallbackLogo=normalizeAsset(assets.logoUrl||assets.logo,'/assets/images/default-logo.jpg');
   const rawCover=normalizeAsset(place.coverImageUrl||fallbackCover,fallbackCover),rawLogo=normalizeAsset(place.logoUrl||fallbackLogo,fallbackLogo);
-  const cover=getOptimizedImageUrl(rawCover,IMAGE_SIZES.THUMB)||fallbackCover,logo=getOptimizedImageUrl(rawLogo,IMAGE_SIZES.LOGO)||fallbackLogo;
+  const placeVersion = source.updatedAt || source.updated_at || place.updatedAt || place.updated_at || null;
+  const cover=getOptimizedImageUrl(rawCover,IMAGE_SIZES.THUMB,placeVersion)||fallbackCover,logo=getOptimizedImageUrl(rawLogo,IMAGE_SIZES.LOGO,placeVersion)||fallbackLogo;
   const slug=place.slug||place.id||place._key||'',url=`/en/place/${encodeURIComponent(slug)}`;
   const verified=Boolean(place.isVerified||place.is_verified||place.verified);
   const liveHours=getPlaceLiveStatus(place.openHours||place.open_hours||place.workingHours||place.working_hours);

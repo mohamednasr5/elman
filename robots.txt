@@ -195,11 +195,13 @@ Disallow: /favorites.html
 Disallow: /favorites/
 Disallow: /api/
 
-# AI-readable discovery files.
+# AI-readable discovery files and RSS feeds.
 Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /llms-en.txt
 Allow: /llms-full-en.txt
+Allow: /rss.xml
+Allow: /feed
 
 # XML sitemap index and sub-sitemaps for fast search discovery.
 Sitemap: https://dalilmanzala.com/sitemap.xml

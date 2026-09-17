@@ -217,7 +217,8 @@ function renderNotificationCard(item) {
           class="activity-notif-logo" 
           width="48" 
           height="48" 
-          loading="lazy" 
+          loading="eager" 
+          decoding="async" 
           onerror="this.onerror=null;this.src='/icons/icon-96x96.png';"
         />
         <span class="activity-notif-live-dot" title="نشاط مباشر"></span>

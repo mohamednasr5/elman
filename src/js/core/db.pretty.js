@@ -680,10 +680,58 @@ export async function getPlace(placeId) {
 
 
 
-/** Invalidate local caches (IndexedDB and in-memory SWR) for a place */
-export async function invalidateLocalPlaceCache(placeId,slug='') {
-  try{if(placeId)await idbDelete(STORES.PLACES,placeId);}catch(_){}
-  clearDbCache('path:places');clearDbCache('places');if(slug)clearDbCache('place:'+slug);return true;
+/** Invalidate local caches (IndexedDB, in-memory SWR, Session/Local storage) for a place */
+export async function invalidateLocalPlaceCache(placeId, slug = '') {
+  const pId = String(placeId || '').trim();
+  const pSlug = String(slug || '').trim();
+  const cleanSlug = pSlug.toLowerCase();
+  const cleanId = pId.toLowerCase();
+
+  // 1. IndexedDB cleanup
+  try {
+    if (pId) await idbDelete(STORES.PLACES, pId);
+    if (cleanId && cleanId !== pId) await idbDelete(STORES.PLACES, cleanId);
+    if (pSlug) await idbDelete(STORES.PLACES, pSlug);
+    if (cleanSlug && cleanSlug !== pSlug) await idbDelete(STORES.PLACES, cleanSlug);
+  } catch (_) {}
+
+  // 2. Global in-memory registry
+  try {
+    if (typeof window !== 'undefined' && window._placesRegistry) {
+      if (pId) window._placesRegistry.delete(pId);
+      if (cleanId) window._placesRegistry.delete(cleanId);
+      if (pSlug) window._placesRegistry.delete(pSlug);
+      if (cleanSlug) window._placesRegistry.delete(cleanSlug);
+    }
+  } catch (_) {}
+
+  // 3. SessionStorage & LocalStorage instant place caches
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      [pId, cleanId, pSlug, cleanSlug].forEach(k => {
+        if (k) sessionStorage.removeItem('instant_place_' + k);
+      });
+      sessionStorage.removeItem('instant_place_latest');
+    }
+    if (typeof localStorage !== 'undefined') {
+      [pId, cleanId, pSlug, cleanSlug].forEach(k => {
+        if (k) localStorage.removeItem('instant_place_' + k);
+      });
+      localStorage.removeItem('instant_place_latest');
+      localStorage.removeItem('manzala_verified_showcase_v1');
+    }
+  } catch (_) {}
+
+  // 4. In-Memory & LocalStorage SWR query caches (clear place-specific AND list caches so fresh data appears immediately everywhere!)
+  clearDbCache('path:places');
+  clearDbCache('places');
+  clearDbCache('published_');
+  clearDbCache('all_places_');
+  if (pSlug) clearDbCache('place:' + pSlug);
+  if (cleanSlug) clearDbCache('place:' + cleanSlug);
+  if (pId) clearDbCache('place:' + pId);
+
+  return true;
 }
 
 export async function searchPlacesTurso(query = '', { category = '', area = '', limit = 20, offset = 0, verified = false, minRating = 0 } = {}) {

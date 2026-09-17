@@ -2,6 +2,7 @@
 import { initAuth, onAuthStateChange, waitForAuth, isAdmin, signOut, getIdToken } from './auth.js';
 import { getLang, isEnglish, switchLanguage, applyLangToDOM } from './i18n.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
+import { initContentProtection } from './content-protection.js';
 import { api } from './api.js';
 
 function _escShell(s) {
@@ -522,6 +523,7 @@ export function setupInstantLinkPrefetcher() {
 }
 
 export async function initPage(activeFile=''){
+  try{initContentProtection()}catch(_){}
   applyLangToDOM(getLang());
   _loadShellCSS();
   _inject('header-slot',_headerHTML(activeFile));

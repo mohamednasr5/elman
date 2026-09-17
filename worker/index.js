@@ -531,6 +531,157 @@ async function handleDynamicSitemap(request, url, env, ctx) {
   return response;
 }
 
+/**
+ * High-Performance Structured RSS 2.0 Feed for Places
+ * Formatted specifically for Social Auto-Posting tools (Zapier, IFTTT, Publer, dlvr.it)
+ * Routes: /rss.xml, /rss, /feed, /api/rss/places
+ */
+async function handleRssFeed(request, url, env, ctx) {
+  const site = 'https://dalilmanzala.com';
+  const cache = caches.default;
+  const cacheKey = new Request('https://cache.local/rss/v1/places.xml');
+
+  if (cache) {
+    const cached = await cache.match(cacheKey).catch(() => null);
+    if (cached) return cached;
+  }
+
+  const escXml = (str) => String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+  const toRfc822 = (val) => {
+    try {
+      const d = val ? new Date(val) : new Date();
+      return isNaN(d.getTime()) ? new Date().toUTCString() : d.toUTCString();
+    } catch (_) {
+      return new Date().toUTCString();
+    }
+  };
+
+  try {
+    const db = createTursoDB(env);
+    const rows = (await db.prepare(`
+      SELECT 
+        p.id, p.name, p.slug, p.category_id, p.custom_category, p.description,
+        p.cover_image_url, p.logo_url, p.phone, p.whatsapp, p.address, p.area,
+        p.created_at, p.updated_at,
+        c.name AS category_name
+      FROM places p
+      LEFT JOIN categories c ON (p.category_id = c.id OR p.category_id = c.slug)
+      WHERE p.status = 'published' AND p.name IS NOT NULL AND TRIM(p.name) != ''
+      ORDER BY p.created_at DESC
+      LIMIT 50
+    `).all().catch(() => ({ results: [] }))).results || [];
+
+    const nowRfc822 = new Date().toUTCString();
+
+    const itemsXml = rows.map((place) => {
+      const pName = place.name?.trim() || 'مكان جديد';
+      const safeSlug = String(place.slug || place.id || '').trim();
+      const placeUrl = `${site}/place/${encodeURIComponent(safeSlug)}`;
+      const catName = place.custom_category?.trim() || place.category_name?.trim() || place.category_id || 'أماكن وأنشطة';
+      const pubDate = toRfc822(place.created_at || place.updated_at || Date.now());
+
+      let imgUrl = place.cover_image_url || place.logo_url || '';
+      if (imgUrl && !imgUrl.startsWith('http')) {
+        imgUrl = `${site}${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`;
+      }
+      if (!imgUrl) {
+        imgUrl = `${site}/icons/icon-512x512.png`;
+      }
+
+      const locationParts = [place.area, place.address].filter(Boolean);
+      const locationText = locationParts.length ? locationParts.join(' - ') : 'المنزلة والمطرية';
+
+      const contactParts = [];
+      if (place.phone) contactParts.push(place.phone);
+      if (place.whatsapp && place.whatsapp !== place.phone) contactParts.push(`واتساب: ${place.whatsapp}`);
+      const contactText = contactParts.join(' | ');
+
+      const descText = place.description?.trim() || '';
+
+      const richHtml = [
+        '<p><strong>مكان جديد فى دليل المنزلة والمطرية الرقمي</strong></p>',
+        `<p>📍 <strong>${escXml(pName)}</strong></p>`,
+        `<p>🏷️ <strong>القسم:</strong> ${escXml(catName)}</p>`,
+        `<p>🗺️ <strong>الموقع:</strong> ${escXml(locationText)}</p>`,
+        contactText ? `<p>📞 <strong>للتواصل:</strong> ${escXml(contactText)}</p>` : '',
+        descText ? `<p>📝 ${escXml(descText)}</p>` : '',
+        `<p><img src="${escXml(imgUrl)}" alt="${escXml(pName)}" style="max-width:100%;height:auto;border-radius:12px;" /></p>`,
+        `<p><a href="${escXml(placeUrl)}">اضغط هنا لفتح تفاصيل المكان بالكامل على الدليل</a></p>`
+      ].filter(Boolean).join('\n');
+
+      return `    <item>
+      <title><![CDATA[مكان جديد فى دليل المنزلة والمطرية الرقمي: ${pName}]]></title>
+      <link>${escXml(placeUrl)}</link>
+      <guid isPermaLink="true">${escXml(placeUrl)}</guid>
+      <pubDate>${pubDate}</pubDate>
+      <category><![CDATA[${catName}]]></category>
+      <dc:creator><![CDATA[دليل المنزلة والمطرية الرقمي]]></dc:creator>
+      <enclosure url="${escXml(imgUrl)}" type="image/jpeg" length="0" />
+      <media:content url="${escXml(imgUrl)}" medium="image" type="image/jpeg">
+        <media:title><![CDATA[${pName}]]></media:title>
+      </media:content>
+      <media:thumbnail url="${escXml(imgUrl)}" />
+      <description><![CDATA[${richHtml}]]></description>
+      <content:encoded><![CDATA[${richHtml}]]></content:encoded>
+    </item>`;
+    }).join('\n');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/"
+     xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+     xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+     xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>دليل المنزلة والمطرية الرقمي — أحدث الأماكن والأنشطة</title>
+    <atom:link href="${site}/rss.xml" rel="self" type="application/rss+xml" />
+    <link>${site}</link>
+    <description>الدليل الرقمي الشامل لمدينة المنزلة والمطرية ودكرنس والجمالية — استكشف أحدث المحلات والشركات والأطباء والخدمات</description>
+    <lastBuildDate>${nowRfc822}</lastBuildDate>
+    <language>ar-EG</language>
+    <sy:updatePeriod>hourly</sy:updatePeriod>
+    <sy:updateFrequency>1</sy:updateFrequency>
+    <image>
+      <url>${site}/icons/icon-512x512.png</url>
+      <title>دليل المنزلة والمطرية الرقمي</title>
+      <link>${site}</link>
+      <width>512</width>
+      <height>512</height>
+    </image>
+${itemsXml}
+  </channel>
+</rss>`;
+
+    const response = new Response(xml, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/rss+xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=600, s-maxage=1800, stale-while-revalidate=3600',
+        'X-Content-Type-Options': 'nosniff',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+
+    if (cache) {
+      ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(() => {}));
+    }
+
+    return response;
+  } catch (err) {
+    console.error('[RSS Feed Error]:', err);
+    return new Response('Error generating RSS feed', { status: 500 });
+  }
+}
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
@@ -754,6 +905,12 @@ if ((url.pathname.startsWith('/sitemap') && url.pathname.endsWith('.xml')) ||
     url.pathname === `/${INDEXNOW_KEY}.txt`) {
   const sitemapResponse = await handleDynamicSitemap(request, url, env, ctx);
   if (sitemapResponse) return sitemapResponse;
+}
+
+// ── Structured Places RSS Feed for Social Auto-Posting ────────
+if (url.pathname === '/rss.xml' || url.pathname === '/rss' || url.pathname === '/feed' || url.pathname === '/api/rss/places') {
+  const rssResponse = await handleRssFeed(request, url, env, ctx);
+  if (rssResponse) return rssResponse;
 }
 
 try {
@@ -2113,8 +2270,11 @@ try {
           const purgeUrls = [
             `https://cache.local/api/places?slug=${safeSlug}`,
             `https://cache.local/api/places?id=${encodeURIComponent(placeId)}`,
+            `https://cache.local/api/places/v4?slug=${safeSlug}`,
+            `https://cache.local/api/places/v4?slug=${encodeURIComponent(placeId.toLowerCase())}`,
             `https://cache.local/ssr/place/v8?slug=${safeSlug}`,
             `https://cache.local/ssr/place/v8?slug=${encodeURIComponent(placeId.toLowerCase())}`,
+            `https://cache.local/rss/v1/places.xml`,
             `https://cache.local/sitemap/v1/sitemap.xml`,
             `https://cache.local/sitemap/v1/sitemap-places-ar.xml`,
             `https://cache.local/sitemap/v1/sitemap-places-en.xml`,
@@ -2162,7 +2322,9 @@ try {
       const purgeUrls = [
         `https://cache.local/api/places?slug=${encodeURIComponent(id.toLowerCase())}`,
         `https://cache.local/api/places?id=${encodeURIComponent(id)}`,
+        `https://cache.local/api/places/v4?slug=${encodeURIComponent(id.toLowerCase())}`,
         `https://cache.local/ssr/place/v8?slug=${encodeURIComponent(id.toLowerCase())}`,
+        `https://cache.local/rss/v1/places.xml`,
         `https://cache.local/sitemap/v1/sitemap.xml`,
         `https://cache.local/sitemap/v1/sitemap-places-ar.xml`,
         `https://cache.local/sitemap/v1/sitemap-places-en.xml`,

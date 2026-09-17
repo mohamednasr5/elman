@@ -1,4 +1,4 @@
-﻿import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
+import { buildContextualWhatsAppLink } from '../../services/whatsapp.service.js';
 import { isEnglish, t, localizeUrl } from '../../core/i18n.js';
 import { translateCategory, toArabicCategory } from '../../utils/category-i18n.js';
 /**
@@ -549,8 +549,9 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     const defaultAssets = getDefaultPlaceAssets(place, category);
     const rawCover = place.coverImageUrl || place.cover_image_url || (isAtm ? ATM_UNIFIED_COVER : defaultAssets.coverImageUrl);
     const rawLogo = place.logoUrl || place.logo_url || (isAtm ? ATM_UNIFIED_LOGO : defaultAssets.logoUrl);
-    const placeCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.MEDIUM);
-    const placeLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.MEDIUM);
+    const placeVersion = place.updatedAt || place.updated_at || null;
+    const placeCover = getOptimizedImageUrl(rawCover, IMAGE_SIZES.MEDIUM, placeVersion);
+    const placeLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.MEDIUM, placeVersion);
 
     // Resolve Smart Google Map info (supports coords, short links, Plus codes, and addresses)
     const mapInfo = resolveMapEmbedInfo(place);
@@ -651,7 +652,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                   <span>${escHtml(catInfo?.name || 'تصنيف')}</span>
                 </a>
                 ${!isAtm ? `
-                  <div id="place-header-rating-badge" class="place-rating-badge-inline">
+                  <div id="place-header-rating-badge" class="place-rating-badge-inline" role="button" tabindex="0" title="اضغط للانتقال إلى تقييمات ومراجعات المكان" aria-label="تقييم المكان، اضغط للانتقال إلى التقييمات" style="cursor:pointer">
                     ${totalReviews > 0 ? `
                       <span class="rating-star">★</span>
                       <span class="rating-val">${avgRating > 0 ? avgRating.toFixed(1) : '5.0'}</span>
@@ -659,7 +660,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                     ` : `
                       <span class="rating-star">★</span>
                       <span class="rating-val">5.0</span>
-                      <span class="rating-sub">() تقييم)</span>
+                      <span class="rating-sub">(0 تقييم)</span>
                     `}
                   </div>
                 ` : ''}
@@ -1056,6 +1057,26 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     window.trackStat = function(pid, s, extra) {
       trackPlaceStat(pid, s, extra);
     };
+
+    // Smooth scroll down to Reviews when clicking the header rating badge
+    const ratingBadgeEl = document.getElementById('place-header-rating-badge');
+    if (ratingBadgeEl) {
+      const scrollToReviews = (e) => {
+        if (e) e.preventDefault();
+        const reviewsTarget = document.getElementById('place-reviews-card') || document.getElementById('place-reviews-slot');
+        if (reviewsTarget) {
+          reviewsTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          reviewsTarget.classList.add('review-scroll-highlight');
+          setTimeout(() => reviewsTarget.classList.remove('review-scroll-highlight'), 1800);
+        }
+      };
+      ratingBadgeEl.addEventListener('click', scrollToReviews);
+      ratingBadgeEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          scrollToReviews(e);
+        }
+      });
+    }
 
     // Track view and search keyword if visitor arrived from search or query
     try {
