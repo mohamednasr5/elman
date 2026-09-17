@@ -728,7 +728,7 @@ User-agent: *
 Allow: /llms.txt
 
 Sitemap: https://dalilmanzala.com/sitemap.xml
-LLMs: https://dalilmanzala.com/llms.txt
+# LLMs: https://dalilmanzala.com/llms.txt
 `;
 
   return new Response(robotsContent, {
@@ -7227,7 +7227,22 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
       // ── Passthrough for non-API requests ──
       // If request is not an /api route, pass through to GitHub Pages origin so static files and HTML pages work seamlessly
       if (!url.pathname.startsWith('/api')) {
-        return fetch(request);
+        const originRes = await fetch(request);
+        const staticAssetRegex = /\.(?:css|js|mjs|woff2?|ttf|eot|png|jpe?g|webp|gif|svg|ico|webmanifest)$/i;
+        if (staticAssetRegex.test(url.pathname) && originRes.status === 200) {
+          const newHeaders = new Headers(originRes.headers);
+          if (url.searchParams.has('v') || /\.(?:woff2?|ttf|png|jpe?g|webp|gif|ico)$/i.test(url.pathname)) {
+            newHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
+          } else {
+            newHeaders.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+          }
+          return new Response(originRes.body, {
+            status: originRes.status,
+            statusText: originRes.statusText,
+            headers: newHeaders
+          });
+        }
+        return originRes;
       }
 
       // ── 404 Catch-all for API ──

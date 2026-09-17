@@ -5,7 +5,7 @@
 :root {
   /* ── Brand Colors ── */
   --primary:        #1B4F72;
-  --primary-light:  #2980B9;
+  --primary-light:  #1F618D;
   --primary-dark:   #154360;
   --primary-alpha:  rgba(27, 79, 114, 0.08);
 
@@ -46,9 +46,9 @@
   /* ── Text ── */
   --text-primary:   #1A1A2E;
   --text-secondary: #5A6B7D;
-  --text-muted:     #95A5A6;
+  --text-muted:     #475569;
   --text-inverse:   #FFFFFF;
-  --text-link:      #2980B9;
+  --text-link:      #1D4ED8;
 
   /* ── Borders ── */
   --border:         #E8EDF2;
@@ -182,7 +182,7 @@
   --surface-4:      #E8EDF5;
   --text-primary:   #1A1A2E;
   --text-secondary: #5A6B7D;
-  --text-muted:     #95A5A6;
+  --text-muted:     #475569;
   --border:         #E8EDF2;
   --border-strong:  #C8D4DF;
 }

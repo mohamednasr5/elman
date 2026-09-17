@@ -186,3 +186,32 @@
   z-index: 10;
 }
 
+/* Profile Completeness Trust Badges */
+.place-trust-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.place-trust-mini--high {
+  background: rgba(16, 185, 129, 0.12);
+  color: #065F46;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.place-trust-mini--medium {
+  background: #FEF3C7;
+  color: #78350F;
+  border: 1px solid #FCD34D;
+}
+.place-trust-mini--low {
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+}
+
+

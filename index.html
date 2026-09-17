@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"/>
@@ -108,17 +108,28 @@
     })();
   </script>
 
-  <!-- Parallel API Prefetch: Starts during initial HTML parse -->
+  <!-- Parallel API Prefetch: Deferred to avoid blocking CSS/Fonts on initial parse -->
   <script>
     (function() {
-      try {
-        window.__PLACES_PREFETCH__ = fetch('/api/places?limit=100', { headers: { 'Accept': 'application/json' } })
-          .then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
-        window.__CATEGORIES_PREFETCH__ = fetch('/api/categories', { headers: { 'Accept': 'application/json' } })
-          .then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
-      } catch(_) {}
+      function runPrefetch() {
+        try {
+          window.__PLACES_PREFETCH__ = fetch('/api/places?limit=100', { headers: { 'Accept': 'application/json' } })
+            .then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+          window.__CATEGORIES_PREFETCH__ = fetch('/api/categories', { headers: { 'Accept': 'application/json' } })
+            .then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+        } catch(_) {}
+      }
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(runPrefetch, { timeout: 1500 });
+      } else if (document.readyState === 'complete') {
+        runPrefetch();
+      } else {
+        window.addEventListener('load', runPrefetch, { once: true });
+      }
     })();
   </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap"/></noscript>
   <link rel="stylesheet" href="./src/css/main.css?v=a58f9ed6"/>
@@ -129,14 +140,14 @@
        ═══════════════════════════════════════════════════════════ -->
   <style>
     /* Hero section — reserve space immediately to prevent CLS */
-    .hero{position:relative;z-index:30;background:linear-gradient(145deg,#154360 0%,#1B4F72 50%,#2980B9 100%);min-height:clamp(440px,58vh,510px);display:flex;align-items:center;justify-content:center;padding:clamp(2.5rem,5vw,4rem) 1rem clamp(3rem,6vw,5rem);box-sizing:border-box;overflow:visible}
+    .hero{position:relative;z-index:30;background:linear-gradient(145deg,#154360 0%,#1B4F72 50%,#2980B9 100%);min-height:clamp(440px,58vh,510px);display:flex;align-items:center;justify-content:center;padding:clamp(2.5rem,5vw,4rem) 1rem clamp(3rem,6vw,5rem);box-sizing:border-box;overflow:hidden;contain:layout style}
     .hero__inner{max-width:800px;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1rem;position:relative;z-index:10}
     .hero__eyebrow{display:inline-flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:9999px;padding:.35rem 1rem;font-size:.85rem;font-weight:600;color:rgba(255,255,255,.9);white-space:nowrap;min-height:28px}
     .hero__title{font-family:"Cairo","Tajawal",-apple-system,sans-serif;font-weight:800;line-height:1.3;color:#fff;margin:0;font-size:clamp(1.5rem,5vw,2.25rem);text-align:center}
     .hero__title-line1{display:block}
     .hero__title-highlight{color:#F39C12}
     .hero__title-white{color:#fff}
-    .hero__title-line2{display:block;font-size:clamp(.95rem,2.5vw,1.3rem);font-weight:600;margin-top:.35rem;min-height:1.8em}
+    .hero__title-line2{display:flex;align-items:center;justify-content:center;font-size:clamp(.95rem,2.5vw,1.3rem);font-weight:600;margin-top:.35rem;min-height:56px;height:56px;overflow:hidden;box-sizing:border-box}
     .hero__title-subtext{color:rgba(255,255,255,.88)}
     .typewriter-cursor{opacity:1;animation:tw-blink 1s step-end infinite;color:rgba(255,255,255,.7);margin-right:2px}
     @keyframes tw-blink{0%,to{opacity:1}50%{opacity:0}}
@@ -161,7 +172,7 @@
     @keyframes shimmer{0%{background-position:-200% 0}to{background-position:200% 0}}
     .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.18) 25%,rgba(255,255,255,.28) 50%,rgba(255,255,255,.18) 75%);background-size:200% 100%;animation:shimmer 1.5s ease-in-out infinite;border-radius:8px}
     /* Heritage Decor Silhouettes */
-    .hero-heritage-decor{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+    .hero-heritage-decor{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden;contain:strict}
     .decor-item{position:absolute;color:#fff;opacity:.12;transition:opacity .4s ease,transform .4s ease}
     .decor-palm-right{bottom:30px;right:-15px;width:140px;height:180px;opacity:.14;transform:rotate(-6deg)}
     .decor-palm-left{bottom:25px;left:-20px;width:150px;height:190px;opacity:.13;transform:rotate(8deg)}
@@ -170,7 +181,7 @@
     .decor-fish-1{bottom:22%;left:14%;width:60px;height:30px;opacity:.13;animation:fishSwimLeft 14s linear infinite}
     .decor-fish-2{bottom:16%;right:18%;width:48px;height:24px;opacity:.11;animation:fishSwimRight 16s linear infinite}
     .decor-fish-3{top:45%;left:24%;width:40px;height:20px;opacity:.09;animation:fishSwimLeft 18s linear infinite}
-    .decor-waves{bottom:8px;left:50%;transform:translateX(-50%);width:800px;height:50px;opacity:.12;animation:waveDrift 6s ease-in-out infinite alternate}
+    .decor-waves{bottom:8px;left:50%;transform:translateX(-50%);width:800px;height:50px;opacity:.12;animation:waveDrift 6s ease-in-out infinite alternate;contain:strict;will-change:transform;transform-box:fill-box}
     .decor-birds{top:10%;right:25%;width:90px;height:35px;opacity:.13;animation:birdsFly 10s ease-in-out infinite alternate}
     @keyframes boatFloatSlow{0%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-5px) rotate(1.5deg)}100%{transform:translateY(2px) rotate(-1deg)}}
     @keyframes fishSwimLeft{0%,100%{transform:translateX(0) translateY(0)}50%{transform:translateX(18px) translateY(-4px)}}
@@ -178,6 +189,11 @@
     @keyframes waveDrift{0%{transform:translateX(-52%)}100%{transform:translateX(-48%)}}
     @keyframes birdsFly{0%{transform:translateY(0) scale(1)}100%{transform:translateY(-8px) scale(1.04)}}
     @media(max-width:768px){.decor-palm-right{width:100px;height:130px;opacity:.10;right:-25px}.decor-palm-left{width:105px;height:135px;opacity:.09;left:-25px}.decor-boat-left{width:95px;height:55px;opacity:.09;top:12%;left:1%}.decor-boat-right{width:85px;height:50px;opacity:.08;top:15%;right:1%}.decor-fish-3{display:none}}
+    /* Accessibility & Contrast Early Overrides */
+    .section-link{color:#1F618D!important;font-weight:700!important}
+    .place-trust-mini{display:inline-flex!important;align-items:center!important;gap:4px!important;padding:3px 9px!important;border-radius:9999px!important;font-size:11px!important;font-weight:700!important;white-space:nowrap!important}
+    .place-trust-mini--medium{background:#FEF3C7!important;color:#78350F!important;border:1px solid #FCD34D!important}
+    .place-trust-mini--high{background:rgba(16,185,129,.12)!important;color:#065F46!important;border:1px solid rgba(16,185,129,.35)!important}
   </style>
 
   <!-- Schema.org WebSite & Local Coverage -->

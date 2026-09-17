@@ -1585,7 +1585,7 @@
 
 .footer__copyright {
   font-size: var(--font-size-sm);
-  color: rgba(255,255,255,0.5);
+  color: rgba(255,255,255,0.85);
 }
 
 .footer__bottom-links {
@@ -1595,11 +1595,11 @@
 
 .footer__bottom-link {
   font-size: var(--font-size-xs);
-  color: rgba(255,255,255,0.5);
+  color: rgba(255,255,255,0.85);
   text-decoration: none;
 }
 
-.footer__bottom-link:hover { color: rgba(255,255,255,0.9); }
+.footer__bottom-link:hover { color: #ffffff; }
 
 /* ═══════════════════════════════════════════════════════════
    High-Impact Pulsating & Glowing CTA Button (زر إضافة مكان)

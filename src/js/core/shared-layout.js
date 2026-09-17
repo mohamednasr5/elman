@@ -436,11 +436,11 @@ export function getSharedBottomNavHTML(activePage = '') {
       <span class="bottom-nav__icon">📋</span><span class="bottom-nav__label">التصنيفات</span>
     </a>
     <div class="bottom-nav__fab">
-      <button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="مساعد المنزلة والمطرية الصوتي الذكي" title="مساعد المنزلة والمطرية الصوتي الذكي (M)">
-        <span class="fab-letter-m">M</span>
-        <span class="fab-pulse-ring"></span>
-        <span class="fab-pulse-ring ring-2"></span>
-        <span class="fab-mic-badge">🎙️</span>
+      <button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="M - مساعد المنزلة والمطرية الصوتي الذكي" title="مساعد المنزلة والمطرية الصوتي الذكي (M)">
+        <span class="fab-letter-m" aria-hidden="true">M</span>
+        <span class="fab-pulse-ring" aria-hidden="true"></span>
+        <span class="fab-pulse-ring ring-2" aria-hidden="true"></span>
+        <span class="fab-mic-badge" aria-hidden="true">🎙️</span>
       </button>
     </div>
     <a href="offers.html"     class="bottom-nav__item${activePage==='offers.html'?' active':''}">

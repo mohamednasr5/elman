@@ -539,7 +539,7 @@ import{getCategories as pe,getPublishedPlaces as Q,getActiveOffers as J,getAds a
         gap: 6px;
         background: rgba(16, 185, 129, 0.12);
         border: 1px solid rgba(16, 185, 129, 0.35);
-        color: #10B981;
+        color: #047857;
         padding: 3px 12px;
         border-radius: 9999px;
         font-size: 12px;
