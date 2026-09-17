@@ -38,8 +38,7 @@ async function fetchLiveCoins() {
     const bal = res?.data?.balance ?? res?.balance;
     if (typeof bal === 'number') {
       localStorage.setItem('manzala_user_coins_balance', String(bal));
-      const val = document.getElementById('header-coins-val');
-      if (val) val.textContent = Number(bal).toLocaleString('ar-EG');
+      window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: bal } }));
     }
   } catch (_) {}
 }
@@ -94,11 +93,6 @@ function renderHeader(user) {
 
   wrap.innerHTML = `
     <div class="header__user-group">
-      <a href="/wallet.html" class="header__coins-chip" id="header-coins-chip" title="رصيد ذهبيات الدليل — اضغط لفتح المحفظة" aria-label="رصيد ذهبيات الدليل — اضغط لفتح المحفظة">
-        <span class="header__coins-chip-icon" aria-hidden="true">🪙</span>
-        <span class="header__coins-chip-val" id="header-coins-val">${coinsDisplay}</span>
-        <span class="header__coins-chip-unit">ذهبية</span>
-      </a>
       <div class="header__user" style="position:relative">
         <button class="header__user-btn" id="dashboard-user-menu-btn" aria-haspopup="true" aria-expanded="false">
           <img src="${photo}" alt="${name}" class="header__avatar" width="32" height="32" onerror="this.src='./icons/icon-72x72.png'" />

@@ -88,6 +88,16 @@ export async function getUserLoyaltyProfile(uid) {
   }
 }
 
+function syncGlobalCoins(points) {
+  if (typeof points !== 'number') return;
+  try {
+    localStorage.setItem('manzala_user_coins_balance', String(points));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: points } }));
+    }
+  } catch (_) {}
+}
+
 export async function awardPoints(uid, ruleKey, customMeta = {}) {
   if (!uid) return null;
   const amount = Math.max(1, Math.min(1000, Number(customMeta.pointsOverride || POINTS_RULES[ruleKey]?.points || 10)));
@@ -112,7 +122,9 @@ export async function awardPoints(uid, ruleKey, customMeta = {}) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) throw new Error(data.error || 'تعذر إضافة النقاط');
     playNotificationSound();
-    return { success: true, newPoints: Number(data.newPoints || 0), awarded: amount };
+    const newPoints = Number(data.newPoints || 0);
+    syncGlobalCoins(newPoints);
+    return { success: true, newPoints, awarded: amount };
   } catch(err) {
     return { success: false, error: err };
   }
@@ -140,7 +152,9 @@ export async function claimDailyBonus(uid) {
       return { success: false, reason: 'error', message: data.error || 'تعذر صرف المكافأة' };
     }
     playNotificationSound();
-    return { success: true, newPoints: Number(data.newPoints || 0), awarded: Number(data.awarded || 10) };
+    const newPoints = Number(data.newPoints || 0);
+    syncGlobalCoins(newPoints);
+    return { success: true, newPoints, awarded: Number(data.awarded || 10) };
   } catch(err) {
     return { success: false, reason: 'error', message: err.message };
   }
@@ -163,9 +177,11 @@ export async function redeemPointsForVerification(uid, placeId, placeName = '') 
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) return { success: false, message: data.error || 'حدث خطأ أثناء استبدال النقاط' };
     playNotificationSound();
+    const newPoints = Number(data.newPoints || 0);
+    syncGlobalCoins(newPoints);
     return {
       success: true,
-      newPoints: Number(data.newPoints || 0),
+      newPoints,
       verifiedUntil: data.verifiedUntil,
       message: `تهانينا! تم توثيق مكانك (${placeName || placeId}) رسمياً لمدة عام كامل! 🌟`
     };

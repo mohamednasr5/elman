@@ -54,6 +54,8 @@ function _applyCoinsBalanceToUI(balance) {
   if (valEl) valEl.textContent = valStr;
   const moreValEl = document.getElementById('more-coins-balance-val');
   if (moreValEl) moreValEl.textContent = valStr;
+  const walletLiveBal = document.getElementById('wallet-live-balance');
+  if (walletLiveBal) walletLiveBal.textContent = valStr;
 }
 
 if (typeof window !== 'undefined' && !window.__headerCoinsListenerBound) {
@@ -405,6 +407,7 @@ function _bindMoreMenu(){
     sheet.setAttribute('aria-hidden', 'false');
     document.body.classList.add('mobile-more-open');
     document.getElementById('bottom-nav-more-btn')?.setAttribute('aria-expanded', 'true');
+    _updateHeaderCoinsBalance();
   };
 
   const close = () => {

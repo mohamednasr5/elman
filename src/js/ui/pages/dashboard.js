@@ -37,7 +37,8 @@ import { translatePlaceName, generateCoverImage, generatePlaceLogo, generateSeoD
 import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
-import { isAdmin } from '../../core/auth.js';
+import { isAdmin, getIdToken } from '../../core/auth.js';
+import { api } from '../../core/api.js';
 import { openCertificateOfAppreciationModal } from '../components/CertificateOfAppreciationModal.js';
 import { formatPrice, arabicMatch, normalizeArabic, stripAl, arabicScore, matchArabicCategoryTokens } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
@@ -453,6 +454,112 @@ async function renderPlacesSection($container, user) {
       }
     });
   });
+
+  // Bind 1-click place verification with 5,000 coins or free verification
+  $container.querySelectorAll('.btn-action-verify-place').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const placeId = btn.dataset.placeId;
+      const placeName = btn.dataset.placeName || 'المكان';
+      const storedBal = Number(localStorage.getItem('manzala_user_coins_balance') || 0);
+
+      if (storedBal >= 5000) {
+        const ok = await showConfirm({
+          title: '🛡️ توثيق المكان بالعلامة الزرقاء',
+          message: `لديك رصيد كافٍ (${storedBal.toLocaleString('ar-EG')} ذهبية).\nهل ترغب في استبدال 5,000 ذهبية لتوثيق نشاطك (${placeName}) رسمياً بالعلامة الزرقاء مدى الحياة؟`,
+          confirmText: 'نعم، استبدال وتوثيق فوراً ✓',
+          cancelText: 'إلغاء'
+        });
+        if (ok) {
+          try {
+            const token = await getIdToken();
+            const res = await api.post('/api/coins/promote', { targetType: 'verification', targetId: placeId }, token);
+            if (res.success) {
+              const newBal = Number(res.newBalance || 0);
+              localStorage.setItem('manzala_user_coins_balance', String(newBal));
+              window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: newBal } }));
+              toast.success(`تهانينا! تم توثيق (${placeName}) رسمياً بالعلامة الزرقاء! 🌟🎉`);
+              await renderPlacesSection($container, user);
+            }
+          } catch (err) {
+            toast.error(err.message || 'تعذر إتمام التوثيق');
+          }
+        }
+      } else {
+        showModal({
+          title: '🛡️ توثيق نشاطك التجاري',
+          content: `
+            <div style="text-align:center;padding:14px">
+              <div style="font-size:38px;margin-bottom:8px">👑</div>
+              <h4 style="font-size:16px;font-weight:800;color:var(--text-primary);margin-bottom:6px">توثيق (${escHtml(placeName)}) بالعلامة الزرقاء</h4>
+              <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:14px">
+                يلزم 5,000 ذهبية للتوثيق الفوري (رصيدك الحالي: ${storedBal.toLocaleString('ar-EG')} ذهبية).<br>
+                كما يمكنك الحصول على التوثيق مجاناً بنشر ملصق الدليل في محلك.
+              </p>
+              <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                <a href="/wallet.html" class="btn btn-primary" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800">
+                  🪙 شحن الذهبيات في المحفظة
+                </a>
+                <a href="/free-verification.html" class="btn btn-outline" style="font-weight:800">
+                  🎁 التوثيق المجاني بالملصق
+                </a>
+              </div>
+            </div>
+          `,
+          buttons: [{ label: 'إغلاق', type: 'ghost', closeOnClick: true }]
+        });
+      }
+    });
+  });
+
+  // Bind 1-click place promotion as featured ad (500 coins for 30 days)
+  $container.querySelectorAll('.btn-action-promote-place').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const placeId = btn.dataset.placeId;
+      const placeName = btn.dataset.placeName || 'المكان';
+      const storedBal = Number(localStorage.getItem('manzala_user_coins_balance') || 0);
+
+      const ok = await showConfirm({
+        title: '🌟 ترقية المكان لإعلان مميز',
+        message: `هل ترغب في ترقية نشاطك (${placeName}) لإعلان مميز في صدارة الدليل لمدة شهر كامل (30 يوماً) مقابل 500 ذهبية؟\n(رصيدك الحالي: ${storedBal.toLocaleString('ar-EG')} ذهبية)`,
+        confirmText: 'نعم، ترقية وتفعيل الإعلان 🚀',
+        cancelText: 'إلغاء'
+      });
+      if (ok) {
+        try {
+          const token = await getIdToken();
+          const res = await api.post('/api/coins/promote', { targetType: 'place', targetId: placeId }, token);
+          if (res.success) {
+            const newBal = Number(res.newBalance || 0);
+            localStorage.setItem('manzala_user_coins_balance', String(newBal));
+            window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: newBal } }));
+            toast.success(`تم ترقية (${placeName}) كإعلان مميز في صدارة الدليل لمدة 30 يوماً بنجاح! 👑✨`);
+            await renderPlacesSection($container, user);
+          }
+        } catch (err) {
+          if (err.code === 'INSUFFICIENT_COINS' || (err.message && err.message.includes('غير كاف'))) {
+            showModal({
+              title: '🪙 رصيد العملات غير كافٍ',
+              content: `
+                <div style="text-align:center;padding:12px">
+                  <div style="font-size:38px;margin-bottom:8px">🪙</div>
+                  <h4 style="font-size:15px;font-weight:800;color:#D97706;margin-bottom:6px">يلزم 500 ذهبية لتفعيل هذا الإعلان</h4>
+                  <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">رصيدك الحالي غير كافٍ. يمكنك شحن رصيدك فوراً عبر فودافون كاش.</p>
+                  <a href="/wallet.html" class="btn btn-primary" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800">
+                    🪙 شحن رصيد الذهبيات بالمحفظة
+                  </a>
+                </div>
+              `,
+              buttons: [{ label: 'إغلاق', type: 'ghost', closeOnClick: true }]
+            });
+          } else {
+            toast.error(err.message || 'تعذر ترويج الإعلان');
+          }
+        }
+      }
+    });
+  });
 }
 
 function renderPlacesListHTML(places) {
@@ -512,7 +619,12 @@ function renderPlacesListHTML(places) {
                     ${place.isVerified ? `
                       <a href="dashboard.html?section=products&id=${escAttr(placeId)}" class="btn btn-sm btn-primary">🛍️ المنتجات</a>
                     ` : `
-                      <a href="contact.html?type=verification" class="btn btn-sm" style="background:rgba(217,119,6,0.1);color:#b45309;border:1px solid rgba(217,119,6,0.3);font-weight:700" title="طلب توثيق هذا المكان بالعلامة الزرقاء">🛡️ وثق مكانك</a>
+                      <button type="button" class="btn btn-sm btn-action-verify-place" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name)}" style="background:rgba(217,119,6,0.12);color:#b45309;border:1px solid rgba(217,119,6,0.35);font-weight:800;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:4px" title="توثيق هذا المكان بالعلامة الزرقاء">🛡️ وثق مكانك (5,000 ذهبية)</button>
+                    `}
+                    ${(place.isSponsored || place.is_sponsored) ? `
+                      <span class="badge" style="background:#F5A623;color:#0B1E30;font-weight:900;padding:5px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:4px">👑 إعلان مميز نشط</span>
+                    ` : `
+                      <button type="button" class="btn btn-sm btn-action-promote-place" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name)}" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:4px" title="ترقية المكان لإعلان مميز في صدارة الدليل لمدة 30 يوماً مقابل 500 ذهبية">🌟 إعلان مميز (500 ذهبية)</button>
                     `}
                     <button type="button" class="btn btn-sm btn-dash-cert btn-appreciation-certificate-pulse" data-place-id="${escAttr(placeId)}" style="border:1px solid #F59E0B;color:#B45309;font-weight:800;border-radius:var(--radius-sm);cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك (A4)">
                       <span>🎖️</span> <span>شهادة تقدير (A4)</span>

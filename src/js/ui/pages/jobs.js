@@ -439,6 +439,12 @@ function attachJobCardEvents($container) {
         if (!token) throw new Error('يرجى تسجيل الدخول أولاً');
         const res = await api.post('/api/coins/promote', { targetType: 'job', targetId: id }, token);
         if (res.success) {
+          if (typeof res.newBalance === 'number') {
+            try {
+              localStorage.setItem('manzala_user_coins_balance', String(res.newBalance));
+              window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: res.newBalance } }));
+            } catch (_) {}
+          }
           showToast('تم تمييز الإعلان بنجاح في صدارة الموقع لمدة 3 أيام! ⭐', 'success');
           await loadJobs();
         }
@@ -695,6 +701,12 @@ function openAddJobModal() {
         try {
           const promoRes = await api.post('/api/coins/promote', { targetType: 'job', targetId: newJobId }, token);
           if (promoRes.success) {
+            if (typeof promoRes.newBalance === 'number') {
+              try {
+                localStorage.setItem('manzala_user_coins_balance', String(promoRes.newBalance));
+                window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: promoRes.newBalance } }));
+              } catch (_) {}
+            }
             showToast('تم نشر وتمييز إعلان الوظيفة بنجاح في صدارة الموقع 👑⭐', 'success');
           }
         } catch (promoErr) {

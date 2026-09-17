@@ -604,6 +604,9 @@ function renderServicesGuideHTML() {
         <p class="wallet-srv-card__desc">
           شارة توثيق رسمية تعزز الثقة والمصداقية وتمنح ملفك صدارة نتائج البحث وظهور مميز أمام كافة العملاء.
         </p>
+        <a href="/dashboard.html?section=places" class="btn btn-sm" style="margin-top:10px;display:block;text-align:center;text-decoration:none;background:rgba(56,189,248,0.15);color:#38BDF8;border:1px solid rgba(56,189,248,0.4);border-radius:8px;padding:7px;font-weight:800">
+          👑 توثيق أحد أنشطتي الآن
+        </a>
       </div>
 
       <div class="wallet-srv-card" style="border-color:#F5A623">
@@ -615,6 +618,9 @@ function renderServicesGuideHTML() {
         <p class="wallet-srv-card__desc">
           ظهور إعلاني بارز في الواجهة الرئيسية وتصنيفه بالأولوية الذهبية لجذب آلاف الزوار المحليين طوال الشهر.
         </p>
+        <a href="/dashboard.html?section=places" class="btn btn-sm" style="margin-top:10px;display:block;text-align:center;text-decoration:none;background:rgba(245,166,35,0.15);color:#F5A623;border:1px solid rgba(245,166,35,0.4);border-radius:8px;padding:7px;font-weight:800">
+          🌟 ترويج نشاطي كإعلان مميز
+        </a>
       </div>
 
       <div class="wallet-srv-card" style="border-color:#10B981">
@@ -626,6 +632,9 @@ function renderServicesGuideHTML() {
         <p class="wallet-srv-card__desc">
           عرض سيرتك الذاتية في بطاقات الأماكن الدوارة وبصدر لوحة الكوادر لتصل لأصحاب العمل بشكل فوري.
         </p>
+        <a href="/job-seekers.html" class="btn btn-sm" style="margin-top:10px;display:block;text-align:center;text-decoration:none;background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.4);border-radius:8px;padding:7px;font-weight:800">
+          💼 تمييز سيرة ذاتية في الكوادر
+        </a>
       </div>
 
       <div class="wallet-srv-card" style="border-color:#818CF8">
@@ -637,6 +646,9 @@ function renderServicesGuideHTML() {
         <p class="wallet-srv-card__desc">
           إبراز فرصة العمل في صدارة لوحة الوظائف وبطاقات الأماكن لإيجاد الموظف المطلوب بسرعة قياسية.
         </p>
+        <a href="/jobs.html" class="btn btn-sm" style="margin-top:10px;display:block;text-align:center;text-decoration:none;background:rgba(129,140,248,0.15);color:#818CF8;border:1px solid rgba(129,140,248,0.4);border-radius:8px;padding:7px;font-weight:800">
+          📢 تمييز إعلان وظيفة
+        </a>
       </div>
     </div>
   `;

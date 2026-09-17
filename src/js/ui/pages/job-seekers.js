@@ -398,6 +398,12 @@ function attachSeekerCardEvents($container) {
         if (!token) throw new Error('يرجى تسجيل الدخول أولاً');
         const res = await api.post('/api/coins/promote', { targetType: 'job_seeker', targetId: id }, token);
         if (res.success) {
+          if (typeof res.newBalance === 'number') {
+            try {
+              localStorage.setItem('manzala_user_coins_balance', String(res.newBalance));
+              window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: res.newBalance } }));
+            } catch (_) {}
+          }
           showToast('تم تمييز طلب العمل بنجاح في صدارة الموقع لمدة 3 أيام! ⭐', 'success');
           await loadSeekers();
         }
@@ -657,6 +663,12 @@ function openAddSeekerModal() {
         try {
           const promoRes = await api.post('/api/coins/promote', { targetType: 'job_seeker', targetId: newSeekerId }, token);
           if (promoRes.success) {
+            if (typeof promoRes.newBalance === 'number') {
+              try {
+                localStorage.setItem('manzala_user_coins_balance', String(promoRes.newBalance));
+                window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: promoRes.newBalance } }));
+              } catch (_) {}
+            }
             showToast('تم نشر وتمييز سيرتك الذاتية في صدارة الموقع بنجاح 👑⭐', 'success');
           }
         } catch (promoErr) {
@@ -853,6 +865,12 @@ function openEditSeekerModal(item) {
         try {
           const promoRes = await api.post('/api/coins/promote', { targetType: 'job_seeker', targetId: item.id }, token);
           if (promoRes.success) {
+            if (typeof promoRes.newBalance === 'number') {
+              try {
+                localStorage.setItem('manzala_user_coins_balance', String(promoRes.newBalance));
+                window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: promoRes.newBalance } }));
+              } catch (_) {}
+            }
             showToast('تم تحديث السيرة وتمييزها في صدارة الموقع بنجاح! ⭐', 'success');
           }
         } catch (err) {

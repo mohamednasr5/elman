@@ -209,21 +209,7 @@
 }
 
 .header__coins-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  background: linear-gradient(135deg, rgba(245, 166, 35, 0.14) 0%, rgba(217, 119, 6, 0.22) 100%);
-  border: 1.5px solid rgba(229, 169, 60, 0.45);
-  border-radius: var(--radius-full, 9999px);
-  color: #B45309;
-  text-decoration: none !important;
-  font-weight: 800;
-  font-size: 0.82rem;
-  box-shadow: 0 2px 8px rgba(245, 166, 35, 0.15);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  white-space: nowrap;
-  cursor: pointer;
+  display: none !important;
 }
 
 [data-theme="dark"] .header__coins-chip,
