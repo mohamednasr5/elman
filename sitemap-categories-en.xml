@@ -49,6 +49,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/atm"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/bakery</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/bakery"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/bakery"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/bakery"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/banner-and-advertising-printing</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -273,6 +281,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/electrical-appliances-sales-showroom"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/electrical-tools</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/electrical-tools"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/electrical-tools"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/electrical-tools"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/electronics</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -319,6 +335,14 @@
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/football-training-academy"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/football-training-academy"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/football-training-academy"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/category/frozen-food</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/frozen-food"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/frozen-food"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/frozen-food"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/category/furniture-showroom</loc>
