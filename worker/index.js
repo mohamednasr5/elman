@@ -363,28 +363,42 @@ async function notifyIndexNow(urls) {
   }
 }
 
-async function ensureRecentPlacesIndexed(env) {
+async function ensureDailyPlacesIndexed(env, forceAll = false) {
   try {
     const db = createTursoDB(env);
-    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-    const rows = (await db.prepare(
-      "SELECT slug, id FROM places WHERE status = 'published' AND updated_at > ? LIMIT 500"
-    ).bind(oneDayAgo).all().catch(() => ({ results: [] }))).results || [];
+    // Guarantee that all active places in the directory are submitted to IndexNow every single day.
+    // With ~414 places (828 URLs AR+EN), submitting the full catalog is well within IndexNow's 10,000 URLs/day quota.
+    const query = "SELECT slug, id, updated_at FROM places WHERE status = 'published' ORDER BY updated_at DESC LIMIT 1000";
+    const rows = (await db.prepare(query).all().catch(() => ({ results: [] }))).results || [];
+    
     if (rows.length > 0) {
       const urls = [];
       for (const r of rows) {
-        const s = encodeURIComponent(String(r.slug || r.id || '').trim());
-        if (s) {
+        const rawSlug = String(r.slug || r.id || '').trim();
+        if (rawSlug) {
+          const s = encodeURIComponent(rawSlug);
           urls.push(`https://dalilmanzala.com/place/${s}`);
           urls.push(`https://dalilmanzala.com/en/place/${s}`);
         }
       }
-      await notifyIndexNow(urls);
+
+      // Submit in chunks of 500 URLs
+      for (let i = 0; i < urls.length; i += 500) {
+        const batch = urls.slice(i, i + 500);
+        await notifyIndexNow(batch);
+      }
+      console.log(`[Daily Automated Indexing]: Successfully submitted ${urls.length} place URLs to IndexNow.`);
+      return { success: true, count: urls.length, timestamp: new Date().toISOString() };
     }
+    return { success: true, count: 0, timestamp: new Date().toISOString() };
   } catch (e) {
-    console.warn('[ensureRecentPlacesIndexed warning]:', e?.message || e);
+    console.warn('[ensureDailyPlacesIndexed error]:', e?.message || e);
+    return { success: false, error: e?.message || String(e) };
   }
 }
+
+// Backward compatible alias
+const ensureRecentPlacesIndexed = ensureDailyPlacesIndexed;
 
 async function handleDynamicSitemap(request, url, env, ctx) {
   const p = url.pathname;
@@ -835,52 +849,119 @@ if (url.pathname === '/llms.txt' && request.method === 'GET') {
   });
 }
 
-// GET /llms-full.txt — Complete AI Knowledge Base Ingestion
-if (url.pathname === '/llms-full.txt' && request.method === 'GET') {
-  return fetch('https://dalilmanzala.com/llms-full.txt');
+// GET /llms-full.txt, /llms-en.txt, /llms-full-en.txt — Extended AI Discovery
+if ((url.pathname === '/llms-full.txt' || url.pathname === '/llms-en.txt' || url.pathname === '/llms-full-en.txt') && request.method === 'GET') {
+  try {
+    const originRes = await fetch(`https://dalilmanzala.com${url.pathname}`);
+    if (originRes.ok) {
+      const text = await originRes.text();
+      return new Response(text, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/markdown; charset=utf-8',
+          'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+          'X-Content-Type-Options': 'nosniff',
+          ...corsHeaders
+        }
+      });
+    }
+  } catch (_) {}
 }
 
 // GET /robots.txt
 if (url.pathname === '/robots.txt' && request.method === 'GET') {
-  const robotsContent = `# robots.txt for https://dalilmanzala.com
+  const robotsContent = `# Robots policy for https://dalilmanzala.com
+# Public directory pages and business profiles are crawlable.
+# Account, administration, internal search results and API endpoints are not index targets.
+
 User-agent: *
 Allow: /
 Disallow: /admin.html
+Disallow: /admin/
 Disallow: /dashboard.html
+Disallow: /dashboard/
 Disallow: /login.html
+Disallow: /login/
+Disallow: /favorites.html
+Disallow: /favorites/
+Disallow: /api/
+Disallow: /*?q=
+Disallow: /*?search=
 
-# Google Search
-User-agent: Googlebot
-Allow: /
-
-# AI Search Crawlers (SearchGPT, ChatGPT, Perplexity, Gemini, Claude)
-User-agent: ChatGPT-User
+# OpenAI Search & Model crawlers (ChatGPT / SearchGPT)
+User-agent: OAI-SearchBot
 Allow: /
 
 User-agent: GPTBot
 Allow: /
 
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic Claude web crawlers
 User-agent: ClaudeBot
 Allow: /
 
+User-agent: Claude-User
+Allow: /
+
+# Perplexity AI Search crawler
 User-agent: PerplexityBot
+Allow: /
+
+# Google Search & Extended AI Overviews
+User-agent: Googlebot
 Allow: /
 
 User-agent: Google-Extended
 Allow: /
 
-User-agent: Applebot
-Allow: /
-
+# Microsoft Bing & Copilot
 User-agent: Bingbot
 Allow: /
 
-# AI Discovery
-User-agent: *
-Allow: /llms.txt
+# Applebot & Apple Intelligence
+User-agent: Applebot
+Allow: /
+User-agent: Applebot-Extended
+Allow: /
 
+# Meta AI
+User-agent: Meta-ExternalAgent
+Allow: /
+
+# Cohere AI
+User-agent: cohere-ai
+Allow: /
+
+# Common Crawl AI
+User-agent: CCBot
+Allow: /
+
+# Amazon / Alexa AI
+User-agent: Amazonbot
+Allow: /
+
+# You.com AI Search
+User-agent: YouBot
+Allow: /
+
+# AI-readable discovery files & Feeds
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /llms-en.txt
+Allow: /llms-full-en.txt
+Allow: /rss.xml
+Allow: /feed
+
+# XML Sitemaps Index & Sub-Sitemaps for Fast Search Discovery
 Sitemap: https://dalilmanzala.com/sitemap.xml
-# LLMs: https://dalilmanzala.com/llms.txt
+Sitemap: https://dalilmanzala.com/sitemap-places-ar.xml
+Sitemap: https://dalilmanzala.com/sitemap-places-en.xml
+Sitemap: https://dalilmanzala.com/sitemap-categories-ar.xml
+Sitemap: https://dalilmanzala.com/sitemap-categories-en.xml
+Sitemap: https://dalilmanzala.com/sitemap-static-ar.xml
+Sitemap: https://dalilmanzala.com/sitemap-static-en.xml
 `;
 
   return new Response(robotsContent, {
@@ -888,6 +969,7 @@ Sitemap: https://dalilmanzala.com/sitemap.xml
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+      'Access-Control-Allow-Origin': '*',
       ...corsHeaders
     }
   });
@@ -1030,6 +1112,31 @@ try {
         database: 'turso',
         error: err?.message || String(err)
       }, 503, {
+        ...corsHeaders,
+        'Cache-Control': 'no-store'
+      });
+    }
+  }
+
+  // ── Automated Daily Places Indexing Endpoint ──────────────────
+  // GET or POST /api/cron/daily-indexing or /api/seo/submit-places
+  // Submits all published places in the directory directly to IndexNow and triggers search engine discovery.
+  if ((url.pathname === '/api/cron/daily-indexing' || url.pathname === '/api/seo/submit-places') && (request.method === 'GET' || request.method === 'POST')) {
+    try {
+      const result = await ensureDailyPlacesIndexed(env, true);
+      return jsonResponse({
+        success: result.success !== false,
+        message: 'تم إرسال كافة صفحات الأماكن بنجاح لمحركات البحث والأرشفة اليومية',
+        ...result
+      }, result.success !== false ? 200 : 500, {
+        ...corsHeaders,
+        'Cache-Control': 'no-store'
+      });
+    } catch (idxErr) {
+      return jsonResponse({
+        success: false,
+        error: idxErr?.message || String(idxErr)
+      }, 500, {
         ...corsHeaders,
         'Cache-Control': 'no-store'
       });
@@ -8963,6 +9070,20 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
       "longitude": Number(place.longitude)
     } : undefined,
     "hasMap": place.maps_link || undefined,
+    "areaServed": [
+      {
+        "@type": "AdministrativeArea",
+        "name": isEn ? "El Manzala" : "مركز ومدينة المنزلة"
+      },
+      {
+        "@type": "AdministrativeArea",
+        "name": isEn ? "El Matariya" : "مركز ومدينة المطرية"
+      },
+      {
+        "@type": "AdministrativeArea",
+        "name": isEn ? "Dakahlia Governorate" : "محافظة الدقهلية"
+      }
+    ],
     "sameAs": sameAs.length > 0 ? sameAs : undefined,
     "knowsAbout": services.length > 0 ? services : undefined,
     "openingHoursSpecification": openingHoursSpecs.length > 0 ? openingHoursSpecs : undefined,
@@ -8973,6 +9094,87 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
       "bestRating": 5,
       "worstRating": 1
     } : undefined
+  };
+
+  // Build AI-Search Optimized Q&A FAQPage Schema (Perplexity, ChatGPT, Google AI Overviews)
+  const faqMainEntity = [];
+
+  // 1. Phone number FAQ
+  if (place.phone) {
+    faqMainEntity.push({
+      "@type": "Question",
+      "name": isEn ? `What is the phone number of ${rawPlaceName}?` : `ما هو رقم هاتف وتواصل ${rawPlaceName}؟`,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": isEn
+          ? `The contact phone number for ${rawPlaceName} is ${place.phone}. WhatsApp is also available for direct inquiry.`
+          : `رقم هاتف التواصل مع ${rawPlaceName} هو ${place.phone}، ويمكنك التواصل معه مباشرة أو عبر واتساب من خلال دليل المنزلة والمطرية الرقمي.`
+      }
+    });
+  }
+
+  // 2. Address / Location FAQ
+  const fullAddressStr = (isEn && place.address_en) ? place.address_en : (place.address || (place.area ? `${place.area} - الدقهلية` : 'المنزلة والمطرية - الدقهلية'));
+  faqMainEntity.push({
+    "@type": "Question",
+    "name": isEn ? `Where is ${rawPlaceName} located?` : `أين يقع ${rawPlaceName}؟`,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": isEn
+        ? `${rawPlaceName} is located at: ${fullAddressStr}, Dakahlia Governorate, Egypt.`
+        : `يقع ${rawPlaceName} في: ${fullAddressStr}، بمحافظة الدقهلية، جمهورية مصر العربية.`
+    }
+  });
+
+  // 3. Opening hours FAQ
+  if (openingHoursSpecs.length > 0) {
+    const hoursSummary = openingHoursSpecs.map(h => `${h.dayOfWeek}: ${h.opens} - ${h.closes}`).join(' | ');
+    faqMainEntity.push({
+      "@type": "Question",
+      "name": isEn ? `What are the working hours of ${rawPlaceName}?` : `ما هي مواعيد وساعات عمل ${rawPlaceName}؟`,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": isEn
+          ? `The working hours for ${rawPlaceName} are: ${hoursSummary}.`
+          : `مواعيد وساعات عمل ${rawPlaceName} هي كالتالي: ${hoursSummary}.`
+      }
+    });
+  }
+
+  // 4. Category & Services FAQ
+  faqMainEntity.push({
+    "@type": "Question",
+    "name": isEn ? `What services does ${rawPlaceName} provide?` : `ما هي خدمات وتخصص ${rawPlaceName}؟`,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": isEn
+        ? `${rawPlaceName} specializes in ${placeCat}${services.length ? `, offering: ${services.join(', ')}` : ''}. Verified on Dalil Manzala Directory.`
+        : `يتخصص ${rawPlaceName} في مجال ${placeCat}${services.length ? `، ويقدم الخدمات التالية: ${services.join('، ')}` : ''}، ومسجل وموثق في دليل المنزلة والمطرية الرقمي.`
+    }
+  });
+
+  const faqEntity = {
+    "@type": "FAQPage",
+    "@id": `${shareUrl}#faq`,
+    "mainEntity": faqMainEntity
+  };
+
+  const webPageEntity = {
+    "@type": "WebPage",
+    "@id": shareUrl,
+    "url": shareUrl,
+    "name": rawPlaceName,
+    "inLanguage": isEn ? "en" : "ar",
+    "isPartOf": {
+      "@type": "WebSite",
+      "@id": "https://dalilmanzala.com/#website",
+      "name": isEn ? "Dalil El Manzala & El Matariya Directory" : "دليل المنزلة والمطرية الرقمي",
+      "url": "https://dalilmanzala.com/"
+    },
+    "speakable": {
+      "@type": "SpeakableSpecification",
+      "cssSelector": [".place-title", ".place-desc", ".place-address", ".place-phone"]
+    }
   };
 
   const cleanObj = (obj) => {
@@ -8986,8 +9188,10 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
   return {
     "@context": "https://schema.org",
     "@graph": [
+      webPageEntity,
       breadcrumbList,
-      cleanObj(businessEntity)
+      cleanObj(businessEntity),
+      faqEntity
     ]
   };
 }

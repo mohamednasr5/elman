@@ -121,6 +121,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/capacity-development-center"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/car-exhibitions</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/car-exhibitions"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/car-exhibitions"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/car-exhibitions"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/carpet</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -159,6 +167,14 @@
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/children&apos;s-playground-and-games"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/children&apos;s-playground-and-games"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/children&apos;s-playground-and-games"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/category/cinema</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/cinema"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/cinema"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/cinema"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/category/cleaning-products-and-tools</loc>
@@ -305,6 +321,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/event-organization"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/factories</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/factories"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/factories"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/factories"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/fesikh-%26-herring</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -449,6 +473,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/horse-riding-lessons"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/hospitals</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/hospitals"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/hospitals"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/hospitals"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/hypermarket</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -543,6 +575,14 @@
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/medical-supplies-and-cosmetics"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/medical-supplies-and-cosmetics"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/medical-supplies-and-cosmetics"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/category/natural-and-artificial-roses</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/natural-and-artificial-roses"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/natural-and-artificial-roses"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/natural-and-artificial-roses"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/category/paint</loc>
@@ -727,6 +767,14 @@
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/telecommunications-company-branches"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/telecommunications-company-branches"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/telecommunications-company-branches"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/category/the-wedding-planner-company</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/the-wedding-planner-company"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/the-wedding-planner-company"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/the-wedding-planner-company"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/category/tobacco-trade</loc>

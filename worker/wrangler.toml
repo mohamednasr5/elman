@@ -29,6 +29,8 @@ routes = [
   { pattern = "www.dalilmanzala.com/feed*", zone_name = "dalilmanzala.com" },
   { pattern = "dalilmanzala.com/robots.txt", zone_name = "dalilmanzala.com" },
   { pattern = "www.dalilmanzala.com/robots.txt", zone_name = "dalilmanzala.com" },
+  { pattern = "dalilmanzala.com/llms*", zone_name = "dalilmanzala.com" },
+  { pattern = "www.dalilmanzala.com/llms*", zone_name = "dalilmanzala.com" },
   { pattern = "dalilmanzala.com/indexnow-key.txt", zone_name = "dalilmanzala.com" },
   { pattern = "www.dalilmanzala.com/indexnow-key.txt", zone_name = "dalilmanzala.com" },
   { pattern = "dalilmanzala.com/5acdd4aec51f5bead767c3e2b3561235.txt", zone_name = "dalilmanzala.com" },
