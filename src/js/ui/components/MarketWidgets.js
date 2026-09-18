@@ -392,8 +392,8 @@ function tryMount() {
     return true;
   }
 
-  // 2. Check if page has dedicated slot `#market-widgets-slot`
-  const customSlot = document.getElementById('market-widgets-slot');
+  // 2. Check if page has dedicated slot `#home-market-widgets-slot` or `#market-widgets-slot`
+  const customSlot = document.getElementById('home-market-widgets-slot') || document.getElementById('market-widgets-slot');
   if (customSlot) {
     if (!customSlot.querySelector('.market-widgets-bar')) {
       customSlot.innerHTML = renderMarketWidgetsHTML(currentMarketData);
