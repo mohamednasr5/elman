@@ -209,6 +209,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/confectioner-and-cake-shop"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/category/courses-center</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/courses-center"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/courses-center"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/courses-center"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/category/curtain-accessories-and-recruitment</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
