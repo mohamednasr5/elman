@@ -374,6 +374,8 @@ function _bindMoreMenu(){
         </div>
         <div class="mobile-more-sheet__scroll">
           ${userHeaderHtml}
+          <div class="mobile-more-sheet__section-title">📊 ${isEn ? 'Live Indicators (Gold, Currency, Weather)' : 'مؤشرات حية (الذهب، العملات، الطقس)'}</div>
+          <div id="more-market-widgets-container" style="padding: 4px 4px 12px; display:flex; justify-content:center;"></div>
           <div class="mobile-more-sheet__section-title">🧭 ${escapeHtml(directoryTitle)}</div>
           <div class="mobile-more-sheet__grid">${renderCards(publicLinks)}</div>
         </div>
@@ -409,6 +411,16 @@ function _bindMoreMenu(){
     document.body.classList.add('mobile-more-open');
     document.getElementById('bottom-nav-more-btn')?.setAttribute('aria-expanded', 'true');
     _updateHeaderCoinsBalance();
+    try {
+      import('../ui/components/MarketWidgets.js').then(m => {
+        const c = document.getElementById('more-market-widgets-container');
+        if (c && !c.querySelector('.market-widgets-bar')) {
+          c.innerHTML = m.renderMarketWidgetsHTML();
+          const bar = c.querySelector('.market-widgets-bar');
+          if (bar) m.bindMarketWidgetsEvents(bar);
+        }
+      }).catch(() => {});
+    } catch (_) {}
   };
 
   const close = () => {
@@ -550,6 +562,11 @@ export async function initPage(activeFile=''){
         m.initActivityNotifications();
       }).catch(()=>{});
     }
+  }catch(_){}
+  try{
+    import('../ui/components/MarketWidgets.js').then(m => {
+      m.mountMarketWidgets();
+    }).catch(()=>{});
   }catch(_){}
 }
 export { waitForAuth, isAdmin };

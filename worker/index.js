@@ -8,6 +8,7 @@
 
 import { handleTelegramWebhook, sendAdminPushNotification, telegramApi } from './telegram.js';
 import { createTursoDB, checkTursoHealth } from './turso.js';
+import { handleMarketWidgetsRequest } from './market-widgets.js';
 const SUPERADMIN_EMAILS = new Set([
   'elfannanm@gmail.com',
   'mohamednasrofficial@gmail.com'
@@ -913,11 +914,16 @@ if (url.pathname === '/rss.xml' || url.pathname === '/rss' || url.pathname === '
   if (rssResponse) return rssResponse;
 }
 
+// ── Live Market Indicators (Gold, Currency, Weather from Masrawy) ──
+if ((url.pathname === '/api/market-widgets' || url.pathname === '/api/live-indicators') && request.method === 'GET') {
+  return await handleMarketWidgetsRequest(request, corsHeaders);
+}
+
 try {
 
   // Server-side IP enforcement for API traffic. Admins can still reach
   // the management endpoints so a ban can be reviewed/removed.
-  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && url.pathname !== '/api/image' && request.method !== 'OPTIONS') {
+  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && url.pathname !== '/api/image' && url.pathname !== '/api/market-widgets' && url.pathname !== '/api/live-indicators' && request.method !== 'OPTIONS') {
     try {
       const clientIp = String(request.headers.get('CF-Connecting-IP') || '').trim();
       if (clientIp && clientIp !== '156.197.215.243') {

@@ -34,6 +34,7 @@ import { formatSocialUrl } from '../../utils/social.js';
 import { isValidPhoneNumber } from '../../utils/phone.js';
 import { renderTrustCard } from '../components/TrustCard.js';
 import { openAppointmentModal } from '../components/AppointmentModal.js';
+import { renderMarketWidgetsHTML, bindMarketWidgetsEvents } from '../components/MarketWidgets.js';
 
 export function renderAvailabilityBadge(status) {
   if (!status) return '';
@@ -607,6 +608,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             <span class="breadcrumb-sep">/</span>
             <span class="breadcrumb-current">${escHtml(placeDisplayName)}</span>
           </nav>
+          ${renderMarketWidgetsHTML()}
         </div>
       </div>
 
@@ -1224,6 +1226,10 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         window.location.href = `category.html?slug=${catInfo.slug || 'all'}`;
       }
     });
+
+    // Masrawy Live Market Indicators (Gold, Currency, Weather)
+    const placeMwBar = document.getElementById('market-widgets-bar');
+    if (placeMwBar) bindMarketWidgetsEvents(placeMwBar);
 
     // Verification Request Button: Redirect directly to contact page to see verification prices
     let waUrl = 'https://wa.me/wasendernew';

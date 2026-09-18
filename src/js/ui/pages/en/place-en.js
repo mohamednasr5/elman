@@ -16,6 +16,7 @@ import { getPlaceLiveStatus } from '../../../utils/live-hours.js';
 import { resolveDoctorSpecialty } from '../../../utils/specialty.js';
 import { resolvePlaceProfession } from '../../../utils/professions-data.js';
 import { translateArea, translateCategory } from '../../../utils/category-i18n.js';
+import { renderMarketWidgetsHTML, bindMarketWidgetsEvents } from '../../components/MarketWidgets.js';
 
 export async function renderEnglishPlacePage($container, { slug, user, initialPlace = null } = {}) {
   const cleanSlug = String(slug || '').toLowerCase().trim();
@@ -100,6 +101,7 @@ export async function renderEnglishPlacePage($container, { slug, user, initialPl
           <span class="breadcrumb-sep">/</span>
           <span class="breadcrumb-current">${escHtml(name)}</span>
         </nav>
+        ${renderMarketWidgetsHTML()}
       </div>
     </div>
 
@@ -226,6 +228,9 @@ export async function renderEnglishPlacePage($container, { slug, user, initialPl
     if (window.history.length > 1) window.history.back();
     else window.location.href = '/en/places/';
   });
+
+  const enMwBar = document.getElementById('market-widgets-bar');
+  if (enMwBar) bindMarketWidgetsEvents(enMwBar);
 
   document.getElementById('btn-fav-place')?.addEventListener('click', () => {
     toggleFavorite(placeId);
