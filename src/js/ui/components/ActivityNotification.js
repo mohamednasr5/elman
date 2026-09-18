@@ -3,7 +3,7 @@
  * دليل المنزلة والمطرية الرقمي
  *
  * Controlled Frequency & Smart Suppression Rules:
- * 1. Shows ONLY ONCE per page visit / navigation (طالما ظهرتها في الصفحة مرة خلاص).
+ * 1. Shows ONLY ONCE per day per visitor (مرة واحدة فقط في اليوم للزائر على الكمبيوتر والموبايل).
  * 2. Absolutely NEVER shown on the wallet / buy coins page (/wallet.html or #packages).
  * 3. Absolutely NEVER shown while the Smart Voice Assistant modal is open.
  * 4. Dismisses immediately if the user opens the Voice Assistant or navigates to the wallet page.
@@ -15,7 +15,9 @@ import { WORKER_URL } from '../../core/firebase.js';
 const CONFIG = {
   INITIAL_DELAY: 4500,    // 4.5s after entering the page before the single notification appears
   DISPLAY_DURATION: 5000, // 5s visible on screen before smooth auto-dismissal
-  STORAGE_KEY: 'dalil_activity_notification_history'
+  STORAGE_KEY: 'dalil_activity_notification_history',
+  DAILY_SHOWN_KEY: 'dalil_activity_notif_daily_shown',
+  DAILY_TIMESTAMP_KEY: 'dalil_activity_notif_last_ts'
 };
 
 let _timerId = null;
@@ -93,6 +95,35 @@ function getTodayString() {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function hasShownToday() {
+  if (typeof window === 'undefined') return true;
+  try {
+    const lastDate = localStorage.getItem(CONFIG.DAILY_SHOWN_KEY);
+    const lastTs = parseInt(localStorage.getItem(CONFIG.DAILY_TIMESTAMP_KEY) || '0', 10);
+    const today = getTodayString();
+
+    if (lastDate === today) {
+      return true;
+    }
+    // Also protect against midnight overlap: require at least 18 hours before showing again
+    if (lastTs && (Date.now() - lastTs) < 18 * 60 * 60 * 1000) {
+      return true;
+    }
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
+export function markShownToday() {
+  if (typeof window === 'undefined') return;
+  try {
+    const today = getTodayString();
+    localStorage.setItem(CONFIG.DAILY_SHOWN_KEY, today);
+    localStorage.setItem(CONFIG.DAILY_TIMESTAMP_KEY, String(Date.now()));
+  } catch (_) {}
 }
 
 function getDailyHistory() {
@@ -316,15 +347,17 @@ async function showNextActivityNotification() {
     return;
   }
 
-  // 2. Controlled frequency: Only ONE appearance per page navigation / load
-  if (_hasShownOnCurrentPage) {
+  // 2. Controlled frequency: Only ONE appearance per day per visitor (Desktop & Mobile)
+  if (hasShownToday() || _hasShownOnCurrentPage) {
     return;
   }
 
   // 3. Strictly suppressed if Smart Voice Assistant or modal is open
   if (isVoiceAssistantOrModalOpen()) {
-    // Retry in 4s in case user closes assistant, but ONLY if we haven't shown on this page yet
-    scheduleNext(4000);
+    // Retry in 4s in case user closes assistant, but ONLY if we haven't shown today
+    if (!hasShownToday()) {
+      scheduleNext(4000);
+    }
     return;
   }
 
@@ -340,7 +373,7 @@ async function showNextActivityNotification() {
   }
 
   // Double check again before rendering (user might have clicked assistant or navigated while fetching)
-  if (isWalletOrCoinsPage() || isVoiceAssistantOrModalOpen() || _hasShownOnCurrentPage) {
+  if (isWalletOrCoinsPage() || isVoiceAssistantOrModalOpen() || _hasShownOnCurrentPage || hasShownToday()) {
     return;
   }
 
@@ -350,7 +383,8 @@ async function showNextActivityNotification() {
   }
 
   markPlaceShown(candidate.place.id);
-  _hasShownOnCurrentPage = true; // MARKED AS SHOWN FOR THIS PAGE!
+  markShownToday(); // MARKED AS SHOWN TODAY (ONCE PER DAY GUARANTEE)!
+  _hasShownOnCurrentPage = true;
 
   // Append to container
   let container = document.getElementById('activity-notif-host');
@@ -390,6 +424,7 @@ function setupObserverAndListeners() {
 
   // Listen to popstate / history navigation
   window.addEventListener('popstate', () => {
+    if (hasShownToday()) return;
     const newKey = window.location.pathname + window.location.search;
     if (newKey !== _currentPageKey) {
       _currentPageKey = newKey;
@@ -428,6 +463,11 @@ function escapeHtml(str) {
 export function initActivityNotifications() {
   if (isWalletOrCoinsPage()) {
     dismissActivityNotificationImmediately();
+    return;
+  }
+
+  // Once-per-day rule (Desktop & Mobile): If already shown to visitor today, do nothing
+  if (hasShownToday()) {
     return;
   }
 
