@@ -613,7 +613,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       <!-- Place Hero Cover -->
       <section class="place-hero">
         ${placeCover
-          ? `<img src="${escAttr(placeCover)}" alt="${escAttr(place.name)}" class="place-hero__cover" fetchpriority="high" decoding="async" />`
+          ? `<img src="${escAttr(placeCover)}" alt="${escAttr(place.name)}" class="place-hero__cover" fetchpriority="high" decoding="async" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src='/assets/images/default-cover.jpg';}" />`
           : `<div class="place-hero__cover-placeholder">${catInfo.icon || '🏪'}</div>`
         }
         <div class="place-hero__overlay"></div>
@@ -629,7 +629,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             <div class="place-card-row-identity">
               <div class="place-card-logo">
                 ${placeLogo
-                  ? `<img src="${escAttr(placeLogo)}" alt="${escAttr(place.name)} logo" decoding="async" />`
+                  ? `<img src="${escAttr(placeLogo)}" alt="${escAttr(place.name)}" decoding="async" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src='/assets/images/default-logo.jpg';}else{this.onerror=null;this.src='/icons/icon-192x192.png';}" />`
                   : `<div class="place-card-logo__placeholder">${craftCatSvg || catInfo.icon || '🏪'}</div>`
                 }
               </div>

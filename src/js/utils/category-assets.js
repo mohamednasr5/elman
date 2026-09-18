@@ -333,8 +333,8 @@ export const CATEGORY_ASSET_DEFINITIONS = [
   }
 ];
 
-export const DEFAULT_PLACE_COVER = 'assets/images/default-cover.png';
-export const DEFAULT_PLACE_LOGO = 'assets/images/default-logo.png';
+export const DEFAULT_PLACE_COVER = '/assets/images/default-cover.jpg';
+export const DEFAULT_PLACE_LOGO = '/assets/images/default-logo.jpg';
 
 const DEFAULT_BUSINESS_ASSET = {
   cover: DEFAULT_PLACE_COVER,
