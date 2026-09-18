@@ -732,7 +732,6 @@ if (typeof document !== 'undefined' && !window.__dashboardPlaceActionsBound) {
     }
   });
 }
-}
 
 function renderPlacesListHTML(places) {
   if (!places || places.length === 0) {
