@@ -27,14 +27,14 @@ jobs:
         run: node scripts/submit-indexnow.mjs
         continue-on-error: true
 
-      - name: Commit and push updated sitemaps if changed
+      - name: Commit and push updated sitemaps & RSS feed if changed
         run: |
-          if git diff --quiet -- sitemap*.xml .indexnow-urls.json; then
-            echo "No new sitemap changes to commit."
+          if git diff --quiet -- sitemap*.xml .indexnow-urls.json rss.xml; then
+            echo "No new sitemap or RSS changes to commit."
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add sitemap*.xml .indexnow-urls.json
-          git commit -m 'chore(seo): automated daily sitemaps and indexnow sync'
+          git add sitemap*.xml .indexnow-urls.json rss.xml
+          git commit -m 'chore(seo): automated daily sitemaps, RSS feed and indexnow sync'
           git push
