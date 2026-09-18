@@ -599,6 +599,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             </svg>
             <span>${isEn ? 'Back' : 'رجوع'}</span>
           </button>
+          ${renderMarketWidgetsHTML()}
           <nav class="page-breadcrumbs" aria-label="مسار التنقل">
             <a href="${localizeUrl('index.html', isEn ? 'en' : 'ar')}">${isEn ? 'Home' : 'الرئيسية'}</a>
             <span class="breadcrumb-sep">/</span>
@@ -608,7 +609,6 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             <span class="breadcrumb-sep">/</span>
             <span class="breadcrumb-current">${escHtml(placeDisplayName)}</span>
           </nav>
-          ${renderMarketWidgetsHTML()}
         </div>
       </div>
 

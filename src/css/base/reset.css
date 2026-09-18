@@ -364,22 +364,55 @@ h1, h2, h3, h4, h5, h6 {
   border-color: transparent;
 }
 
-/* Arabic RTL page-back-bar visual order.
-   Markup is button first, breadcrumbs second. In RTL the flex axis
-   otherwise puts the button on the right. Keep the visual container LTR
-   while preserving RTL text inside each control. */
-[dir="rtl"] .page-back-bar {
-  direction: ltr !important;
-  flex-direction: row !important;
-  justify-content: space-between !important;
+/* Arabic RTL page-back-bar visual order */
+@media (min-width: 768px) {
+  [dir="rtl"] .page-back-bar {
+    direction: ltr !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+  }
+
+  [dir="rtl"] .page-back-bar .btn-page-back {
+    order: 1 !important;
+    direction: rtl !important;
+  }
+
+  [dir="rtl"] .page-back-bar .page-breadcrumbs {
+    order: 2 !important;
+    direction: rtl !important;
+  }
 }
 
-[dir="rtl"] .page-back-bar .btn-page-back {
-  order: 1 !important;
-  direction: rtl !important;
-}
+@media (max-width: 767px) {
+  [dir="rtl"] .page-back-bar {
+    direction: rtl !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px 10px !important;
+  }
 
-[dir="rtl"] .page-back-bar .page-breadcrumbs {
-  order: 2 !important;
-  direction: rtl !important;
+  [dir="rtl"] .page-back-bar .btn-page-back {
+    order: 1 !important;
+    direction: rtl !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  [dir="rtl"] .page-back-bar .market-widgets-bar {
+    order: 2 !important;
+    direction: rtl !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  [dir="rtl"] .page-back-bar .page-breadcrumbs {
+    order: 10 !important;
+    width: 100% !important;
+    flex: 0 0 100% !important;
+    direction: rtl !important;
+    margin-top: 4px !important;
+  }
 }

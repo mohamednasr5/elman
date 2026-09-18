@@ -45,9 +45,9 @@
     flex-direction: row !important;
     flex-wrap: wrap !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
     direction: rtl !important;
-    gap: 8px 0 !important;
+    gap: 8px 10px !important;
     width: 100% !important;
   }
 
@@ -60,7 +60,6 @@
   [dir="rtl"] .page-back-bar .market-widgets-bar {
     order: 2 !important;
     margin: 0 !important;
-    margin-right: auto !important; /* Pushes into empty space to the left of "رجوع" */
     display: inline-flex !important;
     align-items: center !important;
     gap: 5px !important;
@@ -87,9 +86,9 @@
     flex-direction: row !important;
     flex-wrap: wrap !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
     direction: ltr !important;
-    gap: 8px 0 !important;
+    gap: 8px 10px !important;
     width: 100% !important;
   }
 
@@ -102,7 +101,6 @@
   [dir="ltr"] .page-back-bar .market-widgets-bar {
     order: 2 !important;
     margin: 0 !important;
-    margin-left: auto !important;
     display: inline-flex !important;
     align-items: center !important;
     gap: 5px !important;

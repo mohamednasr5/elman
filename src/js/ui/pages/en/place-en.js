@@ -94,6 +94,7 @@ export async function renderEnglishPlacePage($container, { slug, user, initialPl
           </svg>
           <span>Back</span>
         </button>
+        ${renderMarketWidgetsHTML()}
         <nav class="page-breadcrumbs" aria-label="Breadcrumbs">
           <a href="/en/">Home</a>
           <span class="breadcrumb-sep">/</span>
@@ -101,7 +102,6 @@ export async function renderEnglishPlacePage($container, { slug, user, initialPl
           <span class="breadcrumb-sep">/</span>
           <span class="breadcrumb-current">${escHtml(name)}</span>
         </nav>
-        ${renderMarketWidgetsHTML()}
       </div>
     </div>
 
