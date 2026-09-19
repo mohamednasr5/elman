@@ -139,11 +139,11 @@ const FALLBACK_DATA = {
     rates: { usd: '52.14', eur: '56.83', sar: '13.90' }
   },
   weather: {
-    temp: '34',
-    high: '34',
+    temp: '27',
+    high: '27',
     low: '25',
-    city: 'القاهرة - مصر',
-    humidity: '38%',
+    city: 'المنزلة والمطرية',
+    humidity: '50%',
     wind: 'شمال غرب',
     condition: 'sunny',
     conditionLabel: 'مشمس صافٍ'
@@ -214,7 +214,7 @@ function getWeatherCardHTML(weather) {
     <div class="mw-card-content">
       <div class="mw-card-head-row">
         <span class="mw-icon mw-icon-weather">${getAnimatedWeatherSVG(weather, false)}</span>
-        <div class="mw-weather-location">${weather.city || 'القاهرة - مصر'}</div>
+        <div class="mw-weather-location">${weather.city || 'المنزلة والمطرية'}</div>
       </div>
       <div class="mw-weather-dtls">
         <div class="mw-weather-main-temp">
