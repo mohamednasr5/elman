@@ -6899,6 +6899,25 @@ try {
             return jsonResponse({ success: false, error: 'رابط صورة الكارت أو محتواها مطلوب' }, 400, corsHeaders);
           }
 
+          // First pass: OCR.Space extracts printed text. Five Worker secrets are tried
+          // sequentially; quota/auth/rate-limit/provider/network failures rotate immediately.
+          let ocrText = '';
+          let ocrKeyId = null;
+          try {
+            const ocrResult = await callOcrSpaceWithKeyFailover({
+              imageUrl,
+              imageBase64,
+              mimeType
+            }, env);
+            ocrText = ocrResult.text || '';
+            ocrKeyId = ocrResult.keyId;
+            console.log(`[scan-business-card] OCR.Space succeeded with key #${ocrKeyId} (chars: ${ocrText.length}).`);
+          } catch (ocrErr) {
+            // OCR.Space is an acceleration/first-pass layer. Keep the existing Vision fallback
+            // so the feature still works when all five OCR.Space keys are unavailable.
+            console.warn('[scan-business-card] OCR.Space all-keys fallback:', ocrErr?.message || ocrErr);
+          }
+
           // Fetch active platform categories from Turso to provide authoritative taxonomy context
           let categoriesList = [];
           try {
