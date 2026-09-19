@@ -635,29 +635,30 @@ async function renderQuranSurah(container){
  }catch(e){box.innerHTML='<div class="ih-empty">تعذر فتح السورة. تأكد من رقم السورة والملفات المحلية.</div>';console.error('[IslamicHub] Surah',e)}
 }
 
-function calcQiblaAzimuth(lat=31.1440, lng=31.9470){
-  const PI=Math.PI;
-  const lat1=lat*PI/180, lon1=lng*PI/180;
-  const lat2=21.422487*PI/180, lon2=39.826206*PI/180;
-  const dLon=lon2-lon1;
-  const y=Math.sin(dLon);
-  const x=Math.cos(lat1)*Math.tan(lat2)-Math.sin(lat1)*Math.cos(dLon);
-  let qibla=Math.atan2(y,x)*180/PI;
-  return Math.round(((qibla+360)%360) * 100) / 100;
+function calcQiblaAzimuth(lat=31.1582, lng=31.9360){
+  const d2r=Math.PI/180;
+  const lat1=lat*d2r;
+  const lat2=21.4225*d2r;
+  const deltaLon=(39.8262-lng)*d2r;
+  const y=Math.sin(deltaLon)*Math.cos(lat2);
+  const x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(deltaLon);
+  const bearing=(Math.atan2(y,x)*180/Math.PI + 360) % 360;
+  return Math.round(bearing * 10) / 10;
 }
 
-function calcKaabaDistance(lat=31.1440, lng=31.9470){
+function calcKaabaDistance(lat=31.1582, lng=31.9360){
   const R=6371; // Earth radius in km
-  const lat1=lat*Math.PI/180, lon1=lng*Math.PI/180;
-  const lat2=21.422487*Math.PI/180, lon2=39.826206*Math.PI/180;
+  const d2r=Math.PI/180;
+  const lat1=lat*d2r, lon1=lng*d2r;
+  const lat2=21.4225*d2r, lon2=39.8262*d2r;
   const dLat=lat2-lat1, dLon=lon2-lon1;
   const a=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
   const c=2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return Math.round(R*c);
 }
 
-// Magnetic Declination for El Manzala & Northern Egypt (+4.09° East)
-const MAGNETIC_DECLINATION = 4.09;
+// Magnetic Declination for El Manzala & Northern Egypt (~4.9° East)
+const MAGNETIC_DECLINATION = 4.9;
 
 function computeCompassHeading(alpha, beta, gamma, webkitHeading=null, isCameraMode=false){
   // 1. iOS Safari (direct compass heading relative to magnetic north)
@@ -783,12 +784,12 @@ async function renderQibla(container){
   container.innerHTML=shell('بوصلة اتجاه القبلة (بتقنية Google Qibla Finder)','تحديد اتجاه الكعبة المشرفة بدقة فائقة بالواقع المعزز (AR) ومستشعرات الهاتف وحساب فلكي جيوديسي للكعبة.','🧭',false);
   const box=container.querySelector('#ih-content');
 
-  let currentLat=31.1440, currentLng=31.9470; // El Manzala & El Matariya exact coordinates (142.17° & 1335 km)
-  let cityName='المنزلة والمطرية، الدقهلية';
-  let qiblaAzimuth=calcQiblaAzimuth(currentLat,currentLng); // 142.17° (True North / Google Maps)
-  let compassAzimuth=Math.round((qiblaAzimuth - MAGNETIC_DECLINATION) * 100) / 100; // 138.08° (Magnetic North)
-  let kaabaDistance=calcKaabaDistance(currentLat,currentLng); // 1335 km
-  let bearingMode='magnetic'; // 'magnetic' (138.08°) or 'true' (142.17°)
+  let currentLat=31.1582, currentLng=31.9360; // El Manzala Center exact coordinates (142.2° True / 137.3° Mag)
+  let cityName='المنزلة (المركز)، الدقهلية';
+  let qiblaAzimuth=calcQiblaAzimuth(currentLat,currentLng); // 142.2° (True North / Google Maps)
+  let compassAzimuth=Math.round((qiblaAzimuth - MAGNETIC_DECLINATION) * 10) / 10; // 137.3° (Magnetic North)
+  let kaabaDistance=calcKaabaDistance(currentLat,currentLng); // 1337 km
+  let bearingMode='magnetic'; // 'magnetic' (137.3°) or 'true' (142.2°)
   let currentHeading=0;
   let smoothedHeading=0;
   let currentMode='ar'; // 'ar' or 'compass'
@@ -808,7 +809,7 @@ async function renderQibla(container){
         </button>
       </div>
 
-      <!-- Target Bearing Mode Switcher (Magnetic 138.08° vs Google Maps 142.17°) -->
+      <!-- Target Bearing Mode Switcher (Magnetic 137.3° vs Google Maps 142.2°) -->
       <div class="qibla-target-switcher">
         <button type="button" class="qibla-target-pill is-active" id="qibla-target-magnetic" title="زاوية البوصلة المغناطيسية بعد مراعاة الانحراف">
           <span>🧭 بوصلة الهاتف: <strong id="qibla-target-mag-val">${compassAzimuth}°</strong></span>
@@ -842,12 +843,12 @@ async function renderQibla(container){
         <div class="qibla-metric-card" id="qibla-card-mag">
           <span class="qibla-metric-label">زاوية بوصلة الهاتف</span>
           <strong class="qibla-metric-val" id="qibla-azimuth-mag">${compassAzimuth}°</strong>
-          <small class="qibla-metric-sub">انحراف مغناطيسي 4.09°</small>
+          <small class="qibla-metric-sub">انحراف مغناطيسي 4.9° شرقاً</small>
         </div>
         <div class="qibla-metric-card" id="qibla-card-true">
           <span class="qibla-metric-label">زاوية خرائط جوجل وAR</span>
           <strong class="qibla-metric-val" id="qibla-azimuth-val">${qiblaAzimuth}°</strong>
-          <small class="qibla-metric-sub">جنوب شرق (مكة المكرمة)</small>
+          <small class="qibla-metric-sub">الشمال الحقيقي (مكة المكرمة)</small>
         </div>
         <div class="qibla-metric-card qibla-metric-card--active">
           <span class="qibla-metric-label">اتجاه هاتفك الآن</span>
@@ -952,19 +953,23 @@ async function renderQibla(container){
 
         <!-- Quick City Selector for Fast Accurate Bearing -->
         <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <label style="font-size:.85rem;font-weight:700;color:var(--text-secondary)">اختر مدينتك مباشرة:</label>
+          <label style="font-size:.85rem;font-weight:700;color:var(--text-secondary)">اختر مدينتك أو قريتك مباشرة:</label>
           <select id="qibla-city-select" class="jb-select" style="padding:6px 12px;font-size:.85rem;border-radius:10px">
-            <option value="31.1440,31.9470" selected>المنزلة والمطرية (الدقهلية)</option>
-            <option value="31.0364,31.3807">المنصورة (الدقهلية)</option>
-            <option value="31.4165,31.8133">دمياط ورأس البر</option>
-            <option value="31.2565,32.2841">بورسعيد</option>
-            <option value="31.1620,31.9370">العزيزة والبصراط</option>
-            <option value="30.0444,31.2357">القاهرة الكبرى والجيزة</option>
-            <option value="31.2001,29.9187">الإسكندرية</option>
-            <option value="30.7865,31.0004">طنطا والمحلة الكبرى</option>
-            <option value="30.5877,31.5020">الزقازيق والشرقية</option>
-            <option value="31.1107,30.9388">كفر الشيخ</option>
-            <option value="27.1801,31.1837">أسيوط وصعيد مصر</option>
+            <option value="31.1582,31.9360" selected>المنزلة (المركز) - 142.2°</option>
+            <option value="31.1825,32.0315">المطرية (دقهلية) - 142.6°</option>
+            <option value="31.1865,31.8980">الجمالية - 142.1°</option>
+            <option value="31.1290,31.9120">الأحمدية - 142.0°</option>
+            <option value="31.1620,31.9750">العزيزة - 142.3°</option>
+            <option value="31.1410,31.8950">البصراط - 142.0°</option>
+            <option value="31.2150,31.9820">النسايمة - 142.5°</option>
+            <option value="31.1340,31.8720">ميت شريف - 142.4°</option>
+            <option value="31.1920,31.8750">الروضة - 142.1°</option>
+            <option value="31.2410,32.0520">الشبول - 142.6°</option>
+            <option value="31.0364,31.3807">المنصورة (عاصمة المحافظة) - 141.9°</option>
+            <option value="31.2565,32.2841">بورسعيد - 142.8°</option>
+            <option value="31.4165,31.8133">دمياط ورأس البر - 142.0°</option>
+            <option value="30.0444,31.2357">القاهرة الكبرى والجيزة - 136.2°</option>
+            <option value="31.2001,29.9187">الإسكندرية - 135.5°</option>
           </select>
         </div>
 
@@ -1356,6 +1361,16 @@ async function renderQibla(container){
     },{enableHighAccuracy:true, timeout:10000, maximumAge:0});
   };
 
+  // Auto-detect GPS if available
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      currentLat=pos.coords.latitude;
+      currentLng=pos.coords.longitude;
+      cityName=`موقعي الدقيق (GPS: ${currentLat.toFixed(3)}°, ${currentLng.toFixed(3)}°)`;
+      applyLocationUpdate();
+    }, ()=>{}, {enableHighAccuracy:true, timeout:6000, maximumAge:60000});
+  }
+
   // Try starting Camera for AR mode on mobile
   if(window.innerWidth <= 820){
     startCamera();
@@ -1367,5 +1382,556 @@ async function renderQibla(container){
   updateHeading(0, true);
 }
 
-export {renderQuran,renderHadith,renderQuranSearch,renderQuranSurah,renderQibla};
+// ─────────────────────────────────────────────────────────────
+// 🕌 خوارزمية الحساب الفلكي لمواقيت الصلاة في مصر والدقهلية
+// وفق معايير الهيئة المصرية العامة للمساحة (فجر 19.5°، عشاء 17.5°، عصر شافعي)
+// ─────────────────────────────────────────────────────────────
+export function calculatePrayerTimes(date = new Date(), lat = 31.1582, lng = 31.9360, timezone = 3){
+  const d2r = Math.PI / 180;
+  const r2d = 180 / Math.PI;
+
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  let jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+  const d = jd - 2451545.0;
+
+  const g = (357.529 + 0.98560028 * d) % 360;
+  const q = (280.459 + 0.98564736 * d) % 360;
+  const L = (q + 1.915 * Math.sin(g * d2r) + 0.020 * Math.sin(2 * g * d2r)) % 360;
+  const e = 23.439 - 0.00000036 * d;
+  const RA = Math.atan2(Math.cos(e * d2r) * Math.sin(L * d2r), Math.cos(L * d2r)) * r2d / 15;
+  const decl = Math.asin(Math.sin(e * d2r) * Math.sin(L * d2r)) * r2d;
+  const EqT = q / 15 - ((RA + 24) % 24);
+
+  const noon = 12 + timezone - lng / 15 - EqT;
+
+  function sunHourAngle(angle, direction = 'ccw') {
+    const cosHA = (Math.sin(angle * d2r) - Math.sin(lat * d2r) * Math.sin(decl * d2r)) / (Math.cos(lat * d2r) * Math.cos(decl * d2r));
+    if (cosHA > 1 || cosHA < -1) return null;
+    const ha = Math.acos(cosHA) * r2d / 15;
+    return direction === 'ccw' ? -ha : ha;
+  }
+
+  const fajrHA = sunHourAngle(-19.5, 'ccw');
+  const sunriseHA = sunHourAngle(-0.8333, 'ccw');
+  const sunsetHA = sunHourAngle(-0.8333, 'cw');
+  const ishaHA = sunHourAngle(-17.5, 'cw');
+
+  const noonZenith = Math.abs(lat - decl);
+  const asrZenith = Math.atan(1 + Math.tan(noonZenith * d2r)) * r2d;
+  const asrHA = sunHourAngle(90 - asrZenith, 'cw');
+
+  function toMinutes(hourDec) {
+    let h = (hourDec + 24) % 24;
+    return Math.round(h * 60);
+  }
+
+  function formatTime(minutes) {
+    const h24 = Math.floor(minutes / 60) % 24;
+    const m = minutes % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    const h12 = h24 % 12 || 12;
+    const period = h24 >= 12 ? 'م' : 'ص';
+    return {
+      time24: pad(h24) + ':' + pad(m),
+      time12: pad(h12) + ':' + pad(m) + ' ' + period,
+      totalMinutes: minutes
+    };
+  }
+
+  const prayers = [
+    { id: 'fajr', name: 'الفجر', icon: '🌙', ...formatTime(toMinutes(noon + fajrHA)) },
+    { id: 'sunrise', name: 'الشروق', icon: '🌅', ...formatTime(toMinutes(noon + sunriseHA)) },
+    { id: 'dhuhr', name: 'الظهر', icon: '☀️', ...formatTime(toMinutes(noon + 2/60)) },
+    { id: 'asr', name: 'العصر', icon: '🌤️', ...formatTime(toMinutes(noon + asrHA)) },
+    { id: 'maghrib', name: 'المغرب', icon: '🌇', ...formatTime(toMinutes(noon + sunsetHA + 2/60)) },
+    { id: 'isha', name: 'العشاء', icon: '🌌', ...formatTime(toMinutes(noon + ishaHA)) }
+  ];
+
+  // Calculate Next Prayer
+  const now = new Date();
+  const currentMinutes = (now.getUTCHours() + timezone) * 60 + now.getUTCMinutes();
+  const currentSecondsInDay = currentMinutes * 60 + now.getUTCSeconds();
+
+  let nextPrayer = null;
+  let remainingSecs = 0;
+
+  for (const p of prayers) {
+    if (p.id === 'sunrise') continue;
+    const pSeconds = p.totalMinutes * 60;
+    if (pSeconds > currentSecondsInDay) {
+      nextPrayer = p;
+      remainingSecs = pSeconds - currentSecondsInDay;
+      break;
+    }
+  }
+
+  if (!nextPrayer) {
+    nextPrayer = prayers[0];
+    remainingSecs = (24 * 3600 - currentSecondsInDay) + (prayers[0].totalMinutes * 60);
+  }
+
+  const remH = Math.floor(remainingSecs / 3600);
+  const remM = Math.floor((remainingSecs % 3600) / 60);
+  const remS = remainingSecs % 60;
+  const remText = remH > 0 ? `${remH} س و ${remM} د` : `${remM} د و ${remS} ث`;
+
+  return { prayers, nextPrayer, remainingSecs, remH, remM, remS, remText };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 🕌 صفحة مواقيت الصلاة والسنن والأذكار والأركان الكاملة
+// ─────────────────────────────────────────────────────────────
+async function renderPrayerTimes(container){
+  container.innerHTML = shell(
+    'مواقيت الصلاة والسنن والأذكار',
+    'مواقيت الصلاة الدقيقة للمنصورة والمنزلة والمطرية والقرى المجاورة مع أذكار بعد الصلاة، أركان الصلاة، والسنن الرواتب.',
+    '🕌',
+    false
+  );
+  const box = container.querySelector('#ih-content');
+
+  let currentLat = 31.1582, currentLng = 31.9360;
+  let currentCity = 'المنزلة (المركز)، الدقهلية';
+  let activeTab = 'prayers'; // 'prayers' | 'azkar' | 'arkan' | 'sunan'
+
+  function renderFullView(){
+    const data = calculatePrayerTimes(new Date(), currentLat, currentLng, 3);
+    const nowStr = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+
+    box.innerHTML = `
+      <div class="ih-prayers-wrap">
+        <!-- Top Navigation Pills -->
+        <div class="ih-prayers-nav">
+          <button type="button" class="ih-pnav-btn ${activeTab === 'prayers' ? 'is-active' : ''}" data-tab="prayers">
+            <span>⏱️ مواقيت الصلاة</span>
+          </button>
+          <button type="button" class="ih-pnav-btn ${activeTab === 'azkar' ? 'is-active' : ''}" data-tab="azkar">
+            <span>📿 أذكار بعد الصلاة</span>
+          </button>
+          <button type="button" class="ih-pnav-btn ${activeTab === 'arkan' ? 'is-active' : ''}" data-tab="arkan">
+            <span>🏛️ أركان وواجبات الصلاة</span>
+          </button>
+          <button type="button" class="ih-pnav-btn ${activeTab === 'sunan' ? 'is-active' : ''}" data-tab="sunan">
+            <span>⭐ السنن والرواتب</span>
+          </button>
+        </div>
+
+        <!-- Tab 1: Prayers -->
+        <div class="ih-ptab-content ${activeTab === 'prayers' ? 'is-active' : ''}" id="tab-prayers">
+          <!-- Next Prayer Countdown Hero -->
+          <div class="ih-p-hero">
+            <div class="ih-p-hero-inner">
+              <div class="ih-p-hero-tag">الصلاة القادمة بمشيئة الله</div>
+              <h2 class="ih-p-hero-title">صلاة ${data.nextPrayer.name}</h2>
+              <div class="ih-p-hero-time">${data.nextPrayer.time12}</div>
+              
+              <div class="ih-p-countdown-box">
+                <div class="ih-p-countdown-val" id="ih-p-countdown-val">${data.remText}</div>
+                <div class="ih-p-countdown-sub">المتبقي حتى رفع الأذان</div>
+              </div>
+
+              <!-- Location and GPS Header Strip -->
+              <div class="ih-p-loc-bar">
+                <span class="ih-p-loc-name">📍 ${esc(currentCity)} · ${nowStr}</span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px">
+                  <select id="ih-prayer-city-select" class="jb-select" style="padding:6px 14px;border-radius:12px;font-size:0.86rem;background:var(--surface-3);color:var(--text-primary)">
+                    <option value="31.1582,31.9360" ${currentCity.includes('المنزلة') ? 'selected' : ''}>المنزلة (المركز)</option>
+                    <option value="31.1825,32.0315" ${currentCity.includes('المطرية') ? 'selected' : ''}>المطرية (دقهلية)</option>
+                    <option value="31.1865,31.8980" ${currentCity.includes('الجمالية') ? 'selected' : ''}>الجمالية</option>
+                    <option value="31.1290,31.9120" ${currentCity.includes('الأحمدية') ? 'selected' : ''}>الأحمدية</option>
+                    <option value="31.1620,31.9750" ${currentCity.includes('العزيزة') ? 'selected' : ''}>العزيزة</option>
+                    <option value="31.1410,31.8950" ${currentCity.includes('البصراط') ? 'selected' : ''}>البصراط</option>
+                    <option value="31.2150,31.9820" ${currentCity.includes('النسايمة') ? 'selected' : ''}>النسايمة</option>
+                    <option value="31.1340,31.8720" ${currentCity.includes('ميت شريف') ? 'selected' : ''}>ميت شريف</option>
+                    <option value="31.1920,31.8750" ${currentCity.includes('الروضة') ? 'selected' : ''}>الروضة</option>
+                    <option value="31.2410,32.0520" ${currentCity.includes('الشبول') ? 'selected' : ''}>الشبول</option>
+                    <option value="31.0364,31.3807" ${currentCity.includes('المنصورة') ? 'selected' : ''}>المنصورة (عاصمة المحافظة)</option>
+                    <option value="31.2565,32.2841" ${currentCity.includes('بورسعيد') ? 'selected' : ''}>بورسعيد</option>
+                    <option value="31.4165,31.8133" ${currentCity.includes('دمياط') ? 'selected' : ''}>دمياط ورأس البر</option>
+                  </select>
+                  <button type="button" id="ih-prayer-gps-btn" class="ih-btn" style="padding:6px 14px;border-radius:12px;font-size:0.84rem">
+                    <span>موقعي الحالي (GPS) 🎯</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6 Prayer Cards Grid -->
+          <div class="ih-p-cards-grid">
+            ${data.prayers.map(p => `
+              <div class="ih-p-card ${p.id === data.nextPrayer.id ? 'is-next' : ''}">
+                <div class="ih-p-card-icon">${p.icon}</div>
+                <h3 class="ih-p-card-name">${p.name}</h3>
+                <div class="ih-p-card-time">${p.time12}</div>
+                ${p.id === data.nextPrayer.id ? '<span class="ih-p-next-badge">الصلاة القادمة</span>' : ''}
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Link to Qibla compass -->
+          <div class="ih-p-qibla-banner">
+            <div style="font-size:2rem">🧭</div>
+            <div style="flex:1">
+              <strong style="display:block;font-size:1.05rem;color:var(--text-primary)">هل تريد تحديد اتجاه القبلة للصلاة؟</strong>
+              <p style="margin:0;font-size:0.86rem;color:var(--text-secondary)">استخدم بوصلة الكعبة ثلاثية الأبعاد وتقنية الواقع المعزز (AR).</p>
+            </div>
+            <a href="./qibla.html" class="ih-btn" style="border-radius:999px;padding:8px 18px">فتح البوصلة 🕋</a>
+          </div>
+        </div>
+
+        <!-- Tab 2: Azkar After Prayer -->
+        <div class="ih-ptab-content ${activeTab === 'azkar' ? 'is-active' : ''}" id="tab-azkar">
+          <div class="ih-section-header">
+            <h3 class="ih-section-title">📿 أذكار دبر الصلوات المكتوبة (المفروضة)</h3>
+            <p class="ih-section-sub">أذكار مأثورة وثابتة عن النبي ﷺ يُستحب للمسلم قولها عقب التسليم من الفريضة مباشرة.</p>
+          </div>
+
+          <div class="ih-azkar-list">
+            <!-- Azkar Item 1 -->
+            <div class="ih-azkar-card" data-count="3">
+              <div class="ih-azkar-body">
+                <p class="ih-azkar-text">«أَسْتَغْفِرُ اللهَ، أَسْتَغْفِرُ اللهَ، أَسْتَغْفِرُ اللهَ، اللَّهُمَّ أَنْتَ السَّلامُ وَمِنْكَ السَّلامُ، تَبَارَكْتَ يَا ذَا الجَلالِ وَالإِكْرَامِ»</p>
+                <div class="ih-azkar-source">صحيح مسلم — يُقال 3 مرات عقب التسليم</div>
+              </div>
+              <div class="ih-azkar-counter">
+                <button type="button" class="ih-tasbeeh-btn" data-max="3">
+                  <span class="ih-tasbeeh-num">3</span>
+                  <small>مرات</small>
+                </button>
+              </div>
+            </div>
+
+            <!-- Azkar Item 2 -->
+            <div class="ih-azkar-card" data-count="1">
+              <div class="ih-azkar-body">
+                <p class="ih-azkar-text">«لا إِلَهَ إِلا اللهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ المُلْكُ وَلَهُ الحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، اللَّهُمَّ لا مَانِعَ لِمَا أَعْطَيْتَ، وَلا مُعْطِيَ لِمَا مَنَعْتَ، وَلا يَنْفَعُ ذَا الجَدِّ مِنْكَ الجَدُّ»</p>
+                <div class="ih-azkar-source">متفق عليه — مرة واحدة</div>
+              </div>
+              <div class="ih-azkar-counter">
+                <button type="button" class="ih-tasbeeh-btn" data-max="1">
+                  <span class="ih-tasbeeh-num">1</span>
+                  <small>مرة</small>
+                </button>
+              </div>
+            </div>
+
+            <!-- Azkar Item 3: Tasbeeh 33 -->
+            <div class="ih-azkar-card" data-count="33">
+              <div class="ih-azkar-body">
+                <p class="ih-azkar-text">«سُبْحَانَ اللهِ»</p>
+                <div class="ih-azkar-source">صحيح مسلم — 33 مرة</div>
+              </div>
+              <div class="ih-azkar-counter">
+                <button type="button" class="ih-tasbeeh-btn" data-max="33">
+                  <span class="ih-tasbeeh-num">33</span>
+                  <small>تسبيحة</small>
+                </button>
+              </div>
+            </div>
+
+            <!-- Azkar Item 4: Tahmeed 33 -->
+            <div class="ih-azkar-card" data-count="33">
+              <div class="ih-azkar-body">
+                <p class="ih-azkar-text">«الْحَمْدُ للهِ»</p>
+                <div class="ih-azkar-source">صحيح مسلم — 33 مرة</div>
+              </div>
+              <div class="ih-azkar-counter">
+                <button type="button" class="ih-tasbeeh-btn" data-max="33">
+                  <span class="ih-tasbeeh-num">33</span>
+                  <small>تحميدة</small>
+                </button>
+              </div>
+            </div>
+
+            <!-- Azkar Item 5: Takbeer 33 -->
+            <div class="ih-azkar-card" data-count="33">
+              <div class="ih-azkar-body">
+                <p class="ih-azkar-text">«اللهُ أَكْبَرُ»</p>
+                <div class="ih-azkar-source">صحيح مسلم — 33 مرة</div>
+              </div>
+              <div class="ih-azkar-counter">
+                <button type="button" class="ih-tasbeeh-btn" data-max="33">
+                  <span class="ih-tasbeeh-num">33</span>
+                  <small>تكبيرة</small>
+                </button>
+              </div>
+            </div>
+
+            <!-- Azkar Item 6: Tamam 100 -->
+            <div class="ih-azkar-card" data-count="1">
+              <div class="ih-azkar-body">
+                <p class="ih-azkar-text">«لا إِلَهَ إِلا اللهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ المُلْكُ وَلَهُ الحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ»</p>
+                <div class="ih-azkar-source">صحيح مسلم — تمام المائة؛ غُفرت خطاياه وإن كانت مثل زبد البحر</div>
+              </div>
+              <div class="ih-azkar-counter">
+                <button type="button" class="ih-tasbeeh-btn" data-max="1">
+                  <span class="ih-tasbeeh-num">1</span>
+                  <small>مرة</small>
+                </button>
+              </div>
+            </div>
+
+            <!-- Ayat Al-Kursi -->
+            <div class="ih-azkar-card" data-count="1">
+              <div class="ih-azkar-body">
+                <p class="ih-azkar-text">﴿اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَنْ ذَا الَّذِي يَشْفَعُ عِنْدَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ﴾</p>
+                <div class="ih-azkar-source">رواه النسائي وصححه الألباني: «مَنْ قَرَأَ آيَةَ الْكُرْسِيِّ دُبُرَ كُلِّ صَلَاةٍ مَكْتُوبَةٍ لَمْ يَمْنَعْهُ مِنْ دُخُولِ الْجَنَّةِ إِلَّا أَنْ يَمُوتَ».</div>
+              </div>
+              <div class="ih-azkar-counter">
+                <button type="button" class="ih-tasbeeh-btn" data-max="1">
+                  <span class="ih-tasbeeh-num">1</span>
+                  <small>مرة</small>
+                </button>
+              </div>
+            </div>
+
+            <!-- Mu'awwidhat -->
+            <div class="ih-azkar-card" data-count="1">
+              <div class="ih-azkar-body">
+                <p class="ih-azkar-text">قراءة سورة الإخلاص وسورة الفلق وسورة الناس (مرة بعد كل صلاة، وثلاث مرات بعد الفجر والمغرب).</p>
+                <div class="ih-azkar-source">سنن أبي داود والترمذي</div>
+              </div>
+              <div class="ih-azkar-counter">
+                <button type="button" class="ih-tasbeeh-btn" data-max="3">
+                  <span class="ih-tasbeeh-num">3</span>
+                  <small>مرات</small>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Arkan & Shuroot -->
+        <div class="ih-ptab-content ${activeTab === 'arkan' ? 'is-active' : ''}" id="tab-arkan">
+          <div class="ih-section-header">
+            <h3 class="ih-section-title">🏛️ أركان الصلاة وشروطها وواجباتها</h3>
+            <p class="ih-section-sub">الفرق بين الركن (لا يسقط عمداً ولا سهواً) والواجب (يُجبر بسجود السهو) وشروط الصحة.</p>
+          </div>
+
+          <!-- Shuroot Box -->
+          <div class="ih-law-box">
+            <h4 class="ih-law-title">🔹 شروط صحة الصلاة التسعة (تسبق الصلاة):</h4>
+            <ol class="ih-law-list">
+              <li><strong>الإسلام:</strong> فالصلاة لا تصح من كافر.</li>
+              <li><strong>العقل:</strong> فلا تجب ولا تصح من مجنون أو فاقد العقل.</li>
+              <li><strong>التمييز:</strong> لقوله ﷺ: «مُرُوا أَوْلادَكُمْ بِالصَّلاةِ وَهُمْ أَبْنَاءُ سَبْعِ سِنِينَ».</li>
+              <li><strong>رفع الحَدَث:</strong> بالوضوء من الأصغر، والغُسل من الأكبر.</li>
+              <li><strong>طهارة الخَبَث:</strong> طهارة البدن، والثوب، ومكان الصلاة.</li>
+              <li><strong>سَتْر العورة:</strong> عورة الرجل من السرة للركبة، والمرأة كلها عورة في الصلاة عدا الوجه والكفين.</li>
+              <li><strong>دخول الوقت:</strong> لقوله تعالى: ﴿إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَوْقُوتًا﴾.</li>
+              <li><strong>استقبال القبلة:</strong> التوجه نحو الكعبة المشرفة بمكة المكرمة.</li>
+              <li><strong>النيّة:</strong> ومحلها القلب، والتلفظ بها بدعة.</li>
+            </ol>
+          </div>
+
+          <!-- Arkan Box -->
+          <div class="ih-law-box" style="margin-top:20px">
+            <h4 class="ih-law-title">⭐ أركان الصلاة الأربعة عشر (إن تُركت بطلت الصلاة):</h4>
+            <div class="ih-arkan-grid">
+              <div class="ih-arkan-card"><span class="ih-arkan-num">1</span><strong>القيام مع القدرة</strong> في الفريضة</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">2</span><strong>تكبيرة الإحرام</strong> (الله أكبر)</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">3</span><strong>قراءة سورة الفاتحة</strong> في كل ركعة</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">4</span><strong>الركوع</strong> وحَدّه أن تمس يداه ركبتيه</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">5</span><strong>الرفع والاعتدال</strong> قائماً من الركوع</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">6</span><strong>السجود</strong> على الأعضاء السبعة</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">7</span><strong>الرفع والجلوس</strong> بين السجدتين</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">8</span><strong>الطمأنينة</strong> في جميع الأركان</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">9</span><strong>التشهد الأخير</strong></div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">10</span><strong>الجلوس للتشهد الأخير</strong></div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">11</span><strong>الصلاة على النبي ﷺ</strong> في الأخير</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">12</span><strong>التسليم</strong> (عن اليمين والشمال)</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">13</span><strong>الترتيب</strong> بين الأركان</div>
+              <div class="ih-arkan-card"><span class="ih-arkan-num">14</span><strong>الخشوع</strong> واستحضار عظمة الله</div>
+            </div>
+          </div>
+
+          <!-- Wajibat Box -->
+          <div class="ih-law-box" style="margin-top:20px">
+            <h4 class="ih-law-title">🔸 واجبات الصلاة الثمانية (تُجبر بسجود السهو إن سها عنها):</h4>
+            <ul class="ih-law-list">
+              <li>التكبيرات غير تكبيرة الإحرام (تكبيرات الانتقال).</li>
+              <li>قول «سَمِعَ اللهُ لِمَنْ حَمِدَهُ» للإمام والمنفرد.</li>
+              <li>قول «رَبَّنَا وَلَكَ الحَمْدُ» للجميع.</li>
+              <li>قول «سُبْحَانَ رَبِّيَ العَظِيمِ» مرة في الركوع.</li>
+              <li>قول «سُبْحَانَ رَبِّيَ الأَعْلَى» مرة في السجود.</li>
+              <li>قول «رَبِّ اغْفِرْ لِي» بين السجدتين.</li>
+              <li>التشهد الأول.</li>
+              <li>الجلوس للتشهد الأول.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Tab 4: Sunan -->
+        <div class="ih-ptab-content ${activeTab === 'sunan' ? 'is-active' : ''}" id="tab-sunan">
+          <div class="ih-section-header">
+            <h3 class="ih-section-title">⭐ السنن الرواتب والنوافل وعدد ركعاتها</h3>
+            <p class="ih-section-sub">عن أم حبيبة رضي الله عنها قالت: سمعت رسول الله ﷺ يقول: «مَنْ صَلَّى اثْنَتَيْ عَشْرَةَ رَكْعَةً فِي يَوْمٍ وَلَيْلَةٍ بُنِيَ لَهُ بِهِنَّ بَيْتٌ فِي الْجَنَّةِ» (صحيح مسلم).</p>
+          </div>
+
+          <div class="ih-sunan-table-wrap">
+            <table class="ih-sunan-table">
+              <thead>
+                <tr>
+                  <th>الصلاة</th>
+                  <th>السنن القبلية</th>
+                  <th>الفريضة</th>
+                  <th>السنن البعدية</th>
+                  <th>إجمالي الرواتب</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>صلاة الفجر</strong></td>
+                  <td><span class="ih-badge-sunnah">ركعتان (مؤكدة)</span></td>
+                  <td>ركعتان</td>
+                  <td>—</td>
+                  <td><strong>ركعتان</strong></td>
+                </tr>
+                <tr>
+                  <td><strong>صلاة الظهر</strong></td>
+                  <td><span class="ih-badge-sunnah">4 ركعات (بتسليمتين)</span></td>
+                  <td>4 ركعات</td>
+                  <td><span class="ih-badge-sunnah">ركعتان (مؤكدة)</span></td>
+                  <td><strong>6 ركعات</strong></td>
+                </tr>
+                <tr>
+                  <td><strong>صلاة العصر</strong></td>
+                  <td>4 ركعات (مستحبة غير راتبة)</td>
+                  <td>4 ركعات</td>
+                  <td>—</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td><strong>صلاة المغرب</strong></td>
+                  <td>ركعتان (مستحبة)</td>
+                  <td>3 ركعات</td>
+                  <td><span class="ih-badge-sunnah">ركعتان (مؤكدة)</span></td>
+                  <td><strong>ركعتان</strong></td>
+                </tr>
+                <tr>
+                  <td><strong>صلاة العشاء</strong></td>
+                  <td>ركعتان (مستحبة)</td>
+                  <td>4 ركعات</td>
+                  <td><span class="ih-badge-sunnah">ركعتان (مؤكدة)</span></td>
+                  <td><strong>ركعتان</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Other Nawafil -->
+          <div class="ih-nawafil-grid" style="margin-top:24px">
+            <div class="ih-nafl-card">
+              <h4>☀️ صلاة الضحى (صلاة الأوابين)</h4>
+              <p>ركعتان إلى ثمان ركعات، وقتها بعد شروق الشمس بـ 15 دقيقة حتى قبل الظهر بنصف ساعة. فضلها: تجزئ عن 360 صدقة عن مفاصل الجسد.</p>
+            </div>
+            <div class="ih-nafl-card">
+              <h4>🌌 صلاة الشفع والوتر</h4>
+              <p>أقلها ركعة وأكملها 3 ركعات أو 5 أو أكثر، وقتها بعد العشاء حتى طلوع الفجر، وأفضلها في الثلث الأخير من الليل.</p>
+            </div>
+            <div class="ih-nafl-card">
+              <h4>✨ قيام الليل والتهجد</h4>
+              <p>دَأْبُ الصالحين وشرف المؤمن، يُصلى مثنى مثنى، وختامه بركعة الوتر لقوله ﷺ: «اجْعَلُوا آخِرَ صَلَاتِكُمْ بِاللَّيْلِ وِتْرًا».</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Bind Tab switching
+    box.querySelectorAll('.ih-pnav-btn').forEach(btn => {
+      btn.onclick = () => {
+        activeTab = btn.getAttribute('data-tab');
+        renderFullView();
+      };
+    });
+
+    // Bind City select
+    const citySel = box.querySelector('#ih-prayer-city-select');
+    if (citySel) {
+      citySel.onchange = (e) => {
+        const [latStr, lngStr] = e.target.value.split(',');
+        currentLat = Number(latStr);
+        currentLng = Number(lngStr);
+        currentCity = e.target.options[e.target.selectedIndex].text;
+        renderFullView();
+        showToast(`تم تحديث مواقيت الصلاة لـ: ${currentCity} 🕌`);
+      };
+    }
+
+    // Bind GPS button
+    const gpsBtn = box.querySelector('#ih-prayer-gps-btn');
+    if (gpsBtn) {
+      gpsBtn.onclick = () => {
+        if (!navigator.geolocation) {
+          showToast('خدمة تحديد الموقع (GPS) غير مدعومة.');
+          return;
+        }
+        gpsBtn.disabled = true;
+        gpsBtn.textContent = 'جاري التحديد...';
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            currentLat = pos.coords.latitude;
+            currentLng = pos.coords.longitude;
+            currentCity = `موقعي الحالي (GPS: ${currentLat.toFixed(2)}°, ${currentLng.toFixed(2)}°)`;
+            renderFullView();
+            showToast('تم تحديد مواقيت الصلاة بدقة GPS لموقعك الحالي 🕌');
+          },
+          () => {
+            gpsBtn.disabled = false;
+            gpsBtn.textContent = 'موقعي الحالي (GPS) 🎯';
+            showToast('تعذر جلب موقع GPS. تم الاحتفاظ بالمدينة المحددة.');
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      };
+    }
+
+    // Bind interactive Tasbeeh buttons
+    box.querySelectorAll('.ih-tasbeeh-btn').forEach(btn => {
+      let count = Number(btn.getAttribute('data-max') || 33);
+      btn.onclick = () => {
+        if (count > 0) {
+          count--;
+          btn.querySelector('.ih-tasbeeh-num').textContent = count;
+          if (navigator.vibrate) {
+            try { navigator.vibrate(25); } catch(_) {}
+          }
+          if (count === 0) {
+            btn.classList.add('is-done');
+            btn.querySelector('.ih-tasbeeh-num').textContent = '✓';
+            showToast('أحسنت! أتممت هذا الذكر المبارك بنجاح ✨');
+          }
+        } else {
+          // Reset
+          count = Number(btn.getAttribute('data-max') || 33);
+          btn.classList.remove('is-done');
+          btn.querySelector('.ih-tasbeeh-num').textContent = count;
+        }
+      };
+    });
+  }
+
+  renderFullView();
+
+  // Auto live ticker for countdown
+  const ticker = setInterval(() => {
+    if (!document.getElementById('ih-p-countdown-val')) {
+      clearInterval(ticker);
+      return;
+    }
+    const data = calculatePrayerTimes(new Date(), currentLat, currentLng, 3);
+    const el = document.getElementById('ih-p-countdown-val');
+    if (el) el.textContent = data.remText;
+  }, 1000);
+}
+
+export {renderQuran,renderHadith,renderQuranSearch,renderQuranSurah,renderQibla,renderPrayerTimes,calculatePrayerTimes};
 

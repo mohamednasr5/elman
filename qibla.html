@@ -1,25 +1,147 @@
-﻿<!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>بوصلة اتجاه القبلة الشريفة | دليل المنزلة والمطرية الرقمي</title><meta name="description" content="تحديد اتجاه القبلة الشريفة والكعبة المشرفة بدقة ثلاثية الأبعاد عبر البوصلة ومستشعرات الهاتف.">
-<link rel="manifest" href="./manifest.webmanifest">  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>بوصلة اتجاه القبلة في المنزلة والمطرية والجمالية | كعبة 3D وواقع معزز AR</title>
+  <meta name="description" content="تحديد دقيق لاتجاه القبلة في المنزلة (142.2° شمال حقيقي، 137.3° للبوصلة المغناطيسية)، المطرية، الجمالية والقرى المجاورة بالدقهلية. بوصلة 3D تفاعلية وتقنية الواقع المعزز بالكاميرا.">
+  <meta name="keywords" content="اتجاه القبلة في المنزلة, اتجاه القبلة في المطرية, اتجاه القبلة في الجمالية, اتجاه القبلة في الأحمدية, بوصلة القبلة, كم زاوية القبلة في المنزلة, اتجاه الكعبة, القبلة الدقهلية">
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
   <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"/>
   <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
   <link rel="shortcut icon" href="/favicon.ico"/>
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
-<meta name="theme-color" content="#0F172A"><link rel="stylesheet" href="./src/css/main.css"><link rel="stylesheet" href="./src/css/islamic-hub.css?v=a58f9ed6">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="canonical" href="https://dalilmanzala.com/qibla.html">
-<link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/qibla.html">
-<link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/qibla.html">
-<meta property="og:url" content="https://dalilmanzala.com/qibla.html">
-<meta property="og:locale" content="ar_EG">
-<link rel="alternate" hreflang="en" href="https://dalilmanzala.com/qibla.html">
-</head><body><div id="app"><div id="header-slot"></div><main class="page-main" id="page-container"><div class="ih-loading"><div class="ih-pulse"></div></div></main><div id="nav-slot"></div><div id="pwa-slot"></div><div id="footer-slot"></div></div>
-<script type="module">
-import {initPage} from './src/js/core/page-shell.js?v=a58f9ed6';
-import {renderQibla} from './src/js/ui/pages/islamic-hub.js?v=a58f9ed6';
-await initPage('qibla.html'); await renderQibla(document.getElementById('page-container'));
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
-</script><script type="module" src="/src/js/core/pwa-install.js?v=a58f9ed6"></script>
-</body></html>
+  <meta name="theme-color" content="#0F172A">
+
+  <link rel="stylesheet" href="./src/css/main.css">
+  <link rel="stylesheet" href="./src/css/islamic-hub.css?v=b1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <link rel="canonical" href="https://dalilmanzala.com/qibla.html">
+  <link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/qibla.html">
+  <link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/qibla.html">
+  <link rel="alternate" hreflang="en" href="https://dalilmanzala.com/qibla.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="بوصلة اتجاه القبلة في المنزلة والمطرية | دليل المنزلة الرقمي">
+  <meta property="og:description" content="تحديد اتجاه القبلة الدقيق لمركز المنزلة والمطرية وقرى الدقهلية بالدرجات الدقيقة وبوصلة الكعبة 3D.">
+  <meta property="og:url" content="https://dalilmanzala.com/qibla.html">
+  <meta property="og:locale" content="ar_EG">
+  <meta property="og:site_name" content="دليل المنزلة والمطرية">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="اتجاه القبلة في المنزلة والمطرية">
+  <meta name="twitter:description" content="142.2° من الشمال الحقيقي و 137.3° لبوصلة الهاتف مع انحراف مغناطيسي 4.9° ومسافة 1335 كم.">
+
+  <!-- Schema.org JSON-LD for AI and Search Engines -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://dalilmanzala.com/qibla.html",
+        "url": "https://dalilmanzala.com/qibla.html",
+        "name": "بوصلة اتجاه القبلة في المنزلة والمطرية والجمالية",
+        "description": "تحديد اتجاه القبلة الشريفة لمسلمي المنزلة والمطرية والجمالية بمحافظة الدقهلية باستخدام مستشعرات الهاتف والواقع المعزز.",
+        "inLanguage": "ar",
+        "isPartOf": {
+          "@type": "WebSite",
+          "@id": "https://dalilmanzala.com/#website",
+          "name": "دليل المنزلة والمطرية الرقمي",
+          "url": "https://dalilmanzala.com"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "الرئيسية",
+            "item": "https://dalilmanzala.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "اتجاه القبلة الشريفة",
+            "item": "https://dalilmanzala.com/qibla.html"
+          }
+        ]
+      },
+      {
+        "@type": "Place",
+        "name": "مركز المنزلة، محافظة الدقهلية",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 31.1582,
+          "longitude": 31.9360
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "ما هو اتجاه القبلة في مركز المنزلة، محافظة الدقهلية؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "زاوية القبلة في مركز المنزلة (إحداثيات 31.1582° N, 31.9360° E) هي 142.2° من الشمال الجغرافي الحقيقي (True North) باتجاه الجنوب الشرقي. وبالنسبة لبوصلة الهاتف المغناطيسية، فإن زاوية القبلة هي 137.3° نظراً لوجود انحراف مغناطيسي قدره +4.9° شرقاً. وتبلغ المسافة المباشرة إلى الكعبة المشرفة بمكة المكرمة حوالي 1,335 كيلومتر."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "ما هو اتجاه القبلة في مدينة المطرية (دقهلية)؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "اتجاه القبلة في المطرية (إحداثيات 31.1825° N, 32.0315° E) هو 142.3° من الشمال الحقيقي، و 137.4° لبوصلة الهاتف، ومسافة الكعبة المشرفة نحو 1,336 كم."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "ما هو اتجاه القبلة في الجمالية والأحمدية والعزيزة والبصراط والنسايمة؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "الجمالية: 142.1° حقيقي (137.2° بوصلة). الأحمدية: 142.2° حقيقي (137.3° بوصلة). العزيزة: 142.2° حقيقي. البصراط: 142.1° حقيقي. النسايمة: 142.3° حقيقي. تتيح أداتنا تحديد الموقع التلقائي بـ GPS لاختيار الزاوية المناسبة لمدينتك أو قريتك فورياً."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "لماذا تختلف زاوية القبلة في الخرائط عن زاوية مؤشر البوصلة؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "لأن الخرائط مثل خرائط جوجل تعتمد على الشمال الحقيقي (True North 142.2°)، بينما تعتمد المستشعرات الإلكترونية للهواتف على الشمال المغناطيسي (Magnetic North). في شمال الدقهلية يوجد انحراف مغناطيسي قدره 4.9° شرقاً، لذا يجب طرحه من الشمال الحقيقي لنحصل على زاوية القبلة للبوصلة (137.3°)، وهو ما تقوم به برمجيتنا تلقائياً."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="header-slot"></div>
+    <main class="page-main" id="page-container">
+      <div class="ih-loading">
+        <div class="ih-pulse"></div>
+      </div>
+    </main>
+    <div id="nav-slot"></div>
+    <div id="pwa-slot"></div>
+    <div id="footer-slot"></div>
+  </div>
+
+  <script type="module">
+    import { initPage } from './src/js/core/page-shell.js?v=a58f9ed6';
+    import { renderQibla } from './src/js/ui/pages/islamic-hub.js?v=a58f9ed6';
+    await initPage('qibla.html');
+    await renderQibla(document.getElementById('page-container'));
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  </script>
+  <script type="module" src="/src/js/core/pwa-install.js?v=a58f9ed6"></script>
+</body>
+</html>

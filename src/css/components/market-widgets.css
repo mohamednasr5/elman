@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════════
-   مؤشرات مصراوي الحية — أسعار الذهب، العملات، الطقس
+   مؤشرات السوق والطقس ومواقيت الصلاة الحية
    Dalil El Manzala & El Matariya - Live Market Indicators
    ══════════════════════════════════════════════════════════════════ */
 
@@ -204,6 +204,12 @@
   box-shadow: 0 3px 10px rgba(2, 132, 199, 0.18);
 }
 
+.market-widget-item--prayer:hover,
+.market-widget-item--prayer.active {
+  border-color: #059669;
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.18);
+}
+
 /* Dark Theme Adjustments */
 [data-theme="dark"] .market-widget-item {
   background: #1e293b;
@@ -245,6 +251,10 @@
   color: #38bdf8;
 }
 
+.mw-icon-prayer {
+  color: #10b981;
+}
+
 .mw-label {
   white-space: nowrap;
   letter-spacing: -0.2px;
@@ -273,6 +283,14 @@
 }
 
 [data-theme="dark"] .market-widget-item--currency .mw-quick-val {
+  color: #34d399;
+}
+
+.market-widget-item--prayer .mw-quick-val {
+  color: #059669;
+}
+
+[data-theme="dark"] .market-widget-item--prayer .mw-quick-val {
   color: #34d399;
 }
 
@@ -457,6 +475,143 @@
   color: #ffffff;
   font-weight: 700;
   margin-right: 4px;
+}
+
+/* ── Prayer Times Card Specifics ── */
+.market-widget-dropdown--prayer {
+  min-width: 250px !important;
+  max-width: 300px !important;
+}
+
+.mw-prayer-next-banner {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 95, 70, 0.25));
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 12px;
+  text-align: center;
+}
+
+.mw-prayer-next-label {
+  font-size: 0.82rem;
+  color: #a7f3d0;
+  margin-bottom: 4px;
+}
+
+.mw-prayer-next-name {
+  color: #34d399;
+  font-size: 0.95rem;
+}
+
+.mw-prayer-countdown-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mw-prayer-countdown-val {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  font-family: monospace, -apple-system, sans-serif;
+}
+
+.mw-prayer-countdown-sub {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.mw-prayer-times-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.mw-prayer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.84rem;
+  transition: all 0.15s ease;
+}
+
+.mw-prayer-row.is-next {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.mw-prayer-row-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mw-prayer-icon {
+  font-size: 1rem;
+}
+
+.mw-prayer-name {
+  color: #e2e8f0;
+  font-weight: 700;
+}
+
+.mw-prayer-row.is-next .mw-prayer-name {
+  color: #ffffff;
+}
+
+.mw-prayer-time {
+  font-weight: 800;
+  color: #f1f5f9;
+  font-size: 0.82rem;
+}
+
+.mw-prayer-row.is-next .mw-prayer-time {
+  color: #34d399;
+}
+
+.mw-prayer-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 10px;
+  text-align: center;
+}
+
+.mw-prayer-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35);
+  transition: all 0.2s ease;
+}
+
+.mw-prayer-link-btn:hover {
+  background: linear-gradient(135deg, #10b981, #059669);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
+}
+
+.mw-prayer-link-btn .mw-arrow {
+  transition: transform 0.2s ease;
+}
+
+.mw-prayer-link-btn:hover .mw-arrow {
+  transform: translateX(-3px);
 }
 
 /* ── Mobile Dedicated Modal Dialog (Flawless, Centered, No Clipping) ── */

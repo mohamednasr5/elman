@@ -1641,3 +1641,445 @@
   100% { transform: translate(0, 0) rotate(0deg); }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   🕌 صفحة مواقيت الصلاة والسنن والأذكار والأركان الكاملة
+   ═══════════════════════════════════════════════════════════ */
+
+.ih-prayers-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ih-prayers-nav {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ih-prayers-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.ih-pnav-btn {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.ih-pnav-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--primary);
+}
+
+.ih-pnav-btn.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(27, 79, 114, 0.25);
+}
+
+.ih-ptab-content {
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ih-ptab-content.is-active {
+  display: flex;
+}
+
+/* Hero Section */
+.ih-p-hero {
+  background: linear-gradient(145deg, #0f172a, #1e293b);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 28px 24px;
+  color: #ffffff;
+  text-align: center;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.ih-p-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.12) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.ih-p-hero-inner {
+  position: relative;
+  z-index: 2;
+}
+
+.ih-p-hero-tag {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ih-p-hero-title {
+  font-size: 1.7rem;
+  font-weight: 800;
+  margin: 0 0 6px 0;
+  color: #ffffff;
+}
+
+.ih-p-hero-time {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #fbbf24;
+  margin-bottom: 16px;
+  letter-spacing: 0.5px;
+}
+
+.ih-p-countdown-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px 20px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 180px;
+  margin-bottom: 20px;
+}
+
+.ih-p-countdown-val {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #38bdf8;
+  font-family: monospace, -apple-system, sans-serif;
+  letter-spacing: 1px;
+}
+
+.ih-p-countdown-sub {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.ih-p-loc-bar {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 16px;
+  font-size: 0.86rem;
+  color: #cbd5e1;
+}
+
+/* 6 Prayer Cards Grid */
+.ih-p-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.ih-p-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px 12px;
+  text-align: center;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ih-p-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+.ih-p-card.is-next {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.12), var(--surface-2));
+  border-color: #10b981;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.18);
+}
+
+.ih-p-card-icon {
+  font-size: 1.8rem;
+  margin-bottom: 6px;
+}
+
+.ih-p-card-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.ih-p-card-time {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.ih-p-card.is-next .ih-p-card-time {
+  color: #059669;
+}
+
+.ih-p-next-badge {
+  position: absolute;
+  top: -9px;
+  background: #059669;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.4);
+}
+
+.ih-p-qibla-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+
+/* Azkar List */
+.ih-azkar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ih-azkar-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ih-azkar-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.ih-azkar-body {
+  flex: 1;
+}
+
+.ih-azkar-text {
+  font-family: "Amiri", "Cairo", serif;
+  font-size: 1.15rem;
+  line-height: 1.9;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+  font-weight: 700;
+}
+
+.ih-azkar-source {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.ih-azkar-counter {
+  flex-shrink: 0;
+}
+
+.ih-tasbeeh-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 2px solid var(--primary);
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ih-tasbeeh-btn:active {
+  transform: scale(0.92);
+}
+
+.ih-tasbeeh-btn .ih-tasbeeh-num {
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ih-tasbeeh-btn small {
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.ih-tasbeeh-btn.is-done {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(5, 150, 105, 0.4);
+}
+
+/* Arkan & Shuroot Law Box */
+.ih-law-box {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 22px 24px;
+}
+
+.ih-law-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 14px 0;
+}
+
+.ih-law-list {
+  padding-right: 22px;
+  margin: 0;
+  line-height: 1.85;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
+.ih-law-list li {
+  margin-bottom: 8px;
+}
+
+.ih-arkan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.ih-arkan-card {
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ih-arkan-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* Sunan Table */
+.ih-sunan-table-wrap {
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.ih-sunan-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+.ih-sunan-table th {
+  background: var(--surface-3);
+  padding: 12px 14px;
+  color: var(--text-primary);
+  font-weight: 800;
+  border-bottom: 1px solid var(--border);
+}
+
+.ih-sunan-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.ih-sunan-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ih-badge-sunnah {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.ih-nawafil-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.ih-nafl-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.ih-nafl-card h4 {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.ih-nafl-card p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+

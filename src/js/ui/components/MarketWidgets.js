@@ -1,6 +1,6 @@
 /**
- * مؤشرات مصراوي الحية — أسعار الذهب، العملات، الطقس
- * Dalil El Manzala & El Matariya - Masrawy Live Market Indicators
+ * مؤشرات السوق والطقس ومواقيت الصلاة الحية
+ * Dalil El Manzala & El Matariya - Live Market, Weather & Prayer Times Indicators
  */
 
 const STORAGE_KEY = 'manzala_market_indicators_v2';
@@ -17,13 +17,118 @@ const ICONS = {
   gold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
     <polyline points="2 17 12 22 22 17"></polyline>
-    <polyline points="2 12 12 17 22 12"></polyline>
+    <polyline points="2 12 17 22 12"></polyline>
   </svg>`,
   currency: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <line x1="12" y1="1" x2="12" y2="23"></line>
     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+  </svg>`,
+  prayer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2v2"></path>
+    <path d="M12 4a7 7 0 0 0-7 7v9h14v-9a7 7 0 0 0-7-7z"></path>
+    <path d="M9 20v-5a3 3 0 0 1 6 0v5"></path>
   </svg>`
 };
+
+/**
+ * دقة فلكية معتمدة وفق الهيئة المصرية العامة للمساحة لمواقيت الصلاة
+ */
+export function calculatePrayerTimes(date = new Date(), lat = 31.1582, lng = 31.9360, timezone = 3) {
+  const d2r = Math.PI / 180;
+  const r2d = 180 / Math.PI;
+
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  let jd = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+  const d = jd - 2451545.0;
+
+  const g = (357.529 + 0.98560028 * d) % 360;
+  const q = (280.459 + 0.98564736 * d) % 360;
+  const L = (q + 1.915 * Math.sin(g * d2r) + 0.020 * Math.sin(2 * g * d2r)) % 360;
+  const e = 23.439 - 0.00000036 * d;
+  const RA = Math.atan2(Math.cos(e * d2r) * Math.sin(L * d2r), Math.cos(L * d2r)) * r2d / 15;
+  const decl = Math.asin(Math.sin(e * d2r) * Math.sin(L * d2r)) * r2d;
+  const EqT = q / 15 - ((RA + 24) % 24);
+
+  const noon = 12 + timezone - lng / 15 - EqT;
+
+  function sunHourAngle(angle, direction = 'ccw') {
+    const cosHA = (Math.sin(angle * d2r) - Math.sin(lat * d2r) * Math.sin(decl * d2r)) / (Math.cos(lat * d2r) * Math.cos(decl * d2r));
+    if (cosHA > 1 || cosHA < -1) return null;
+    const ha = Math.acos(cosHA) * r2d / 15;
+    return direction === 'ccw' ? -ha : ha;
+  }
+
+  const fajrHA = sunHourAngle(-19.5, 'ccw');
+  const sunriseHA = sunHourAngle(-0.8333, 'ccw');
+  const sunsetHA = sunHourAngle(-0.8333, 'cw');
+  const ishaHA = sunHourAngle(-17.5, 'cw');
+
+  const noonZenith = Math.abs(lat - decl);
+  const asrZenith = Math.atan(1 + Math.tan(noonZenith * d2r)) * r2d;
+  const asrHA = sunHourAngle(90 - asrZenith, 'cw');
+
+  function toMinutes(hourDec) {
+    let h = (hourDec + 24) % 24;
+    return Math.round(h * 60);
+  }
+
+  function formatTime(minutes) {
+    const h24 = Math.floor(minutes / 60) % 24;
+    const m = minutes % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    const h12 = h24 % 12 || 12;
+    const period = h24 >= 12 ? 'م' : 'ص';
+    return {
+      time24: pad(h24) + ':' + pad(m),
+      time12: pad(h12) + ':' + pad(m) + ' ' + period,
+      totalMinutes: minutes
+    };
+  }
+
+  const prayers = [
+    { id: 'fajr', name: 'الفجر', icon: '🌙', ...formatTime(toMinutes(noon + fajrHA)) },
+    { id: 'sunrise', name: 'الشروق', icon: '🌅', ...formatTime(toMinutes(noon + sunriseHA)) },
+    { id: 'dhuhr', name: 'الظهر', icon: '☀️', ...formatTime(toMinutes(noon + 2 / 60)) },
+    { id: 'asr', name: 'العصر', icon: '🌤️', ...formatTime(toMinutes(noon + asrHA)) },
+    { id: 'maghrib', name: 'المغرب', icon: '🌇', ...formatTime(toMinutes(noon + sunsetHA + 2 / 60)) },
+    { id: 'isha', name: 'العشاء', icon: '🌌', ...formatTime(toMinutes(noon + ishaHA)) }
+  ];
+
+  const now = new Date();
+  const currentMinutes = (now.getUTCHours() + timezone) * 60 + now.getUTCMinutes();
+  const currentSecondsInDay = currentMinutes * 60 + now.getUTCSeconds();
+
+  let nextPrayer = null;
+  let remainingSecs = 0;
+
+  for (const p of prayers) {
+    if (p.id === 'sunrise') continue;
+    const pSeconds = p.totalMinutes * 60;
+    if (pSeconds > currentSecondsInDay) {
+      nextPrayer = p;
+      remainingSecs = pSeconds - currentSecondsInDay;
+      break;
+    }
+  }
+
+  if (!nextPrayer) {
+    nextPrayer = prayers[0];
+    remainingSecs = (24 * 3600 - currentSecondsInDay) + (prayers[0].totalMinutes * 60);
+  }
+
+  const remH = Math.floor(remainingSecs / 3600);
+  const remM = Math.floor((remainingSecs % 3600) / 60);
+  const remS = remainingSecs % 60;
+  const remText = remH > 0 ? `${remH} س و ${remM} د` : `${remM} د و ${remS} ث`;
+
+  return { prayers, nextPrayer, remainingSecs, remH, remM, remS, remText };
+}
 
 /**
  * Smart Animated Weather Engine:
@@ -293,6 +398,56 @@ function getWeatherCardHTML(weather) {
   `;
 }
 
+export function getPrayerCardHTML(prayerData = null) {
+  const pData = prayerData || calculatePrayerTimes();
+  const next = pData.nextPrayer;
+  let dateStr = 'اليوم';
+  try {
+    dateStr = new Intl.DateTimeFormat('ar-EG', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    }).format(new Date());
+  } catch (_) {}
+
+  return `
+    <div class="mw-card-content mw-card-content--prayer">
+      <div class="mw-card-head-row">
+        <span class="mw-icon mw-icon-prayer">${ICONS.prayer}</span>
+        <h4 class="mw-card-title">مواقيت الصلاة في المنصورة والمنزلة</h4>
+      </div>
+      <p class="mw-card-date">${dateStr}</p>
+      
+      <div class="mw-prayer-next-banner">
+        <div class="mw-prayer-next-label">الصلاة القادمة: <strong class="mw-prayer-next-name">صلاة ${next.name}</strong></div>
+        <div class="mw-prayer-countdown-box">
+          <span class="mw-prayer-countdown-val mw-live-prayer-countdown">${pData.remText}</span>
+          <small class="mw-prayer-countdown-sub">متبقي على رفع الأذان</small>
+        </div>
+      </div>
+
+      <div class="mw-prayer-times-grid">
+        ${pData.prayers.map(p => `
+          <div class="mw-prayer-row ${p.id === next.id ? 'is-next' : ''}">
+            <div class="mw-prayer-row-left">
+              <span class="mw-prayer-icon">${p.icon}</span>
+              <span class="mw-prayer-name">${p.name}</span>
+            </div>
+            <span class="mw-prayer-time">${p.time12}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="mw-prayer-footer">
+        <a href="./prayer-times.html" class="mw-prayer-link-btn">
+          <span>عرض جدول الأسبوع، أذكار بعد الصلاة، والسنن</span>
+          <span class="mw-arrow">←</span>
+        </a>
+      </div>
+    </div>
+  `;
+}
+
 /**
  * Renders the HTML markup for the Market Widgets Bar
  */
@@ -300,9 +455,10 @@ export function renderMarketWidgetsHTML(data = currentMarketData) {
   const gold = data?.gold || FALLBACK_DATA.gold;
   const curr = data?.currency || FALLBACK_DATA.currency;
   const weather = normalizeWeatherData(data?.weather || FALLBACK_DATA.weather);
+  const prayer = calculatePrayerTimes();
 
   return `
-    <div class="market-widgets-bar" id="market-widgets-bar" role="region" aria-label="مؤشرات الأسعار والطقس الحية">
+    <div class="market-widgets-bar" id="market-widgets-bar" role="region" aria-label="مؤشرات الأسعار والطقس ومواقيت الصلاة الحية">
       <!-- 1. Gold Price Widget -->
       <div class="market-widget-item market-widget-item--gold" data-widget="gold" tabindex="0" role="button" aria-expanded="false" aria-label="أسعار الذهب">
         <span class="mw-icon mw-icon-gold">${ICONS.gold}</span>
@@ -335,6 +491,18 @@ export function renderMarketWidgetsHTML(data = currentMarketData) {
         <!-- Desktop Dropdown -->
         <div class="market-widget-dropdown" id="mw-dropdown-weather" role="tooltip">
           ${getWeatherCardHTML(weather)}
+        </div>
+      </div>
+
+      <!-- 4. Prayer Times Widget -->
+      <div class="market-widget-item market-widget-item--prayer" data-widget="prayer" tabindex="0" role="button" aria-expanded="false" aria-label="مواقيت الصلاة">
+        <span class="mw-icon mw-icon-prayer">${ICONS.prayer}</span>
+        <span class="mw-label mw-label-full">مواقيت الصلاة</span>
+        <span class="mw-label mw-label-short"><span class="mw-quick-val">${prayer.nextPrayer.name}</span> ${prayer.nextPrayer.time12}</span>
+        
+        <!-- Desktop Dropdown -->
+        <div class="market-widget-dropdown market-widget-dropdown--prayer" id="mw-dropdown-prayer" role="tooltip">
+          ${getPrayerCardHTML(prayer)}
         </div>
       </div>
     </div>
@@ -373,6 +541,19 @@ function ensureMobileModalEl() {
   return modalWrap;
 }
 
+let _prayerTicker = null;
+function ensurePrayerTicker() {
+  if (_prayerTicker) return;
+  _prayerTicker = setInterval(() => {
+    const els = document.querySelectorAll('.mw-live-prayer-countdown');
+    if (!els.length) return;
+    const pData = calculatePrayerTimes();
+    els.forEach(el => {
+      el.textContent = pData.remText;
+    });
+  }, 1000);
+}
+
 function openMobileModal(type) {
   const modalWrap = ensureMobileModalEl();
   const body = modalWrap.querySelector('#mw-mobile-modal-body');
@@ -385,6 +566,9 @@ function openMobileModal(type) {
     body.innerHTML = getCurrencyCardHTML(data.currency || FALLBACK_DATA.currency);
   } else if (type === 'weather') {
     body.innerHTML = getWeatherCardHTML(data.weather || FALLBACK_DATA.weather);
+  } else if (type === 'prayer') {
+    body.innerHTML = getPrayerCardHTML(calculatePrayerTimes());
+    ensurePrayerTicker();
   }
 
   modalWrap.classList.add('is-open');
@@ -439,6 +623,7 @@ export function bindMarketWidgetsEvents(barEl) {
         dropdown.classList.add('is-open');
         item.classList.add('active');
         item.setAttribute('aria-expanded', 'true');
+        if (type === 'prayer') ensurePrayerTicker();
       }
     });
 

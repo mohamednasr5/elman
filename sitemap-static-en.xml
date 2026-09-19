@@ -173,12 +173,21 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/qibla.html</loc>
-    <lastmod>2026-09-17</lastmod>
+    <lastmod>2026-09-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/qibla.html"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/qibla.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/qibla.html"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/prayer-times.html</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/prayer-times.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/prayer-times.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/prayer-times.html"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/jobs.html</loc>
