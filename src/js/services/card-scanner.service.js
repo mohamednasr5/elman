@@ -136,7 +136,7 @@ export async function extractCardDataWithAI(imageUrl) {
       'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({ imageUrl }),
-    signal: AbortSignal.timeout(35000) // 35s timeout for AI Vision processing & failover
+    signal: AbortSignal.timeout(90000) // OCR.Space key rotation + Vision AI may require more than 35s
   });
 
   const result = await response.json().catch(() => ({}));
