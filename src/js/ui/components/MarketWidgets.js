@@ -122,12 +122,21 @@ export function calculatePrayerTimes(date = new Date(), lat = 31.1582, lng = 31.
     remainingSecs = (24 * 3600 - currentSecondsInDay) + (prayers[0].totalMinutes * 60);
   }
 
-  const remH = Math.floor(remainingSecs / 3600);
-  const remM = Math.floor((remainingSecs % 3600) / 60);
-  const remS = remainingSecs % 60;
-  const remText = remH > 0 ? `${remH} س و ${remM} د` : `${remM} د و ${remS} ث`;
+  const remH = Math.max(0, Math.floor(remainingSecs / 3600));
+  const remM = Math.max(0, Math.floor((remainingSecs % 3600) / 60));
+  const remS = Math.max(0, remainingSecs % 60);
 
-  return { prayers, nextPrayer, remainingSecs, remH, remM, remS, remText };
+  const hUnit = (remH >= 3 && remH <= 10) ? 'ساعات' : (remH === 2 ? 'ساعتان' : (remH === 1 ? 'ساعة واحدة' : 'ساعة'));
+  const mUnit = 'دقيقة';
+  const sUnit = 'ثانية';
+
+  const hStr = String(remH);
+  const mStr = String(remM);
+  const sStr = String(remS).padStart(2, '0');
+
+  const remText = `${hStr} ${hUnit} و ${mStr} ${mUnit} و ${sStr} ${sUnit}`;
+
+  return { prayers, nextPrayer, remainingSecs, remH, remM, remS, hUnit, mUnit, sUnit, hStr, mStr, sStr, remText };
 }
 
 /**
@@ -420,10 +429,25 @@ export function getPrayerCardHTML(prayerData = null) {
       
       <div class="mw-prayer-next-banner">
         <div class="mw-prayer-next-label">الصلاة القادمة: <strong class="mw-prayer-next-name">صلاة ${next.name}</strong></div>
-        <div class="mw-prayer-countdown-box">
-          <span class="mw-prayer-countdown-val mw-live-prayer-countdown">${pData.remText}</span>
-          <small class="mw-prayer-countdown-sub">متبقي على رفع الأذان</small>
+        
+        <!-- 3 Boxes: ساعات / دقيقة / ثانية -->
+        <div class="mw-prayer-countdown-boxes" aria-label="${pData.remText}">
+          <div class="mw-pcd-item">
+            <span class="mw-pcd-num mw-live-pcd-h">${pData.hStr}</span>
+            <span class="mw-pcd-lbl mw-live-pcd-hlbl">${pData.hUnit}</span>
+          </div>
+          <div class="mw-pcd-item">
+            <span class="mw-pcd-num mw-live-pcd-m">${pData.mStr}</span>
+            <span class="mw-pcd-lbl">${pData.mUnit}</span>
+          </div>
+          <div class="mw-pcd-item">
+            <span class="mw-pcd-num mw-live-pcd-s">${pData.sStr}</span>
+            <span class="mw-pcd-lbl">${pData.sUnit}</span>
+          </div>
         </div>
+
+        <div class="mw-prayer-countdown-text mw-live-prayer-countdown">${pData.remText}</div>
+        <small class="mw-prayer-countdown-sub">متبقي على رفع الأذان</small>
       </div>
 
       <div class="mw-prayer-times-grid">
@@ -494,11 +518,10 @@ export function renderMarketWidgetsHTML(data = currentMarketData) {
         </div>
       </div>
 
-      <!-- 4. Prayer Times Widget -->
-      <div class="market-widget-item market-widget-item--prayer" data-widget="prayer" tabindex="0" role="button" aria-expanded="false" aria-label="مواقيت الصلاة">
+      <!-- 4. Prayer Times Widget (يعرض الصلاة القادمة فقط) -->
+      <div class="market-widget-item market-widget-item--prayer" data-widget="prayer" tabindex="0" role="button" aria-expanded="false" aria-label="صلاة ${prayer.nextPrayer.name}">
         <span class="mw-icon mw-icon-prayer">${ICONS.prayer}</span>
-        <span class="mw-label mw-label-full">مواقيت الصلاة</span>
-        <span class="mw-label mw-label-short"><span class="mw-quick-val">${prayer.nextPrayer.name}</span> ${prayer.nextPrayer.time12}</span>
+        <span class="mw-label mw-label-prayer-only"><span class="mw-quick-val">صلاة ${prayer.nextPrayer.name}</span> <span class="mw-prayer-btn-time">${prayer.nextPrayer.time12}</span></span>
         
         <!-- Desktop Dropdown -->
         <div class="market-widget-dropdown market-widget-dropdown--prayer" id="mw-dropdown-prayer" role="tooltip">
@@ -545,11 +568,33 @@ let _prayerTicker = null;
 function ensurePrayerTicker() {
   if (_prayerTicker) return;
   _prayerTicker = setInterval(() => {
-    const els = document.querySelectorAll('.mw-live-prayer-countdown');
-    if (!els.length) return;
+    const hasBoxes = document.querySelectorAll('.mw-live-pcd-s').length > 0;
+    const hasText = document.querySelectorAll('.mw-live-prayer-countdown').length > 0;
     const pData = calculatePrayerTimes();
-    els.forEach(el => {
-      el.textContent = pData.remText;
+
+    if (hasBoxes) {
+      document.querySelectorAll('.mw-live-pcd-h').forEach(el => { el.textContent = pData.hStr; });
+      document.querySelectorAll('.mw-live-pcd-hlbl').forEach(el => { el.textContent = pData.hUnit; });
+      document.querySelectorAll('.mw-live-pcd-m').forEach(el => { el.textContent = pData.mStr; });
+      document.querySelectorAll('.mw-live-pcd-s').forEach(el => { el.textContent = pData.sStr; });
+    }
+
+    if (hasText) {
+      document.querySelectorAll('.mw-live-prayer-countdown').forEach(el => {
+        el.textContent = pData.remText;
+      });
+    }
+
+    // Keep top bar button updated with current next prayer
+    document.querySelectorAll('.market-widget-item--prayer .mw-label-prayer-only').forEach(el => {
+      const qVal = el.querySelector('.mw-quick-val');
+      const tVal = el.querySelector('.mw-prayer-btn-time');
+      if (qVal && qVal.textContent !== `صلاة ${pData.nextPrayer.name}`) {
+        qVal.textContent = `صلاة ${pData.nextPrayer.name}`;
+      }
+      if (tVal && tVal.textContent !== pData.nextPrayer.time12) {
+        tVal.textContent = pData.nextPrayer.time12;
+      }
     });
   }, 1000);
 }

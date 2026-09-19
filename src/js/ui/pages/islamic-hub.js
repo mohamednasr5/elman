@@ -1476,12 +1476,21 @@ export function calculatePrayerTimes(date = new Date(), lat = 31.1582, lng = 31.
     remainingSecs = (24 * 3600 - currentSecondsInDay) + (prayers[0].totalMinutes * 60);
   }
 
-  const remH = Math.floor(remainingSecs / 3600);
-  const remM = Math.floor((remainingSecs % 3600) / 60);
-  const remS = remainingSecs % 60;
-  const remText = remH > 0 ? `${remH} س و ${remM} د` : `${remM} د و ${remS} ث`;
+  const remH = Math.max(0, Math.floor(remainingSecs / 3600));
+  const remM = Math.max(0, Math.floor((remainingSecs % 3600) / 60));
+  const remS = Math.max(0, remainingSecs % 60);
 
-  return { prayers, nextPrayer, remainingSecs, remH, remM, remS, remText };
+  const hUnit = (remH >= 3 && remH <= 10) ? 'ساعات' : (remH === 2 ? 'ساعتان' : (remH === 1 ? 'ساعة واحدة' : 'ساعة'));
+  const mUnit = 'دقيقة';
+  const sUnit = 'ثانية';
+
+  const hStr = String(remH);
+  const mStr = String(remM);
+  const sStr = String(remS).padStart(2, '0');
+
+  const remText = `${hStr} ${hUnit} و ${mStr} ${mUnit} و ${sStr} ${sUnit}`;
+
+  return { prayers, nextPrayer, remainingSecs, remH, remM, remS, hUnit, mUnit, sUnit, hStr, mStr, sStr, remText };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1531,6 +1540,22 @@ async function renderPrayerTimes(container){
               <h2 class="ih-p-hero-title">صلاة ${data.nextPrayer.name}</h2>
               <div class="ih-p-hero-time">${data.nextPrayer.time12}</div>
               
+              <!-- 3 Boxes: ساعات / دقيقة / ثانية -->
+              <div class="ih-p-countdown-boxes" aria-label="${data.remText}">
+                <div class="ih-pcd-item">
+                  <span class="ih-pcd-num" id="ih-pcd-h">${data.hStr}</span>
+                  <span class="ih-pcd-lbl" id="ih-pcd-hlbl">${data.hUnit}</span>
+                </div>
+                <div class="ih-pcd-item">
+                  <span class="ih-pcd-num" id="ih-pcd-m">${data.mStr}</span>
+                  <span class="ih-pcd-lbl">${data.mUnit}</span>
+                </div>
+                <div class="ih-pcd-item">
+                  <span class="ih-pcd-num" id="ih-pcd-s">${data.sStr}</span>
+                  <span class="ih-pcd-lbl">${data.sUnit}</span>
+                </div>
+              </div>
+
               <div class="ih-p-countdown-box">
                 <div class="ih-p-countdown-val" id="ih-p-countdown-val">${data.remText}</div>
                 <div class="ih-p-countdown-sub">المتبقي حتى رفع الأذان</div>
@@ -1923,13 +1948,21 @@ async function renderPrayerTimes(container){
 
   // Auto live ticker for countdown
   const ticker = setInterval(() => {
-    if (!document.getElementById('ih-p-countdown-val')) {
+    if (!document.getElementById('ih-p-countdown-val') && !document.getElementById('ih-pcd-s')) {
       clearInterval(ticker);
       return;
     }
     const data = calculatePrayerTimes(new Date(), currentLat, currentLng, 3);
     const el = document.getElementById('ih-p-countdown-val');
     if (el) el.textContent = data.remText;
+    const elH = document.getElementById('ih-pcd-h');
+    if (elH) elH.textContent = data.hStr;
+    const elHL = document.getElementById('ih-pcd-hlbl');
+    if (elHL) elHL.textContent = data.hUnit;
+    const elM = document.getElementById('ih-pcd-m');
+    if (elM) elM.textContent = data.mStr;
+    const elS = document.getElementById('ih-pcd-s');
+    if (elS) elS.textContent = data.sStr;
   }, 1000);
 }
 

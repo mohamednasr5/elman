@@ -503,24 +503,81 @@
   font-size: 0.95rem;
 }
 
-.mw-prayer-countdown-box {
+/* ── 3 Boxes: ساعات / دقيقة / ثانية ── */
+.mw-prayer-countdown-boxes {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 6px;
+  direction: rtl;
+  margin: 10px 0 6px;
+}
+
+.mw-pcd-item {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 10px;
+  padding: 6px 4px;
+  min-width: 58px;
 }
 
-.mw-prayer-countdown-val {
+.mw-pcd-num {
   font-size: 1.35rem;
   font-weight: 900;
   color: #ffffff;
-  letter-spacing: 0.5px;
   font-family: monospace, -apple-system, sans-serif;
+  line-height: 1.1;
+  letter-spacing: 0.5px;
+}
+
+.mw-pcd-lbl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #34d399;
+  margin-top: 3px;
+}
+
+.mw-prayer-countdown-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  margin: 4px 0 2px;
 }
 
 .mw-prayer-countdown-sub {
   font-size: 0.72rem;
   color: #94a3b8;
   margin-top: 2px;
+}
+
+/* Prayer Widget Button Specifics */
+.market-widget-item--prayer .mw-label-prayer-only {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.market-widget-item--prayer .mw-prayer-btn-time {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  opacity: 0.9;
+}
+
+[data-theme="dark"] .market-widget-item--prayer .mw-prayer-btn-time {
+  color: #94a3b8;
+}
+
+@media (max-width: 440px) {
+  .market-widget-item--prayer .mw-prayer-btn-time {
+    display: none;
+  }
 }
 
 .mw-prayer-times-grid {
