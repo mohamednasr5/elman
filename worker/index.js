@@ -8410,6 +8410,152 @@ function jsonResponse(data, status = 200, headers = {}) {
   });
 }
 
+/**
+ * OCR.Space multi-key failover for business-card text extraction.
+ * Secrets:
+ *   OCR_SPACE_API_KEY, OCR_SPACE_API_KEY_2 ... OCR_SPACE_API_KEY_5
+ *
+ * The browser never receives these keys. The Worker rotates sequentially
+ * and immediately advances on quota/rate-limit/auth/provider/network failures.
+ */
+const OCR_SPACE_API_URL = 'https://api.ocr.space/parse/image';
+const _ocrSpaceCooldowns = new Map();
+const OCR_SPACE_COOLDOWN_MS = 60_000;
+
+function getConfiguredOcrSpaceKeys(env) {
+  if (!env || typeof env !== 'object') return [];
+  const keys = [
+    env.OCR_SPACE_API_KEY,
+    env.OCR_SPACE_API_KEY_2,
+    env.OCR_SPACE_API_KEY_3,
+    env.OCR_SPACE_API_KEY_4,
+    env.OCR_SPACE_API_KEY_5
+  ];
+  return keys
+    .map((key, index) => ({ id: index + 1, key: typeof key === 'string' ? key.trim() : '' }))
+    .filter(item => item.key);
+}
+
+function isOcrSpaceQuotaFailure(status, text = '') {
+  const t = String(text || '').toLowerCase();
+  return status === 429 ||
+    status === 402 ||
+    status === 401 ||
+    status === 403 ||
+    status === 500 ||
+    /rate.?limit|quota|limit.?reached|monthly.?limit|daily.?limit|invalid.?api.?key|api.?key/i.test(t);
+}
+
+async function ocrSpaceRequest({ imageUrl, imageBase64, mimeType = 'image/jpeg' }, apiKey, timeoutMs = 20_000) {
+  const form = new FormData();
+  form.append('apikey', apiKey);
+  form.append('language', 'ara');
+  form.append('OCREngine', '2');
+  form.append('isOverlayRequired', 'false');
+  form.append('detectOrientation', 'true');
+  form.append('scale', 'true');
+  form.append('isTable', 'false');
+  form.append('OCREngine', '2');
+
+  if (imageUrl) {
+    form.append('url', imageUrl);
+  } else if (imageBase64) {
+    const normalized = imageBase64.startsWith('data:')
+      ? imageBase64
+      : `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`;
+    form.append('base64Image', normalized);
+  } else {
+    throw new Error('OCR image is required');
+  }
+
+  const response = await fetch(OCR_SPACE_API_URL, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(timeoutMs)
+  });
+
+  const raw = await response.text().catch(() => '');
+  let data = null;
+  try { data = JSON.parse(raw); } catch (_) {}
+
+  if (!response.ok) {
+    const detail = data?.ErrorMessage
+      || data?.ErrorDetails
+      || raw.slice(0, 240)
+      || `HTTP ${response.status}`;
+    const err = new Error(detail);
+    err.httpStatus = response.status;
+    err.raw = raw;
+    throw err;
+  }
+
+  const apiError = data?.IsErroredOnProcessing === true ||
+    (Array.isArray(data?.ErrorMessage) && data.ErrorMessage.length > 0) ||
+    (typeof data?.ErrorMessage === 'string' && data.ErrorMessage.trim());
+
+  if (apiError) {
+    const detail = Array.isArray(data.ErrorMessage)
+      ? data.ErrorMessage.join(' | ')
+      : String(data.ErrorMessage || data.ErrorDetails || 'OCR.Space processing error');
+    const err = new Error(detail);
+    err.httpStatus = response.status;
+    err.raw = raw;
+    throw err;
+  }
+
+  const text = Array.isArray(data?.ParsedResults)
+    ? data.ParsedResults.map(item => item?.ParsedText || '').join('\n').trim()
+    : '';
+
+  if (!text) {
+    const err = new Error('OCR.Space returned no readable text');
+    err.code = 'OCR_EMPTY_RESULT';
+    err.httpStatus = response.status;
+    err.raw = raw;
+    throw err;
+  }
+
+  return {
+    text,
+    parsedResults: data?.ParsedResults || [],
+    fileParseExitCode: data?.OCRExitCode ?? null
+  };
+}
+
+async function callOcrSpaceWithKeyFailover(options, env) {
+  const keys = getConfiguredOcrSpaceKeys(env);
+  if (!keys.length) {
+    throw new Error('No OCR.Space API keys configured. Set OCR_SPACE_API_KEY through OCR_SPACE_API_KEY_5 as Cloudflare Worker secrets.');
+  }
+
+  const now = Date.now();
+  const available = keys.filter(item => (_ocrSpaceCooldowns.get(item.id) || 0) <= now);
+  const candidates = available.length ? available : keys;
+  let lastError = null;
+
+  for (const item of candidates) {
+    try {
+      console.log(`[OCR.Space] Attempting key #${item.id} (${candidates.length} candidate keys)...`);
+      const result = await ocrSpaceRequest(options, item.key);
+      _ocrSpaceCooldowns.delete(item.id);
+      console.log(`[OCR.Space] Key #${item.id} succeeded.`);
+      return {
+        ...result,
+        keyId: item.id
+      };
+    } catch (err) {
+      lastError = err;
+      const status = Number(err?.httpStatus || 0);
+      if (isOcrSpaceQuotaFailure(status, err?.message || err?.raw || '')) {
+        _ocrSpaceCooldowns.set(item.id, Date.now() + OCR_SPACE_COOLDOWN_MS);
+      }
+      console.warn(`[OCR.Space] Key #${item.id} failed: ${err?.message || err}. Rotating to next key.`);
+    }
+  }
+
+  throw new Error(`All configured OCR.Space keys failed. ${lastError?.message || 'Unknown OCR error'}`);
+}
+
 const ARABIC_CHAR_MAP = {
   'ا': 'a', 'أ': 'a', 'إ': 'e', 'آ': 'aa',
   'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'g',
