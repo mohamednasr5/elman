@@ -361,6 +361,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/fish-shop"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/football-fields</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/football-fields"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/football-fields"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/football-fields"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/football-training-academy</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -791,6 +799,14 @@
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/tobacco-trade"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/tobacco-trade"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/tobacco-trade"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/category/tractor-excavator-loader</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/tractor-excavator-loader"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/tractor-excavator-loader"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/tractor-excavator-loader"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/category/travel-and-tourism</loc>
