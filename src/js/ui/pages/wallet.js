@@ -51,13 +51,22 @@ export async function renderWalletPage($container) {
 
   try {
     const token = await getIdToken();
-    let balanceData = { balance: getStoredCoinsBalance(), totalEarned: 0, history: [], purchases: [] };
+    const stored = getStoredCoinsBalance();
+    const profilePts = Number(user.points ?? user.coins ?? 0);
+    const initialCoins = Math.max(stored, profilePts);
+
+    let balanceData = { balance: initialCoins, totalEarned: Number(user.totalEarned || 0), history: [], purchases: [] };
 
     try {
       const res = await api.get('/api/coins/balance', token);
       if (res.success && res.data) {
-        balanceData = res.data;
-        setStoredCoinsBalance(Number(res.data.balance || 0));
+        const serverBal = Number(res.data.balance || 0);
+        const finalBal = serverBal > 0 ? serverBal : (initialCoins > 0 ? initialCoins : serverBal);
+        balanceData = {
+          ...res.data,
+          balance: finalBal
+        };
+        setStoredCoinsBalance(finalBal);
       }
     } catch (err) {
       console.warn('[Wallet balance fetch error]:', err);

@@ -5330,21 +5330,34 @@ try {
       await db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run().catch(() => {});
       await db.prepare("ALTER TABLE users ADD COLUMN photo_url TEXT").run().catch(() => {});
 
+      // Check if existing record with email has points
+      let existingPoints = 0;
+      let existingEarned = 0;
+      if (email) {
+        const prev = await db.prepare('SELECT points, total_earned FROM users WHERE LOWER(email) = ? AND id != ? ORDER BY points DESC LIMIT 1').bind(email, id).first();
+        if (prev) {
+          existingPoints = Number(prev.points || 0);
+          existingEarned = Number(prev.total_earned || 0);
+        }
+      }
+
       // Upsert: preserve existing role in Turso (server-side protection)
       await db.prepare(`
-        INSERT INTO users (id, name, email, photo_url, role, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (id, name, email, photo_url, role, status, points, total_earned, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           name = excluded.name,
           email = excluded.email,
           photo_url = excluded.photo_url,
+          points = CASE WHEN excluded.points > COALESCE(users.points, 0) THEN excluded.points ELSE users.points END,
+          total_earned = CASE WHEN excluded.total_earned > COALESCE(users.total_earned, 0) THEN excluded.total_earned ELSE users.total_earned END,
           role = CASE
             WHEN excluded.role = 'superadmin' THEN 'superadmin'
             WHEN users.role IN ('admin', 'superadmin') THEN users.role
             ELSE excluded.role
           END,
           updated_at = excluded.updated_at
-      `).bind(id, name, email, photoUrl, requestedRole, status, now, now).run();
+      `).bind(id, name, email, photoUrl, requestedRole, status, existingPoints, existingEarned, now, now).run();
 
       // Return full Turso profile so auth.js can use actual DB role
       const profile = await db.prepare(
@@ -5462,26 +5475,52 @@ try {
     await ensureCoinEconomySchema(db);
 
     const uid = auth.user.uid;
-    let user = await db.prepare('SELECT points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first();
+    const userEmail = (auth.user.email || '').trim().toLowerCase();
+
+    // Look up by id OR by email, sorted by points DESC so that whichever row holds the user's coins is prioritized!
+    let user = null;
+    if (userEmail) {
+      user = await db.prepare(`
+        SELECT id, points, total_earned 
+        FROM users 
+        WHERE id = ? OR (LOWER(email) = ? AND email != '')
+        ORDER BY points DESC, total_earned DESC 
+        LIMIT 1
+      `).bind(uid, userEmail).first();
+    } else {
+      user = await db.prepare('SELECT id, points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first();
+    }
+
     if (!user) {
       const now = Date.now();
       await db.prepare(`
         INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
         VALUES (?, ?, ?, 'user', 'active', 0, 0, ?, ?)
         ON CONFLICT(id) DO NOTHING
-      `).bind(uid, auth.user.name || 'مستخدم', (auth.user.email || '').toLowerCase(), now, now).run().catch(() => {});
-      user = await db.prepare('SELECT points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first() || { points: 0, total_earned: 0 };
+      `).bind(uid, auth.user.name || 'مستخدم', userEmail, now, now).run().catch(() => {});
+      user = await db.prepare('SELECT points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first() || { id: uid, points: 0, total_earned: 0 };
+    } else if (user.id !== uid && Number(user.points || 0) > 0) {
+      // Sync points to current Firebase Auth UID row so future lookups match directly
+      const now = Date.now();
+      await db.prepare(`
+        INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+        VALUES (?, ?, ?, 'user', 'active', ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          points = CASE WHEN excluded.points > users.points THEN excluded.points ELSE users.points END,
+          total_earned = CASE WHEN excluded.total_earned > users.total_earned THEN excluded.total_earned ELSE users.total_earned END,
+          updated_at = excluded.updated_at
+      `).bind(uid, auth.user.name || 'مستخدم', userEmail, user.points, user.total_earned, now, now).run().catch(() => {});
     }
 
     const history = (await db.prepare(`
       SELECT id, type, rule_key, amount, label, place_id, place_name, meta_json, created_at
-      FROM loyalty_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 100
-    `).bind(uid).all()).results || [];
+      FROM loyalty_history WHERE user_id = ? OR user_id = ? ORDER BY created_at DESC LIMIT 100
+    `).bind(uid, user?.id || uid).all()).results || [];
 
     const purchases = (await db.prepare(`
       SELECT id, package_coins, amount_egp, receipt_url, payment_method, vodafone_sender_number, status, admin_notes, created_at, reviewed_at
-      FROM coin_purchases WHERE user_id = ? ORDER BY created_at DESC LIMIT 50
-    `).bind(uid).all()).results || [];
+      FROM coin_purchases WHERE user_id = ? OR user_id = ? ORDER BY created_at DESC LIMIT 50
+    `).bind(uid, user?.id || uid).all()).results || [];
 
     return jsonResponse({
       success: true,

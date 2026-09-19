@@ -17,24 +17,24 @@
 /* ── Desktop Layout in .page-back-bar ── */
 @media (min-width: 768px) {
   .page-back-bar .market-widgets-bar {
-    order: 3 !important;
-    margin-right: auto !important;
-    margin-left: 0 !important;
+    order: 2 !important;
+    margin: 0 auto !important;
     direction: rtl !important;
+    justify-content: center !important;
   }
 
   [dir="rtl"] .page-back-bar .market-widgets-bar {
-    order: 3 !important;
-    margin-right: auto !important;
-    margin-left: 0 !important;
+    order: 2 !important;
+    margin: 0 auto !important;
     direction: rtl !important;
+    justify-content: center !important;
   }
 
   [dir="ltr"] .page-back-bar .market-widgets-bar {
-    order: 3 !important;
-    margin-left: auto !important;
-    margin-right: 0 !important;
+    order: 2 !important;
+    margin: 0 auto !important;
     direction: ltr !important;
+    justify-content: center !important;
   }
 }
 
@@ -123,7 +123,7 @@
   }
 }
 
-/* Home Page Sub-strip (Desktop: Far LEFT under Login button | Mobile: Same as current) */
+/* Home Page Sub-strip (Desktop: Centered | Mobile: Centered) */
 .home-market-widgets-wrap {
   width: 100%;
   max-width: 1440px;
@@ -134,13 +134,16 @@
 
 @media (min-width: 768px) {
   .home-market-widgets-wrap {
-    direction: ltr !important; /* Pushes items to the far LEFT under the login button */
-    justify-content: flex-start !important;
+    direction: rtl !important;
+    justify-content: center !important;
+    align-items: center !important;
     padding: 10px 24px 8px !important;
     background: transparent !important;
   }
   .home-market-widgets-wrap .market-widgets-bar {
     direction: rtl !important;
+    margin: 0 auto !important;
+    justify-content: center !important;
   }
 }
 
@@ -556,5 +559,206 @@
 @media (min-width: 768px) {
   .market-widget-item .mw-label-short {
     display: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   محرّك الطقس الذكي المتحرك — Smart Animated Weather Engine
+   ══════════════════════════════════════════════════════════════════ */
+
+.mw-icon-weather {
+  width: 20px !important;
+  height: 20px !important;
+  overflow: visible !important;
+}
+
+.mw-weather-sun-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.mw-weather-anim {
+  overflow: visible;
+  display: block;
+}
+
+/* 1. Rotating & Glowing Sun (شمس متحركة ومشعة) */
+.mw-weather-anim--sun .mw-sun-rays {
+  transform-origin: 12px 12px;
+  animation: mw-spin-rays 14s linear infinite;
+}
+
+.mw-weather-anim--sun .mw-sun-body {
+  transform-origin: 12px 12px;
+  animation: mw-pulse-sun 2.6s ease-in-out infinite alternate;
+}
+
+@keyframes mw-spin-rays {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes mw-pulse-sun {
+  0% {
+    transform: scale(0.92);
+    filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.45));
+  }
+  100% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 7px rgba(245, 158, 11, 0.85));
+  }
+}
+
+/* 2. Floating & Drifting Clouds (سحاب متحرك عائم) */
+.mw-weather-anim--clouds .mw-cloud-main,
+.mw-weather-anim--partly .mw-cloud-main {
+  animation: mw-cloud-drift-main 4s ease-in-out infinite alternate;
+}
+
+.mw-weather-anim--clouds .mw-cloud-back {
+  animation: mw-cloud-drift-back 5.5s ease-in-out infinite alternate;
+}
+
+.mw-weather-anim--partly .mw-sun-rays {
+  transform-origin: 16px 9px;
+  animation: mw-spin-rays 14s linear infinite;
+}
+
+.mw-weather-anim--partly .mw-sun-body {
+  transform-origin: 16px 9px;
+  animation: mw-pulse-sun 2.8s ease-in-out infinite alternate;
+}
+
+@keyframes mw-cloud-drift-main {
+  0% { transform: translateX(-1.5px) translateY(0); }
+  50% { transform: translateX(1px) translateY(-1px); }
+  100% { transform: translateX(2.5px) translateY(0.5px); }
+}
+
+@keyframes mw-cloud-drift-back {
+  0% { transform: translateX(1.5px) translateY(0); opacity: 0.65; }
+  100% { transform: translateX(-2px) translateY(-1px); opacity: 0.9; }
+}
+
+/* 3. Rain Drops Animation (أمطار متساقطة متحركة) */
+.mw-weather-anim--rain .mw-cloud-main {
+  animation: mw-cloud-drift-main 4s ease-in-out infinite alternate;
+}
+
+.mw-weather-anim--rain .mw-rain-drop-1 {
+  animation: mw-rain-fall 1.1s cubic-bezier(0.4, 0, 0.8, 1) infinite;
+}
+
+.mw-weather-anim--rain .mw-rain-drop-2 {
+  animation: mw-rain-fall 1.1s cubic-bezier(0.4, 0, 0.8, 1) infinite 0.35s;
+}
+
+.mw-weather-anim--rain .mw-rain-drop-3 {
+  animation: mw-rain-fall 1.1s cubic-bezier(0.4, 0, 0.8, 1) infinite 0.7s;
+}
+
+@keyframes mw-rain-fall {
+  0% {
+    transform: translateY(-4px) translateX(2px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.95;
+  }
+  80% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(6px) translateX(-3px);
+    opacity: 0;
+  }
+}
+
+/* 4. Thunder & Lightning Flash (رعد وبرق وامض) */
+.mw-weather-anim--thunder .mw-cloud-main {
+  animation: mw-cloud-drift-main 3.5s ease-in-out infinite alternate;
+}
+
+.mw-weather-anim--thunder .mw-lightning-bolt {
+  transform-origin: 12px 14px;
+  animation: mw-lightning-strike 3.2s ease-in-out infinite;
+}
+
+.mw-weather-anim--thunder .mw-rain-drop-1 {
+  animation: mw-rain-fall 0.9s cubic-bezier(0.4, 0, 0.8, 1) infinite;
+}
+
+.mw-weather-anim--thunder .mw-rain-drop-2 {
+  animation: mw-rain-fall 0.9s cubic-bezier(0.4, 0, 0.8, 1) infinite 0.45s;
+}
+
+@keyframes mw-lightning-strike {
+  0%, 86%, 93%, 97%, 100% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  88%, 91% {
+    opacity: 1;
+    transform: scale(1.15) translateY(1px);
+    filter: drop-shadow(0 0 8px #fde047);
+  }
+  95% {
+    opacity: 1;
+    transform: scale(1.2) translateY(1.5px);
+    filter: drop-shadow(0 0 10px #ffffff);
+  }
+}
+
+/* 5. Clear Night & Twinkling Stars (ليل صافٍ مع نجوم لامعة) */
+.mw-weather-anim--night .mw-moon-body {
+  transform-origin: 14px 12px;
+  animation: mw-moon-glow 4s ease-in-out infinite alternate;
+}
+
+.mw-weather-anim--night .mw-star-1 {
+  transform-origin: 18px 5px;
+  animation: mw-star-sparkle 2.2s ease-in-out infinite alternate;
+}
+
+.mw-weather-anim--night .mw-star-2 {
+  transform-origin: 7px 6px;
+  animation: mw-star-sparkle 2.8s ease-in-out infinite alternate 1.1s;
+}
+
+@keyframes mw-moon-glow {
+  0% { filter: drop-shadow(0 0 2px rgba(224, 242, 254, 0.5)); transform: rotate(-3deg); }
+  100% { filter: drop-shadow(0 0 8px rgba(224, 242, 254, 0.9)); transform: rotate(3deg); }
+}
+
+@keyframes mw-star-sparkle {
+  0% { opacity: 0.25; transform: scale(0.7); }
+  50% { opacity: 1; transform: scale(1.3); filter: drop-shadow(0 0 4px #e0f2fe); }
+  100% { opacity: 0.25; transform: scale(0.7); }
+}
+
+/* Accessibility: respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .mw-weather-anim--sun .mw-sun-rays,
+  .mw-weather-anim--sun .mw-sun-body,
+  .mw-weather-anim--clouds .mw-cloud-main,
+  .mw-weather-anim--clouds .mw-cloud-back,
+  .mw-weather-anim--partly .mw-cloud-main,
+  .mw-weather-anim--partly .mw-sun-rays,
+  .mw-weather-anim--partly .mw-sun-body,
+  .mw-weather-anim--rain .mw-rain-drop-1,
+  .mw-weather-anim--rain .mw-rain-drop-2,
+  .mw-weather-anim--rain .mw-rain-drop-3,
+  .mw-weather-anim--thunder .mw-lightning-bolt,
+  .mw-weather-anim--thunder .mw-rain-drop-1,
+  .mw-weather-anim--thunder .mw-rain-drop-2,
+  .mw-weather-anim--night .mw-moon-body,
+  .mw-weather-anim--night .mw-star-1,
+  .mw-weather-anim--night .mw-star-2 {
+    animation: none !important;
   }
 }

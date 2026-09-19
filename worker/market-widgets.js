@@ -100,6 +100,42 @@ function parseMasrawyHtml(html) {
     const weatherHeaderMatch = html.match(/class="FirstLevel weather[^"]*"[\s\S]*?<span class="icon-temp">([\d]+)<\/span>/i);
     const headerTemp = weatherHeaderMatch ? weatherHeaderMatch[1].trim() : '';
 
+    // Weather condition extraction from Masrawy classes
+    const condClass1 = (html.match(/class="FirstLevel weather\s+([^"]*)"/i)?.[1] || '').toLowerCase();
+    const condClass2 = (html.match(/class="weatherIconHeader\s+([^"]*)"/i)?.[1] || '').toLowerCase();
+    const condClass3 = (html.match(/class="weatherIcon\s+([^"]*)"/i)?.[1] || '').toLowerCase();
+    const allCondText = `${condClass1} ${condClass2} ${condClass3}`;
+
+    let condition = 'sunny';
+    let conditionLabel = 'مشمس';
+
+    if (/thunder|storm|برق|رعد/.test(allCondText)) {
+      condition = 'thunder';
+      conditionLabel = 'عواصف رعدية';
+    } else if (/rain|drizzle|shower|مطر|أمطار/.test(allCondText)) {
+      condition = 'rain';
+      conditionLabel = 'ممطر';
+    } else if (/sunnycloud|partly|غائم جزئيا|شمس وسحاب/.test(allCondText)) {
+      condition = 'partlyCloudy';
+      conditionLabel = 'شمس وسحب';
+    } else if (/cloud|overcast|غائم|سحاب|غيوم/.test(allCondText)) {
+      condition = 'cloudy';
+      conditionLabel = 'غائم بالسحب';
+    } else if (/sun|clear|مشمس|صافي/.test(allCondText)) {
+      condition = 'sunny';
+      conditionLabel = 'مشمس صافٍ';
+    } else {
+      const curHour = new Date().getUTCHours() + 3; // Egypt Time (UTC+3)
+      const egyptHour = curHour % 24;
+      if (egyptHour >= 19 || egyptHour < 6) {
+        condition = 'night';
+        conditionLabel = 'صافٍ ليلاً';
+      } else {
+        condition = 'sunny';
+        conditionLabel = 'مشمس';
+      }
+    }
+
     const weatherSectionMatch = html.match(/<section class="wtrCnts">([\s\S]*?)<\/section>/i);
     if (weatherSectionMatch) {
       const sectionHtml = weatherSectionMatch[1];
@@ -123,7 +159,9 @@ function parseMasrawyHtml(html) {
         low,
         city: city || 'القاهرة - مصر',
         humidity: humMatch ? humMatch[1].trim() : '38%',
-        wind: windMatch ? windMatch[1].trim() : 'شمال غرب'
+        wind: windMatch ? windMatch[1].trim() : 'شمال غرب',
+        condition,
+        conditionLabel
       };
     }
   } catch (err) {
@@ -162,7 +200,9 @@ function parseMasrawyHtml(html) {
       low: '25',
       city: 'القاهرة - مصر',
       humidity: '38%',
-      wind: 'شمال غرب'
+      wind: 'شمال غرب',
+      condition: 'sunny',
+      conditionLabel: 'مشمس'
     };
   }
 

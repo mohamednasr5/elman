@@ -15,19 +15,89 @@ const ICONS = {
   currency: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <line x1="12" y1="1" x2="12" y2="23"></line>
     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-  </svg>`,
-  weather: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="5"></circle>
-    <line x1="12" y1="1" x2="12" y2="3"></line>
-    <line x1="12" y1="21" x2="12" y2="23"></line>
-    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-    <line x1="1" y1="12" x2="3" y2="12"></line>
-    <line x1="21" y1="12" x2="23" y2="12"></line>
-    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
   </svg>`
 };
+
+/**
+ * Smart Animated Weather Engine:
+ * Generates interactive, hardware-accelerated animated SVGs for:
+ * - Sunny (rotating rays, glowing pulsing sun)
+ * - Cloudy (multi-layer drifting clouds)
+ * - Partly Cloudy (rotating sun with drifting cloud)
+ * - Rain (falling animated raindrops)
+ * - Thunder / Storm (dark storm cloud, falling drops, flashing lightning bolt)
+ * - Night (glowing crescent moon with twinkling stars)
+ */
+export function getAnimatedWeatherSVG(weatherData = {}, isLarge = false) {
+  let cond = String(weatherData?.condition || '').trim().toLowerCase();
+  if (!cond) {
+    const curHour = new Date().getUTCHours() + 3; // Egypt Time (UTC+3)
+    const egyptHour = curHour % 24;
+    cond = (egyptHour >= 19 || egyptHour < 6) ? 'night' : 'sunny';
+  }
+
+  const size = isLarge ? 48 : 20;
+
+  if (cond === 'thunder') {
+    return `<svg class="mw-weather-anim mw-weather-anim--thunder" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path class="mw-cloud-main" d="M17.5 14H6.5A4.5 4.5 0 0 1 6.5 5 5 5 0 0 1 15.5 6 4.5 4.5 0 0 1 17.5 14z" fill="#334155" stroke="#64748b"/>
+      <polygon class="mw-lightning-bolt" points="13 10 9 16 12 16 11 21 16 14 13 14 15 10" fill="#facc15" stroke="#eab308" stroke-width="1"/>
+      <line class="mw-rain-drop-1" x1="7" y1="16" x2="6" y2="19" stroke="#38bdf8" stroke-width="2"/>
+      <line class="mw-rain-drop-2" x1="17" y1="16" x2="16" y2="19" stroke="#38bdf8" stroke-width="2"/>
+    </svg>`;
+  }
+
+  if (cond === 'rain') {
+    return `<svg class="mw-weather-anim mw-weather-anim--rain" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path class="mw-cloud-main" d="M17.5 13H6.5A4.5 4.5 0 0 1 6.5 4 5 5 0 0 1 15.5 5 4.5 4.5 0 0 1 17.5 13z" fill="#475569" stroke="#94a3b8"/>
+      <line class="mw-rain-drop-1" x1="7.5" y1="15" x2="6.5" y2="19" stroke="#38bdf8" stroke-width="2"/>
+      <line class="mw-rain-drop-2" x1="12" y1="15" x2="11" y2="19" stroke="#38bdf8" stroke-width="2"/>
+      <line class="mw-rain-drop-3" x1="16.5" y1="15" x2="15.5" y2="19" stroke="#38bdf8" stroke-width="2"/>
+    </svg>`;
+  }
+
+  if (cond === 'cloudy') {
+    return `<svg class="mw-weather-anim mw-weather-anim--clouds" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path class="mw-cloud-back" d="M15.5 11H8A3.5 3.5 0 0 1 8 4 4 4 0 0 1 15 5 3.5 3.5 0 0 1 15.5 11z" fill="#64748b" stroke="#94a3b8" opacity="0.75"/>
+      <path class="mw-cloud-main" d="M18.5 17H7.5A4.5 4.5 0 0 1 7.5 8 5 5 0 0 1 16.5 9 4.5 4.5 0 0 1 18.5 17z" fill="#94a3b8" stroke="#cbd5e1"/>
+    </svg>`;
+  }
+
+  if (cond === 'partlycloudy' || cond === 'partly_cloudy' || cond === 'partly') {
+    return `<svg class="mw-weather-anim mw-weather-anim--partly" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <g class="mw-sun-rays" stroke="#f59e0b" stroke-width="1.8">
+        <line x1="16" y1="2" x2="16" y2="4"/>
+        <line x1="21.6" y1="4.4" x2="20.2" y2="5.8"/>
+        <line x1="23" y1="10" x2="21" y2="10"/>
+      </g>
+      <circle class="mw-sun-body" cx="16" cy="9" r="4.5" fill="#fbbf24" stroke="#f59e0b"/>
+      <path class="mw-cloud-main" d="M17 19H6.5A4.5 4.5 0 0 1 6.5 10 5 5 0 0 1 15 11 4.5 4.5 0 0 1 17 19z" fill="#e2e8f0" stroke="#94a3b8"/>
+    </svg>`;
+  }
+
+  if (cond === 'night') {
+    return `<svg class="mw-weather-anim mw-weather-anim--night" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path class="mw-moon-body" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#fef08a" stroke="#fde047"/>
+      <circle class="mw-star-1" cx="18" cy="5" r="1.2" fill="#38bdf8"/>
+      <circle class="mw-star-2" cx="7" cy="6" r="1" fill="#e0f2fe"/>
+    </svg>`;
+  }
+
+  // Default: Sunny (شمس ذهبية متحركة ومشعة)
+  return `<svg class="mw-weather-anim mw-weather-anim--sun" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <g class="mw-sun-rays" stroke="#f59e0b" stroke-width="1.9">
+      <line x1="12" y1="1.5" x2="12" y2="3.5"/>
+      <line x1="12" y1="20.5" x2="12" y2="22.5"/>
+      <line x1="1.5" y1="12" x2="3.5" y2="12"/>
+      <line x1="20.5" y1="12" x2="22.5" y2="12"/>
+      <line x1="4.5" y1="4.5" x2="6" y2="6"/>
+      <line x1="18" y1="18" x2="19.5" y2="19.5"/>
+      <line x1="4.5" y1="19.5" x2="6" y2="18"/>
+      <line x1="18" y1="6" x2="19.5" y2="4.5"/>
+    </g>
+    <circle class="mw-sun-body" cx="12" cy="12" r="5" fill="#f59e0b" stroke="#d97706"/>
+  </svg>`;
+}
 
 function getStoredMarketData() {
   try {
@@ -74,7 +144,9 @@ const FALLBACK_DATA = {
     low: '25',
     city: 'القاهرة - مصر',
     humidity: '38%',
-    wind: 'شمال غرب'
+    wind: 'شمال غرب',
+    condition: 'sunny',
+    conditionLabel: 'مشمس صافٍ'
   }
 };
 
@@ -137,10 +209,11 @@ function getCurrencyCardHTML(curr) {
 }
 
 function getWeatherCardHTML(weather) {
+  const condLabel = weather.conditionLabel || (Number(weather.temp || weather.high) >= 30 ? 'مشمس حار' : 'معتدل');
   return `
     <div class="mw-card-content">
       <div class="mw-card-head-row">
-        <span class="mw-icon mw-icon-weather">${ICONS.weather}</span>
+        <span class="mw-icon mw-icon-weather">${getAnimatedWeatherSVG(weather, false)}</span>
         <div class="mw-weather-location">${weather.city || 'القاهرة - مصر'}</div>
       </div>
       <div class="mw-weather-dtls">
@@ -149,8 +222,12 @@ function getWeatherCardHTML(weather) {
           <span class="mw-weather-low">${weather.low || '25'}°</span>
         </div>
         <div class="mw-weather-sun-icon">
-          ${ICONS.weather}
+          ${getAnimatedWeatherSVG(weather, true)}
         </div>
+      </div>
+      <div class="mw-weather-condition-badge" style="display:inline-flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:800;color:#38bdf8;margin:6px 0 10px;background:rgba(56,189,248,0.12);padding:4px 12px;border-radius:14px;border:1px solid rgba(56,189,248,0.25)">
+        <span>الحالة الجوية:</span>
+        <span style="color:#ffffff">${condLabel}</span>
       </div>
       <div class="mw-weather-info-box">
         <div class="mw-weather-info-item">الرطوبة: <span>${weather.humidity || '38%'}</span></div>
@@ -194,9 +271,9 @@ export function renderMarketWidgetsHTML(data = currentMarketData) {
         </div>
       </div>
 
-      <!-- 3. Weather Widget -->
+      <!-- 3. Weather Widget (Smart Animated) -->
       <div class="market-widget-item market-widget-item--weather" data-widget="weather" tabindex="0" role="button" aria-expanded="false" aria-label="الطقس">
-        <span class="mw-icon mw-icon-weather">${ICONS.weather}</span>
+        <span class="mw-icon mw-icon-weather">${getAnimatedWeatherSVG(weather, false)}</span>
         <span class="mw-label"><span class="mw-quick-val">${weather.temp || '34'}°</span></span>
         
         <!-- Desktop Dropdown -->

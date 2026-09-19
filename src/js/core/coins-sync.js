@@ -9,10 +9,21 @@ import { api } from './api.js';
 
 export function getStoredCoinsBalance() {
   try {
+    let balance = 0;
     const raw = localStorage.getItem('manzala_user_coins_balance');
     if (raw !== null && !isNaN(Number(raw))) {
-      return Number(raw);
+      balance = Math.max(balance, Number(raw));
     }
+    const rawUser = localStorage.getItem('dalil_user') || localStorage.getItem('user');
+    if (rawUser) {
+      const u = JSON.parse(rawUser);
+      if (u) {
+        if (typeof u.points === 'number') balance = Math.max(balance, u.points);
+        if (typeof u.coins === 'number') balance = Math.max(balance, u.coins);
+        if (typeof u.balance === 'number') balance = Math.max(balance, u.balance);
+      }
+    }
+    return balance;
   } catch (_) {}
   return 0;
 }
@@ -21,6 +32,17 @@ export function setStoredCoinsBalance(balance) {
   const num = Math.max(0, Number(balance) || 0);
   try {
     localStorage.setItem('manzala_user_coins_balance', String(num));
+
+    const rawUser = localStorage.getItem('dalil_user');
+    if (rawUser) {
+      const u = JSON.parse(rawUser);
+      if (u && (u.points !== num || u.coins !== num)) {
+        u.points = num;
+        u.coins = num;
+        localStorage.setItem('dalil_user', JSON.stringify(u));
+      }
+    }
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: num } }));
     }
@@ -35,8 +57,10 @@ export async function fetchLiveCoinsBalance(force = false) {
     const res = await api.get('/api/coins/balance', token);
     if (res && res.success && res.data) {
       const liveBal = Number(res.data.balance || 0);
-      setStoredCoinsBalance(liveBal);
-      return liveBal;
+      const storedBal = getStoredCoinsBalance();
+      const finalBal = liveBal > 0 ? liveBal : (storedBal > 0 ? storedBal : liveBal);
+      setStoredCoinsBalance(finalBal);
+      return finalBal;
     }
   } catch (err) {
     console.debug('[fetchLiveCoinsBalance]:', err?.message || err);
