@@ -635,18 +635,18 @@ async function renderQuranSurah(container){
  }catch(e){box.innerHTML='<div class="ih-empty">تعذر فتح السورة. تأكد من رقم السورة والملفات المحلية.</div>';console.error('[IslamicHub] Surah',e)}
 }
 
-function calcQiblaAzimuth(lat=31.1578,lng=31.8150){
+function calcQiblaAzimuth(lat=31.1440, lng=31.9470){
   const PI=Math.PI;
-  const lat1=lat*PI/180,lon1=lng*PI/180;
-  const lat2=21.422487*PI/180,lon2=39.826206*PI/180;
+  const lat1=lat*PI/180, lon1=lng*PI/180;
+  const lat2=21.422487*PI/180, lon2=39.826206*PI/180;
   const dLon=lon2-lon1;
   const y=Math.sin(dLon);
   const x=Math.cos(lat1)*Math.tan(lat2)-Math.sin(lat1)*Math.cos(dLon);
   let qibla=Math.atan2(y,x)*180/PI;
-  return Math.round((qibla+360)%360 * 10) / 10;
+  return Math.round(((qibla+360)%360) * 100) / 100;
 }
 
-function calcKaabaDistance(lat=31.1578,lng=31.8150){
+function calcKaabaDistance(lat=31.1440, lng=31.9470){
   const R=6371; // Earth radius in km
   const lat1=lat*Math.PI/180, lon1=lng*Math.PI/180;
   const lat2=21.422487*Math.PI/180, lon2=39.826206*Math.PI/180;
@@ -656,7 +656,10 @@ function calcKaabaDistance(lat=31.1578,lng=31.8150){
   return Math.round(R*c);
 }
 
-function computeCompassHeading(alpha, beta, gamma, webkitHeading=null){
+// Magnetic Declination for El Manzala & Northern Egypt (+4.09° East)
+const MAGNETIC_DECLINATION = 4.09;
+
+function computeCompassHeading(alpha, beta, gamma, webkitHeading=null, isCameraMode=false){
   // 1. iOS Safari (direct compass heading relative to magnetic north)
   if(webkitHeading!==null && typeof webkitHeading!=='undefined' && !isNaN(webkitHeading)){
     let h=Number(webkitHeading);
@@ -664,7 +667,7 @@ function computeCompassHeading(alpha, beta, gamma, webkitHeading=null){
     return (h + screenAngle + 360) % 360;
   }
 
-  // 2. Android Chrome with 3D Tilt Compensation (Euler projection)
+  // 2. Android Chrome with 3D Matrix & Tilt Compensation
   if(alpha===null || typeof alpha==='undefined' || isNaN(alpha)) return null;
 
   const degToRad=Math.PI/180;
@@ -672,22 +675,38 @@ function computeCompassHeading(alpha, beta, gamma, webkitHeading=null){
   const b=(beta||0)*degToRad;
   const g=(gamma||0)*degToRad;
 
-  const cA=Math.cos(a), sA=Math.sin(a);
-  const cB=Math.cos(b), sB=Math.sin(b);
-  const cG=Math.cos(g), sG=Math.sin(g);
+  const ca=Math.cos(a), sa=Math.sin(a);
+  const cb=Math.cos(b), sb=Math.sin(b);
+  const cg=Math.cos(g), sg=Math.sin(g);
 
-  // Direction vector of the phone's top Y-axis projected onto the horizontal plane
-  const rA = -cA * sG - sA * sB * cG;
-  const rB = -sA * sG + cA * sB * cG;
+  let east, north;
 
-  let heading = Math.atan2(rA, rB) * (180 / Math.PI);
-  if(heading < 0) heading += 360;
+  // In AR / Camera mode or when phone is held upright in front of eyes:
+  // Back camera points along the -Z axis of the phone
+  if(isCameraMode || Math.abs(b) > 45 * degToRad){
+    east = -(ca * sg + sa * sb * cg);
+    north = -(sa * sg - ca * sb * cg);
+  } else {
+    // In flat / compass mode: top edge points along +Y axis of the phone
+    if(Math.abs(cb) < 0.1){
+      east = -(ca * sg + sa * sb * cg);
+      north = -(sa * sg - ca * sb * cg);
+    } else {
+      east = -sa * cb;
+      north = ca * cb;
+    }
+  }
+
+  let heading = (Math.atan2(east, north) * (180 / Math.PI) + 360) % 360;
+  if(isNaN(heading)){
+    heading = (360 - (alpha || 0) + 360) % 360;
+  }
 
   const screenAngle = (window.screen?.orientation?.angle || window.orientation || 0);
   return (heading + screenAngle + 360) % 360;
 }
 
-function buildCompassDialSvg(qiblaDeg=141.7){
+function buildCompassDialSvg(qiblaDeg=138.08){
   const ticks=[];
   for(let deg=0;deg<360;deg+=5){
     const rad=(deg-90)*Math.PI/180;
@@ -764,10 +783,12 @@ async function renderQibla(container){
   container.innerHTML=shell('بوصلة اتجاه القبلة (بتقنية Google Qibla Finder)','تحديد اتجاه الكعبة المشرفة بدقة فائقة بالواقع المعزز (AR) ومستشعرات الهاتف وحساب فلكي جيوديسي للكعبة.','🧭',false);
   const box=container.querySelector('#ih-content');
 
-  let currentLat=31.1578, currentLng=31.8150; // El Manzala & El Matariya default
+  let currentLat=31.1440, currentLng=31.9470; // El Manzala & El Matariya exact coordinates (142.17° & 1335 km)
   let cityName='المنزلة والمطرية، الدقهلية';
-  let qiblaAzimuth=calcQiblaAzimuth(currentLat,currentLng);
-  let kaabaDistance=calcKaabaDistance(currentLat,currentLng);
+  let qiblaAzimuth=calcQiblaAzimuth(currentLat,currentLng); // 142.17° (True North / Google Maps)
+  let compassAzimuth=Math.round((qiblaAzimuth - MAGNETIC_DECLINATION) * 100) / 100; // 138.08° (Magnetic North)
+  let kaabaDistance=calcKaabaDistance(currentLat,currentLng); // 1335 km
+  let bearingMode='magnetic'; // 'magnetic' (138.08°) or 'true' (142.17°)
   let currentHeading=0;
   let smoothedHeading=0;
   let currentMode='ar'; // 'ar' or 'compass'
@@ -787,12 +808,22 @@ async function renderQibla(container){
         </button>
       </div>
 
+      <!-- Target Bearing Mode Switcher (Magnetic 138.08° vs Google Maps 142.17°) -->
+      <div class="qibla-target-switcher">
+        <button type="button" class="qibla-target-pill is-active" id="qibla-target-magnetic" title="زاوية البوصلة المغناطيسية بعد مراعاة الانحراف">
+          <span>🧭 بوصلة الهاتف: <strong id="qibla-target-mag-val">${compassAzimuth}°</strong></span>
+        </button>
+        <button type="button" class="qibla-target-pill" id="qibla-target-true" title="زاوية خرائط جوجل ونظام GPS الفلكي">
+          <span>🌐 خرائط جوجل وAR: <strong id="qibla-target-true-val">${qiblaAzimuth}°</strong></span>
+        </button>
+      </div>
+
       <!-- Top Header Strip: Location Pill, City Selector, GPS, Calibration -->
       <div class="qibla-header-strip">
         <div class="qibla-location-pill" id="qibla-location-pill">
           <span class="qibla-loc-pin">📍</span>
           <span class="qibla-loc-name" id="qibla-loc-name">${esc(cityName)}</span>
-          <span class="qibla-loc-angle">زاوية القبلة: <strong id="qibla-pill-azimuth">${qiblaAzimuth}°</strong></span>
+          <span class="qibla-loc-angle">زاوية القبلة: <strong id="qibla-pill-azimuth">${compassAzimuth}°</strong></span>
         </div>
         
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -806,10 +837,15 @@ async function renderQibla(container){
         </div>
       </div>
 
-      <!-- Metrics Row: Qibla Angle, Current Heading, Distance in KM -->
+      <!-- Metrics Row: Qibla Angles, Current Heading, Distance in KM -->
       <div class="qibla-metrics-grid">
-        <div class="qibla-metric-card">
-          <span class="qibla-metric-label">زاوية القبلة للكعبة</span>
+        <div class="qibla-metric-card" id="qibla-card-mag">
+          <span class="qibla-metric-label">زاوية بوصلة الهاتف</span>
+          <strong class="qibla-metric-val" id="qibla-azimuth-mag">${compassAzimuth}°</strong>
+          <small class="qibla-metric-sub">انحراف مغناطيسي 4.09°</small>
+        </div>
+        <div class="qibla-metric-card" id="qibla-card-true">
+          <span class="qibla-metric-label">زاوية خرائط جوجل وAR</span>
           <strong class="qibla-metric-val" id="qibla-azimuth-val">${qiblaAzimuth}°</strong>
           <small class="qibla-metric-sub">جنوب شرق (مكة المكرمة)</small>
         </div>
@@ -918,7 +954,7 @@ async function renderQibla(container){
         <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <label style="font-size:.85rem;font-weight:700;color:var(--text-secondary)">اختر مدينتك مباشرة:</label>
           <select id="qibla-city-select" class="jb-select" style="padding:6px 12px;font-size:.85rem;border-radius:10px">
-            <option value="31.1578,31.8150" selected>المنزلة والمطرية (الدقهلية)</option>
+            <option value="31.1440,31.9470" selected>المنزلة والمطرية (الدقهلية)</option>
             <option value="31.0364,31.3807">المنصورة (الدقهلية)</option>
             <option value="31.4165,31.8133">دمياط ورأس البر</option>
             <option value="31.2565,32.2841">بورسعيد</option>
@@ -1012,6 +1048,37 @@ async function renderQibla(container){
   const calibTrigger=box.querySelector('#qibla-calib-trigger');
   const closeCalibBtn=box.querySelector('#qibla-close-calib-btn');
 
+  const targetMagBtn=box.querySelector('#qibla-target-magnetic');
+  const targetTrueBtn=box.querySelector('#qibla-target-true');
+
+  if(targetMagBtn && targetTrueBtn){
+    targetMagBtn.onclick=()=>{
+      bearingMode='magnetic';
+      targetMagBtn.classList.add('is-active');
+      targetTrueBtn.classList.remove('is-active');
+      box.querySelector('#qibla-card-mag')?.classList.add('qibla-metric-card--active');
+      box.querySelector('#qibla-card-true')?.classList.remove('qibla-metric-card--active');
+      box.querySelector('#qibla-pill-azimuth').textContent=compassAzimuth+'°';
+      box.querySelector('#qibla-hud-azimuth').textContent=compassAzimuth+'°';
+      box.querySelector('#qibla-dial').innerHTML=buildCompassDialSvg(compassAzimuth);
+      updateHeading(currentHeading, true);
+      showToast(`تم التوجيه وفق بوصلة الهاتف: ${compassAzimuth}° (انحراف +${MAGNETIC_DECLINATION}°) 🧭`);
+    };
+
+    targetTrueBtn.onclick=()=>{
+      bearingMode='true';
+      targetTrueBtn.classList.add('is-active');
+      targetMagBtn.classList.remove('is-active');
+      box.querySelector('#qibla-card-true')?.classList.add('qibla-metric-card--active');
+      box.querySelector('#qibla-card-mag')?.classList.remove('qibla-metric-card--active');
+      box.querySelector('#qibla-pill-azimuth').textContent=qiblaAzimuth+'°';
+      box.querySelector('#qibla-hud-azimuth').textContent=qiblaAzimuth+'°';
+      box.querySelector('#qibla-dial').innerHTML=buildCompassDialSvg(qiblaAzimuth);
+      updateHeading(currentHeading, true);
+      showToast(`تم التوجيه وفق خرائط جوجل وGPS: ${qiblaAzimuth}° 🌐`);
+    };
+  }
+
   function getCardinal(deg){
     const d=(deg%360+360)%360;
     if(d>=337.5||d<22.5) return 'شمال (ش)';
@@ -1090,7 +1157,7 @@ async function renderQibla(container){
       smoothedHeading=targetHeading;
     }else{
       let d=(targetHeading - smoothedHeading + 540) % 360 - 180;
-      smoothedHeading=(smoothedHeading + d * 0.3 + 360) % 360;
+      smoothedHeading=(smoothedHeading + d * 0.35 + 360) % 360;
     }
 
     currentHeading=Math.round(smoothedHeading);
@@ -1098,28 +1165,34 @@ async function renderQibla(container){
     headingCard.textContent=getCardinal(currentHeading);
     hudHeading.textContent=currentHeading+'°';
 
-    if(isManual){
+    if(isManual && slider){
       slider.value=currentHeading;
       sliderVal.textContent=currentHeading+'°';
     }
 
-    // 1. Rotate 3D Compass Dial
+    const activeTarget = bearingMode === 'magnetic' ? compassAzimuth : qiblaAzimuth;
+
+    // 1. Rotate 3D Compass Dial so real North matches 'ش'
     if(dialEl){
       dialEl.style.transform=`rotate(${-currentHeading}deg)`;
     }
 
-    // 2. Calculate signed shortest angle difference to Qibla
-    let diff=((qiblaAzimuth - currentHeading + 540) % 360) - 180;
+    // 2. Rotate Compass Needle directly towards Mecca
+    const needleEl=box.querySelector('#qibla-needle-assembly');
+    if(needleEl){
+      const needleAngle=(activeTarget - currentHeading + 360) % 360;
+      needleEl.style.transform=`rotate(${needleAngle}deg)`;
+    }
+
+    // 3. Calculate signed shortest angle difference to target Qibla
+    let diff=((activeTarget - currentHeading + 540) % 360) - 180;
     const absDiff=Math.abs(diff);
     const isAligned=absDiff <= 3.5;
 
-    // 3. Update AR Kaaba Marker Position on Camera View
+    // 4. Update AR Kaaba Marker Position on Camera View
     if(arKaabaWrap){
-      // Horizontal Camera FOV is approximately 60 degrees.
-      // If Kaaba is within +/- 30 degrees, it renders across the screen.
       if(absDiff <= 32){
         arKaabaWrap.style.display='flex';
-        // Map -30..+30 deg to screen percentage (-42% to +42%)
         const xOffset=(diff / 28) * 38;
         arKaabaWrap.style.transform=`translate(calc(-50% + ${xOffset}vw), -50%)`;
       }else{
@@ -1127,7 +1200,7 @@ async function renderQibla(container){
       }
     }
 
-    // 4. Update Alignment Glow & HUD Feedback
+    // 5. Update Alignment Glow & HUD Feedback
     if(isAligned){
       arCrosshair?.classList.add('is-aligned');
       arKaabaCard?.classList.add('is-aligned');
@@ -1136,7 +1209,7 @@ async function renderQibla(container){
       arHint?.classList.add('is-aligned');
 
       statusTitle.textContent='✦ أنت الآن باتجاه القبلة الشريفة تماماً 🕋 ✦';
-      statusDesc.textContent='وجهتك الحالية متطابقة مع الكعبة المشرفة بالمسجد الحرام.';
+      statusDesc.textContent=`وجهتك الحالية متطابقة مع الكعبة المشرفة (${activeTarget}°).`;
       hintIcon.textContent='✓';
       hintText.textContent='أنت بمحاذاة الكعبة المشرفة تماماً 🕋';
 
@@ -1154,16 +1227,17 @@ async function renderQibla(container){
       const turnWay=diff > 0 ? 'لليمين ↻' : 'لليسار ↺';
       const arrowIcon=diff > 0 ? '↻' : '↺';
       statusTitle.textContent=`أدر الهاتف ${turnWay} بمقدار ${Math.round(absDiff)}°`;
-      statusDesc.textContent=`زاوية القبلة: ${qiblaAzimuth}° · اتجاه هاتفك: ${currentHeading}°`;
+      statusDesc.textContent=`الهدف: ${activeTarget}° (${bearingMode === 'magnetic' ? 'بوصلة مغناطيسية' : 'خرائط جوجل'}) · وجهة هاتفك: ${currentHeading}°`;
       hintIcon.textContent=arrowIcon;
       hintText.textContent=`أدر الهاتف ${turnWay} بمقدار ${Math.round(absDiff)}°`;
     }
   }
 
-  // ── Multi-Source Sensor Listener (Absolute + Tilt-Compensated) ──
+  // ── Multi-Source Sensor Listener (Absolute + 3D Tilt-Compensated) ──
   function onOrientation(e){
     const webkitHeading = typeof e.webkitCompassHeading!=='undefined' ? e.webkitCompassHeading : null;
-    const computed = computeCompassHeading(e.alpha, e.beta, e.gamma, webkitHeading);
+    const isCam = currentMode === 'ar';
+    const computed = computeCompassHeading(e.alpha, e.beta, e.gamma, webkitHeading, isCam);
 
     if(computed!==null && !isNaN(computed)){
       if(!hasSensor){
@@ -1233,20 +1307,27 @@ async function renderQibla(container){
     currentLng = Number(lngStr);
     cityName = e.target.options[e.target.selectedIndex].text;
     applyLocationUpdate();
-    showToast(`تم ضبط الإحداثيات لـ: ${cityName} (القبلة: ${qiblaAzimuth}°) 🕋`);
+    const activeTarget = bearingMode === 'magnetic' ? compassAzimuth : qiblaAzimuth;
+    showToast(`تم ضبط الإحداثيات لـ: ${cityName} (القبلة: ${activeTarget}°) 🕋`);
   };
 
   function applyLocationUpdate(){
     qiblaAzimuth=calcQiblaAzimuth(currentLat, currentLng);
+    compassAzimuth=Math.round((qiblaAzimuth - MAGNETIC_DECLINATION) * 100) / 100;
     kaabaDistance=calcKaabaDistance(currentLat, currentLng);
 
+    const activeTarget = bearingMode === 'magnetic' ? compassAzimuth : qiblaAzimuth;
+
     box.querySelector('#qibla-loc-name').textContent=cityName;
-    box.querySelector('#qibla-pill-azimuth').textContent=qiblaAzimuth+'°';
+    box.querySelector('#qibla-pill-azimuth').textContent=activeTarget+'°';
     box.querySelector('#qibla-azimuth-val').textContent=qiblaAzimuth+'°';
+    box.querySelector('#qibla-azimuth-mag').textContent=compassAzimuth+'°';
+    box.querySelector('#qibla-target-mag-val').textContent=compassAzimuth+'°';
+    box.querySelector('#qibla-target-true-val').textContent=qiblaAzimuth+'°';
     box.querySelector('#qibla-distance-val').textContent=kaabaDistance.toLocaleString('ar-EG');
-    box.querySelector('#qibla-hud-azimuth').textContent=qiblaAzimuth+'°';
+    box.querySelector('#qibla-hud-azimuth').textContent=activeTarget+'°';
     box.querySelector('#qibla-hud-dist').textContent=kaabaDistance.toLocaleString('ar-EG')+' كم';
-    box.querySelector('#qibla-dial').innerHTML=buildCompassDialSvg(qiblaAzimuth);
+    box.querySelector('#qibla-dial').innerHTML=buildCompassDialSvg(activeTarget);
 
     updateHeading(currentHeading, true);
   }

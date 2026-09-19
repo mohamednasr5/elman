@@ -1144,17 +1144,20 @@
   z-index:4;
   display:grid;
   place-items:center;
+  transform-origin:50% 50%;
+  transition:transform 0.18s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change:transform;
 }
 .qibla-needle-north{
   position:absolute;
   bottom:50%;
   left:50%;
   transform:translateX(-50%);
-  width:9px;
-  height:100px;
-  background:linear-gradient(to top, #059669 0%, #10B981 65%, #6EE7B7 100%);
+  width:10px;
+  height:102px;
+  background:linear-gradient(to top, #059669 0%, #10B981 60%, #F5B041 100%);
   clip-path:polygon(50% 0%, 100% 100%, 0% 100%);
-  filter:drop-shadow(0 0 7px rgba(16,185,129,.7));
+  filter:drop-shadow(0 0 8px rgba(16,185,129,.75));
 }
 .qibla-needle-south{
   position:absolute;
@@ -1222,6 +1225,48 @@
   font-size:.88rem;
   color:var(--text-secondary);
   line-height:1.6;
+}
+
+/* Target Angle Switcher (Magnetic vs True) */
+.qibla-target-switcher{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:10px 0 16px;
+}
+.qibla-target-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 16px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.12);
+  color:var(--text-secondary);
+  font-size:.85rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .2s ease;
+}
+.qibla-target-pill:hover{
+  background:rgba(255,255,255,0.12);
+  border-color:rgba(255,255,255,0.22);
+  color:var(--text-primary);
+}
+.qibla-target-pill.is-active{
+  background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.12));
+  border-color:#10B981;
+  color:#34D399;
+  box-shadow:0 0 16px rgba(16,185,129,0.25);
+}
+.qibla-target-pill strong{
+  color:var(--text-primary);
+  font-size:.92rem;
+}
+.qibla-target-pill.is-active strong{
+  color:#6EE7B7;
 }
 
 /* Controls and Instructions */

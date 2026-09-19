@@ -3,8 +3,15 @@
  * Dalil El Manzala & El Matariya - Masrawy Live Market Indicators
  */
 
-const STORAGE_KEY = 'manzala_market_indicators_v1';
+const STORAGE_KEY = 'manzala_market_indicators_v2';
 const CACHE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
+
+export function getEgyptTimeInfo() {
+  const d = new Date();
+  const curHour = (d.getUTCHours() + 3) % 24; // UTC+3 Egypt Time
+  const isNight = curHour >= 18 || curHour < 6;
+  return { curHour, isNight };
+}
 
 const ICONS = {
   gold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -27,15 +34,11 @@ const ICONS = {
  * - Rain (falling animated raindrops)
  * - Thunder / Storm (dark storm cloud, falling drops, flashing lightning bolt)
  * - Night (glowing crescent moon with twinkling stars)
+ * - Cloudy Night (moon with drifting clouds)
  */
 export function getAnimatedWeatherSVG(weatherData = {}, isLarge = false) {
-  let cond = String(weatherData?.condition || '').trim().toLowerCase();
-  if (!cond) {
-    const curHour = new Date().getUTCHours() + 3; // Egypt Time (UTC+3)
-    const egyptHour = curHour % 24;
-    cond = (egyptHour >= 19 || egyptHour < 6) ? 'night' : 'sunny';
-  }
-
+  const norm = normalizeWeatherData(weatherData);
+  const cond = norm.condition.toLowerCase();
   const size = isLarge ? 48 : 20;
 
   if (cond === 'thunder') {
@@ -60,6 +63,14 @@ export function getAnimatedWeatherSVG(weatherData = {}, isLarge = false) {
     return `<svg class="mw-weather-anim mw-weather-anim--clouds" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path class="mw-cloud-back" d="M15.5 11H8A3.5 3.5 0 0 1 8 4 4 4 0 0 1 15 5 3.5 3.5 0 0 1 15.5 11z" fill="#64748b" stroke="#94a3b8" opacity="0.75"/>
       <path class="mw-cloud-main" d="M18.5 17H7.5A4.5 4.5 0 0 1 7.5 8 5 5 0 0 1 16.5 9 4.5 4.5 0 0 1 18.5 17z" fill="#94a3b8" stroke="#cbd5e1"/>
+    </svg>`;
+  }
+
+  if (cond === 'cloudynight' || cond === 'cloudy_night') {
+    return `<svg class="mw-weather-anim mw-weather-anim--night" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path class="mw-moon-body" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#fef08a" stroke="#fde047"/>
+      <path class="mw-cloud-main" d="M19 19H8.5A4.5 4.5 0 0 1 8.5 11 4.5 4.5 0 0 1 17 12 4.5 4.5 0 0 1 19 19z" fill="#94a3b8" stroke="#cbd5e1" opacity="0.9"/>
+      <circle class="mw-star-1" cx="19" cy="5" r="1.2" fill="#38bdf8"/>
     </svg>`;
   }
 
@@ -97,6 +108,50 @@ export function getAnimatedWeatherSVG(weatherData = {}, isLarge = false) {
     </g>
     <circle class="mw-sun-body" cx="12" cy="12" r="5" fill="#f59e0b" stroke="#d97706"/>
   </svg>`;
+}
+
+export function normalizeWeatherData(weather = {}) {
+  const { isNight } = getEgyptTimeInfo();
+  let cond = String(weather?.condition || '').trim().toLowerCase();
+  let label = String(weather?.conditionLabel || '').trim();
+
+  // Smart nighttime adaptation:
+  if (isNight) {
+    if (/thunder|storm|برق|رعد/.test(cond) || /thunder|storm|برق|رعد/.test(label)) {
+      cond = 'thunder';
+      label = 'عواصف رعدية';
+    } else if (/rain|أمطار|مطر/.test(cond) || /rain|أمطار|مطر/.test(label)) {
+      cond = 'rain';
+      label = 'أمطار';
+    } else if (/cloudy|overcast|غيوم/.test(cond) && !/partly|sunny|شمس/.test(cond) && !/شمس/.test(label)) {
+      cond = 'cloudy';
+      label = 'غائم بالسحب';
+    } else if (/partly|sunnycloud|شمس وسحب|شمس وسحاب|غائم جزئيا/.test(cond) || /شمس وسحب|غائم جزئيا/.test(label)) {
+      cond = 'cloudyNight';
+      label = 'سحب ليلية';
+    } else {
+      cond = 'night';
+      label = 'صافٍ ليلاً';
+    }
+  } else {
+    // Daytime:
+    if (/night|ليل/.test(cond) || /صافٍ ليلاً|سحب ليلية/.test(label)) {
+      if (cond === 'cloudyNight' || /سحب/.test(label)) {
+        cond = 'partlyCloudy';
+        label = 'شمس وسحب';
+      } else {
+        cond = 'sunny';
+        label = 'مشمس صافٍ';
+      }
+    }
+  }
+
+  return {
+    ...weather,
+    city: 'المنزلة والمطرية',
+    condition: cond || (isNight ? 'night' : 'sunny'),
+    conditionLabel: label || (isNight ? 'صافٍ ليلاً' : 'مشمس صافٍ')
+  };
 }
 
 function getStoredMarketData() {
@@ -139,14 +194,14 @@ const FALLBACK_DATA = {
     rates: { usd: '52.14', eur: '56.83', sar: '13.90' }
   },
   weather: {
-    temp: '27',
+    temp: '25',
     high: '27',
-    low: '25',
+    low: '21',
     city: 'المنزلة والمطرية',
-    humidity: '50%',
-    wind: 'شمال غرب',
-    condition: 'sunny',
-    conditionLabel: 'مشمس صافٍ'
+    humidity: '55%',
+    wind: 'شمالية معتدلة',
+    condition: 'night',
+    conditionLabel: 'صافٍ ليلاً'
   }
 };
 
@@ -209,20 +264,21 @@ function getCurrencyCardHTML(curr) {
 }
 
 function getWeatherCardHTML(weather) {
-  const condLabel = weather.conditionLabel || (Number(weather.temp || weather.high) >= 30 ? 'مشمس حار' : 'معتدل');
+  const norm = normalizeWeatherData(weather);
+  const condLabel = norm.conditionLabel;
   return `
     <div class="mw-card-content">
       <div class="mw-card-head-row">
-        <span class="mw-icon mw-icon-weather">${getAnimatedWeatherSVG(weather, false)}</span>
-        <div class="mw-weather-location">${weather.city || 'المنزلة والمطرية'}</div>
+        <span class="mw-icon mw-icon-weather">${getAnimatedWeatherSVG(norm, false)}</span>
+        <div class="mw-weather-location">${norm.city || 'المنزلة والمطرية'}</div>
       </div>
       <div class="mw-weather-dtls">
         <div class="mw-weather-main-temp">
-          <span class="mw-weather-high">${weather.high || weather.temp || '34'}°</span>
-          <span class="mw-weather-low">${weather.low || '25'}°</span>
+          <span class="mw-weather-high">${norm.high || norm.temp || '27'}°</span>
+          <span class="mw-weather-low">${norm.low || '21'}°</span>
         </div>
         <div class="mw-weather-sun-icon">
-          ${getAnimatedWeatherSVG(weather, true)}
+          ${getAnimatedWeatherSVG(norm, true)}
         </div>
       </div>
       <div class="mw-weather-condition-badge" style="display:inline-flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:800;color:#38bdf8;margin:6px 0 10px;background:rgba(56,189,248,0.12);padding:4px 12px;border-radius:14px;border:1px solid rgba(56,189,248,0.25)">
@@ -230,8 +286,8 @@ function getWeatherCardHTML(weather) {
         <span style="color:#ffffff">${condLabel}</span>
       </div>
       <div class="mw-weather-info-box">
-        <div class="mw-weather-info-item">الرطوبة: <span>${weather.humidity || '38%'}</span></div>
-        <div class="mw-weather-info-item">الرياح: <span>${weather.wind || 'شمال غرب'}</span></div>
+        <div class="mw-weather-info-item">الرطوبة: <span>${norm.humidity || '55%'}</span></div>
+        <div class="mw-weather-info-item">الرياح: <span>${norm.wind || 'شمالية معتدلة'}</span></div>
       </div>
     </div>
   `;
@@ -243,7 +299,7 @@ function getWeatherCardHTML(weather) {
 export function renderMarketWidgetsHTML(data = currentMarketData) {
   const gold = data?.gold || FALLBACK_DATA.gold;
   const curr = data?.currency || FALLBACK_DATA.currency;
-  const weather = data?.weather || FALLBACK_DATA.weather;
+  const weather = normalizeWeatherData(data?.weather || FALLBACK_DATA.weather);
 
   return `
     <div class="market-widgets-bar" id="market-widgets-bar" role="region" aria-label="مؤشرات الأسعار والطقس الحية">

@@ -34,33 +34,40 @@ function parsePortSaidWeather(portSaidHtml) {
     const low = lowMatch ? lowMatch[1].trim() : '25';
     const rawCond = (iconMatch ? iconMatch[1] : '').toLowerCase();
 
-    let condition = 'sunny';
-    let conditionLabel = 'مشمس صافٍ';
+    const curHour = new Date().getUTCHours() + 3;
+    const egyptHour = curHour % 24;
+    const isNight = egyptHour >= 18 || egyptHour < 6;
+
+    let condition = isNight ? 'night' : 'sunny';
+    let conditionLabel = isNight ? 'صافٍ ليلاً' : 'مشمس صافٍ';
 
     if (/thunder|storm|برق|رعد/.test(rawCond)) {
       condition = 'thunder';
       conditionLabel = 'عواصف رعدية';
     } else if (/rain|drizzle|shower|مطر|أمطار/.test(rawCond)) {
       condition = 'rain';
-      conditionLabel = 'ممطر';
-    } else if (/clearnight/.test(rawCond)) {
-      condition = 'night';
-      conditionLabel = 'صافٍ ليلاً';
-    } else if (/sunnycloud|partly|غائم جزئيا|شمس وسحاب/.test(rawCond)) {
-      condition = 'partlyCloudy';
-      conditionLabel = 'شمس وسحب';
-    } else if (/cloud|overcast|غائم|سحاب|غيوم/.test(rawCond)) {
+      conditionLabel = 'أمطار';
+    } else if (/cloud|overcast|غيوم/.test(rawCond) && !/sunny|sun|شمس/.test(rawCond)) {
       condition = 'cloudy';
       conditionLabel = 'غائم بالسحب';
+    } else if (/sunnycloud|partly|غائم جزئيا|شمس وسحاب|شمس وسحب/.test(rawCond)) {
+      if (isNight) {
+        condition = 'cloudyNight';
+        conditionLabel = 'سحب ليلية';
+      } else {
+        condition = 'partlyCloudy';
+        conditionLabel = 'شمس وسحب';
+      }
+    } else if (/clearnight|ليل/.test(rawCond)) {
+      condition = 'night';
+      conditionLabel = 'صافٍ ليلاً';
     } else if (/clearday|sun|clear|مشمس|صافي/.test(rawCond)) {
-      condition = 'sunny';
-      conditionLabel = 'مشمس صافٍ';
-    } else {
-      const curHour = new Date().getUTCHours() + 3;
-      const egyptHour = curHour % 24;
-      if (egyptHour >= 19 || egyptHour < 6) {
+      if (isNight) {
         condition = 'night';
         conditionLabel = 'صافٍ ليلاً';
+      } else {
+        condition = 'sunny';
+        conditionLabel = 'مشمس صافٍ';
       }
     }
 
@@ -177,30 +184,40 @@ function parseMasrawyHtml(html, portSaidHtml = '') {
       const condClass3 = (html.match(/class="weatherIcon\s+([^"]*)"/i)?.[1] || '').toLowerCase();
       const allCondText = `${condClass1} ${condClass2} ${condClass3}`;
 
-      let condition = 'sunny';
-      let conditionLabel = 'مشمس صافٍ';
+      const curHour = new Date().getUTCHours() + 3;
+      const egyptHour = curHour % 24;
+      const isNight = egyptHour >= 18 || egyptHour < 6;
+
+      let condition = isNight ? 'night' : 'sunny';
+      let conditionLabel = isNight ? 'صافٍ ليلاً' : 'مشمس صافٍ';
 
       if (/thunder|storm|برق|رعد/.test(allCondText)) {
         condition = 'thunder';
         conditionLabel = 'عواصف رعدية';
       } else if (/rain|drizzle|shower|مطر|أمطار/.test(allCondText)) {
         condition = 'rain';
-        conditionLabel = 'ممطر';
-      } else if (/sunnycloud|partly|غائم جزئيا|شمس وسحاب/.test(allCondText)) {
-        condition = 'partlyCloudy';
-        conditionLabel = 'شمس وسحب';
-      } else if (/cloud|overcast|غائم|سحاب|غيوم/.test(allCondText)) {
+        conditionLabel = 'أمطار';
+      } else if (/cloud|overcast|غيوم/.test(allCondText) && !/sunny|sun|شمس/.test(allCondText)) {
         condition = 'cloudy';
         conditionLabel = 'غائم بالسحب';
+      } else if (/sunnycloud|partly|غائم جزئيا|شمس وسحاب|شمس وسحب/.test(allCondText)) {
+        if (isNight) {
+          condition = 'cloudyNight';
+          conditionLabel = 'سحب ليلية';
+        } else {
+          condition = 'partlyCloudy';
+          conditionLabel = 'شمس وسحب';
+        }
+      } else if (/clearnight|ليل/.test(allCondText)) {
+        condition = 'night';
+        conditionLabel = 'صافٍ ليلاً';
       } else if (/sun|clear|مشمس|صافي/.test(allCondText)) {
-        condition = 'sunny';
-        conditionLabel = 'مشمس صافٍ';
-      } else {
-        const curHour = new Date().getUTCHours() + 3;
-        const egyptHour = curHour % 24;
-        if (egyptHour >= 19 || egyptHour < 6) {
+        if (isNight) {
           condition = 'night';
           conditionLabel = 'صافٍ ليلاً';
+        } else {
+          condition = 'sunny';
+          conditionLabel = 'مشمس صافٍ';
         }
       }
 
