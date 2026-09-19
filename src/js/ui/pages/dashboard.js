@@ -30,7 +30,7 @@ import {
  */
 
 import { getPlacesByOwner, getPlace, getCategories, getPlaceOffers, getPlaceProducts, getSettings, getUserNotifications, markAllNotificationsAsRead, clearAllNotifications, getUserFollowedPlaces, getUserFollowedOffers, unfollowPlace, clearDbCache, getPublishedPlaces, submitCategoryRequestTurso, updatePlaceAvailability, getPlaceBranches, getPlaceAnalyticsReport } from '../../core/db.js';
-import { createPlace, updatePlace, deletePlace, addOffer, updateOffer, deleteOffer, addProduct, updateProduct, deleteProduct, submitVerificationRequest } from '../../services/places.service.js?v=a58f9ed6';
+import { createPlace, updatePlace, deletePlace, addOffer, updateOffer, deleteOffer, addProduct, updateProduct, deleteProduct, submitVerificationRequest } from '../../services/places.service.js?v=174f66d3';
 import { openOfferFullDetailsModal, openProductFullDetailsModal } from '../components/OfferProductModals.js';
 import { uploadImage } from '../../services/upload.service.js';
 import { translatePlaceName, generateCoverImage, generatePlaceLogo, generateSeoDescription, generateSeoServices } from '../../services/ai.service.js';
@@ -48,8 +48,8 @@ import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { formatDate } from '../../utils/date.js';
 import { getUserLoyaltyProfile, getLoyaltyLevelInfo, redeemPointsForVerification, claimDailyBonus, LOYALTY_LEVELS, POINTS_RULES, VERIFICATION_POINTS_COST } from '../../services/loyalty.service.js';
-import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=a58f9ed6';
-import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=a58f9ed6';
+import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=174f66d3';
+import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=174f66d3';
 
 let _dashUser = null;
 let _dashPlacesCache = null;
