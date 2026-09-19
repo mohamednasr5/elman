@@ -6047,7 +6047,7 @@ try {
     if (auth.response) return auth.response
     const idFromPath = url.pathname.startsWith('/api/users/') ? url.pathname.replace('/api/users/', '').trim() : '';
     const body = await request.json().catch(() => ({}));
-    const id = (idFromPath || body.id || body.uid || '').trim();
+    let id = (idFromPath || body.id || body.uid || '').trim();
 
     if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
 
