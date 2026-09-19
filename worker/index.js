@@ -5714,12 +5714,12 @@ try {
 
     const recipient = await db.prepare(`
       SELECT id, name, email, phone, points FROM users
-      WHERE (LOWER(email) = LOWER(?) OR phone = ?) AND id != ?
+      WHERE (LOWER(email) = LOWER(?) OR phone = ? OR id = ?) AND id != ?
       LIMIT 1
-    `).bind(recipientQuery, recipientQuery, auth.user.uid).first();
+    `).bind(recipientQuery, recipientQuery, recipientQuery, auth.user.uid).first();
 
     if (!recipient) {
-      return jsonResponse({ success: false, error: 'لم يتم العثور على حساب مسجل بهذا الرقم أو البريد الإلكتروني' }, 404, corsHeaders);
+      return jsonResponse({ success: false, error: 'لم يتم العثور على حساب مسجل بهذا الرقم أو البريد الإلكتروني أو المعرف' }, 404, corsHeaders);
     }
 
     const now = Date.now();
@@ -6052,7 +6052,19 @@ try {
     if (!id) return jsonResponse({ error: 'User ID required' }, 400, corsHeaders);
 
     try {
-      const existing = await createTursoDB(env).prepare(`SELECT * FROM users WHERE id = ? LIMIT 1`).bind(id).first();
+      const db = createTursoDB(env);
+      let existing = await db.prepare(`SELECT * FROM users WHERE id = ? OR LOWER(email) = LOWER(?) LIMIT 1`).bind(id, id).first();
+      if (existing) {
+        id = existing.id;
+      } else {
+        const now = Date.now();
+        await db.prepare(`
+          INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'active', 0, 0, ?, ?)
+          ON CONFLICT(id) DO NOTHING
+        `).bind(id, body.name || 'مستخدم', (body.email || '').toLowerCase(), 'user', now, now).run().catch(() => {});
+        existing = await db.prepare(`SELECT * FROM users WHERE id = ? LIMIT 1`).bind(id).first();
+      }
       if (!existing) return jsonResponse({ error: 'User not found' }, 404, corsHeaders);
 
       const desiredRole = String(body.role !== undefined ? body.role : existing.role).trim().toLowerCase();
@@ -6070,19 +6082,34 @@ try {
       const name   = body.name   !== undefined ? body.name   : existing.name;
       const email  = body.email  !== undefined ? body.email  : existing.email;
       const phone  = body.phone  !== undefined ? body.phone  : existing.phone;
-      const pointsRaw = body.points !== undefined ? Number(body.points) : Number(existing.points || 0);
+      const currentPts = Number(existing.points || 0);
+      const pointsRaw = body.points !== undefined ? Number(body.points) : currentPts;
       if (!Number.isFinite(pointsRaw) || pointsRaw < 0 || pointsRaw > 1000000000) {
         return jsonResponse({success:false,error:'رصيد النقاط غير صالح'},400,corsHeaders);
       }
       const points = Math.floor(pointsRaw);
+      const diff = points - currentPts;
       const now    = Date.now();
 
-      await createTursoDB(env).prepare(`
-        UPDATE users SET role = ?, status = ?, name = ?, email = ?, phone = ?, points = ?, updated_at = ?
+      await db.prepare(`
+        UPDATE users SET role = ?, status = ?, name = ?, email = ?, phone = ?, points = ?,
+               total_earned = CASE WHEN ? > COALESCE(total_earned, 0) THEN ? ELSE total_earned END,
+               updated_at = ?
         WHERE id = ?
-      `).bind(role, status, name, email, phone, points, now, id).run();
+      `).bind(role, status, name, email, phone, points, points, points, now, id).run();
 
-      const updated = await createTursoDB(env).prepare(
+      if (body.points !== undefined && diff !== 0) {
+        const logId = 'lh_' + crypto.randomUUID();
+        const label = diff > 0 
+          ? (body.note || `شحن رصيد من إدارة الدليل (+${diff} ذهبية)`)
+          : (body.note || `تعديل رصيد من إدارة الدليل (${diff} ذهبية)`);
+        await db.prepare(`
+          INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
+          VALUES (?, ?, ?, 'ADMIN_ADJUST', ?, ?, ?, ?)
+        `).bind(logId, id, diff > 0 ? 'earn' : 'deduct', diff, label, JSON.stringify({ admin: auth.user.email, note: body.note }), now).run().catch(() => {});
+      }
+
+      const updated = await db.prepare(
         `SELECT id, name, email, photo_url, phone, role, status, points, total_earned, created_at, updated_at FROM users WHERE id = ? LIMIT 1`
       ).bind(id).first();
 

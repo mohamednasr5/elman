@@ -589,9 +589,9 @@ export async function updateVerificationRequestTurso(id, status = 'approved', ve
 }
 
 /** Update User Role/Status in Turso */
-export async function updateUserTurso(uid, { role, status, name, email, phone, points } = {}) {
+export async function updateUserTurso(uid, { role, status, name, email, phone, points, note } = {}) {
   const body = {};
-  for (const [key, value] of Object.entries({ role, status, name, email, phone, points })) {
+  for (const [key, value] of Object.entries({ role, status, name, email, phone, points, note })) {
     if (value !== undefined) body[key] = value;
   }
   return tursoFetch('/api/users/' + encodeURIComponent(uid), {

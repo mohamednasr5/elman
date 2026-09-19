@@ -8,6 +8,7 @@ import { api } from '../../core/api.js';
 import { WORKER_URL } from '../../core/firebase.js';
 import { toast } from '../components/Toast.js';
 import { showModal } from '../components/Modal.js';
+import { getStoredCoinsBalance, fetchLiveCoinsBalance, setStoredCoinsBalance } from '../../core/coins-sync.js';
 
 function escHtml(str) {
   return String(str || '')
@@ -50,16 +51,13 @@ export async function renderWalletPage($container) {
 
   try {
     const token = await getIdToken();
-    let balanceData = { balance: 0, totalEarned: 0, history: [], purchases: [] };
+    let balanceData = { balance: getStoredCoinsBalance(), totalEarned: 0, history: [], purchases: [] };
 
     try {
       const res = await api.get('/api/coins/balance', token);
       if (res.success && res.data) {
         balanceData = res.data;
-        try {
-          localStorage.setItem('manzala_user_coins_balance', String(res.data.balance || 0));
-          window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: res.data.balance } }));
-        } catch (_) {}
+        setStoredCoinsBalance(Number(res.data.balance || 0));
       }
     } catch (err) {
       console.warn('[Wallet balance fetch error]:', err);
@@ -186,7 +184,7 @@ function renderUserWallet($container, user, balanceData) {
             
             <div class="wallet-capsule__balance-row">
               <img src="/assets/images/dalil-gold-coin.jpg" alt="Coin Icon" class="wallet-capsule__coin-icon" />
-              <div class="wallet-capsule__amount" id="wallet-live-balance">${currentBalance.toLocaleString('ar-EG')}</div>
+              <div class="wallet-capsule__amount" id="wallet-live-balance">${currentBalance.toLocaleString('ar-EG')} <span style="font-size:1.3rem;font-weight:800;color:#FDE68A">ذهبية</span></div>
             </div>
 
             <div class="wallet-capsule__actions">
@@ -1115,17 +1113,10 @@ function bindWalletEvents($container, user, balanceData) {
     const btn = document.getElementById('btn-refresh-balance');
     if (btn) btn.innerHTML = '<span>⏳ جاري التحديث...</span>';
     try {
-      const token = await getIdToken();
-      const res = await api.get('/api/coins/balance', token);
-      if (res.success && res.data) {
-        const liveBal = document.getElementById('wallet-live-balance');
-        if (liveBal) liveBal.textContent = Number(res.data.balance || 0).toLocaleString('ar-EG');
-        try {
-          localStorage.setItem('manzala_user_coins_balance', String(res.data.balance || 0));
-          window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: res.data.balance } }));
-        } catch (_) {}
-        toast.success('تم تحديث الرصيد بنجاح ✓');
-      }
+      const liveBal = await fetchLiveCoinsBalance(true);
+      const liveBalEl = document.getElementById('wallet-live-balance');
+      if (liveBalEl) liveBalEl.innerHTML = `${Number(liveBal).toLocaleString('ar-EG')} <span style="font-size:1.3rem;font-weight:800;color:#FDE68A">ذهبية</span>`;
+      toast.success('تم تحديث الرصيد بنجاح ✓');
     } catch (_) {
       location.reload();
     } finally {

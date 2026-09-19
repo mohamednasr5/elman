@@ -22,25 +22,14 @@ function notificationsHref() {
   return 'dashboard.html?section=notifications';
 }
 
+import { getStoredCoinsBalance, fetchLiveCoinsBalance } from './coins-sync.js';
+
 function getStoredCoins() {
-  try {
-    const raw = localStorage.getItem('manzala_user_coins_balance');
-    if (raw !== null && !isNaN(Number(raw))) return Number(raw);
-  } catch (_) {}
-  return 0;
+  return getStoredCoinsBalance();
 }
 
 async function fetchLiveCoins() {
-  try {
-    const token = await getIdToken();
-    if (!token) return;
-    const res = await api.get('/api/coins/balance', token);
-    const bal = res?.data?.balance ?? res?.balance;
-    if (typeof bal === 'number') {
-      localStorage.setItem('manzala_user_coins_balance', String(bal));
-      window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: bal } }));
-    }
-  } catch (_) {}
+  return fetchLiveCoinsBalance();
 }
 
 function ensureNotificationBell() {
@@ -100,7 +89,10 @@ function renderHeader(user) {
           <span aria-hidden="true">▾</span>
         </button>
         <div class="header__dropdown" id="dashboard-user-dropdown" role="menu">
-          <a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800">🪙 الرصيد والعملات الذهبية</a>
+          <a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span>🪙 محفظة الذهبيات</span>
+            <span class="badge" id="header-user-coins-badge" style="background:#F5A623;color:#0B1E30;font-size:11px;font-weight:900;padding:2px 8px;border-radius:9999px">${coinsDisplay} ذهبية</span>
+          </a>
           <a href="dashboard.html" class="header__dropdown-item" role="menuitem">🏠 لوحة تحكمي</a>
           <a href="dashboard.html?section=places" class="header__dropdown-item" role="menuitem">📍 أماكني</a>
           <a href="dashboard.html?section=add" class="header__dropdown-item" role="menuitem">➕ إضافة مكان</a>

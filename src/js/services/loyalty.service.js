@@ -75,8 +75,10 @@ export async function getUserLoyaltyProfile(uid) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) throw new Error(data.error || 'تعذر تحميل رصيد النقاط');
+    const pts = Number(data.data?.points || 0);
+    syncGlobalCoins(pts);
     return {
-      points: Number(data.data?.points || 0),
+      points: pts,
       totalEarned: Number(data.data?.totalEarned || 0),
       lastDailyBonusDate: data.data?.lastDailyBonusDate || null,
       lastRedemptionAt: data.data?.lastRedemptionAt || null,

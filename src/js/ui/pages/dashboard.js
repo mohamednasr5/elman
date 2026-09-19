@@ -39,6 +39,7 @@ import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { isAdmin, getIdToken } from '../../core/auth.js';
 import { api } from '../../core/api.js';
+import { getStoredCoinsBalance, fetchLiveCoinsBalance, setStoredCoinsBalance, applyCoinsBalanceToUI } from '../../core/coins-sync.js';
 import { openCertificateOfAppreciationModal } from '../components/CertificateOfAppreciationModal.js';
 import { formatPrice, arabicMatch, normalizeArabic, stripAl, arabicScore, matchArabicCategoryTokens } from '../../utils/arabic.js';
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
@@ -101,6 +102,15 @@ export async function renderDashboard($container, { user, section = 'overview', 
           <a href="dashboard.html?section=loyalty" data-section="loyalty" class="dashboard-nav-item ${section === 'loyalty' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">🎁</span> نادي الولاء والنقاط
           </a>
+          <a href="wallet.html" class="dashboard-nav-item dashboard-nav-item--wallet" style="background:linear-gradient(135deg,rgba(245,166,35,0.14) 0%,rgba(217,119,6,0.18) 100%);color:#B45309;font-weight:900;border:1.5px solid rgba(245,166,35,0.45);box-shadow:0 3px 10px rgba(245,166,35,0.14);border-radius:12px;margin:6px 0;display:flex;align-items:center;justify-content:space-between;padding:10px 14px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="dashboard-nav-item__icon" style="font-size:20px;line-height:1">🪙</span>
+              <span style="font-size:13.5px;color:#92400E">محفظة الذهبيات</span>
+            </div>
+            <span class="badge" id="sidebar-coins-balance-badge" style="background:#F5A623;color:#0B1E30;font-size:12px;font-weight:900;padding:3px 9px;border-radius:9999px;box-shadow:0 2px 6px rgba(245,166,35,0.25)">
+              ${getStoredCoinsBalance().toLocaleString('ar-EG')} ذهبية
+            </span>
+          </a>
           <a href="dashboard.html?section=add&action=scan" data-section="add-scan" class="dashboard-nav-item" style="background:linear-gradient(135deg,rgba(16,185,129,0.14) 0%,rgba(5,150,105,0.18) 100%);color:#047857;font-weight:900;border:1.5px solid rgba(16,185,129,0.45);box-shadow:0 2px 8px rgba(16,185,129,0.15)">
             <span class="dashboard-nav-item__icon" style="font-size:18px">📸</span>
             <span>تصوير كارت المحل (AI)</span>
@@ -135,6 +145,9 @@ export async function renderDashboard($container, { user, section = 'overview', 
   `;
 
   setupDashboardNavigation();
+  fetchLiveCoinsBalance().then(bal => {
+    applyCoinsBalanceToUI(bal);
+  }).catch(() => {});
   getUserNotifications(user.uid).then(fresh => {
     const count = (Array.isArray(fresh) ? fresh : []).filter(n => !n.isRead).length;
     const badge = document.getElementById('sidebar-notifs-badge');
@@ -481,10 +494,68 @@ function bindPlaceItemActionListeners($container, user, places, onRefresh) {
   });
 }
 
+function renderPromoteActionsBox(hasEnough, placeName) {
+  if (hasEnough) {
+    return `
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button type="button" id="btn-modal-confirm-promote" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:900;padding:10px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(217,119,6,0.35);cursor:pointer">
+          🚀 تفعيل الإعلان المميز الآن (500 ذهبية)
+        </button>
+      </div>
+    `;
+  }
+  return `
+    <div style="padding:4px 0 10px 0">
+      <p style="font-size:12px;color:#DC2626;font-weight:700;margin-bottom:12px">
+        رصيدك الحالي غير كافٍ لتفعيل الإعلان المميز (يلزم 500 ذهبية).
+      </p>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <a href="/wallet.html" class="btn btn-primary" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none">
+          🪙 شحن الذهبيات في المحفظة
+        </a>
+        <a href="https://wa.me/201062035882?text=${encodeURIComponent(`السلام عليكم، أريد شحن 500 ذهبية لتفعيل إعلان مميز لمكاني (${placeName})`)}" target="_blank" class="btn btn-outline" style="font-weight:800;padding:10px 18px;border-radius:10px;display:inline-flex;align-items:center;gap:6px">
+          💬 شحن عبر فودافون كاش / واتساب
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+function bindPromoteConfirmAction(modal, placeId, placeName, onRefresh) {
+  const confirmBtn = document.getElementById('btn-modal-confirm-promote');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '⏳ جاري التفعيل...';
+      try {
+        const token = await getIdToken();
+        const res = await api.post('/api/coins/promote', { targetType: 'place', targetId: placeId }, token);
+        if (res.success) {
+          const newBal = Number(res.newBalance || 0);
+          setStoredCoinsBalance(newBal);
+          modal.close();
+          toast.success(`تم ترقية (${placeName}) كإعلان مميز في صدارة الدليل لمدة 30 يوماً بنجاح! 👑✨`);
+          if (typeof onRefresh === 'function') {
+            await onRefresh();
+          }
+        } else {
+          toast.error(res.error || 'تعذر ترقية المكان');
+          confirmBtn.disabled = false;
+          confirmBtn.innerHTML = '🚀 تفعيل الإعلان المميز الآن (500 ذهبية)';
+        }
+      } catch (err) {
+        toast.error(err.message || 'حدث خطأ أثناء الترقية');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '🚀 تفعيل الإعلان المميز الآن (500 ذهبية)';
+      }
+    });
+  }
+}
+
 function openPromotePlaceModal(placeId, placeName, user, onRefresh) {
-  const storedBal = Number(localStorage.getItem('manzala_user_coins_balance') || 0);
+  const storedBal = getStoredCoinsBalance();
   const cost = 500;
-  const hasEnough = storedBal >= cost;
+  let hasEnough = storedBal >= cost;
 
   const contentHtml = `
     <div style="padding:14px 10px;text-align:center">
@@ -528,33 +599,15 @@ function openPromotePlaceModal(placeId, placeName, user, onRefresh) {
         </div>
         <div style="text-align:left">
           <span style="font-size:11px;color:var(--text-muted);display:block">رصيدك الحالي</span>
-          <strong style="font-size:15px;color:${hasEnough ? '#059669' : '#DC2626'}">
+          <strong id="modal-promote-bal-display" style="font-size:15px;color:${hasEnough ? '#059669' : '#DC2626'}">
             ${storedBal.toLocaleString('ar-EG')} ذهبية ${hasEnough ? '✓' : '⚠️'}
           </strong>
         </div>
       </div>
 
-      ${hasEnough ? `
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-          <button type="button" id="btn-modal-confirm-promote" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:900;padding:10px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(217,119,6,0.35);cursor:pointer">
-            🚀 تفعيل الإعلان المميز الآن (500 ذهبية)
-          </button>
-        </div>
-      ` : `
-        <div style="padding:4px 0 10px 0">
-          <p style="font-size:12px;color:#DC2626;font-weight:700;margin-bottom:12px">
-            رصيدك الحالي غير كافٍ لتفعيل الإعلان المميز (يلزم 500 ذهبية).
-          </p>
-          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-            <a href="/wallet.html" class="btn btn-primary" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none">
-              🪙 شحن الذهبيات في المحفظة
-            </a>
-            <a href="https://wa.me/201062035882?text=${encodeURIComponent(`السلام عليكم، أريد شحن 500 ذهبية لتفعيل إعلان مميز لمكاني (${placeName})`)}" target="_blank" class="btn btn-outline" style="font-weight:800;padding:10px 18px;border-radius:10px;display:inline-flex;align-items:center;gap:6px">
-              💬 شحن عبر فودافون كاش / واتساب
-            </a>
-          </div>
-        </div>
-      `}
+      <div id="modal-promote-actions-container">
+        ${renderPromoteActionsBox(hasEnough, placeName)}
+      </div>
     </div>
   `;
 
@@ -564,41 +617,85 @@ function openPromotePlaceModal(placeId, placeName, user, onRefresh) {
     buttons: [{ label: 'إغلاق', type: 'ghost', closeOnClick: true }]
   });
 
-  const confirmBtn = document.getElementById('btn-modal-confirm-promote');
+  bindPromoteConfirmAction(modal, placeId, placeName, onRefresh);
+
+  // Background live sync to guarantee 100% fresh balance
+  fetchLiveCoinsBalance().then(fresh => {
+    if (typeof fresh === 'number') {
+      const isNowEnough = fresh >= cost;
+      const balDisplay = document.getElementById('modal-promote-bal-display');
+      if (balDisplay) {
+        balDisplay.textContent = `${fresh.toLocaleString('ar-EG')} ذهبية ${isNowEnough ? '✓' : '⚠️'}`;
+        balDisplay.style.color = isNowEnough ? '#059669' : '#DC2626';
+      }
+      const container = document.getElementById('modal-promote-actions-container');
+      if (container && isNowEnough !== hasEnough) {
+        container.innerHTML = renderPromoteActionsBox(isNowEnough, placeName);
+        bindPromoteConfirmAction(modal, placeId, placeName, onRefresh);
+      }
+    }
+  }).catch(() => {});
+}
+
+function renderVerifyActionsBox(hasEnough) {
+  if (hasEnough) {
+    return `
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button type="button" id="btn-modal-confirm-verify" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;border:none;font-weight:900;padding:10px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(37,99,235,0.35);cursor:pointer">
+          ✓ توثيق المكان الآن (5,000 ذهبية)
+        </button>
+      </div>
+    `;
+  }
+  return `
+    <div style="padding:4px 0 10px 0">
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <a href="/wallet.html" class="btn btn-primary" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none">
+          🪙 شحن الذهبيات في المحفظة
+        </a>
+        <a href="/free-verification.html" class="btn btn-outline" style="font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none">
+          🎁 التوثيق المجاني بالملصق
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+function bindVerifyConfirmAction(modal, placeId, placeName, onRefresh) {
+  const confirmBtn = document.getElementById('btn-modal-confirm-verify');
   if (confirmBtn) {
     confirmBtn.addEventListener('click', async () => {
       confirmBtn.disabled = true;
-      confirmBtn.innerHTML = '⏳ جاري التفعيل...';
+      confirmBtn.innerHTML = '⏳ جاري التوثيق...';
       try {
         const token = await getIdToken();
-        const res = await api.post('/api/coins/promote', { targetType: 'place', targetId: placeId }, token);
+        const res = await api.post('/api/coins/promote', { targetType: 'verification', targetId: placeId }, token);
         if (res.success) {
           const newBal = Number(res.newBalance || 0);
-          localStorage.setItem('manzala_user_coins_balance', String(newBal));
-          window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: newBal } }));
+          setStoredCoinsBalance(newBal);
           modal.close();
-          toast.success(`تم ترقية (${placeName}) كإعلان مميز في صدارة الدليل لمدة 30 يوماً بنجاح! 👑✨`);
+          toast.success(`تهانينا! تم توثيق (${placeName}) رسمياً بالعلامة الزرقاء! 🌟🎉`);
           if (typeof onRefresh === 'function') {
             await onRefresh();
           }
         } else {
-          toast.error(res.error || 'تعذر ترقية المكان');
+          toast.error(res.error || 'تعذر إتمام التوثيق');
           confirmBtn.disabled = false;
-          confirmBtn.innerHTML = '🚀 تفعيل الإعلان المميز الآن (500 ذهبية)';
+          confirmBtn.innerHTML = '✓ توثيق المكان الآن (5,000 ذهبية)';
         }
       } catch (err) {
-        toast.error(err.message || 'حدث خطأ أثناء الترقية');
+        toast.error(err.message || 'حدث خطأ أثناء التوثيق');
         confirmBtn.disabled = false;
-        confirmBtn.innerHTML = '🚀 تفعيل الإعلان المميز الآن (500 ذهبية)';
+        confirmBtn.innerHTML = '✓ توثيق المكان الآن (5,000 ذهبية)';
       }
     });
   }
 }
 
 function openVerifyPlaceModal(placeId, placeName, user, onRefresh) {
-  const storedBal = Number(localStorage.getItem('manzala_user_coins_balance') || 0);
+  const storedBal = getStoredCoinsBalance();
   const cost = 5000;
-  const hasEnough = storedBal >= cost;
+  let hasEnough = storedBal >= cost;
 
   const contentHtml = `
     <div style="padding:14px 10px;text-align:center">
@@ -633,37 +730,22 @@ function openVerifyPlaceModal(placeId, placeName, user, onRefresh) {
         </div>
       </div>
 
-      <div style="background:rgba(37,99,235,0.06);border:1.5px solid rgba(37,99,235,0.25);border-radius:12px;padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="background:rgba(37,99,235,0.06);border:1.5px solid rgba(37,99,235,0.25);border-radius:12px;padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:gap;gap:8px">
         <div style="text-align:right">
           <span style="font-size:11px;color:#1E40AF;display:block;font-weight:700">التوثيق الفوري بالذهبيات</span>
           <strong style="font-size:16px;color:#1D4ED8">5,000 ذهبية 🪙</strong>
         </div>
         <div style="text-align:left">
           <span style="font-size:11px;color:var(--text-muted);display:block">رصيدك الحالي</span>
-          <strong style="font-size:15px;color:${hasEnough ? '#059669' : '#DC2626'}">
+          <strong id="modal-verify-bal-display" style="font-size:15px;color:${hasEnough ? '#059669' : '#DC2626'}">
             ${storedBal.toLocaleString('ar-EG')} ذهبية ${hasEnough ? '✓' : '⚠️'}
           </strong>
         </div>
       </div>
 
-      ${hasEnough ? `
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-          <button type="button" id="btn-modal-confirm-verify" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;border:none;font-weight:900;padding:10px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(37,99,235,0.35);cursor:pointer">
-            ✓ توثيق المكان الآن (5,000 ذهبية)
-          </button>
-        </div>
-      ` : `
-        <div style="padding:4px 0 10px 0">
-          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-            <a href="/wallet.html" class="btn btn-primary" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none">
-              🪙 شحن الذهبيات في المحفظة
-            </a>
-            <a href="/free-verification.html" class="btn btn-outline" style="font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none">
-              🎁 التوثيق المجاني بالملصق
-            </a>
-          </div>
-        </div>
-      `}
+      <div id="modal-verify-actions-container">
+        ${renderVerifyActionsBox(hasEnough)}
+      </div>
     </div>
   `;
 
@@ -673,35 +755,24 @@ function openVerifyPlaceModal(placeId, placeName, user, onRefresh) {
     buttons: [{ label: 'إغلاق', type: 'ghost', closeOnClick: true }]
   });
 
-  const confirmBtn = document.getElementById('btn-modal-confirm-verify');
-  if (confirmBtn) {
-    confirmBtn.addEventListener('click', async () => {
-      confirmBtn.disabled = true;
-      confirmBtn.innerHTML = '⏳ جاري التوثيق...';
-      try {
-        const token = await getIdToken();
-        const res = await api.post('/api/coins/promote', { targetType: 'verification', targetId: placeId }, token);
-        if (res.success) {
-          const newBal = Number(res.newBalance || 0);
-          localStorage.setItem('manzala_user_coins_balance', String(newBal));
-          window.dispatchEvent(new CustomEvent('coins:updated', { detail: { balance: newBal } }));
-          modal.close();
-          toast.success(`تهانينا! تم توثيق (${placeName}) رسمياً بالعلامة الزرقاء! 🌟🎉`);
-          if (typeof onRefresh === 'function') {
-            await onRefresh();
-          }
-        } else {
-          toast.error(res.error || 'تعذر إتمام التوثيق');
-          confirmBtn.disabled = false;
-          confirmBtn.innerHTML = '✓ توثيق المكان الآن (5,000 ذهبية)';
-        }
-      } catch (err) {
-        toast.error(err.message || 'حدث خطأ أثناء التوثيق');
-        confirmBtn.disabled = false;
-        confirmBtn.innerHTML = '✓ توثيق المكان الآن (5,000 ذهبية)';
+  bindVerifyConfirmAction(modal, placeId, placeName, onRefresh);
+
+  // Background live sync
+  fetchLiveCoinsBalance().then(fresh => {
+    if (typeof fresh === 'number') {
+      const isNowEnough = fresh >= cost;
+      const balDisplay = document.getElementById('modal-verify-bal-display');
+      if (balDisplay) {
+        balDisplay.textContent = `${fresh.toLocaleString('ar-EG')} ذهبية ${isNowEnough ? '✓' : '⚠️'}`;
+        balDisplay.style.color = isNowEnough ? '#059669' : '#DC2626';
       }
-    });
-  }
+      const container = document.getElementById('modal-verify-actions-container');
+      if (container && isNowEnough !== hasEnough) {
+        container.innerHTML = renderVerifyActionsBox(isNowEnough);
+        bindVerifyConfirmAction(modal, placeId, placeName, onRefresh);
+      }
+    }
+  }).catch(() => {});
 }
 
 // Global delegated fallback safety net for place action buttons in dashboard

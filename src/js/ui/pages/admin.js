@@ -1,4 +1,4 @@
-﻿/**
+/**
  * المنزلة وناسها — Admin Control Panel (Instant SPA + Sponsored Ads Edition)
  * Zero-latency navigation, in-memory caching, responsive mobile bottom-bar,
  * and complete Sponsored Place / Paid Ad priority controls.
@@ -8,6 +8,7 @@ import { getDB, dbGet, dbSet, dbUpdate, dbRemove, dbPush, dbIncrement, serverTim
 import { WORKER_URL } from '../../core/firebase.js';
 import { api } from '../../core/api.js';
 import { isAdmin, getCurrentUser, getIdToken } from '../../core/auth.js';
+import { setStoredCoinsBalance } from '../../core/coins-sync.js';
 import { uploadImage } from '../../services/upload.service.js';
 import { renderStatusBadge } from '../components/VerifiedBadge.js';
 import { showModal, showConfirm } from '../components/Modal.js';
@@ -4670,7 +4671,11 @@ function openAdminUserPointsModal(uid, userName, currentPoints, onDone) {
           }
 
           try {
-            await updateUserTurso(uid, { points: newPts });
+            await updateUserTurso(uid, { points: newPts, note });
+            const curAuthUser = getCurrentUser();
+            if (curAuthUser && (curAuthUser.uid === uid || curAuthUser.id === uid)) {
+              setStoredCoinsBalance(newPts);
+            }
             // 2. Refresh local in-memory cache directly
             if (adminCache.users && adminCache.users[uid]) {
               adminCache.users[uid].points = newPts;
