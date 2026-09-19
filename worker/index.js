@@ -8549,6 +8549,9 @@ async function callOcrSpaceWithKeyFailover(options, env) {
     throw new Error('No OCR.Space API keys configured. Set OCR_SPACE_API_KEY through OCR_SPACE_API_KEY_5 as Cloudflare Worker secrets.');
   }
 
+  // Round-robin start position is kept only in this Worker isolate.
+  // Across requests, the next call naturally begins from key #1 after a
+  // successful request; when a key is exhausted/unavailable it is cooled down.
   const now = Date.now();
   const available = keys.filter(item => (_ocrSpaceCooldowns.get(item.id) || 0) <= now);
   const candidates = available.length ? available : keys;
