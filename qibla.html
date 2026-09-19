@@ -137,7 +137,7 @@
 
   <script type="module">
     import { initPage } from './src/js/core/page-shell.js?v=a58f9ed6';
-    import { renderQibla } from './src/js/ui/pages/islamic-hub.js?v=a58f9ed6';
+    import { renderQibla } from './src/js/ui/pages/islamic-hub.js?v=c128a3b1';
     await initPage('qibla.html');
     await renderQibla(document.getElementById('page-container'));
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});

@@ -142,7 +142,7 @@
 
   <script type="module">
     import { initPage } from './src/js/core/page-shell.js?v=a58f9ed6';
-    import { renderPrayerTimes } from './src/js/ui/pages/islamic-hub.js?v=a58f9ed6';
+    import { renderPrayerTimes } from './src/js/ui/pages/islamic-hub.js?v=c128a3b1';
     await initPage('prayer-times.html');
     await renderPrayerTimes(document.getElementById('page-container'));
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});

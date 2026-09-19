@@ -1386,7 +1386,7 @@ async function renderQibla(container){
 // 🕌 خوارزمية الحساب الفلكي لمواقيت الصلاة في مصر والدقهلية
 // وفق معايير الهيئة المصرية العامة للمساحة (فجر 19.5°، عشاء 17.5°، عصر شافعي)
 // ─────────────────────────────────────────────────────────────
-export function calculatePrayerTimes(date = new Date(), lat = 31.1582, lng = 31.9360, timezone = 3){
+function calculatePrayerTimes(date = new Date(), lat = 31.1582, lng = 31.9360, timezone = 3){
   const d2r = Math.PI / 180;
   const r2d = 180 / Math.PI;
 
