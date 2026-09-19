@@ -8470,14 +8470,12 @@ function isOcrSpaceQuotaFailure(status, text = '') {
 
 async function ocrSpaceRequest({ imageUrl, imageBase64, mimeType = 'image/jpeg' }, apiKey, timeoutMs = 20_000) {
   const form = new FormData();
-  form.append('apikey', apiKey);
   form.append('language', 'ara');
   form.append('OCREngine', '2');
   form.append('isOverlayRequired', 'false');
   form.append('detectOrientation', 'true');
   form.append('scale', 'true');
   form.append('isTable', 'false');
-  form.append('OCREngine', '2');
 
   if (imageUrl) {
     form.append('url', imageUrl);
@@ -8492,6 +8490,7 @@ async function ocrSpaceRequest({ imageUrl, imageBase64, mimeType = 'image/jpeg' 
 
   const response = await fetch(OCR_SPACE_API_URL, {
     method: 'POST',
+    headers: { 'apikey': apiKey },
     body: form,
     signal: AbortSignal.timeout(timeoutMs)
   });
