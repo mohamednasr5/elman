@@ -477,6 +477,7 @@ function bindPlaceItemActionListeners($container, user, places, onRefresh) {
   $container.querySelectorAll('.btn-action-verify-place').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const placeId = btn.dataset.placeId;
       const placeName = btn.dataset.placeName || 'المكان';
       openVerifyPlaceModal(placeId, placeName, user, onRefresh);
@@ -487,6 +488,7 @@ function bindPlaceItemActionListeners($container, user, places, onRefresh) {
   $container.querySelectorAll('.btn-action-promote-place').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const placeId = btn.dataset.placeId;
       const placeName = btn.dataset.placeName || 'المكان';
       openPromotePlaceModal(placeId, placeName, user, onRefresh);
