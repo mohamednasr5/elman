@@ -5608,7 +5608,8 @@ try {
         '{"recovered":true,"source":"places.is_verified"}' AS meta_json,
         COALESCE(updated_at, 0) AS created_at
       FROM places
-      WHERE owner_id = ? AND is_verified = 1
+      WHERE (owner_id = ? OR LOWER(COALESCE(owner_email, '')) = ?)
+        AND is_verified = 1
         AND NOT EXISTS (
           SELECT 1 FROM loyalty_history lh
           WHERE lh.user_id = ?
@@ -5622,7 +5623,7 @@ try {
         )
       ORDER BY updated_at DESC
       LIMIT 100
-    `).bind(uid, uid, uid).all()).results || [];
+    `).bind(uid, userEmail, uid, uid).all()).results || [];
 
     const completeHistory = [...history, ...redemptionHistory, ...verifiedPlaceHistory]
       .sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0))
