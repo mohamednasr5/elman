@@ -876,6 +876,45 @@ function bindWalletEvents($container, user, balanceData) {
   let activeCoins = 2000;
   let activePrice = 350;
   let activeMethod = 'instapay';
+  // Transaction history filters — client-side, instant and safe.
+  const historyType = document.getElementById('wallet-history-type');
+  const historyStatus = document.getElementById('wallet-history-status');
+  const historySearch = document.getElementById('wallet-history-search');
+  const historyReset = document.getElementById('wallet-history-reset');
+  const historyRows = Array.from($container.querySelectorAll('.wallet-history-row'));
+  const historyCount = document.getElementById('wallet-history-count');
+  const historyNoResults = document.getElementById('wallet-history-no-results');
+
+  function applyHistoryFilters() {
+    const type = historyType?.value || 'all';
+    const status = historyStatus?.value || 'all';
+    const query = String(historySearch?.value || '').trim().toLowerCase();
+    let visible = 0;
+
+    historyRows.forEach(row => {
+      const matchesType = type === 'all' || row.dataset.type === type;
+      const matchesStatus = status === 'all' || row.dataset.status === status;
+      const matchesSearch = !query || String(row.dataset.search || '').includes(query);
+      const show = matchesType && matchesStatus && matchesSearch;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    if (historyCount) historyCount.textContent = visible.toLocaleString('ar-EG');
+    if (historyNoResults) historyNoResults.style.display = visible ? 'none' : 'block';
+  }
+
+  historyType?.addEventListener('change', applyHistoryFilters);
+  historyStatus?.addEventListener('change', applyHistoryFilters);
+  historySearch?.addEventListener('input', applyHistoryFilters);
+  historyReset?.addEventListener('click', () => {
+    if (historyType) historyType.value = 'all';
+    if (historyStatus) historyStatus.value = 'all';
+    if (historySearch) historySearch.value = '';
+    applyHistoryFilters();
+  });
+  applyHistoryFilters();
+
 
   // 1. Copy Buttons
   $container.querySelectorAll('.btn-copy').forEach(btn => {
