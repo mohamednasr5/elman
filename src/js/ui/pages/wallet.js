@@ -788,7 +788,7 @@ function renderHistoryHTML(balanceData) {
   }).join('');
 
   return `
-    <div class="wallet-history-toolbar" style="display:grid;grid-template-columns:minmax(190px,1fr) minmax(190px,1fr) minmax(220px,1.4fr) auto;gap:10px;align-items:center;margin-bottom:14px">
+    <div class="wallet-history-toolbar" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:center;margin-bottom:14px">
       <select id="wallet-history-type" class="wallet-form-select" style="margin:0">
         ${Object.entries(typeLabels).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}
       </select>
