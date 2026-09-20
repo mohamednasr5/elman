@@ -5596,7 +5596,35 @@ try {
       console.warn('[Coins balance redemption-history warning]:', redemptionErr?.message || redemptionErr);
     }
 
-    const completeHistory = [...history, ...redemptionHistory]
+    const verifiedPlaceHistory = (await db.prepare(`
+      SELECT
+        'verified_place_' || id AS id,
+        'redeem' AS type,
+        'REDEEM_VERIFICATION' AS rule_key,
+        -5000 AS amount,
+        'توثيق المكان بالعلامة الزرقاء: ' || COALESCE(name, 'مكان') || ' — سجل مستعاد' AS label,
+        id AS place_id,
+        name AS place_name,
+        '{"recovered":true,"source":"places.is_verified"}' AS meta_json,
+        COALESCE(updated_at, 0) AS created_at
+      FROM places
+      WHERE owner_id = ? AND is_verified = 1
+        AND NOT EXISTS (
+          SELECT 1 FROM loyalty_history lh
+          WHERE lh.user_id = ?
+            AND lh.rule_key = 'REDEEM_VERIFICATION'
+            AND lh.place_id = places.id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM loyalty_redemptions lr
+          WHERE lr.user_id = ?
+            AND lr.place_id = places.id
+        )
+      ORDER BY updated_at DESC
+      LIMIT 100
+    `).bind(uid, uid, uid).all()).results || [];
+
+    const completeHistory = [...history, ...redemptionHistory, ...verifiedPlaceHistory]
       .sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0))
       .slice(0, 200);
 
