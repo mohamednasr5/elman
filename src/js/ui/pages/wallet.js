@@ -60,8 +60,8 @@ export async function renderWalletPage($container) {
     try {
       const res = await api.get('/api/coins/balance', token);
       if (res.success && res.data) {
-        const serverBal = Number(res.data.balance || 0);
-        const finalBal = serverBal > 0 ? serverBal : (initialCoins > 0 ? initialCoins : serverBal);
+        // Turso is authoritative, including a legitimate zero balance.
+        const finalBal = Math.max(0, Number(res.data.balance ?? 0));
         balanceData = {
           ...res.data,
           balance: finalBal
