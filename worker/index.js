@@ -5552,8 +5552,43 @@ try {
 
     const history = (await db.prepare(`
       SELECT id, type, rule_key, amount, label, place_id, place_name, meta_json, created_at
-      FROM loyalty_history WHERE user_id = ? OR user_id = ? ORDER BY created_at DESC LIMIT 100
+      FROM loyalty_history
+      WHERE user_id = ? OR user_id = ?
+      ORDER BY created_at DESC
+      LIMIT 200
     `).bind(uid, user?.id || uid).all()).results || [];
+
+    // Some older verification transactions were recorded in loyalty_redemptions
+    // before loyalty_history logging was enabled. Surface those as history rows
+    // too, without duplicating transactions already present in loyalty_history.
+    const redemptionHistory = (await db.prepare(`
+      SELECT
+        'lr_' || lr.id AS id,
+        'redeem' AS type,
+        'REDEEM_VERIFICATION' AS rule_key,
+        -lr.points_redeemed AS amount,
+        'توثيق المكان بالعلامة الزرقاء: ' || COALESCE(lr.place_name, 'مكان') AS label,
+        lr.place_id,
+        lr.place_name,
+        '{}' AS meta_json,
+        lr.created_at
+      FROM loyalty_redemptions lr
+      WHERE (lr.user_id = ? OR lr.user_id = ?)
+        AND NOT EXISTS (
+          SELECT 1
+          FROM loyalty_history lh
+          WHERE lh.user_id = lr.user_id
+            AND lh.rule_key = 'REDEEM_VERIFICATION'
+            AND lh.place_id = lr.place_id
+            AND lh.created_at = lr.created_at
+        )
+      ORDER BY lr.created_at DESC
+      LIMIT 200
+    `).bind(uid, user?.id || uid).all()).results || [];
+
+    const completeHistory = [...history, ...redemptionHistory]
+      .sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0))
+      .slice(0, 200);
 
     const purchases = (await db.prepare(`
       SELECT id, package_coins, amount_egp, receipt_url, payment_method, vodafone_sender_number, status, admin_notes, created_at, reviewed_at
@@ -5565,7 +5600,7 @@ try {
       data: {
         balance: Number(user.points || 0),
         totalEarned: Number(user.total_earned || 0),
-        history,
+        history: completeHistory,
         purchases
       }
     }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
