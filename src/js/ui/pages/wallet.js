@@ -671,27 +671,153 @@ function renderHistoryHTML(balanceData) {
   const transactions = [
     ...purchases.map(p => ({
       kind: 'purchase',
-      created_at: p.created_at,
+      created_at: Number(p.created_at || 0),
       data: p
     })),
     ...history.map(h => ({
       kind: 'loyalty',
-      created_at: h.created_at,
+      created_at: Number(h.created_at || 0),
       data: h
     }))
-  ].sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0));
+  ].sort((a, b) => b.created_at - a.created_at);
 
-  if (transactions.length === 0) {
-    return `<div style="text-align:center;padding:36px 16px;color:#94A3B8;font-size:0.95rem">لا توجد معاملات مسجلة حتى الآن.</div>`;
-  }
-
-  const statusLabels = {
-    pending: '<span class="badge" style="background:rgba(245,166,35,0.15);color:#F5A623;padding:4px 10px;border-radius:8px;font-weight:800">⏳ قيد المراجعة</span>',
-    approved: '<span class="badge" style="background:rgba(16,185,129,0.15);color:#10B981;padding:4px 10px;border-radius:8px;font-weight:800">✅ تم الشحن</span>',
-    rejected: '<span class="badge" style="background:rgba(239,68,68,0.15);color:#EF4444;padding:4px 10px;border-radius:8px;font-weight:800">❌ مرفوض</span>'
+  const classify = tx => {
+    if (tx.kind === 'purchase') return 'purchase';
+    const key = String(tx.data?.rule_key || '').toUpperCase();
+    if (key === 'REDEEM_VERIFICATION') return 'verification';
+    if (key === 'SPONSORED_PLACE') return 'sponsored';
+    if (key === 'FEATURED_JOB' || key === 'FEATURED_SEEKER') return 'promotion';
+    if (key === 'TRANSFER_OUT' || key === 'TRANSFER_IN') return 'transfer';
+    if (key === 'COIN_PURCHASE') return 'purchase';
+    if (key === 'ADMIN_ADJUST') return 'admin';
+    if (key === 'DAILY_LOGIN' || key === 'INTERACTION') return 'earning';
+    return 'other';
   };
 
+  const typeLabels = {
+    all: 'كل العمليات',
+    purchase: 'شحن الرصيد',
+    earning: 'مكافآت وكسب',
+    verification: 'توثيق',
+    sponsored: 'إعلان مميز',
+    promotion: 'تمييز وظائف',
+    transfer: 'تحويلات',
+    admin: 'تعديلات إدارية',
+    other: 'أخرى'
+  };
+
+  const typeIcons = {
+    purchase: '💳',
+    earning: '🎁',
+    verification: '🔵',
+    sponsored: '🌟',
+    promotion: '📢',
+    transfer: '🔁',
+    admin: '⚙️',
+    other: '💰'
+  };
+
+  if (transactions.length === 0) {
+    return `<div class="wallet-history-empty" style="text-align:center;padding:42px 16px;color:#94A3B8;font-size:0.95rem">لا توجد معاملات مسجلة حتى الآن.</div>`;
+  }
+
+  const totalPositive = transactions.reduce((sum, tx) => sum + Math.max(0, Number(tx.data?.amount ?? tx.data?.package_coins ?? 0)), 0);
+  const totalNegative = transactions.reduce((sum, tx) => sum + Math.min(0, Number(tx.data?.amount ?? 0)), 0);
+
+  const transactionRows = transactions.map((tx, index) => {
+    const category = classify(tx);
+    const typeLabel = typeLabels[category] || typeLabels.other;
+    const icon = typeIcons[category] || typeIcons.other;
+    const dateStr = tx.created_at
+      ? new Date(tx.created_at).toLocaleString('ar-EG', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      : '—';
+
+    let amount = Number(tx.data?.amount ?? 0);
+    let detail = '';
+    let status = '<span style="color:#10B981;font-size:0.85rem;font-weight:800">مكتملة ✓</span>';
+
+    if (tx.kind === 'purchase') {
+      const p = tx.data;
+      amount = Number(p.package_coins || 0);
+      detail = `
+        <div style="font-weight:800;color:#FFFFFF">شحن ${amount.toLocaleString('ar-EG')} ذهبية</div>
+        <div style="font-size:0.78rem;color:#94A3B8">
+          ${Number(p.amount_egp || 0).toLocaleString('ar-EG')} ج.م • ${escHtml(p.payment_method || 'تحويل إلكتروني')}
+          ${p.vodafone_sender_number ? ' • من: ' + escHtml(p.vodafone_sender_number) : ''}
+        </div>`;
+      const statusLabels = {
+        pending: '<span class="badge" style="background:rgba(245,166,35,0.15);color:#F5A623;padding:4px 10px;border-radius:8px;font-weight:800">⏳ قيد المراجعة</span>',
+        approved: '<span class="badge" style="background:rgba(16,185,129,0.15);color:#10B981;padding:4px 10px;border-radius:8px;font-weight:800">✅ تم الشحن</span>',
+        rejected: '<span class="badge" style="background:rgba(239,68,68,0.15);color:#EF4444;padding:4px 10px;border-radius:8px;font-weight:800">❌ مرفوض</span>'
+      };
+      status = statusLabels[p.status] || escHtml(p.status || 'غير محدد');
+    } else {
+      const h = tx.data;
+      detail = `
+        <div style="font-weight:700;color:#FFFFFF">${escHtml(h.label || h.rule_key || 'معاملة رصيد')}</div>
+        ${h.place_name ? '<div style="font-size:0.78rem;color:#94A3B8">المكان: ' + escHtml(h.place_name) + '</div>' : ''}
+      `;
+    }
+
+    const isPositive = amount > 0;
+    const valueText = amount > 0
+      ? '+' + amount.toLocaleString('ar-EG')
+      : amount < 0
+        ? amount.toLocaleString('ar-EG')
+        : '0';
+
+    return `
+      <tr class="wallet-history-row"
+          data-type="${category}"
+          data-status="${tx.kind === 'purchase' ? escHtml(tx.data?.status || '') : 'completed'}"
+          data-search="${escHtml([typeLabel, tx.data?.label, tx.data?.rule_key, tx.data?.place_name].filter(Boolean).join(' ')).toLowerCase()}"
+          data-amount="${amount}"
+          data-index="${index}">
+        <td style="color:#94A3B8;font-size:0.82rem;white-space:nowrap">${escHtml(dateStr)}</td>
+        <td><span style="font-weight:800;color:#FDE68A">${icon} ${typeLabel}</span></td>
+        <td>${detail}</td>
+        <td style="font-weight:900;color:${isPositive ? '#10B981' : amount < 0 ? '#EF4444' : '#94A3B8'};white-space:nowrap">${valueText} 🪙</td>
+        <td>${status}</td>
+      </tr>`;
+  }).join('');
+
   return `
+    <div class="wallet-history-toolbar" style="display:grid;grid-template-columns:minmax(190px,1fr) minmax(190px,1fr) minmax(220px,1.4fr) auto;gap:10px;align-items:center;margin-bottom:14px">
+      <select id="wallet-history-type" class="wallet-form-select" style="margin:0">
+        ${Object.entries(typeLabels).map(([key,label]) => `<option value="${key}">${label}</option>`).join('')}
+      </select>
+      <select id="wallet-history-status" class="wallet-form-select" style="margin:0">
+        <option value="all">كل الحالات</option>
+        <option value="approved">تم الشحن</option>
+        <option value="pending">قيد المراجعة</option>
+        <option value="rejected">مرفوض</option>
+        <option value="completed">مكتملة</option>
+      </select>
+      <input id="wallet-history-search" class="wallet-form-input" type="search" placeholder="🔎 ابحث في البيان أو اسم المكان..." autocomplete="off" style="margin:0">
+      <button type="button" id="wallet-history-reset" class="wallet-btn-glass" style="white-space:nowrap">↺ إعادة</button>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="flex:1;min-width:150px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:10px 14px">
+        <div style="font-size:.72rem;color:#94A3B8">إجمالي العمليات</div>
+        <strong id="wallet-history-count" style="font-size:1.1rem;color:#FDE68A">${transactions.length.toLocaleString('ar-EG')}</strong>
+      </div>
+      <div style="flex:1;min-width:150px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);border-radius:12px;padding:10px 14px">
+        <div style="font-size:.72rem;color:#94A3B8">إجمالي الداخل المسجل</div>
+        <strong style="font-size:1.1rem;color:#10B981">+${totalPositive.toLocaleString('ar-EG')} 🪙</strong>
+      </div>
+      <div style="flex:1;min-width:150px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.18);border-radius:12px;padding:10px 14px">
+        <div style="font-size:.72rem;color:#94A3B8">إجمالي الخارج المسجل</div>
+        <strong style="font-size:1.1rem;color:#EF4444">${totalNegative.toLocaleString('ar-EG')} 🪙</strong>
+      </div>
+    </div>
+
     <div style="overflow-x:auto">
       <table class="wallet-history-table">
         <thead>
@@ -703,72 +829,16 @@ function renderHistoryHTML(balanceData) {
             <th>الحالة</th>
           </tr>
         </thead>
-        <tbody>
-          ${transactions.map(tx => {
-            const dateStr = tx.created_at
-              ? new Date(Number(tx.created_at)).toLocaleString('ar-EG', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-              : '—';
-
-            if (tx.kind === 'purchase') {
-              const p = tx.data;
-              const coins = Number(p.package_coins || 0);
-              return `
-                <tr>
-                  <td style="color:#94A3B8;font-size:0.82rem;white-space:nowrap">${escHtml(dateStr)}</td>
-                  <td><span style="font-weight:800;color:#38BDF8">💳 شحن</span></td>
-                  <td>
-                    <div style="font-weight:800;color:#FFFFFF">شحن ${coins.toLocaleString('ar-EG')} ذهبية</div>
-                    <div style="font-size:0.78rem;color:#94A3B8">
-                      ${Number(p.amount_egp || 0)} ج.م • ${escHtml(p.payment_method || 'تحويل إلكتروني')}
-                      ${p.vodafone_sender_number ? ' • من: ' + escHtml(p.vodafone_sender_number) : ''}
-                    </div>
-                  </td>
-                  <td style="font-weight:900;color:#10B981">+${coins.toLocaleString('ar-EG')} 🪙</td>
-                  <td>${statusLabels[p.status] || escHtml(p.status || 'غير محدد')}</td>
-                </tr>
-              `;
-            }
-
-            const h = tx.data;
-            const amount = Number(h.amount || 0);
-            const isPositive = amount > 0;
-            let typeLabel = '💰 معاملة';
-            if (h.rule_key === 'REDEEM_VERIFICATION') typeLabel = '🔵 توثيق';
-            else if (h.rule_key === 'SPONSORED_PLACE') typeLabel = '🌟 إعلان مميز';
-            else if (h.rule_key === 'FEATURED_JOB') typeLabel = '📢 تمييز وظيفة';
-            else if (h.rule_key === 'FEATURED_SEEKER') typeLabel = '💼 تمييز سيرة ذاتية';
-            else if (h.rule_key === 'TRANSFER_OUT') typeLabel = '↗️ تحويل';
-            else if (h.rule_key === 'TRANSFER_IN') typeLabel = '↙️ استلام';
-            else if (h.rule_key === 'COIN_PURCHASE') typeLabel = '💳 شحن';
-            else if (h.rule_key === 'ADMIN_ADJUST') typeLabel = '⚙️ تعديل إداري';
-
-            return `
-              <tr>
-                <td style="color:#94A3B8;font-size:0.82rem;white-space:nowrap">${escHtml(dateStr)}</td>
-                <td><span style="font-weight:800;color:#FDE68A">${typeLabel}</span></td>
-                <td>
-                  <div style="font-weight:700;color:#FFFFFF">${escHtml(h.label || h.rule_key || 'معاملة رصيد')}</div>
-                  ${h.place_name ? '<div style="font-size:0.78rem;color:#94A3B8">المكان: ' + escHtml(h.place_name) + '</div>' : ''}
-                </td>
-                <td style="font-weight:900;color:${isPositive ? '#10B981' : '#EF4444'}">
-                  ${isPositive ? '+' : ''}${amount.toLocaleString('ar-EG')} 🪙
-                </td>
-                <td><span style="color:#10B981;font-size:0.85rem;font-weight:800">مكتملة ✓</span></td>
-              </tr>
-            `;
-          }).join('')}
+        <tbody id="wallet-history-body">
+          ${transactionRows}
         </tbody>
       </table>
+      <div id="wallet-history-no-results" style="display:none;text-align:center;padding:28px;color:#94A3B8">
+        لا توجد عمليات تطابق الفلتر الحالي.
+      </div>
     </div>
   `;
 }
-
 /**
  * 5. Trust & Community Footer Strip
  */
