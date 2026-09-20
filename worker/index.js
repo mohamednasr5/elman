@@ -4479,10 +4479,46 @@ try {
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_coin_purchases_status ON coin_purchases(status, created_at DESC)").run().catch(() => {});
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_coin_purchases_user ON coin_purchases(user_id)").run().catch(() => {});
 
-      // Ensure users table has points / coins columns
+      // Ensure all coin/verification fields exist on legacy Turso databases.
+      // The project has older databases that predate the full loyalty schema.
+      // These ALTERs are intentionally idempotent via catch() so the Worker
+      // can self-heal without requiring a manual migration before a purchase.
       await db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run().catch(() => {});
       await db.prepare("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0").run().catch(() => {});
       await db.prepare("ALTER TABLE users ADD COLUMN total_earned INTEGER DEFAULT 0").run().catch(() => {});
+      await db.prepare("ALTER TABLE users ADD COLUMN last_daily_bonus_date TEXT").run().catch(() => {});
+      await db.prepare("ALTER TABLE users ADD COLUMN last_redemption_at INTEGER").run().catch(() => {});
+
+      // Place promotion / verification columns used by /api/coins/promote.
+      await db.prepare("ALTER TABLE places ADD COLUMN is_sponsored INTEGER DEFAULT 0").run().catch(() => {});
+      await db.prepare("ALTER TABLE places ADD COLUMN is_featured INTEGER DEFAULT 0").run().catch(() => {});
+      await db.prepare("ALTER TABLE places ADD COLUMN priority INTEGER DEFAULT 0").run().catch(() => {});
+      await db.prepare("ALTER TABLE places ADD COLUMN sponsored_until INTEGER").run().catch(() => {});
+      await db.prepare("ALTER TABLE places ADD COLUMN verification_status TEXT DEFAULT 'unverified'").run().catch(() => {});
+
+      await db.prepare(`CREATE TABLE IF NOT EXISTS loyalty_history (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        rule_key TEXT,
+        amount INTEGER NOT NULL,
+        label TEXT,
+        place_id TEXT,
+        place_name TEXT,
+        meta_json TEXT,
+        created_at INTEGER NOT NULL
+      )`).run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_loyalty_history_user ON loyalty_history(user_id, created_at DESC)").run().catch(() => {});
+
+      await db.prepare(`CREATE TABLE IF NOT EXISTS loyalty_redemptions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        place_id TEXT NOT NULL,
+        place_name TEXT,
+        points_redeemed INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+      )`).run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_loyalty_redemptions_user ON loyalty_redemptions(user_id, created_at DESC)").run().catch(() => {});
 
       _hasEnsuredCoinEconomySchema = true;
     } catch (err) {
