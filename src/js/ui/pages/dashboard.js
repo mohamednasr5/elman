@@ -666,7 +666,12 @@ function renderVerifyActionsBox(hasEnough) {
 function bindVerifyConfirmAction(modal, placeId, placeName, onRefresh) {
   const confirmBtn = document.getElementById('btn-modal-confirm-verify');
   if (confirmBtn) {
-    confirmBtn.addEventListener('click', async () => {
+    confirmBtn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      // Guard against duplicate listeners firing the same purchase twice.
+      if (confirmBtn.dataset.processing === '1') return;
+      confirmBtn.dataset.processing = '1';
       confirmBtn.disabled = true;
       confirmBtn.innerHTML = '⏳ جاري التوثيق...';
       try {
@@ -682,11 +687,13 @@ function bindVerifyConfirmAction(modal, placeId, placeName, onRefresh) {
           }
         } else {
           toast.error(res.error || 'تعذر إتمام التوثيق');
+          confirmBtn.dataset.processing = '0';
           confirmBtn.disabled = false;
           confirmBtn.innerHTML = '✓ توثيق المكان الآن (5,000 ذهبية)';
         }
       } catch (err) {
         toast.error(err.message || 'حدث خطأ أثناء التوثيق');
+        confirmBtn.dataset.processing = '0';
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = '✓ توثيق المكان الآن (5,000 ذهبية)';
       }
