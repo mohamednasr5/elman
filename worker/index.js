@@ -5864,6 +5864,18 @@ try {
     // Keeping ALTER/CREATE operations here can exhaust Worker subrequests
     // before the actual purchase/update transaction runs.
 
+    // Deduct coins atomically and return the resulting balance.
+    // UPDATE ... RETURNING gives a row only when the guarded deduction actually succeeds.
+    const deductCoins = async (uid, amount, timestamp, includeRedemptionAt = false) => {
+      const sql = includeRedemptionAt
+        ? 'UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ? RETURNING id, points'
+        : 'UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ? RETURNING id, points';
+      const result = includeRedemptionAt
+        ? await db.prepare(sql).bind(amount, timestamp, timestamp, uid, amount).first()
+        : await db.prepare(sql).bind(amount, timestamp, uid, amount).first();
+      return result ? { id: result.id, balance: Number(result.points || 0) } : null;
+    };
+
     // Turso is authoritative. Recover a balance that still lives on a legacy
     // Firebase UID row and move it to the current authenticated UID exactly once.
     let user = await db.prepare(
@@ -5937,9 +5949,8 @@ try {
       const currentUntil = Number(job.featured_until || 0);
       const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
 
-      const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
-        .bind(cost, now, auth.user.uid, cost).run();
-      if (Number(deduct?.meta?.changes || 0) !== 1) {
+      const deduct = await deductCoins(auth.user.uid, cost, now);
+      if (!deduct) {
         return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
       }
 
@@ -5970,9 +5981,8 @@ try {
       const currentUntil = Number(seeker.featured_until || 0);
       const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
 
-      const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
-        .bind(cost, now, auth.user.uid, cost).run();
-      if (Number(deduct?.meta?.changes || 0) !== 1) {
+      const deduct = await deductCoins(auth.user.uid, cost, now);
+      if (!deduct) {
         return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
       }
 
@@ -6003,9 +6013,8 @@ try {
       const currentUntil = Number(place.sponsored_until || 0);
       const newUntil = Math.max(now, currentUntil) + (30 * 86400000); // 30 days / month
 
-      const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
-        .bind(cost, now, auth.user.uid, cost).run();
-      if (Number(deduct?.meta?.changes || 0) !== 1) {
+      const deduct = await deductCoins(auth.user.uid, cost, now);
+      if (!deduct) {
         return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
       }
 
@@ -6037,9 +6046,8 @@ try {
       if (!auth.user.isAdmin && place.owner_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذا المكان' }, 403, corsHeaders);
       if (place.is_verified) return jsonResponse({ success: false, error: 'هذا المكان موثق بالفعل بالعلامة الزرقاء' }, 400, corsHeaders);
 
-      const deduct = await db.prepare('UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?')
-        .bind(cost, now, now, auth.user.uid, cost).run();
-      if (Number(deduct?.meta?.changes || 0) !== 1) {
+      const deduct = await deductCoins(auth.user.uid, cost, now, true);
+      if (!deduct) {
         return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
       }
 
