@@ -34,7 +34,46 @@ export async function signInWithGoogle(){
   try{const result=await auth.signInWithPopup(provider);return result.user;}catch(err){if(err?.code==='auth/popup-closed-by-user')return null;throw err;}
 }
 export async function signOut(){const auth=getAuth();try{localStorage.removeItem(PERSISTENT_USER_KEY);localStorage.removeItem('manzala_user');}catch(_){}appState.set('user',null);if(auth)await auth.signOut();emit('auth:signedOut');}
-export async function getIdToken(forceRefresh=false){const auth=getAuth();const user=auth?.currentUser;if(!user)return null;return user.getIdToken(forceRefresh);}
+export async function getIdToken(forceRefresh=false){
+  // The UI may have a cached Turso profile before Firebase Auth finishes
+  // restoring the real session. Never return a null token in that window,
+  // because authenticated API calls would otherwise become HTTP 401.
+  let auth = getAuth();
+  let user = auth?.currentUser || null;
+
+  if (!user) {
+    try {
+      const ready = await ensureFirebaseReady(5000);
+      auth = ready?.auth || getAuth();
+      user = auth?.currentUser || null;
+    } catch (_) {}
+  }
+
+  if (!user && auth) {
+    user = await new Promise(resolve => {
+      let settled = false;
+      let unsubscribe = null;
+      const finish = value => {
+        if (settled) return;
+        settled = true;
+        try { unsubscribe?.(); } catch (_) {}
+        resolve(value || null);
+      };
+      try {
+        unsubscribe = auth.onAuthStateChanged(firebaseUser => {
+          if (firebaseUser) finish(firebaseUser);
+        });
+      } catch (_) {
+        finish(null);
+        return;
+      }
+      setTimeout(() => finish(auth.currentUser || null), 5000);
+    });
+  }
+
+  if (!user) return null;
+  return user.getIdToken(forceRefresh);
+}
 export function getCurrentUser(){return appState.get('user');}
 export function isAdmin(user=null){const u=user||getCurrentUser();if(!u)return false;const email=(u.email||'').trim().toLowerCase();return ADMIN_EMAILS.includes(email)||u.role==='admin'||u.role==='superadmin';}
 export function isSuperAdmin(user=null){const u=user||getCurrentUser();if(!u)return false;const email=(u.email||'').trim().toLowerCase();return ADMIN_EMAILS.includes(email)||u.role==='superadmin';}
