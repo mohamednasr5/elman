@@ -5858,8 +5858,11 @@ try {
     const cost = costs[targetType];
 
     const db = createTursoDB(env);
-    await ensureCoinEconomySchema(db);
-    await ensureJobBoardSchema(db);
+
+    // Runtime schema mutation was intentionally removed from this hot path.
+    // Coin/loyalty schema is provisioned by migrations/deployment checks.
+    // Keeping ALTER/CREATE operations here can exhaust Worker subrequests
+    // before the actual purchase/update transaction runs.
 
     // Turso is authoritative. Recover a balance that still lives on a legacy
     // Firebase UID row and move it to the current authenticated UID exactly once.
