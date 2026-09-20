@@ -163,7 +163,7 @@ export async function clearReadNotifications(uid) {
 async function syncReadStatusToServer(uid, notifIds) {
   if (!uid || !notifIds || notifIds.length === 0) return;
   try {
-    const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || 'https://api.dalilmanzala.com';
+    const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || '';
     await fetch(`${workerUrl}/api/notifications/read`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -240,7 +240,7 @@ export async function fetchManagedUserNotifications(uid) {
   // Sync server-side read IDs if user is logged in
   if (uid) {
     try {
-      const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || 'https://api.dalilmanzala.com';
+      const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || '';
       const srvRes = await fetch(`${workerUrl}/api/notifications/read?userId=${encodeURIComponent(uid)}`, { method: 'GET' }).catch(() => null);
       if (srvRes && srvRes.ok) {
         const srvData = await srvRes.json().catch(() => null);
@@ -258,7 +258,7 @@ export async function fetchManagedUserNotifications(uid) {
 
   // 1. Fetch Global Announcements from Worker
   try {
-    const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || 'https://api.dalilmanzala.com';
+    const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || '';
     const resp = await fetch(`${workerUrl}/api/announcements`, { method: 'GET' }).catch(() => null);
     if (resp && resp.ok) {
       const data = await resp.json().catch(() => null);
