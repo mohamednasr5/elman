@@ -6018,9 +6018,9 @@ try {
         return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
       }
 
-      const placeUpdate = await db.prepare('UPDATE places SET is_sponsored = 1, sponsored_until = ?, updated_at = ? WHERE id = ?')
-        .bind(newUntil, now, place.id).run();
-      if (Number(placeUpdate?.meta?.changes || 0) !== 1) {
+      const placeUpdate = await db.prepare('UPDATE places SET is_sponsored = 1, sponsored_until = ?, updated_at = ? WHERE id = ? RETURNING id, is_sponsored, sponsored_until')
+        .bind(newUntil, now, place.id).first();
+      if (!placeUpdate) {
         await db.prepare('UPDATE users SET points = points + ?, updated_at = ? WHERE id = ?').bind(cost, Date.now(), auth.user.uid).run().catch(() => {});
         return jsonResponse({ success: false, error: 'تعذر تفعيل الإعلان المميز، وتمت إعادة الذهبيات إلى رصيدك.' }, 500, corsHeaders);
       }
@@ -6051,9 +6051,9 @@ try {
         return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
       }
 
-      const verificationUpdate = await db.prepare('UPDATE places SET is_verified = 1, verification_status = ?, updated_at = ? WHERE id = ?')
-        .bind('verified', now, place.id).run();
-      if (Number(verificationUpdate?.meta?.changes || 0) !== 1) {
+      const verificationUpdate = await db.prepare('UPDATE places SET is_verified = 1, verification_status = ?, updated_at = ? WHERE id = ? RETURNING id, is_verified, verification_status')
+        .bind('verified', now, place.id).first();
+      if (!verificationUpdate) {
         await db.prepare('UPDATE users SET points = points + ?, last_redemption_at = NULL, updated_at = ? WHERE id = ?').bind(cost, Date.now(), auth.user.uid).run().catch(() => {});
         return jsonResponse({ success: false, error: 'تعذر تفعيل التوثيق، وتمت إعادة الذهبيات إلى رصيدك.' }, 500, corsHeaders);
       }
