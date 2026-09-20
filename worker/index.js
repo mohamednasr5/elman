@@ -5327,7 +5327,7 @@ try {
 
     try {
       const db = createTursoDB(env);
-      await db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run().catch(() => {});
+      await ensureCoinEconomySchema(db);
       await db.prepare("ALTER TABLE users ADD COLUMN photo_url TEXT").run().catch(() => {});
 
       // Check if existing record with email has points
@@ -5800,6 +5800,7 @@ try {
 
   // ── Turso: Dalil Gold Coins - Spend / Promote Services (POST /api/coins/promote) ──
   if (url.pathname === '/api/coins/promote' && request.method === 'POST') {
+    try {
     const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
@@ -5822,7 +5823,57 @@ try {
     await ensureCoinEconomySchema(db);
     await ensureJobBoardSchema(db);
 
-    const user = await db.prepare('SELECT points FROM users WHERE id = ? LIMIT 1').bind(auth.user.uid).first();
+    // Turso is authoritative. Recover a balance that still lives on a legacy
+    // Firebase UID row and move it to the current authenticated UID exactly once.
+    let user = await db.prepare(
+      'SELECT id, points FROM users WHERE id = ? LIMIT 1'
+    ).bind(auth.user.uid).first();
+
+    const authEmail = String(auth.user.email || '').trim().toLowerCase();
+    if ((!user || Number(user.points || 0) === 0) && authEmail) {
+      const legacy = await db.prepare(
+        'SELECT id, points FROM users WHERE LOWER(email) = ? AND id != ? ORDER BY points DESC LIMIT 1'
+      ).bind(authEmail, auth.user.uid).first();
+
+      if (legacy && Number(legacy.points || 0) > 0) {
+        const nowSync = Date.now();
+        const legacyPoints = Number(legacy.points || 0);
+
+        await db.prepare(`
+          INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+          VALUES (?, ?, ?, 'user', 'active', ?, 0, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            points = COALESCE(users.points, 0) + excluded.points,
+            updated_at = excluded.updated_at
+        `).bind(
+          auth.user.uid, auth.user.name || 'مستخدم', authEmail,
+          legacyPoints, nowSync, nowSync
+        ).run();
+
+        await db.prepare(
+          'UPDATE users SET points = 0, updated_at = ? WHERE id = ?'
+        ).bind(nowSync, legacy.id).run();
+
+        user = await db.prepare(
+          'SELECT id, points FROM users WHERE id = ? LIMIT 1'
+        ).bind(auth.user.uid).first();
+      }
+    }
+
+    if (!user) {
+      const nowProvision = Date.now();
+      await db.prepare(`
+        INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+        VALUES (?, ?, ?, 'user', 'active', 0, 0, ?, ?)
+        ON CONFLICT(id) DO NOTHING
+      `).bind(
+        auth.user.uid, auth.user.name || 'مستخدم', authEmail, nowProvision, nowProvision
+      ).run();
+      user = await db.prepare(
+        'SELECT id, points FROM users WHERE id = ? LIMIT 1'
+      ).bind(auth.user.uid).first();
+    }
+
     const currentBalance = Number(user?.points || 0);
     if (currentBalance < cost) {
       return jsonResponse({
@@ -5917,8 +5968,12 @@ try {
         return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
       }
 
-      await db.prepare('UPDATE places SET is_sponsored = 1, sponsored_until = ?, updated_at = ? WHERE id = ?')
+      const placeUpdate = await db.prepare('UPDATE places SET is_sponsored = 1, sponsored_until = ?, updated_at = ? WHERE id = ?')
         .bind(newUntil, now, place.id).run();
+      if (Number(placeUpdate?.meta?.changes || 0) !== 1) {
+        await db.prepare('UPDATE users SET points = points + ?, updated_at = ? WHERE id = ?').bind(cost, Date.now(), auth.user.uid).run().catch(() => {});
+        return jsonResponse({ success: false, error: 'تعذر تفعيل الإعلان المميز، وتمت إعادة الذهبيات إلى رصيدك.' }, 500, corsHeaders);
+      }
 
       const logId = 'lh_' + crypto.randomUUID();
       await db.prepare(`
@@ -5947,8 +6002,12 @@ try {
         return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
       }
 
-      await db.prepare('UPDATE places SET is_verified = 1, verification_status = ?, updated_at = ? WHERE id = ?')
+      const verificationUpdate = await db.prepare('UPDATE places SET is_verified = 1, verification_status = ?, updated_at = ? WHERE id = ?')
         .bind('verified', now, place.id).run();
+      if (Number(verificationUpdate?.meta?.changes || 0) !== 1) {
+        await db.prepare('UPDATE users SET points = points + ?, last_redemption_at = NULL, updated_at = ? WHERE id = ?').bind(cost, Date.now(), auth.user.uid).run().catch(() => {});
+        return jsonResponse({ success: false, error: 'تعذر تفعيل التوثيق، وتمت إعادة الذهبيات إلى رصيدك.' }, 500, corsHeaders);
+      }
 
       const logId = 'lh_' + crypto.randomUUID();
       await db.prepare(`
@@ -5976,6 +6035,12 @@ try {
         message: `تهانينا! تم توثيق المكان بالعلامة الزرقاء مدى الحياة بنجاح 👑`,
         newBalance: Number(updatedUser?.points || 0)
       }, 200, corsHeaders);
+    }
+
+    return jsonResponse({ success: false, error: 'إجراء الترقية غير معروف' }, 400, corsHeaders);
+    } catch (err) {
+      console.error('[POST /api/coins/promote]', err?.message || err);
+      return jsonResponse({ success: false, code: 'COINS_PROMOTE_ERROR', error: 'تعذر تنفيذ العملية على الخادم.', details: String(err?.message || err || 'unknown').slice(0, 300) }, 500, corsHeaders);
     }
   }
 
