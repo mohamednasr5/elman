@@ -633,6 +633,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/phones"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/photography-and-advertising-company</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/photography-and-advertising-company"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/photography-and-advertising-company"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/photography-and-advertising-company"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/photography-studio</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -687,6 +695,14 @@
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/press-and-media"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/press-and-media"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/press-and-media"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/category/radiology-center</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/radiology-center"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/radiology-center"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/radiology-center"/>
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/category/restaurants-and-cafes</loc>
