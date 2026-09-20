@@ -5363,7 +5363,8 @@ try {
 
     try {
       const db = createTursoDB(env);
-      await ensureCoinEconomySchema(db);
+      // Do not run coin schema repair on every auth sync; it executes DDL
+      // and can exhaust Cloudflare Worker subrequest limits.
       await db.prepare("ALTER TABLE users ADD COLUMN photo_url TEXT").run().catch(() => {});
 
       // Check if existing record with email has points
@@ -5508,8 +5509,9 @@ try {
     const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
     const db = createTursoDB(env);
-    await ensureCoinEconomySchema(db);
-
+    // Balance is a hot endpoint. Never run schema-repair DDL here.
+    // Repeated header/notification polling could otherwise exhaust the
+    // Cloudflare Worker subrequest budget and return HTTP 500.
     const uid = auth.user.uid;
     const userEmail = (auth.user.email || '').trim().toLowerCase();
 
