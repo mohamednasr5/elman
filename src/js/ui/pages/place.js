@@ -9,7 +9,9 @@ import { translateCategory, toArabicCategory } from '../../utils/category-i18n.j
 
 import { WORKER_URL } from '../../core/firebase.js';
 import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, submitPhoneSuggestion, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=a58f9ed6';
-import { getCurrentUser, signInWithGoogle, isAdmin, onAuthStateChange } from '../../core/auth.js';
+import { getCurrentUser, signInWithGoogle, isAdmin, onAuthStateChange, getIdToken } from '../../core/auth.js';
+import { api } from '../../core/api.js';
+import { getStoredCoinsBalance, fetchLiveCoinsBalance, setStoredCoinsBalance } from '../../core/coins-sync.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
@@ -35,6 +37,7 @@ import { isValidPhoneNumber } from '../../utils/phone.js';
 import { renderTrustCard } from '../components/TrustCard.js';
 import { openAppointmentModal } from '../components/AppointmentModal.js';
 import { renderMarketWidgetsHTML, bindMarketWidgetsEvents } from '../components/MarketWidgets.js';
+import { renderPaymentBadges } from '../../utils/payments.js';
 
 export function renderAvailabilityBadge(status) {
   if (!status) return '';
@@ -216,12 +219,31 @@ export function normalizePlace(p) {
   if (!p || typeof p !== 'object') return p;
   const logo = p.logoUrl || p.logo_url || p.logo || null;
   const cover = p.coverImageUrl || p.cover_image_url || p.cover || null;
+  let stats = p.stats || {};
+  if (typeof p.stats_json === 'string') {
+    try { stats = JSON.parse(p.stats_json); } catch (_) {}
+  } else if (p.stats_json && typeof p.stats_json === 'object') {
+    stats = p.stats_json;
+  }
+  const reviewCount = Number(p.reviewCount ?? p.review_count ?? p.reviewsCount ?? stats.reviewCount ?? stats.reviewsCount ?? 0);
+  const rating = Number(p.rating ?? stats.rating ?? 0);
+
   return {
     ...p,
     logoUrl: logo,
     logo_url: logo,
     coverImageUrl: cover,
     cover_image_url: cover,
+    reviewCount,
+    review_count: reviewCount,
+    reviewsCount: reviewCount,
+    rating,
+    stats: {
+      ...stats,
+      reviewCount,
+      reviewsCount: reviewCount,
+      rating
+    },
     categoryId: p.categoryId || p.category_id || '',
     category_id: p.categoryId || p.category_id || '',
     customCategory: p.customCategory || p.custom_category || '',
@@ -518,7 +540,18 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         description: seoDesc,
         keywords: `${placeDisplayName}, ${placeSpecialty}, ${placeArea}, دليل المنزلة, دليل المطرية, رقم ${place.name}, عنوان ${place.name}, ${place.tags ? (Array.isArray(place.tags) ? place.tags.join(', ') : place.tags) : ''}`,
         image: place.coverImageUrl || place.cover_image_url || place.logoUrl || place.logo_url,
-        url: placeCanonical
+        url: placeCanonical,
+        geo: {
+          area: placeArea,
+          latitude: place.latitude || place.location?.lat,
+          longitude: place.longitude || place.location?.lng,
+          placename: `${placeArea}، الدقهلية، مصر`
+        },
+        alternates: {
+          ar: `https://dalilmanzala.com/place/${encodeURIComponent(canonicalSlug)}`,
+          en: `https://dalilmanzala.com/en/place/${encodeURIComponent(canonicalSlug)}`,
+          xDefault: `https://dalilmanzala.com/place/${encodeURIComponent(canonicalSlug)}`
+        }
       });
 
       setPlaceSchema(place, category);
@@ -871,15 +904,39 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                 </p>
               </div>
               <div class="unverified-notice__actions">
-                <a href="${isEn ? `/en/contact/?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing` : `/contact.html?topic=verification&place=${encodeURIComponent(place.name || '')}#pricing`}" class="btn btn-sm btn-primary" id="btn-request-verification">
-                  <span>🛡️</span> ${isEn ? 'Request Verification' : 'طلب التوثيق الآن'}
-                </a>
+                <button type="button" class="btn btn-sm btn-primary" id="btn-request-verification">
+                  <span>🛡️</span> ${isEn ? 'Verify Now (5,000 Gold)' : 'وثّق مكانك الآن (5,000 ذهبية)'}
+                </button>
+                ${!(place.isSponsored || place.is_sponsored) ? `
+                  <button type="button" class="btn btn-sm btn-action-promote-place" id="btn-request-promote-place" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:4px">
+                    <span>🌟</span> إعلان مميز (500 ذهبية)
+                  </button>
+                ` : ''}
                 <button class="btn btn-sm btn-outline" id="btn-claim-place">
                   ${isEn ? 'I own this business' : 'أنا صاحب هذا المكان'}
                 </button>
               </div>
             </div>
-          ` : ''}
+          ` : `
+            ${!(place.isSponsored || place.is_sponsored) ? `
+              <div class="unverified-notice animate-fade-in" style="background:linear-gradient(135deg,rgba(245,166,35,0.08),rgba(217,119,6,0.12));border-color:rgba(245,166,35,0.35)">
+                <div class="unverified-notice__icon">🌟</div>
+                <div class="unverified-notice__body">
+                  <div class="unverified-notice__title" style="color:#92400E">
+                    ضاعف وصول وزيارات (${escHtml(place.name || 'المكان')}) الآن
+                  </div>
+                  <p class="unverified-notice__text" style="color:#78350F">
+                    احجز صدارة نتائج البحث والتصنيف كإعلان مميز لمدة شهر كامل لجذب آلاف العملاء والاتصالات المباشرة.
+                  </p>
+                </div>
+                <div class="unverified-notice__actions">
+                  <button type="button" class="btn btn-sm btn-action-promote-place" id="btn-request-promote-place" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:900;padding:8px 18px;border-radius:10px;box-shadow:0 4px 12px rgba(217,119,6,0.3);cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                    <span>🌟</span> تفعيل إعلان مميز (500 ذهبية)
+                  </button>
+                </div>
+              </div>
+            ` : ''}
+          `}
 
           <!-- Description -->
           ${!isAtm && placeDisplayDesc ? `
@@ -904,6 +961,9 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               </div>
             </section>
           ` : ''}
+
+          <!-- Accepted Payment Methods 3D Badges (GEO / SEO & UX) -->
+          ${!isAtm ? renderPaymentBadges(place.paymentMethods || place.payment_methods || place.stats?.paymentMethods, { isEn }) : ''}
 
           <!-- Active Offers Slot -->
           <div id="place-offers-slot"></div>
@@ -1236,7 +1296,14 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
     document.getElementById('btn-request-verification')?.addEventListener('click', (e) => {
       e.preventDefault();
-      window.location.href = '/wallet.html#packages';
+      showVerificationModal(place, currentUser, waUrl);
+    });
+
+    document.querySelectorAll('#btn-request-promote-place, .btn-action-promote-place').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showPromoteModal(place, currentUser);
+      });
     });
 
     document.getElementById('btn-claim-place')?.addEventListener('click', () => {
@@ -1367,7 +1434,8 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       const applyReviewsData = (list) => {
         if (!Array.isArray(list) || !list.length) return;
         safeReviews = list;
-        totalReviews = safeReviews.length;
+        const initialCount = Number(place.reviewCount || place.review_count || place.reviewsCount || place.stats?.reviewCount || 0);
+        totalReviews = Math.max(safeReviews.length, initialCount);
         let rSum = 0;
         safeReviews.forEach(r => { rSum += (Number(r.rating) || 5); });
         avgRating = totalReviews > 0 ? (safeReviews.length > 0 ? Math.round((rSum / safeReviews.length) * 10) / 10 : (Number(place.rating) || 5.0)) : (Number(place.rating) || 0.0);
@@ -1728,50 +1796,303 @@ function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUr
 }
 
 function showVerificationModal(place, user, waUrl) {
-  showModal({
-    title: 'طلب توثيق النشاط / الشخص / المكان',
-    size: 'sm',
-    content: `
-      <div class="verification-modal__steps">
-        <div class="verification-step">
-          <div class="verification-step__num">1</div>
-          <div>
-            <div class="verification-step__title">مراجعة إدارة المنصة</div>
-            <div class="verification-step__text">يتم تدقيق بيانات النشاط أو المهنة لضمان دقة الدليل لأهل المنزلة</div>
+  const placeName = place?.name || 'المكان';
+  const placeId = place?.id || place?._key;
+  const isUserAdmin = isAdmin(user) || isAdmin();
+  const storedBal = getStoredCoinsBalance();
+  const cost = 5000;
+  const hasEnough = storedBal >= cost || isUserAdmin;
+  const isLoggedIn = Boolean((user && user.uid) || isUserAdmin);
+
+  function renderActions(enough) {
+    if ((isLoggedIn && enough) || isUserAdmin) {
+      return `
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button type="button" id="btn-place-confirm-verify" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;border:none;font-weight:900;padding:10px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(37,99,235,0.35);cursor:pointer">
+            ✓ توثيق المكان الآن فوراً (5,000 ذهبية)
+          </button>
+        </div>
+      `;
+    }
+    return `
+      <div style="padding:4px 0 10px 0">
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a href="/wallet.html#packages" class="btn btn-primary" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none">
+            🪙 شحن الذهبيات في المحفظة
+          </a>
+          <a href="/free-verification.html" class="btn btn-outline" style="font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none">
+            🎁 التوثيق المجاني بملصق الدليل
+          </a>
+        </div>
+      </div>
+    `;
+  }
+
+  const contentHtml = `
+    <div style="padding:14px 10px;text-align:center">
+      <div style="width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#EFF6FF 0%,#DBEAFE 100%);color:#2563EB;display:inline-flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 6px 18px rgba(37,99,235,0.2);margin:0 auto 12px auto">
+        🛡️
+      </div>
+      <h3 style="font-size:17px;font-weight:900;color:var(--text-primary,#0F172A);margin:0 0 6px 0">
+        توثيق (${escHtml(placeName)}) بالعلامة الزرقاء
+      </h3>
+      <p style="font-size:12.5px;color:var(--text-muted,#64748B);line-height:1.6;margin:0 0 16px 0">
+        احصل على شارة التوثيق الرسمية المعتمدة فوراً لزيادة ثقة العملاء وصدارة الظهور مدى الحياة.
+      </p>
+
+      <div style="background:var(--surface-2,#F8FAFC);border:1px solid var(--border,#E2E8F0);border-radius:14px;padding:12px 14px;text-align:right;margin-bottom:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:18px">🛡️</span>
+          <div style="font-size:12.5px;color:var(--text-primary,#1E293B)">
+            <strong>علامة التوثيق الزرقاء:</strong> شارة رسمية معتمدة على ملف المكان مدى الحياة.
           </div>
         </div>
-        <div class="verification-step">
-          <div class="verification-step__num">2</div>
-          <div>
-            <div class="verification-step__title">مميزات التوثيق الفوري</div>
-            <div class="verification-step__text">علامة التوثيق المعتمدة ✓ + إضافة المنتجات والعروض + أولوية الظهور في نتائج البحث والتصدر في دليل المنزلة والمطرية الرقمي</div>
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:18px">⭐</span>
+          <div style="font-size:12.5px;color:var(--text-primary,#1E293B)">
+            <strong>أسبقية في نتائج البحث:</strong> تصدر الأماكن الموثقة في كافة التصنيفات والبحث الذكي.
           </div>
         </div>
-        <div class="verification-step">
-          <div class="verification-step__num">3</div>
-          <div>
-            <div class="verification-step__title">التواصل عبر واتساب</div>
-            <div class="verification-step__text">اضغط على الزر أدناه للتواصل المباشر مع إدارة المنصة لطلب التوثيق</div>
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:18px">🎁</span>
+          <div style="font-size:12.5px;color:var(--text-primary,#1E293B)">
+            <strong>إمكانية التوثيق المجاني:</strong> متاح مجاناً بنشر ملصق الدليل الرسمي في محلك التجاري.
           </div>
         </div>
       </div>
-    `,
-    buttons: [
-      {
-        label: '🛡️ عرض أسعار وباقات التوثيق',
-        type: 'primary',
-        onClick: () => {
-          window.location.href = '/wallet.html#packages';
-        },
-        closeOnClick: true
-      },
-      {
-        label: 'إلغاء',
-        type: 'ghost',
-        closeOnClick: true
-      }
-    ]
+
+      <div style="background:rgba(37,99,235,0.06);border:1.5px solid rgba(37,99,235,0.25);border-radius:12px;padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="text-align:right">
+          <span style="font-size:11px;color:#1E40AF;display:block;font-weight:700">التوثيق الفوري بالذهبيات</span>
+          <strong style="font-size:16px;color:#1D4ED8">5,000 ذهبية 🪙</strong>
+        </div>
+        <div style="text-align:left">
+          <span style="font-size:11px;color:var(--text-muted);display:block">رصيدك الحالي</span>
+          <strong id="modal-place-verify-bal" style="font-size:15px;color:${hasEnough ? '#059669' : '#DC2626'}">
+            ${storedBal.toLocaleString('ar-EG')} ذهبية ${hasEnough ? '✓' : '⚠️'}
+          </strong>
+        </div>
+      </div>
+
+      <div id="modal-place-verify-actions">
+        ${renderActions(hasEnough)}
+      </div>
+    </div>
+  `;
+
+  const modal = showModal({
+    title: '🛡️ توثيق المكان بالعلامة الزرقاء',
+    content: contentHtml,
+    buttons: [{ label: 'إغلاق', type: 'ghost', closeOnClick: true }]
   });
+
+  function bindConfirm() {
+    const btn = document.getElementById('btn-place-confirm-verify');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ جاري التوثيق...';
+      try {
+        const token = await getIdToken();
+        const res = await api.post('/api/coins/promote', { targetType: 'verification', targetId: placeId }, token);
+        if (res.success) {
+          const newBal = Number(res.newBalance || 0);
+          setStoredCoinsBalance(newBal);
+          try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith('places_owner_') || k.startsWith('cache_places') || k.includes(placeId))) {
+                localStorage.removeItem(k);
+              }
+            }
+          } catch (_) {}
+          modal.close();
+          toast.success(`تهانينا! تم توثيق (${placeName}) رسمياً بالعلامة الزرقاء مدى الحياة بنجاح! 👑✨`);
+          setTimeout(() => {
+            window.location.reload();
+          }, 1200);
+        } else {
+          toast.error(res.error || 'تعذر إتمام التوثيق');
+          btn.disabled = false;
+          btn.innerHTML = '✓ توثيق المكان الآن فوراً (5,000 ذهبية)';
+        }
+      } catch (err) {
+        toast.error(err.message || 'حدث خطأ أثناء التوثيق');
+        btn.disabled = false;
+        btn.innerHTML = '✓ توثيق المكان الآن فوراً (5,000 ذهبية)';
+      }
+    });
+  }
+
+  bindConfirm();
+
+  // Background live sync balance
+  fetchLiveCoinsBalance().then(fresh => {
+    if (typeof fresh === 'number') {
+      const isNowEnough = fresh >= cost || isUserAdmin;
+      const balDisplay = document.getElementById('modal-place-verify-bal');
+      if (balDisplay) {
+        balDisplay.textContent = `${fresh.toLocaleString('ar-EG')} ذهبية ${isNowEnough ? '✓' : '⚠️'}`;
+        balDisplay.style.color = isNowEnough ? '#059669' : '#DC2626';
+      }
+      const actionsContainer = document.getElementById('modal-place-verify-actions');
+      if (actionsContainer && isNowEnough !== hasEnough) {
+        actionsContainer.innerHTML = renderActions(isNowEnough);
+        bindConfirm();
+      }
+    }
+  }).catch(() => {});
+}
+
+function showPromoteModal(place, user) {
+  const placeName = place?.name || 'المكان';
+  const placeId = place?.id || place?._key;
+  const isUserAdmin = isAdmin(user) || isAdmin();
+  const storedBal = getStoredCoinsBalance();
+  const cost = 500;
+  const hasEnough = storedBal >= cost || isUserAdmin;
+
+  function renderActions(enough) {
+    if (enough || isUserAdmin) {
+      return `
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button type="button" id="btn-place-confirm-promote" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:900;padding:10px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(217,119,6,0.35);cursor:pointer">
+            🚀 تفعيل الإعلان المميز الآن (500 ذهبية)
+          </button>
+        </div>
+      `;
+    }
+    return `
+      <div style="padding:4px 0 10px 0">
+        <p style="font-size:12px;color:#DC2626;font-weight:700;margin-bottom:12px">
+          رصيدك الحالي غير كافٍ لتفعيل الإعلان المميز (يلزم 500 ذهبية).
+        </p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a href="/wallet.html" class="btn btn-primary" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;padding:10px 18px;border-radius:10px;text-decoration:none">
+            🪙 شحن الذهبيات في المحفظة
+          </a>
+          <a href="https://wa.me/201062035882?text=${encodeURIComponent(`السلام عليكم، أريد شحن 500 ذهبية لتفعيل إعلان مميز لمكاني (${placeName})`)}" target="_blank" class="btn btn-outline" style="font-weight:800;padding:10px 18px;border-radius:10px;display:inline-flex;align-items:center;gap:6px">
+            💬 شحن عبر فودافون كاش / واتساب
+          </a>
+        </div>
+      </div>
+    `;
+  }
+
+  const contentHtml = `
+    <div style="padding:14px 10px;text-align:center">
+      <div style="width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#FEF3C7 0%,#FDE68A 100%);color:#D97706;display:inline-flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 6px 18px rgba(245,166,35,0.25);margin:0 auto 12px auto">
+        🌟
+      </div>
+      <h3 style="font-size:17px;font-weight:900;color:var(--text-primary,#0F172A);margin:0 0 6px 0">
+        ترقية (${escHtml(placeName)}) لإعلان مميز
+      </h3>
+      <p style="font-size:12.5px;color:var(--text-muted,#64748B);line-height:1.6;margin:0 0 16px 0">
+        احجز صدارة الدليل ونتائج البحث لمشروعك، واجذب آلاف المشاهدات والاتصالات المباشرة في المنزلة والمطرية.
+      </p>
+
+      <div style="background:var(--surface-2,#F8FAFC);border:1px solid var(--border,#E2E8F0);border-radius:14px;padding:12px 14px;text-align:right;margin-bottom:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:18px">👑</span>
+          <div style="font-size:12.5px;color:var(--text-primary,#1E293B)">
+            <strong>الظهور في صدارة الدليل:</strong> تثبيت نشاطك في أعلى نتائج البحث والتصنيف لمدة <strong>شهر كامل (30 يوماً)</strong>.
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:18px">✨</span>
+          <div style="font-size:12.5px;color:var(--text-primary,#1E293B)">
+            <strong>شارة ذهبية بارزة:</strong> علامة «👑 إعلان مميز» مميزة تلفت انتباه الزوار فوراً.
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:18px">📈</span>
+          <div style="font-size:12.5px;color:var(--text-primary,#1E293B)">
+            <strong>مضاعفة الاتصالات:</strong> أسبقية الاتصال المباشر ومحادثات واتساب من العملاء.
+          </div>
+        </div>
+      </div>
+
+      <div style="background:rgba(245,166,35,0.08);border:1.5px solid rgba(245,166,35,0.3);border-radius:12px;padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="text-align:right">
+          <span style="font-size:11px;color:#92400E;display:block;font-weight:700">تكلفة الترقية (30 يوماً)</span>
+          <strong style="font-size:16px;color:#B45309">500 ذهبية 🪙</strong>
+        </div>
+        <div style="text-align:left">
+          <span style="font-size:11px;color:var(--text-muted);display:block">رصيدك الحالي</span>
+          <strong id="modal-place-promote-bal" style="font-size:15px;color:${hasEnough ? '#059669' : '#DC2626'}">
+            ${storedBal.toLocaleString('ar-EG')} ذهبية ${hasEnough ? '✓' : '⚠️'}
+          </strong>
+        </div>
+      </div>
+
+      <div id="modal-place-promote-actions">
+        ${renderActions(hasEnough)}
+      </div>
+    </div>
+  `;
+
+  const modal = showModal({
+    title: '🌟 ترقية إعلان مميز',
+    content: contentHtml,
+    buttons: [{ label: 'إغلاق', type: 'ghost', closeOnClick: true }]
+  });
+
+  function bindConfirm() {
+    const btn = document.getElementById('btn-place-confirm-promote');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ جاري التفعيل...';
+      try {
+        const token = await getIdToken();
+        const res = await api.post('/api/coins/promote', { targetType: 'place', targetId: placeId }, token);
+        if (res.success) {
+          const newBal = Number(res.newBalance || 0);
+          setStoredCoinsBalance(newBal);
+          try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith('places_owner_') || k.startsWith('cache_places') || k.includes(placeId))) {
+                localStorage.removeItem(k);
+              }
+            }
+          } catch (_) {}
+          modal.close();
+          toast.success(`تم ترقية (${placeName}) كإعلان مميز في صدارة الدليل لمدة 30 يوماً بنجاح! 👑✨`);
+          setTimeout(() => {
+            window.location.reload();
+          }, 1200);
+        } else {
+          toast.error(res.error || 'تعذر ترقية المكان');
+          btn.disabled = false;
+          btn.innerHTML = '🚀 تفعيل الإعلان المميز الآن (500 ذهبية)';
+        }
+      } catch (err) {
+        toast.error(err.message || 'حدث خطأ أثناء الترقية');
+        btn.disabled = false;
+        btn.innerHTML = '🚀 تفعيل الإعلان المميز الآن (500 ذهبية)';
+      }
+    });
+  }
+
+  bindConfirm();
+
+  // Background live sync
+  fetchLiveCoinsBalance().then(fresh => {
+    if (typeof fresh === 'number') {
+      const isNowEnough = fresh >= cost || isUserAdmin;
+      const balDisplay = document.getElementById('modal-place-promote-bal');
+      if (balDisplay) {
+        balDisplay.textContent = `${fresh.toLocaleString('ar-EG')} ذهبية ${isNowEnough ? '✓' : '⚠️'}`;
+        balDisplay.style.color = isNowEnough ? '#059669' : '#DC2626';
+      }
+      const actionsContainer = document.getElementById('modal-place-promote-actions');
+      if (actionsContainer && isNowEnough !== hasEnough) {
+        actionsContainer.innerHTML = renderActions(isNowEnough);
+        bindConfirm();
+      }
+    }
+  }).catch(() => {});
 }
 
 function showClaimModal(place, waUrl) {
@@ -3032,9 +3353,71 @@ if (typeof window !== 'undefined') {
   };
 
   window.openSuggestPhoneNumber = ({ placeId, placeName }) => {
-    const modal = showModal({
-      title: '💡 هل تعرف رقم هذا المكان؟',
+    let isSubmitting = false;
+
+    let modalInstance = null;
+
+    const doSubmit = async () => {
+      if (isSubmitting) return;
+      const phoneInput = document.getElementById('suggested-phone-input');
+      const rawPhone = phoneInput?.value?.trim() || '';
+      const reporter = document.getElementById('suggested-reporter-name')?.value?.trim() || '';
+      const note = document.getElementById('suggested-phone-note')?.value?.trim() || '';
+
+      if (!isValidPhoneNumber(rawPhone)) {
+        toast.error('يرجى كتابة رقم هاتف مصري صحيح (موبايل 11 رقم أو أرضي)');
+        phoneInput?.focus();
+        return;
+      }
+
+      const saveDirectBtn = document.getElementById('btn-save-phone-direct');
+      const saveFooterBtn = modalInstance?.getBody()?.closest('.modal')?.querySelector('.modal__footer .btn-primary');
+
+      try {
+        isSubmitting = true;
+        if (saveDirectBtn) {
+          saveDirectBtn.disabled = true;
+          saveDirectBtn.innerHTML = '<span>⏳ جاري حفظ وإرسال الرقم...</span>';
+        }
+        if (saveFooterBtn) {
+          saveFooterBtn.disabled = true;
+          saveFooterBtn.textContent = '⏳ جاري الحفظ...';
+        }
+
+        const u = getCurrentUser();
+        const reporterName = reporter || u?.name || u?.displayName || 'مستخدم متطوع';
+        await submitPhoneSuggestion({
+          placeId,
+          placeName,
+          suggestedPhone: rawPhone,
+          note,
+          reporterName
+        });
+        toast.success('شكرًا جزيلاً لمساهمتك! تم حفظ وإرسال الرقم المقترح وسيتم اعتماده في الدليل. 💡');
+        modalInstance?.close();
+      } catch (err) {
+        toast.error(err.message || 'تعذر إرسال الرقم المقترح');
+        if (saveDirectBtn) {
+          saveDirectBtn.disabled = false;
+          saveDirectBtn.innerHTML = `
+            <span class="suggest-phone-btn-icon">💾</span>
+            <span class="suggest-phone-btn-text">حفظ وإرسال رقم الهاتف للاعتماد</span>
+            <span class="suggest-phone-btn-arrow">←</span>
+          `;
+        }
+        if (saveFooterBtn) {
+          saveFooterBtn.disabled = false;
+          saveFooterBtn.textContent = '💾 حفظ وإرسال الرقم';
+        }
+      } finally {
+        isSubmitting = false;
+      }
+    };
+
+    modalInstance = showModal({
+      title: '💡 اقتراح رقم هاتف لهذا المكان',
       size: 'sm',
+      className: 'modal--suggest-phone',
       content: `
         <div class="suggest-phone-modal">
           <div class="suggest-phone-banner">
@@ -3045,73 +3428,139 @@ if (typeof window !== 'undefined') {
             </div>
           </div>
 
-          <div class="suggest-phone-field">
+          <!-- مكان الإدخال المتجاوب مع زر الحفظ المباشر المدمج للهاتف و PWA -->
+          <div class="suggest-phone-field suggest-phone-field--primary">
             <label class="suggest-phone-field__label" for="suggested-phone-input">
               <span class="suggest-phone-field__icon">📞</span>
               <span>رقم الهاتف أو الواتساب المقترح <span class="suggest-phone-required">*</span></span>
             </label>
             <div class="suggest-phone-input-wrap">
-              <input id="suggested-phone-input" type="tel" class="form-input suggest-phone-input" dir="ltr" placeholder="01********* أو رقم أرضي" maxlength="11" autocomplete="tel" />
+              <input id="suggested-phone-input" 
+                     type="tel" 
+                     inputmode="numeric" 
+                     pattern="[0-9]*" 
+                     class="form-input suggest-phone-input" 
+                     dir="ltr" 
+                     placeholder="01xxxxxxxxx أو رقم أرضي" 
+                     maxlength="11" 
+                     autocomplete="tel" 
+                     autofocus />
               <span class="suggest-phone-input-badge">🇪🇬</span>
+              <button type="button" id="btn-clear-suggested-phone" class="suggest-phone-input-clear" style="display:none" title="مسح">✕</button>
             </div>
-            <p class="suggest-phone-field__help">يدعم الموبايل (11 رقم)، الخطوط الأرضية، والخط الساخن المختصر.</p>
+            <div class="suggest-phone-input-status" id="suggest-phone-input-status">
+              <span class="suggest-phone-field__help">يدعم الموبايل (11 رقم) والخطوط الأرضية والخط الساخن.</span>
+            </div>
+
+            <!-- زر الحفظ بعد اقتراح الرقم يظهر فوراً تحت مكان الإدخال ليكون مرئياً بالكامل على الهاتف و PWA -->
+            <div class="suggest-phone-inline-actions">
+              <button type="button" id="btn-save-phone-direct" class="suggest-phone-submit-btn" title="حفظ وإرسال الرقم فوراً">
+                <span class="suggest-phone-btn-icon">💾</span>
+                <span class="suggest-phone-btn-text">حفظ وإرسال رقم الهاتف للاعتماد</span>
+                <span class="suggest-phone-btn-arrow">←</span>
+              </button>
+            </div>
           </div>
 
-          <div class="suggest-phone-field">
-            <label class="suggest-phone-field__label" for="suggested-reporter-name">
-              <span class="suggest-phone-field__icon">👤</span>
-              <span>اسمك أو صفتك <span class="suggest-phone-optional">(اختياري)</span></span>
-            </label>
-            <input id="suggested-reporter-name" type="text" class="form-input suggest-phone-input" placeholder="مثال: أحمد (زبون / صاحب المكان)" />
-          </div>
+          <!-- الحقول الإضافية قابلة للطي للحفاظ على ارتفاع النافذة ومنع الاختفاء مع لوحة مفاتيح الهاتف -->
+          <details class="suggest-phone-optional-details">
+            <summary class="suggest-phone-optional-summary">
+              <span>➕ إضافة اسمك أو ملاحظة توضيحية (اختياري)</span>
+              <span class="suggest-phone-optional-chevron">▾</span>
+            </summary>
+            <div class="suggest-phone-optional-body">
+              <div class="suggest-phone-field">
+                <label class="suggest-phone-field__label" for="suggested-reporter-name">
+                  <span class="suggest-phone-field__icon">👤</span>
+                  <span>اسمك أو صفتك <span class="suggest-phone-optional">(اختياري)</span></span>
+                </label>
+                <input id="suggested-reporter-name" type="text" class="form-input suggest-phone-input" placeholder="مثال: أحمد (زبون / صاحب المكان)" />
+              </div>
 
-          <div class="suggest-phone-field">
-            <label class="suggest-phone-field__label" for="suggested-phone-note">
-              <span class="suggest-phone-field__icon">📝</span>
-              <span>ملاحظة توضيحية <span class="suggest-phone-optional">(اختياري)</span></span>
-            </label>
-            <input id="suggested-phone-note" type="text" class="form-input suggest-phone-input" placeholder="مثال: رقم الدليفري، رقم الاستقبال، فرع..." />
-          </div>
+              <div class="suggest-phone-field">
+                <label class="suggest-phone-field__label" for="suggested-phone-note">
+                  <span class="suggest-phone-field__icon">📝</span>
+                  <span>ملاحظة توضيحية <span class="suggest-phone-optional">(اختياري)</span></span>
+                </label>
+                <input id="suggested-phone-note" type="text" class="form-input suggest-phone-input" placeholder="مثال: رقم الدليفري، رقم الاستقبال، فرع..." />
+              </div>
+            </div>
+          </details>
 
           <div class="suggest-phone-trust-hint">
             <span class="suggest-phone-trust-hint__icon">🛡️</span>
-            <span>يتم مراجعة الرقم واعتماده فوراً لتسهيل وصول أهالي وزوار المنطقة للمكان.</span>
+            <span>يتم تدقيق ومراجعة الرقم واعتماده فوراً لتسهيل وصول أهالي وزوار المنطقة للمكان.</span>
           </div>
         </div>
       `,
       buttons: [
         {
-          label: '📤 إرسال الرقم للاعتماد',
+          label: '💾 حفظ وإرسال الرقم',
           type: 'primary',
           closeOnClick: false,
-          onClick: async () => {
-            const rawPhone = document.getElementById('suggested-phone-input')?.value?.trim() || '';
-            const reporter = document.getElementById('suggested-reporter-name')?.value?.trim() || '';
-            const note = document.getElementById('suggested-phone-note')?.value?.trim() || '';
-            if (!isValidPhoneNumber(rawPhone)) {
-              toast.error('يرجى كتابة رقم هاتف مصري صحيح (موبايل 11 رقم أو أرضي)');
-              return;
-            }
-            try {
-              const u = getCurrentUser();
-              const reporterName = reporter || u?.name || u?.displayName || 'مستخدم متطوع';
-              await submitPhoneSuggestion({
-                placeId,
-                placeName,
-                suggestedPhone: rawPhone,
-                note,
-                reporterName
-              });
-              toast.success('شكرًا جزيلاً لمساهمتك! تم إرسال الرقم المقترح وسيتم مراجعته واعتماده في الدليل. 💡');
-              modal.close();
-            } catch (err) {
-              toast.error(err.message || 'تعذر إرسال الرقم المقترح');
-            }
-          }
+          onClick: doSubmit
         },
         { label: 'إلغاء', type: 'ghost', closeOnClick: true }
       ]
     });
+
+    // Wire up events
+    setTimeout(() => {
+      const phoneInput = document.getElementById('suggested-phone-input');
+      const directSaveBtn = document.getElementById('btn-save-phone-direct');
+      const clearBtn = document.getElementById('btn-clear-suggested-phone');
+      const statusEl = document.getElementById('suggest-phone-input-status');
+
+      if (directSaveBtn) {
+        directSaveBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          doSubmit();
+        });
+      }
+
+      if (clearBtn && phoneInput) {
+        clearBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          phoneInput.value = '';
+          clearBtn.style.display = 'none';
+          if (statusEl) statusEl.innerHTML = '<span class="suggest-phone-field__help">يدعم الموبايل (11 رقم) والخطوط الأرضية والخط الساخن.</span>';
+          phoneInput.focus();
+        });
+      }
+
+      if (phoneInput) {
+        phoneInput.addEventListener('input', () => {
+          // Normalize Arabic/Persian digits to English digits
+          let val = phoneInput.value.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+          val = val.replace(/[^\d]/g, '');
+          phoneInput.value = val;
+
+          if (clearBtn) clearBtn.style.display = val ? 'flex' : 'none';
+
+          if (statusEl) {
+            if (val.length === 11 && isValidPhoneNumber(val)) {
+              statusEl.innerHTML = '<span style="color:#16a34a;font-weight:800">✓ رقم مصري صحيح وجاهز للحفظ</span>';
+              if (directSaveBtn) directSaveBtn.style.filter = 'brightness(1.1)';
+            } else if (val.length > 0 && val.length < 11 && (val.startsWith('01') || val.startsWith('05'))) {
+              statusEl.innerHTML = `<span style="color:#d97706;font-weight:700">متبقي ${11 - val.length} أرقام لاكتمال الرقم...</span>`;
+            } else if (val.length >= 7 && isValidPhoneNumber(val)) {
+              statusEl.innerHTML = '<span style="color:#16a34a;font-weight:800">✓ رقم تواصل صحيح وجاهز للحفظ</span>';
+            } else {
+              statusEl.innerHTML = '<span class="suggest-phone-field__help">يدعم الموبايل (11 رقم) والخطوط الأرضية والخط الساخن.</span>';
+            }
+          }
+        });
+
+        phoneInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            doSubmit();
+          }
+        });
+
+        try { phoneInput.focus(); } catch (_) {}
+      }
+    }, 50);
   };
 }
 

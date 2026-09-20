@@ -723,7 +723,17 @@ export async function invalidateLocalPlaceCache(placeId, slug = '') {
     }
   } catch (_) {}
 
-  // 4. In-Memory & LocalStorage SWR query caches (clear place-specific AND list caches so fresh data appears immediately everywhere!)
+  // 4. Reviews cache cleanup (IndexedDB, in-memory SWR, localStorage)
+  const allKeys = [pId, cleanId, pSlug, cleanSlug].filter(Boolean);
+  try {
+    allKeys.forEach(k => {
+      idbDelete(STORES.META, 'reviews_' + k).catch(() => {});
+      if (typeof localStorage !== 'undefined') localStorage.removeItem('reviews_' + k);
+      clearDbCache('reviews_' + k);
+    });
+  } catch (_) {}
+
+  // 5. In-Memory & LocalStorage SWR query caches (clear place-specific AND list caches so fresh data appears immediately everywhere!)
   clearDbCache('path:places');
   clearDbCache('places');
   clearDbCache('published_');
@@ -2198,7 +2208,7 @@ async function _fetchAndStoreReviews(targetId, effectiveSlug, rawTargetId, cache
     const querySlug = effectiveSlug && effectiveSlug !== targetId ? `&slug=${encodeURIComponent(effectiveSlug)}` : '';
     const res = await fetch(`${WORKER_URL}/api/reviews?place_id=${encodeURIComponent(targetId)}${querySlug}&limit=500`, {
       signal: AbortSignal.timeout(12000),
-      cache: 'default'
+      cache: 'no-cache'
     });
     if (!res.ok) throw new Error(`Reviews Worker HTTP ${res.status}`);
     const data = await res.json();

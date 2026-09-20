@@ -28,6 +28,12 @@
   .bottom-nav__fab { z-index: 10052 !important; pointer-events: auto !important; }
   #global-voice-assistant-fab, #bottom-nav-more-btn { position: relative; z-index: 10053 !important; cursor: pointer !important; }
   body.mobile-more-open { overflow: hidden !important; }
+  body.modal-open { overflow: hidden !important; }
+  body.modal-open .bottom-nav,
+  body.modal-open #mobile-action-hints,
+  body.modal-open .pwa-banner,
+  body.modal-open #manzala-push-prompt-card,
+  body.modal-open .push-prompt-card,
   body.mobile-more-open #mobile-action-hints,
   body.voice-modal-open #mobile-action-hints,
   body:has(.manzala-voice-modal-backdrop) #mobile-action-hints,
@@ -38,6 +44,9 @@
     opacity: 0 !important;
     pointer-events: none !important;
     visibility: hidden !important;
+  }
+  .modal-overlay {
+    z-index: 15000 !important;
   }
 
   .toast-container {

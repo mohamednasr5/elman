@@ -92,8 +92,9 @@ export function showModal({
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 
-  // Prevent body scroll
+  // Prevent body scroll and hide overlapping mobile chrome
   document.body.style.overflow = 'hidden';
+  document.body.classList.add('modal-open');
 
   // Animate in
   requestAnimationFrame(() => {
@@ -117,6 +118,7 @@ export function showModal({
     overlay.classList.remove('active');
     document.removeEventListener('keydown', keyHandler);
     document.body.style.overflow = '';
+    document.body.classList.remove('modal-open');
     overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
     setTimeout(() => overlay.remove(), 400); // Fallback
     _activeModal = null;

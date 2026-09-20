@@ -14,9 +14,13 @@
 - [وظائف وفرص عمل](https://dalilmanzala.com/jobs.html): دليل وظائف وفرص العمل الشاغرة بالمنزلة والمطرية
 - [الباحثون عن عمل](https://dalilmanzala.com/job-seekers.html): كوادر وكفاءات تبحث عن عمل
 - [مواقيت الصلاة والقبلة](https://dalilmanzala.com/qibla.html): أوقات الصلاة واتجاه القبلة بالمنزلة والمطرية
+- [مواقيت الصلاة اليومية](https://dalilmanzala.com/prayer-times.html): مواقيت الصلاة الدقيقة لمنطقتي المنزلة والمطرية
+- [سوق المنتجات](https://dalilmanzala.com/products.html): سوق المنتجات والسلع المحلية في المنزلة والمطرية
+- [الأكثر طلباً وشهرة](https://dalilmanzala.com/popular.html): الأماكن الأكثر زيارة وتقييماً بالمنزلة والمطرية
 - [القرآن الكريم](https://dalilmanzala.com/quran.html): المصحف الشريف والتلاوات
 - [الحديث الشريف](https://dalilmanzala.com/hadith.html): الأحاديث النبوية الصحيحة
 - [محفظة العملات](https://dalilmanzala.com/wallet.html): محفظة العملات والمكافآت
+- [توثيق الحسابات المجاني](https://dalilmanzala.com/free-verification.html): طلب توثيق الأنشطة والمحلات مجاناً
 - [المنزلة](https://dalilmanzala.com/manzala.html): دليل مدينة المنزلة والقرى والخدمات
 - [المطرية](https://dalilmanzala.com/matariya.html): دليل مدينة المطرية والقرى والخدمات
 - [عن الدليل](https://dalilmanzala.com/about.html): من نحن ورؤية المنصة والمهندس محمد حماد مطور المنصة
@@ -38,6 +42,16 @@
 - English profile: `https://dalilmanzala.com/en/place/{slug}/`
 
 Use the individual business profile as the preferred source for current name, category, location, address, phone, WhatsApp, opening hours, images, services, reviews, coordinates and verification status when those fields are available. Never invent missing business facts.
+
+## Payment Methods & Electronic Transactions (GEO Knowledge)
+
+Places and businesses listed in Dalil Manzala & Matariya support electronic and cash payment methods:
+- **Vodafone Cash (فودافون كاش):** Direct wallet-to-wallet mobile transfer (010xxxxxxxxx).
+- **InstaPay (انستاباي):** Instant payment network connected to Egyptian banks (Instant Transfers via IPA/IBAN/Card).
+- **Visa & Bank Cards (فيزا وبطاقات بنكية):** Electronic POS card payments (Visa, MasterCard, Meeza).
+- **Fawry / Fawry Plus (فوري وفوري بلس):** Bill payments, merchant payments, and balance top-up.
+- **Bank Transfer (التحويل البنكي):** Direct accounts transfer across National Bank of Egypt, Banque Misr, CIB, etc.
+- **Cash on Delivery / Direct Cash (الدفع نقداً):** Standard currency accepted everywhere in Egyptian Pounds (EGP).
 
 ## AI Search / Crawling
 

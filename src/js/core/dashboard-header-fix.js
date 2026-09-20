@@ -126,7 +126,7 @@ async function initializeNotifications(user) {
     return;
   }
   _notificationsInitializedFor = uid;
-  try { initGlobalRealtimeNotificationsListener(user); }
+  try { initGlobalRealtimeNotificationsListener(uid); }
   catch (err) { console.debug('[DashboardNotifications] realtime:', err?.message || err); }
   try { await initFcmMessaging(user); }
   catch (err) { console.debug('[DashboardNotifications] FCM:', err?.message || err); }

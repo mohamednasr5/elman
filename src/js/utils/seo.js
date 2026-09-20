@@ -47,7 +47,7 @@ function normalizeSiteUrl(value) {
   return `${SITE_URL}/${repaired.replace(/^\/+/, '')}`;
 }
 
-export function setMeta({ title, description, keywords, image, url, type = 'website', noindex = false } = {}) {
+export function setMeta({ title, description, keywords, image, url, type = 'website', noindex = false, geo, alternates } = {}) {
   let t = DEFAULT_TITLE;
   if (title) {
     t = title.includes('دليل المنزلة والمطرية') ? title : `${title} | دليل المنزلة والمطرية الرقمي`;
@@ -83,6 +83,25 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
 
   setOrCreateMeta('name', 'twitter:card', 'summary_large_image');
   setOrCreateMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+
+  // Geographic / Local Engine Optimization (GEO)
+  const isMatariya = geo?.area && String(geo.area).includes('المطرية');
+  const geoRegion = geo?.region || 'EG-DK';
+  const geoPlacename = geo?.placename || (geo?.area ? `${geo.area}، الدقهلية، مصر` : 'المنزلة والمطرية، الدقهلية، مصر');
+  const geoLat = (geo?.latitude && Number(geo.latitude) > 20) ? Number(geo.latitude) : (isMatariya ? 31.1833 : 31.1578);
+  const geoLng = (geo?.longitude && Number(geo.longitude) > 20) ? Number(geo.longitude) : (isMatariya ? 32.0333 : 31.9333);
+
+  setOrCreateMeta('name', 'geo.region', geoRegion);
+  setOrCreateMeta('name', 'geo.placename', geoPlacename);
+  setOrCreateMeta('name', 'geo.position', `${geoLat};${geoLng}`);
+  setOrCreateMeta('name', 'ICBM', `${geoLat}, ${geoLng}`);
+
+  // Alternate Hreflangs
+  if (alternates) {
+    if (alternates.ar) setAlternate('ar', alternates.ar);
+    if (alternates.en) setAlternate('en', alternates.en);
+    if (alternates.xDefault || alternates.ar) setAlternate('x-default', alternates.xDefault || alternates.ar);
+  }
 }
 
 import { generateBusinessSEO } from './seo-entity.js';
@@ -91,6 +110,12 @@ export function setPlaceSchema(place, category) {
   const seo = generateBusinessSEO(place);
   if (!seo || !seo.schemas || !seo.schemas[0]) return;
   injectSchema('place-schema', seo.schemas[0]);
+  if (seo.schemas[1]) {
+    injectSchema('breadcrumb-schema', seo.schemas[1]);
+  }
+  if (seo.schemas[2]) {
+    injectSchema('place-faq-schema', seo.schemas[2]);
+  }
 }
 
 export function setBreadcrumbSchema(items) {
@@ -182,6 +207,18 @@ function setCanonical(url) {
     document.head.appendChild(el);
   }
   el.href = normalizeSiteUrl(url);
+}
+
+function setAlternate(lang, href) {
+  if (typeof document === 'undefined' || !href) return;
+  let el = document.querySelector(`link[rel="alternate"][hreflang="${lang}"]`);
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', 'alternate');
+    el.setAttribute('hreflang', lang);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', normalizeSiteUrl(href));
 }
 
 function mapCategoryToSchema(nameEn = '') {

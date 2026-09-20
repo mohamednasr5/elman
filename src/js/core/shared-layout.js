@@ -27,7 +27,7 @@ export async function initSharedLayout(activeHref = '') {
   _bindThemeToggle();
   setupInstantLinkPrefetcher();
   bindGlobalVoiceAssistantFab();
-  initGlobalRealtimeNotificationsListener(getCurrentUser());
+  initGlobalRealtimeNotificationsListener(getCurrentUser()?.uid);
   mountPushNotificationPrompt(FCM_VAPID_KEY);
   setupForegroundMessageListener();
 
@@ -42,7 +42,7 @@ export async function initSharedLayout(activeHref = '') {
 
 
   onAuthStateChange((user) => {
-    initGlobalRealtimeNotificationsListener(user);
+    initGlobalRealtimeNotificationsListener(user?.uid);
     _renderUserSection(user);
   });
 

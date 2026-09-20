@@ -48,6 +48,7 @@ import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm
 import { mountAroundMeRadar } from '../components/AroundMeRadar.js';
 import { formatDate } from '../../utils/date.js';
 import { getUserLoyaltyProfile, getLoyaltyLevelInfo, redeemPointsForVerification, claimDailyBonus, LOYALTY_LEVELS, POINTS_RULES, VERIFICATION_POINTS_COST } from '../../services/loyalty.service.js';
+import { renderPaymentSelectForm, getSelectedPaymentMethods, initPaymentFormEvents } from '../../utils/payments.js';
 import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=174f66d3';
 import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=174f66d3';
 
@@ -494,8 +495,8 @@ function bindPlaceItemActionListeners($container, user, places, onRefresh) {
   });
 }
 
-function renderPromoteActionsBox(hasEnough, placeName) {
-  if (hasEnough) {
+function renderPromoteActionsBox(hasEnough, placeName, isUserAdmin = false) {
+  if (hasEnough || isUserAdmin) {
     return `
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button type="button" id="btn-modal-confirm-promote" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:900;padding:10px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(217,119,6,0.35);cursor:pointer">
@@ -533,10 +534,21 @@ function bindPromoteConfirmAction(modal, placeId, placeName, onRefresh) {
         if (res.success) {
           const newBal = Number(res.newBalance || 0);
           setStoredCoinsBalance(newBal);
+          clearDbCache();
+          try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith('places_owner_') || k.startsWith('cache_places') || k.includes(placeId))) {
+                localStorage.removeItem(k);
+              }
+            }
+          } catch (_) {}
           modal.close();
           toast.success(`تم ترقية (${placeName}) كإعلان مميز في صدارة الدليل لمدة 30 يوماً بنجاح! 👑✨`);
           if (typeof onRefresh === 'function') {
             await onRefresh();
+          } else {
+            window.location.reload();
           }
         } else {
           toast.error(res.error || 'تعذر ترقية المكان');
@@ -553,9 +565,10 @@ function bindPromoteConfirmAction(modal, placeId, placeName, onRefresh) {
 }
 
 function openPromotePlaceModal(placeId, placeName, user, onRefresh) {
+  const isUserAdmin = isAdmin(user) || isAdmin();
   const storedBal = getStoredCoinsBalance();
   const cost = 500;
-  let hasEnough = storedBal >= cost;
+  let hasEnough = storedBal >= cost || isUserAdmin;
 
   const contentHtml = `
     <div style="padding:14px 10px;text-align:center">
@@ -606,7 +619,7 @@ function openPromotePlaceModal(placeId, placeName, user, onRefresh) {
       </div>
 
       <div id="modal-promote-actions-container">
-        ${renderPromoteActionsBox(hasEnough, placeName)}
+        ${renderPromoteActionsBox(hasEnough, placeName, isUserAdmin)}
       </div>
     </div>
   `;
@@ -622,7 +635,7 @@ function openPromotePlaceModal(placeId, placeName, user, onRefresh) {
   // Background live sync to guarantee 100% fresh balance
   fetchLiveCoinsBalance().then(fresh => {
     if (typeof fresh === 'number') {
-      const isNowEnough = fresh >= cost;
+      const isNowEnough = fresh >= cost || isUserAdmin;
       const balDisplay = document.getElementById('modal-promote-bal-display');
       if (balDisplay) {
         balDisplay.textContent = `${fresh.toLocaleString('ar-EG')} ذهبية ${isNowEnough ? '✓' : '⚠️'}`;
@@ -630,15 +643,15 @@ function openPromotePlaceModal(placeId, placeName, user, onRefresh) {
       }
       const container = document.getElementById('modal-promote-actions-container');
       if (container && isNowEnough !== hasEnough) {
-        container.innerHTML = renderPromoteActionsBox(isNowEnough, placeName);
+        container.innerHTML = renderPromoteActionsBox(isNowEnough, placeName, isUserAdmin);
         bindPromoteConfirmAction(modal, placeId, placeName, onRefresh);
       }
     }
   }).catch(() => {});
 }
 
-function renderVerifyActionsBox(hasEnough) {
-  if (hasEnough) {
+function renderVerifyActionsBox(hasEnough, isUserAdmin = false) {
+  if (hasEnough || isUserAdmin) {
     return `
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button type="button" id="btn-modal-confirm-verify" class="btn btn-primary btn-lg" style="background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;border:none;font-weight:900;padding:10px 22px;border-radius:10px;box-shadow:0 4px 14px rgba(37,99,235,0.35);cursor:pointer">
@@ -673,10 +686,21 @@ function bindVerifyConfirmAction(modal, placeId, placeName, onRefresh) {
         if (res.success) {
           const newBal = Number(res.newBalance || 0);
           setStoredCoinsBalance(newBal);
+          clearDbCache();
+          try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith('places_owner_') || k.startsWith('cache_places') || k.includes(placeId))) {
+                localStorage.removeItem(k);
+              }
+            }
+          } catch (_) {}
           modal.close();
           toast.success(`تهانينا! تم توثيق (${placeName}) رسمياً بالعلامة الزرقاء! 🌟🎉`);
           if (typeof onRefresh === 'function') {
             await onRefresh();
+          } else {
+            window.location.reload();
           }
         } else {
           toast.error(res.error || 'تعذر إتمام التوثيق');
@@ -693,9 +717,10 @@ function bindVerifyConfirmAction(modal, placeId, placeName, onRefresh) {
 }
 
 function openVerifyPlaceModal(placeId, placeName, user, onRefresh) {
+  const isUserAdmin = isAdmin(user) || isAdmin();
   const storedBal = getStoredCoinsBalance();
   const cost = 5000;
-  let hasEnough = storedBal >= cost;
+  let hasEnough = storedBal >= cost || isUserAdmin;
 
   const contentHtml = `
     <div style="padding:14px 10px;text-align:center">
@@ -744,7 +769,7 @@ function openVerifyPlaceModal(placeId, placeName, user, onRefresh) {
       </div>
 
       <div id="modal-verify-actions-container">
-        ${renderVerifyActionsBox(hasEnough)}
+        ${renderVerifyActionsBox(hasEnough, isUserAdmin)}
       </div>
     </div>
   `;
@@ -760,7 +785,7 @@ function openVerifyPlaceModal(placeId, placeName, user, onRefresh) {
   // Background live sync
   fetchLiveCoinsBalance().then(fresh => {
     if (typeof fresh === 'number') {
-      const isNowEnough = fresh >= cost;
+      const isNowEnough = fresh >= cost || isUserAdmin;
       const balDisplay = document.getElementById('modal-verify-bal-display');
       if (balDisplay) {
         balDisplay.textContent = `${fresh.toLocaleString('ar-EG')} ذهبية ${isNowEnough ? '✓' : '⚠️'}`;
@@ -768,7 +793,7 @@ function openVerifyPlaceModal(placeId, placeName, user, onRefresh) {
       }
       const container = document.getElementById('modal-verify-actions-container');
       if (container && isNowEnough !== hasEnough) {
-        container.innerHTML = renderVerifyActionsBox(isNowEnough);
+        container.innerHTML = renderVerifyActionsBox(isNowEnough, isUserAdmin);
         bindVerifyConfirmAction(modal, placeId, placeName, onRefresh);
       }
     }
@@ -2330,6 +2355,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             </label>
           </div>
         </div>
+
+        <!-- Accepted Payment Methods (GEO / SEO & 3D Badges) -->
+        ${renderPaymentSelectForm(place?.paymentMethods || place?.payment_methods || place?.stats?.paymentMethods, 'dash-pay')}
       </div>
 
       <!-- Submit buttons -->
@@ -2360,6 +2388,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       console.warn('[BusinessCardScanner] Mount error:', scannerErr);
     }
   }
+
+  // Initialize Payment Form Selection Events
+  initPaymentFormEvents('dash-pay');
 
   // Dynamic Branch Rows Controller
   const branchesToggle = document.getElementById('has-branches-toggle');
@@ -4145,6 +4176,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         },
         availabilityStatus: document.getElementById('p-availability-status')?.value || 'available',
         allowAppointments: Boolean(document.getElementById('allow-appointments-toggle')?.checked),
+        paymentMethods: getSelectedPaymentMethods('dash-pay'),
         branches: (() => {
           const hasBranches = document.getElementById('has-branches-toggle')?.checked;
           if (!hasBranches) return [];

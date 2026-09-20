@@ -7,7 +7,7 @@
   position: fixed;
   inset: 0;
   background: var(--overlay);
-  z-index: var(--z-modal);
+  z-index: 15000 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -15,8 +15,10 @@
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--transition-base), visibility var(--transition-base);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-overlay.active {
@@ -32,11 +34,38 @@
   width: 100%;
   max-width: 540px;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   transform: scale(0.92) translateY(16px);
   transition: transform var(--transition-spring);
+}
+
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 8px 8px max(12px, env(safe-area-inset-bottom, 12px)) 8px !important;
+  }
+  .modal {
+    max-height: calc(100dvh - 16px) !important;
+    max-height: calc(100vh - 16px) !important;
+    width: 100% !important;
+    border-radius: 20px !important;
+    margin: auto 0 !important;
+  }
+  .modal__header {
+    padding: 14px 16px !important;
+  }
+  .modal__body {
+    padding: 16px 14px !important;
+  }
+  .modal__footer {
+    padding: 12px 14px max(14px, env(safe-area-inset-bottom, 14px)) !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    background: var(--surface) !important;
+    z-index: 5 !important;
+  }
 }
 
 .modal-overlay.active .modal {

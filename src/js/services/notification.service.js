@@ -159,15 +159,25 @@ export async function clearReadNotifications(uid) {
   }
 }
 
+function getSafeWorkerUrl() {
+  let url = (typeof WORKER_URL === 'string' ? WORKER_URL : '') || (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || '';
+  if (typeof url === 'string' && url.includes('api.dalilmanzala.com')) {
+    url = '';
+  }
+  return url;
+}
+
 // ── Server Sync for Read Notifications ──
 async function syncReadStatusToServer(uid, notifIds) {
-  if (!uid || !notifIds || notifIds.length === 0) return;
+  let actualUid = (typeof uid === 'object' && uid !== null) ? (uid.uid || uid.id || '') : String(uid || '');
+  if (actualUid === '[object Object]') actualUid = '';
+  if (!actualUid || !notifIds || notifIds.length === 0) return;
   try {
-    const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || 'https://api.dalilmanzala.com';
+    const workerUrl = getSafeWorkerUrl();
     await fetch(`${workerUrl}/api/notifications/read`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: uid, notifIds: Array.isArray(notifIds) ? notifIds : [notifIds] })
+      body: JSON.stringify({ userId: actualUid, notifIds: Array.isArray(notifIds) ? notifIds : [notifIds] })
     });
   } catch (_) {}
 }
@@ -234,20 +244,22 @@ export function getCachedManagedUserNotifications(uid) {
  * Fetch all notifications (Turso Announcements + Verified/New Places Synthesizer with SWR Cache & Deduplication)
  */
 export async function fetchManagedUserNotifications(uid) {
-  const deletedIds = getDeletedNotifIds(uid);
-  const readIds = getReadNotifIds(uid);
+  let actualUid = (typeof uid === 'object' && uid !== null) ? (uid.uid || uid.id || '') : String(uid || '');
+  if (actualUid === '[object Object]') actualUid = '';
+  const deletedIds = getDeletedNotifIds(actualUid);
+  const readIds = getReadNotifIds(actualUid);
 
   // Sync server-side read IDs if user is logged in
-  if (uid) {
+  if (actualUid) {
     try {
-      const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || 'https://api.dalilmanzala.com';
-      const srvRes = await fetch(`${workerUrl}/api/notifications/read?userId=${encodeURIComponent(uid)}`, { method: 'GET' }).catch(() => null);
+      const workerUrl = getSafeWorkerUrl();
+      const srvRes = await fetch(`${workerUrl}/api/notifications/read?userId=${encodeURIComponent(actualUid)}`, { method: 'GET' }).catch(() => null);
       if (srvRes && srvRes.ok) {
         const srvData = await srvRes.json().catch(() => null);
         if (Array.isArray(srvData?.readIds)) {
           srvData.readIds.forEach(id => readIds.add(String(id)));
           if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(Array.from(readIds)));
+            localStorage.setItem(`read_global_notifs_${actualUid}`, JSON.stringify(Array.from(readIds)));
           }
         }
       }
@@ -258,7 +270,7 @@ export async function fetchManagedUserNotifications(uid) {
 
   // 1. Fetch Global Announcements from Worker
   try {
-    const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || 'https://api.dalilmanzala.com';
+    const workerUrl = getSafeWorkerUrl();
     const resp = await fetch(`${workerUrl}/api/announcements`, { method: 'GET' }).catch(() => null);
     if (resp && resp.ok) {
       const data = await resp.json().catch(() => null);

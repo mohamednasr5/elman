@@ -117,6 +117,15 @@ export async function createPlace(placeData, currentUser) {
   const slug = cleanCandidate;
   const now = Date.now();
   const isPhoneUnavailable = Boolean(placeData.phoneUnavailable || !placeData.phone);
+  const targetArea = (placeData.area || 'المنزلة').trim();
+  const isMatariya = targetArea.includes('المطرية');
+  const defaultCoords = isMatariya ? { lat: 31.1833, lng: 32.0333 } : { lat: 31.1578, lng: 31.9333 };
+  const validLocation = (placeData.location && Number(placeData.location.lat) > 20 && Number(placeData.location.lng) > 20)
+    ? { lat: Number(placeData.location.lat), lng: Number(placeData.location.lng) }
+    : (placeData.latitude && placeData.longitude && Number(placeData.latitude) > 20 && Number(placeData.longitude) > 20)
+      ? { lat: Number(placeData.latitude), lng: Number(placeData.longitude) }
+      : defaultCoords;
+
   const newPlace = {
     id: placeId, slug, ownerId: currentUser.uid, ownerEmail: currentUser.email || '', name: placeData.name.trim(), nameEn: placeData.nameEn || '',
     categoryId: placeData.categoryId || 'other', customCategory: placeData.customCategory || null, medicalSpecialty: placeData.medicalSpecialty || null,
@@ -124,9 +133,10 @@ export async function createPlace(placeData, currentUser) {
     phone: isPhoneUnavailable ? '' : normalizePhoneNumber(placeData.phone || ''),
     phoneUnavailable: isPhoneUnavailable,
     whatsapp: normalizePhoneNumber(placeData.whatsapp || ''),
-    address: placeData.address || '', area: placeData.area || 'المنزلة', mapsLink: placeData.mapsLink || '', location: placeData.location || { lat: 31.1578, lng: 31.9367 },
+    address: placeData.address || '', area: targetArea, mapsLink: placeData.mapsLink || '', location: validLocation, latitude: validLocation.lat, longitude: validLocation.lng,
     alwaysOpen: Boolean(placeData.alwaysOpen), alwaysOpenExcept: Boolean(placeData.alwaysOpenExcept), workingHours: placeData.workingHours || getDefaultWorkingHours(),
     coverImageUrl: placeData.coverImageUrl || '', logoUrl: placeData.logoUrl || '', imageUrls: placeData.imageUrls || [], services: placeData.services || [],
+    paymentMethods: placeData.paymentMethods || placeData.payment_methods || [],
     social: { facebook: '', instagram: '', tiktok: '', youtube: '', x: '', threads: '', website: '', ...(placeData.social || {}) }, deliveryType: placeData.deliveryType || null, branches: (placeData.branches || []).map(b => ({ ...b, phone: normalizePhoneNumber(b.phone || ''), whatsapp: normalizePhoneNumber(b.whatsapp || '') })), availabilityStatus: placeData.availabilityStatus || 'available',
     status: 'published', verificationStatus: 'unverified', isVerified: false, verifiedAt: null, verifiedBy: null, createdAt: now, updatedAt: now,
     stats: { views: 0, phoneClicks: 0, whatsappClicks: 0, directionsClicks: 0, productViews: 0, offerViews: 0 }, offerCount: 0, productCount: 0
@@ -151,7 +161,18 @@ export async function updatePlace(placeId, placeData) {
     ? Boolean(placeData.phoneUnavailable)
     : (placeData.phone === '' ? true : Boolean(current.phoneUnavailable));
 
-  const updates = {
+    const targetArea = (placeData.area || current.area || 'المنزلة').trim();
+    const isMatariya = targetArea.includes('المطرية');
+    const defaultCoords = isMatariya ? { lat: 31.1833, lng: 32.0333 } : { lat: 31.1578, lng: 31.9333 };
+    const resolvedLocation = (placeData.location && Number(placeData.location.lat) > 20 && Number(placeData.location.lng) > 20)
+      ? { lat: Number(placeData.location.lat), lng: Number(placeData.location.lng) }
+      : (placeData.latitude && placeData.longitude && Number(placeData.latitude) > 20 && Number(placeData.longitude) > 20)
+        ? { lat: Number(placeData.latitude), lng: Number(placeData.longitude) }
+        : (current.location && Number(current.location.lat) > 20)
+          ? current.location
+          : defaultCoords;
+
+    const updates = {
     name: placeData.name ? placeData.name.trim() : current.name,
     nameEn: placeData.nameEn !== undefined ? placeData.nameEn : (current.nameEn || ''),
     categoryId: placeData.categoryId || current.categoryId,
@@ -163,9 +184,11 @@ export async function updatePlace(placeId, placeData) {
     phoneUnavailable: isPhoneUnavailable,
     whatsapp: placeData.whatsapp !== undefined ? normalizePhoneNumber(placeData.whatsapp || '') : (current.whatsapp || ''),
     address: placeData.address !== undefined ? placeData.address : current.address,
-    area: placeData.area || current.area || 'المنزلة',
+    area: targetArea,
     mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''),
-    location: placeData.location !== undefined ? placeData.location : current.location,
+    location: resolvedLocation,
+    latitude: resolvedLocation.lat,
+    longitude: resolvedLocation.lng,
     alwaysOpen: placeData.alwaysOpen !== undefined ? Boolean(placeData.alwaysOpen) : Boolean(current.alwaysOpen),
     alwaysOpenExcept: placeData.alwaysOpenExcept !== undefined ? Boolean(placeData.alwaysOpenExcept) : Boolean(current.alwaysOpenExcept),
     workingHours: placeData.workingHours || current.workingHours,
@@ -173,6 +196,7 @@ export async function updatePlace(placeId, placeData) {
     logoUrl: placeData.logoUrl !== undefined ? placeData.logoUrl : current.logoUrl,
     imageUrls: placeData.imageUrls || current.imageUrls || [],
     services: placeData.services || current.services || [],
+    paymentMethods: placeData.paymentMethods !== undefined ? placeData.paymentMethods : (current.paymentMethods || current.payment_methods || []),
     social: { ...(current.social || {}), ...(placeData.social || {}) },
     deliveryType: placeData.deliveryType !== undefined ? placeData.deliveryType : (current.deliveryType || null),
     branches: placeData.branches !== undefined ? placeData.branches.map(b => ({ ...b, phone: normalizePhoneNumber(b.phone || ''), whatsapp: normalizePhoneNumber(b.whatsapp || '') })) : (current.branches || []),
@@ -183,8 +207,11 @@ export async function updatePlace(placeId, placeData) {
   await syncPlaceToWorkerTurso(placeId, updatedPlace);
   idbPut(STORES.PLACES, updatedPlace).catch(() => {});
   invalidateLocalPlaceCache(placeId, current.slug).catch(() => {});
+  if (updatedPlace.slug && updatedPlace.slug !== current.slug) {
+    invalidateLocalPlaceCache(placeId, updatedPlace.slug).catch(() => {});
+  }
   clearDbCache();
-  broadcastRealtimeChange('PLACE_UPDATED', { place: { id: placeId, ...updates } });
+  broadcastRealtimeChange('PLACE_UPDATED', { place: { id: placeId, slug: updatedPlace.slug, ...updates } });
   return updatedPlace;
 }
 

@@ -220,6 +220,22 @@ export function generateBusinessSEO(place) {
       addressRegion: 'الدقهلية',
       addressCountry: 'EG'
     },
+    currenciesAccepted: 'EGP',
+    paymentAccepted: (() => {
+      const pm = place.paymentMethods || place.payment_methods;
+      const list = ['Cash'];
+      if (Array.isArray(pm)) {
+        pm.forEach(id => {
+          const s = String(id).toLowerCase();
+          if (s.includes('vodafone')) list.push('Vodafone Cash');
+          else if (s.includes('insta')) list.push('InstaPay');
+          else if (s.includes('visa') || s.includes('card')) list.push('Credit Card');
+          else if (s.includes('fawry')) list.push('Fawry');
+          else if (s.includes('bank')) list.push('Bank Transfer');
+        });
+      }
+      return list;
+    })(),
     areaServed: COVERAGE_AREAS.map(area => ({
       '@type': 'AdministrativeArea',
       name: area
@@ -227,15 +243,19 @@ export function generateBusinessSEO(place) {
   };
 
   // Optional Geo coordinates (only if real and non-zero)
-  const lat = Number(place.latitude);
-  const lng = Number(place.longitude);
-  if (!isNaN(lat) && !isNaN(lng) && lat > 20 && lng > 20) {
-    businessSchema.geo = {
-      '@type': 'GeoCoordinates',
-      latitude: lat,
-      longitude: lng
-    };
+  // Geo coordinates (always provide valid coordinates for GEO)
+  const isMatariya = rawArea.includes('المطرية');
+  let lat = Number(place.latitude || place.location?.lat);
+  let lng = Number(place.longitude || place.location?.lng);
+  if (isNaN(lat) || isNaN(lng) || lat < 20 || lng < 20) {
+    lat = isMatariya ? 31.1833 : 31.1578;
+    lng = isMatariya ? 32.0333 : 31.9333;
   }
+  businessSchema.geo = {
+    '@type': 'GeoCoordinates',
+    latitude: lat,
+    longitude: lng
+  };
 
   // Optional opening hours
   if (openingHoursSpecs.length > 0) {
@@ -292,6 +312,55 @@ export function generateBusinessSEO(place) {
     ]
   };
 
+  // FAQPage Schema for AI Engines & Voice Search (Perplexity, ChatGPT, Google SGE)
+  const faqQuestions = [];
+  if (place.phone) {
+    faqQuestions.push({
+      '@type': 'Question',
+      name: `ما هو رقم هاتف وتواصل ${rawName}؟`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: `رقم هاتف التواصل مع ${rawName} هو ${place.phone}، ويمكنك التواصل معه مباشرة أو عبر واتساب من خلال دليل المنزلة والمطرية الرقمي.`
+      }
+    });
+  }
+  faqQuestions.push({
+    '@type': 'Question',
+    name: `أين يقع ${rawName}؟`,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: `يقع ${rawName} في ${rawArea}${rawAddress ? ` - ${rawAddress}` : ''}، محافظة الدقهلية.`
+    }
+  });
+
+  // Payment methods question for GEO
+  const pmList = place.paymentMethods || place.payment_methods || [];
+  const pmNames = ['الدفع نقداً'];
+  if (Array.isArray(pmList)) {
+    pmList.forEach(id => {
+      const s = String(id).toLowerCase();
+      if (s.includes('vodafone')) pmNames.push('فودافون كاش');
+      else if (s.includes('insta')) pmNames.push('انستاباي (InstaPay)');
+      else if (s.includes('visa') || s.includes('card')) pmNames.push('فيزا وبطاقات بنكية');
+      else if (s.includes('fawry')) pmNames.push('فوري بلس');
+      else if (s.includes('bank')) pmNames.push('تحويل بنكي');
+    });
+  }
+  faqQuestions.push({
+    '@type': 'Question',
+    name: `هل يقبل ${rawName} الدفع بفودافون كاش أو انستاباي وما هي طرق الدفع المتاحة لديه؟`,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: `طرق الدفع والتحويل المقبولة لدى ${rawName} تشمل: ${pmNames.join('، ')}. العملة المعتمدة هي الجنيه المصري (EGP).`
+    }
+  });
+
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqQuestions
+  };
+
   return {
     rawName,
     rawArea,
@@ -305,7 +374,7 @@ export function generateBusinessSEO(place) {
     image,
     phone: place.phone ? String(place.phone).trim() : null,
     whatsapp: place.whatsapp ? String(place.whatsapp).trim() : null,
-    schemas: [businessSchema, breadcrumbSchema]
+    schemas: [businessSchema, breadcrumbSchema, faqSchema]
   };
 }
 

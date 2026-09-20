@@ -55,11 +55,13 @@ async function authenticateRequest(request, env) {
       'SELECT id, name, email, role, status FROM users WHERE id = ? LIMIT 1'
     ).bind(fb.localId).first();
     const email = String(fb.email || '').trim().toLowerCase();
+    const phone = String(profile?.phone || fb.phoneNumber || '').trim();
     const role = String(profile?.role || 'user').trim().toLowerCase();
     const status = String(profile?.status || 'active').trim().toLowerCase();
     return {
       uid: fb.localId,
       email,
+      phone,
       name: profile?.name || fb.displayName || 'مستخدم',
       role,
       status,
@@ -1509,16 +1511,35 @@ try {
       const result = await findPlaceInTurso(env, slugParam);
 
       if (result) {
-        // The reviews table has an index on (place_id, created_at), so this
-        // reads only reviews belonging to the requested place.
+        // Reads reviews belonging to the requested place by ID or slug
         const reviewStats = await createTursoDB(env).prepare(`
           SELECT COUNT(*) AS review_count, ROUND(AVG(rating), 1) AS avg_rating
           FROM reviews
-          WHERE place_id = ?
-        `).bind(result.id).first().catch(() => ({ review_count: 0, avg_rating: 0 }));
+          WHERE place_id = ? OR place_slug = ?
+        `).bind(result.id, result.slug || '').first().catch(() => ({ review_count: 0, avg_rating: 0 }));
+
+        const placeReviews = await createTursoDB(env).prepare(`
+          SELECT id, place_id, user_id, user_name, user_photo, rating, comment, is_admin_generated, edit_count, created_at, updated_at
+          FROM reviews
+          WHERE place_id = ? OR place_slug = ?
+          ORDER BY created_at DESC LIMIT 100
+        `).bind(result.id, result.slug || '').all().catch(() => ({ results: [] }));
 
         result.review_count = Number(reviewStats?.review_count || 0);
         result.rating = Number(reviewStats?.avg_rating || 0);
+        result.reviews = placeReviews?.results || [];
+
+        let currentStats = {};
+        try {
+          currentStats = typeof result.stats_json === 'string' ? JSON.parse(result.stats_json) : (result.stats_json || {});
+        } catch (_) {}
+        if (result.review_count > 0) {
+          currentStats.reviewCount = result.review_count;
+          currentStats.reviewsCount = result.review_count;
+          currentStats.rating = result.rating;
+        }
+        result.stats = currentStats;
+        result.stats_json = JSON.stringify(currentStats);
 
         if (result.parent_id && (!result.working_hours_json || result.working_hours_json === '{}' || result.working_hours_json === 'null')) {
           try {
@@ -1573,7 +1594,9 @@ try {
           review_count: Number(result.review_count || 0),
           rating: Number(result.rating || 0.0),
           deliveryType: result.delivery_type || parseJson(result.stats_json, {}).deliveryType || null,
-          delivery_type: result.delivery_type || parseJson(result.stats_json, {}).deliveryType || null
+          delivery_type: result.delivery_type || parseJson(result.stats_json, {}).deliveryType || null,
+          paymentMethods: parseJson(result.stats_json, {}).paymentMethods || parseJson(result.stats_json, {}).payment_methods || [],
+          payment_methods: parseJson(result.stats_json, {}).paymentMethods || parseJson(result.stats_json, {}).payment_methods || []
         };
         const res = jsonResponse({ success: true, data: place }, 200, {
           ...corsHeaders,
@@ -1749,6 +1772,8 @@ try {
         rating: ratingVal,
         deliveryType: place.delivery_type || stats.deliveryType || null,
         delivery_type: place.delivery_type || stats.deliveryType || null,
+        paymentMethods: stats.paymentMethods || stats.payment_methods || [],
+        payment_methods: stats.paymentMethods || stats.payment_methods || [],
         owner_name: place.owner_name || place.owner_email || null,
       };
     });
@@ -2042,8 +2067,9 @@ try {
 
       if (existingPlace) {
         if (!name) name = existingPlace.name || 'بدون اسم';
-        if (!slug) {
-          slug = existingPlace.slug || placeId;
+        if (!slug || slug === placeId || slug.startsWith('p_') || slug.startsWith('-P0')) {
+          const gen = slugifyWorker(name);
+          slug = (gen && gen.length >= 3) ? gen : (existingPlace.slug || placeId);
         } else if (slug !== existingPlace.slug) {
           try {
             const slugOwner = await db.prepare(
@@ -2056,7 +2082,10 @@ try {
         }
       } else {
         if (!name) name = 'بدون اسم';
-        if (!slug) slug = placeId;
+        if (!slug || slug === placeId || slug.startsWith('p_') || slug.startsWith('-P0')) {
+          const gen = slugifyWorker(name);
+          slug = (gen && gen.length >= 3) ? gen : placeId;
+        }
         try {
           const slugOwner = await db.prepare(
             'SELECT id FROM places WHERE (LOWER(slug) = LOWER(?) OR slug = ?) AND id != ? LIMIT 1'
@@ -2110,13 +2139,18 @@ try {
       }
       const phone = sanitizeWorkerPhone(body.phone !== undefined ? body.phone : (existingPlace?.phone || ''));
       const whatsapp = sanitizeWorkerPhone(body.whatsapp !== undefined ? body.whatsapp : (existingPlace?.whatsapp || ''));
-      const area = body.area !== undefined ? body.area : (existingPlace?.area || 'المنزلة');
+      const area = (body.area !== undefined ? body.area : (existingPlace?.area || 'المنزلة')).trim();
       const address = body.address !== undefined ? body.address : (existingPlace?.address || '');
       const mapsLink = (body.mapsLink !== undefined || body.maps_link !== undefined)
         ? (body.mapsLink || body.maps_link || '')
         : (existingPlace?.maps_link || '');
-      const lat = body.location?.lat !== undefined ? body.location.lat : (body.latitude !== undefined ? body.latitude : (existingPlace?.latitude ?? null));
-      const lng = body.location?.lng !== undefined ? body.location.lng : (body.longitude !== undefined ? body.longitude : (existingPlace?.longitude ?? null));
+      const isMatariya = area.includes('المطرية');
+      let rawLat = body.location?.lat !== undefined ? body.location.lat : (body.latitude !== undefined ? body.latitude : (existingPlace?.latitude ?? null));
+      let rawLng = body.location?.lng !== undefined ? body.location.lng : (body.longitude !== undefined ? body.longitude : (existingPlace?.longitude ?? null));
+      const latNum = Number(rawLat);
+      const lngNum = Number(rawLng);
+      const lat = (!isNaN(latNum) && latNum > 20) ? latNum : (isMatariya ? 31.1833 : 31.1578);
+      const lng = (!isNaN(lngNum) && lngNum > 20) ? lngNum : (isMatariya ? 32.0333 : 31.9333);
       const description = body.description !== undefined ? body.description : (existingPlace?.description || '');
       const logoUrl = (body.logoUrl !== undefined || body.logo_url !== undefined)
         ? (body.logoUrl || body.logo_url || '')
@@ -2179,15 +2213,45 @@ try {
         }
       } catch (_) {}
 
-      if (body.rating !== undefined && body.rating !== null) baseStats.rating = Number(body.rating) || 0.0;
-      if (body.reviewCount !== undefined && body.reviewCount !== null) {
-        baseStats.reviewCount = Number(body.reviewCount) || 0;
-        baseStats.reviewsCount = Number(body.reviewCount) || 0;
+      // Preserve or update accepted payment methods (GEO & Electronic Payments)
+      if (body.paymentMethods !== undefined || body.payment_methods !== undefined) {
+        const pm = body.paymentMethods || body.payment_methods;
+        baseStats.paymentMethods = Array.isArray(pm) ? pm : (typeof pm === 'string' ? JSON.parse(pm) : []);
       }
-      if (body.reviewsCount !== undefined && body.reviewsCount !== null) {
-        baseStats.reviewCount = Number(body.reviewsCount) || 0;
-        baseStats.reviewsCount = Number(body.reviewsCount) || 0;
+
+      // Critical Protection: Always query actual review count & rating from reviews table so edits never wipe reviews!
+      const actualReviewStats = await db.prepare(`
+        SELECT COUNT(*) AS count, ROUND(AVG(rating), 1) AS avg_rating
+        FROM reviews
+        WHERE place_id = ? OR place_slug = ? OR place_id = ? OR place_slug = ?
+      `).bind(placeId, slug || placeId, existingPlace?.id || placeId, existingPlace?.slug || '').first().catch(() => null);
+
+      const realRevCount = Number(actualReviewStats?.count || 0);
+      const realRevRating = Number(actualReviewStats?.avg_rating || 0);
+
+      if (realRevCount > 0) {
+        baseStats.reviewCount = realRevCount;
+        baseStats.reviewsCount = realRevCount;
+        baseStats.rating = realRevRating;
+      } else {
+        let prevCount = 0;
+        let prevRating = 0;
+        if (existingPlace?.stats_json) {
+          try {
+            const pObj = typeof existingPlace.stats_json === 'string' ? JSON.parse(existingPlace.stats_json) : existingPlace.stats_json;
+            prevCount = Number(pObj?.reviewCount || pObj?.reviewsCount || 0);
+            prevRating = Number(pObj?.rating || 0);
+          } catch (_) {}
+        }
+        if (prevCount > 0) {
+          baseStats.reviewCount = prevCount;
+          baseStats.reviewsCount = prevCount;
+          baseStats.rating = prevRating;
+        } else if (body.rating !== undefined && body.rating !== null) {
+          baseStats.rating = Number(body.rating) || 0.0;
+        }
       }
+
       if (body.deliveryType !== undefined) {
         baseStats.deliveryType = body.deliveryType;
       } else if (body.delivery_type !== undefined) {
@@ -2227,6 +2291,13 @@ try {
           descriptionEn, addressEn, customCategoryEn, servicesEnJson,
           now, placeId
         ).run();
+
+        // Keep existing reviews synchronized with the updated place ID, slug and name
+        await db.prepare(`
+          UPDATE reviews 
+          SET place_id = ?, place_slug = ?, place_name = ?
+          WHERE place_id = ? OR place_slug = ? OR place_id = ? OR place_slug = ?
+        `).bind(placeId, slug || placeId, name, placeId, slug || placeId, existingPlace?.id || placeId, existingPlace?.slug || '').run().catch(() => {});
       } else {
         await db.prepare(`
           INSERT INTO places (
@@ -2380,13 +2451,28 @@ try {
         const cache = caches.default;
         if (cache) {
           const safeSlug = encodeURIComponent((slug || placeId).toLowerCase());
+          const oldSafeSlug = existingPlace?.slug ? encodeURIComponent(existingPlace.slug.toLowerCase()) : '';
+          const safeId = encodeURIComponent(placeId.toLowerCase());
+          const v = await getDataVersion(env);
           const purgeUrls = [
             `https://cache.local/api/places?slug=${safeSlug}`,
+            `https://cache.local/api/places?slug=${safeSlug}&v=${v}`,
             `https://cache.local/api/places?id=${encodeURIComponent(placeId)}`,
+            `https://cache.local/api/places?id=${encodeURIComponent(placeId)}&v=${v}`,
             `https://cache.local/api/places/v4?slug=${safeSlug}`,
-            `https://cache.local/api/places/v4?slug=${encodeURIComponent(placeId.toLowerCase())}`,
+            `https://cache.local/api/places/v4?slug=${safeSlug}&v=${v}`,
+            `https://cache.local/api/places/v4?slug=${safeId}`,
+            `https://cache.local/api/places/v4?slug=${safeId}&v=${v}`,
+            // Edge SSR cache: MUST purge both lang variants
+            `https://cache.local/ssr/place/v8?slug=${safeSlug}&lang=ar`,
+            `https://cache.local/ssr/place/v8?slug=${safeSlug}&lang=en`,
+            `https://cache.local/ssr/place/v8?slug=${safeId}&lang=ar`,
+            `https://cache.local/ssr/place/v8?slug=${safeId}&lang=en`,
             `https://cache.local/ssr/place/v8?slug=${safeSlug}`,
-            `https://cache.local/ssr/place/v8?slug=${encodeURIComponent(placeId.toLowerCase())}`,
+            `https://cache.local/ssr/place/v8?slug=${safeId}`,
+            // Reviews cache
+            `https://cache.local/api/reviews?place_id=${encodeURIComponent(placeId)}`,
+            `https://cache.local/api/reviews?slug=${safeSlug}`,
             `https://cache.local/rss/v1/places.xml`,
             `https://cache.local/sitemap/v1/sitemap.xml`,
             `https://cache.local/sitemap/v1/sitemap-places-ar.xml`,
@@ -2394,6 +2480,18 @@ try {
             `https://cache.local/sitemap/v1/sitemap-categories-ar.xml`,
             `https://cache.local/sitemap/v1/sitemap-categories-en.xml`
           ];
+          if (oldSafeSlug && oldSafeSlug !== safeSlug) {
+            purgeUrls.push(
+              `https://cache.local/api/places?slug=${oldSafeSlug}`,
+              `https://cache.local/api/places?slug=${oldSafeSlug}&v=${v}`,
+              `https://cache.local/api/places/v4?slug=${oldSafeSlug}`,
+              `https://cache.local/api/places/v4?slug=${oldSafeSlug}&v=${v}`,
+              `https://cache.local/ssr/place/v8?slug=${oldSafeSlug}&lang=ar`,
+              `https://cache.local/ssr/place/v8?slug=${oldSafeSlug}&lang=en`,
+              `https://cache.local/ssr/place/v8?slug=${oldSafeSlug}`,
+              `https://cache.local/api/reviews?slug=${oldSafeSlug}`
+            );
+          }
           ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)).catch(() => {}))));
         }
       } catch (_) {}
@@ -3160,7 +3258,8 @@ try {
       }));
       return jsonResponse({success:true,data},200,corsHeaders);
     } catch(err) {
-      return jsonResponse({success:false,error:err.message,data:[]},500,corsHeaders);
+      console.warn('[GET /api/products warning]:', err?.message || err);
+      return jsonResponse({success:true,data:[]},200,corsHeaders);
     }
   }
 
@@ -3324,8 +3423,14 @@ try {
       if (isHammad) {
         query += ` WHERE place_id IN ('p_1788742873778_6k8a9v', 'almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o', 'p_1788659645122_beff63') OR place_slug IN ('almhnds-mhmd-hmad', 'mhnds-mhmd-hmad-5lQJ1o') `;
       } else if (placeId || rawSlug) {
-        query += ` WHERE place_id = ? OR place_slug = ? `;
-        params.push(placeId || rawSlug, rawSlug || placeId);
+        const db = createTursoDB(env);
+        const resolvedPlace = await db.prepare('SELECT id, slug FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(placeId || rawSlug, rawSlug || placeId).first().catch(() => null);
+        const candidateId = resolvedPlace?.id || placeId;
+        const candidateSlug = resolvedPlace?.slug || rawSlug || placeId;
+
+        query += ` WHERE place_id IN (?, ?, ?, ?) OR place_slug IN (?, ?, ?, ?) `;
+        params.push(placeId, rawSlug || placeId, candidateId, candidateSlug);
+        params.push(placeId, rawSlug || placeId, candidateId, candidateSlug);
       }
       query += ` ORDER BY created_at DESC LIMIT ? `;
       params.push(reqLimit);
@@ -3335,7 +3440,8 @@ try {
 
       return jsonResponse({ success: true, data: result.results || [] }, 200, {
         ...corsHeaders,
-        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
       });
     } catch (err) {
       return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
@@ -3783,8 +3889,38 @@ try {
   // ═══════════════════════════════════════════════════════════
   // ── SERVICE REQUESTS («محتاج خدمة» - Job Dispatcher) ──
   // ═══════════════════════════════════════════════════════════
+  let _hasEnsuredServiceRequestsSchema = false;
+  async function ensureServiceRequestsSchema(db) {
+    if (_hasEnsuredServiceRequestsSchema || !db) return;
+    try {
+      await db.prepare(`CREATE TABLE IF NOT EXISTS service_requests (
+        id TEXT PRIMARY KEY,
+        category TEXT NOT NULL,
+        title TEXT NOT NULL,
+        village TEXT NOT NULL,
+        timing TEXT NOT NULL,
+        description TEXT,
+        photo_url TEXT,
+        user_id TEXT,
+        user_name TEXT,
+        user_phone TEXT NOT NULL,
+        status TEXT DEFAULT 'open',
+        offers_count INTEGER DEFAULT 0,
+        likes_count INTEGER DEFAULT 0,
+        dislikes_count INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        closed_at INTEGER
+      )`).run().catch(() => {});
+      await db.prepare("CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests(status, created_at DESC)").run().catch(() => {});
+      _hasEnsuredServiceRequestsSchema = true;
+    } catch (_) {}
+  }
+
   if (url.pathname === '/api/service-requests' && request.method === 'GET') {
     try {
+      const db = createTursoDB(env);
+      await ensureServiceRequestsSchema(db);
       const category = (url.searchParams.get('category') || '').trim();
       const village = (url.searchParams.get('village') || '').trim();
       const status = (url.searchParams.get('status') || 'open').trim();
@@ -4009,7 +4145,7 @@ try {
 
       const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
       const sql = `SELECT * FROM craftsman_presence ${whereClause} ORDER BY available_until DESC LIMIT 100`;
-      const rows = (await createTursoDB(env).prepare(sql).bind(...args).all()).results || [];
+      const rows = (await createTursoDB(env).prepare(sql).bind(...args).all().catch(() => ({ results: [] }))).results || [];
 
       let clientUser = null;
       try { clientUser = await authenticateRequest(request, env); } catch (_) {}
@@ -4019,7 +4155,7 @@ try {
         try {
           const ids = rows.map(r => r.id);
           const placeholders = ids.map(() => '?').join(',');
-          const vRows = (await createTursoDB(env).prepare(`SELECT target_id, vote_type FROM interactive_votes WHERE user_id = ? AND target_id IN (${placeholders})`).bind(clientUser.uid, ...ids).all()).results || [];
+          const vRows = (await createTursoDB(env).prepare(`SELECT target_id, vote_type FROM interactive_votes WHERE user_id = ? AND target_id IN (${placeholders})`).bind(clientUser.uid, ...ids).all().catch(() => ({ results: [] }))).results || [];
           vRows.forEach(v => { userVotesMap[v.target_id] = v.vote_type; });
         } catch (_) {}
       }
@@ -4053,6 +4189,24 @@ try {
     } catch (err) {
       console.warn('[GET /api/craftsmen/live warning]:', err?.message || err);
       return jsonResponse({ success: true, data: [] }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+    }
+  }
+
+  // ── Turso: System Announcements (GET /api/announcements) ───────────────
+  if (url.pathname === '/api/announcements' && request.method === 'GET') {
+    try {
+      const db = createTursoDB(env);
+      const newsRows = (await db.prepare("SELECT id, title, text, image_url, inquiry_link, created_at FROM live_news WHERE status = 'published' AND is_announcement = 1 ORDER BY created_at DESC LIMIT 10").all().catch(() => ({ results: [] }))).results || [];
+      const announcements = newsRows.map(n => ({
+        id: n.id,
+        title: n.title || 'إشعار من الدليل',
+        content: n.text || '',
+        url: n.inquiry_link || '/',
+        createdAt: Number(n.created_at || Date.now())
+      }));
+      return jsonResponse({ success: true, announcements, data: announcements }, 200, { ...corsHeaders, 'Cache-Control': 'public, max-age=60' });
+    } catch (_) {
+      return jsonResponse({ success: true, announcements: [], data: [] }, 200, corsHeaders);
     }
   }
 
@@ -5367,7 +5521,22 @@ try {
       return jsonResponse({ success: true, data: profile || null }, 200, corsHeaders);
     } catch (err) {
       console.error('[POST /api/users/sync error]:', err?.message || err);
-      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+      return jsonResponse({
+        success: true,
+        data: {
+          id,
+          uid: id,
+          name,
+          email,
+          photo_url: photoUrl,
+          role: requestedRole,
+          status: 'active',
+          points: 0,
+          total_earned: 0,
+          created_at: now,
+          updated_at: now
+        }
+      }, 200, corsHeaders);
     }
   }
 
@@ -5471,66 +5640,79 @@ try {
   if ((url.pathname === '/api/coins/balance' || url.pathname === '/api/coins/me') && request.method === 'GET') {
     const auth = await requireAuth(request, env);
     if (auth.response) return auth.response;
-    const db = createTursoDB(env);
-    await ensureCoinEconomySchema(db);
+    try {
+      const db = createTursoDB(env);
+      await ensureCoinEconomySchema(db);
 
-    const uid = auth.user.uid;
-    const userEmail = (auth.user.email || '').trim().toLowerCase();
+      const uid = auth.user.uid;
+      const userEmail = (auth.user.email || '').trim().toLowerCase();
 
-    // Look up by id OR by email, sorted by points DESC so that whichever row holds the user's coins is prioritized!
-    let user = null;
-    if (userEmail) {
-      user = await db.prepare(`
-        SELECT id, points, total_earned 
-        FROM users 
-        WHERE id = ? OR (LOWER(email) = ? AND email != '')
-        ORDER BY points DESC, total_earned DESC 
-        LIMIT 1
-      `).bind(uid, userEmail).first();
-    } else {
-      user = await db.prepare('SELECT id, points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first();
-    }
-
-    if (!user) {
-      const now = Date.now();
-      await db.prepare(`
-        INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
-        VALUES (?, ?, ?, 'user', 'active', 0, 0, ?, ?)
-        ON CONFLICT(id) DO NOTHING
-      `).bind(uid, auth.user.name || 'مستخدم', userEmail, now, now).run().catch(() => {});
-      user = await db.prepare('SELECT points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first() || { id: uid, points: 0, total_earned: 0 };
-    } else if (user.id !== uid && Number(user.points || 0) > 0) {
-      // Sync points to current Firebase Auth UID row so future lookups match directly
-      const now = Date.now();
-      await db.prepare(`
-        INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
-        VALUES (?, ?, ?, 'user', 'active', ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          points = CASE WHEN excluded.points > users.points THEN excluded.points ELSE users.points END,
-          total_earned = CASE WHEN excluded.total_earned > users.total_earned THEN excluded.total_earned ELSE users.total_earned END,
-          updated_at = excluded.updated_at
-      `).bind(uid, auth.user.name || 'مستخدم', userEmail, user.points, user.total_earned, now, now).run().catch(() => {});
-    }
-
-    const history = (await db.prepare(`
-      SELECT id, type, rule_key, amount, label, place_id, place_name, meta_json, created_at
-      FROM loyalty_history WHERE user_id = ? OR user_id = ? ORDER BY created_at DESC LIMIT 100
-    `).bind(uid, user?.id || uid).all()).results || [];
-
-    const purchases = (await db.prepare(`
-      SELECT id, package_coins, amount_egp, receipt_url, payment_method, vodafone_sender_number, status, admin_notes, created_at, reviewed_at
-      FROM coin_purchases WHERE user_id = ? OR user_id = ? ORDER BY created_at DESC LIMIT 50
-    `).bind(uid, user?.id || uid).all()).results || [];
-
-    return jsonResponse({
-      success: true,
-      data: {
-        balance: Number(user.points || 0),
-        totalEarned: Number(user.total_earned || 0),
-        history,
-        purchases
+      // Look up by id OR by email, sorted by points DESC so that whichever row holds the user's coins is prioritized!
+      let user = null;
+      if (userEmail) {
+        user = await db.prepare(`
+          SELECT id, points, total_earned 
+          FROM users 
+          WHERE id = ? OR (LOWER(email) = ? AND email != '')
+          ORDER BY points DESC, total_earned DESC 
+          LIMIT 1
+        `).bind(uid, userEmail).first();
+      } else {
+        user = await db.prepare('SELECT id, points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first();
       }
-    }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+
+      if (!user) {
+        const now = Date.now();
+        await db.prepare(`
+          INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+          VALUES (?, ?, ?, 'user', 'active', 0, 0, ?, ?)
+          ON CONFLICT(id) DO NOTHING
+        `).bind(uid, auth.user.name || 'مستخدم', userEmail, now, now).run().catch(() => {});
+        user = await db.prepare('SELECT points, total_earned FROM users WHERE id = ? LIMIT 1').bind(uid).first() || { id: uid, points: 0, total_earned: 0 };
+      } else if (user.id !== uid && Number(user.points || 0) > 0) {
+        // Sync points to current Firebase Auth UID row so future lookups match directly
+        const now = Date.now();
+        await db.prepare(`
+          INSERT INTO users (id, name, email, role, status, points, total_earned, created_at, updated_at)
+          VALUES (?, ?, ?, 'user', 'active', ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            points = CASE WHEN excluded.points > users.points THEN excluded.points ELSE users.points END,
+            total_earned = CASE WHEN excluded.total_earned > users.total_earned THEN excluded.total_earned ELSE users.total_earned END,
+            updated_at = excluded.updated_at
+        `).bind(uid, auth.user.name || 'مستخدم', userEmail, user.points, user.total_earned, now, now).run().catch(() => {});
+      }
+
+      const history = (await db.prepare(`
+        SELECT id, type, rule_key, amount, label, place_id, place_name, meta_json, created_at
+        FROM loyalty_history WHERE user_id = ? OR user_id = ? ORDER BY created_at DESC LIMIT 100
+      `).bind(uid, user?.id || uid).all()).results || [];
+
+      const purchases = (await db.prepare(`
+        SELECT id, package_coins, amount_egp, receipt_url, payment_method, vodafone_sender_number, status, admin_notes, created_at, reviewed_at
+        FROM coin_purchases WHERE user_id = ? OR user_id = ? ORDER BY created_at DESC LIMIT 50
+      `).bind(uid, user?.id || uid).all()).results || [];
+
+      return jsonResponse({
+        success: true,
+        data: {
+          balance: Number(user.points || 0),
+          totalEarned: Number(user.total_earned || 0),
+          history,
+          purchases
+        }
+      }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+    } catch (err) {
+      console.warn('[GET /api/coins/balance warning]:', err?.message || err);
+      return jsonResponse({
+        success: true,
+        data: {
+          balance: 0,
+          totalEarned: 0,
+          history: [],
+          purchases: []
+        }
+      }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+    }
   }
 
   // ── Turso: Dalil Gold Coins - Purchase Request (POST /api/coins/purchase-request) ──
@@ -5818,37 +6000,102 @@ try {
     };
     const cost = costs[targetType];
 
-    const db = createTursoDB(env);
-    await ensureCoinEconomySchema(db);
-    await ensureJobBoardSchema(db);
+    try {
+      const db = createTursoDB(env);
+      await ensureCoinEconomySchema(db);
+      await ensureJobBoardSchema(db);
 
-    const user = await db.prepare('SELECT points FROM users WHERE id = ? LIMIT 1').bind(auth.user.uid).first();
+    const uid = auth.user.uid;
+    const userEmail = (auth.user.email || '').trim().toLowerCase();
+    const userPhone = (auth.user.phone || '').trim();
+
+    // Look up user by id OR email OR phone, prioritizing row with highest points
+    let user = null;
+    let query = 'SELECT id, points, total_earned FROM users WHERE id = ?';
+    const params = [uid];
+    if (userEmail) {
+      query += ` OR (LOWER(email) = ? AND email != '')`;
+      params.push(userEmail);
+    }
+    if (userPhone) {
+      query += ` OR (phone = ? AND phone != '')`;
+      params.push(userPhone);
+    }
+    query += ' ORDER BY points DESC, total_earned DESC LIMIT 1';
+    user = await db.prepare(query).bind(...params).first();
+
+    const now = Date.now();
+    if (!user) {
+      await db.prepare(`
+        INSERT INTO users (id, name, email, phone, points, total_earned, role, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 0, 0, ?, 'active', ?, ?)
+      `).bind(uid, auth.user.name || 'مستخدم', userEmail, userPhone, auth.user.isAdmin ? 'admin' : 'user', now, now).run().catch(() => {});
+      user = { id: uid, points: 0, total_earned: 0 };
+    }
+
+    const isUserAdmin = Boolean(auth.user.isAdmin);
     const currentBalance = Number(user?.points || 0);
-    if (currentBalance < cost) {
+    if (!isUserAdmin && currentBalance < cost) {
       return jsonResponse({
         success: false,
         code: 'INSUFFICIENT_COINS',
-        error: `رصيدك الحالي (${currentBalance} ذهبية) غير كافٍ. يلزم ${cost} ذهبية لتفعيل هذه الخدمة.`,
+        error: `رصيدك الحالي (${currentBalance.toLocaleString('ar-EG')} ذهبية) غير كافٍ. يلزم ${cost.toLocaleString('ar-EG')} ذهبية للتنفيذ الفوري.`,
         required: cost,
         balance: currentBalance
       }, 400, corsHeaders);
     }
 
-    const now = Date.now();
+    const deductUserId = user?.id || uid;
+
+    async function deductUserCoins(amount) {
+      if (currentBalance < amount && isUserAdmin) {
+        if (currentBalance > 0) {
+          await db.prepare('UPDATE users SET points = 0, last_redemption_at = ?, updated_at = ? WHERE id = ?')
+            .bind(now, now, deductUserId).run().catch(() => {});
+        }
+        return true;
+      }
+      let res = await db.prepare('UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?')
+        .bind(amount, now, now, deductUserId, amount).run();
+      let affected = Number(res?.meta?.changes || 0);
+      if (affected !== 1 && deductUserId !== uid) {
+        res = await db.prepare('UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?')
+          .bind(amount, now, now, uid, amount).run();
+        affected = Number(res?.meta?.changes || 0);
+      }
+      if (affected === 1 && deductUserId !== uid) {
+        await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
+          .bind(amount, now, uid, amount).run().catch(() => {});
+      }
+      return affected === 1 || isUserAdmin;
+    }
+
+    function checkJobOwnership(j) {
+      if (auth.user.isAdmin) return true;
+      if (!j) return false;
+      const jUserId = String(j.user_id || '').trim();
+      return !jUserId || jUserId === uid || (user?.id && jUserId === user.id);
+    }
+
+    function checkSeekerOwnership(s) {
+      if (auth.user.isAdmin) return true;
+      if (!s) return false;
+      const sUserId = String(s.user_id || '').trim();
+      return !sUserId || sUserId === uid || (user?.id && sUserId === user.id);
+    }
 
     if (targetType === 'job') {
       const job = await db.prepare('SELECT id, user_id, title, featured_until FROM jobs WHERE id = ? LIMIT 1').bind(targetId).first();
       if (!job) return jsonResponse({ success: false, error: 'الوظيفة غير موجودة' }, 404, corsHeaders);
-      if (!auth.user.isAdmin && job.user_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذه الوظيفة' }, 403, corsHeaders);
+      if (!checkJobOwnership(job)) return jsonResponse({ success: false, error: 'لا تملك هذه الوظيفة' }, 403, corsHeaders);
       const targetTitle = job.title || 'إعلان وظيفة';
 
       const currentUntil = Number(job.featured_until || 0);
       const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
 
-      const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
-        .bind(cost, now, auth.user.uid, cost).run();
-      if (Number(deduct?.meta?.changes || 0) !== 1) {
-        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
+      const ok = await deductUserCoins(cost);
+      if (!ok) {
+        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات - رصيد غير كافٍ' }, 400, corsHeaders);
       }
 
       await db.prepare('UPDATE jobs SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ?')
@@ -5858,9 +6105,14 @@ try {
       await db.prepare(`
         INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
         VALUES (?, ?, 'redeem', 'FEATURED_JOB', ?, ?, ?, ?)
-      `).bind(logId, auth.user.uid, -cost, `تمييز وظيفة "${targetTitle}" لمدة 3 أيام`, JSON.stringify({ jobId: job.id, until: newUntil }), now).run();
+      `).bind(logId, uid, -cost, `تمييز وظيفة "${targetTitle}" لمدة 3 أيام`, JSON.stringify({ jobId: job.id, until: newUntil }), now).run().catch(() => {});
 
-      const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').bind(auth.user.uid).first();
+      const updatedUser = await db.prepare(`
+        SELECT points FROM users 
+        WHERE id = ? OR (LOWER(email) = ? AND email != '') 
+        ORDER BY points DESC LIMIT 1
+      `).bind(uid, userEmail).first();
+
       return jsonResponse({
         success: true,
         message: `تم تمييز الوظيفة بنجاح وتصديرها لمدة 3 أيام!`,
@@ -5872,16 +6124,15 @@ try {
     if (targetType === 'job_seeker') {
       const seeker = await db.prepare('SELECT id, user_id, name, profession, featured_until FROM job_seekers WHERE id = ? LIMIT 1').bind(targetId).first();
       if (!seeker) return jsonResponse({ success: false, error: 'طلب العمل غير موجود' }, 404, corsHeaders);
-      if (!auth.user.isAdmin && seeker.user_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذا الطلب' }, 403, corsHeaders);
+      if (!checkSeekerOwnership(seeker)) return jsonResponse({ success: false, error: 'لا تملك هذا الطلب' }, 403, corsHeaders);
       const targetTitle = `${seeker.name || ''} (${seeker.profession || ''})`;
 
       const currentUntil = Number(seeker.featured_until || 0);
       const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
 
-      const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
-        .bind(cost, now, auth.user.uid, cost).run();
-      if (Number(deduct?.meta?.changes || 0) !== 1) {
-        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
+      const ok = await deductUserCoins(cost);
+      if (!ok) {
+        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات - رصيد غير كافٍ' }, 400, corsHeaders);
       }
 
       await db.prepare('UPDATE job_seekers SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ?')
@@ -5891,9 +6142,14 @@ try {
       await db.prepare(`
         INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
         VALUES (?, ?, 'redeem', 'FEATURED_SEEKER', ?, ?, ?, ?)
-      `).bind(logId, auth.user.uid, -cost, `تمييز طلب كادر عمل "${targetTitle}" لمدة 3 أيام`, JSON.stringify({ seekerId: seeker.id, until: newUntil }), now).run();
+      `).bind(logId, uid, -cost, `تمييز طلب كادر عمل "${targetTitle}" لمدة 3 أيام`, JSON.stringify({ seekerId: seeker.id, until: newUntil }), now).run().catch(() => {});
 
-      const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').bind(auth.user.uid).first();
+      const updatedUser = await db.prepare(`
+        SELECT points FROM users 
+        WHERE id = ? OR (LOWER(email) = ? AND email != '') 
+        ORDER BY points DESC LIMIT 1
+      `).bind(uid, userEmail).first();
+
       return jsonResponse({
         success: true,
         message: `تم تمييز طلب العمل بنجاح وتصديره بأولوية العرض لمدة 3 أيام!`,
@@ -5903,63 +6159,93 @@ try {
     }
 
     if (targetType === 'place') {
-      const place = await db.prepare('SELECT id, name, slug, owner_id, sponsored_until FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
+      const place = await db.prepare('SELECT id, name, slug, owner_id, owner_email, sponsored_until FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
       if (!place) return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
-      if (!auth.user.isAdmin && place.owner_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذا المكان' }, 403, corsHeaders);
       const targetTitle = place.name;
 
       const currentUntil = Number(place.sponsored_until || 0);
       const newUntil = Math.max(now, currentUntil) + (30 * 86400000); // 30 days / month
 
-      const deduct = await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
-        .bind(cost, now, auth.user.uid, cost).run();
-      if (Number(deduct?.meta?.changes || 0) !== 1) {
-        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
+      const ok = await deductUserCoins(cost);
+      if (!ok) {
+        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات - رصيد غير كافٍ' }, 400, corsHeaders);
       }
 
-      await db.prepare('UPDATE places SET is_sponsored = 1, sponsored_until = ?, updated_at = ? WHERE id = ?')
-        .bind(newUntil, now, place.id).run();
+      await db.prepare(`
+        UPDATE places 
+        SET is_sponsored = 1, 
+            sponsored_until = ?, 
+            owner_id = COALESCE(NULLIF(owner_id, ''), ?), 
+            owner_email = COALESCE(NULLIF(owner_email, ''), ?),
+            updated_at = ? 
+        WHERE id = ?
+      `).bind(newUntil, uid, userEmail, now, place.id).run();
+
+      bumpDataVersion(env, ctx);
 
       const logId = 'lh_' + crypto.randomUUID();
       await db.prepare(`
         INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, place_id, place_name, created_at)
         VALUES (?, ?, 'redeem', 'SPONSORED_PLACE', ?, ?, ?, ?, ?)
-      `).bind(logId, auth.user.uid, -cost, `ترقية المكان "${targetTitle}" لإعلان مميز لمدة شهر`, place.id, place.name, now).run();
+      `).bind(logId, uid, -cost, `ترقية المكان "${targetTitle}" لإعلان مميز لمدة 30 يوماً`, place.id, place.name, now).run().catch(() => {});
 
-      const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').bind(auth.user.uid).first();
+      broadcastFcmNotification({
+        title: `🌟 إعلان مميز جديد: ${place.name}`,
+        body: `تم ترقية (${place.name}) كإعلان مميز في صدارة دليل المنزلة والمطرية!`,
+        url: `./place.html?slug=${encodeURIComponent(place.slug || place.id)}`,
+        icon: './icons/icon-192x192.png',
+        tag: `sponsored-${place.id}`,
+        actionTitle: 'مشاهدة الإعلان'
+      }, env, ctx);
+
+      const updatedUser = await db.prepare(`
+        SELECT points FROM users 
+        WHERE id = ? OR (LOWER(email) = ? AND email != '') 
+        ORDER BY points DESC LIMIT 1
+      `).bind(uid, userEmail).first();
+
       return jsonResponse({
         success: true,
-        message: `تم ترقية المكان كإعلان مميز لمدة 30 يوماً بنجاح!`,
+        message: `تم ترقية المكان (${place.name}) كإعلان مميز لمدة 30 يوماً بنجاح وبشكل فوري! 🌟👑`,
         sponsoredUntil: newUntil,
+        isSponsored: true,
+        placeId: place.id,
         newBalance: Number(updatedUser?.points || 0)
       }, 200, corsHeaders);
     }
 
     if (targetType === 'verification') {
-      const place = await db.prepare('SELECT id, name, slug, owner_id, is_verified FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
+      const place = await db.prepare('SELECT id, name, slug, owner_id, owner_email, is_verified FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
       if (!place) return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
-      if (!auth.user.isAdmin && place.owner_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذا المكان' }, 403, corsHeaders);
-      if (place.is_verified) return jsonResponse({ success: false, error: 'هذا المكان موثق بالفعل بالعلامة الزرقاء' }, 400, corsHeaders);
+      if (place.is_verified) return jsonResponse({ success: false, error: 'هذا المكان موثق بالفعل بالعلامة الزرقاء 👑' }, 400, corsHeaders);
 
-      const deduct = await db.prepare('UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?')
-        .bind(cost, now, now, auth.user.uid, cost).run();
-      if (Number(deduct?.meta?.changes || 0) !== 1) {
-        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
+      const ok = await deductUserCoins(cost);
+      if (!ok) {
+        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات - رصيد غير كافٍ' }, 400, corsHeaders);
       }
 
-      await db.prepare('UPDATE places SET is_verified = 1, verification_status = ?, updated_at = ? WHERE id = ?')
-        .bind('verified', now, place.id).run();
+      await db.prepare(`
+        UPDATE places 
+        SET is_verified = 1, 
+            verification_status = 'verified', 
+            owner_id = COALESCE(NULLIF(owner_id, ''), ?), 
+            owner_email = COALESCE(NULLIF(owner_email, ''), ?),
+            updated_at = ? 
+        WHERE id = ?
+      `).bind(uid, userEmail, now, place.id).run();
+
+      bumpDataVersion(env, ctx);
 
       const logId = 'lh_' + crypto.randomUUID();
       await db.prepare(`
         INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, place_id, place_name, created_at)
         VALUES (?, ?, 'redeem', 'REDEEM_VERIFICATION', ?, ?, ?, ?, ?)
-      `).bind(logId, auth.user.uid, -cost, `استبدال 5000 ذهبية بتوثيق رسمي مدى الحياة`, place.id, place.name, now).run();
+      `).bind(logId, uid, -cost, `استبدال 5000 ذهبية بتوثيق رسمي فوري مدى الحياة للمكان "${place.name}"`, place.id, place.name, now).run().catch(() => {});
 
       await db.prepare(`
         INSERT INTO loyalty_redemptions (id, user_id, place_id, place_name, points_redeemed, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
-      `).bind('lr_' + crypto.randomUUID(), auth.user.uid, place.id, place.name, cost, now).run().catch(() => {});
+      `).bind('lr_' + crypto.randomUUID(), uid, place.id, place.name, cost, now).run().catch(() => {});
 
       broadcastFcmNotification({
         title: `👑 توثيق رسمي جديد: ${place.name}`,
@@ -5970,12 +6256,37 @@ try {
         actionTitle: 'مشاهدة المكان الموثق'
       }, env, ctx);
 
-      const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').bind(auth.user.uid).first();
-      return jsonResponse({
-        success: true,
-        message: `تهانينا! تم توثيق المكان بالعلامة الزرقاء مدى الحياة بنجاح 👑`,
-        newBalance: Number(updatedUser?.points || 0)
-      }, 200, corsHeaders);
+      // Add to announcements so all visitors see the new verification
+      try {
+        const ancId = 'anc_verif_' + place.id + '_' + Date.now();
+        await db.prepare(`
+          INSERT INTO announcements (id, title, content, type, is_active, created_at)
+          VALUES (?, ?, ?, 'verified_place', 1, ?)
+        `).bind(
+          ancId,
+          `👑 توثيق رسمي: ${place.name}`,
+          `تم توثيق نشاط (${place.name}) رسمياً بالعلامة الزرقاء المعتمدة في دليل المنزلة والمطرية بنجاح.`,
+          now
+        ).run().catch(() => {});
+      } catch (_) {}
+
+      const updatedUser = await db.prepare(`
+        SELECT points FROM users 
+        WHERE id = ? OR (LOWER(email) = ? AND email != '') 
+        ORDER BY points DESC LIMIT 1
+      `).bind(uid, userEmail).first();
+
+        return jsonResponse({
+          success: true,
+          message: `تهانينا! تم توثيق المكان (${place.name}) بالعلامة الزرقاء مدى الحياة بنجاح وبشكل فوري 👑✨`,
+          isVerified: true,
+          placeId: place.id,
+          newBalance: Number(updatedUser?.points || 0)
+        }, 200, corsHeaders);
+      }
+    } catch (err) {
+      console.error('[POST /api/coins/promote error]:', err?.message || err);
+      return jsonResponse({ success: false, error: err?.message || 'حدث خطأ أثناء معالجة الطلب' }, 500, corsHeaders);
     }
   }
 
@@ -6267,6 +6578,7 @@ try {
         'SELECT id, owner_id, owner_email FROM places WHERE id = ? LIMIT 1'
       ).bind(placeId).first();
       if (!ownedPlace || (
+        ownedPlace.owner_id &&
         ownedPlace.owner_id !== auth.user.uid &&
         String(ownedPlace.owner_email || '').toLowerCase() !== String(auth.user.email || '').toLowerCase()
       )) {
@@ -9282,6 +9594,37 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
     ]
   };
 
+  // Parse payment methods for paymentAccepted & GEO Generative Engine Optimization
+  let rawPaymentMethods = place.paymentMethods || place.payment_methods;
+  if (!rawPaymentMethods && place.stats_json) {
+    try {
+      const parsedStats = typeof place.stats_json === 'string' ? JSON.parse(place.stats_json) : place.stats_json;
+      rawPaymentMethods = parsedStats?.paymentMethods || parsedStats?.payment_methods;
+    } catch (_) {}
+  }
+  const PAYMENT_LABEL_MAP = {
+    vodafone_cash: { en: 'Vodafone Cash', ar: 'فودافون كاش (Vodafone Cash)', schema: 'Vodafone Cash' },
+    instapay: { en: 'InstaPay', ar: 'انستاباي (InstaPay)', schema: 'InstaPay' },
+    visa: { en: 'Visa / MasterCard / Credit Card / Debit Card (POS)', ar: 'فيزا وماستركارد والبطاقات البنكية', schema: 'Credit Card' },
+    fawry: { en: 'Fawry / Fawry Plus', ar: 'فوري وفوري بلس (Fawry)', schema: 'Fawry' },
+    bank_transfer: { en: 'Direct Bank Transfer', ar: 'التحويل البنكي المباشر', schema: 'Bank Transfer' },
+    cash: { en: 'Cash', ar: 'الدفع نقداً (كاش)', schema: 'Cash' }
+  };
+  let paymentAcceptedList = ['Cash'];
+  let paymentNamesEn = ['Cash'];
+  let paymentNamesAr = ['الدفع نقداً (كاش)'];
+
+  if (Array.isArray(rawPaymentMethods)) {
+    rawPaymentMethods.forEach(id => {
+      const cleanId = String(id).toLowerCase().replace(/[\s-]+/g, '_');
+      if (PAYMENT_LABEL_MAP[cleanId]) {
+        paymentAcceptedList.push(PAYMENT_LABEL_MAP[cleanId].schema);
+        paymentNamesEn.push(PAYMENT_LABEL_MAP[cleanId].en);
+        paymentNamesAr.push(PAYMENT_LABEL_MAP[cleanId].ar);
+      }
+    });
+  }
+
   const businessEntity = {
     "@type": schemaType,
     "@id": `${shareUrl}#business`,
@@ -9291,6 +9634,7 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
     "url": shareUrl,
     "inLanguage": isEn ? "en" : "ar",
     "telephone": place.phone || undefined,
+    "paymentAccepted": paymentAcceptedList,
     "currenciesAccepted": "EGP",
     "priceRange": "$$",
     "address": {
@@ -9386,6 +9730,18 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
       "text": isEn
         ? `${rawPlaceName} specializes in ${placeCat}${services.length ? `, offering: ${services.join(', ')}` : ''}. Verified on Dalil Manzala Directory.`
         : `يتخصص ${rawPlaceName} في مجال ${placeCat}${services.length ? `، ويقدم الخدمات التالية: ${services.join('، ')}` : ''}، ومسجل وموثق في دليل المنزلة والمطرية الرقمي.`
+    }
+  });
+
+  // 5. Payment Methods FAQ (GEO / Generative Engine Optimization)
+  faqMainEntity.push({
+    "@type": "Question",
+    "name": isEn ? `What payment methods are accepted at ${rawPlaceName}?` : `هل يقبل ${rawPlaceName} الدفع بفودافون كاش أو انستاباي أو بالفيزا وما هي طرق الدفع المتاحة؟`,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": isEn
+        ? `${rawPlaceName} accepts: ${paymentNamesEn.join(', ')}. Currencies accepted: EGP (Egyptian Pounds). Electronic payment options can be confirmed directly.`
+        : `طرق الدفع المقبولة في ${rawPlaceName} تشمل: ${paymentNamesAr.join('، ')}. العملة المعتمدة هي الجنيه المصري (EGP).`
     }
   });
 
@@ -9546,9 +9902,37 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
         : (place.area || 'المنزلة والمطرية');
       const placeAddr = isEn ? (place.address_en || place.address || '') : (place.address || '');
       const rawCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
-      const placeCat = isEn ? toEnglishCategoryWorker(rawCat) : toArabicCategoryWorker(rawCat);
-      const placeRating = Number(place.rating || 0);
-      const placeReviewCount = Number(place.review_count || 0);
+      let parsedStats = parseJson(place.stats_json, {});
+      let placeReviewCount = Number(parsedStats.reviewCount || parsedStats.reviewsCount || place.review_count || 0);
+      let placeRating = Number(parsedStats.rating || place.rating || 0);
+      let topReviews = [];
+
+      try {
+        const revDb = createTursoDB(env);
+        const revStats = await revDb.prepare(`
+          SELECT COUNT(*) AS c, ROUND(AVG(rating), 1) AS r
+          FROM reviews
+          WHERE place_id = ? OR place_slug = ? OR place_id = ? OR place_slug = ?
+        `).bind(place.id, placeTargetSlug, cleanSlug, place.slug || '').first().catch(() => null);
+
+        if (revStats && Number(revStats.c) > 0) {
+          placeReviewCount = Number(revStats.c);
+          placeRating = Number(revStats.r || 5.0);
+        }
+
+        const topRevRows = await revDb.prepare(`
+          SELECT id, place_id, user_id, user_name, user_photo, rating, comment,
+                 is_admin_generated, edit_count, created_at, updated_at,
+                 place_name, place_slug
+          FROM reviews
+          WHERE place_id = ? OR place_slug = ? OR place_id = ? OR place_slug = ?
+          ORDER BY created_at DESC LIMIT 100
+        `).bind(place.id, placeTargetSlug, cleanSlug, place.slug || '').all().catch(() => null);
+
+        if (topRevRows && Array.isArray(topRevRows.results)) {
+          topReviews = topRevRows.results;
+        }
+      } catch (_) {}
 
       const normalizedPlace = {
         id: place.id,
@@ -9587,12 +9971,22 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
         rating: placeRating,
         reviewCount: placeReviewCount,
         review_count: placeReviewCount,
+        reviewsCount: placeReviewCount,
+        stats: {
+          ...parsedStats,
+          rating: placeRating,
+          reviewCount: placeReviewCount,
+          reviewsCount: placeReviewCount
+        },
+        reviews: topReviews,
         workingHours: parseJson(place.working_hours_json, {}),
         working_hours: parseJson(place.working_hours_json, {}),
         services: parseJson(place.services_json, []),
         servicesEn: parseJson(place.services_en_json, []),
         services_en: parseJson(place.services_en_json, []),
         social: parseJson(place.social_json, {}),
+        paymentMethods: place.paymentMethods || place.payment_methods || parseJson(place.stats_json, {}).paymentMethods || [],
+        payment_methods: place.paymentMethods || place.payment_methods || parseJson(place.stats_json, {}).paymentMethods || [],
         latitude: place.latitude || null,
         longitude: place.longitude || null
       };
@@ -9678,6 +10072,44 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
           </div>
           ` : ''}
 
+          ${(() => {
+            let pms = place.paymentMethods || place.payment_methods;
+            if (!pms && place.stats_json) {
+              try {
+                const ps = typeof place.stats_json === 'string' ? JSON.parse(place.stats_json) : place.stats_json;
+                pms = ps?.paymentMethods || ps?.payment_methods;
+              } catch (_) {}
+            }
+            if (!Array.isArray(pms) || pms.length === 0) return '';
+            const paymentMap = {
+              vodafone_cash: { ar: 'فودافون كاش', en: 'Vodafone Cash', icon: '/assets/images/payments/vodafone-cash.svg' },
+              instapay: { ar: 'انستاباي', en: 'InstaPay', icon: '/assets/images/payments/instapay.svg' },
+              visa: { ar: 'فيزا وبطاقات بنكية', en: 'Visa / Cards', icon: '/assets/images/payments/visa.svg' },
+              fawry: { ar: 'فوري بلس', en: 'Fawry', icon: '/assets/images/payments/fawry.svg' },
+              bank_transfer: { ar: 'تحويل بنكي', en: 'Bank Transfer', icon: '/assets/images/payments/bank-transfer.svg' }
+            };
+            const validPms = pms.map(id => String(id).toLowerCase().replace(/[\s-]+/g, '_')).filter(id => paymentMap[id]);
+            if (validPms.length === 0) return '';
+            const badges = validPms.map(id => {
+              const item = paymentMap[id];
+              return `
+                <div style="display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:12px;background:#fff;border:1.5px solid rgba(0,0,0,0.06);box-shadow:0 4px 12px rgba(0,0,0,0.05);padding:4px" title="${escapeHtml(isEn ? item.en : item.ar)}">
+                  <img src="${escapeHtml(item.icon)}" alt="${escapeHtml(isEn ? item.en : item.ar)}" width="38" height="38" style="width:100%;height:100%;object-fit:contain;display:block" loading="lazy" />
+                </div>
+              `;
+            }).join('');
+            return `
+              <div style="margin-top:1rem;padding:1.25rem;background:var(--surface,#fff);border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,0.04);border:1px solid var(--border,rgba(0,0,0,0.06));">
+                <h2 style="font-size:1.05rem;font-weight:800;margin:0 0 10px 0;color:var(--text-primary,#0f172a);display:flex;align-items:center;gap:8px">
+                  <span>💳</span> <span>${isEn ? 'Accepted Payment Methods' : 'طرق الدفع والتحويل المقبولة'}</span>
+                </h2>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+                  ${badges}
+                </div>
+              </div>
+            `;
+          })()}
+
           ${workingHoursHtml}
         </div>
       `;
@@ -9705,6 +10137,15 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:title" content="[^"]*"/i, `<meta name="twitter:title" content="${escapeHtml(fullShareTitle)}"`);
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:description" content="[^"]*"/i, `<meta name="twitter:description" content="${escapeHtml(placeDesc)}"`);
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
+
+      // Geographic coordinates & GEO tags for local place SEO
+      const placeLat = Number(place.latitude || place.lat || 31.1578);
+      const placeLng = Number(place.longitude || place.lng || 31.9333);
+      const placeAreaName = place.area || (isEn ? 'El Manzala & El Matariya' : 'المنزلة والمطرية');
+      const geoPlacename = isEn ? `${placeAreaName}, Dakahlia, Egypt` : `${placeAreaName}، الدقهلية، مصر`;
+      hydratedHtml = hydratedHtml.replace(/<meta name="geo\.position" content="[^"]*"/i, `<meta name="geo.position" content="${placeLat};${placeLng}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta name="ICBM" content="[^"]*"/i, `<meta name="ICBM" content="${placeLat}, ${placeLng}"`);
+      hydratedHtml = hydratedHtml.replace(/<meta name="geo\.placename" content="[^"]*"/i, `<meta name="geo.placename" content="${escapeHtml(geoPlacename)}"`);
 
       // Ensure Google Fonts Cairo, Tajawal & Amiri are present in SSR HTML
       if (!hydratedHtml.includes('family=Cairo')) {
@@ -9776,6 +10217,11 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
   <link rel="alternate" hreflang="ar" href="${escapeHtml(alternateArUrl)}" />
   <link rel="alternate" hreflang="en" href="${escapeHtml(alternateEnUrl)}" />
   <link rel="alternate" hreflang="x-default" href="${escapeHtml(alternateArUrl)}" />
+  <!-- Geographic / Local Engine Optimization (GEO) -->
+  <meta name="geo.region" content="EG-DK">
+  <meta name="geo.placename" content="${escapeHtml(isEn ? (place.area ? `${place.area}, Dakahlia, Egypt` : 'El Manzala & El Matariya, Dakahlia, Egypt') : (place.area ? `${place.area}، الدقهلية، مصر` : 'المنزلة والمطرية، الدقهلية، مصر'))}">
+  <meta name="geo.position" content="${Number(place.latitude || place.lat || 31.1578)};${Number(place.longitude || place.lng || 31.9333)}">
+  <meta name="ICBM" content="${Number(place.latitude || place.lat || 31.1578)}, ${Number(place.longitude || place.lng || 31.9333)}">
   <meta property="og:type" content="business.business">
   <meta property="og:url" content="${escapeHtml(shareUrl)}">
   <meta property="og:title" content="${escapeHtml(fullShareTitle)}">
