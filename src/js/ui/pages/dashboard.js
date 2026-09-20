@@ -834,6 +834,13 @@ function renderPlacesListHTML(places) {
     <div class="my-places-list">
       ${places.map(place => {
         const placeId = place.id || place._key;
+        const placeVerified = Boolean(
+          placeVerified ||
+          place.is_verified ||
+          place.verified ||
+          place.verificationStatus === 'verified' ||
+          place.verification_status === 'verified'
+        );
         return `
           <div class="my-place-item animate-fade-in">
             <div class="my-place-item__header">
@@ -844,7 +851,7 @@ function renderPlacesListHTML(places) {
               <div class="my-place-item__info">
                 <div class="my-place-item__name">
                   ${escHtml(place.name)}
-                  ${place.isVerified ? renderVerifiedBadge() : (place.verificationStatus === 'verification_requested' ? renderPendingBadge() : '')}
+                  ${placeVerified ? renderVerifiedBadge() : (place.verificationStatus === 'verification_requested' ? renderPendingBadge() : '')}
                   ${place.deliveryType ? renderDeliveryBadge(place.deliveryType) : ''}
                 </div>
                 <div class="my-place-item__meta">
@@ -867,7 +874,7 @@ function renderPlacesListHTML(places) {
                   <div class="my-place-item__actions">
                     <a href="dashboard.html?section=edit&id=${escAttr(placeId)}" class="btn btn-sm btn-outline">✏️ تعديل</a>
                     <a href="dashboard.html?section=offers&id=${escAttr(placeId)}" class="btn btn-sm btn-secondary">🏷️ العروض</a>
-                    ${place.isVerified ? `
+                    ${placeVerified ? `
                       <a href="dashboard.html?section=products&id=${escAttr(placeId)}" class="btn btn-sm btn-primary">🛍️ المنتجات</a>
                     ` : `
                       <button type="button" class="btn btn-sm btn-action-verify-place" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name)}" style="background:rgba(217,119,6,0.12);color:#b45309;border:1px solid rgba(217,119,6,0.35);font-weight:800;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:4px" title="توثيق هذا المكان بالعلامة الزرقاء">🛡️ وثق مكانك (5,000 ذهبية)</button>
