@@ -5550,41 +5550,51 @@ try {
       `).bind(uid, auth.user.name || 'مستخدم', userEmail, user.points, user.total_earned, now, now).run().catch(() => {});
     }
 
-    const history = (await db.prepare(`
-      SELECT id, type, rule_key, amount, label, place_id, place_name, meta_json, created_at
-      FROM loyalty_history
-      WHERE user_id = ? OR user_id = ?
-      ORDER BY created_at DESC
-      LIMIT 200
-    `).bind(uid, user?.id || uid).all()).results || [];
+    let history = [];
+    try {
+      history = (await db.prepare(`
+        SELECT id, type, rule_key, amount, label, place_id, place_name, meta_json, created_at
+        FROM loyalty_history
+        WHERE user_id = ? OR user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 200
+      `).bind(uid, user?.id || uid).all()).results || [];
+    } catch (historyErr) {
+      console.warn('[Coins balance history warning]:', historyErr?.message || historyErr);
+    }
 
-    // Some older verification transactions were recorded in loyalty_redemptions
-    // before loyalty_history logging was enabled. Surface those as history rows
-    // too, without duplicating transactions already present in loyalty_history.
-    const redemptionHistory = (await db.prepare(`
-      SELECT
-        'lr_' || lr.id AS id,
-        'redeem' AS type,
-        'REDEEM_VERIFICATION' AS rule_key,
-        -lr.points_redeemed AS amount,
-        'توثيق المكان بالعلامة الزرقاء: ' || COALESCE(lr.place_name, 'مكان') AS label,
-        lr.place_id,
-        lr.place_name,
-        '{}' AS meta_json,
-        lr.created_at
-      FROM loyalty_redemptions lr
-      WHERE (lr.user_id = ? OR lr.user_id = ?)
-        AND NOT EXISTS (
-          SELECT 1
-          FROM loyalty_history lh
-          WHERE lh.user_id = lr.user_id
-            AND lh.rule_key = 'REDEEM_VERIFICATION'
-            AND lh.place_id = lr.place_id
-            AND lh.created_at = lr.created_at
-        )
-      ORDER BY lr.created_at DESC
-      LIMIT 200
-    `).bind(uid, user?.id || uid).all()).results || [];
+    // Older verification redemptions may exist in loyalty_redemptions without
+    // a matching loyalty_history row. This table is optional for backward
+    // compatibility, so its absence must never break the balance endpoint.
+    let redemptionHistory = [];
+    try {
+      redemptionHistory = (await db.prepare(`
+        SELECT
+          'lr_' || lr.id AS id,
+          'redeem' AS type,
+          'REDEEM_VERIFICATION' AS rule_key,
+          -lr.points_redeemed AS amount,
+          'توثيق المكان بالعلامة الزرقاء: ' || COALESCE(lr.place_name, 'مكان') AS label,
+          lr.place_id,
+          lr.place_name,
+          '{}' AS meta_json,
+          lr.created_at
+        FROM loyalty_redemptions lr
+        WHERE (lr.user_id = ? OR lr.user_id = ?)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM loyalty_history lh
+            WHERE lh.user_id = lr.user_id
+              AND lh.rule_key = 'REDEEM_VERIFICATION'
+              AND lh.place_id = lr.place_id
+              AND lh.created_at = lr.created_at
+          )
+        ORDER BY lr.created_at DESC
+        LIMIT 200
+      `).bind(uid, user?.id || uid).all()).results || [];
+    } catch (redemptionErr) {
+      console.warn('[Coins balance redemption-history warning]:', redemptionErr?.message || redemptionErr);
+    }
 
     const completeHistory = [...history, ...redemptionHistory]
       .sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0))
