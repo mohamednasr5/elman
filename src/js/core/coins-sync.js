@@ -56,9 +56,8 @@ export async function fetchLiveCoinsBalance(force = false) {
     if (!token) return getStoredCoinsBalance();
     const res = await api.get('/api/coins/balance', token);
     if (res && res.success && res.data) {
-      const liveBal = Number(res.data.balance || 0);
-      const storedBal = getStoredCoinsBalance();
-      const finalBal = liveBal > 0 ? liveBal : (storedBal > 0 ? storedBal : liveBal);
+      // Turso is authoritative. A real zero balance must overwrite stale localStorage.
+      const finalBal = Math.max(0, Number(res.data.balance ?? 0));
       setStoredCoinsBalance(finalBal);
       return finalBal;
     }

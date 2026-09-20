@@ -40,9 +40,10 @@ async function _updateHeaderCoinsBalance() {
     const token = await getIdToken();
     if (!token) return;
     const res = await api.get('/api/coins/balance', token);
-    const balance = res?.data?.balance ?? res?.balance;
-    if (typeof balance === 'number') {
-      localStorage.setItem('manzala_user_coins_balance', String(balance));
+    const balance = Number(res?.data?.balance ?? res?.balance ?? 0);
+    if (Number.isFinite(balance)) {
+      // Server/Turso is authoritative; also allow a real zero to clear stale cache.
+      localStorage.setItem('manzala_user_coins_balance', String(Math.max(0, balance)));
       _applyCoinsBalanceToUI(balance);
     }
   } catch (_) {}
