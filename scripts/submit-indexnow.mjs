@@ -34,4 +34,8 @@ for(let i=0;i<urls.length;i+=10000){
 }
 console.log(`IndexNow: accepted ${sent} public profile URLs.`);
 
-console.log('Daily IndexNow submission cycle complete.');
+// Search engines discover the canonical sitemap through robots.txt and the sitemap index.
+// IndexNow handles supported engines directly; Google recommends sitemap submission through Search Console
+// (or its API) rather than the retired sitemap ping endpoint.
+// https://developers.google.com/search/updates#June_2023
+console.log('Daily search engine submission cycle complete.');
