@@ -744,16 +744,25 @@ export default {
           }
         });
       }
+      // Never fall back from a public place URL to place.html after a fatal
+      // Worker exception. That can turn a broken canonical URL into a 200
+      // generic page (soft-404 / duplicate-content signal).
+      if (/^\\/(?:en\\/)?place(?:\\/|$)/i.test(url.pathname)) {
+        return new Response('Temporary server error', {
+          status: 503,
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-store, max-age=0'
+          }
+        });
+      }
       try {
         const fallbackUrl = new URL(request.url);
-        if (fallbackUrl.pathname.startsWith('/place/')) {
-          fallbackUrl.pathname = '/place.html';
-        }
         return await fetch(fallbackUrl.toString());
       } catch (_) {
         return new Response('حدث خطأ مؤقت، يرجى إعادة المحاولة', {
           status: 500,
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+          headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store, max-age=0' }
         });
       }
     }
