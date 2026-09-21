@@ -11,7 +11,7 @@
  * Usage:
  *   import { api } from './api.js';
  *   const places = await api.get('/api/places');
- *   const result = await api.post('/api/places/create', data, idToken);
+ *   const result = await api.post('/api/places/sync', data, idToken);
  */
 
 import { WORKER_URL } from './firebase.js';
@@ -161,7 +161,7 @@ export const placesApi = {
   getBySlug: (slug) => api.get(`/api/places?slug=${encodeURIComponent(slug)}`),
   search: (q, category = '', area = '', limit = 20, offset = 0) =>
     api.get(`/api/search?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}&area=${encodeURIComponent(area)}&limit=${limit}&offset=${offset}`),
-  create: (data, idToken) => api.post('/api/places/create', data, idToken),
+  create: (data, idToken) => api.post('/api/places/sync', data, idToken),
   update: (id, data, idToken) => api.put(`/api/places/${id}`, data, idToken),
   delete: (id, idToken) => api.delete(`/api/places/${id}`, idToken),
   verify: (id, idToken) => api.post(`/api/places/${id}/verify`, {}, idToken),
