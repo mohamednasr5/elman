@@ -28,6 +28,7 @@ for(const f of ['sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categor
   must(x.includes('xmlns:xhtml='),`${f}: xhtml namespace missing`);
   must(x.includes('hreflang="ar"')&&x.includes('hreflang="en"'),`${f}: bilingual hreflang missing`);
   must(!x.includes('&amp;apos;'),`${f}: malformed double escaping`);
+  if (f.includes('categories')) must(/\/category\/[^<\s]+\//.test(x) && !/\/category\/[^<\s]*[^\/]<\/loc>/.test(x),'Category sitemap contains a non-canonical URL');
 }
 
 const en=read('en/index.html');
