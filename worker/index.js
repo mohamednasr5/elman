@@ -9877,11 +9877,11 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   }
 
   // 1. Search for the place in Turso (Tier 1 hits B-Tree index)
-  const place = await findPlaceInTurso(env, cleanSlug);
+  const foundPlace = await findPlaceInTurso(env, cleanSlug);
 
   // Public SEO/SSR pages may expose published places only.
   // Admin/API code can still use findPlaceInTurso for unpublished records.
-  const publicPlace = place && String(place.status || '').toLowerCase() === 'published' ? place : null;
+  const publicPlace = foundPlace && String(foundPlace.status || '').toLowerCase() === 'published' ? foundPlace : null;
 
   // 2. If place not found or is not publicly published
   if (!publicPlace) {
