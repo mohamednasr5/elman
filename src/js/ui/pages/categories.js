@@ -157,6 +157,8 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   );
 
   if (!cat) {
+    // Unknown category URLs must never look indexable.
+    setMeta({ title: 'التصنيف غير موجود | دليل المنزلة والمطرية', noindex: true, url: 'https://dalilmanzala.com/categories/' });
     $container.innerHTML = `
       <div class="container" style="padding-top:var(--space-4)">
         <div class="page-back-bar">
