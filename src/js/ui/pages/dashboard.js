@@ -909,7 +909,120 @@ function renderPlacesListHTML(places) {
                       </div>
                     ` : `
                       <button type="button" class="btn btn-sm btn-action-promote-place" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name)}" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:4px" title="ترقية المكان لإعلان مميز في صدارة الدليل لمدة 30 يوماً مقابل 500 ذهبية">🌟 إعلان مميز (500 ذهبية)</button>
-                    `}).join('')}
+                    `}
+                    <button type="button" class="btn btn-sm btn-dash-cert btn-appreciation-certificate-pulse" data-place-id="${escAttr(placeId)}" style="border:1px solid #F59E0B;color:#B45309;font-weight:800;border-radius:var(--radius-sm);cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="عرض وتحميل وطباعة شهادة التقدير الرسمية لنشاطك (A4)">
+                      <span>🎖️</span> <span>شهادة تقدير (A4)</span>
+                    </button>
+                  </div>
+                `;
+              })()}
+            </div>
+
+            <!-- Quick 1-Click Availability & Analytics Bar -->
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:var(--surface-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:12px;font-weight:700;color:var(--text-primary)">⚡ حالة التوافر:</span>
+                <select class="dash-availability-select form-select" data-place-id="${escAttr(placeId)}" style="padding:3px 8px;font-size:12px;font-weight:700;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--surface)">
+                  <option value="available" ${(place.availabilityStatus || place.availability_status) === 'available' ? 'selected' : ''}>🟢 متاح الآن</option>
+                  <option value="busy" ${(place.availabilityStatus || place.availability_status) === 'busy' ? 'selected' : ''}>🟡 مشغول حالياً</option>
+                  <option value="unavailable" ${(place.availabilityStatus || place.availability_status) === 'unavailable' ? 'selected' : ''}>🔴 غير متاح حالياً</option>
+                </select>
+              </div>
+              <a href="dashboard.html?section=analytics&id=${escAttr(placeId)}" class="btn btn-sm btn-outline" style="font-size:12px;padding:3px 10px;font-weight:700">
+                <span>📊 تقرير الأداء والكلمات</span>
+              </a>
+            </div>
+
+            <div class="my-place-item__body">
+              <div class="my-place-stat">
+                <div class="my-place-stat__value">${place.stats?.views || 0}</div>
+                <div class="my-place-stat__label">مشاهدات</div>
+              </div>
+              <div class="my-place-stat">
+                <div class="my-place-stat__value">${place.stats?.phoneClicks || 0}</div>
+                <div class="my-place-stat__label">اتصالات</div>
+              </div>
+              <div class="my-place-stat">
+                <div class="my-place-stat__value">${place.stats?.whatsappClicks || 0}</div>
+                <div class="my-place-stat__label">واتساب</div>
+              </div>
+              <div class="my-place-stat">
+                <div class="my-place-stat__value">${place.stats?.directionsClicks || 0}</div>
+                <div class="my-place-stat__label">خرائط</div>
+              </div>
+              <div class="my-place-stat">
+                <div class="my-place-stat__value">${place.stats?.favoriteClicks || 0}</div>
+                <div class="my-place-stat__label">حفظ بالمفضلة</div>
+              </div>
+              <div class="my-place-stat">
+                <div class="my-place-stat__value">${place.stats?.shareClicks || 0}</div>
+                <div class="my-place-stat__label">مشاركات</div>
+              </div>
+            </div>
+
+            <!-- Independent Branches Section -->
+            ${(() => {
+              const branches = Array.isArray(place.branches) ? place.branches : [];
+              return `
+                <div class="my-place-branches-section" style="background:var(--surface);border-top:1px solid var(--border);padding:12px 16px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:16px">🏬</span>
+                      <strong style="font-size:13px;color:var(--text-primary)">الفروع الأخرى التابعة لهذا النشاط (${branches.length})</strong>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary btn-dash-add-branch" data-place-id="${escAttr(placeId)}" style="font-size:12px;padding:3px 10px;font-weight:700">
+                      ➕ إضافة فرع لهذا النشاط
+                    </button>
+                  </div>
+
+                  ${branches.length === 0 ? `
+                    <div style="margin-top:8px;font-size:12px;color:var(--text-muted)">
+                      لا توجد فروع مسجلة لهذا النشاط بعد. يمكنك إضافة فروعك الأخرى في المنزلة أو المطرية للتحكم بمواعيدها ومكانها وأرقامها بشكل مستقل.
+                    </div>
+                  ` : `
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:10px;margin-top:10px">
+                      ${branches.map((b, bIdx) => {
+                        const isSameHours = b.same_as_main_hours !== false && b.sameAsMainHours !== false;
+                        const bStatus = b.availability_status || b.availabilityStatus || 'available';
+                        return `
+                          <div class="dash-branch-card" style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+                            <div>
+                              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px">
+                                <strong style="font-size:13.5px;color:var(--text-primary)">${escHtml(b.name || `فرع #${bIdx + 1}`)}</strong>
+                                <select class="dash-branch-status-select form-select" data-place-id="${escAttr(placeId)}" data-branch-idx="${bIdx}" style="padding:2px 8px;font-size:11px;font-weight:700;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:var(--surface)">
+                                  <option value="available" ${bStatus === 'available' ? 'selected' : ''}>🟢 متاح</option>
+                                  <option value="busy" ${bStatus === 'busy' ? 'selected' : ''}>🟡 مشغول</option>
+                                  <option value="unavailable" ${bStatus === 'unavailable' ? 'selected' : ''}>🔴 غير متاح</option>
+                                </select>
+                              </div>
+                              <div style="font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:4px">
+                                <span>📍</span>
+                                <span>${escHtml(b.area || '')}${b.address ? ` — ${escHtml(b.address)}` : ''}</span>
+                              </div>
+                              <div style="font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:4px;margin-top:4px">
+                                <span>⏰</span>
+                                <span>${isSameHours ? '🏢 مواعيد الفرع الرئيسي (تطابق تلقائي)' : '🕒 مواعيد عمل خاصة بالفرع'}</span>
+                              </div>
+                              ${(b.phone || b.whatsapp) ? `
+                                <div style="font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:4px;margin-top:3px">
+                                  <span>📞</span>
+                                  <span>${escHtml(b.phone || b.whatsapp || '')}</span>
+                                </div>
+                              ` : ''}
+                            </div>
+
+                            <!-- Branch Action Buttons -->
+                            <div style="display:flex;align-items:center;gap:6px;padding-top:8px;border-top:1px dashed var(--border)">
+                              <button type="button" class="btn btn-sm btn-outline btn-dash-edit-branch" data-place-id="${escAttr(placeId)}" data-branch-idx="${bIdx}" style="font-size:12px;padding:3px 8px;flex:1">
+                                ✏️ تعديل الفرع ومواعيده
+                              </button>
+                              <button type="button" class="btn btn-sm btn-dash-del-branch" data-place-id="${escAttr(placeId)}" data-branch-idx="${bIdx}" style="font-size:12px;padding:3px 8px;color:var(--danger);background:none;border:1px solid rgba(239,68,68,0.3)" title="حذف هذا الفرع">
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        `;
+                      }).join('')}
                     </div>
                   `}
                 </div>
