@@ -54,6 +54,8 @@ must(!entity.includes('31.1578') || !entity.includes('32.0333'),'SEO generator m
 const builder=read('build-seo-pages.mjs');
 const englishBuilder=read('generate-english-pages.mjs');
 must(englishBuilder.includes('generateBusinessSEOEnglish')&&englishBuilder.includes('Questions &amp; answers'),'English profiles must contain entity metadata and crawlable Q&A');
+must(englishBuilder.includes('englishLandingBody')&&englishBuilder.includes('<h1>'),'English landing pages must contain crawlable H1/content without JS');
+must(englishBuilder.includes('writeEnglishCategory')&&englishBuilder.includes('CollectionPage'),'English category pages must contain crawlable category content');
 const workflow=read('.github/workflows/generate-english-pages.yml');
 must(workflow.includes('node build-seo-pages.mjs'),'Bilingual SEO workflow must regenerate Arabic static profiles');
 for(const needle of ['Semantic Body Content (Discoverable immediately without JS execution)','Crawlable Breadcrumb Navigation','Related Places in Same Category','Inject Internal Links into places.html','AEO/GEO answer block','${qaHtml}'])must(builder.includes(needle),`build-seo-pages.mjs missing ${needle}`);
