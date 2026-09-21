@@ -101,15 +101,18 @@ export function renderPaymentBadges(paymentMethods = [], options = {}) {
       : `يقبل الدفع بواسطة: ${method.nameAr}`;
 
     return `
-      <div class="payment-badge-wrapper" tabindex="0" role="img" aria-label="${escapeHtml(tooltipText)}">
+      <div class="payment-badge-wrapper" tabindex="0" role="img" aria-label="${escapeHtml(tooltipText)}" data-payment-id="${escapeHtml(method.id)}">
         <div class="payment-badge-3d" data-payment-id="${escapeHtml(method.id)}">
-          <img src="${escapeHtml(method.icon)}" alt="${escapeHtml(name)}" width="52" height="52" loading="lazy" decoding="async" />
+          <span class="payment-badge-3d__icon">
+            <img src="${escapeHtml(method.icon)}" alt="" width="42" height="42" loading="lazy" decoding="async" />
+          </span>
+          <span class="payment-badge-3d__name">${escapeHtml(name)}</span>
         </div>
         <div class="payment-badge-tooltip" role="tooltip">
           <span class="payment-badge-tooltip__title">${escapeHtml(name)}</span>
           <span class="payment-badge-tooltip__desc">${escapeHtml(method.description)}</span>
         </div>
-      </div>
+      </div>     </div>
     `;
   }).join('');
 

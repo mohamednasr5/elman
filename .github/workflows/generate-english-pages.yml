@@ -22,6 +22,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Verify published SEO dataset before regeneration
+        run: |
+          node - <<'NODE'
+          const res = await fetch('https://dalilmanzala.com/api/places?limit=1000');
+          if (!res.ok) throw new Error(`Published places API returned HTTP ${res.status}`);
+          const json = await res.json();
+          const rows = Array.isArray(json?.data) ? json.data : [];
+          if (rows.length < 1) throw new Error('Published places dataset is empty; refusing to prune generated SEO pages.');
+          console.log(`Verified ${rows.length} published places before regeneration.`);
+          NODE
+      - name: Remove stale generated SEO profile directories
+        run: |
+          rm -rf place/* category/* en/place/* en/category/*
+          mkdir -p place category en/place en/category
       - name: Generate Arabic static SEO business/category pages
         run: node build-seo-pages.mjs
       - name: Generate English SEO-aware pages

@@ -1582,46 +1582,62 @@ body.dark-theme .place-payment-header {
 }
 
 .payment-badge-3d {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  padding: 5px;
-  display: flex;
+  min-width: 138px;
+  height: 58px;
+  border-radius: 17px;
+  padding: 6px 12px 6px 8px;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  background: linear-gradient(145deg, #ffffff, #f1f5f9);
-  border: 1.5px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 6px 16px -2px rgba(15, 39, 77, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1.5px 1.5px rgba(255, 255, 255, 0.95), inset 0 -2px 3px rgba(0, 0, 0, 0.06);
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  justify-content: flex-start;
+  gap: 9px;
+  direction: rtl;
+  background: linear-gradient(135deg, #0F274D 0%, #1B4F72 100%);
+  border: 1px solid rgba(99, 240, 174, 0.28);
+  box-shadow: 0 7px 18px rgba(15, 39, 77, 0.18), inset 0 1px 0 rgba(255,255,255,0.12);
+  color: #fff;
   box-sizing: border-box;
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease, border-color .22s ease;
 }
 
 [data-theme="dark"] .payment-badge-3d,
 body.dark-theme .payment-badge-3d {
-  background: linear-gradient(145deg, #1e293b, #0f172a);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.4), inset 0 1.5px 1.5px rgba(255, 255, 255, 0.15), inset 0 -2px 3px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(135deg, #0B1730 0%, #123B59 100%);
+  border-color: rgba(99, 240, 174, 0.35);
 }
 
-.payment-badge-3d img {
-  width: 100%;
-  height: 100%;
+.payment-badge-3d__icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(0,0,0,.18);
+  overflow: hidden;
+}
+
+.payment-badge-3d__icon img {
+  width: 38px;
+  height: 38px;
   object-fit: contain;
-  border-radius: 10px;
-  transition: transform 0.25s ease;
   display: block;
+}
+
+.payment-badge-3d__name {
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 900;
+  color: #fff;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .payment-badge-wrapper:hover .payment-badge-3d,
 .payment-badge-wrapper:focus-visible .payment-badge-3d {
-  transform: translateY(-5px) scale(1.08);
-  box-shadow: 0 14px 28px -4px rgba(15, 39, 77, 0.22), 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 2px 2px rgba(255, 255, 255, 1);
-  border-color: rgba(2, 132, 199, 0.4);
-}
-
-.payment-badge-wrapper:hover .payment-badge-3d img,
-.payment-badge-wrapper:focus-visible .payment-badge-3d img {
-  transform: scale(1.05);
+  transform: translateY(-4px) scale(1.025);
+  border-color: rgba(99, 240, 174, 0.85);
+  box-shadow: 0 13px 26px rgba(15, 39, 77, 0.25), 0 0 0 3px rgba(99, 240, 174, 0.10);
 }
 
 .payment-badge-tooltip {
@@ -1629,22 +1645,20 @@ body.dark-theme .payment-badge-3d {
   bottom: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%) translateY(6px);
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #ffffff;
-  padding: 8px 12px;
-  border-radius: 10px;
+  background: #0F274D;
+  color: #fff;
+  padding: 9px 12px;
+  border-radius: 11px;
   width: max-content;
-  max-width: 230px;
+  max-width: 240px;
   text-align: center;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all .2s ease;
   z-index: 60;
-  box-shadow: 0 12px 26px -4px rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 28px rgba(15, 39, 77, .28);
+  border: 1px solid rgba(99, 240, 174, .25);
 }
 
 .payment-badge-tooltip::after {
@@ -1654,7 +1668,7 @@ body.dark-theme .payment-badge-3d {
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: rgba(15, 23, 42, 0.95);
+  border-top-color: #0F274D;
 }
 
 .payment-badge-wrapper:hover .payment-badge-tooltip,
@@ -1665,16 +1679,16 @@ body.dark-theme .payment-badge-3d {
 }
 
 .payment-badge-tooltip__title {
-  font-weight: 800;
+  font-weight: 900;
   font-size: 12px;
-  color: #38bdf8;
+  color: #63f0ae;
   display: block;
   margin-bottom: 2px;
 }
 
 .payment-badge-tooltip__desc {
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 1.4;
   color: #e2e8f0;
   display: block;
 }
@@ -2130,3 +2144,27 @@ html.has-anchor-cursor [contenteditable="true"]{cursor:text}
   .payment-badge-wrapper:hover .payment-badge-tooltip,
   .payment-badge-wrapper:focus-visible .payment-badge-tooltip{transform:translate(0,0) scale(1)}
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   APP STORE COMING SOON + PULSING SHIP'S ANCHOR CURSOR
+   ═══════════════════════════════════════════════════════════════ */
+.footer__app-stores { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+.app-store-coming-soon { position:relative; min-width:178px; height:58px; display:inline-flex; align-items:center; gap:9px; padding:6px 10px; border-radius:16px; box-sizing:border-box; background:linear-gradient(135deg,#0F274D 0%,#1B4F72 100%); border:1px solid rgba(99,240,174,.28); color:#fff; overflow:hidden; cursor:default; box-shadow:0 8px 18px rgba(15,39,77,.18),inset 0 1px 0 rgba(255,255,255,.12); transition:transform .22s cubic-bezier(.34,1.56,.64,1),border-color .22s ease,box-shadow .22s ease; }
+.app-store-coming-soon:hover,.app-store-coming-soon:focus-visible { transform:translateY(-3px); border-color:rgba(99,240,174,.9); box-shadow:0 14px 28px rgba(15,39,77,.24),0 0 0 3px rgba(99,240,174,.09); outline:none; }
+.app-store-coming-soon__icon { width:40px;height:40px;display:grid;place-items:center;flex:0 0 40px;border-radius:11px;background:rgba(255,255,255,.08); }
+.app-store-coming-soon__copy { display:flex;flex-direction:column;gap:1px;line-height:1.15;direction:ltr;text-align:left; }
+.app-store-coming-soon__copy small { font-size:9px;color:rgba(255,255,255,.72);font-weight:700; }
+.app-store-coming-soon__copy strong { font-size:13px;font-weight:900;color:#fff; }
+.app-store-coming-soon__soon { position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(135deg,rgba(15,39,77,.96),rgba(27,79,114,.96));color:#63f0ae;font-size:14px;font-weight:900;letter-spacing:.2px;opacity:0;transform:translateY(8px);transition:opacity .2s ease,transform .2s ease; }
+.app-store-coming-soon:hover .app-store-coming-soon__soon,.app-store-coming-soon:focus-visible .app-store-coming-soon__soon { opacity:1;transform:translateY(0); }
+.anchor-cursor { position:fixed;top:0;left:0;width:42px;height:42px;display:grid;place-items:center;z-index:2147483647;pointer-events:none;transform:translate3d(-50%,-50%,0);will-change:transform;filter:drop-shadow(0 5px 8px rgba(15,39,77,.25));transition:width .18s ease,height .18s ease,filter .18s ease; }
+.anchor-cursor::before,.anchor-cursor::after { content:'';position:absolute;inset:2px;border-radius:50%;border:1.5px solid rgba(99,240,174,.72);animation:anchor-cursor-pulse 1.65s ease-out infinite; }
+.anchor-cursor::after { animation-delay:.82s;opacity:.55; }
+.anchor-cursor span { position:relative;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#0F274D,#1B4F72);border:1px solid rgba(99,240,174,.85);color:#63f0ae;font-size:20px;line-height:1;box-shadow:0 5px 14px rgba(15,39,77,.3),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .18s ease,background .18s ease; }
+.anchor-cursor.is-hovering span { transform:scale(1.2) rotate(-8deg);background:linear-gradient(135deg,#1B4F72,#0F274D); }
+.anchor-cursor.is-clicking span { transform:scale(.9) rotate(8deg); }
+@keyframes anchor-cursor-pulse { 0%{transform:scale(.55);opacity:.85;}70%{transform:scale(1.45);opacity:0;}100%{transform:scale(1.45);opacity:0;} }
+@media (pointer:fine) { .anchor-cursor-enabled,.anchor-cursor-enabled body,.anchor-cursor-enabled body * { cursor:none !important; } }
+@media (max-width:640px) { .footer__app-stores{display:grid;grid-template-columns:1fr 1fr;} .app-store-coming-soon{min-width:0;width:100%;} }
+@media (prefers-reduced-motion:reduce) { .anchor-cursor::before,.anchor-cursor::after{animation:none;} }
