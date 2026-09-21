@@ -514,9 +514,9 @@ async function run() {
       const pCat = escapeHtml(p.customCategory || p.category || 'خدمات');
       return `
         <article class="seo-place-preview-card" style="padding:1rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:14px">
-          <h2 style="font-size:1rem;margin:0 0 0.35rem"><a href="/place/${encodeURIComponent(pSlug)}" style="color:var(--text-primary,#0f172a);text-decoration:none">${pName}</a></h2>
+          <h2 style="font-size:1rem;margin:0 0 0.35rem"><a href="/place/${encodeURIComponent(pSlug)}/" style="color:var(--text-primary,#0f172a);text-decoration:none">${pName}</a></h2>
           <p style="font-size:0.82rem;color:var(--text-secondary,#64748b);margin:0 0 0.5rem">📍 ${pArea} • 📂 ${pCat}</p>
-          <a href="/place/${encodeURIComponent(pSlug)}" style="font-size:0.82rem;font-weight:700;color:var(--primary,#0284c7);text-decoration:none">عرض تفاصيل المكان ووسائل الاتصال ←</a>
+          <a href="/place/${encodeURIComponent(pSlug)}/" style="font-size:0.82rem;font-weight:700;color:var(--primary,#0284c7);text-decoration:none">عرض تفاصيل المكان ووسائل الاتصال ←</a>
         </article>`;
     }).join('\n');
 
