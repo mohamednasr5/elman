@@ -1938,3 +1938,195 @@ body.dark-theme .payment-status-badge.is-active {
   border-color: rgba(34, 197, 94, 0.3);
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   Premium Payment Methods + Springing Ship Anchor Cursor
+   ═══════════════════════════════════════════════════════════════ */
+
+.place-payment-section{
+  position:relative;
+  margin:1.35rem 0;
+  padding:1.15rem 1.2rem 1rem;
+  border:1px solid color-mix(in srgb,var(--primary) 12%,var(--border));
+  border-radius:22px;
+  background:linear-gradient(145deg,var(--surface) 0%,color-mix(in srgb,var(--surface-2) 82%,white) 100%);
+  box-shadow:0 10px 30px rgba(15,23,42,.07);
+  overflow:hidden;
+}
+.place-payment-section::before{
+  content:"";
+  position:absolute;
+  inset:0 auto auto 0;
+  width:100%;
+  height:3px;
+  background:linear-gradient(90deg,var(--primary),var(--info),var(--accent));
+  opacity:.9;
+}
+.place-payment-header{
+  display:flex;
+  align-items:center;
+  gap:.75rem;
+  min-height:48px;
+  padding-bottom:.8rem;
+  border-bottom:1px solid var(--border);
+}
+.place-payment-header__icon{
+  width:42px;height:42px;flex:0 0 42px;
+  display:grid;place-items:center;
+  border-radius:14px;
+  background:linear-gradient(145deg,#e0f2fe,#bae6fd);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 6px 16px rgba(2,132,199,.16);
+  font-size:1.2rem;
+}
+.place-payment-header__title{
+  flex:1;
+  margin:0;
+  font-size:1.05rem;
+  font-weight:850;
+  color:var(--text-primary);
+}
+.place-payment-header__badge{
+  flex:0 0 auto;
+  padding:.35rem .7rem;
+  border-radius:999px;
+  background:color-mix(in srgb,var(--info) 10%,var(--surface));
+  border:1px solid color-mix(in srgb,var(--info) 22%,var(--border));
+  color:var(--info);
+  font-size:.72rem;
+  font-weight:800;
+  white-space:nowrap;
+}
+.place-payment-badges-grid{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-start;
+  gap:.8rem;
+  padding:1rem .15rem .7rem;
+}
+.payment-badge-wrapper{
+  position:relative;
+  width:74px;
+  min-width:74px;
+  display:flex;
+  justify-content:center;
+  outline:none;
+}
+.payment-badge-3d{
+  width:66px;height:66px;
+  display:grid;place-items:center;
+  border-radius:18px;
+  background:linear-gradient(145deg,#fff,#eef2f7);
+  border:1px solid rgba(148,163,184,.32);
+  box-shadow:0 9px 18px rgba(15,23,42,.12),inset 0 1px 0 rgba(255,255,255,.95);
+  transform:translateY(0) rotate(0);
+  transition:transform .28s cubic-bezier(.34,1.56,.64,1),box-shadow .22s ease;
+}
+.payment-badge-3d img{
+  width:52px;height:52px;
+  object-fit:contain;
+  border-radius:13px;
+}
+.payment-badge-wrapper:hover .payment-badge-3d,
+.payment-badge-wrapper:focus-visible .payment-badge-3d{
+  transform:translateY(-5px) rotate(-2deg) scale(1.04);
+  box-shadow:0 15px 26px rgba(15,23,42,.17),0 0 0 4px color-mix(in srgb,var(--primary) 9%,transparent);
+}
+.payment-badge-tooltip{
+  position:absolute;
+  z-index:20;
+  top:calc(100% + 10px);
+  right:50%;
+  width:220px;
+  padding:.75rem .85rem;
+  border:1px solid var(--border-strong);
+  border-radius:14px;
+  background:var(--surface);
+  box-shadow:var(--shadow-lg);
+  opacity:0;
+  visibility:hidden;
+  transform:translate(50%,-5px) scale(.97);
+  transition:opacity .18s ease,transform .18s ease,visibility .18s ease;
+  pointer-events:none;
+  text-align:right;
+}
+.payment-badge-wrapper:hover .payment-badge-tooltip,
+.payment-badge-wrapper:focus-visible .payment-badge-tooltip{
+  opacity:1;
+  visibility:visible;
+  transform:translate(50%,0) scale(1);
+}
+.payment-badge-tooltip__title,
+.payment-badge-tooltip__desc{display:block}
+.payment-badge-tooltip__title{font-weight:850;color:var(--text-primary);margin-bottom:.2rem}
+.payment-badge-tooltip__desc{font-size:.76rem;line-height:1.65;color:var(--text-secondary)}
+.place-payment-hint{
+  display:flex;
+  align-items:center;
+  gap:.4rem;
+  color:var(--text-muted);
+  font-size:.75rem;
+  padding-top:.15rem;
+}
+.payment-option-card{
+  border:1px solid var(--border)!important;
+  border-radius:18px!important;
+  background:var(--surface)!important;
+  box-shadow:0 5px 16px rgba(15,23,42,.06)!important;
+}
+.payment-option-card.is-selected{
+  border-color:color-mix(in srgb,var(--accent) 45%,var(--border))!important;
+  box-shadow:0 8px 22px rgba(16,185,129,.11)!important;
+}
+.payment-option-logo-box{
+  width:58px!important;height:58px!important;
+  border-radius:16px!important;
+  background:linear-gradient(145deg,#fff,#f1f5f9)!important;
+  box-shadow:inset 0 1px 0 #fff,0 5px 12px rgba(15,23,42,.1)!important;
+}
+.payment-option-logo-box img{width:46px!important;height:46px!important;object-fit:contain}
+.payment-form-badge{border-radius:999px!important;font-weight:800!important}
+.payment-form-subtitle{line-height:1.8!important}
+
+/* The anchor is a decorative pointer layer; controls retain native text caret. */
+.anchor-cursor{
+  position:fixed;
+  left:0;top:0;
+  width:30px;height:30px;
+  z-index:2147483647;
+  pointer-events:none;
+  opacity:0;
+  transform-origin:18% 18%;
+  filter:drop-shadow(0 4px 7px rgba(15,23,42,.28));
+  transition:opacity .14s ease;
+  will-change:transform;
+}
+.anchor-cursor svg{display:block;width:100%;height:100%;overflow:visible}
+.anchor-cursor.is-visible{opacity:1}
+html.has-anchor-cursor,
+html.has-anchor-cursor body,
+html.has-anchor-cursor a,
+html.has-anchor-cursor button,
+html.has-anchor-cursor [role="button"]{cursor:none}
+html.has-anchor-cursor input,
+html.has-anchor-cursor textarea,
+html.has-anchor-cursor select,
+html.has-anchor-cursor [contenteditable="true"]{cursor:text}
+@media (max-width:767px),(pointer:coarse){
+  .anchor-cursor{display:none!important}
+}
+@media (prefers-reduced-motion:reduce){
+  .anchor-cursor{display:none!important}
+}
+@media (max-width:600px){
+  .place-payment-section{padding:.95rem;border-radius:18px}
+  .place-payment-header{align-items:flex-start;flex-wrap:wrap}
+  .place-payment-header__title{font-size:.95rem}
+  .place-payment-header__badge{margin-inline-start:auto}
+  .place-payment-badges-grid{justify-content:center;gap:.55rem}
+  .payment-badge-wrapper{width:64px;min-width:64px}
+  .payment-badge-3d{width:58px;height:58px;border-radius:15px}
+  .payment-badge-3d img{width:46px;height:46px}
+  .payment-badge-tooltip{right:0;transform:translate(0,-5px) scale(.97)}
+  .payment-badge-wrapper:hover .payment-badge-tooltip,
+  .payment-badge-wrapper:focus-visible .payment-badge-tooltip{transform:translate(0,0) scale(1)}
+}
