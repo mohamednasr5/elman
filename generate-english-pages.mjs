@@ -52,8 +52,9 @@ function writeEnglishPlace(rel, place) {
   const seo = generateBusinessSEOEnglish(place);
   if (!seo) return;
   const phone = seo.phone ? seo.phone.replace(/\s+/g, '') : '';
-  const wa = seo.whatsapp ? seo.whatsapp.replace(/\D/g, '').replace(/^0+/, '') : '';
-  const waLink = wa ? `https://wa.me/20${wa}` : '';
+  const waRaw = seo.whatsapp ? String(seo.whatsapp).replace(/\D/g, '') : '';
+  const wa = waRaw.startsWith('20') ? waRaw : (waRaw.startsWith('0') ? `20${waRaw.slice(1)}` : `20${waRaw}`);
+  const waLink = wa && wa.length >= 10 ? `https://wa.me/${wa}` : '';
   const qa = seo.qa.map(item => `<div class="place-qa__item" style="padding:12px 0;border-top:1px solid #e2e8f0"><h2 style="font-size:1rem;margin:0 0 6px">${escapeHtml(item.name)}</h2><p style="line-height:1.8;margin:0;color:#475569">${escapeHtml(item.acceptedAnswer.text)}</p></div>`).join('');
   const html = `<!doctype html><html lang="en" dir="ltr"><head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
