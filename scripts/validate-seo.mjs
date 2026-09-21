@@ -43,8 +43,15 @@ must(redirects.includes('/place/*')&&redirects.includes('/category/*'),'Public p
 
 const entity=read('src/js/utils/seo-entity.js');
 must((entity.includes("'@type': 'LocalBusiness'")||entity.includes("return 'LocalBusiness'"))&&entity.includes("'@type': 'BreadcrumbList'"),'Required structured data generators missing');
+must(entity.includes('generateBusinessSEOEnglish'),'English business SEO generator missing');
+must(!entity.includes("'@type': 'FAQPage'"),'FAQPage schema should not be emitted as a Google rich-result strategy');
+must(!entity.includes('31.1578') || !entity.includes('32.0333'),'SEO generator must not use guessed city-centre coordinates as business coordinates');
 
 const builder=read('build-seo-pages.mjs');
-for(const needle of ['Semantic Body Content (Discoverable immediately without JS execution)','Crawlable Breadcrumb Navigation','Related Places in Same Category','Inject Internal Links into places.html'])must(builder.includes(needle),`build-seo-pages.mjs missing ${needle}`);
+const englishBuilder=read('generate-english-pages.mjs');
+must(englishBuilder.includes('generateBusinessSEOEnglish')&&englishBuilder.includes('Questions &amp; answers'),'English profiles must contain entity metadata and crawlable Q&A');
+const workflow=read('.github/workflows/generate-english-pages.yml');
+must(workflow.includes('node build-seo-pages.mjs'),'Bilingual SEO workflow must regenerate Arabic static profiles');
+for(const needle of ['Semantic Body Content (Discoverable immediately without JS execution)','Crawlable Breadcrumb Navigation','Related Places in Same Category','Inject Internal Links into places.html','AEO/GEO answer block','${qaHtml}'])must(builder.includes(needle),`build-seo-pages.mjs missing ${needle}`);
 
 console.log('SEO validation passed.');
