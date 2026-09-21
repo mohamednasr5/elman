@@ -2,8 +2,8 @@
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap><loc>https://dalilmanzala.com/sitemap-places-ar.xml</loc><lastmod>2026-09-21</lastmod></sitemap>
   <sitemap><loc>https://dalilmanzala.com/sitemap-places-en.xml</loc><lastmod>2026-09-21</lastmod></sitemap>
-  <sitemap><loc>https://dalilmanzala.com/sitemap-categories-ar.xml</loc><lastmod>2026-09-21</lastmod></sitemap>
-  <sitemap><loc>https://dalilmanzala.com/sitemap-categories-en.xml</loc><lastmod>2026-09-21</lastmod></sitemap>
+  <sitemap><loc>https://dalilmanzala.com/sitemap-categories-ar.xml</loc></sitemap>
+  <sitemap><loc>https://dalilmanzala.com/sitemap-categories-en.xml</loc></sitemap>
   <sitemap><loc>https://dalilmanzala.com/sitemap-static-ar.xml</loc><lastmod>2026-09-21</lastmod></sitemap>
   <sitemap><loc>https://dalilmanzala.com/sitemap-static-en.xml</loc><lastmod>2026-09-21</lastmod></sitemap>
 </sitemapindex>
