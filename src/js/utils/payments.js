@@ -102,7 +102,7 @@ export function renderPaymentBadges(paymentMethods = [], options = {}) {
 
     return `
       <div class="payment-badge-wrapper" tabindex="0" role="img" aria-label="${escapeHtml(tooltipText)}" data-payment-id="${escapeHtml(method.id)}">
-        <div class="payment-badge-3d" data-payment-id="${escapeHtml(method.id)}">
+        <div class="payment-badge-3d" data-payment-id="${escapeHtml(method.id)}" tabindex="0" role="button" aria-label="${escapeHtml(tooltipText)}">
           <span class="payment-badge-3d__icon">
             <img src="${escapeHtml(method.icon)}" alt="" width="42" height="42" loading="lazy" decoding="async" />
           </span>
