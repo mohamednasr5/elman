@@ -1101,6 +1101,144 @@ function setupBranchListeners($container, user, places, onRefresh = null) {
   });
 }
 
+/**
+ * Reusable Area Selector (55 villages + instant search + other pill + badge)
+ * Used for Main Place, Branch Rows, and Quick Edit Branch Modals
+ */
+function renderAreaSelectForm({
+  prefix = 'p',
+  initialArea = 'المنزلة',
+  label = 'المنطقة داخل المنزلة / المطرية',
+  isRequired = true,
+  placeholder = '🔍 ابحث بالاسم عن قريتك أو منطقتك (55 قرية ومدينة)...'
+} = {}) {
+  const currentArea = (initialArea || '').trim() || 'المنزلة';
+  const matchedArea = MANZALA_VILLAGES_LIST.find(v => v.trim().toLowerCase() === currentArea.toLowerCase());
+  const isCustomArea = Boolean(currentArea && !matchedArea);
+  const currentAreaVal = isCustomArea ? 'other' : (matchedArea || currentArea);
+  const currentAreaName = isCustomArea ? currentArea : currentAreaVal;
+
+  return `
+    <div class="form-group area-picker-container" data-area-prefix="${escAttr(prefix)}" style="background:var(--surface-2);border:1.5px solid var(--primary);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-3)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
+        <label class="form-label" style="margin-bottom:0;font-weight:var(--font-weight-bold);color:var(--primary)">${escHtml(label)} ${isRequired ? '<span class="required">*</span>' : ''}</label>
+        <div class="area-selected-badge" style="font-size:12px;color:var(--primary);display:flex;align-items:center;gap:6px">
+          <span>المختار:</span>
+          <span class="chip chip--primary area-selected-name" id="${prefix}-selected-area-name" style="font-weight:700">${escHtml(currentAreaName)}</span>
+        </div>
+      </div>
+
+      <!-- Live Smart Search Input -->
+      <div style="position:relative;margin-bottom:10px">
+        <input 
+          type="search" 
+          id="${prefix}-area-search-input" 
+          class="form-input area-search-input" 
+          placeholder="${escAttr(placeholder)}" 
+          autocomplete="off"
+          style="padding-right:38px;background:var(--surface);border-color:var(--primary)"
+        />
+        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🗺️</span>
+      </div>
+
+      <!-- Area Quick Selection Pills Box -->
+      <div class="area-picker-box" id="${prefix}-area-picker-box" style="max-height:160px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;padding:6px;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--border)">
+        ${MANZALA_VILLAGES_LIST.map(v => `
+          <button type="button" class="area-select-pill ${currentAreaVal === v ? 'active' : ''}" data-area-name="${escAttr(v)}">
+            <span>📍</span>
+            <span>${escHtml(v)}</span>
+          </button>
+        `).join('')}
+        <button type="button" class="area-select-pill ${isCustomArea ? 'active' : ''}" data-area-name="other">
+          <span>✏️</span>
+          <span>بلد أو قرية أخرى...</span>
+        </button>
+      </div>
+      <div class="area-no-match" id="${prefix}-area-no-match" style="display:none;padding:8px;font-size:12px;color:var(--text-muted);text-align:center">
+        لم نجد قرية مطابقة. يمكنك اختيار <strong style="color:var(--secondary,#F5A623);cursor:pointer" class="area-other-btn">✏️ بلد أو قرية أخرى...</strong> وكتابتها يدوياً.
+      </div>
+
+      <!-- Hidden Input for Form Submission -->
+      <input type="hidden" id="${prefix}-area" class="b-area area-hidden-input" value="${escAttr(isCustomArea ? currentArea : currentAreaVal)}" />
+
+      <!-- Custom Area Text Input (Shows when 'other' is selected) -->
+      <div class="form-group animate-fade-in custom-area-group" id="${prefix}-custom-area-group" style="margin-top:10px;${isCustomArea ? '' : 'display:none'}">
+        <label class="form-label" style="font-size:12.5px;font-weight:700">اكتب اسم البلد أو القرية الجديدة <span class="required">*</span></label>
+        <input type="text" id="${prefix}-custom-area" class="form-input custom-area-input" placeholder="مثال: ميت مرجا سلسيل، الكردي، أو أي قرية أخرى..." value="${escAttr(isCustomArea ? currentArea : '')}" />
+      </div>
+    </div>
+  `;
+}
+
+function initAreaSelectEvents(rootEl) {
+  if (!rootEl) return;
+  const containers = rootEl.classList?.contains('area-picker-container')
+    ? [rootEl]
+    : Array.from(rootEl.querySelectorAll('.area-picker-container'));
+
+  containers.forEach(container => {
+    if (container.__areaPickerInitialized) return;
+    container.__areaPickerInitialized = true;
+
+    const searchInput = container.querySelector('.area-search-input');
+    const pickerBox = container.querySelector('.area-picker-box');
+    const pills = pickerBox ? pickerBox.querySelectorAll('.area-select-pill') : [];
+    const noMatch = container.querySelector('.area-no-match');
+    const hiddenInput = container.querySelector('.area-hidden-input');
+    const customGroup = container.querySelector('.custom-area-group');
+    const customInput = container.querySelector('.custom-area-input');
+    const badgeName = container.querySelector('.area-selected-name');
+    const otherBtn = container.querySelector('.area-other-btn');
+
+    searchInput?.addEventListener('input', (e) => {
+      const q = e.target.value.trim();
+      let visibleCount = 0;
+      pills.forEach(pill => {
+        const name = pill.getAttribute('data-area-name') || '';
+        const text = pill.textContent || '';
+        const match = !q || arabicMatch(name, q) || arabicMatch(text, q);
+        pill.style.display = match ? 'inline-flex' : 'none';
+        if (match) visibleCount++;
+      });
+      if (noMatch) noMatch.style.display = visibleCount === 0 ? 'block' : 'none';
+    });
+
+    otherBtn?.addEventListener('click', () => {
+      container.querySelector('.area-select-pill[data-area-name="other"]')?.click();
+    });
+
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        const areaName = pill.getAttribute('data-area-name');
+        pills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+
+        if (areaName === 'other') {
+          if (customGroup) customGroup.style.display = 'block';
+          if (customInput) {
+            customInput.focus();
+            const val = customInput.value.trim();
+            if (hiddenInput) hiddenInput.value = val || 'المنزلة';
+            if (badgeName) badgeName.textContent = val || 'بلد مخصص';
+          }
+        } else {
+          if (customGroup) customGroup.style.display = 'none';
+          if (hiddenInput) hiddenInput.value = areaName;
+          if (badgeName) badgeName.textContent = areaName;
+        }
+        hiddenInput?.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+
+    customInput?.addEventListener('input', () => {
+      const val = customInput.value.trim();
+      if (hiddenInput) hiddenInput.value = val || 'المنزلة';
+      if (badgeName) badgeName.textContent = val || 'بلد مخصص';
+      hiddenInput?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+}
+
 function openBranchModal({ place, branchIndex = -1, user, onSave = null }) {
   const branches = Array.isArray(place.branches) ? [...place.branches] : [];
   const isNew = branchIndex < 0 || !branches[branchIndex];
@@ -1116,16 +1254,18 @@ function openBranchModal({ place, branchIndex = -1, user, onSave = null }) {
 
   const modalHtml = `
     <form id="branch-quick-modal-form" style="display:flex;flex-direction:column;gap:14px;padding:6px 0">
-      <div class="form-row">
-        <div class="form-group" style="flex:1">
-          <label class="form-label" style="font-size:12.5px;font-weight:700">اسم الفرع <span class="required">*</span></label>
-          <input type="text" id="bm-name" class="form-input" placeholder="مثال: فرع المطرية، فرع المحطة" value="${escAttr(branch.name || '')}" required />
-        </div>
-        <div class="form-group" style="flex:1">
-          <label class="form-label" style="font-size:12.5px;font-weight:700">المنطقة أو المدينة</label>
-          <input type="text" id="bm-area" class="form-input" placeholder="مثال: المطرية، المنزلة" value="${escAttr(branch.area || '')}" />
-        </div>
+      <div class="form-group">
+        <label class="form-label" style="font-size:12.5px;font-weight:700">اسم الفرع <span class="required">*</span></label>
+        <input type="text" id="bm-name" class="form-input" placeholder="مثال: فرع المطرية، فرع المحطة" value="${escAttr(branch.name || '')}" required />
       </div>
+
+      <!-- Area Selection for Branch Modal -->
+      ${renderAreaSelectForm({
+        prefix: 'bm',
+        initialArea: branch.area || place?.area || 'المنزلة',
+        label: 'المنطقة أو المدينة لهذا الفرع (المنزلة أو المطرية أو القرى)',
+        isRequired: true
+      })}
 
       <div class="form-group">
         <label class="form-label" style="font-size:12.5px;font-weight:700">عنوان الفرع بالتفصيل</label>
@@ -1224,7 +1364,11 @@ function openBranchModal({ place, branchIndex = -1, user, onSave = null }) {
             toast.warning('يرجى كتابة اسم الفرع');
             return;
           }
-          const area = document.getElementById('bm-area')?.value.trim() || '';
+          let area = document.getElementById('bm-area')?.value.trim() || '';
+          if (area === 'other') {
+            area = document.getElementById('bm-custom-area')?.value.trim() || 'المنزلة';
+          }
+          if (!area) area = 'المنزلة';
           const address = document.getElementById('bm-address')?.value.trim() || '';
           const phone = normalizePhoneNumber(document.getElementById('bm-phone')?.value.trim() || '');
           const whatsapp = normalizePhoneNumber(document.getElementById('bm-whatsapp')?.value.trim() || '');
@@ -1295,6 +1439,9 @@ function openBranchModal({ place, branchIndex = -1, user, onSave = null }) {
       { label: 'إلغاء', type: 'ghost', closeOnClick: true }
     ]
   });
+
+  const modalForm = document.getElementById('branch-quick-modal-form');
+  if (modalForm) initAreaSelectEvents(modalForm);
 
   // Modal interactions
   const samePhoneCb = document.getElementById('bm-same-phone');
@@ -1797,54 +1944,12 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <h2 class="form-section__title"><span>📍</span> اختيار المكان والمنطقة والعنوان</h2>
 
         <!-- Searchable Area / Village Selector -->
-        <div class="form-group" style="background:var(--surface-2);border:1.5px solid var(--primary);border-radius:var(--radius-lg);padding:var(--space-4)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);flex-wrap:wrap;gap:6px">
-            <label class="form-label" style="margin-bottom:0;font-weight:var(--font-weight-bold);color:var(--primary)">المنطقة داخل المنزلة / المطرية <span class="required">*</span></label>
-            <div id="p-selected-area-badge" style="font-size:12px;color:var(--primary);display:flex;align-items:center;gap:6px">
-              <span>المختار:</span>
-              <span id="p-selected-area-name" class="chip chip--primary" style="font-weight:700">${escHtml(currentAreaName)}</span>
-            </div>
-          </div>
-
-          <!-- Live Smart Search Input -->
-          <div style="position:relative;margin-bottom:10px">
-            <input 
-              type="search" 
-              id="p-area-search-input" 
-              class="form-input" 
-              placeholder="🔍 ابحث بالاسم عن قريتك أو منطقتك (55 قرية ومدينة)..." 
-              autocomplete="off"
-              style="padding-right:38px;background:var(--surface);border-color:var(--primary)"
-            />
-            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🗺️</span>
-          </div>
-
-          <!-- Area Quick Selection Pills Box -->
-          <div id="p-area-picker-box" style="max-height:160px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;padding:6px;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--border)">
-            ${MANZALA_VILLAGES_LIST.map(v => `
-              <button type="button" class="area-select-pill ${currentAreaVal === v ? 'active' : ''}" data-area-name="${escAttr(v)}">
-                <span>📍</span>
-                <span>${escHtml(v)}</span>
-              </button>
-            `).join('')}
-            <button type="button" class="area-select-pill ${isCustomArea ? 'active' : ''}" data-area-name="other">
-              <span>✏️</span>
-              <span>بلد أو قرية أخرى...</span>
-            </button>
-          </div>
-          <div id="p-area-no-match" style="display:none;padding:8px;font-size:12px;color:var(--text-muted);text-align:center">
-            لم نجد قرية مطابقة. يمكنك اختيار <strong style="color:var(--secondary,#F5A623);cursor:pointer" onclick="document.querySelector('[data-area-name=other]')?.click()">✏️ بلد أو قرية أخرى...</strong> وكتابتها يدوياً.
-          </div>
-
-          <!-- Hidden Input for Form Submission -->
-          <input type="hidden" id="p-area" value="${escAttr(currentAreaVal)}" />
-
-          <!-- Custom Area Text Input (Shows when 'other' is selected) -->
-          <div class="form-group animate-fade-in" id="custom-area-group" style="margin-top:10px;${isCustomArea ? '' : 'display:none'}">
-            <label class="form-label" style="font-size:12.5px;font-weight:700">اكتب اسم البلد أو القرية الجديدة <span class="required">*</span></label>
-            <input type="text" id="p-custom-area" class="form-input" placeholder="مثال: ميت مرجا سلسيل، الكردي، أو أي قرية أخرى..." value="${escAttr(isCustomArea ? place?.area : '')}" />
-          </div>
-        </div>
+        ${renderAreaSelectForm({
+          prefix: 'p',
+          initialArea: currentArea,
+          label: 'المنطقة داخل المنزلة / المطرية',
+          isRequired: true
+        })}
 
         <div class="form-group">
           <label class="form-label" id="p-address-label">العنوان بالتفصيل أو الشارع</label>
@@ -2419,16 +2524,18 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         <span style="font-size:13px;font-weight:700;color:var(--primary)">📍 الفرع #${idx}</span>
         <button type="button" class="btn-remove-branch" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;font-weight:700">🗑️ حذف الفرع</button>
       </div>
-      <div class="form-row">
-        <div class="form-group" style="flex:1">
-          <label class="form-label" style="font-size:12px;font-weight:700">اسم الفرع <span class="required">*</span></label>
-          <input type="text" class="form-input b-name" placeholder="مثال: فرع المطرية، فرع المحطة" value="${escAttr(initialData?.name || '')}" required />
-        </div>
-        <div class="form-group" style="flex:1">
-          <label class="form-label" style="font-size:12px;font-weight:700">المنطقة أو القرية</label>
-          <input type="text" class="form-input b-area" placeholder="مثال: المطرية، المنزلة" value="${escAttr(initialData?.area || '')}" />
-        </div>
+      <div class="form-group">
+        <label class="form-label" style="font-size:12px;font-weight:700">اسم الفرع <span class="required">*</span></label>
+        <input type="text" class="form-input b-name" placeholder="مثال: فرع المطرية، فرع المحطة" value="${escAttr(initialData?.name || '')}" required />
       </div>
+
+      <!-- Area Selection for this branch -->
+      ${renderAreaSelectForm({
+        prefix: `b-area-${idx}-${Date.now().toString(36)}`,
+        initialArea: initialData?.area || place?.area || 'المنزلة',
+        label: 'المنطقة أو القرية لهذا الفرع (المنزلة أو المطرية أو القرى)',
+        isRequired: true
+      })}
       <div class="form-group">
         <label class="form-label" style="font-size:12px;font-weight:700">عنوان الفرع بالتفصيل</label>
         <input type="text" class="form-input b-address" placeholder="مثال: شارع بورسعيد، بجوار البنك الأهلي" value="${escAttr(initialData?.address || '')}" />
@@ -2548,6 +2655,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       if (timeRangeRow) timeRangeRow.style.display = e.target.checked ? 'none' : 'flex';
     });
 
+    initAreaSelectEvents(row);
     branchesListEl.appendChild(row);
   }
 
@@ -3227,55 +3335,8 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     if (customCatGroup) customCatGroup.style.display = isOther ? 'block' : 'none';
   });
 
-  // Live Area Search Filter & Pill Selection
-  const areaSearchInput = document.getElementById('p-area-search-input');
-  const areaPickerBox = document.getElementById('p-area-picker-box');
-  const areaPills = areaPickerBox ? areaPickerBox.querySelectorAll('.area-select-pill') : [];
-  const areaNoMatch = document.getElementById('p-area-no-match');
-  const hiddenAreaInput = document.getElementById('p-area');
-  const customAreaGroup = document.getElementById('custom-area-group');
-  const customAreaInput = document.getElementById('p-custom-area');
-  const selectedAreaBadgeName = document.getElementById('p-selected-area-name');
-
-  areaSearchInput?.addEventListener('input', (e) => {
-    const q = e.target.value.trim();
-    let visibleCount = 0;
-    areaPills.forEach(pill => {
-      const name = pill.getAttribute('data-area-name') || '';
-      const text = pill.textContent || '';
-      const match = !q || arabicMatch(name, q) || arabicMatch(text, q);
-      pill.style.display = match ? 'inline-flex' : 'none';
-      if (match) visibleCount++;
-    });
-    if (areaNoMatch) areaNoMatch.style.display = visibleCount === 0 ? 'block' : 'none';
-  });
-
-  areaPills.forEach(pill => {
-    pill.addEventListener('click', () => {
-      const areaName = pill.getAttribute('data-area-name');
-      areaPills.forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-
-      if (areaName === 'other') {
-        if (customAreaGroup) customAreaGroup.style.display = 'block';
-        if (customAreaInput) {
-          customAreaInput.focus();
-          if (hiddenAreaInput) hiddenAreaInput.value = customAreaInput.value.trim() || 'المنزلة';
-          if (selectedAreaBadgeName) selectedAreaBadgeName.textContent = customAreaInput.value.trim() || 'بلد مخصص';
-        }
-      } else {
-        if (customAreaGroup) customAreaGroup.style.display = 'none';
-        if (hiddenAreaInput) hiddenAreaInput.value = areaName;
-        if (selectedAreaBadgeName) selectedAreaBadgeName.textContent = areaName;
-      }
-    });
-  });
-
-  customAreaInput?.addEventListener('input', () => {
-    const val = customAreaInput.value.trim();
-    if (hiddenAreaInput) hiddenAreaInput.value = val || 'المنزلة';
-    if (selectedAreaBadgeName) selectedAreaBadgeName.textContent = val || 'بلد مخصص';
-  });
+  // Live Area Search Filter & Pill Selection (55 villages + search + custom)
+  initAreaSelectEvents(document.getElementById('p-location-section'));
 
   // Working Hours Mode Switcher (Always 24/7 vs Always Except vs Custom)
   const hoursModeRadios = document.querySelectorAll('input[name="p-hours-mode"]');
@@ -4184,8 +4245,11 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           const res = [];
           document.querySelectorAll('.branch-form-row').forEach(row => {
             const bName = row.querySelector('.b-name')?.value.trim() || '';
-            const bAddress = row.querySelector('.b-address')?.value.trim() || '';
-            const bArea = row.querySelector('.b-area')?.value.trim() || '';
+            let bArea = row.querySelector('.b-area')?.value.trim() || '';
+            if (bArea === 'other') {
+              bArea = row.querySelector('.custom-area-input')?.value.trim() || 'المنزلة';
+            }
+            if (!bArea) bArea = 'المنزلة';
             const bPhone = normalizePhoneNumber(row.querySelector('.b-phone')?.value.trim() || '');
             const bWhatsapp = normalizePhoneNumber(row.querySelector('.b-whatsapp')?.value.trim() || '');
             const bId = row.getAttribute('data-branch-id') || '';

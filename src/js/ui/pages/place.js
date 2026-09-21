@@ -1203,7 +1203,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               </h4>
               <p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 6px 0;display:flex;align-items:center;gap:5px">
                 <span>📍</span>
-                <span>${escHtml(b.address || b.area || place.address || '')}</span>
+                <span>${escHtml([b.area, b.address].filter(Boolean).join(' — ') || place.address || '')}</span>
               </p>
               <div style="font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:5px">
                 <span>⏰</span>
