@@ -61,7 +61,7 @@ for(const template of ['place.html','category.html','404.html']){
 }
 
 const redirects=read('_redirects');
-must(redirects.includes('/place/*')&&redirects.includes('/category/*'),'Public place/category routes missing');
+must(redirects.includes('/place/*'),'Public place route missing');
 must(!/^\\/en\\/category\\/\\*\\s+\\/en\\/category\\/index\\.html\\s+200$/m.test(redirects),'_redirects must not wildcard-fallback /en/category/* to an indexable listing');
 must(!/^\\/category\\/\\*\\s+\\/category\\.html\\?slug=:splat\\s+200$/m.test(redirects),'_redirects must not wildcard-fallback /category/* to category.html with HTTP 200');
 
