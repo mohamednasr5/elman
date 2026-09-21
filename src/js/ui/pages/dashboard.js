@@ -813,6 +813,27 @@ if (typeof document !== 'undefined' && !window.__dashboardPlaceActionsBound) {
   });
 }
 
+function formatSponsoredDateTime(value) {
+  const ts = Number(value || 0);
+  if (!Number.isFinite(ts) || ts <= 0) return 'غير محدد';
+  try {
+    return new Intl.DateTimeFormat('ar-EG', { timeZone: 'Africa/Cairo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date(ts));
+  } catch (_) {
+    return new Date(ts).toLocaleString('ar-EG');
+  }
+}
+
+function getSponsoredPeriod(place) {
+  const until = Number(place?.sponsoredUntil || place?.sponsored_until || 0);
+  if (!until) return { active: Boolean(place?.isSponsored || place?.is_sponsored), startedAt: 0, until: 0 };
+  const explicitStart = Number(place?.sponsoredAt || place?.sponsored_at || 0);
+  const startedAt = explicitStart || (until - (30 * 86400000));
+  return {
+    active: Boolean((place?.isSponsored || place?.is_sponsored || place?.isFeatured || place?.is_featured) && until > Date.now()),
+    startedAt: startedAt > 0 ? startedAt : 0,
+    until
+  };
+}
 function renderPlacesListHTML(places) {
   if (!places || places.length === 0) {
     return `
@@ -834,6 +855,7 @@ function renderPlacesListHTML(places) {
     <div class="my-places-list">
       ${places.map(place => {
         const placeId = place.id || place._key;
+        const sponsoredPeriod = getSponsoredPeriod(place);
         const placeVerified = Boolean(
           place.is_verified ||
           place.isVerified ||
@@ -879,7 +901,15 @@ function renderPlacesListHTML(places) {
                     ` : `
                       <button type="button" class="btn btn-sm btn-action-verify-place" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name)}" style="background:rgba(217,119,6,0.12);color:#b45309;border:1px solid rgba(217,119,6,0.35);font-weight:800;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:4px" title="توثيق هذا المكان بالعلامة الزرقاء">🛡️ وثق مكانك (5,000 ذهبية)</button>
                     `}
-                    ${(place.isSponsored || place.is_sponsored) ? `
+                    ${sponsoredPeriod.active ? `
+                      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(135deg,rgba(245,166,35,0.10),rgba(217,119,6,0.06));border:1px solid rgba(245,166,35,0.35);border-radius:10px;padding:7px 10px">
+                        <span class="badge" style="background:#F5A623;color:#0B1E30;font-weight:900;padding:5px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:4px">👑 إعلان مميز نشط</span>
+                        <span style="font-size:11.5px;color:#7C4A03;font-weight:800">🟢 بدأ: ${escHtml(formatSponsoredDateTime(sponsoredPeriod.startedAt))}</span>
+                        <span style="font-size:11.5px;color:#9A3412;font-weight:800">🔴 ينتهي: ${escHtml(formatSponsoredDateTime(sponsoredPeriod.until))}</span>
+                      </div>
+                    ` : `
+                      <button type="button" class="btn btn-sm btn-action-promote-place" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name)}" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:4px" title="ترقية المكان لإعلان مميز في صدارة الدليل لمدة 30 يوماً مقابل 500 ذهبية">🌟 إعلان مميز (500 ذهبية)</button>
+                    `}                    ${(place.isSponsored || place.is_sponsored) ? `
                       <span class="badge" style="background:#F5A623;color:#0B1E30;font-weight:900;padding:5px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:4px">👑 إعلان مميز نشط</span>
                     ` : `
                       <button type="button" class="btn btn-sm btn-action-promote-place" data-place-id="${escAttr(placeId)}" data-place-name="${escAttr(place.name)}" style="background:linear-gradient(135deg,#F5A623,#D97706);color:#fff;border:none;font-weight:800;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:4px" title="ترقية المكان لإعلان مميز في صدارة الدليل لمدة 30 يوماً مقابل 500 ذهبية">🌟 إعلان مميز (500 ذهبية)</button>
