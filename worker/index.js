@@ -2446,14 +2446,35 @@ try {
         }, env, ctx);
       }
 
-      // Real-time IndexNow notification for newly added or updated published place
-      if (status === 'published') {
-        const safeSlug = encodeURIComponent((slug || placeId).toLowerCase());
-        ctx.waitUntil(notifyIndexNow([
-          `https://dalilmanzala.com/place/${safeSlug}/`,
-          `https://dalilmanzala.com/en/place/${safeSlug}/`
-        ]));
+      // Real-time IndexNow notification for published changes and lifecycle transitions.
+      // For unpublish/rename, notify both the new state and the previous canonical URL so crawlers
+      // can re-fetch the affected resource promptly.
+      const currentSlugForIndexing = encodeURIComponent((slug || placeId).toLowerCase());
+      const previousSlugForIndexing = existingPlace?.slug
+        ? encodeURIComponent(String(existingPlace.slug).toLowerCase())
+        : '';
+      const wasPublished = String(existingPlace?.status || '').toLowerCase() === 'published';
+      const isPublishedNow = String(status || '').toLowerCase() === 'published';
+      const indexNowUrls = [];
+      if (isPublishedNow) {
+        indexNowUrls.push(
+          `https://dalilmanzala.com/place/${currentSlugForIndexing}/`,
+          `https://dalilmanzala.com/en/place/${currentSlugForIndexing}/`
+        );
       }
+      if (wasPublished && !isPublishedNow && previousSlugForIndexing) {
+        indexNowUrls.push(
+          `https://dalilmanzala.com/place/${previousSlugForIndexing}/`,
+          `https://dalilmanzala.com/en/place/${previousSlugForIndexing}/`
+        );
+      }
+      if (wasPublished && isPublishedNow && previousSlugForIndexing && previousSlugForIndexing !== currentSlugForIndexing) {
+        indexNowUrls.push(
+          `https://dalilmanzala.com/place/${previousSlugForIndexing}/`,
+          `https://dalilmanzala.com/en/place/${previousSlugForIndexing}/`
+        );
+      }
+      if (indexNowUrls.length) ctx.waitUntil(notifyIndexNow(indexNowUrls));
 
       // Cache Invalidation for this place and dynamic sitemaps
       try {
@@ -2535,8 +2556,20 @@ try {
           return jsonResponse({success:false,error:'لا يمكنك حذف مكان لا تملكه'},403,corsHeaders);
         }
       }
+      const deletedPlace = await createTursoDB(env).prepare(
+        'SELECT slug, status FROM places WHERE id = ? OR slug = ? LIMIT 1'
+      ).bind(id, id).first().catch(() => null);
       await createTursoDB(env).prepare(`DELETE FROM places WHERE id = ? OR slug = ?`).bind(id, id).run();
       bumpDataVersion(env, ctx);
+
+      // Prompt crawlers to re-fetch the deleted canonical URLs so the next crawl can observe
+      // the resulting 404/redirect state instead of waiting for the scheduled IndexNow batch.
+      const deletedSlug = deletedPlace?.slug || id;
+      const deletedSafeSlug = encodeURIComponent(String(deletedSlug).toLowerCase());
+      ctx.waitUntil(notifyIndexNow([
+        `https://dalilmanzala.com/place/${deletedSafeSlug}/`,
+        `https://dalilmanzala.com/en/place/${deletedSafeSlug}/`
+      ]));
 
       const cache = caches.default;
       const purgeUrls = [
