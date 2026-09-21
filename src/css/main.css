@@ -2144,3 +2144,27 @@ html.has-anchor-cursor [contenteditable="true"]{cursor:text}
   .payment-badge-wrapper:hover .payment-badge-tooltip,
   .payment-badge-wrapper:focus-visible .payment-badge-tooltip{transform:translate(0,0) scale(1)}
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   APP STORE COMING SOON + PULSING SHIP'S ANCHOR CURSOR
+   ═══════════════════════════════════════════════════════════════ */
+.footer__app-stores { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+.app-store-coming-soon { position:relative; min-width:178px; height:58px; display:inline-flex; align-items:center; gap:9px; padding:6px 10px; border-radius:16px; box-sizing:border-box; background:linear-gradient(135deg,#0F274D 0%,#1B4F72 100%); border:1px solid rgba(99,240,174,.28); color:#fff; overflow:hidden; cursor:default; box-shadow:0 8px 18px rgba(15,39,77,.18),inset 0 1px 0 rgba(255,255,255,.12); transition:transform .22s cubic-bezier(.34,1.56,.64,1),border-color .22s ease,box-shadow .22s ease; }
+.app-store-coming-soon:hover,.app-store-coming-soon:focus-visible { transform:translateY(-3px); border-color:rgba(99,240,174,.9); box-shadow:0 14px 28px rgba(15,39,77,.24),0 0 0 3px rgba(99,240,174,.09); outline:none; }
+.app-store-coming-soon__icon { width:40px;height:40px;display:grid;place-items:center;flex:0 0 40px;border-radius:11px;background:rgba(255,255,255,.08); }
+.app-store-coming-soon__copy { display:flex;flex-direction:column;gap:1px;line-height:1.15;direction:ltr;text-align:left; }
+.app-store-coming-soon__copy small { font-size:9px;color:rgba(255,255,255,.72);font-weight:700; }
+.app-store-coming-soon__copy strong { font-size:13px;font-weight:900;color:#fff; }
+.app-store-coming-soon__soon { position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(135deg,rgba(15,39,77,.96),rgba(27,79,114,.96));color:#63f0ae;font-size:14px;font-weight:900;letter-spacing:.2px;opacity:0;transform:translateY(8px);transition:opacity .2s ease,transform .2s ease; }
+.app-store-coming-soon:hover .app-store-coming-soon__soon,.app-store-coming-soon:focus-visible .app-store-coming-soon__soon { opacity:1;transform:translateY(0); }
+.anchor-cursor { position:fixed;top:0;left:0;width:42px;height:42px;display:grid;place-items:center;z-index:2147483647;pointer-events:none;transform:translate3d(-50%,-50%,0);will-change:transform;filter:drop-shadow(0 5px 8px rgba(15,39,77,.25));transition:width .18s ease,height .18s ease,filter .18s ease; }
+.anchor-cursor::before,.anchor-cursor::after { content:'';position:absolute;inset:2px;border-radius:50%;border:1.5px solid rgba(99,240,174,.72);animation:anchor-cursor-pulse 1.65s ease-out infinite; }
+.anchor-cursor::after { animation-delay:.82s;opacity:.55; }
+.anchor-cursor span { position:relative;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#0F274D,#1B4F72);border:1px solid rgba(99,240,174,.85);color:#63f0ae;font-size:20px;line-height:1;box-shadow:0 5px 14px rgba(15,39,77,.3),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .18s ease,background .18s ease; }
+.anchor-cursor.is-hovering span { transform:scale(1.2) rotate(-8deg);background:linear-gradient(135deg,#1B4F72,#0F274D); }
+.anchor-cursor.is-clicking span { transform:scale(.9) rotate(8deg); }
+@keyframes anchor-cursor-pulse { 0%{transform:scale(.55);opacity:.85;}70%{transform:scale(1.45);opacity:0;}100%{transform:scale(1.45);opacity:0;} }
+@media (pointer:fine) { .anchor-cursor-enabled,.anchor-cursor-enabled body,.anchor-cursor-enabled body * { cursor:none !important; } }
+@media (max-width:640px) { .footer__app-stores{display:grid;grid-template-columns:1fr 1fr;} .app-store-coming-soon{min-width:0;width:100%;} }
+@media (prefers-reduced-motion:reduce) { .anchor-cursor::before,.anchor-cursor::after{animation:none;} }
