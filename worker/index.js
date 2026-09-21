@@ -10161,7 +10161,7 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
         status: 200,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'public, max-age=120, s-maxage=3600, stale-while-revalidate=86400',
+          'Cache-Control': 'public, max-age=60, s-maxage=1800, stale-while-revalidate=86400',
           'X-Edge-SSR': 'MISS',
           'X-Content-Type-Options': 'nosniff',
           'X-Localized-Route': langPrefix,
