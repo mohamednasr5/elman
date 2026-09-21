@@ -9671,9 +9671,10 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
     bank_transfer: { en: 'Direct Bank Transfer', ar: 'التحويل البنكي المباشر', schema: 'Bank Transfer' },
     cash: { en: 'Cash', ar: 'الدفع نقداً (كاش)', schema: 'Cash' }
   };
-  let paymentAcceptedList = ['Cash'];
-  let paymentNamesEn = ['Cash'];
-  let paymentNamesAr = ['الدفع نقداً (كاش)'];
+  // Do not infer cash acceptance. Only emit payment data explicitly stored for this place.
+  let paymentAcceptedList = [];
+  let paymentNamesEn = [];
+  let paymentNamesAr = [];
 
   if (Array.isArray(rawPaymentMethods)) {
     rawPaymentMethods.forEach(id => {
@@ -9695,9 +9696,7 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
     "url": shareUrl,
     "inLanguage": isEn ? "en" : "ar",
     "telephone": place.phone || undefined,
-    "paymentAccepted": paymentAcceptedList,
-    "currenciesAccepted": "EGP",
-    "priceRange": "$$",
+    ...(paymentAcceptedList.length ? { "paymentAccepted": [...new Set(paymentAcceptedList)] } : {}),
     "address": {
       "@type": "PostalAddress",
       "streetAddress": (isEn && place.address_en) ? place.address_en : (place.address || undefined),
@@ -9806,13 +9805,7 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
     }
   });
 
-  const faqEntity = {
-    "@type": "FAQPage",
-    "@id": `${shareUrl}#faq`,
-    "mainEntity": faqMainEntity
-  };
-
-  const webPageEntity = {
+  // FAQPage rich-result markup is intentionally omitted from the business graph.\n  const webPageEntity = {
     "@type": "WebPage",
     "@id": shareUrl,
     "url": shareUrl,
@@ -9844,8 +9837,7 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
       webPageEntity,
       breadcrumbList,
       cleanObj(businessEntity),
-      faqEntity
-    ]
+      // FAQPage omitted; visible Q&A remains crawlable in the rendered page.\n    ]
   };
 }
 
