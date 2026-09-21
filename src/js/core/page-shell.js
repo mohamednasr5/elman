@@ -285,6 +285,7 @@ function _bindMoreMenu(){
       { url: '/en/dashboard/?section=loyalty', icon: '🎁', label: 'Loyalty & Points' },
       { url: '/en/dashboard/?section=notifications', icon: '🔔', label: 'Notifications' },
       { url: '/en/dashboard/?section=following', icon: '⭐', label: 'My Following' },
+      { url: '/en/dashboard/?section=my-ads', icon: '📣', label: 'My Ads', cls: 'mobile-more-card--accent' },
       { url: '/en/dashboard/?section=verification', icon: '🛡️', label: 'Verification Badge' }
     ] : [
       { url: '/dashboard.html?section=overview', icon: '🏠', label: 'نظرة عامة' },
@@ -295,6 +296,7 @@ function _bindMoreMenu(){
       { url: '/dashboard.html?section=loyalty', icon: '🎁', label: 'نادي الولاء والنقاط' },
       { url: '/dashboard.html?section=notifications', icon: '🔔', label: 'الإشعارات والزيارات' },
       { url: '/dashboard.html?section=following', icon: '⭐', label: 'متابعاتي وعروضها' },
+      { url: '/dashboard.html?section=my-ads', icon: '📣', label: 'إعلاناتي', cls: 'mobile-more-card--accent' },
       { url: '/contact.html?type=verification', icon: '🛡️', label: 'توثيق الملف (العلامة الزرقاء)' }
     ];
 
