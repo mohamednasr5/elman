@@ -556,7 +556,7 @@ async function handleDynamicSitemap(request, url, env, ctx) {
 async function handleRssFeed(request, url, env, ctx) {
   const site = 'https://dalilmanzala.com';
   const cache = caches.default;
-  const cacheKey = new Request('https://cache.local/rss/v1/places.xml');
+  const cacheKey = new Request('https://cache.local/rss/v2/places.xml');
 
   if (cache) {
     const cached = await cache.match(cacheKey).catch(() => null);
@@ -633,7 +633,7 @@ async function handleRssFeed(request, url, env, ctx) {
       ].filter(Boolean).join('\n');
 
       return `    <item>
-      <title><![CDATA[مكان جديد فى دليل المنزلة والمطرية الرقمي: ${pName}]]></title>
+      <title><![CDATA[${pName} | دليل المنزلة والمطرية الرقمي]]></title>
       <link>${escXml(placeUrl)}</link>
       <guid isPermaLink="true">${escXml(placeUrl)}</guid>
       <pubDate>${pubDate}</pubDate>
@@ -7734,7 +7734,15 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         try {
           return await handleDynamicOpenGraph(slug, request, env, ctx);
         } catch (ogErr) {
-          console.warn('[place route handleDynamicOpenGraph catch]:', ogErr);
+          console.error('[place route handleDynamicOpenGraph catch]:', ogErr);
+          const userAgent = request.headers.get('user-agent') || '';
+          const isCrawler = /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|googlebot|bingbot/i.test(userAgent);
+          if (isCrawler) {
+            return new Response(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>دليل المنزلة والمطرية الرقمي</title><meta property="og:title" content="دليل المنزلة والمطرية الرقمي"></head><body></body></html>`, {
+              status: 200,
+              headers: { 'Content-Type': 'text/html; charset=utf-8' }
+            });
+          }
           const fallbackPath = url.pathname.startsWith('/en/') ? '/en/places' : '/places.html';
           return Response.redirect(`${url.origin}${fallbackPath}`, 302);
         }
@@ -9814,7 +9822,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
 
   // 0. Edge SSR Cache check (Instant 15-30ms response from Cloudflare Edge for humans & Googlebot)
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v8?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
+  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v9?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
   if (cache) {
     try {
       const cachedResponse = await cache.match(ssrCacheKey);
@@ -9887,22 +9895,25 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   const alternateArUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
   const alternateEnUrl = `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}`;
 
-  // 4. Edge SSR & Instant Data Injection (Zero Skeleton, 0ms FCP, 100% SEO-Ready for Googlebot, Bingbot & Humans)
+  // 4. Metadata and place normalization variables
+  const phoneClean = (place.phone || '').replace(/[^\d+]/g, '').trim();
+  const waClean = (place.whatsapp || '').replace(/\D/g, '').replace(/^0+/, '').trim();
+  const isValidPh = phoneClean && !/^0+$/.test(phoneClean) && phoneClean.length >= 7;
+  const isValidWa = waClean && !/^0+$/.test(waClean) && waClean.length >= 7;
+  const coverImg = place.cover_image_url || '';
+  const logoImg = place.logo_url || '';
+  const placeArea = isEn
+    ? (place.area_en || (place.area === 'المطرية' ? 'El Matariya' : 'El Manzala'))
+    : (place.area || 'المنزلة والمطرية');
+  const placeAddr = isEn ? (place.address_en || place.address || '') : (place.address || '');
+  const rawCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
+  const placeCat = isEn ? toEnglishCategoryWorker(rawCat) : toArabicCategoryWorker(rawCat);
+
+  // 5. Edge SSR & Instant Data Injection (Zero Skeleton, 0ms FCP, 100% SEO-Ready for Googlebot, Bingbot & Humans)
   try {
     let baseHtml = await getPlaceHtmlTemplate(request, isEn);
 
     if (baseHtml && baseHtml.includes('id="page-container"')) {
-      const phoneClean = (place.phone || '').replace(/[^\d+]/g, '').trim();
-      const waClean = (place.whatsapp || '').replace(/\D/g, '').replace(/^0+/, '').trim();
-      const isValidPh = phoneClean && !/^0+$/.test(phoneClean) && phoneClean.length >= 7;
-      const isValidWa = waClean && !/^0+$/.test(waClean) && waClean.length >= 7;
-      const coverImg = place.cover_image_url || '';
-      const logoImg = place.logo_url || '';
-      const placeArea = isEn
-        ? (place.area_en || (place.area === 'المطرية' ? 'El Matariya' : 'El Manzala'))
-        : (place.area || 'المنزلة والمطرية');
-      const placeAddr = isEn ? (place.address_en || place.address || '') : (place.address || '');
-      const rawCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
       let parsedStats = parseJson(place.stats_json, {});
       let placeReviewCount = Number(parsedStats.reviewCount || parsedStats.reviewsCount || place.review_count || 0);
       let placeRating = Number(parsedStats.rating || place.rating || 0);
@@ -10203,8 +10214,6 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
     console.warn('[handleDynamicOpenGraph SSR Error]:', ssrErr?.message || ssrErr);
   }
 
-  const fallbackRawCat = isEn ? (place.custom_category_en || place.custom_category || place.category_id || '') : (place.custom_category || place.category_id || '');
-  const fallbackPlaceCat = isEn ? toEnglishCategoryWorker(fallbackRawCat) : toArabicCategoryWorker(fallbackRawCat);
   const destinationUrl = isEn ? `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}` : `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
   const html = `<!DOCTYPE html>
 <html lang="${isEn ? 'en' : 'ar'}" dir="${isEn ? 'ltr' : 'rtl'}">
@@ -10241,7 +10250,7 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
   <meta name="twitter:description" content="${escapeHtml(placeDesc)}">
   <meta name="twitter:image" content="${escapeHtml(placeImg)}">
   <script type="application/ld+json">
-${JSON.stringify(generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, shareUrl, isEn, fallbackPlaceCat, placeTargetSlug), null, 2)}
+${JSON.stringify(generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, shareUrl, isEn, placeCat, placeTargetSlug), null, 2)}
   </script>
 </head>
 <body style="font-family:Arial,sans-serif;padding:30px;max-width:850px;margin:0 auto;direction:${isEn ? 'ltr' : 'rtl'};line-height:1.7;">
