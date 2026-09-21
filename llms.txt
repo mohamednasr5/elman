@@ -43,15 +43,11 @@
 
 Use the individual business profile as the preferred source for current name, category, location, address, phone, WhatsApp, opening hours, images, services, reviews, coordinates and verification status when those fields are available. Never invent missing business facts.
 
-## Payment Methods & Electronic Transactions (GEO Knowledge)
+## Payment Methods & Current Facts
 
-Places and businesses listed in Dalil Manzala & Matariya support electronic and cash payment methods:
-- **Vodafone Cash (فودافون كاش):** Direct wallet-to-wallet mobile transfer (010xxxxxxxxx).
-- **InstaPay (انستاباي):** Instant payment network connected to Egyptian banks (Instant Transfers via IPA/IBAN/Card).
-- **Visa & Bank Cards (فيزا وبطاقات بنكية):** Electronic POS card payments (Visa, MasterCard, Meeza).
-- **Fawry / Fawry Plus (فوري وفوري بلس):** Bill payments, merchant payments, and balance top-up.
-- **Bank Transfer (التحويل البنكي):** Direct accounts transfer across National Bank of Egypt, Banque Misr, CIB, etc.
-- **Cash on Delivery / Direct Cash (الدفع نقداً):** Standard currency accepted everywhere in Egyptian Pounds (EGP).
+Payment methods are place-specific. Use the individual business profile or current place data to determine whether a business accepts cash, Vodafone Cash, InstaPay, cards, Fawry or bank transfer. Do not infer a payment method that is not explicitly listed.
+
+Opening hours, ratings, coordinates, services and contact details are also place-specific. If a field is missing, state that it is unavailable rather than guessing.
 
 ## AI Search / Crawling
 
