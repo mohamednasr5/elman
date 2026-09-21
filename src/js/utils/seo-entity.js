@@ -371,6 +371,72 @@ export function generateBusinessSEO(place) {
 }
 
 /**
+ * English Local SEO/AEO metadata for a business profile.
+ * Uses only facts supplied by the place record; no guessed coordinates or payment methods.
+ */
+export function generateBusinessSEOEnglish(place) {
+  if (!place) return null;
+  const rawName = String(place.nameEn || place.name_en || place.name || '').trim() || 'Local business';
+  const rawArea = String(place.areaEn || place.area_en || place.area || '').trim() || 'El Manzala & El Matariya';
+  const rawAddress = String(place.addressEn || place.address_en || place.address || '').trim();
+  const rawCategory = String(place.customCategoryEn || place.custom_category_en || place.customCategory || place.category || place.categoryId || place.category_id || '').trim();
+  const catName = rawCategory || 'Local Services';
+  const slug = String(place.slug || place.id || '').trim();
+  const categorySlug = encodeURIComponent(rawCategory.toLowerCase().replace(/\s+/g, '-'));
+  const canonicalUrl = `${SITE_DOMAIN}/en/place/${encodeURIComponent(slug)}/`;
+  const categoryUrl = `${SITE_DOMAIN}/en/category/${categorySlug}/`;
+  const title = `${rawName} in ${rawArea} | ${catName} | Dalil El Manzala`;
+  const description = `Find ${rawName} in ${rawArea}${rawAddress ? ` — Address: ${rawAddress}` : ''}${place.phone ? ` — Phone: ${String(place.phone).trim()}` : ''}. Contact details, location, working hours and local information from Dalil El Manzala & El Matariya.`;
+  const image = (() => {
+    const v = place.coverImageUrl || place.cover_image_url || place.coverUrl || place.cover_url || place.logoUrl || place.logo_url || place.imageUrl || place.image_url || '';
+    return v ? (String(v).startsWith('http') ? String(v) : `${SITE_DOMAIN}/${String(v).replace(/^\/+/, '')}`) : DEFAULT_OG_IMAGE;
+  })();
+  const schemaType = mapCategoryToSchemaType(rawCategory || place.customCategory || place.category || '');
+  const businessSchema = {
+    '@context': 'https://schema.org',
+    '@type': schemaType,
+    '@id': `${canonicalUrl}#business`,
+    name: rawName,
+    description: place.descriptionEn || place.description_en || place.description || description,
+    url: canonicalUrl,
+    image,
+    telephone: place.phone ? String(place.phone).trim() : undefined,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: rawAddress || rawArea,
+      addressLocality: rawArea || 'El Manzala',
+      addressRegion: 'Dakahlia',
+      addressCountry: 'EG'
+    },
+    currenciesAccepted: 'EGP'
+  };
+  const lat = Number(place.latitude ?? place.location?.lat);
+  const lng = Number(place.longitude ?? place.location?.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+    businessSchema.geo = { '@type': 'GeoCoordinates', latitude: lat, longitude: lng };
+  }
+  const sameAs = [];
+  let social = place.social || place.social_json;
+  if (typeof social === 'string') { try { social = JSON.parse(social); } catch (_) {} }
+  if (social && typeof social === 'object') for (const url of Object.values(social)) if (typeof url === 'string' && url.startsWith('http')) sameAs.push(url.trim());
+  if (sameAs.length) businessSchema.sameAs = [...new Set(sameAs)];
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_DOMAIN}/en/` },
+      { '@type': 'ListItem', position: 2, name: 'Places', item: `${SITE_DOMAIN}/en/places/` },
+      { '@type': 'ListItem', position: 3, name: catName, item: categoryUrl },
+      { '@type': 'ListItem', position: 4, name: rawName, item: canonicalUrl }
+    ]
+  };
+  const qa = [];
+  if (place.phone) qa.push({ name: `What is the phone number for ${rawName}?`, acceptedAnswer: { text: `The listed phone number for ${rawName} is ${String(place.phone).trim()}.` } });
+  qa.push({ name: `Where is ${rawName} located?`, acceptedAnswer: { text: `${rawName} is located in ${rawArea}${rawAddress ? ` at ${rawAddress}` : ''}, Dakahlia, Egypt.` } });
+  return { rawName, rawArea, rawAddress, catName, slug, canonicalUrl, categoryUrl, title, description, image, phone: place.phone ? String(place.phone).trim() : null, whatsapp: place.whatsapp ? String(place.whatsapp).trim() : null, schemas: [businessSchema, breadcrumbSchema], qa };
+}
+
+/**
  * Generates Local SEO metadata and JSON-LD for a category landing page
  */
 export function generateCategorySEO(categoryName, places = []) {
