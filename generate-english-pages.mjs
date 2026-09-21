@@ -1,3 +1,4 @@
+import { generateBusinessSEOEnglish, escapeHtml } from './src/js/utils/seo-entity.js';
 import fs from 'fs';
 import path from 'path';
 const ROOT=process.cwd(),EN=path.join(ROOT,'en'),SITE='https://dalilmanzala.com';
@@ -9,8 +10,33 @@ function write(rel,key,t,d,en,ar){const dir=path.join(EN,rel);fs.mkdirSync(dir,{
 fs.mkdirSync(EN,{recursive:true});for(const [k,[t,d,en,ar]] of Object.entries(P))write(k==='index'?'':k,k,t,d,en,ar);
 for(const key of ['search','favorites','login','dashboard'])write(key,key,`${key[0].toUpperCase()+key.slice(1)} | Dalil El Manzala & El Matariya`,'Directory account or utility page.',`/en/${key}/`,`/${key}.html`);
 for(const group of ['place','category']){const source=path.join(ROOT,group);if(!fs.existsSync(source))continue;for(const s of fs.readdirSync(source)){if(s==='index')continue;const entry=path.join(source,s,'index.html');if(!fs.existsSync(entry))continue;const label=s.replace(/[-_]+/g,' '),en=`/en/${group}/${encodeURIComponent(s)}/`,ar=`/${group}/${encodeURIComponent(s)}/`;write(`${group}/${s}`,`${group}/${s}`,group==='place'?`${label} | Dalil El Manzala & El Matariya`:`${label} | Business Category`,group==='place'?`Local business profile for ${label} in El Manzala and El Matariya, Dakahlia, Egypt.`:`Local businesses and services in the ${label} category.`,en,ar)}}
+function writeEnglishPlace(rel, place) {
+  const seo = generateBusinessSEOEnglish(place);
+  if (!seo) return;
+  const phone = seo.phone ? seo.phone.replace(/\s+/g, '') : '';
+  const wa = seo.whatsapp ? seo.whatsapp.replace(/\D/g, '').replace(/^0+/, '') : '';
+  const waLink = wa ? `https://wa.me/20${wa}` : '';
+  const qa = seo.qa.map(item => `<div class="place-qa__item" style="padding:12px 0;border-top:1px solid #e2e8f0"><h2 style="font-size:1rem;margin:0 0 6px">${escapeHtml(item.name)}</h2><p style="line-height:1.8;margin:0;color:#475569">${escapeHtml(item.acceptedAnswer.text)}</p></div>`).join('');
+  const html = `<!doctype html><html lang="en" dir="ltr"><head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"><meta name="googlebot" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+  <title>${escapeHtml(seo.title)}</title><meta name="description" content="${escapeHtml(seo.description)}">
+  <link rel="canonical" href="${seo.canonicalUrl}"><link rel="alternate" hreflang="ar" href="${SITE}/place/${encodeURIComponent(seo.slug)}/"><link rel="alternate" hreflang="en" href="${seo.canonicalUrl}"><link rel="alternate" hreflang="x-default" href="${SITE}/place/${encodeURIComponent(seo.slug)}/">
+  <meta property="og:type" content="business.business"><meta property="og:site_name" content="Dalil El Manzala &amp; El Matariya"><meta property="og:url" content="${seo.canonicalUrl}"><meta property="og:title" content="${escapeHtml(seo.title)}"><meta property="og:description" content="${escapeHtml(seo.description)}"><meta property="og:image" content="${escapeHtml(seo.image)}"><meta property="og:locale" content="en_EG">
+  <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escapeHtml(seo.title)}"><meta name="twitter:description" content="${escapeHtml(seo.description)}"><meta name="twitter:image" content="${escapeHtml(seo.image)}">
+  <link rel="manifest" href="/en/manifest.webmanifest"><link rel="stylesheet" href="/src/css/main.css?v=20260913.9"><link rel="stylesheet" href="/src/css/i18n-layout.css?v=20260913.9">
+  <script type="application/ld+json">${JSON.stringify(seo.schemas[0])}</script><script type="application/ld+json">${JSON.stringify(seo.schemas[1])}</script>
+  </head><body data-lang="en"><div id="app"><main id="page-container" class="page-main" role="main"><div class="en-container en-section" style="max-width:960px;margin:auto;padding:20px">
+  <nav aria-label="Breadcrumb" style="margin-bottom:16px"><a href="/en/">Home</a> / <a href="/en/places/">Places</a> / <a href="${seo.categoryUrl}">${escapeHtml(seo.catName)}</a> / <span>${escapeHtml(seo.rawName)}</span></nav>
+  <article><img src="${escapeHtml(seo.image)}" alt="${escapeHtml(seo.rawName)} in ${escapeHtml(seo.rawArea)}" width="960" height="540" loading="eager" style="width:100%;height:auto;max-height:420px;object-fit:cover;border-radius:18px"><h1>${escapeHtml(seo.rawName)}</h1>
+  <p><strong>Location:</strong> ${escapeHtml(seo.rawAddress || seo.rawArea)}</p>${phone ? `<p><a href="tel:${phone}">Call ${escapeHtml(seo.phone)}</a></p>` : ''}${waLink ? `<p><a href="${waLink}" rel="noopener noreferrer">WhatsApp</a></p>` : ''}
+  <div class="place-description"><h2>About ${escapeHtml(seo.rawName)}</h2><p style="line-height:1.8">${escapeHtml(place.descriptionEn || place.description_en || place.description || seo.description)}</p></div>
+  <section class="place-qa" aria-labelledby="qa-title" style="margin-top:24px;padding:20px;border:1px solid #e2e8f0;border-radius:16px"><h2 id="qa-title">Questions &amp; answers</h2>${qa}</section>
+  </article></div></main></div><script type="module" src="/src/js/core/english-pages.js?v=20260913.9"></script></body></html>`;
+  const dir = path.join(EN, rel); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'index.html'), html, 'utf8');
+}
 async function fetchAllPlaces(){const out=[],limit=1000;for(let offset=0;offset<100000;offset+=limit){const r=await fetch(`${SITE}/api/places?limit=${limit}&offset=${offset}`,{headers:{accept:'application/json'}});if(!r.ok)throw new Error(`Places API HTTP ${r.status} at offset ${offset}`);const j=await r.json(),batch=Array.isArray(j?.data)?j.data:[];out.push(...batch);if(batch.length<limit)break}return [...new Map(out.map(p=>[String(p.slug||p.id||'').trim(),p])).values()].filter(p=>{const s=String(p.status||p.state||'').toLowerCase();return String(p.slug||p.id||'').trim()&&!['draft','deleted','rejected','archived','hidden'].includes(s)&&p.isPublished!==false&&p.is_published!==false})}
-const items=await fetchAllPlaces();for(const p of items){const s=String(p.slug||p.id).trim(),label=String(p.nameEn||p.name_en||p.name||s).replace(/[\r\n]+/g,' ').trim(),en=`/en/place/${encodeURIComponent(s)}/`,ar=`/place/${encodeURIComponent(s)}/`;write(`place/${s}`,`place/${s}`,`${label} | Dalil El Manzala & El Matariya`,`Business profile for ${label} in El Manzala and El Matariya, Dakahlia, Egypt.`,en,ar)}
+const items=await fetchAllPlaces();for(const p of items){const s=String(p.slug||p.id).trim();if(s)writeEnglishPlace(`place/${s}`,p)}
 const enPlacesFile = path.join(EN, 'places', 'index.html');
 if (fs.existsSync(enPlacesFile)) {
   let enPlacesContent = fs.readFileSync(enPlacesFile, 'utf8');

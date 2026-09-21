@@ -136,9 +136,9 @@ export function generateBusinessSEO(place) {
   const slug = (place.slug || place.id || '').trim();
 
   // Canonical Clean URL
-  const canonicalUrl = `${SITE_DOMAIN}/place/${encodeURIComponent(slug)}`;
+  const canonicalUrl = `${SITE_DOMAIN}/place/${encodeURIComponent(slug)}/`;
   const categorySlug = encodeURIComponent(String(rawCategory).toLowerCase().replace(/\s+/g, '-'));
-  const categoryUrl = `${SITE_DOMAIN}/category/${categorySlug}`;
+  const categoryUrl = `${SITE_DOMAIN}/category/${categorySlug}/`;
 
   // SEO Title: Natural, compelling, within Google's 60-char display budget
   const title = `${rawName} في ${rawArea} | ${catName} | دليل المنزلة والمطرية`;
@@ -221,41 +221,35 @@ export function generateBusinessSEO(place) {
       addressCountry: 'EG'
     },
     currenciesAccepted: 'EGP',
-    paymentAccepted: (() => {
-      const pm = place.paymentMethods || place.payment_methods;
-      const list = ['Cash'];
-      if (Array.isArray(pm)) {
-        pm.forEach(id => {
-          const s = String(id).toLowerCase();
-          if (s.includes('vodafone')) list.push('Vodafone Cash');
-          else if (s.includes('insta')) list.push('InstaPay');
-          else if (s.includes('visa') || s.includes('card')) list.push('Credit Card');
-          else if (s.includes('fawry')) list.push('Fawry');
-          else if (s.includes('bank')) list.push('Bank Transfer');
-        });
-      }
-      return list;
-    })(),
+    ...(Array.isArray(place.paymentMethods || place.payment_methods) && (place.paymentMethods || place.payment_methods).length > 0 ? {
+      paymentAccepted: [...new Set((place.paymentMethods || place.payment_methods).map(id => {
+        const s = String(id).toLowerCase();
+        if (s.includes('vodafone')) return 'Vodafone Cash';
+        if (s.includes('insta')) return 'InstaPay';
+        if (s.includes('visa') || s.includes('card')) return 'Credit Card';
+        if (s.includes('fawry')) return 'Fawry';
+        if (s.includes('bank')) return 'Bank Transfer';
+        if (s.includes('cash')) return 'Cash';
+        return null;
+      }).filter(Boolean))]
+    } : {}),
     areaServed: COVERAGE_AREAS.map(area => ({
       '@type': 'AdministrativeArea',
       name: area
     }))
   };
 
-  // Optional Geo coordinates (only if real and non-zero)
-  // Geo coordinates (always provide valid coordinates for GEO)
-  const isMatariya = rawArea.includes('المطرية');
-  let lat = Number(place.latitude || place.location?.lat);
-  let lng = Number(place.longitude || place.location?.lng);
-  if (isNaN(lat) || isNaN(lng) || lat < 20 || lng < 20) {
-    lat = isMatariya ? 31.1833 : 31.1578;
-    lng = isMatariya ? 32.0333 : 31.9333;
+  // Geo coordinates: emit only coordinates actually supplied for this place.
+  // Never invent city-centre coordinates for an individual business.
+  const lat = Number(place.latitude ?? place.location?.lat);
+  const lng = Number(place.longitude ?? place.location?.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+    businessSchema.geo = {
+      '@type': 'GeoCoordinates',
+      latitude: lat,
+      longitude: lng
+    };
   }
-  businessSchema.geo = {
-    '@type': 'GeoCoordinates',
-    latitude: lat,
-    longitude: lng
-  };
 
   // Optional opening hours
   if (openingHoursSpecs.length > 0) {
@@ -312,7 +306,7 @@ export function generateBusinessSEO(place) {
     ]
   };
 
-  // FAQPage Schema for AI Engines & Voice Search (Perplexity, ChatGPT, Google SGE)
+  // AEO/GEO factual question-and-answer data for the visible page content
   const faqQuestions = [];
   if (place.phone) {
     faqQuestions.push({
@@ -333,33 +327,30 @@ export function generateBusinessSEO(place) {
     }
   });
 
-  // Payment methods question for GEO
+  // Payment Q&A: include only methods explicitly stored for this place.
   const pmList = place.paymentMethods || place.payment_methods || [];
-  const pmNames = ['الدفع نقداً'];
-  if (Array.isArray(pmList)) {
-    pmList.forEach(id => {
+  if (Array.isArray(pmList) && pmList.length > 0) {
+    const pmNames = [...new Set(pmList.map(id => {
       const s = String(id).toLowerCase();
-      if (s.includes('vodafone')) pmNames.push('فودافون كاش');
-      else if (s.includes('insta')) pmNames.push('انستاباي (InstaPay)');
-      else if (s.includes('visa') || s.includes('card')) pmNames.push('فيزا وبطاقات بنكية');
-      else if (s.includes('fawry')) pmNames.push('فوري بلس');
-      else if (s.includes('bank')) pmNames.push('تحويل بنكي');
-    });
-  }
-  faqQuestions.push({
-    '@type': 'Question',
-    name: `هل يقبل ${rawName} الدفع بفودافون كاش أو انستاباي وما هي طرق الدفع المتاحة لديه؟`,
-    acceptedAnswer: {
-      '@type': 'Answer',
-      text: `طرق الدفع والتحويل المقبولة لدى ${rawName} تشمل: ${pmNames.join('، ')}. العملة المعتمدة هي الجنيه المصري (EGP).`
+      if (s.includes('vodafone')) return 'فودافون كاش';
+      if (s.includes('insta')) return 'إنستاباي (InstaPay)';
+      if (s.includes('visa') || s.includes('card')) return 'فيزا وبطاقات بنكية';
+      if (s.includes('fawry')) return 'فوري';
+      if (s.includes('bank')) return 'تحويل بنكي';
+      if (s.includes('cash')) return 'الدفع نقداً';
+      return null;
+    }).filter(Boolean))];
+    if (pmNames.length > 0) {
+      faqQuestions.push({
+        '@type': 'Question',
+        name: `ما هي طرق الدفع المتاحة لدى ${rawName}؟`,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: `طرق الدفع المسجلة لدى ${rawName} هي: ${pmNames.join('، ')}.`
+        }
+      });
     }
-  });
-
-  const faqSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqQuestions
-  };
+  }
 
   return {
     rawName,
@@ -374,8 +365,75 @@ export function generateBusinessSEO(place) {
     image,
     phone: place.phone ? String(place.phone).trim() : null,
     whatsapp: place.whatsapp ? String(place.whatsapp).trim() : null,
-    schemas: [businessSchema, breadcrumbSchema, faqSchema]
+    schemas: [businessSchema, breadcrumbSchema],
+    qa: faqQuestions
   };
+}
+
+/**
+ * English Local SEO/AEO metadata for a business profile.
+ * Uses only facts supplied by the place record; no guessed coordinates or payment methods.
+ */
+export function generateBusinessSEOEnglish(place) {
+  if (!place) return null;
+  const rawName = String(place.nameEn || place.name_en || place.name || '').trim() || 'Local business';
+  const rawArea = String(place.areaEn || place.area_en || place.area || '').trim() || 'El Manzala & El Matariya';
+  const rawAddress = String(place.addressEn || place.address_en || place.address || '').trim();
+  const rawCategory = String(place.customCategoryEn || place.custom_category_en || place.customCategory || place.category || place.categoryId || place.category_id || '').trim();
+  const catName = rawCategory || 'Local Services';
+  const slug = String(place.slug || place.id || '').trim();
+  const categorySlug = encodeURIComponent(rawCategory.toLowerCase().replace(/\s+/g, '-'));
+  const canonicalUrl = `${SITE_DOMAIN}/en/place/${encodeURIComponent(slug)}/`;
+  const categoryUrl = `${SITE_DOMAIN}/en/category/${categorySlug}/`;
+  const title = `${rawName} in ${rawArea} | ${catName} | Dalil El Manzala`;
+  const description = `Find ${rawName} in ${rawArea}${rawAddress ? ` — Address: ${rawAddress}` : ''}${place.phone ? ` — Phone: ${String(place.phone).trim()}` : ''}. Contact details, location, working hours and local information from Dalil El Manzala & El Matariya.`;
+  const image = (() => {
+    const v = place.coverImageUrl || place.cover_image_url || place.coverUrl || place.cover_url || place.logoUrl || place.logo_url || place.imageUrl || place.image_url || '';
+    return v ? (String(v).startsWith('http') ? String(v) : `${SITE_DOMAIN}/${String(v).replace(/^\/+/, '')}`) : DEFAULT_OG_IMAGE;
+  })();
+  const schemaType = mapCategoryToSchemaType(rawCategory || place.customCategory || place.category || '');
+  const businessSchema = {
+    '@context': 'https://schema.org',
+    '@type': schemaType,
+    '@id': `${canonicalUrl}#business`,
+    name: rawName,
+    description: place.descriptionEn || place.description_en || place.description || description,
+    url: canonicalUrl,
+    image,
+    telephone: place.phone ? String(place.phone).trim() : undefined,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: rawAddress || rawArea,
+      addressLocality: rawArea || 'El Manzala',
+      addressRegion: 'Dakahlia',
+      addressCountry: 'EG'
+    },
+    currenciesAccepted: 'EGP'
+  };
+  const lat = Number(place.latitude ?? place.location?.lat);
+  const lng = Number(place.longitude ?? place.location?.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+    businessSchema.geo = { '@type': 'GeoCoordinates', latitude: lat, longitude: lng };
+  }
+  const sameAs = [];
+  let social = place.social || place.social_json;
+  if (typeof social === 'string') { try { social = JSON.parse(social); } catch (_) {} }
+  if (social && typeof social === 'object') for (const url of Object.values(social)) if (typeof url === 'string' && url.startsWith('http')) sameAs.push(url.trim());
+  if (sameAs.length) businessSchema.sameAs = [...new Set(sameAs)];
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_DOMAIN}/en/` },
+      { '@type': 'ListItem', position: 2, name: 'Places', item: `${SITE_DOMAIN}/en/places/` },
+      { '@type': 'ListItem', position: 3, name: catName, item: categoryUrl },
+      { '@type': 'ListItem', position: 4, name: rawName, item: canonicalUrl }
+    ]
+  };
+  const qa = [];
+  if (place.phone) qa.push({ name: `What is the phone number for ${rawName}?`, acceptedAnswer: { text: `The listed phone number for ${rawName} is ${String(place.phone).trim()}.` } });
+  qa.push({ name: `Where is ${rawName} located?`, acceptedAnswer: { text: `${rawName} is located in ${rawArea}${rawAddress ? ` at ${rawAddress}` : ''}, Dakahlia, Egypt.` } });
+  return { rawName, rawArea, rawAddress, catName, slug, canonicalUrl, categoryUrl, title, description, image, phone: place.phone ? String(place.phone).trim() : null, whatsapp: place.whatsapp ? String(place.whatsapp).trim() : null, schemas: [businessSchema, breadcrumbSchema], qa };
 }
 
 /**
@@ -384,7 +442,7 @@ export function generateBusinessSEO(place) {
 export function generateCategorySEO(categoryName, places = []) {
   const catName = getArabicCategoryName(categoryName);
   const categorySlug = encodeURIComponent(String(categoryName).toLowerCase().replace(/\s+/g, '-'));
-  const canonicalUrl = `${SITE_DOMAIN}/category/${categorySlug}`;
+  const canonicalUrl = `${SITE_DOMAIN}/category/${categorySlug}/`;
 
   const title = `${catName} في المنزلة والمطرية | دليل الأنشطة والخدمات الموثقة`;
   const description = `تصفح قائمة ${catName} في المنزلة والمطرية والقرى المجاورة. عناوين دقيقة، أرقام التواصل الفوري، مواعيد العمل، وتقييمات الأهالي بدليل المنزلة والمطرية.`;
@@ -422,7 +480,7 @@ export function generateCategorySEO(categoryName, places = []) {
     itemListElement: places.slice(0, 20).map((p, index) => ({
       '@type': 'ListItem',
       position: index + 1,
-      url: `${SITE_DOMAIN}/place/${encodeURIComponent(p.slug || p.id)}`,
+      url: `${SITE_DOMAIN}/place/${encodeURIComponent(p.slug || p.id)}/`,
       name: p.name
     }))
   };

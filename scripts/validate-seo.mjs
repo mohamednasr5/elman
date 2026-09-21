@@ -28,6 +28,7 @@ for(const f of ['sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categor
   must(x.includes('xmlns:xhtml='),`${f}: xhtml namespace missing`);
   must(x.includes('hreflang="ar"')&&x.includes('hreflang="en"'),`${f}: bilingual hreflang missing`);
   must(!x.includes('&amp;apos;'),`${f}: malformed double escaping`);
+  if (f.includes('categories')) must(/\/category\/[^<\s]+\//.test(x) && !/\/category\/[^<\s]*[^\/]<\/loc>/.test(x),'Category sitemap contains a non-canonical URL');
 }
 
 const en=read('en/index.html');
@@ -35,6 +36,9 @@ must(/<html lang="en" dir="ltr">/i.test(en),'English home language/direction is 
 must(en.includes('hreflang="ar"')&&en.includes('hreflang="en"'),'English home hreflang missing');
 must(en.includes('rel="canonical" href="https://dalilmanzala.com/en/"'),'English home canonical is invalid');
 
+const llmAr=read('llms.txt');
+must(!/support electronic and cash payment methods|accepted everywhere/i.test(llmAr),'AI context must not make universal payment claims');
+must(llmAr.includes('Do not infer a payment method'),'Arabic AI context accuracy rules missing');
 const llm=read('llms-en.txt');
 must(llm.includes('/en/place/{slug}/')&&llm.includes('OAI-SearchBot'),'English AI context is incomplete');
 
@@ -43,8 +47,15 @@ must(redirects.includes('/place/*')&&redirects.includes('/category/*'),'Public p
 
 const entity=read('src/js/utils/seo-entity.js');
 must((entity.includes("'@type': 'LocalBusiness'")||entity.includes("return 'LocalBusiness'"))&&entity.includes("'@type': 'BreadcrumbList'"),'Required structured data generators missing');
+must(entity.includes('generateBusinessSEOEnglish'),'English business SEO generator missing');
+must(!entity.includes("'@type': 'FAQPage'"),'FAQPage schema should not be emitted as a Google rich-result strategy');
+must(!entity.includes('31.1578') || !entity.includes('32.0333'),'SEO generator must not use guessed city-centre coordinates as business coordinates');
 
 const builder=read('build-seo-pages.mjs');
-for(const needle of ['Semantic Body Content (Discoverable immediately without JS execution)','Crawlable Breadcrumb Navigation','Related Places in Same Category','Inject Internal Links into places.html'])must(builder.includes(needle),`build-seo-pages.mjs missing ${needle}`);
+const englishBuilder=read('generate-english-pages.mjs');
+must(englishBuilder.includes('generateBusinessSEOEnglish')&&englishBuilder.includes('Questions &amp; answers'),'English profiles must contain entity metadata and crawlable Q&A');
+const workflow=read('.github/workflows/generate-english-pages.yml');
+must(workflow.includes('node build-seo-pages.mjs'),'Bilingual SEO workflow must regenerate Arabic static profiles');
+for(const needle of ['Semantic Body Content (Discoverable immediately without JS execution)','Crawlable Breadcrumb Navigation','Related Places in Same Category','Inject Internal Links into places.html','AEO/GEO answer block','${qaHtml}'])must(builder.includes(needle),`build-seo-pages.mjs missing ${needle}`);
 
 console.log('SEO validation passed.');

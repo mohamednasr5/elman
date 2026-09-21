@@ -22,6 +22,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Generate Arabic static SEO business/category pages
+        run: node build-seo-pages.mjs
       - name: Generate English SEO-aware pages
         run: node generate-english-pages.mjs
       - name: Harden Arabic canonical and hreflang signals
@@ -30,6 +32,7 @@ jobs:
         run: node scripts/generate-seo-assets.mjs
       - name: Validate SEO assets
         run: |
+          node --check build-seo-pages.mjs
           node --check generate-english-pages.mjs
           node --check scripts/harden-arabic-seo.mjs
           node --check scripts/generate-seo-assets.mjs
@@ -40,7 +43,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add en sitemap*.xml .indexnow-urls.json
+          git add en place category sitemap*.xml .indexnow-urls.json rss.xml || true
           git add '*.html' || true
           if git diff --cached --quiet; then
             echo "No generated SEO changes."

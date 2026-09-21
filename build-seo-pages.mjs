@@ -91,13 +91,26 @@ function buildBusinessPageHTML(place, relatedPlaces = []) {
     }
   }
 
+  // AEO/GEO answer block: factual, crawlable answers rendered in the page itself.
+  const qaHtml = Array.isArray(seo.qa) && seo.qa.length > 0 ? `
+      <section class="place-qa" aria-labelledby="place-qa-title" style="margin-top:24px;padding:20px;border-radius:16px;background:var(--surface,#fff);box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+        <h2 id="place-qa-title" style="font-size:1.15rem;font-weight:800;margin:0 0 14px">أسئلة وأجوبة عن ${escapeHtml(seo.rawName)}</h2>
+        ${seo.qa.map(item => `
+          <div class="place-qa__item" style="padding:12px 0;border-top:1px solid rgba(0,0,0,0.07)">
+            <h3 style="font-size:1rem;font-weight:800;margin:0 0 6px">${escapeHtml(item.name)}</h3>
+            <p style="font-size:.93rem;line-height:1.8;margin:0;color:var(--text-secondary,#475569)">${escapeHtml(item.acceptedAnswer?.text || '')}</p>
+          </div>
+        `).join('')}
+      </section>
+    ` : '';
+
   // Related businesses in the same category & region
   let relatedHtml = '';
   if (relatedPlaces.length > 0) {
     const items = relatedPlaces.slice(0, 4).map(r => `
       <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
         <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
-          <a href="/place/${encodeURIComponent(r.slug || r.id)}" style="color:var(--primary,#0284c7);text-decoration:none">
+          <a href="/place/${encodeURIComponent(r.slug || r.id)}/" style="color:var(--primary,#0284c7);text-decoration:none">
             ${escapeHtml(r.name)}
           </a>
         </h3>
@@ -266,6 +279,8 @@ ${JSON.stringify(seo.schemas[1], null, 2)}
         </div>
       </article>
 
+      ${qaHtml}
+
       <!-- Working Hours -->
       ${workingHoursHtml}
 
@@ -340,7 +355,7 @@ function buildCategoryPageHTML(catName, places) {
             📍 ${escapeHtml(area)}
           </span>
           <h2 style="margin:0 0 6px;font-size:1.1rem;font-weight:800">
-            <a href="/place/${encodeURIComponent(slug)}" style="color:var(--text-primary,#0f172a);text-decoration:none">
+            <a href="/place/${encodeURIComponent(slug)}/" style="color:var(--text-primary,#0f172a);text-decoration:none">
               ${escapeHtml(p.name)}
             </a>
           </h2>
@@ -542,7 +557,7 @@ async function run() {
       const cSlug = encodeURIComponent(String(cName).toLowerCase().replace(/\s+/g, '-'));
       const escapedName = escapeHtml(getArabicCategoryName(cName));
       return `
-        <a href="/category/${cSlug}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
+        <a href="/category/${cSlug}/" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
           <span style="font-weight:700;font-size:0.95rem;margin-bottom:0.25rem">${escapedName}</span>
           <span style="font-size:0.8rem;color:var(--text-muted,#64748b)">${cPlaces.length} مكان</span>
         </a>`;
