@@ -116,23 +116,7 @@ export function renderPaymentBadges(paymentMethods = [], options = {}) {
     `;
   }).join('');
 
-  const headingText = title || (isEn ? 'Accepted Payment Methods' : 'طرق الدفع المقبولة في هذا المكان');
-
-  return `
-    <section class="place-payment-section animate-fade-in" id="place-payment-methods-card">
-      <div class="place-payment-header">
-        <span class="place-payment-header__icon">💳</span>
-        <h3 class="place-payment-header__title">${escapeHtml(headingText)}</h3>
-        <span class="place-payment-header__badge">${isEn ? 'Available Methods' : 'وسائل الدفع المتاحة'}</span>
-      </div>
-      <div class="place-payment-badges-grid">
-        ${badgesHtml}
-      </div>
-      <div class="place-payment-hint">
-        <span>💡</span> ${isEn ? 'Hover or tap any payment logo to learn more' : 'مرر الماوس أو اضغط على أي شعار لمعرفة تفاصيل الدفع'}
-      </div>
-    </section>
-  `;
+  return badgesHtml;
 }
 
 /**
