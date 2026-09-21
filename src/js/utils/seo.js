@@ -85,16 +85,25 @@ export function setMeta({ title, description, keywords, image, url, type = 'webs
   setOrCreateMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
 
   // Geographic / Local Engine Optimization (GEO)
-  const isMatariya = geo?.area && String(geo.area).includes('المطرية');
   const geoRegion = geo?.region || 'EG-DK';
   const geoPlacename = geo?.placename || (geo?.area ? `${geo.area}، الدقهلية، مصر` : 'المنزلة والمطرية، الدقهلية، مصر');
-  const geoLat = (geo?.latitude && Number(geo.latitude) > 20) ? Number(geo.latitude) : (isMatariya ? 31.1833 : 31.1578);
-  const geoLng = (geo?.longitude && Number(geo.longitude) > 20) ? Number(geo.longitude) : (isMatariya ? 32.0333 : 31.9333);
+  const hasExactGeo = Number.isFinite(Number(geo?.latitude)) && Number(geo?.latitude) > 20 &&
+    Number.isFinite(Number(geo?.longitude)) && Number(geo?.longitude) > 20;
 
   setOrCreateMeta('name', 'geo.region', geoRegion);
   setOrCreateMeta('name', 'geo.placename', geoPlacename);
-  setOrCreateMeta('name', 'geo.position', `${geoLat};${geoLng}`);
-  setOrCreateMeta('name', 'ICBM', `${geoLat}, ${geoLng}`);
+
+  // Never invent city-centre coordinates. Emit GEO coordinates only when the
+  // caller supplied an explicit, valid location for the entity/page.
+  if (hasExactGeo) {
+    const geoLat = Number(geo.latitude);
+    const geoLng = Number(geo.longitude);
+    setOrCreateMeta('name', 'geo.position', `${geoLat};${geoLng}`);
+    setOrCreateMeta('name', 'ICBM', `${geoLat}, ${geoLng}`);
+  } else {
+    document.querySelector('meta[name="geo.position"]')?.remove();
+    document.querySelector('meta[name="ICBM"]')?.remove();
+  }
 
   // Alternate Hreflangs
   if (alternates) {
