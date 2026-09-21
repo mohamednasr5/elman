@@ -3694,31 +3694,56 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   const _ignoredDuplicateIds = new Set();
   let _currentDuplicateMatch = null;
 
-  const GENERIC_BIZ_WORDS = [
+  const GENERIC_BIZ_WORDS = new Set([
     'محل', 'معرض', 'عيادة', 'عياده', 'دكتور', 'صيدلية', 'صيدليه', 'ورشة', 'ورشه', 
-    'مركز', 'سوبر ماركت', 'سوبرماركت', 'ماركت', 'مطعم', 'كافيه', 'كافتيريا', 'جزارة', 
-    'جزاره', 'مخبز', 'فرن', 'مستشفى', 'مستشفي', 'معمل', 'استوديو', 'ستوديو', 'صالون', 
-    'حلاق', 'مغسلة', 'مغسله', 'مكتب', 'شركة', 'شركه', 'البان', 'ألبان', 'اولاد', 'أولاد', 
-    'ابناء', 'أبناء', 'للجزارة', 'للجزاره', 'للالبان', 'للألبان', 'خدمات', 'سنتر'
-  ];
+    'مركز', 'سوبر ماركت', 'سوبرماركت', 'ماركت', 'مطعم', 'كافيه', 'كافتيريا', 'مقهى', 'مقهي', 
+    'جزارة', 'جزاره', 'مخبز', 'فرن', 'مستشفى', 'مستشفي', 'معمل', 'استوديو', 'ستوديو', 
+    'صالون', 'حلاق', 'مغسلة', 'مغسله', 'مكتب', 'شركة', 'شركه', 'البان', 'ألبان', 
+    'اولاد', 'أولاد', 'ابناء', 'أبناء', 'للجزارة', 'للجزاره', 'للالبان', 'للألبان', 
+    'خدمات', 'سنتر', 'بوتيك', 'اتيليه', 'أتيليه', 'مكتبة', 'مكتبه'
+  ]);
 
-  function extractCoreBusinessName(nameStr) {
-    if (!nameStr) return '';
-    let norm = normalizeArabic(nameStr);
-    GENERIC_BIZ_WORDS.forEach(w => {
-      const regex = new RegExp(`(^|\\s)${w}(\\s|$)`, 'gi');
-      norm = norm.replace(regex, ' ');
+  const COMMON_SINGLE_FIRST_NAMES = new Set([
+    'محمد', 'احمد', 'أحمد', 'محمود', 'علي', 'حسن', 'حسين', 'ابراهيم', 'إبراهيم', 
+    'السيد', 'مصطفى', 'مصطفي', 'خالد', 'عادل', 'سامح', 'عمرو', 'عمر', 'طارق', 
+    'يوسف', 'كريم', 'هشام', 'شريف', 'رامي', 'ياسر', 'وليد', 'تامر', 'ايمن', 'أيمن'
+  ]);
+
+  function getBusinessTokens(nameStr) {
+    if (!nameStr) return [];
+    const norm = normalizeArabic(nameStr);
+    const words = norm.split(/\s+/).filter(Boolean);
+    return words.filter(w => {
+      const stripped = stripAl(w);
+      return w.length >= 2 && !GENERIC_BIZ_WORDS.has(w) && !GENERIC_BIZ_WORDS.has(stripped);
     });
-    return norm.replace(/\s+/g, ' ').trim();
   }
 
-  function findBestSimilarPlace(inputName, inputPhone, inputArea, places) {
+  function levenshteinDistance(s1, s2) {
+    if (s1 === s2) return 0;
+    if (!s1.length) return s2.length;
+    if (!s2.length) return s1.length;
+    const v0 = new Array(s2.length + 1).fill(0).map((_, i) => i);
+    const v1 = new Array(s2.length + 1).fill(0);
+    for (let i = 0; i < s1.length; i++) {
+      v1[0] = i + 1;
+      for (let j = 0; j < s2.length; j++) {
+        const cost = s1[i] === s2[j] ? 0 : 1;
+        v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+      }
+      for (let j = 0; j <= s2.length; j++) v0[j] = v1[j];
+    }
+    return v1[s2.length];
+  }
+
+  function findBestSimilarPlace(inputName, inputPhone, inputArea, places, inputCategory = '') {
     if (!inputName && !inputPhone) return null;
     const cleanInputName = (inputName || '').trim();
     const normInputName = normalizeArabic(cleanInputName);
-    const coreInputName = extractCoreBusinessName(cleanInputName);
-    const normInputPhone = normalizePhoneNumber(inputPhone || '');
+    const normInputPhone = normalizePhoneNumber(inputPhone || '').replace(/\D/g, '');
     const cleanInputArea = (inputArea || '').trim();
+    const inputTokens = getBusinessTokens(cleanInputName);
+    const inputCategoryNorm = String(inputCategory || '').toLowerCase().trim();
 
     let bestMatch = null;
     let highestScore = 0;
@@ -3731,47 +3756,95 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       let score = 0;
       let reason = '';
 
-      // 1. Phone number match (High confidence)
+      // 1. Strict Phone Number Match (Requires valid >= 8 digits and exact matching numbers)
       if (normInputPhone && normInputPhone.length >= 8) {
         const placePhones = extractPlacePhoneNumbers(p);
-        if (placePhones.some(num => num && (num === normInputPhone || num.endsWith(normInputPhone) || normInputPhone.endsWith(num)))) {
-          score = 100;
-          reason = 'نفس رقم الهاتف مسجل مسبقاً بهذا المكان';
+        for (const rawPNum of placePhones) {
+          if (!rawPNum) continue;
+          const pClean = rawPNum.replace(/\D/g, '');
+          if (pClean.length >= 8 && normInputPhone.length >= 8) {
+            if (pClean === normInputPhone || 
+               (pClean.length >= 9 && normInputPhone.length >= 9 && pClean.slice(-9) === normInputPhone.slice(-9))) {
+              score = 100;
+              reason = 'نفس رقم الهاتف مسجل مسبقاً بهذا المكان';
+              break;
+            }
+          }
         }
       }
 
-      // 2. Name matching
+      // 2. High-Precision Name Matching
       if (score < 100 && normInputName.length >= 3) {
         const normPlaceName = normalizeArabic(p.name);
-        const corePlaceName = extractCoreBusinessName(p.name);
+        const placeTokens = getBusinessTokens(p.name);
+        const placeCategoryNorm = String(p.categoryId || p.category || '').toLowerCase().trim();
 
-        // Exact match
+        // Check if categories are explicitly incompatible (e.g. pharmacy vs restaurant)
+        const hasDistinctCategories = inputCategoryNorm && placeCategoryNorm && 
+          inputCategoryNorm !== 'other' && placeCategoryNorm !== 'other' &&
+          inputCategoryNorm !== placeCategoryNorm;
+
+        // Level 1: Exact Name Match
         if (normInputName === normPlaceName) {
           score = 99;
           reason = 'اسم مطابق تماماً لمكان مسجل مسبقاً';
         } 
-        // Core business name exact match (e.g. "جزارة أبو عارف" vs "أبو عارف")
-        else if (coreInputName && corePlaceName && coreInputName === corePlaceName && coreInputName.length >= 3) {
-          score = 95;
-          reason = 'تطابق في الاسم التجاري الأساسي';
-        } 
-        // One contains the other
-        else if (coreInputName && corePlaceName && (corePlaceName.includes(coreInputName) || coreInputName.includes(corePlaceName)) && Math.min(coreInputName.length, corePlaceName.length) >= 4) {
-          score = 86;
-          reason = 'تشابه كبير في اسم النشاط';
-        } 
-        // Token and fuzzy scoring
-        else {
-          const sim = arabicScore(p.name, cleanInputName);
-          if (sim >= 70) {
-            score = sim;
-            reason = 'تشابه ملحوظ في الكلمات والاسم';
+        // Level 2: Exact Match ignoring leading 'ال'
+        else if (stripAl(normInputName) === stripAl(normPlaceName) && stripAl(normInputName).length >= 4) {
+          score = 97;
+          reason = 'اسم مطابق لمكان مسجل مسبقاً (مع اختلاف أل التعريف)';
+        }
+        // Level 3: Core Distinctive Tokens Exact Match
+        else if (inputTokens.length > 0 && placeTokens.length > 0) {
+          const inputJoined = inputTokens.join(' ');
+          const placeJoined = placeTokens.join(' ');
+
+          if (inputJoined === placeJoined) {
+            // Guard: If it's only a single ultra-common first name (e.g. "محمد" or "أحمد")
+            const isSingleCommonName = inputTokens.length === 1 && COMMON_SINGLE_FIRST_NAMES.has(inputTokens[0]);
+            if (isSingleCommonName) {
+              if (!hasDistinctCategories) {
+                score = 75; // below 80 threshold so it won't falsely alert
+              }
+            } else if (!hasDistinctCategories) {
+              score = 94;
+              reason = 'تطابق في الاسم التجاري الأساسي';
+            } else {
+              // Different category (e.g. "صيدلية الرحمة" vs "مطعم الرحمة") -> Not a duplicate!
+              score = 40;
+            }
+          }
+          // Level 4: Token Jaccard Overlap
+          else {
+            const setPlace = new Set(placeTokens);
+            let sharedCount = 0;
+            inputTokens.forEach(t => { if (setPlace.has(t)) sharedCount++; });
+            const maxLen = Math.max(inputTokens.length, placeTokens.length);
+            const ratio = maxLen > 0 ? (sharedCount / maxLen) : 0;
+
+            // Only consider high overlap (>= 75%) e.g. 3 of 4 words or 2 of 2 words
+            if (ratio >= 0.75 && !hasDistinctCategories) {
+              score = Math.round(ratio * 90);
+              reason = 'تشابه كبير في الكلمات الأساسية للاسم التجاري';
+            } 
+            // Level 5: Single distinctive word typo / Levenshtein
+            else if (inputTokens.length === 1 && placeTokens.length === 1 && !hasDistinctCategories) {
+              const w1 = inputTokens[0];
+              const w2 = placeTokens[0];
+              if (w1.length >= 5 && w2.length >= 5 && Math.abs(w1.length - w2.length) <= 2) {
+                const dist = levenshteinDistance(w1, w2);
+                if (dist <= 1 && !COMMON_SINGLE_FIRST_NAMES.has(w1) && !COMMON_SINGLE_FIRST_NAMES.has(w2)) {
+                  score = 88;
+                  reason = 'تشابه إملائي كبير في اسم المكان';
+                }
+              }
+            }
           }
         }
 
-        // Area Boost if name is similar and areas match
-        if (score >= 65 && cleanInputArea && p.area && (cleanInputArea === p.area || arabicMatch(cleanInputArea, p.area))) {
-          score = Math.min(score + 10, 98);
+        // Conservative Area Boost (only if name already has high similarity >= 85)
+        if (score >= 85 && cleanInputArea && p.area && (cleanInputArea === p.area || arabicMatch(cleanInputArea, p.area))) {
+          score = Math.min(score + 5, 98);
         }
       }
 
@@ -3782,7 +3855,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       }
     }
 
-    if (highestScore >= 70 && bestMatch) {
+    if (highestScore >= 80 && bestMatch) {
       return { place: bestMatch, score: highestScore, reason: bestReason };
     }
     return null;
@@ -3796,6 +3869,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     const typedName = (document.getElementById('p-name')?.value || '').trim();
     const typedPhone = (document.getElementById('p-phone')?.value || '').trim();
     const typedArea = (document.getElementById('p-area')?.value || '').trim();
+    const typedCategory = (document.getElementById('p-category')?.value || '').trim();
 
     if (typedName.length < 3 && typedPhone.length < 8) {
       if (duplicateSlot) duplicateSlot.style.display = 'none';
@@ -3811,10 +3885,10 @@ async function renderPlaceFormSection($container, user, placeId = null) {
       }
     }
 
-    const match = findBestSimilarPlace(typedName, typedPhone, typedArea, _allPlacesListForDedupe || []);
+    const match = findBestSimilarPlace(typedName, typedPhone, typedArea, _allPlacesListForDedupe || [], typedCategory);
     _currentDuplicateMatch = match;
 
-    if (match && match.score >= 70 && !_ignoredDuplicateIds.has(match.place.id)) {
+    if (match && match.score >= 80 && !_ignoredDuplicateIds.has(match.place.id)) {
       renderDuplicateSuggestion(match.place, match.reason, match.score);
     } else {
       if (duplicateSlot) duplicateSlot.style.display = 'none';
@@ -3876,6 +3950,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
 
     document.getElementById('btn-dismiss-duplicate')?.addEventListener('click', () => {
       _ignoredDuplicateIds.add(p.id);
+      _currentDuplicateMatch = null;
       duplicateSlot.style.display = 'none';
       toast.info('تم تأكيد أن نشاطك مختلف وجديد، يمكنك إكمال البيانات.');
     });
@@ -3892,6 +3967,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     document.getElementById('p-phone')?.addEventListener('input', queueDedupeCheck);
     document.getElementById('p-area')?.addEventListener('change', queueDedupeCheck);
     document.getElementById('p-area-search-input')?.addEventListener('input', queueDedupeCheck);
+    document.getElementById('p-category')?.addEventListener('change', queueDedupeCheck);
   }
 
   function formatPhoneInput(input, maxLen = 11) {
@@ -4085,7 +4161,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
     }
 
     // Safety Interception: Warn user if a high-similarity duplicate exists
-    if (!isEdit && _currentDuplicateMatch && _currentDuplicateMatch.score >= 85 && !_ignoredDuplicateIds.has(_currentDuplicateMatch.place.id)) {
+    if (!isEdit && _currentDuplicateMatch && _currentDuplicateMatch.score >= 92 && !_ignoredDuplicateIds.has(_currentDuplicateMatch.place.id)) {
       const ok = await showConfirm({
         title: '💡 هل هذا المكان مسجل مسبقاً؟',
         message: `وجدنا مكاناً في الدليل بنفس الاسم أو رقم الهاتف ("${_currentDuplicateMatch.place.name}" - ${_currentDuplicateMatch.place.area || 'المنزلة'}). لمنع تكرار الأماكن على المنصة، هل أنت متأكد من المتابعة وإضافة هذا المكان كنشاط جديد؟`,
@@ -4105,6 +4181,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         }
         document.getElementById('p-name')?.focus();
         return;
+      } else {
+        _ignoredDuplicateIds.add(_currentDuplicateMatch.place.id);
+        _currentDuplicateMatch = null;
       }
     }
 

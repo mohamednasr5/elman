@@ -68,3 +68,36 @@
 .google-rating-card .google-rating-bar-row{transition:transform .28s ease}
 .google-rating-card .google-rating-bar-row:hover{transform:translateX(-2px)}
 @media (prefers-reduced-motion:reduce){.google-rating-card .google-rating-score,.google-rating-card .google-rating-stars .dm-rating-star,.google-rating-card .bar-fill{animation:none!important;transition:none!important}.google-rating-card .bar-fill{width:var(--dm-rating-width)!important}}
+
+/* ========================================================================== 
+   NEARBY PLACES SECTION (أماكن قريبة)
+   ========================================================================== */
+.nearby-places-section {
+  position: relative;
+  overflow: hidden;
+  margin-top: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.nearby-places-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+@media (max-width: 1200px) {
+  .nearby-places-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 820px) {
+  .nearby-places-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+@media (max-width: 520px) {
+  .nearby-places-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

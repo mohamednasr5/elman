@@ -15,7 +15,7 @@ import { getStoredCoinsBalance, fetchLiveCoinsBalance, setStoredCoinsBalance } f
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
 import { formatWorkingHours, isPlaceOpen, formatDateRange, daysUntil, formatDate } from '../../utils/date.js';
-import { formatPrice, calcDiscount } from '../../utils/arabic.js';
+import { formatPrice, calcDiscount, normalizeArabic } from '../../utils/arabic.js';
 import { showModal, showConfirm } from '../components/Modal.js';
 import { submitVerificationRequest } from '../../services/places.service.js?v=a58f9ed6';
 import { toast } from '../components/Toast.js';
@@ -35,6 +35,7 @@ import { generateCleanSlug } from '../../utils/slug.js';
 import { formatSocialUrl } from '../../utils/social.js';
 import { isValidPhoneNumber } from '../../utils/phone.js';
 import { renderTrustCard } from '../components/TrustCard.js';
+import { renderPlaceCard } from '../components/PlaceCard.js';
 import { openAppointmentModal } from '../components/AppointmentModal.js';
 import { renderMarketWidgetsHTML, bindMarketWidgetsEvents } from '../components/MarketWidgets.js';
 import { renderPaymentBadges } from '../../utils/payments.js';
@@ -261,6 +262,183 @@ export function normalizePlace(p) {
     isVerified: Boolean(p.isVerified || p.is_verified || p.verified),
     is_verified: Boolean(p.isVerified || p.is_verified || p.verified)
   };
+}
+
+/**
+ * Find 3 to 4 nearby places matching neighborhood, street, district, or area.
+ */
+export function findNearbyPlaces(currentPlace, allPlaces, maxCount = 4) {
+  if (!currentPlace || !Array.isArray(allPlaces) || !allPlaces.length) return [];
+
+  const currentId = String(currentPlace.id || currentPlace._id || currentPlace.slug || '').trim();
+  const currentSlug = String(currentPlace.slug || '').trim();
+
+  // Normalize current place location fields
+  const curArea = normalizeArabic(currentPlace.area || currentPlace.city || '').trim();
+  const curAddress = normalizeArabic(currentPlace.address || '').trim();
+  const curDistrict = normalizeArabic(currentPlace.district || currentPlace.neighborhood || currentPlace.subArea || '').trim();
+  const curStreet = normalizeArabic(currentPlace.street || '').trim();
+
+  // Generic address words to exclude from keyword comparison
+  const GENERIC_ADDR_WORDS = new Set([
+    'شارع', 'ش', 'ميدان', 'طريق', 'حي', 'منطقة', 'منطقه', 'قرية', 'قريه', 
+    'مدينة', 'مدينه', 'مركز', 'محافظة', 'محافظه', 'الدقهلية', 'الدقهليه', 
+    'المنزلة', 'المنزله', 'المطرية', 'المطريه', 'أمام', 'امام', 'بجوار', 
+    'خلف', 'على', 'علي', 'في', 'من', 'بعد', 'قبل', 'ناحية', 'ناحيه', 
+    'بجانب', 'عمارة', 'عماره', 'برج', 'الدور', 'طابق', 'شقة', 'شقه', 'محل'
+  ]);
+
+  const addressKeywords = [];
+  if (curStreet && curStreet.length >= 3 && !GENERIC_ADDR_WORDS.has(curStreet)) {
+    addressKeywords.push(curStreet);
+  }
+  if (curDistrict && curDistrict.length >= 3 && !GENERIC_ADDR_WORDS.has(curDistrict)) {
+    addressKeywords.push(curDistrict);
+  }
+
+  const addrWords = curAddress.split(/\s+/).map(w => w.trim()).filter(w => w.length >= 3 && !GENERIC_ADDR_WORDS.has(w));
+  addrWords.forEach(w => {
+    if (!addressKeywords.includes(w)) addressKeywords.push(w);
+  });
+
+  // Coordinates
+  const curLat = Number(currentPlace.lat || currentPlace.latitude);
+  const curLng = Number(currentPlace.lng || currentPlace.longitude);
+  const hasCurCoords = !isNaN(curLat) && !isNaN(curLng) && curLat !== 0 && curLng !== 0;
+
+  function calcDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  const scored = [];
+
+  for (const p of allPlaces) {
+    if (!p) continue;
+    const pId = String(p.id || p._id || p.slug || '').trim();
+    const pSlug = String(p.slug || '').trim();
+
+    // Skip current place
+    if (pId === currentId || (currentSlug && pSlug === currentSlug) || pId === currentSlug) continue;
+
+    const pArea = normalizeArabic(p.area || p.city || '').trim();
+    const pAddress = normalizeArabic(p.address || '').trim();
+    const pDistrict = normalizeArabic(p.district || p.neighborhood || p.subArea || '').trim();
+    const pStreet = normalizeArabic(p.street || '').trim();
+
+    let score = 0;
+
+    // 1. Street Match
+    if (curStreet && pStreet && (curStreet === pStreet || pStreet.includes(curStreet) || curStreet.includes(pStreet))) {
+      score += 50;
+    }
+
+    // 2. District / Neighborhood Match
+    if (curDistrict && pDistrict && (curDistrict === pDistrict || pDistrict.includes(curDistrict) || curDistrict.includes(pDistrict))) {
+      score += 45;
+    }
+
+    // 3. Specific Address Keywords (e.g. shared street names or landmarks)
+    for (const kw of addressKeywords) {
+      if (pAddress.includes(kw) || pStreet.includes(kw) || pDistrict.includes(kw)) {
+        score += 30;
+      }
+    }
+
+    // 4. Coordinates Proximity
+    const pLat = Number(p.lat || p.latitude);
+    const pLng = Number(p.lng || p.longitude);
+    if (hasCurCoords && !isNaN(pLat) && !isNaN(pLng) && pLat !== 0 && pLng !== 0) {
+      const dist = calcDistanceKm(curLat, curLng, pLat, pLng);
+      if (dist <= 0.6) {
+        score += 65;
+      } else if (dist <= 1.2) {
+        score += 45;
+      } else if (dist <= 3.0) {
+        score += 25;
+      }
+    }
+
+    // 5. Area Match
+    if (curArea && pArea) {
+      if (curArea === pArea) {
+        score += 20;
+      } else if (curArea.includes(pArea) || pArea.includes(curArea)) {
+        score += 15;
+      }
+    }
+
+    if (score > 0) {
+      scored.push({ place: p, score });
+    }
+  }
+
+  // Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
+
+  const results = scored.slice(0, maxCount).map(item => item.place);
+
+  // Backfill if fewer than 3 to ensure 3-4 cards are always shown
+  if (results.length < 3) {
+    const existingIds = new Set(results.map(r => String(r.id || r.slug || r._id)));
+    for (const p of allPlaces) {
+      if (results.length >= maxCount) break;
+      const pId = String(p.id || p._id || p.slug || '').trim();
+      const pSlug = String(p.slug || '').trim();
+      if (pId === currentId || (currentSlug && pSlug === currentSlug) || existingIds.has(pId) || existingIds.has(pSlug)) continue;
+
+      const pArea = normalizeArabic(p.area || p.city || '').trim();
+      if (!curArea || pArea === curArea || pArea.includes('منزل') || pArea.includes('مطري')) {
+        results.push(p);
+        existingIds.add(pId);
+        existingIds.add(pSlug);
+      }
+    }
+  }
+
+  return results.slice(0, maxCount);
+}
+
+export function renderNearbyPlacesSectionHTML(nearbyPlaces, currentPlace) {
+  if (!Array.isArray(nearbyPlaces) || !nearbyPlaces.length) return '';
+
+  const locationLabel = (currentPlace?.district || currentPlace?.street || currentPlace?.area || 'المنطقة').trim();
+
+  function esc(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  return `
+    <section class="info-card nearby-places-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(14,116,144,0.1);display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:var(--primary)">📍</div>
+          <div>
+            <h3 style="margin:0;font-size:1.08rem;font-weight:900;color:var(--text-primary)">
+              أماكن قريبة
+            </h3>
+            <p style="margin:2px 0 0;font-size:0.8rem;color:var(--text-muted)">
+              أنشطة ومحلات أخرى في محيط ${esc(locationLabel)}
+            </p>
+          </div>
+        </div>
+        <a href="places.html?area=${encodeURIComponent(currentPlace?.area || '')}" class="btn btn-ghost btn-xs" style="font-size:11.5px;font-weight:700;color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+          <span>تصفح المزيد في المنطقة</span>
+          <span>←</span>
+        </a>
+      </div>
+
+      <div class="nearby-places-grid">
+        ${nearbyPlaces.map(p => renderPlaceCard(p)).join('')}
+      </div>
+    </section>
+  `;
 }
 
 export async function renderPlacePage($container, { slug, user, initialPlace = null }) {
@@ -495,6 +673,16 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     const displayServices = (isEn && ((place.servicesEn && place.servicesEn.length) || (place.services_en && place.services_en.length)))
       ? (place.servicesEn || place.services_en)
       : (place.services || []);
+
+    // 0ms Synchronous Nearby Places if cache is primed
+    const cachedPlaces = getCached('published_100_') || [];
+    let initialNearbyHTML = '';
+    if (!isAtm && Array.isArray(cachedPlaces) && cachedPlaces.length > 0) {
+      const nearby = findNearbyPlaces(place, cachedPlaces, 4);
+      if (nearby.length > 0) {
+        initialNearbyHTML = renderNearbyPlacesSectionHTML(nearby, place);
+      }
+    }
 
     try { trackPlaceView(place, currentUser); } catch (_) {}
 
@@ -971,9 +1159,6 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
           <!-- Products Slot (Verified Places) -->
           <div id="place-products-slot"></div>
 
-          <!-- Activity Trust Breakdown Card -->
-          ${!isAtm ? renderTrustCard(place) : ''}
-
           <!-- Photo Gallery -->
           ${place.imageUrls && place.imageUrls.length > 0 ? `
             <section class="info-card">
@@ -989,6 +1174,14 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
               </div>
             </section>
           ` : ''}
+
+          <!-- Activity Trust Breakdown Card -->
+          ${!isAtm ? renderTrustCard(place) : ''}
+
+          <!-- Nearby Places Slot (أماكن قريبة - بعد بطاقة الثقة وقبل التعليقات) -->
+          <div id="place-nearby-slot">
+            ${initialNearbyHTML}
+          </div>
 
           <!-- Google-Style 5-Star Reviews Slot (Directly below Place Card as requested!) -->
           <div id="place-reviews-slot">
@@ -1505,10 +1698,10 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
       }, { once: true });
     }
 
-    // 4. Hydrate Spotlight Widget & Settings in background idle
+    // 4. Hydrate Spotlight Widget, Nearby Places & Settings in background idle
     const loadSpotlight = () => {
       Promise.all([
-        getPublishedPlaces({ limit: 40 }).catch(() => []),
+        getPublishedPlaces({ limit: 100 }).catch(() => []),
         getSettings().catch(() => ({}))
       ]).then(([allPublished, settings]) => {
         if (settings?.contact?.whatsappLink) {
@@ -1516,6 +1709,17 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         }
         mountSpotlightPlaceWidget(allPublished, placeId, waUrl);
         mountPlaceJobBoardWidget(place);
+
+        // Hydrate Nearby Places (أماكن قريبة)
+        if (!isAtm) {
+          const nearbySlot = document.getElementById('place-nearby-slot');
+          if (nearbySlot && Array.isArray(allPublished) && allPublished.length > 0) {
+            const nearby = findNearbyPlaces(place, allPublished, 4);
+            if (nearby.length > 0) {
+              nearbySlot.innerHTML = renderNearbyPlacesSectionHTML(nearby, place);
+            }
+          }
+        }
       }).catch(() => {});
     };
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
