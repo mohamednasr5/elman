@@ -125,7 +125,7 @@ export async function renderCategoriesPage($container) {
           ${iconHtml}
         </div>
         <div class="category-card__name">${escHtml(cat.name)}</div>
-        <div class="category-card__count">${count > 0 ? `${count} مكان` : 'استكشف الأماكن'}</div>
+        <div class="category-card__count">${count > 0 ? 'استكشف الأماكن' : 'استكشف الأماكن'}</div>
       </a>
     `;
   }).join('');
