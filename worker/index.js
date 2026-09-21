@@ -1334,7 +1334,7 @@ try {
         p.trust_score, p.verification_status, p.offer_count, p.product_count, p.services_json,
         p.social_json, p.stats_json, p.working_hours_json, p.parent_id, p.branches_json, p.availability_status,
         p.created_at, p.updated_at,
-        p.is_sponsored, p.is_featured, p.sponsored_until, p.priority
+        p.is_sponsored, p.is_featured, p.sponsored_until, p.sponsored_at, p.priority
       FROM places p
       WHERE p.status = 'published'
     `;
@@ -1397,6 +1397,8 @@ try {
         isFeatured: Boolean(place.is_featured),
         sponsoredUntil: place.sponsored_until,
         sponsored_until: place.sponsored_until,
+        sponsoredAt: place.sponsored_at,
+        sponsored_at: place.sponsored_at,
         reviewCount: reviewCountVal,
         review_count: reviewCountVal,
         rating: ratingVal
@@ -1569,6 +1571,8 @@ try {
           isFeatured: Boolean(result.is_featured),
           sponsoredUntil: result.sponsored_until,
           sponsored_until: result.sponsored_until,
+          sponsoredAt: result.sponsored_at,
+          sponsored_at: result.sponsored_at,
           reviewCount: Number(result.review_count || 0),
           review_count: Number(result.review_count || 0),
           rating: Number(result.rating || 0.0),
@@ -1622,7 +1626,7 @@ try {
         p.status, p.is_verified, p.verification_status, p.offer_count, p.product_count,
         p.services_json, p.social_json, p.stats_json, p.working_hours_json,
         p.parent_id, p.branches_json, p.availability_status,
-        p.created_at, p.updated_at, p.is_sponsored, p.is_featured, p.sponsored_until, p.priority,
+        p.created_at, p.updated_at, p.is_sponsored, p.is_featured, p.sponsored_until, p.sponsored_at, p.priority,
         u.name AS owner_name, u.email AS owner_email_user, u.photo_url AS owner_photo
       FROM places p
       LEFT JOIN users u ON u.id = p.owner_id
@@ -1744,6 +1748,8 @@ try {
         isFeatured: Boolean(place.is_featured),
         sponsoredUntil: place.sponsored_until,
         sponsored_until: place.sponsored_until,
+        sponsoredAt: place.sponsored_at,
+        sponsored_at: place.sponsored_at,
         reviewCount: reviewCountVal,
         review_count: reviewCountVal,
         rating: ratingVal,
@@ -6079,7 +6085,7 @@ try {
     }
 
     if (targetType === 'place') {
-      const place = await db.prepare('SELECT id, name, slug, owner_id, sponsored_until FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
+      const place = await db.prepare('SELECT id, name, slug, owner_id, sponsored_until, sponsored_at FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
       if (!place) return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
       if (!auth.user.isAdmin && place.owner_id !== auth.user.uid) return jsonResponse({ success: false, error: 'لا تملك هذا المكان' }, 403, corsHeaders);
       const targetTitle = place.name;
@@ -6092,8 +6098,8 @@ try {
         return jsonResponse({ success: false, error: 'فشل خصم الذهبيات' }, 400, corsHeaders);
       }
 
-      const placeUpdate = await db.prepare('UPDATE places SET is_sponsored = 1, sponsored_until = ?, updated_at = ? WHERE id = ? RETURNING id, is_sponsored, sponsored_until')
-        .bind(newUntil, now, place.id).first();
+      const placeUpdate = await db.prepare('UPDATE places SET is_sponsored = 1, is_featured = 1, sponsored_at = ?, sponsored_until = ?, updated_at = ? WHERE id = ? RETURNING id, is_sponsored, sponsored_at, sponsored_until')
+        .bind(now, newUntil, now, place.id).first();
       if (!placeUpdate) {
         await db.prepare('UPDATE users SET points = points + ?, updated_at = ? WHERE id = ?').bind(cost, Date.now(), auth.user.uid).run().catch(() => {});
         return jsonResponse({ success: false, error: 'تعذر تفعيل الإعلان المميز، وتمت إعادة الذهبيات إلى رصيدك.' }, 500, corsHeaders);
