@@ -118,13 +118,11 @@ export async function createPlace(placeData, currentUser) {
   const now = Date.now();
   const isPhoneUnavailable = Boolean(placeData.phoneUnavailable || !placeData.phone);
   const targetArea = (placeData.area || 'المنزلة').trim();
-  const isMatariya = targetArea.includes('المطرية');
-  const defaultCoords = isMatariya ? { lat: 31.1833, lng: 32.0333 } : { lat: 31.1578, lng: 31.9333 };
   const validLocation = (placeData.location && Number(placeData.location.lat) > 20 && Number(placeData.location.lng) > 20)
     ? { lat: Number(placeData.location.lat), lng: Number(placeData.location.lng) }
     : (placeData.latitude && placeData.longitude && Number(placeData.latitude) > 20 && Number(placeData.longitude) > 20)
       ? { lat: Number(placeData.latitude), lng: Number(placeData.longitude) }
-      : defaultCoords;
+      : null;
 
   const newPlace = {
     id: placeId, slug, ownerId: currentUser.uid, ownerEmail: currentUser.email || '', name: placeData.name.trim(), nameEn: placeData.nameEn || '',
@@ -133,7 +131,7 @@ export async function createPlace(placeData, currentUser) {
     phone: isPhoneUnavailable ? '' : normalizePhoneNumber(placeData.phone || ''),
     phoneUnavailable: isPhoneUnavailable,
     whatsapp: normalizePhoneNumber(placeData.whatsapp || ''),
-    address: placeData.address || '', area: targetArea, mapsLink: placeData.mapsLink || '', location: validLocation, latitude: validLocation.lat, longitude: validLocation.lng,
+    address: placeData.address || '', area: targetArea, mapsLink: placeData.mapsLink || '', location: validLocation, latitude: validLocation?.lat ?? null, longitude: validLocation?.lng ?? null,
     alwaysOpen: Boolean(placeData.alwaysOpen), alwaysOpenExcept: Boolean(placeData.alwaysOpenExcept), workingHours: placeData.workingHours || getDefaultWorkingHours(),
     coverImageUrl: placeData.coverImageUrl || '', logoUrl: placeData.logoUrl || '', imageUrls: placeData.imageUrls || [], services: placeData.services || [],
     paymentMethods: placeData.paymentMethods || placeData.payment_methods || [],
@@ -162,15 +160,13 @@ export async function updatePlace(placeId, placeData) {
     : (placeData.phone === '' ? true : Boolean(current.phoneUnavailable));
 
     const targetArea = (placeData.area || current.area || 'المنزلة').trim();
-    const isMatariya = targetArea.includes('المطرية');
-    const defaultCoords = isMatariya ? { lat: 31.1833, lng: 32.0333 } : { lat: 31.1578, lng: 31.9333 };
     const resolvedLocation = (placeData.location && Number(placeData.location.lat) > 20 && Number(placeData.location.lng) > 20)
       ? { lat: Number(placeData.location.lat), lng: Number(placeData.location.lng) }
       : (placeData.latitude && placeData.longitude && Number(placeData.latitude) > 20 && Number(placeData.longitude) > 20)
         ? { lat: Number(placeData.latitude), lng: Number(placeData.longitude) }
-        : (current.location && Number(current.location.lat) > 20)
-          ? current.location
-          : defaultCoords;
+        : (current.location && Number(current.location.lat) > 20 && Number(current.location.lng) > 20)
+          ? { lat: Number(current.location.lat), lng: Number(current.location.lng) }
+          : null;
 
     const updates = {
     name: placeData.name ? placeData.name.trim() : current.name,
@@ -187,8 +183,8 @@ export async function updatePlace(placeId, placeData) {
     area: targetArea,
     mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''),
     location: resolvedLocation,
-    latitude: resolvedLocation.lat,
-    longitude: resolvedLocation.lng,
+    latitude: resolvedLocation?.lat ?? null,
+    longitude: resolvedLocation?.lng ?? null,
     alwaysOpen: placeData.alwaysOpen !== undefined ? Boolean(placeData.alwaysOpen) : Boolean(current.alwaysOpen),
     alwaysOpenExcept: placeData.alwaysOpenExcept !== undefined ? Boolean(placeData.alwaysOpenExcept) : Boolean(current.alwaysOpenExcept),
     workingHours: placeData.workingHours || current.workingHours,
