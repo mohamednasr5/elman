@@ -38,7 +38,7 @@ import { renderTrustCard } from '../components/TrustCard.js';
 import { renderPlaceCard } from '../components/PlaceCard.js';
 import { openAppointmentModal } from '../components/AppointmentModal.js';
 import { renderMarketWidgetsHTML, bindMarketWidgetsEvents } from '../components/MarketWidgets.js';
-import { renderPaymentBadges } from '../../utils/payments.js';
+import { renderPaymentBadges, renderPlacePaymentStripHTML } from '../../utils/payments.js';
 
 export function renderAvailabilityBadge(status) {
   if (!status) return '';
@@ -920,6 +920,9 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                 <span class="addr-pin">📍</span>
               </div>
             </div>
+
+            <!-- Row 3.5: Accepted Payment Methods Strip (Image 1 placement) -->
+            ${!isAtm ? renderPlacePaymentStripHTML(place, { isEn }) : ''}
 
             <!-- Row 4: Primary Contact Actions (Call / Suggest Phone + WhatsApp) -->
             <div class="place-card-row-contact">

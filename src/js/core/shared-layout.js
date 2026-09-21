@@ -24,7 +24,7 @@ export async function initSharedLayout(activeHref = '') {
   _setupPwaBanner();
   _setActiveLinks(activeHref);
   _checkApkPwaEnvironment();
-  _setupAnchorCursor();
+  _setupAppStoreButtons();
   _bindThemeToggle();
   setupInstantLinkPrefetcher();
   bindGlobalVoiceAssistantFab();
@@ -57,36 +57,14 @@ export async function initSharedLayout(activeHref = '') {
   } catch (_) {}
 }
 
-function _setupAnchorCursor() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  if (!window.matchMedia?.('(pointer:fine)').matches) return;
-  const cursor = document.getElementById('anchor-cursor');
-  if (!cursor) return;
-  document.documentElement.classList.add('anchor-cursor-enabled');
-  let raf = 0;
-  let x = window.innerWidth / 2;
-  let y = window.innerHeight / 2;
-  let tx = x;
-  let ty = y;
-  const move = (e) => {
-    tx = e.clientX;
-    ty = e.clientY;
-    if (!raf) {
-      raf = requestAnimationFrame(() => {
-        cursor.style.transform = `translate3d(${tx}px,${ty}px,0) translate(-50%,-50%)`;
-        raf = 0;
-      });
-    }
-  };
-  window.addEventListener('pointermove', move, { passive: true });
-  document.addEventListener('pointerdown', () => cursor.classList.add('is-clicking'));
-  document.addEventListener('pointerup', () => cursor.classList.remove('is-clicking'));
-  document.addEventListener('pointerover', (e) => {
-    if (e.target.closest('a,button,[role="button"],input,select,textarea')) cursor.classList.add('is-hovering');
-  }, { passive: true });
-  document.addEventListener('pointerout', (e) => {
-    if (e.target.closest('a,button,[role="button"],input,select,textarea')) cursor.classList.remove('is-hovering');
-  }, { passive: true });
+function _setupAppStoreButtons() {
+  document.querySelectorAll('.app-store-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const storeName = btn.getAttribute('data-store') === 'apple' ? 'App Store' : 'Google Play';
+      toast.info(`🚀 تطبيق دليل المنزلة والمطرية قريباً بإذن الله على ${storeName}!`);
+    });
+  });
 }
 
 function _setupTheme() {
@@ -515,14 +493,26 @@ export function getSharedFooterHTML() {
                 </svg>
               </div>
             </a>
-            <div class="footer__app-stores" aria-label="تطبيق دليل المنزلة والمطرية" style="margin-top:10px;display:flex;justify-content:flex-start;align-items:center;gap:12px">
-              <button type="button" class="app-store-icon-coming-soon" aria-label="App Store — قريبًا" title="App Store — قريبًا" style="position:relative;border:0;background:transparent;padding:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;color:#fff">
-                <svg viewBox="0 0 24 24" width="25" height="25" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.94-3.01 0-.97-.55-2.08-.58-3.12 0-1.3.73-1.99.52-2.86-.4C3.79 15.25 4.51 7.59 9.05 7.31c1.16.06 1.97.64 2.65.7 1.02-.2 2-.79 3.09-.74 1.31.11 2.3.63 2.95 1.51-2.71 1.62-2.07 5.18.42 6.22-.5 1.31-1.14 2.61-2.11 3.85zM12.03 7.25C11.88 5.31 13.48 3.7 15.32 3.6c.25 2.24-2.04 3.92-3.29 3.65z"/></svg>
-                <span class="app-store-icon-coming-soon__tooltip" style="position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:5px 8px;border-radius:7px;background:#0f172a;color:#fff;font-size:10px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s ease;z-index:20">قريبًا</span>
+            <div class="footer__app-stores" aria-label="تحميل تطبيق دليل المنزلة والمطرية">
+              <button type="button" class="app-store-btn app-store-btn--google" data-store="google" aria-label="احصل عليه من Google Play (قريباً)" title="Google Play — قريباً بإذن الله">
+                <span class="app-store-btn__badge">قريباً</span>
+                <div class="app-store-btn__icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg>
+                </div>
+                <div class="app-store-btn__text">
+                  <span class="app-store-btn__sub">احصل عليه من</span>
+                  <span class="app-store-btn__title">Google Play</span>
+                </div>
               </button>
-              <button type="button" class="app-store-icon-coming-soon" aria-label="Google Play — قريبًا" title="Google Play — قريبًا" style="position:relative;border:0;background:transparent;padding:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;color:#fff">
-                <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg>
-                <span class="app-store-icon-coming-soon__tooltip" style="position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:5px 8px;border-radius:7px;background:#0f172a;color:#fff;font-size:10px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s ease;z-index:20">قريبًا</span>
+              <button type="button" class="app-store-btn app-store-btn--apple" data-store="apple" aria-label="حمله من App Store (قريباً)" title="App Store — قريباً بإذن الله">
+                <span class="app-store-btn__badge">قريباً</span>
+                <div class="app-store-btn__icon">
+                  <svg viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.84.94-2.91-.91.04-2.02.61-2.67 1.38-.58.67-1.08 1.76-.94 2.8.03.01.07.01.11.01.93 0 1.94-.52 2.56-1.28z"/></svg>
+                </div>
+                <div class="app-store-btn__text">
+                  <span class="app-store-btn__sub">حمله من</span>
+                  <span class="app-store-btn__title">App Store</span>
+                </div>
               </button>
             </div>
           </div>
@@ -566,8 +556,6 @@ export function getSharedFooterHTML() {
         </div>
       </div>
     </div>
-
-    <div class="anchor-cursor" id="anchor-cursor" aria-hidden="true"><span>⚓</span></div>
 
     <!-- Scroll to Top Floating Button -->
     <button type="button" class="scroll-to-top-btn" id="scroll-to-top-btn" aria-label="الصعود لأعلى الصفحة" title="العودة لأعلى الصفحة">

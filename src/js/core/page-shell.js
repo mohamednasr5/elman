@@ -4,7 +4,6 @@ import { getLang, isEnglish, switchLanguage, applyLangToDOM } from './i18n.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
 import { initContentProtection } from './content-protection.js';
 import { api } from './api.js';
-import { initAnchorCursor } from '../components/anchor-cursor.js';
 
 function _escShell(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -172,7 +171,7 @@ function _footerHTML() {
     {title:'الخدمات والدليل',links:[['/dashboard.html?section=add','إضافة مكان'],['/dashboard.html','لوحة التحكم'],['/free-verification.html','التوثيق المجاني'],['/emergency.html','خدمات الطوارئ'],['/search.html','البحث في الدليل'],['/now.html','طلبات أهالينا']]},
     {title:'المساعدة والتواصل',links:[['/legal.html','السياسة القانونية'],['/contact.html','تواصل معنا'],['/terms.html','الشروط والأحكام'],['/privacy.html','الخصوصية'],['/manzala.html','عن المنزلة'],['/matariya.html','عن المطرية']]}
   ];
-  return `<footer class="footer" id="site-footer" role="contentinfo"><div class="container"><div class="footer__grid"><div class="footer__brand"><a href="${homeHref}" class="footer__logo"><img src="/icons/icon-96x96.png" alt="${title}" width="40" height="40" onerror="this.src='/favicon-48x48.png';"><span class="footer__logo-name">${title}</span></a><p class="footer__description">${tagline}</p></div>${groups.map(g=>`<div class="footer__column"><h3 class="footer__col-title">${g.title}</h3><ul class="footer__links">${g.links.map(([h,l])=>`<li><a href="${h}" class="footer__link">${l}</a></li>`).join('')}</ul></div>`).join('')}</div><div class="footer__bottom"><p class="footer__copyright">${isEn ? '© 2026 Dalil El Manzala & El Matariya. All rights reserved.' : '© 2026 دليل المنزلة والمطرية الرقمي. جميع الحقوق محفوظة.'}</p><div class="footer__bottom-links"><a href="${isEn?'/en/about.html':'/about.html'}" class="footer__bottom-link">${isEn?'About Us':'عن الدليل'}</a><a href="${isEn?'/en/privacy/':'/privacy.html'}" class="footer__bottom-link">${isEn?'Privacy':'الخصوصية'}</a><a href="${isEn?'/en/terms/':'/terms.html'}" class="footer__bottom-link">${isEn?'Terms':'الشروط'}</a><a href="${isEn?'/en/contact/':'/contact.html'}" class="footer__bottom-link">${isEn?'Contact':'تواصل'}</a></div></div></div></footer>`;
+  return `<footer class="footer" id="site-footer" role="contentinfo"><div class="container"><div class="footer__grid"><div class="footer__brand"><a href="${homeHref}" class="footer__logo"><img src="/icons/icon-96x96.png" alt="${title}" width="40" height="40" onerror="this.src='/favicon-48x48.png';"><span class="footer__logo-name">${title}</span></a><p class="footer__description">${tagline}</p><div class="footer__app-stores" aria-label="تحميل تطبيق دليل المنزلة والمطرية"><button type="button" class="app-store-btn app-store-btn--google" data-store="google" aria-label="${isEn ? 'Get it on Google Play (Coming Soon)' : 'احصل عليه من Google Play (قريباً)'}" title="${isEn ? 'Google Play — Coming Soon' : 'Google Play — قريباً بإذن الله'}"><span class="app-store-btn__badge">${isEn ? 'Soon' : 'قريباً'}</span><div class="app-store-btn__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg></div><div class="app-store-btn__text"><span class="app-store-btn__sub">${isEn ? 'GET IT ON' : 'احصل عليه من'}</span><span class="app-store-btn__title">Google Play</span></div></button><button type="button" class="app-store-btn app-store-btn--apple" data-store="apple" aria-label="${isEn ? 'Download on App Store (Coming Soon)' : 'حمله من App Store (قريباً)'}" title="${isEn ? 'App Store — Coming Soon' : 'App Store — قريباً بإذن الله'}"><span class="app-store-btn__badge">${isEn ? 'Soon' : 'قريباً'}</span><div class="app-store-btn__icon"><svg viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.84.94-2.91-.91.04-2.02.61-2.67 1.38-.58.67-1.08 1.76-.94 2.8.03.01.07.01.11.01.93 0 1.94-.52 2.56-1.28z"/></svg></div><div class="app-store-btn__text"><span class="app-store-btn__sub">${isEn ? 'Download on the' : 'حمله من'}</span><span class="app-store-btn__title">App Store</span></div></button></div></div>${groups.map(g=>`<div class="footer__column"><h3 class="footer__col-title">${g.title}</h3><ul class="footer__links">${g.links.map(([h,l])=>`<li><a href="${h}" class="footer__link">${l}</a></li>`).join('')}</ul></div>`).join('')}</div><div class="footer__bottom"><p class="footer__copyright">${isEn ? '© 2026 Dalil El Manzala & El Matariya. All rights reserved.' : '© 2026 دليل المنزلة والمطرية الرقمي. جميع الحقوق محفوظة.'}</p><div class="footer__bottom-links"><a href="${isEn?'/en/about.html':'/about.html'}" class="footer__bottom-link">${isEn?'About Us':'عن الدليل'}</a><a href="${isEn?'/en/privacy/':'/privacy.html'}" class="footer__bottom-link">${isEn?'Privacy':'الخصوصية'}</a><a href="${isEn?'/en/terms/':'/terms.html'}" class="footer__bottom-link">${isEn?'Terms':'الشروط'}</a><a href="${isEn?'/en/contact/':'/contact.html'}" class="footer__bottom-link">${isEn?'Contact':'تواصل'}</a></div></div></div></footer>`;
 }
 
 function _setupHeaderSearch() {
@@ -543,9 +542,26 @@ export function setupInstantLinkPrefetcher() {
   document.addEventListener('touchstart', onPointerOver, { passive: true });
 }
 
+function _setupAppStoreButtons() {
+  document.querySelectorAll('.app-store-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isEn = isEnglish();
+      const storeName = btn.getAttribute('data-store') === 'apple' ? 'App Store' : 'Google Play';
+      const msg = isEn
+        ? `🚀 Dalil El Manzala & El Matariya App is coming soon to ${storeName}!`
+        : `🚀 تطبيق دليل المنزلة والمطرية قريباً بإذن الله على ${storeName}!`;
+      if (typeof window !== 'undefined' && window.toast?.info) {
+        window.toast.info(msg);
+      } else {
+        import('../ui/components/Toast.js').then(m => m.toast?.info(msg)).catch(() => alert(msg));
+      }
+    });
+  });
+}
+
 export async function initPage(activeFile=''){
   try{initContentProtection()}catch(_){}
-  try{initAnchorCursor()}catch(_){}
   applyLangToDOM(getLang());
   _loadShellCSS();
   _inject('header-slot',_headerHTML(activeFile));
@@ -557,6 +573,7 @@ export async function initPage(activeFile=''){
   _bindMoreMenu();
   _bindHeaderUserEvents();
   _bindGlobalPhoneAutoFormat();
+  _setupAppStoreButtons();
   setupInstantLinkPrefetcher();
   try{bindGlobalVoiceAssistantFab()}catch(_){}
   try{

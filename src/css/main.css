@@ -2101,36 +2101,6 @@ body.dark-theme .payment-status-badge.is-active {
 .payment-form-badge{border-radius:999px!important;font-weight:800!important}
 .payment-form-subtitle{line-height:1.8!important}
 
-/* The anchor is a decorative pointer layer; controls retain native text caret. */
-.anchor-cursor{
-  position:fixed;
-  left:0;top:0;
-  width:30px;height:30px;
-  z-index:2147483647;
-  pointer-events:none;
-  opacity:0;
-  transform-origin:18% 18%;
-  filter:drop-shadow(0 4px 7px rgba(15,23,42,.28));
-  transition:opacity .14s ease;
-  will-change:transform;
-}
-.anchor-cursor svg{display:block;width:100%;height:100%;overflow:visible}
-.anchor-cursor.is-visible{opacity:1}
-html.has-anchor-cursor,
-html.has-anchor-cursor body,
-html.has-anchor-cursor a,
-html.has-anchor-cursor button,
-html.has-anchor-cursor [role="button"]{cursor:none}
-html.has-anchor-cursor input,
-html.has-anchor-cursor textarea,
-html.has-anchor-cursor select,
-html.has-anchor-cursor [contenteditable="true"]{cursor:text}
-@media (max-width:767px),(pointer:coarse){
-  .anchor-cursor{display:none!important}
-}
-@media (prefers-reduced-motion:reduce){
-  .anchor-cursor{display:none!important}
-}
 @media (max-width:600px){
   .place-payment-section{padding:.95rem;border-radius:18px}
   .place-payment-header{align-items:flex-start;flex-wrap:wrap}
@@ -2145,40 +2115,226 @@ html.has-anchor-cursor [contenteditable="true"]{cursor:text}
   .payment-badge-wrapper:focus-visible .payment-badge-tooltip{transform:translate(0,0) scale(1)}
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   ACCEPTED PAYMENT METHODS STRIP (INLINE PLACE HEADER & CARDS)
+   ═══════════════════════════════════════════════════════════════ */
+.place-payment-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 8px 0 6px 0;
+  padding: 4px 0;
+}
+.place-payment-strip__label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-secondary, #475569);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+[data-theme="dark"] .place-payment-strip__label,
+body.dark-theme .place-payment-strip__label {
+  color: #94A3B8;
+}
+.place-payment-strip__pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.payment-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  min-width: 46px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+}
+.payment-pill:hover,
+.payment-pill:focus-visible {
+  transform: translateY(-2px);
+  border-color: #3b82f6;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.15);
+  outline: none;
+}
+[data-theme="dark"] .payment-pill,
+body.dark-theme .payment-pill {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.payment-pill svg,
+.payment-pill img {
+  display: block;
+  max-height: 22px;
+  max-width: 44px;
+  object-fit: contain;
+}
+/* Pill Tooltip */
+.payment-pill .pill-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 50;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.payment-pill:hover .pill-tooltip,
+.payment-pill:focus-visible .pill-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Compact version for Place Cards */
+.place-card__payments {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 6px 0 4px 0;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.2);
+}
+.place-card__payments-label {
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+}
+.place-card__payments-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.place-card__payments-pills .payment-pill {
+  height: 24px;
+  min-width: 36px;
+  padding: 2px 5px;
+  border-radius: 6px;
+}
+.place-card__payments-pills .payment-pill svg,
+.place-card__payments-pills .payment-pill img {
+  max-height: 16px;
+  max-width: 32px;
+}
 
 /* ═══════════════════════════════════════════════════════════════
-   APP STORE COMING SOON + PULSING SHIP'S ANCHOR CURSOR
+   FOOTER OFFICIAL APP STORE & GOOGLE PLAY BUTTONS
    ═══════════════════════════════════════════════════════════════ */
-.footer__app-stores { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
-.app-store-coming-soon { position:relative; min-width:178px; height:58px; display:inline-flex; align-items:center; gap:9px; padding:6px 10px; border-radius:16px; box-sizing:border-box; background:linear-gradient(135deg,#0F274D 0%,#1B4F72 100%); border:1px solid rgba(99,240,174,.28); color:#fff; overflow:hidden; cursor:default; box-shadow:0 8px 18px rgba(15,39,77,.18),inset 0 1px 0 rgba(255,255,255,.12); transition:transform .22s cubic-bezier(.34,1.56,.64,1),border-color .22s ease,box-shadow .22s ease; }
-.app-store-coming-soon:hover,.app-store-coming-soon:focus-visible { transform:translateY(-3px); border-color:rgba(99,240,174,.9); box-shadow:0 14px 28px rgba(15,39,77,.24),0 0 0 3px rgba(99,240,174,.09); outline:none; }
-.app-store-coming-soon__icon { width:40px;height:40px;display:grid;place-items:center;flex:0 0 40px;border-radius:11px;background:rgba(255,255,255,.08); }
-.app-store-coming-soon__copy { display:flex;flex-direction:column;gap:1px;line-height:1.15;direction:ltr;text-align:left; }
-.app-store-coming-soon__copy small { font-size:9px;color:rgba(255,255,255,.72);font-weight:700; }
-.app-store-coming-soon__copy strong { font-size:13px;font-weight:900;color:#fff; }
-.app-store-coming-soon__soon { position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(135deg,rgba(15,39,77,.96),rgba(27,79,114,.96));color:#63f0ae;font-size:14px;font-weight:900;letter-spacing:.2px;opacity:0;transform:translateY(8px);transition:opacity .2s ease,transform .2s ease; }
-.app-store-coming-soon:hover .app-store-coming-soon__soon,.app-store-coming-soon:focus-visible .app-store-coming-soon__soon { opacity:1;transform:translateY(0); }
-.anchor-cursor { position:fixed;top:0;left:0;width:42px;height:42px;display:grid;place-items:center;z-index:2147483647;pointer-events:none;transform:translate3d(-50%,-50%,0);will-change:transform;filter:drop-shadow(0 5px 8px rgba(15,39,77,.25));transition:width .18s ease,height .18s ease,filter .18s ease; }
-.anchor-cursor::before,.anchor-cursor::after { content:'';position:absolute;inset:2px;border-radius:50%;border:1.5px solid rgba(99,240,174,.72);animation:anchor-cursor-pulse 1.65s ease-out infinite; }
-.anchor-cursor::after { animation-delay:.82s;opacity:.55; }
-.anchor-cursor span { position:relative;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#0F274D,#1B4F72);border:1px solid rgba(99,240,174,.85);color:#63f0ae;font-size:20px;line-height:1;box-shadow:0 5px 14px rgba(15,39,77,.3),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .18s ease,background .18s ease; }
-.anchor-cursor.is-hovering span { transform:scale(1.2) rotate(-8deg);background:linear-gradient(135deg,#1B4F72,#0F274D); }
-.anchor-cursor.is-clicking span { transform:scale(.9) rotate(8deg); }
-@keyframes anchor-cursor-pulse { 0%{transform:scale(.55);opacity:.85;}70%{transform:scale(1.45);opacity:0;}100%{transform:scale(1.45);opacity:0;} }
-@media (pointer:fine) { .anchor-cursor-enabled,.anchor-cursor-enabled body,.anchor-cursor-enabled body * { cursor:none !important; } }
-@media (max-width:640px) { .footer__app-stores{display:grid;grid-template-columns:1fr 1fr;} .app-store-coming-soon{min-width:0;width:100%;} }
-@media (prefers-reduced-motion:reduce) { .anchor-cursor::before,.anchor-cursor::after{animation:none;} }
-
-
-/* Brand cursor: subtle animated ship anchor */
-html,body,*{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%230f172a' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M20 6v19M14 13l6 6 6-6M12 25h16M9 25c1.8 6 5.3 9 11 9s9.2-3 11-9M16 31h8'/%3E%3C/g%3E%3C/svg%3E") 20 20,auto}
-
-/* Branded ship-anchor pointer */
-html,body,*{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%230f172a' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M20 5v20M14 12l6 6 6-6M12 25h16M8 25c2 6 6 9 12 9s10-3 12-9M16 31h8'/%3E%3C/g%3E%3C/svg%3E") 20 20,auto}
-@keyframes anchor-pulse{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.05) rotate(-2deg)}}
-
-
-/* Global signature cursor: animated ship anchor */
-html,body,.app-shell,*{cursor:url('/assets/images/ship-anchor-cursor.svg') 12 12,auto}
-a,button,input,select,textarea,[role="button"]{cursor:url('/assets/images/ship-anchor-cursor.svg') 12 12,pointer}
-@media (pointer:coarse){html,body,.app-shell,*{cursor:auto}}
+.footer__app-stores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  align-items: center;
+}
+.app-store-btn {
+  position: relative;
+  min-width: 172px;
+  height: 54px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-radius: 12px;
+  box-sizing: border-box;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  overflow: visible;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.app-store-btn:hover,
+.app-store-btn:focus-visible {
+  transform: translateY(-3px);
+  border-color: #63f0ae;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(99, 240, 174, 0.2);
+  outline: none;
+}
+.app-store-btn__icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+}
+.app-store-btn__icon svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.app-store-btn__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  text-align: right;
+}
+.app-store-btn__sub {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+.app-store-btn__title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+.app-store-btn__badge {
+  position: absolute;
+  top: -8px;
+  left: 10px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+  letter-spacing: 0.3px;
+  transition: transform 0.2s ease;
+}
+.app-store-btn:hover .app-store-btn__badge {
+  transform: scale(1.08);
+}
+@media (max-width: 640px) {
+  .footer__app-stores {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  .app-store-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
