@@ -54,13 +54,11 @@
 /en/about           /en/about/index.html             200
 /en/about/          /en/about/index.html             200
 
-# English dynamic place/category fallbacks. Static generated pages take precedence.
-/en/place            /en/place/index.html             200
-/en/place/           /en/place/index.html             200
-/en/place/*          /en/place/:splat/index.html 200
-/en/category         /en/category/index.html          200
-/en/category/        /en/category/index.html          200
-/en/category/*       /en/category/:splat/index.html  200
+# English generated profile/category paths are served as real static directories.
+/en/place            /en/place/index.html 200
+/en/place/           /en/place/index.html 200
+/en/category         /en/category/index.html 200
+/en/category/        /en/category/index.html 200
 
 # Arabic clean routing remains unchanged.
 /ar                 /index.html         200
@@ -149,8 +147,7 @@
 /places/*           /place/:splat       301
 /categories/*       /category/:splat    301
 
-# Dynamic parameterized fallback routes (only triggered if static pre-rendered file does not exist)
-/place/*            /place/:splat/ 200
+# Dynamic parameterized place routes are handled by the Worker; do not use a static wildcard fallback.
 
 # Canonical trailing-slash aliases for generated public SEO profiles
 /place/:splat/index.html   /place/:splat/   301
