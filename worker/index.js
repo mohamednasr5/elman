@@ -9704,26 +9704,15 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
       "addressRegion": isEn ? 'Dakahlia' : 'الدقهلية',
       "addressCountry": 'EG'
     },
-    "geo": (place.latitude && place.longitude && Number(place.latitude) > 20) ? {
-      "@type": "GeoCoordinates",
-      "latitude": Number(place.latitude),
-      "longitude": Number(place.longitude)
-    } : undefined,
+    "geo": (() => {
+      const lat = Number(place.latitude);
+      const lng = Number(place.longitude);
+      return Number.isFinite(lat) && Number.isFinite(lng) &&
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+        ? { "@type": "GeoCoordinates", "latitude": lat, "longitude": lng }
+        : undefined;
+    })(),
     "hasMap": place.maps_link || undefined,
-    "areaServed": [
-      {
-        "@type": "AdministrativeArea",
-        "name": isEn ? "El Manzala" : "مركز ومدينة المنزلة"
-      },
-      {
-        "@type": "AdministrativeArea",
-        "name": isEn ? "El Matariya" : "مركز ومدينة المطرية"
-      },
-      {
-        "@type": "AdministrativeArea",
-        "name": isEn ? "Dakahlia Governorate" : "محافظة الدقهلية"
-      }
-    ],
     "sameAs": sameAs.length > 0 ? sameAs : undefined,
     "knowsAbout": services.length > 0 ? services : undefined,
     "openingHoursSpecification": openingHoursSpecs.length > 0 ? openingHoursSpecs : undefined,
@@ -9735,75 +9724,6 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
       "worstRating": 1
     } : undefined
   };
-
-  // Build AI-Search Optimized Q&A FAQPage Schema (Perplexity, ChatGPT, Google AI Overviews)
-  const faqMainEntity = [];
-
-  // 1. Phone number FAQ
-  if (place.phone) {
-    faqMainEntity.push({
-      "@type": "Question",
-      "name": isEn ? `What is the phone number of ${rawPlaceName}?` : `ما هو رقم هاتف وتواصل ${rawPlaceName}؟`,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": isEn
-          ? `The contact phone number for ${rawPlaceName} is ${place.phone}. WhatsApp is also available for direct inquiry.`
-          : `رقم هاتف التواصل مع ${rawPlaceName} هو ${place.phone}، ويمكنك التواصل معه مباشرة أو عبر واتساب من خلال دليل المنزلة والمطرية الرقمي.`
-      }
-    });
-  }
-
-  // 2. Address / Location FAQ
-  const fullAddressStr = (isEn && place.address_en) ? place.address_en : (place.address || (place.area ? `${place.area} - الدقهلية` : 'المنزلة والمطرية - الدقهلية'));
-  faqMainEntity.push({
-    "@type": "Question",
-    "name": isEn ? `Where is ${rawPlaceName} located?` : `أين يقع ${rawPlaceName}؟`,
-    "acceptedAnswer": {
-      "@type": "Answer",
-      "text": isEn
-        ? `${rawPlaceName} is located at: ${fullAddressStr}, Dakahlia Governorate, Egypt.`
-        : `يقع ${rawPlaceName} في: ${fullAddressStr}، بمحافظة الدقهلية، جمهورية مصر العربية.`
-    }
-  });
-
-  // 3. Opening hours FAQ
-  if (openingHoursSpecs.length > 0) {
-    const hoursSummary = openingHoursSpecs.map(h => `${h.dayOfWeek}: ${h.opens} - ${h.closes}`).join(' | ');
-    faqMainEntity.push({
-      "@type": "Question",
-      "name": isEn ? `What are the working hours of ${rawPlaceName}?` : `ما هي مواعيد وساعات عمل ${rawPlaceName}؟`,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": isEn
-          ? `The working hours for ${rawPlaceName} are: ${hoursSummary}.`
-          : `مواعيد وساعات عمل ${rawPlaceName} هي كالتالي: ${hoursSummary}.`
-      }
-    });
-  }
-
-  // 4. Category & Services FAQ
-  faqMainEntity.push({
-    "@type": "Question",
-    "name": isEn ? `What services does ${rawPlaceName} provide?` : `ما هي خدمات وتخصص ${rawPlaceName}؟`,
-    "acceptedAnswer": {
-      "@type": "Answer",
-      "text": isEn
-        ? `${rawPlaceName} specializes in ${placeCat}${services.length ? `, offering: ${services.join(', ')}` : ''}. Verified on Dalil Manzala Directory.`
-        : `يتخصص ${rawPlaceName} في مجال ${placeCat}${services.length ? `، ويقدم الخدمات التالية: ${services.join('، ')}` : ''}، ومسجل وموثق في دليل المنزلة والمطرية الرقمي.`
-    }
-  });
-
-  // 5. Payment Methods FAQ (GEO / Generative Engine Optimization)
-  faqMainEntity.push({
-    "@type": "Question",
-    "name": isEn ? `What payment methods are accepted at ${rawPlaceName}?` : `هل يقبل ${rawPlaceName} الدفع بفودافون كاش أو انستاباي أو بالفيزا وما هي طرق الدفع المتاحة؟`,
-    "acceptedAnswer": {
-      "@type": "Answer",
-      "text": isEn
-        ? `${rawPlaceName} accepts: ${paymentNamesEn.join(', ')}. Currencies accepted: EGP (Egyptian Pounds). Electronic payment options can be confirmed directly.`
-        : `طرق الدفع المقبولة في ${rawPlaceName} تشمل: ${paymentNamesAr.join('، ')}. العملة المعتمدة هي الجنيه المصري (EGP).`
-    }
-  });
 
   // FAQPage rich-result markup is intentionally omitted from the business graph.\n  const webPageEntity = {
     "@type": "WebPage",
