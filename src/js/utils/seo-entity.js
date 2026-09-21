@@ -220,7 +220,6 @@ export function generateBusinessSEO(place) {
       addressRegion: 'الدقهلية',
       addressCountry: 'EG'
     },
-    currenciesAccepted: 'EGP',
     ...(Array.isArray(place.paymentMethods || place.payment_methods) && (place.paymentMethods || place.payment_methods).length > 0 ? {
       paymentAccepted: [...new Set((place.paymentMethods || place.payment_methods).map(id => {
         const s = String(id).toLowerCase();
@@ -410,7 +409,6 @@ export function generateBusinessSEOEnglish(place) {
       addressRegion: 'Dakahlia',
       addressCountry: 'EG'
     },
-    currenciesAccepted: 'EGP'
   };
   const lat = Number(place.latitude ?? place.location?.lat);
   const lng = Number(place.longitude ?? place.location?.lng);
