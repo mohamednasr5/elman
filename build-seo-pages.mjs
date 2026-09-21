@@ -585,7 +585,7 @@ async function run() {
       return `
         <a href="/category/${cSlug}/" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
           <span style="font-weight:700;font-size:0.95rem;margin-bottom:0.25rem">${escapedName}</span>
-          <span style="font-size:0.8rem;color:var(--text-muted,#64748b)">${cPlaces.length} مكان</span>
+          <span style="font-size:0.8rem;color:var(--text-muted,#64748b)">استكشف الأماكن</span>
         </a>`;
     }).join('\n');
 
