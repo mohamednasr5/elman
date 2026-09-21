@@ -57,10 +57,10 @@
 # English dynamic place/category fallbacks. Static generated pages take precedence.
 /en/place            /en/place/index.html             200
 /en/place/           /en/place/index.html             200
-/en/place/*          /en/place/index.html             200
+/en/place/*          /en/place/:splat/index.html 200
 /en/category         /en/category/index.html          200
 /en/category/        /en/category/index.html          200
-/en/category/*       /en/category/index.html          200
+/en/category/*       /en/category/:splat/index.html  200
 
 # Arabic clean routing remains unchanged.
 /ar                 /index.html         200
