@@ -223,7 +223,7 @@ ${JSON.stringify(seo.schemas[1], null, 2)}
         
         <!-- Cover Photo -->
         <div style="position:relative;width:100%;height:260px;background:linear-gradient(135deg,#1E3E62 0%,#0077FF 100%);overflow:hidden">
-          <img src="${escapeHtml(seo.image)}" alt="${escapeHtml(seo.rawName)} - ${escapeHtml(seo.catName)} في ${escapeHtml(seo.rawArea)}" style="width:100%;height:100%;object-fit:cover" loading="eager" width="960" height="260"/>
+          <img src="${escapeHtml(seo.image)}" alt="${escapeHtml(seo.rawName)} - ${escapeHtml(seo.catName)} في ${escapeHtml(seo.rawArea)}" style="width:100%;height:100%;object-fit:cover" loading="eager" fetchpriority="high" decoding="async" width="960" height="260"/>
         </div>
 
         <div style="padding:24px 20px">
