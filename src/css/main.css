@@ -2172,3 +2172,7 @@ html.has-anchor-cursor [contenteditable="true"]{cursor:text}
 
 /* Brand cursor: subtle animated ship anchor */
 html,body,*{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%230f172a' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M20 6v19M14 13l6 6 6-6M12 25h16M9 25c1.8 6 5.3 9 11 9s9.2-3 11-9M16 31h8'/%3E%3C/g%3E%3C/svg%3E") 20 20,auto}
+
+/* Branded ship-anchor pointer */
+html,body,*{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%230f172a' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M20 5v20M14 12l6 6 6-6M12 25h16M8 25c2 6 6 9 12 9s10-3 12-9M16 31h8'/%3E%3C/g%3E%3C/svg%3E") 20 20,auto}
+@keyframes anchor-pulse{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.05) rotate(-2deg)}}
