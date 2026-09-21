@@ -136,9 +136,9 @@ export function generateBusinessSEO(place) {
   const slug = (place.slug || place.id || '').trim();
 
   // Canonical Clean URL
-  const canonicalUrl = `${SITE_DOMAIN}/place/${encodeURIComponent(slug)}`;
+  const canonicalUrl = `${SITE_DOMAIN}/place/${encodeURIComponent(slug)}/`;
   const categorySlug = encodeURIComponent(String(rawCategory).toLowerCase().replace(/\s+/g, '-'));
-  const categoryUrl = `${SITE_DOMAIN}/category/${categorySlug}`;
+  const categoryUrl = `${SITE_DOMAIN}/category/${categorySlug}/`;
 
   // SEO Title: Natural, compelling, within Google's 60-char display budget
   const title = `${rawName} في ${rawArea} | ${catName} | دليل المنزلة والمطرية`;
@@ -221,41 +221,35 @@ export function generateBusinessSEO(place) {
       addressCountry: 'EG'
     },
     currenciesAccepted: 'EGP',
-    paymentAccepted: (() => {
-      const pm = place.paymentMethods || place.payment_methods;
-      const list = ['Cash'];
-      if (Array.isArray(pm)) {
-        pm.forEach(id => {
-          const s = String(id).toLowerCase();
-          if (s.includes('vodafone')) list.push('Vodafone Cash');
-          else if (s.includes('insta')) list.push('InstaPay');
-          else if (s.includes('visa') || s.includes('card')) list.push('Credit Card');
-          else if (s.includes('fawry')) list.push('Fawry');
-          else if (s.includes('bank')) list.push('Bank Transfer');
-        });
-      }
-      return list;
-    })(),
+    ...(Array.isArray(place.paymentMethods || place.payment_methods) && (place.paymentMethods || place.payment_methods).length > 0 ? {
+      paymentAccepted: [...new Set((place.paymentMethods || place.payment_methods).map(id => {
+        const s = String(id).toLowerCase();
+        if (s.includes('vodafone')) return 'Vodafone Cash';
+        if (s.includes('insta')) return 'InstaPay';
+        if (s.includes('visa') || s.includes('card')) return 'Credit Card';
+        if (s.includes('fawry')) return 'Fawry';
+        if (s.includes('bank')) return 'Bank Transfer';
+        if (s.includes('cash')) return 'Cash';
+        return null;
+      }).filter(Boolean))]
+    } : {}),
     areaServed: COVERAGE_AREAS.map(area => ({
       '@type': 'AdministrativeArea',
       name: area
     }))
   };
 
-  // Optional Geo coordinates (only if real and non-zero)
-  // Geo coordinates (always provide valid coordinates for GEO)
-  const isMatariya = rawArea.includes('المطرية');
-  let lat = Number(place.latitude || place.location?.lat);
-  let lng = Number(place.longitude || place.location?.lng);
-  if (isNaN(lat) || isNaN(lng) || lat < 20 || lng < 20) {
-    lat = isMatariya ? 31.1833 : 31.1578;
-    lng = isMatariya ? 32.0333 : 31.9333;
+  // Geo coordinates: emit only coordinates actually supplied for this place.
+  // Never invent city-centre coordinates for an individual business.
+  const lat = Number(place.latitude ?? place.location?.lat);
+  const lng = Number(place.longitude ?? place.location?.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+    businessSchema.geo = {
+      '@type': 'GeoCoordinates',
+      latitude: lat,
+      longitude: lng
+    };
   }
-  businessSchema.geo = {
-    '@type': 'GeoCoordinates',
-    latitude: lat,
-    longitude: lng
-  };
 
   // Optional opening hours
   if (openingHoursSpecs.length > 0) {
@@ -374,7 +368,8 @@ export function generateBusinessSEO(place) {
     image,
     phone: place.phone ? String(place.phone).trim() : null,
     whatsapp: place.whatsapp ? String(place.whatsapp).trim() : null,
-    schemas: [businessSchema, breadcrumbSchema, faqSchema]
+    schemas: [businessSchema, breadcrumbSchema, faqSchema],
+    qa: faqQuestions
   };
 }
 
