@@ -835,8 +835,8 @@ function renderPlacesListHTML(places) {
       ${places.map(place => {
         const placeId = place.id || place._key;
         const placeVerified = Boolean(
-          placeVerified ||
           place.is_verified ||
+          place.isVerified ||
           place.verified ||
           place.verificationStatus === 'verified' ||
           place.verification_status === 'verified'
