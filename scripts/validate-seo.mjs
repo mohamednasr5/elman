@@ -52,6 +52,14 @@ for(const page of noindexPages){
   must(!allSitemapXml.includes(`<loc>${publicUrl}</loc>`),`${page}: noindex URL must not appear in sitemap assets`);
 }
 
+for(const template of ['place.html','category.html','404.html']){
+  const html=read(template);
+  must(!/<meta\\s+name=["']geo\\.position["'][^>]*content=["']31\\.1578;31\\.9333/i.test(html), template + ': must not hard-code Manzala city-centre coordinates');
+  must(!/<meta\\s+name=["']ICBM["'][^>]*content=["']31\\.1578,\\s*31\\.9333/i.test(html), template + ': must not hard-code Manzala ICBM coordinates');
+  must(!/<meta\\s+name=["']geo\\.position["'][^>]*content=["']31\\.1833;32\\.0333/i.test(html), template + ': must not hard-code Matariya city-centre coordinates');
+  must(!/<meta\\s+name=["']ICBM["'][^>]*content=["']31\\.1833,\\s*32\\.0333/i.test(html), template + ': must not hard-code Matariya ICBM coordinates');
+}
+
 const redirects=read('_redirects');
 must(redirects.includes('/place/*')&&redirects.includes('/category/*'),'Public place/category routes missing');
 
