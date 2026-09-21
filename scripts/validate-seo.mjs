@@ -74,6 +74,29 @@ const englishBuilder=read('generate-english-pages.mjs');
 must(englishBuilder.includes('generateBusinessSEOEnglish')&&englishBuilder.includes('Questions &amp; answers'),'English profiles must contain entity metadata and crawlable Q&A');
 must(englishBuilder.includes('englishLandingBody')&&englishBuilder.includes('<h1>'),'English landing pages must contain crawlable H1/content without JS');
 must(englishBuilder.includes('writeEnglishCategory')&&englishBuilder.includes('CollectionPage'),'English category pages must contain crawlable category content');
+// Generated business-page invariants: generated artifacts must not retain inferred entity claims.
+function scanHtmlTree(dir){
+  const out=[];
+  if(!fs.existsSync(path.join(ROOT,dir))) return out;
+  const walk=abs=>{
+    for(const entry of fs.readdirSync(abs,{withFileTypes:true})){
+      const full=path.join(abs,entry.name);
+      if(entry.isDirectory()) walk(full);
+      else if(entry.isFile() && entry.name.endsWith('.html')) out.push(full);
+    }
+  };
+  walk(path.join(ROOT,dir));
+  return out;
+}
+for(const dir of ['place','category','en/place','en/category']){
+  for(const file of scanHtmlTree(dir)){
+    const html=fs.readFileSync(file,'utf8');
+    must(!/"currenciesAccepted"\\s*:/.test(html),`${file}: generated business schema must not infer currenciesAccepted`);
+    must(!/"areaServed"\\s*:/.test(html),`${file}: generated business schema must not infer areaServed`);
+    must(!/"@type"\\s*:\\s*"FAQPage"/.test(html),`${file}: generated business schema must not emit FAQPage`);
+  }
+}
+
 const workflow=read('.github/workflows/generate-english-pages.yml');
 must(workflow.includes('node build-seo-pages.mjs'),'Bilingual SEO workflow must regenerate Arabic static profiles');
 for(const needle of ['Semantic Body Content (Discoverable immediately without JS execution)','Crawlable Breadcrumb Navigation','Related Places in Same Category','Inject Internal Links into places.html','AEO/GEO answer block','${qaHtml}'])must(builder.includes(needle),`build-seo-pages.mjs missing ${needle}`);
