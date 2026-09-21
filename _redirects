@@ -152,3 +152,9 @@
 # Dynamic parameterized fallback routes (only triggered if static pre-rendered file does not exist)
 /place/*            /place.html?slug=:splat 200
 /category/*         /category.html?slug=:splat 200
+
+# Canonical trailing-slash aliases for generated public SEO profiles
+/place/:splat/index.html   /place/:splat/   301
+/en/place/:splat/index.html /en/place/:splat/ 301
+/category/:splat/index.html   /category/:splat/   301
+/en/category/:splat/index.html /en/category/:splat/ 301
