@@ -201,13 +201,13 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   setMeta({
     title: `${cat.name} في المنزلة والمطرية — دليل الأماكن والخدمات`,
     description: `دليل ${cat.name} في المنزلة والمطرية — ابحث عن العناوين وأرقام الهواتف والتواصل ومواعيد العمل والتقييمات`,
-    url: `https://dalilmanzala.com/category.html?slug=${slug}`
+    url: `https://dalilmanzala.com/category/${encodeURIComponent(String(slug || decodedSlug))}/`
   });
 
   setBreadcrumbSchema([
     { name: 'الرئيسية', url: 'https://dalilmanzala.com/' },
     { name: 'التصنيفات', url: 'https://dalilmanzala.com/categories.html' },
-    { name: cat.name, url: `https://dalilmanzala.com/category.html?slug=${slug}` }
+    { name: cat.name, url: `https://dalilmanzala.com/category/${encodeURIComponent(String(slug || decodedSlug))}/` }
   ]);
 
   $container.innerHTML = `
