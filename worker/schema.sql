@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS places (
   parent_id TEXT,
   branches_json TEXT,
   availability_status TEXT DEFAULT 'available',
+  is_sponsored INTEGER DEFAULT 0,
+  is_featured INTEGER DEFAULT 0,
+  sponsored_at INTEGER,
+  sponsored_until INTEGER,
+  priority INTEGER DEFAULT 0,
   created_at INTEGER,
   updated_at INTEGER
 );
