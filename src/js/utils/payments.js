@@ -1,4 +1,4 @@
-﻿/**
+/**
  * src/js/utils/payments.js
  * Comprehensive Payment Methods Engine for Dalil Manzala & Matariya
  * Manages supported payment channels, 3D animated badges, tooltips, and GEO/SEO schemas.
@@ -11,7 +11,7 @@ export const PAYMENT_METHODS = [
     nameEn: 'Vodafone Cash',
     question: 'هل المكان يقبل فودافون كاش؟',
     description: 'يقبل الدفع والتحويل عبر محفظة فودافون كاش (Vodafone Cash)',
-    icon: '/assets/images/payments/vodafone-cash.svg',
+    icon: '/assets/images/payments/vodafone-cash.png',
     color: '#E60000',
     schemaValue: 'Vodafone Cash'
   },
@@ -38,10 +38,10 @@ export const PAYMENT_METHODS = [
   {
     id: 'fawry',
     nameAr: 'فوري بلس',
-    nameEn: 'Fawry',
+    nameEn: 'Fawry Plus',
     question: 'هل المكان يقبل الدفع بفوري؟',
     description: 'يقبل الدفع وتأكيد المعاملات عبر ماكينات وخدمات فوري (Fawry)',
-    icon: '/assets/images/payments/fawry.svg',
+    icon: '/assets/images/payments/fawry.png',
     color: '#FFBF00',
     schemaValue: 'Fawry'
   },
@@ -49,9 +49,9 @@ export const PAYMENT_METHODS = [
     id: 'bank_transfer',
     nameAr: 'تحويل بنكي',
     nameEn: 'Bank Transfer',
-    question: 'هل المكان يقبل التحويل البنكي؟',
+    question: 'هل المكان يقبل التحويل البنكي المباشر؟',
     description: 'يقبل استلام المدفوعات عبر التحويلات البنكية المباشرة (حسابات بنوك مصر)',
-    icon: '/assets/images/payments/bank-transfer.svg',
+    icon: '/assets/images/payments/bank-transfer.png',
     color: '#1E293B',
     schemaValue: 'Bank Transfer'
   }
@@ -140,39 +140,61 @@ export function renderPaymentSelectForm(selectedMethods = [], prefix = 'p-pay') 
   const currentSet = new Set(currentList);
 
   return `
-    <div class="form-section payment-form-section" id="${prefix}-section">
-      <div class="form-section__header" style="margin-bottom:12px">
-        <h3 style="font-size:15px;font-weight:800;color:var(--primary,#1B4F72);display:flex;align-items:center;gap:8px;margin:0">
-          <span>💳</span> طرق الدفع الإلكتروني والتحويل المقبولة
-        </h3>
-        <p style="font-size:12px;color:var(--text-muted,#64748B);margin:4px 0 0">
-          حدد طرق الدفع التي يستطيع زبائنك استخدامها لديك (ستظهر بشعارات 3D رسمية ومميزة بملف نشاطك):
+    <div class="form-section payment-form-section animate-fade-in" id="${prefix}-section">
+      <div class="payment-form-section__header">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <h3 class="payment-form-title">
+            <span class="payment-title-icon">💳</span> طرق ووسائل الدفع والتحويل المقبولة
+          </h3>
+          <span class="payment-form-badge">
+            تظهر بشعارات 3D رسمية للزوار
+          </span>
+        </div>
+        <p class="payment-form-subtitle">
+          حدد هل يقبل المكان كل وسيلة من الوسائل التالية (فودافون كاش، انستاباي، فيزا، فوري، تحويل بنكي) ليسهل على العملاء التعامل معك:
         </p>
       </div>
 
-      <div class="payment-options-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+      <div class="payment-options-grid">
         ${PAYMENT_METHODS.map(m => {
           const isChecked = currentSet.has(m.id);
           return `
-            <label class="payment-option-card ${isChecked ? 'is-selected' : ''}" for="${prefix}-${m.id}">
-              <div class="payment-option-checkbox">
-                <input 
-                  type="checkbox" 
-                  id="${prefix}-${m.id}" 
-                  class="payment-method-checkbox ${prefix}-checkbox" 
-                  value="${m.id}" 
-                  ${isChecked ? 'checked' : ''} 
-                />
-                <span class="custom-check-box"></span>
+            <div 
+              class="payment-option-card ${isChecked ? 'is-selected' : ''}" 
+              id="${prefix}-card-${m.id}"
+              data-method-id="${m.id}" 
+              data-prefix="${prefix}"
+              role="button" 
+              tabindex="0"
+              aria-pressed="${isChecked ? 'true' : 'false'}"
+            >
+              <div class="payment-option-top">
+                <div class="payment-option-logo-box">
+                  <img src="${m.icon}" alt="${escapeHtml(m.nameAr)}" width="44" height="44" loading="lazy" />
+                </div>
+                <div class="payment-option-status-group">
+                  <span class="payment-status-badge ${isChecked ? 'is-active' : ''}" id="${prefix}-status-${m.id}">
+                    ${isChecked ? '✓ يقبل الدفع' : '✕ لا يقبل'}
+                  </span>
+                  <label class="payment-switch" onclick="event.stopPropagation()">
+                    <input 
+                      type="checkbox" 
+                      id="${prefix}-${m.id}" 
+                      class="payment-method-checkbox ${prefix}-checkbox" 
+                      value="${m.id}" 
+                      ${isChecked ? 'checked' : ''} 
+                    />
+                    <span class="payment-switch-slider"></span>
+                  </label>
+                </div>
               </div>
-              <div class="payment-option-logo">
-                <img src="${m.icon}" alt="${m.nameAr}" width="38" height="38" loading="lazy" />
+
+              <div class="payment-option-body">
+                <div class="payment-option-question">${escapeHtml(m.question)}</div>
+                <div class="payment-option-sub">${escapeHtml(m.nameAr)} • ${escapeHtml(m.nameEn)}</div>
+                <div class="payment-option-desc">${escapeHtml(m.description)}</div>
               </div>
-              <div class="payment-option-info">
-                <span class="payment-option-name">${m.nameAr}</span>
-                <span class="payment-option-desc">${m.nameEn}</span>
-              </div>
-            </label>
+            </div>
           `;
         }).join('')}
       </div>
@@ -200,14 +222,53 @@ export function getSelectedPaymentMethods(prefix = 'p-pay') {
  */
 export function initPaymentFormEvents(prefix = 'p-pay') {
   if (typeof document === 'undefined') return;
-  const checkboxes = document.querySelectorAll(`.${prefix}-checkbox`);
-  checkboxes.forEach(cb => {
-    const card = cb.closest('.payment-option-card');
-    cb.addEventListener('change', () => {
-      if (card) {
-        if (cb.checked) card.classList.add('is-selected');
-        else card.classList.remove('is-selected');
+  const cards = document.querySelectorAll(`[id^="${prefix}-card-"]`);
+  cards.forEach(card => {
+    const methodId = card.dataset.methodId;
+    const cb = document.getElementById(`${prefix}-${methodId}`);
+    const statusBadge = document.getElementById(`${prefix}-status-${methodId}`);
+    
+    if (!cb) return;
+
+    const updateState = (checked) => {
+      cb.checked = checked;
+      if (checked) {
+        card.classList.add('is-selected');
+        card.setAttribute('aria-pressed', 'true');
+        if (statusBadge) {
+          statusBadge.textContent = '✓ يقبل الدفع';
+          statusBadge.classList.add('is-active');
+        }
+      } else {
+        card.classList.remove('is-selected');
+        card.setAttribute('aria-pressed', 'false');
+        if (statusBadge) {
+          statusBadge.textContent = '✕ لا يقبل';
+          statusBadge.classList.remove('is-active');
+        }
       }
+    };
+
+    // Card click toggles checkbox
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.payment-switch')) return;
+      e.preventDefault();
+      updateState(!cb.checked);
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    // Keyboard support: Enter / Space toggles
+    card.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        updateState(!cb.checked);
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+
+    // Direct checkbox change
+    cb.addEventListener('change', () => {
+      updateState(cb.checked);
     });
   });
 }

@@ -2355,10 +2355,10 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             </label>
           </div>
         </div>
-
-        <!-- Accepted Payment Methods (GEO / SEO & 3D Badges) -->
-        ${renderPaymentSelectForm(place?.paymentMethods || place?.payment_methods || place?.stats?.paymentMethods, 'dash-pay')}
       </div>
+
+      <!-- Step 7: Accepted Payment Methods (GEO / SEO & 3D Badges) -->
+      ${renderPaymentSelectForm(place?.paymentMethods || place?.payment_methods || place?.stats?.paymentMethods, 'dash-pay')}
 
       <!-- Submit buttons -->
       <div style="display:flex;gap:var(--space-3);padding-bottom:var(--space-8)">
@@ -4177,6 +4177,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         availabilityStatus: document.getElementById('p-availability-status')?.value || 'available',
         allowAppointments: Boolean(document.getElementById('allow-appointments-toggle')?.checked),
         paymentMethods: getSelectedPaymentMethods('dash-pay'),
+        payment_methods: getSelectedPaymentMethods('dash-pay'),
         branches: (() => {
           const hasBranches = document.getElementById('has-branches-toggle')?.checked;
           if (!hasBranches) return [];

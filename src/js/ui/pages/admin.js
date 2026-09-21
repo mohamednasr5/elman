@@ -34,6 +34,7 @@ import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO } from '../../utils/atm
 import { extractCoordinates, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { ALL_PROFESSIONS } from '../../utils/professions-data.js';
 import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js';
+import { renderPaymentSelectForm, getSelectedPaymentMethods, initPaymentFormEvents } from '../../utils/payments.js';
 
 // ── In-Memory Cache Store for 0ms Tab Switching ──
 const adminCache = {
@@ -6876,6 +6877,9 @@ window.editPlaceAdmin = async (placeId) => {
           </div>
         </div>
 
+        <!-- Accepted Payment Methods (3D Badges) -->
+        ${renderPaymentSelectForm(place.paymentMethods || place.payment_methods || place.stats?.paymentMethods, 'aep-pay')}
+
       </form>
     `,
     buttons: [
@@ -6916,6 +6920,8 @@ window.editPlaceAdmin = async (placeId) => {
             isVerified: document.getElementById('aep-isVerified')?.value === 'true',
             description: document.getElementById('aep-description')?.value.trim() || '',
             services: servicesArr,
+            paymentMethods: getSelectedPaymentMethods('aep-pay'),
+            payment_methods: getSelectedPaymentMethods('aep-pay'),
             social: {
               facebook: normalizeSocialLink('facebook', document.getElementById('aep-social-facebook')?.value),
               x: normalizeSocialLink('x', document.getElementById('aep-social-x')?.value),
@@ -6976,6 +6982,8 @@ window.editPlaceAdmin = async (placeId) => {
       }
     ]
   });
+
+  initPaymentFormEvents('aep-pay');
 
   ['facebook', 'x', 'instagram', 'tiktok', 'threads', 'youtube', 'website'].forEach(plat => {
     const el = document.getElementById(`aep-social-${plat}`);
