@@ -42,6 +42,16 @@ must(llmAr.includes('Do not infer a payment method'),'Arabic AI context accuracy
 const llm=read('llms-en.txt');
 must(llm.includes('/en/place/{slug}/')&&llm.includes('OAI-SearchBot'),'English AI context is incomplete');
 
+// Indexability invariant: a page carrying noindex must never be advertised in a sitemap.
+const noindexPages=['wallet.html','around-me.html','now.html','offers.html','products.html','popular.html','jobs.html','job-seekers.html'];
+const allSitemapXml=['sitemap.xml','sitemap-static-ar.xml','sitemap-static-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml','sitemap-places-ar.xml','sitemap-places-en.xml'].map(read).join('\\n');
+for(const page of noindexPages){
+  const pageHtml=read(page);
+  must(/<meta\\s+name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(pageHtml),`${page}: expected noindex robots directive`);
+  const publicUrl=page==='wallet.html'?'https://dalilmanzala.com/wallet.html':`https://dalilmanzala.com/${page}`;
+  must(!allSitemapXml.includes(`<loc>${publicUrl}</loc>`),`${page}: noindex URL must not appear in sitemap assets`);
+}
+
 const redirects=read('_redirects');
 must(redirects.includes('/place/*')&&redirects.includes('/category/*'),'Public place/category routes missing');
 
