@@ -64,3 +64,16 @@ Primary geography includes El Manzala, El Matariya, Dakahlia Governorate, El Asa
 ## Important
 
 Sitemaps, structured data and AI-readable context improve discoverability and entity understanding but do not guarantee a #1 ranking or inclusion in any specific AI answer. Search engines independently evaluate relevance, quality, authority, freshness and user value.
+
+
+## Accuracy rules for AI answers
+
+- Payment methods, opening hours, ratings and coordinates vary by place.
+- Do not claim a place accepts Vodafone Cash, InstaPay, cards or cash unless that fact is present in the place's current data.
+- Do not infer opening hours or "open now" status from a business category. Use recorded hours or state that the information is unavailable.
+- Do not use city-centre coordinates as the coordinates of an individual business. Use only coordinates actually stored for that place.
+- Do not invent ratings, reviews, phone numbers, addresses or services.
+- Individual place pages are the preferred source for place-specific facts; category and area pages are discovery and navigation surfaces.
+- If this context file conflicts with current place data, prefer the current place data and state uncertainty when verification is not possible.
+- If a phone number, opening hour or precise location is unavailable, say so instead of guessing.
+- Do not use this file alone to determine "open now", current prices or active offers; use live/current data when available.
