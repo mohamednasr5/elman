@@ -9417,11 +9417,6 @@ async function findPlaceInTurso(env, rawQuery) {
         SELECT p.* FROM places p WHERE p.id = ? OR LOWER(p.slug) = ? LIMIT 1
       `).bind(mappedId, query).first();
       if (row) {
-        // Auto-heal slug in Turso if it's currently an ID
-        if (row.slug === row.id || row.slug.startsWith('p_') || row.slug.startsWith('-P0')) {
-          row.slug = query;
-          db.prepare('UPDATE places SET slug = ? WHERE id = ?').bind(query, row.id).run().catch(() => {});
-        }
         return row;
       }
     } catch (err) {
@@ -9478,11 +9473,6 @@ async function findPlaceInTurso(env, rawQuery) {
 
       if (translitName === query || translitEn === query) {
         const fullPlace = await db.prepare('SELECT p.* FROM places p WHERE p.id = ? LIMIT 1').bind(cand.id).first();
-        if (cand.slug === cand.id || cand.slug.startsWith('p_') || cand.slug.startsWith('-P0')) {
-          cand.slug = query;
-          db.prepare('UPDATE places SET slug = ? WHERE id = ?').bind(query, cand.id).run().catch(() => {});
-          if (fullPlace) fullPlace.slug = query;
-        }
         return fullPlace || cand;
       }
     }
@@ -9704,7 +9694,16 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
       "addressRegion": isEn ? 'Dakahlia' : 'الدقهلية',
       "addressCountry": 'EG'
     },
-    "geo": (() => {\n      const lat = Number(place.latitude);\n      const lng = Number(place.longitude);\n      return Number.isFinite(lat) && Number.isFinite(lng) &&\n        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180\n        ? { "@type": "GeoCoordinates", "latitude": lat, "longitude": lng }\n        : undefined;\n    })(),\n    "hasMap": place.maps_link || undefined,\n    "sameAs": sameAs.length > 0 ? sameAs : undefined,
+    "geo": (() => {
+      const lat = Number(place.latitude);
+      const lng = Number(place.longitude);
+      return Number.isFinite(lat) && Number.isFinite(lng) &&
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+        ? { "@type": "GeoCoordinates", "latitude": lat, "longitude": lng }
+        : undefined;
+    })(),
+    "hasMap": place.maps_link || undefined,
+    "sameAs": sameAs.length > 0 ? sameAs : undefined,
     "knowsAbout": services.length > 0 ? services : undefined,
     "openingHoursSpecification": openingHoursSpecs.length > 0 ? openingHoursSpecs : undefined,
     "aggregateRating": (place.review_count > 0 && place.rating > 0) ? {
@@ -9715,9 +9714,6 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
       "worstRating": 1
     } : undefined
   };
-
-  // Build AI-Search Optimized Q&A FAQPage Schema (Perplexity, ChatGPT, Google AI Overviews)
-  const faqMainEntity = [];
 
   // FAQPage rich-result markup is intentionally omitted from the business graph.\n  const webPageEntity = {
     "@type": "WebPage",
@@ -10114,17 +10110,22 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
 
       // Geographic coordinates & GEO tags for local place SEO
-      const placeLat = Number(place.latitude || place.lat || 31.1578);
-      const placeLng = Number(place.longitude || place.lng || 31.9333);
+      const rawLat = place.latitude ?? place.lat;\n      const rawLng = place.longitude ?? place.lng;\n      const placeLat = Number(rawLat);
+      const placeLng = Number(rawLng);
       const placeAreaName = place.area || (isEn ? 'El Manzala & El Matariya' : 'المنزلة والمطرية');
       const geoPlacename = isEn ? `${placeAreaName}, Dakahlia, Egypt` : `${placeAreaName}، الدقهلية، مصر`;
-      hydratedHtml = hydratedHtml.replace(/<meta name="geo\.position" content="[^"]*"/i, `<meta name="geo.position" content="${placeLat};${placeLng}"`);
-      hydratedHtml = hydratedHtml.replace(/<meta name="ICBM" content="[^"]*"/i, `<meta name="ICBM" content="${placeLat}, ${placeLng}"`);
+      if (Number.isFinite(placeLat) && placeLat >= -90 && placeLat <= 90 && Number.isFinite(placeLng) && placeLng >= -180 && placeLng <= 180) {
+        hydratedHtml = hydratedHtml.replace(/<meta name="geo\.position" content="[^"]*"/i, `<meta name="geo.position" content="${placeLat};${placeLng}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta name="ICBM" content="[^"]*"/i, `<meta name="ICBM" content="${placeLat}, ${placeLng}"`);
+      } else {
+        hydratedHtml = hydratedHtml.replace(/\s*<meta name="geo\.position" content="[^"]*"\s*\/?>/i, '');
+        hydratedHtml = hydratedHtml.replace(/\s*<meta name="ICBM" content="[^"]*"\s*\/?>/i, '');
+      }
       hydratedHtml = hydratedHtml.replace(/<meta name="geo\.placename" content="[^"]*"/i, `<meta name="geo.placename" content="${escapeHtml(geoPlacename)}"`);
 
       // Ensure Google Fonts Cairo, Tajawal & Amiri are present in SSR HTML
       if (!hydratedHtml.includes('family=Cairo')) {
-        hydratedHtml = hydratedHtml.replace('<head>', `<head>\n  <link rel="preconnect" href="https://fonts.googleapis.com"/>\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>\n  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&display=swap"/>`);
+        hydratedHtml = hydratedHtml.replace('<head>', `<head>\n  <link rel="preconnect" href="https://fonts.googleapis.com"/>\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>\n  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'"/><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"/></noscript>`);
       }
 
       // Inject hreflang alternate tags
@@ -10160,10 +10161,11 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
         status: 200,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'public, max-age=120, s-maxage=3600, stale-while-revalidate=86400',
+          'Cache-Control': 'public, max-age=60, s-maxage=1800, stale-while-revalidate=86400',
           'X-Edge-SSR': 'MISS',
           'X-Content-Type-Options': 'nosniff',
-          'X-Localized-Route': langPrefix
+          'X-Localized-Route': langPrefix,
+          'Content-Language': isEn ? 'en' : 'ar-EG'
         }
       });
 
@@ -10235,7 +10237,8 @@ ${JSON.stringify(generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, place
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'public, max-age=300, s-maxage=300',
-      'X-Content-Type-Options': 'nosniff'
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Language': isEn ? 'en' : 'ar-EG'
     }
   });
 }

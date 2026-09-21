@@ -106,14 +106,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
             </button>
           </div>
         </div>
-      </div>
-
-      <!-- Results Count Meta -->
-      <div class="search-results-meta" id="places-count-meta">
-        جاري تحميل الأماكن...
-      </div>
-
-      <!-- Grid -->
+      </div>      <!-- Grid -->
       <div class="places-grid" id="places-directory-grid">
         ${Array(8).fill(renderPlaceCardSkeleton()).join('')}
       </div>
@@ -156,6 +149,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     const sortSelect = document.getElementById('places-sort-filter');
     const grid = document.getElementById('places-directory-grid');
     const countMeta = document.getElementById('places-count-meta');
+    if (countMeta) countMeta.remove();
 
     async function applyFilters() {
       const q = searchInput?.value.trim() || '';
@@ -208,9 +202,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
           if (filtered.length === 0) {
             toast.warning(`لا يوجد أي نشاط تجاري مرتبط برقم الهاتف (${displayPhone})`);
-            if (countMeta) {
-              countMeta.innerHTML = `<span style="color:var(--danger,#DC2626);font-weight:700">⚠️ لا يوجد أي نشاط تجاري مرتبط برقم الهاتف: <span style="direction:ltr;display:inline-block">${escHtml(displayPhone)}</span></span>`;
-            }
+            
             if (grid) {
               grid.innerHTML = `
                 <div class="empty-state phone-empty-state animate-fade-in" style="grid-column:1/-1;border:1.5px solid #F59E0B;border-radius:18px;padding:36px 20px;text-align:center;background:var(--surface);box-shadow:0 8px 24px rgba(245,158,11,0.08);max-width:560px;margin:1rem auto">
@@ -276,7 +268,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       }
 
       // Render
-      countMeta.textContent = `تم العثور على ${sorted.length} مكان في دليل المنزلة والمطرية والقرى ${sortBy === 'nearest' ? '• مرتبة بالأقرب لموقعك' : ''}`;
+      
 
       if (sorted.length === 0) {
         grid.innerHTML = `

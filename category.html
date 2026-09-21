@@ -71,10 +71,16 @@
         if (s) {
           var clean = encodeURIComponent(s);
           var canonical = document.getElementById('category-canonical');
-          if (canonical) canonical.href = 'https://dalilmanzala.com/category/' + clean;
+          if (canonical) canonical.href = 'https://dalilmanzala.com/category/' + clean + '/';
           if (window.location.pathname.endsWith('category.html')) {
-            window.history.replaceState(null, '', '/category/' + clean + (window.location.hash || ''));
+            window.history.replaceState(null, '', '/category/' + clean + '/' + (window.location.hash || ''));
           }
+          var arAlt = document.querySelector('link[rel="alternate"][hreflang="ar"]');
+          var enAlt = document.querySelector('link[rel="alternate"][hreflang="en"]');
+          var xAlt = document.querySelector('link[rel="alternate"][hreflang="x-default"]');
+          if (arAlt) arAlt.href = 'https://dalilmanzala.com/category/' + clean + '/';
+          if (enAlt) enAlt.href = 'https://dalilmanzala.com/en/category/' + clean + '/';
+          if (xAlt) xAlt.href = 'https://dalilmanzala.com/category/' + clean + '/';
         }
       } catch (_) {}
     })();

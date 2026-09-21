@@ -125,7 +125,7 @@ export async function renderCategoriesPage($container) {
           ${iconHtml}
         </div>
         <div class="category-card__name">${escHtml(cat.name)}</div>
-        <div class="category-card__count">${count > 0 ? `${count} مكان` : 'استكشف الأماكن'}</div>
+        <div class="category-card__count">${count > 0 ? 'استكشف الأماكن' : 'استكشف الأماكن'}</div>
       </a>
     `;
   }).join('');
@@ -157,6 +157,8 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   );
 
   if (!cat) {
+    // Unknown category URLs must never look indexable.
+    setMeta({ title: 'التصنيف غير موجود | دليل المنزلة والمطرية', noindex: true, url: 'https://dalilmanzala.com/categories/' });
     $container.innerHTML = `
       <div class="container" style="padding-top:var(--space-4)">
         <div class="page-back-bar">
@@ -199,13 +201,13 @@ export async function renderCategoryPage($container, { slug, query, user }) {
   setMeta({
     title: `${cat.name} في المنزلة والمطرية — دليل الأماكن والخدمات`,
     description: `دليل ${cat.name} في المنزلة والمطرية — ابحث عن العناوين وأرقام الهواتف والتواصل ومواعيد العمل والتقييمات`,
-    url: `https://dalilmanzala.com/category.html?slug=${slug}`
+    url: `https://dalilmanzala.com/category/${encodeURIComponent(String(slug || decodedSlug))}/`
   });
 
   setBreadcrumbSchema([
     { name: 'الرئيسية', url: 'https://dalilmanzala.com/' },
     { name: 'التصنيفات', url: 'https://dalilmanzala.com/categories.html' },
-    { name: cat.name, url: `https://dalilmanzala.com/category.html?slug=${slug}` }
+    { name: cat.name, url: `https://dalilmanzala.com/category/${encodeURIComponent(String(slug || decodedSlug))}/` }
   ]);
 
   $container.innerHTML = `
