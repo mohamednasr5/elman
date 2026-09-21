@@ -2498,21 +2498,21 @@ try {
             `https://cache.local/api/places/v4?slug=${safeId}`,
             `https://cache.local/api/places/v4?slug=${safeId}&v=${v}`,
             // Edge SSR cache: MUST purge both lang variants
-            `https://cache.local/ssr/place/v8?slug=${safeSlug}&lang=ar`,
-            `https://cache.local/ssr/place/v8?slug=${safeSlug}&lang=en`,
-            `https://cache.local/ssr/place/v8?slug=${safeId}&lang=ar`,
-            `https://cache.local/ssr/place/v8?slug=${safeId}&lang=en`,
-            `https://cache.local/ssr/place/v8?slug=${safeSlug}`,
-            `https://cache.local/ssr/place/v8?slug=${safeId}`,
+            `https://cache.local/ssr/place/v9?slug=${safeSlug}&lang=ar`,
+            `https://cache.local/ssr/place/v9?slug=${safeSlug}&lang=en`,
+            `https://cache.local/ssr/place/v9?slug=${safeId}&lang=ar`,
+            `https://cache.local/ssr/place/v9?slug=${safeId}&lang=en`,
+            `https://cache.local/ssr/place/v9?slug=${safeSlug}`,
+            `https://cache.local/ssr/place/v9?slug=${safeId}`,
             // Reviews cache
             `https://cache.local/api/reviews?place_id=${encodeURIComponent(placeId)}`,
             `https://cache.local/api/reviews?slug=${safeSlug}`,
-            `https://cache.local/rss/v1/places.xml`,
-            `https://cache.local/sitemap/v1/sitemap.xml`,
-            `https://cache.local/sitemap/v1/sitemap-places-ar.xml`,
-            `https://cache.local/sitemap/v1/sitemap-places-en.xml`,
-            `https://cache.local/sitemap/v1/sitemap-categories-ar.xml`,
-            `https://cache.local/sitemap/v1/sitemap-categories-en.xml`
+            `https://cache.local/rss/v3/places.xml`,
+            `https://cache.local/sitemap/v2/sitemap.xml`,
+            `https://cache.local/sitemap/v2/sitemap-places-ar.xml`,
+            `https://cache.local/sitemap/v2/sitemap-places-en.xml`,
+            `https://cache.local/sitemap/v2/sitemap-categories-ar.xml`,
+            `https://cache.local/sitemap/v2/sitemap-categories-en.xml`
           ];
           if (oldSafeSlug && oldSafeSlug !== safeSlug) {
             purgeUrls.push(
@@ -2520,9 +2520,9 @@ try {
               `https://cache.local/api/places?slug=${oldSafeSlug}&v=${v}`,
               `https://cache.local/api/places/v4?slug=${oldSafeSlug}`,
               `https://cache.local/api/places/v4?slug=${oldSafeSlug}&v=${v}`,
-              `https://cache.local/ssr/place/v8?slug=${oldSafeSlug}&lang=ar`,
-              `https://cache.local/ssr/place/v8?slug=${oldSafeSlug}&lang=en`,
-              `https://cache.local/ssr/place/v8?slug=${oldSafeSlug}`,
+              `https://cache.local/ssr/place/v9?slug=${oldSafeSlug}&lang=ar`,
+              `https://cache.local/ssr/place/v9?slug=${oldSafeSlug}&lang=en`,
+              `https://cache.local/ssr/place/v9?slug=${oldSafeSlug}`,
               `https://cache.local/api/reviews?slug=${oldSafeSlug}`
             );
           }
@@ -2580,13 +2580,13 @@ try {
         `https://cache.local/api/places?slug=${encodeURIComponent(id.toLowerCase())}`,
         `https://cache.local/api/places?id=${encodeURIComponent(id)}`,
         `https://cache.local/api/places/v4?slug=${encodeURIComponent(id.toLowerCase())}`,
-        `https://cache.local/ssr/place/v8?slug=${encodeURIComponent(id.toLowerCase())}`,
-        `https://cache.local/rss/v1/places.xml`,
-        `https://cache.local/sitemap/v1/sitemap.xml`,
-        `https://cache.local/sitemap/v1/sitemap-places-ar.xml`,
-        `https://cache.local/sitemap/v1/sitemap-places-en.xml`,
-        `https://cache.local/sitemap/v1/sitemap-categories-ar.xml`,
-        `https://cache.local/sitemap/v1/sitemap-categories-en.xml`
+        `https://cache.local/ssr/place/v9?slug=${encodeURIComponent(id.toLowerCase())}`,
+        `https://cache.local/rss/v3/places.xml`,
+        `https://cache.local/sitemap/v2/sitemap.xml`,
+        `https://cache.local/sitemap/v2/sitemap-places-ar.xml`,
+        `https://cache.local/sitemap/v2/sitemap-places-en.xml`,
+        `https://cache.local/sitemap/v2/sitemap-categories-ar.xml`,
+        `https://cache.local/sitemap/v2/sitemap-categories-en.xml`
       ];
       ctx.waitUntil(Promise.all(purgeUrls.map(u => cache.delete(new Request(u)).catch(() => {}))));
     }
@@ -7861,13 +7861,14 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
             });
           }
 
-          // Fallback to /en/index.html for client-side routing only if subpath file not found anywhere
+          // Unknown English paths must not fall back to the English home page.
+          // Returning /en/index.html with HTTP 200 would create indexable soft-404s.
           if (!pageRes.ok && subPath) {
-            originUrl = new URL('/en/index.html', url.origin);
-            pageRes = await fetch(originUrl.toString(), {
+            return new Response(`<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><meta name="robots" content="noindex"><title>Page Not Found | Dalil El Manzala</title></head><body><main><h1>Page Not Found</h1><p>The requested English page was not found.</p><p><a href="/en/">Go to the English home page</a></p></main></body></html>`, {
+              status: 404,
               headers: {
-                'Accept': 'text/html,application/xhtml+xml',
-                'User-Agent': request.headers.get('User-Agent') || 'Cloudflare-Worker'
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'public, max-age=120'
               }
             });
           }
