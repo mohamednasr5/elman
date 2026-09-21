@@ -42,7 +42,7 @@ const redirects=read('_redirects');
 must(redirects.includes('/place/*')&&redirects.includes('/category/*'),'Public place/category routes missing');
 
 const entity=read('src/js/utils/seo-entity.js');
-must(entity.includes("'@type': 'LocalBusiness'")&&entity.includes("'@type': 'BreadcrumbList'"),'Required structured data generators missing');
+must((entity.includes("'@type': 'LocalBusiness'")||entity.includes("return 'LocalBusiness'"))&&entity.includes("'@type': 'BreadcrumbList'"),'Required structured data generators missing');
 
 const builder=read('build-seo-pages.mjs');
 for(const needle of ['Semantic Body Content (Discoverable immediately without JS execution)','Crawlable Breadcrumb Navigation','Related Places in Same Category','Inject Internal Links into places.html'])must(builder.includes(needle),`build-seo-pages.mjs missing ${needle}`);
