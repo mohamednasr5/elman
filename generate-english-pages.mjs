@@ -74,7 +74,17 @@ function writeEnglishPlace(rel, place) {
   const dir = path.join(EN, rel); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'index.html'), html, 'utf8');
 }
 async function fetchAllPlaces(){const out=[],limit=1000;for(let offset=0;offset<100000;offset+=limit){const r=await fetch(`${SITE}/api/places?limit=${limit}&offset=${offset}`,{headers:{accept:'application/json'}});if(!r.ok)throw new Error(`Places API HTTP ${r.status} at offset ${offset}`);const j=await r.json(),batch=Array.isArray(j?.data)?j.data:[];out.push(...batch);if(batch.length<limit)break}return [...new Map(out.map(p=>[String(p.slug||p.id||'').trim(),p])).values()].filter(p=>{const s=String(p.status||p.state||'').toLowerCase();return String(p.slug||p.id||'').trim()&&!['draft','deleted','rejected','archived','hidden'].includes(s)&&p.isPublished!==false&&p.is_published!==false})}
-const items=await fetchAllPlaces();for(const p of items){const s=String(p.slug||p.id).trim();if(s)writeEnglishPlace(`place/${s}`,p)}
+const items=await fetchAllPlaces();
+const desiredEnglishPlaceSlugs=new Set(items.map(p=>String(p.slug||p.id||'').trim()).filter(Boolean));
+const englishPlaceRoot=path.join(EN,'place');
+if(fs.existsSync(englishPlaceRoot)){
+  for(const entry of fs.readdirSync(englishPlaceRoot,{withFileTypes:true})){
+    if(entry.isDirectory() && entry.name!=='index' && !desiredEnglishPlaceSlugs.has(entry.name)){
+      fs.rmSync(path.join(englishPlaceRoot,entry.name),{recursive:true,force:true});
+    }
+  }
+}
+for(const p of items){const s=String(p.slug||p.id).trim();if(s)writeEnglishPlace(`place/${s}`,p)}
 for(const s of fs.existsSync(path.join(ROOT,'category')) ? fs.readdirSync(path.join(ROOT,'category')) : []) { if(s!=='index' && fs.existsSync(path.join(ROOT,'category',s,'index.html'))) writeEnglishCategory(s,s,items); }
 const enPlacesFile = path.join(EN, 'places', 'index.html');
 if (fs.existsSync(enPlacesFile)) {
