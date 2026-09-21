@@ -58,7 +58,7 @@ export async function renderEnglishSearchPage($container, { q = '' } = {}) {
   function doSearch() {
     const val = (input?.value || '').trim();
     if (!val) {
-      if (countLabel) countLabel.textContent = `Showing all ${places.length} places`;
+      if (countLabel) countLabel.textContent = 'Explore places in the directory';
       grid.innerHTML = (places || []).slice(0, 16).map(p => renderEnglishPlaceCard(p)).join('');
       return;
     }
@@ -79,7 +79,7 @@ export async function renderEnglishSearchPage($container, { q = '' } = {}) {
       }
     }
 
-    if (countLabel) countLabel.textContent = `Found ${results.length} results for "${val}"`;
+    if (countLabel) countLabel.textContent = `Search results for "${val}"`;
 
     if (!results.length) {
       grid.innerHTML = `

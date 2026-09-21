@@ -12,3 +12,37 @@
 @import url('./place-live-status-modal.css');
 @import url('./place-typography-match.css?v=20260916.01');
 @import url('./place-3d-system.css?v=20260916.02');
+
+
+@media (max-width:560px){.place-app-links-card{align-items:stretch}.place-app-links-card__buttons{width:100%;display:grid;grid-template-columns:1fr 1fr}.place-store-btn{min-width:0;justify-content:center}}
+
+
+/* Premium payment + app store UI */
+.place-payment-section{margin:18px 0;padding:18px 20px;border:1px solid rgba(27,79,114,.14);border-radius:22px;background:linear-gradient(180deg,#fff 0%,#f7fbff 100%);box-shadow:0 12px 30px rgba(15,23,42,.07)}
+.place-payment-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:12px;margin-bottom:14px;border-bottom:1px solid rgba(148,163,184,.18)}
+.place-payment-header__icon{width:34px;height:34px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;background:rgba(2,132,199,.1)}
+.place-payment-header__title{margin:0;flex:1;font-size:1.05rem;font-weight:900;color:#0f172a}
+.place-payment-header__badge{font-size:.72rem;font-weight:800;padding:6px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1}
+.place-payment-badges-grid{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.payment-badge-wrapper{position:relative;display:inline-flex}
+.payment-badge-3d{width:74px;height:62px;border-radius:16px;background:#fff;border:1px solid rgba(148,163,184,.22);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(15,23,42,.08);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.payment-badge-wrapper:hover .payment-badge-3d,.payment-badge-wrapper:focus-within .payment-badge-3d{transform:translateY(-3px) scale(1.035);border-color:rgba(2,132,199,.35);box-shadow:0 13px 26px rgba(15,23,42,.13)}
+.payment-badge-3d__icon img{width:46px;height:46px;object-fit:contain}
+.payment-badge-tooltip{position:absolute;z-index:60;bottom:calc(100% + 9px);right:50%;transform:translate(50%,4px);width:max-content;max-width:240px;padding:10px 12px;border-radius:13px;background:#0f172a;color:#fff;opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease;box-shadow:0 14px 30px rgba(15,23,42,.25)}
+.payment-badge-wrapper:hover .payment-badge-tooltip,.payment-badge-wrapper:focus-within .payment-badge-tooltip{opacity:1;transform:translate(50%,0)}
+.payment-badge-tooltip__title{display:block;font-weight:900;font-size:.8rem;margin-bottom:2px}
+.payment-badge-tooltip__desc{display:block;font-size:.7rem;line-height:1.5;color:rgba(255,255,255,.86)}
+.place-payment-hint{margin-top:12px;font-size:.74rem;color:#64748b}
+.place-app-links-card{margin:18px 0;padding:16px 18px;border:1px solid rgba(2,132,199,.14);border-radius:22px;background:linear-gradient(135deg,#f8fbff,#eef7ff);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.place-app-links-card__intro{display:flex;flex-direction:column;gap:4px}
+.place-app-links-card__intro strong{font-size:.98rem;font-weight:900;color:#0f172a}
+.place-app-links-card__intro span{font-size:.75rem;color:#64748b}
+.place-app-links-card__buttons{display:flex;gap:10px;flex-wrap:wrap}
+.place-store-btn{min-width:150px;display:inline-flex;align-items:center;gap:10px;padding:9px 13px;border:1px solid rgba(148,163,184,.22);border-radius:15px;color:#fff;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.12);transition:transform .18s ease,box-shadow .18s ease}
+.place-store-btn--play{background:#172a46}
+.place-store-btn--ios{background:#172a46}
+.place-store-btn:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(15,23,42,.18)}
+.place-store-btn__icon{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center}
+.place-store-btn b{display:block;font-size:.8rem}
+.place-store-btn small{display:block;font-size:.67rem;color:#bae6fd;margin-top:1px}
+@media(max-width:560px){.place-app-links-card{align-items:stretch}.place-app-links-card__buttons{width:100%;display:grid;grid-template-columns:1fr 1fr}.place-store-btn{min-width:0;justify-content:center}}

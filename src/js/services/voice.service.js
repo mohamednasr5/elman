@@ -945,9 +945,7 @@ function speakAssistantVoiceResponse(topResult, totalCount, query) {
           ? `يوجد مكان واحد يوفر ${cleanService} وهو ${pName}`
           : `وجدنا ${totalCount} أماكن توفر ${cleanService}، أول نتيجة هي ${pName}`;
       } else {
-        text = totalCount === 1 
-          ? `يُوجد مكان واحد بدليل المَنْزَلَةَ والمطرية الرقمي، وهو ${pName}` 
-          : `يُوجد ${totalCount} أماكن بدليل المَنْزَلَةَ والمطرية الرقمي، أول نتيجة هي ${pName}`;
+        text = `وجدت لك ${pName} ضمن نتائج دليل المنزلة والمطرية الرقمي.`;
       }
 
       const utterance = new SpeechSynthesisUtterance(text);

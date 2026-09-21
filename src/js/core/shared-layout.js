@@ -24,6 +24,7 @@ export async function initSharedLayout(activeHref = '') {
   _setupPwaBanner();
   _setActiveLinks(activeHref);
   _checkApkPwaEnvironment();
+  _setupAnchorCursor();
   _bindThemeToggle();
   setupInstantLinkPrefetcher();
   bindGlobalVoiceAssistantFab();
@@ -54,6 +55,38 @@ export async function initSharedLayout(activeHref = '') {
       });
     }
   } catch (_) {}
+}
+
+function _setupAnchorCursor() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (!window.matchMedia?.('(pointer:fine)').matches) return;
+  const cursor = document.getElementById('anchor-cursor');
+  if (!cursor) return;
+  document.documentElement.classList.add('anchor-cursor-enabled');
+  let raf = 0;
+  let x = window.innerWidth / 2;
+  let y = window.innerHeight / 2;
+  let tx = x;
+  let ty = y;
+  const move = (e) => {
+    tx = e.clientX;
+    ty = e.clientY;
+    if (!raf) {
+      raf = requestAnimationFrame(() => {
+        cursor.style.transform = `translate3d(${tx}px,${ty}px,0) translate(-50%,-50%)`;
+        raf = 0;
+      });
+    }
+  };
+  window.addEventListener('pointermove', move, { passive: true });
+  document.addEventListener('pointerdown', () => cursor.classList.add('is-clicking'));
+  document.addEventListener('pointerup', () => cursor.classList.remove('is-clicking'));
+  document.addEventListener('pointerover', (e) => {
+    if (e.target.closest('a,button,[role="button"],input,select,textarea')) cursor.classList.add('is-hovering');
+  }, { passive: true });
+  document.addEventListener('pointerout', (e) => {
+    if (e.target.closest('a,button,[role="button"],input,select,textarea')) cursor.classList.remove('is-hovering');
+  }, { passive: true });
 }
 
 function _setupTheme() {
@@ -472,7 +505,23 @@ export function getSharedFooterHTML() {
                   <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.996-3.4572c.1557-.2698.0632-.6141-.2066-.7698-.2693-.1552-.6135-.0632-.7692.2066l-2.0231 3.5042c-1.4286-.6507-3.0373-1.0135-4.8786-1.0135-1.8412 0-3.45.3628-4.8785 1.0135L5.0995 5.301c-.1557-.2698-.5-.3618-.7692-.2066-.2698.1557-.3623.5-.2066.7698l1.996 3.4572C2.6806 11.2334.3333 15.1165.3333 19.6667h23.3334c0-4.5502-2.3473-8.4333-5.7867-10.3453"/>
                 </svg>
               </div>
-              <div class="apk-btn-text-box">
+ 
+          <div class="footer__app-stores" aria-label="تطبيق دليل المنزلة والمطرية">
+            <div class="app-store-coming-soon" role="status" tabindex="0" aria-label="تطبيق Apple Store قريباً">
+              <span class="app-store-coming-soon__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="25" height="25" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.94-3.01.4-.97-.55-2.08-.58-3.12 0-1.3.73-1.99.52-2.86-.4C3.79 15.25 4.51 7.59 9.05 7.31c1.16.06 1.97.64 2.65.7 1.02-.2 2-.79 3.09-.74 1.31.11 2.3.63 2.95 1.51-2.71 1.62-2.07 5.18.42 6.22-.5 1.31-1.14 2.61-2.11 3.85zM12.03 7.25C11.88 5.31 13.48 3.7 15.32 3.6c.25 2.24-2.04 3.92-3.29 3.65z"/></svg>
+              </span>
+              <span class="app-store-coming-soon__copy"><small>متاح قريباً على</small><strong>App Store</strong></span>
+              <span class="app-store-coming-soon__soon">قريباً</span>
+            </div>
+            <div class="app-store-coming-soon" role="status" tabindex="0" aria-label="تطبيق Google Play قريباً">
+              <span class="app-store-coming-soon__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="25" height="25"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg>
+              </span>
+              <span class="app-store-coming-soon__copy"><small>متاح قريباً على</small><strong>Google Play</strong></span>
+              <span class="app-store-coming-soon__soon">قريباً</span>
+            </div>
+          </div>             <div class="apk-btn-text-box">
                 <span class="apk-btn-sub">تطبيق الأندرويد المباشر</span>
                 <span class="apk-btn-main">تحميل تطبيق الدليل APK</span>
               </div>
@@ -525,6 +574,8 @@ export function getSharedFooterHTML() {
         </div>
       </div>
     </div>
+
+    <div class="anchor-cursor" id="anchor-cursor" aria-hidden="true"><span>⚓</span></div>
 
     <!-- Scroll to Top Floating Button -->
     <button type="button" class="scroll-to-top-btn" id="scroll-to-top-btn" aria-label="الصعود لأعلى الصفحة" title="العودة لأعلى الصفحة">

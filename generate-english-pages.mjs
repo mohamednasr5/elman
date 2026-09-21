@@ -67,9 +67,9 @@ function writeEnglishPlace(rel, place) {
   <script type="application/ld+json">${JSON.stringify(seo.schemas[0])}</script><script type="application/ld+json">${JSON.stringify(seo.schemas[1])}</script>
   </head><body data-lang="en"><div id="app"><main id="page-container" class="page-main" role="main"><div class="en-container en-section" style="max-width:960px;margin:auto;padding:20px">
   <nav aria-label="Breadcrumb" style="margin-bottom:16px"><a href="/en/">Home</a> / <a href="/en/places/">Places</a> / <a href="${seo.categoryUrl}">${escapeHtml(seo.catName)}</a> / <span>${escapeHtml(seo.rawName)}</span></nav>
-  <article><img src="${escapeHtml(seo.image)}" alt="${escapeHtml(seo.rawName)} in ${escapeHtml(seo.rawArea)}" width="960" height="540" loading="eager" style="width:100%;height:auto;max-height:420px;object-fit:cover;border-radius:18px"><h1>${escapeHtml(seo.rawName)}</h1>
+  <article><img src="${escapeHtml(seo.image)}" alt="${escapeHtml(seo.rawName)} in ${escapeHtml(seo.rawArea)}" width="960" height="540" loading="eager" fetchpriority="high" decoding="async" style="width:100%;height:auto;max-height:420px;object-fit:cover;border-radius:18px"><h1>${escapeHtml(seo.rawName)}</h1>
   <p><strong>Location:</strong> ${escapeHtml(seo.rawAddress || seo.rawArea)}</p>${phone ? `<p><a href="tel:${phone}">Call ${escapeHtml(seo.phone)}</a></p>` : ''}${waLink ? `<p><a href="${waLink}" rel="noopener noreferrer">WhatsApp</a></p>` : ''}
-  <div class="place-description"><h2>About ${escapeHtml(seo.rawName)}</h2><p style="line-height:1.8">${escapeHtml(place.descriptionEn || place.description_en || place.description || seo.description)}</p></div>
+  <div class="place-description"><h2>About ${escapeHtml(seo.rawName)}</h2><p style="line-height:1.8">${escapeHtml(place.descriptionEn || place.description_en || seo.description)}</p></div>
   <section class="place-qa" aria-labelledby="qa-title" style="margin-top:24px;padding:20px;border:1px solid #e2e8f0;border-radius:16px"><h2 id="qa-title">Questions &amp; answers</h2>${qa}</section>
   </article></div></main></div><script type="module" src="/src/js/core/english-pages.js?v=20260913.9"></script></body></html>`;
   const dir = path.join(EN, rel); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'index.html'), html, 'utf8');

@@ -22,6 +22,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Verify published SEO dataset before regeneration
+        run: |
+          node - <<'NODE'
+          const res = await fetch('https://dalilmanzala.com/api/places?limit=1000');
+          if (!res.ok) throw new Error(`Published places API returned HTTP ${res.status}`);
+          const json = await res.json();
+          const rows = Array.isArray(json?.data) ? json.data : [];
+          if (rows.length < 1) throw new Error('Published places dataset is empty; refusing to prune generated SEO pages.');
+          console.log(`Verified ${rows.length} published places before regeneration.`);
+          NODE
+
+      - name: Verify generated SEO source files are present
+        run: |
+          test -f build-seo-pages.mjs
+          test -f generate-english-pages.mjs
+          test -f scripts/generate-seo-assets.mjs
+          test -f scripts/validate-seo.mjs
+      - name: Remove stale generated SEO profile directories
+        run: |
+          rm -rf place/* category/* en/place/* en/category/*
+          mkdir -p place category en/place en/category
       - name: Generate Arabic static SEO business/category pages
         run: node build-seo-pages.mjs
       - name: Generate English SEO-aware pages
@@ -39,6 +60,39 @@ jobs:
           node --check scripts/submit-indexnow.mjs
           node --check scripts/validate-seo.mjs
           node scripts/validate-seo.mjs
+      - name: Verify generated HTML contains no forbidden business/category schema claims
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const roots = ['place','category','en/place','en/category'];
+          const forbidden = [
+            /"currenciesAccepted"\s*:/i,
+            /"areaServed"\s*:/i,
+            /"priceRange"\s*:/i,
+            /"@type"\s*:\s*"FAQPage"/i
+          ];
+          let checked = 0;
+          function walk(dir) {
+            if (!fs.existsSync(dir)) return;
+            for (const name of fs.readdirSync(dir)) {
+              const p = path.join(dir, name);
+              const st = fs.statSync(p);
+              if (st.isDirectory()) walk(p);
+              else if (name.endsWith('.html')) {
+                checked++;
+                const html = fs.readFileSync(p, 'utf8');
+                for (const rx of forbidden) {
+                  if (rx.test(html)) throw new Error('Forbidden generated schema claim in '+p+': '+rx);
+                }
+              }
+            }
+          }
+          for (const root of roots) walk(root);
+          if (!checked) throw new Error('No generated place/category HTML found after regeneration.');
+          console.log('Checked '+checked+' generated place/category HTML files; forbidden schema claims absent.');
+          NODE
+
       - name: Commit generated SEO assets
         run: |
           git config user.name "github-actions[bot]"

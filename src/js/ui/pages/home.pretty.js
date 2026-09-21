@@ -875,41 +875,35 @@ class StatsSoundSynth {
 
 const statsAudio = new StatsSoundSynth();
 
-function renderStatsBar(placesCount, categoriesCount) {
+function renderStatsBar() {
   const bar = document.getElementById('stats-bar');
   if (!bar) return;
 
-  const targetMonthlyVisits = 50000;
-  const targetPlaces = Math.max(15000, Number(placesCount) || 0);
-  const targetDailySearches = 12000;
-  const targetCategories = Math.max(124, Number(categoriesCount) || 0);
-  const targetVillages = 55;
-
   bar.innerHTML = `
     <div class="stats-bar__inner container">
-      <div class="stats-bar__item stats-interactive-item" title="إحصائية الزيارات والتفاعل الشهري بالمنطقة">
-        <div class="stats-bar__value" data-target="${targetMonthlyVisits}" data-prefix="+" data-suffix="">+${targetMonthlyVisits.toLocaleString('en-US')}</div>
-        <div class="stats-bar__label">مشاهدة وزيارة شهرياً</div>
+      <div class="stats-bar__item stats-interactive-item" title="دليل محلي متجدد للأماكن والأنشطة والخدمات">
+        <div class="stats-bar__value">دليل متجدد</div>
+        <div class="stats-bar__label">أماكن وأنشطة وخدمات محلية</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item stats-interactive-item" title="عدد الأنشطة والمحلات والمهن والعيادات المسجلة">
-        <div class="stats-bar__value" data-target="${targetPlaces}" data-prefix="+" data-suffix="">+${targetPlaces.toLocaleString('en-US')}</div>
-        <div class="stats-bar__label">نشاط تجاري وعيادة ومهنة مسجلة</div>
+      <div class="stats-bar__item stats-interactive-item" title="بحث محلي سريع عن الأنشطة والخدمات">
+        <div class="stats-bar__value">بحث ذكي</div>
+        <div class="stats-bar__label">ابحث بالاسم أو التخصص أو الخدمة</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item stats-interactive-item" title="إحصائية عمليات البحث اليومي في مدن وقرى الدليل">
-        <div class="stats-bar__value" data-target="${targetDailySearches}" data-prefix="+" data-suffix="">+${targetDailySearches.toLocaleString('en-US')}</div>
-        <div class="stats-bar__label">عملية بحث يومياً</div>
+      <div class="stats-bar__item stats-interactive-item" title="تغطية محلية للمنزلة والمطرية والقرى المجاورة">
+        <div class="stats-bar__value">تغطية محلية</div>
+        <div class="stats-bar__label">المنزلة والمطرية والقرى المجاورة</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item stats-interactive-item" title="عدد التصنيفات والمهن والحرف المغطاة">
-        <div class="stats-bar__value" data-target="${targetCategories}" data-prefix="+" data-suffix="">+${targetCategories}</div>
-        <div class="stats-bar__label">تصنيف ومهنة وحرفة</div>
+      <div class="stats-bar__item stats-interactive-item" title="بيانات محلية قابلة للتحديث">
+        <div class="stats-bar__value">بيانات متجددة</div>
+        <div class="stats-bar__label">معلومات النشاط ووسائل التواصل</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item stats-interactive-item" title="المدن والقرى المسجلة بالدليل">
-        <div class="stats-bar__value" data-target="${targetVillages}" data-prefix="+" data-suffix="">+${targetVillages}</div>
-        <div class="stats-bar__label">مدينة وقرية مسجلة بالدليل</div>
+      <div class="stats-bar__item stats-interactive-item" title="الوصول إلى الأنشطة المحلية">
+        <div class="stats-bar__value">وصول مباشر</div>
+        <div class="stats-bar__label">اتصال وواتساب واتجاهات</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
       <div class="stats-bar__item stats-interactive-item" title="دليل المنزلة والمطرية والجمالية الرقمي">
@@ -918,11 +912,7 @@ function renderStatsBar(placesCount, categoriesCount) {
       </div>
     </div>
   `;
-
-
-  setupStatsBarCounter(bar);
 }
-
 function setupStatsBarCounter(bar) {
   let hasAnimated = false;
   let isRunning = false;
