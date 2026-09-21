@@ -69,6 +69,28 @@ must(entity.includes('generateBusinessSEOEnglish'),'English business SEO generat
 must(!entity.includes("'@type': 'FAQPage'"),'FAQPage schema should not be emitted as a Google rich-result strategy');
 must(!entity.includes('31.1578') || !entity.includes('32.0333'),'SEO generator must not use guessed city-centre coordinates as business coordinates');
 
+must(!entity.includes('areaServed: COVERAGE_AREAS') && !entity.includes('areaServed: COVERAGE_AREAS.map'),'Business schema must not assert generic coverage areas for every business');
+
+function collectHtml(dir) {
+  if (!fs.existsSync(path.join(ROOT, dir))) return [];
+  const out = [];
+  const walk = abs => {
+    for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+      const full = path.join(abs, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile() && entry.name.endsWith('.html')) out.push(full);
+    }
+  };
+  walk(path.join(ROOT, dir));
+  return out;
+}
+for (const file of [...collectHtml('place'), ...collectHtml('category'), ...collectHtml('en/place'), ...collectHtml('en/category')]) {
+  const html = fs.readFileSync(file, 'utf8');
+  must(!/['"]?(currenciesAccepted|areaServed|priceRange)['"]?\s*:/.test(html), `${file}: unsupported generic business claim in generated schema`);
+  must(!/['"]?FAQPage['"]?/.test(html), `${file}: FAQPage must not be emitted on business/category profile pages`);
+}
+
+
 const builder=read('build-seo-pages.mjs');
 const englishBuilder=read('generate-english-pages.mjs');
 must(englishBuilder.includes('generateBusinessSEOEnglish')&&englishBuilder.includes('Questions &amp; answers'),'English profiles must contain entity metadata and crawlable Q&A');

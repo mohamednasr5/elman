@@ -232,10 +232,6 @@ export function generateBusinessSEO(place) {
         return null;
       }).filter(Boolean))]
     } : {}),
-    areaServed: COVERAGE_AREAS.map(area => ({
-      '@type': 'AdministrativeArea',
-      name: area
-    }))
   };
 
   // Geo coordinates: emit only coordinates actually supplied for this place.
