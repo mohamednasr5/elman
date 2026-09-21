@@ -34,25 +34,4 @@ for(let i=0;i<urls.length;i+=10000){
 }
 console.log(`IndexNow: accepted ${sent} public profile URLs.`);
 
-// Search Engine Sitemaps Ping (Google, Bing)
-const sitemaps = [
-  `${SITE}/sitemap.xml`,
-  `${SITE}/sitemap-places-ar.xml`,
-  `${SITE}/sitemap-places-en.xml`
-];
-
-for (const sm of sitemaps) {
-  const pings = [
-    `https://www.google.com/ping?sitemap=${encodeURIComponent(sm)}`,
-    `https://www.bing.com/ping?sitemap=${encodeURIComponent(sm)}`
-  ];
-  for (const pingUrl of pings) {
-    try {
-      const pingRes = await fetch(pingUrl, { method: 'GET', signal: AbortSignal.timeout(5000) }).catch(() => null);
-      if (pingRes && (pingRes.ok || pingRes.status < 400)) {
-        console.log(`Sitemap Ping [${pingRes.status}]: ${pingUrl}`);
-      }
-    } catch (_) {}
-  }
-}
-console.log('Daily search engine submission cycle complete.');
+console.log('Daily IndexNow submission cycle complete.');
