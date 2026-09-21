@@ -1160,7 +1160,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                 <span>متاح قريبًا على المتاجر</span>
               </div>
               <div class="place-app-links-card__buttons">
-                <button type="button" class="place-store-btn" data-coming-soon="1" title="قريبًا aria-label="Google Play — قريبًا">
+                <button type="button" class="place-store-btn" data-coming-soon="1" title="قريبًا" aria-label="Google Play — قريبًا">
                   <span class="place-store-btn__icon">▶</span>
                   <span><b>Google Play</b><small>قريبًا</small></span>
                 </button>
