@@ -379,8 +379,8 @@ async function ensureDailyPlacesIndexed(env, forceAll = false) {
         const rawSlug = String(r.slug || r.id || '').trim();
         if (rawSlug) {
           const s = encodeURIComponent(rawSlug);
-          urls.push(`https://dalilmanzala.com/place/${s}`);
-          urls.push(`https://dalilmanzala.com/en/place/${s}`);
+          urls.push(`https://dalilmanzala.com/place/${s}/`);
+          urls.push(`https://dalilmanzala.com/en/place/${s}/`);
         }
       }
 
@@ -481,8 +481,8 @@ async function handleDynamicSitemap(request, url, env, ctx) {
       const rawSlug = String(place.slug || place.id || '').trim();
       if (!rawSlug) continue;
       const slugVal = encodeURIComponent(rawSlug);
-      const arPath = `/place/${slugVal}`;
-      const enPath = `/en/place/${slugVal}`;
+      const arPath = `/place/${slugVal}/`;
+      const enPath = `/en/place/${slugVal}/`;
       const loc = isEn ? enPath : arPath;
       const d = place.updated_at ? new Date(place.updated_at) : null;
       const lm = (d && !Number.isNaN(d.getTime())) ? d.toISOString().slice(0, 10) : today;
@@ -509,8 +509,8 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     }
     let entries = [];
     for (const cat of [...catSet].sort()) {
-      const arPath = `/category/${encodeURIComponent(cat)}`;
-      const enPath = `/en/category/${encodeURIComponent(cat)}`;
+      const arPath = `/category/${encodeURIComponent(cat)}/`;
+      const enPath = `/en/category/${encodeURIComponent(cat)}/`;
       const loc = isEn ? enPath : arPath;
       entries.push(`  <url>\n    <loc>${esc(abs(loc))}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n    <xhtml:link rel="alternate" hreflang="ar" href="${esc(abs(arPath))}"/>\n    <xhtml:link rel="alternate" hreflang="en" href="${esc(abs(enPath))}"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(abs(arPath))}"/>\n  </url>`);
     }
@@ -599,7 +599,7 @@ async function handleRssFeed(request, url, env, ctx) {
     const itemsXml = rows.map((place) => {
       const pName = place.name?.trim() || 'مكان جديد';
       const safeSlug = String(place.slug || place.id || '').trim();
-      const placeUrl = `${site}/place/${encodeURIComponent(safeSlug)}`;
+      const placeUrl = `${site}/place/${encodeURIComponent(safeSlug)}/`;
       const catName = place.custom_category?.trim() || place.category_name?.trim() || place.category_id || 'أماكن وأنشطة';
       const pubDate = toRfc822(place.created_at || place.updated_at || Date.now());
 
@@ -2450,8 +2450,8 @@ try {
       if (status === 'published') {
         const safeSlug = encodeURIComponent((slug || placeId).toLowerCase());
         ctx.waitUntil(notifyIndexNow([
-          `https://dalilmanzala.com/place/${safeSlug}`,
-          `https://dalilmanzala.com/en/place/${safeSlug}`
+          `https://dalilmanzala.com/place/${safeSlug}/`,
+          `https://dalilmanzala.com/en/place/${safeSlug}/`
         ]));
       }
 
@@ -9601,7 +9601,7 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
         "@type": "ListItem",
         "position": 3,
         "name": placeCat || (isEn ? "Category" : "التصنيف"),
-        "item": isEn ? `${canonicalBase}/en/category/${categorySlug}` : `${canonicalBase}/category/${categorySlug}`
+        "item": isEn ? `${canonicalBase}/en/category/${categorySlug}/` : `${canonicalBase}/category/${categorySlug}/`
       },
       {
         "@type": "ListItem",
@@ -9899,10 +9899,10 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   }
 
   const placeTargetSlug = canonicalSlug || place.slug || cleanSlug;
-  const canonicalPath = isEn ? `/en/place/${encodeURIComponent(placeTargetSlug)}` : `/place/${encodeURIComponent(placeTargetSlug)}`;
+  const canonicalPath = isEn ? `/en/place/${encodeURIComponent(placeTargetSlug)}/` : `/place/${encodeURIComponent(placeTargetSlug)}/`;
   const shareUrl = `${canonicalBase}${canonicalPath}`;
-  const alternateArUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
-  const alternateEnUrl = `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}`;
+  const alternateArUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}/`;
+  const alternateEnUrl = `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}/`;
 
   // 4. Metadata and place normalization variables
   const phoneClean = (place.phone || '').replace(/[^\d+]/g, '').trim();
@@ -10223,7 +10223,7 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
     console.warn('[handleDynamicOpenGraph SSR Error]:', ssrErr?.message || ssrErr);
   }
 
-  const destinationUrl = isEn ? `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}` : `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}`;
+  const destinationUrl = isEn ? `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}/` : `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}/`;
   const html = `<!DOCTYPE html>
 <html lang="${isEn ? 'en' : 'ar'}" dir="${isEn ? 'ltr' : 'rtl'}">
 <head>
