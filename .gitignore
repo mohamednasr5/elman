@@ -5,3 +5,7 @@
 .env*
 !.env.example
 scratch/
+*.sql
+!worker/schema.sql
+*.apk
+*.mp4

@@ -91,18 +91,35 @@ function applySettings(settings) {
   }
 }
 
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function safeUrl(url) {
+  if (!url || typeof url !== 'string') return '#';
+  const clean = url.trim();
+  if (/^(https?:\/\/|mailto:|tel:|\/|#)/i.test(clean)) return clean;
+  return '#';
+}
+
 function renderFooterSocial(social) {
   const container = document.getElementById('footer-social');
   if (!container) return;
 
   const links = [];
-  if (social.facebook)  links.push({ url: social.facebook,  icon: 'f', name: 'فيسبوك' });
-  if (social.instagram) links.push({ url: social.instagram, icon: '📷', name: 'إنستجرام' });
-  if (social.youtube)   links.push({ url: social.youtube,   icon: '▶', name: 'يوتيوب' });
+  if (social.facebook)  links.push({ url: safeUrl(social.facebook),  icon: 'f', name: 'فيسبوك' });
+  if (social.instagram) links.push({ url: safeUrl(social.instagram), icon: '📷', name: 'إنستجرام' });
+  if (social.youtube)   links.push({ url: safeUrl(social.youtube),   icon: '▶', name: 'يوتيوب' });
 
-  container.innerHTML = links.map(l => `
-    <a href="${l.url}" target="_blank" rel="noopener noreferrer" 
-       class="footer__social-link" aria-label="${l.name}">
+  container.innerHTML = links.filter(l => l.url !== '#').map(l => `
+    <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer" 
+       class="footer__social-link" aria-label="${escapeHtml(l.name)}">
       ${l.icon}
     </a>
   `).join('');
@@ -115,7 +132,10 @@ function renderFooterContact(contact) {
   const items = [`<li><a href="#/contact" class="footer__link">📧 تواصل معنا</a></li>`];
 
   if (contact.whatsappLink) {
-    items.unshift(`<li><a href="${contact.whatsappLink}" target="_blank" rel="noopener" class="footer__link">💬 واتساب</a></li>`);
+    const waUrl = safeUrl(contact.whatsappLink);
+    if (waUrl !== '#') {
+      items.unshift(`<li><a href="${escapeHtml(waUrl)}" target="_blank" rel="noopener" class="footer__link">💬 واتساب</a></li>`);
+    }
   }
 
   items.push(
@@ -189,16 +209,22 @@ function updateHeaderAuth(user) {
   if (loading) loading.remove();
 
   if (user) {
+    const rawName = String(user.name || user.displayName || 'مستخدم').trim();
+    const safeName = escapeHtml(rawName);
+    const firstName = safeName.split(' ')[0] || safeName;
+    const photoUrl = safeUrl(user.photoURL) !== '#' ? escapeHtml(user.photoURL) : '/icons/icon-72x72.png';
+
     container.innerHTML = `
       <div class="header__user">
         <button class="header__user-btn" id="user-menu-btn" aria-haspopup="true" aria-expanded="false">
           <img
-            src="${user.photoURL || '/icons/icon-72x72.png'}"
-            alt="${user.name}"
+            src="${photoUrl}"
+            alt="${safeName}"
             class="header__avatar"
             width="32" height="32"
+            onerror="this.src='/icons/icon-72x72.png'"
           />
-          <span class="header__user-name">${user.name.split(' ')[0]}</span>
+          <span class="header__user-name">${firstName}</span>
           <span aria-hidden="true">▾</span>
         </button>
         <div class="header__dropdown" id="user-dropdown" role="menu">

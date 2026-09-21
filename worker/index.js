@@ -556,7 +556,7 @@ async function handleDynamicSitemap(request, url, env, ctx) {
 async function handleRssFeed(request, url, env, ctx) {
   const site = 'https://dalilmanzala.com';
   const cache = caches.default;
-  const cacheKey = new Request('https://cache.local/rss/v2/places.xml');
+  const cacheKey = new Request('https://cache.local/rss/v3/places.xml');
 
   if (cache) {
     const cached = await cache.match(cacheKey).catch(() => null);
@@ -611,6 +611,13 @@ async function handleRssFeed(request, url, env, ctx) {
         imgUrl = `${site}/icons/icon-512x512.png`;
       }
 
+      const imgCleanPath = imgUrl.split('?')[0].toLowerCase();
+      let imgMime = 'image/jpeg';
+      if (imgCleanPath.endsWith('.png')) imgMime = 'image/png';
+      else if (imgCleanPath.endsWith('.webp')) imgMime = 'image/webp';
+      else if (imgCleanPath.endsWith('.gif')) imgMime = 'image/gif';
+      else if (imgCleanPath.endsWith('.svg')) imgMime = 'image/svg+xml';
+
       const locationParts = [place.area, place.address].filter(Boolean);
       const locationText = locationParts.length ? locationParts.join(' - ') : 'المنزلة والمطرية';
 
@@ -639,8 +646,8 @@ async function handleRssFeed(request, url, env, ctx) {
       <pubDate>${pubDate}</pubDate>
       <category><![CDATA[${catName}]]></category>
       <dc:creator><![CDATA[دليل المنزلة والمطرية الرقمي]]></dc:creator>
-      <enclosure url="${escXml(imgUrl)}" type="image/jpeg" length="0" />
-      <media:content url="${escXml(imgUrl)}" medium="image" type="image/jpeg">
+      <enclosure url="${escXml(imgUrl)}" type="${imgMime}" length="0" />
+      <media:content url="${escXml(imgUrl)}" medium="image" type="${imgMime}">
         <media:title><![CDATA[${pName}]]></media:title>
       </media:content>
       <media:thumbnail url="${escXml(imgUrl)}" />
@@ -878,6 +885,12 @@ if (url.pathname === '/robots.txt' && request.method === 'GET') {
 
 User-agent: *
 Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /llms-en.txt
+Allow: /llms-full-en.txt
+Allow: /rss.xml
+Allow: /feed
 Disallow: /admin.html
 Disallow: /admin/
 Disallow: /dashboard.html
@@ -887,6 +900,10 @@ Disallow: /login/
 Disallow: /favorites.html
 Disallow: /favorites/
 Disallow: /api/
+Disallow: /backup-d1.sql
+Disallow: /*.sql$
+Disallow: /1.mp4
+Disallow: /dalilmanzala.apk
 Disallow: /*?q=
 Disallow: /*?search=
 
@@ -947,14 +964,6 @@ Allow: /
 # You.com AI Search
 User-agent: YouBot
 Allow: /
-
-# AI-readable discovery files & Feeds
-Allow: /llms.txt
-Allow: /llms-full.txt
-Allow: /llms-en.txt
-Allow: /llms-full-en.txt
-Allow: /rss.xml
-Allow: /feed
 
 # XML Sitemaps Index & Sub-Sitemaps for Fast Search Discovery
 Sitemap: https://dalilmanzala.com/sitemap.xml

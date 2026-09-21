@@ -1,5 +1,12 @@
 # ── Cloudflare Pages Custom Headers ──
 
+# ── Global Security Headers ──
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=()
+
 /src/css/*
   Cache-Control: public, max-age=0, must-revalidate, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
@@ -65,6 +72,14 @@
   Access-Control-Allow-Origin: *
   Cache-Control: public, max-age=86400, s-maxage=86400
 /llms-full.txt
+  Content-Type: text/markdown; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=86400, s-maxage=86400
+/llms-en.txt
+  Content-Type: text/markdown; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=86400, s-maxage=86400
+/llms-full-en.txt
   Content-Type: text/markdown; charset=utf-8
   Access-Control-Allow-Origin: *
   Cache-Control: public, max-age=86400, s-maxage=86400

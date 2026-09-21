@@ -6,16 +6,16 @@
 try {
   importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
   importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
-  firebase.initializeApp({apiKey:"AIzaSyCUGecmvBdf6b38UVIM9zcxhbb7VSzM",authDomain:"elmanzla-7402a.firebaseapp.com",projectId:"elmanzla-7402a",storageBucket:"elmanzla-7402a.firebasestorage.app",messagingSenderId:"252271215500",appId:"1:252271215500:web:adc234e58f4ba455fdcca9",measurementId:"G-EY6TEPLGSK"});
+  firebase.initializeApp({apiKey:"AIzaSyCUGCecmvBdf6b38UVIM9zcxhbbux7VSzM",authDomain:"elmanzla-7402a.firebaseapp.com",projectId:"elmanzla-7402a",storageBucket:"elmanzla-7402a.firebasestorage.app",messagingSenderId:"252271215500",appId:"1:252271215500:web:adc234e58f4ba455fdcca9",measurementId:"G-EY6TEPLGSK"});
   const messaging=firebase.messaging();
   messaging.onBackgroundMessage(payload=>{const title=payload.notification?.title||payload.data?.title||'دليل المنزلة والمطرية 🔔';const body=payload.notification?.body||payload.data?.body||payload.data?.message||'تنبيه جديد في دليل المنزلة والمطرية';const url=payload.data?.url||payload.data?.actionUrl||payload.notification?.click_action||'./';eventlessNotification(title,body,url,payload)});
 } catch(err){console.warn('[SW] Firebase messaging init warning:',err)}
-const CACHE_VERSION='v5.0.0-prayer-nav-button';
+const CACHE_VERSION='v5.1.0-payment-icons';
 const STATIC_CACHE='manzala-static-'+CACHE_VERSION;
 const DYNAMIC_CACHE='manzala-dynamic-'+CACHE_VERSION;
 const IMAGE_CACHE='manzala-images-'+CACHE_VERSION;
 const API_CACHE='manzala-api-'+CACHE_VERSION;
-const STATIC_ASSETS=['./offline.html','./index.html','./places.html','./categories.html','./offers.html','./now.html','./job-seekers.html','./jobs.html','./around-me.html','./favorites.html','./search.html','./dashboard.html','./login.html','./contact.html','./place.html','./qibla.html','./prayer-times.html','./src/css/main.css','./src/css/islamic-hub.css','./src/css/pwa-install.css','./src/js/core/page-shell.js','./src/js/core/pwa-install.js','./src/js/ui/pages/islamic-hub.js','./manifest.webmanifest','/icons/icon-48x48.png','/icons/icon-72x72.png','/icons/icon-96x96.png','/icons/icon-192x192.png','/icons/icon-maskable-192x192.png','/icons/icon-512x512.png','/icons/icon-maskable-512x512.png','/favicon-48x48.png'];
+const STATIC_ASSETS=['./offline.html','./index.html','./places.html','./categories.html','./offers.html','./now.html','./job-seekers.html','./jobs.html','./around-me.html','./favorites.html','./search.html','./dashboard.html','./wallet.html','./login.html','./contact.html','./place.html','./qibla.html','./prayer-times.html','./src/css/main.css','./src/css/islamic-hub.css','./src/css/pwa-install.css','./src/js/core/page-shell.js','./src/js/core/pwa-install.js','./src/js/ui/pages/islamic-hub.js','./manifest.webmanifest','/icons/icon-48x48.png','/icons/icon-72x72.png','/icons/icon-96x96.png','/icons/icon-192x192.png','/icons/icon-maskable-192x192.png','/icons/icon-512x512.png','/icons/icon-maskable-512x512.png','/favicon-48x48.png'];
 const OFFLINE_PAGE='./offline.html';
 self.addEventListener('install',event=>{event.waitUntil(caches.open(STATIC_CACHE).then(async cache=>{await Promise.all(STATIC_ASSETS.map(async asset=>{try{const res=await fetch(asset,{cache:'no-store'});if(res.ok)await cache.put(asset,res.clone())}catch(_){}}));}).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil((async()=>{await Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>!k.startsWith('manzala-')||![STATIC_CACHE,DYNAMIC_CACHE,IMAGE_CACHE,API_CACHE].includes(k)).map(k=>caches.delete(k)))),self.clients.claim()]);const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});windows.forEach(client=>{try{client.postMessage({type:'SW_ACTIVATED',version:CACHE_VERSION})}catch(_){}});})())});

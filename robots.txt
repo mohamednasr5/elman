@@ -4,6 +4,12 @@
 
 User-agent: *
 Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /llms-en.txt
+Allow: /llms-full-en.txt
+Allow: /rss.xml
+Allow: /feed
 Disallow: /admin.html
 Disallow: /admin/
 Disallow: /dashboard.html
@@ -13,6 +19,10 @@ Disallow: /login/
 Disallow: /favorites.html
 Disallow: /favorites/
 Disallow: /api/
+Disallow: /backup-d1.sql
+Disallow: /*.sql$
+Disallow: /1.mp4
+Disallow: /dalilmanzala.apk
 Disallow: /*?q=
 Disallow: /*?search=
 
@@ -194,14 +204,6 @@ Disallow: /login/
 Disallow: /favorites.html
 Disallow: /favorites/
 Disallow: /api/
-
-# AI-readable discovery files and RSS feeds.
-Allow: /llms.txt
-Allow: /llms-full.txt
-Allow: /llms-en.txt
-Allow: /llms-full-en.txt
-Allow: /rss.xml
-Allow: /feed
 
 # XML sitemap index and sub-sitemaps for fast search discovery.
 Sitemap: https://dalilmanzala.com/sitemap.xml

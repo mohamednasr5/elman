@@ -129,14 +129,14 @@
 /manzala/           /manzala.html       200
 /matariya           /matariya.html      200
 /matariya/          /matariya.html      200
+/wallet             /wallet.html        200
+/wallet/            /wallet.html        200
 /about                  /about.html         200
 /about/                 /about.html         200
 /ar/about               /about.html         301
 /ar/about/              /about.html         301
 /ar/about.html          /about.html         301
-/en/about               /en/about.html      200
-/en/about/              /en/about.html      200
-/en/about.html          /en/about.html      200
+/en/about.html          /en/about/          301
 
 # Directory roots redirect to listing pages
 /place              /places.html        301

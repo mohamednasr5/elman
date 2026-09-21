@@ -28,8 +28,14 @@
         }
         if (s && s !== 'undefined' && s !== 'null') {
           var clean = encodeURIComponent(s);
+          var placeUrl = 'https://dalilmanzala.com/place/' + clean;
           var canonical = document.getElementById('place-canonical');
-          if (canonical) canonical.href = 'https://dalilmanzala.com/place/' + clean;
+          if (canonical) canonical.href = placeUrl;
+          // Fix og:url and twitter:url for correct social share previews
+          var ogUrl = document.querySelector('meta[property="og:url"]');
+          if (ogUrl) ogUrl.setAttribute('content', placeUrl);
+          var twUrl = document.querySelector('meta[name="twitter:url"]');
+          if (twUrl) twUrl.setAttribute('content', placeUrl);
           if (window.location.pathname.endsWith('place.html')) {
             window.history.replaceState(null, '', '/place/' + clean + (window.location.hash || ''));
           }
@@ -550,9 +556,9 @@
 
 <!-- Page Module -->
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=b1f8e420';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=b1f8e420';
-  import { getCurrentUser } from '/src/js/core/auth.js?v=b1f8e420';
+  import { initPage } from '/src/js/core/page-shell.js?v=a58f9ed6';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=a58f9ed6';
+  import { getCurrentUser } from '/src/js/core/auth.js?v=a58f9ed6';
 
   (async () => {
     const params = new URLSearchParams(location.search);
