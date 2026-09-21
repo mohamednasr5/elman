@@ -10164,7 +10164,8 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
           'Cache-Control': 'public, max-age=120, s-maxage=3600, stale-while-revalidate=86400',
           'X-Edge-SSR': 'MISS',
           'X-Content-Type-Options': 'nosniff',
-          'X-Localized-Route': langPrefix
+          'X-Localized-Route': langPrefix,
+          'Content-Language': isEn ? 'en' : 'ar-EG'
         }
       });
 
@@ -10236,7 +10237,8 @@ ${JSON.stringify(generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, place
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'public, max-age=300, s-maxage=300',
-      'X-Content-Type-Options': 'nosniff'
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Language': isEn ? 'en' : 'ar-EG'
     }
   });
 }
