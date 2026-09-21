@@ -2741,7 +2741,8 @@ try {
       }
       return res;
     } catch (err) {
-      return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
+      console.warn('[GET /api/categories warning]:', err?.message || err);
+      return jsonResponse({ success: true, data: [] }, 200, corsHeaders);
     }
   }
 

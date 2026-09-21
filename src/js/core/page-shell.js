@@ -431,6 +431,9 @@ function _bindMoreMenu(){
   const close = () => {
     const sheet = document.getElementById('mobile-more-sheet');
     if (!sheet) return;
+    if (document.activeElement && sheet.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
     sheet.classList.remove('is-open');
     sheet.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('mobile-more-open');

@@ -25,7 +25,7 @@ function resetTursoClient(env) {
   } catch (_) {}
 }
 
-function withTimeout(promise, ms = 7000) {
+function withTimeout(promise, ms = 15000) {
   let timer;
   const timeoutPromise = new Promise((_, reject) => {
     timer = setTimeout(() => {
@@ -175,18 +175,14 @@ function ensureRuntimeSchema(env) {
   if (!env) return Promise.resolve();
   let promise = schemaPromises.get(env);
   if (!promise) {
-    let client;
-    try {
-      client = getTursoClient(env);
-    } catch (err) {
-      return Promise.reject(err);
-    }
-    promise = repairRuntimeSchema(env, client).catch(err => {
-      // Do not hide the original query failure behind a best-effort repair.
-      // The next API statement will surface the real database error.
-      console.warn('[Turso schema repair] Notice:', err?.message || err);
-    });
+    promise = Promise.resolve();
     schemaPromises.set(env, promise);
+    try {
+      const client = getTursoClient(env);
+      repairRuntimeSchema(env, client).catch(err => {
+        console.warn('[Turso schema repair] Notice:', err?.message || err);
+      });
+    } catch (_) {}
   }
   return promise;
 }
