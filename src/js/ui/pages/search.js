@@ -920,9 +920,9 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
 
     if (metaEl) {
       if (q) {
-        metaEl.innerHTML = `تم العثور على <strong style="color:var(--primary);font-size:1.1rem">${places.length}</strong> مكان لـ: "<strong>${escHtml(q)}</strong>" <span style="background:rgba(16,185,129,0.12);color:#059669;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;margin-right:6px">⚡ فوري</span>`;
+        metaEl.innerHTML = `نتائج البحث عن: "<strong>${escHtml(q)}</strong>" <span style="background:rgba(16,185,129,0.12);color:#059669;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;margin-right:6px">⚡ فوري</span>`;
       } else {
-        metaEl.innerHTML = `عرض <strong style="color:var(--primary);font-size:1.1rem">${places.length}</strong> مكان في الدليل`;
+        metaEl.innerHTML = 'استكشف نتائج الدليل';
       }
     }
 
