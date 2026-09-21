@@ -35,6 +35,9 @@ must(/<html lang="en" dir="ltr">/i.test(en),'English home language/direction is 
 must(en.includes('hreflang="ar"')&&en.includes('hreflang="en"'),'English home hreflang missing');
 must(en.includes('rel="canonical" href="https://dalilmanzala.com/en/"'),'English home canonical is invalid');
 
+const llmAr=read('llms.txt');
+must(!/support electronic and cash payment methods|accepted everywhere/i.test(llmAr),'AI context must not make universal payment claims');
+must(llmAr.includes('Do not infer a payment method'),'Arabic AI context accuracy rules missing');
 const llm=read('llms-en.txt');
 must(llm.includes('/en/place/{slug}/')&&llm.includes('OAI-SearchBot'),'English AI context is incomplete');
 
