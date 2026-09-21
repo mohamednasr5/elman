@@ -276,7 +276,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       }
 
       // Render
-      countMeta.textContent = `تم العثور على ${sorted.length} مكان في دليل المنزلة والمطرية والقرى ${sortBy === 'nearest' ? '• مرتبة بالأقرب لموقعك' : ''}`;
+      countMeta.textContent = sortBy === 'nearest' ? 'الأماكن مرتبة بالأقرب إلى موقعك 📍' : 'استكشف الأماكن والأنشطة والخدمات في الدليل';
 
       if (sorted.length === 0) {
         grid.innerHTML = `
