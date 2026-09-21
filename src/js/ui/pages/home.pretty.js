@@ -892,11 +892,10 @@ function renderStatsBar(placesCount, categoriesCount) {
         <div class="stats-bar__label">مشاهدة وزيارة شهرياً</div>
       </div>
       <div class="stats-bar__divider" aria-hidden="true"></div>
-      <div class="stats-bar__item stats-interactive-item" title="عدد الأنشطة والمحلات والمهن والعيادات المسجلة">
-        <div class="stats-bar__value" data-target="${targetPlaces}" data-prefix="+" data-suffix="">+${targetPlaces.toLocaleString('en-US')}</div>
-        <div class="stats-bar__label">نشاط تجاري وعيادة ومهنة مسجلة</div>
-      </div>
-      <div class="stats-bar__divider" aria-hidden="true"></div>
+      <div class="stats-bar__item stats-interactive-item" title="دليل محلي متجدد للأماكن والأنشطة والخدمات">
+        <div class="stats-bar__value">دليل متجدد</div>
+        <div class="stats-bar__label">أماكن وأنشطة وخدمات محلية</div>
+      </div>     <div class="stats-bar__divider" aria-hidden="true"></div>
       <div class="stats-bar__item stats-interactive-item" title="إحصائية عمليات البحث اليومي في مدن وقرى الدليل">
         <div class="stats-bar__value" data-target="${targetDailySearches}" data-prefix="+" data-suffix="">+${targetDailySearches.toLocaleString('en-US')}</div>
         <div class="stats-bar__label">عملية بحث يومياً</div>
