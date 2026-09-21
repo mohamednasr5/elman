@@ -379,10 +379,12 @@ export function generateBusinessSEOEnglish(place) {
   const rawName = String(place.nameEn || place.name_en || place.name || '').trim() || 'Local business';
   const rawArea = String(place.areaEn || place.area_en || place.area || '').trim() || 'El Manzala & El Matariya';
   const rawAddress = String(place.addressEn || place.address_en || place.address || '').trim();
-  const rawCategory = String(place.customCategoryEn || place.custom_category_en || place.customCategory || place.category || place.categoryId || place.category_id || '').trim();
-  const catName = rawCategory || 'Local Services';
+  const rawCategoryEn = String(place.customCategoryEn || place.custom_category_en || '').trim();
+  const rawCategoryId = String(place.categoryId || place.category_id || '').trim();
+  const rawCategory = rawCategoryEn || rawCategoryId || String(place.customCategory || place.category || '').trim();
+  const catName = rawCategoryEn || rawCategoryId || 'Local Services';
   const slug = String(place.slug || place.id || '').trim();
-  const categorySlug = encodeURIComponent(rawCategory.toLowerCase().replace(/\s+/g, '-'));
+  const categorySlug = encodeURIComponent(String(rawCategoryId || rawCategoryEn || rawCategory || 'local-services').toLowerCase().replace(/\s+/g, '-'));
   const canonicalUrl = `${SITE_DOMAIN}/en/place/${encodeURIComponent(slug)}/`;
   const categoryUrl = `${SITE_DOMAIN}/en/category/${categorySlug}/`;
   const title = `${rawName} in ${rawArea} | ${catName} | Dalil El Manzala`;
@@ -397,7 +399,7 @@ export function generateBusinessSEOEnglish(place) {
     '@type': schemaType,
     '@id': `${canonicalUrl}#business`,
     name: rawName,
-    description: place.descriptionEn || place.description_en || place.description || description,
+    description: String(place.descriptionEn || place.description_en || '').trim() || description,
     url: canonicalUrl,
     image,
     telephone: place.phone ? String(place.phone).trim() : undefined,
