@@ -2157,13 +2157,12 @@ export const HAMMAD_TESTIMONIALS = [
   { name: 'حمدي محمد', rating: 5, comment: 'المهندس محمد حماد مبدع في استخدام أدوات الذكاء الاصطناعي، والنتيجة كانت مميزة جدًا.' },
   { name: 'Hamdy Hassan', rating: 5, comment: 'Very creative and professional. The AI advertisement looks cinematic and engaging.' },
   { name: 'أشرف محمود', rating: 5, comment: 'شغل ممتاز والتزام كبير، والموقع أصبح أسهل بكثير للعملاء في التعامل مع النشاط.' },
-  { name: 'Ashraf Ahmed', rating: 5, comment: 'Great developer with strong technical and creative skills.' },
-  { name: 'بيشوي سامي', rating: 5, comment: 'تعامل ممتاز وفهم سريع للمطلوب، والنتيجة النهائية كانت احترافية جدًا.' },
-  { name: 'Bishoy Samy', rating: 5, comment: 'Excellent experience. Professional website, clean design, and great communication.' },
-  { name: 'مروان أحمد', rating: 5, comment: 'الإعلان بالذكاء الاصطناعي كان مختلفًا تمامًا ولفت الانتباه من أول مشاهدة.' },
-  { name: 'Marwan Hassan', rating: 5, comment: 'Really impressive AI commercial and excellent production quality.' },
-  { name: 'فادي محمد', rating: 5, comment: 'شغل احترافي جدًا من ناحية التصميم والبرمجة، وكل التفاصيل كانت منظمة.' },
-  { name: 'Fady Adel', rating: 5, comment: 'Very professional service. The website is fast, responsive, and beautifully designed.' },
+  { name: 'أحمد طوبار', rating: 5, comment: 'تعامل ممتاز وفهم سريع للمطلوب، والنتيجة النهائية كانت احترافية جدًا.' },
+  { name: 'Ahmed Tobar', rating: 5, comment: 'Excellent experience. Professional website, clean design, and great communication.' },
+  { name: 'مروان الديب', rating: 5, comment: 'الإعلان بالذكاء الاصطناعي كان مختلفًا تمامًا ولفت الانتباه من أول مشاهدة.' },
+  { name: 'Marwan El Deeb', rating: 5, comment: 'Really impressive AI commercial and excellent production quality.' },
+  { name: 'محمود فياض', rating: 5, comment: 'شغل احترافي جدًا من ناحية التصميم والبرمجة، وكل التفاصيل كانت منظمة.' },
+  { name: 'Mahmoud Fayad', rating: 5, comment: 'Very professional service. The website is fast, responsive, and beautifully designed.' },
   { name: 'أحمد عبد الله', rating: 5, comment: 'تجربة ممتازة وأنصح به لأي صاحب مشروع يريد موقعًا احترافيًا أو إعلانًا بالذكاء الاصطناعي.' },
   { name: 'Ahmed Abdullah', rating: 5, comment: 'Excellent work, creative ideas, professional execution, and very good customer support.' }
 ];
@@ -2950,42 +2949,53 @@ export function generateSyntheticReviews({ count = 50, starRange = '4-5', specia
   const spec = (specialty || categoryName || 'النشاط والخدمات').trim();
   const pName = (placeName || 'المكان').trim();
 
-  const FIRST_NAMES_AR_M = [
-    'أحمد', 'محمد', 'محمود', 'مصطفى', 'كريم', 'عمر', 'طارق', 'حسام', 'إبراهيم', 'عمرو',
-    'يوسف', 'شريف', 'رامي', 'وليد', 'ياسر', 'حمدي', 'أشرف', 'بيشوي', 'مروان', 'فادي',
-    'خالد', 'عادل', 'سامح', 'حسن', 'عبد الرحمن', 'ماجد', 'تامر', 'هيثم', 'وائل', 'علاء',
-    'هشام', 'مدحت', 'إيهاب', 'زياد', 'بلال', 'معتز', 'أكرم', 'حازم', 'عصام', 'ضياء',
-    'باسم', 'نبيل', 'وجدي', 'مايكل', 'مينا', 'جورج', 'أنطون', 'كيرلس', 'أبانوب', 'رفيق',
-    'هاني', 'عماد', 'سامي', 'ماهر', 'مجدي', 'صلاح', 'أيمن', 'عاطف', 'نادر', 'يحيى'
+  // 45 Authentic Local Families of El Manzala and El Matariya (عائلات المنزلة والمطرية)
+  const MANZALA_MATARIYA_FAMILIES = [
+    'طوبار', 'حماد', 'سليم', 'الديب', 'الأمير', 'فياض', 'أبو العز', 'القهوجي',
+    'شلباية', 'الخريبي', 'البرادعي', 'العريان', 'الكوش', 'العلمي', 'حال', 'الزيني',
+    'الطير', 'البلقا', 'أبو حسن', 'قاسم', 'رحمو', 'الخولي', 'البنا', 'شهاب',
+    'عاشور', 'سماحة', 'شهبو', 'السقطي', 'الهواري', 'منصور', 'زين الدين', 'منيسي',
+    'الكموني', 'السودة', 'الباز', 'بكر', 'مشالي', 'أبو نجم', 'طنطاوي', 'عريف',
+    'قهوة', 'زرزور', 'جلال', 'رجب', 'البحيري'
   ];
 
+  const MANZALA_MATARIYA_FAMILIES_EN = [
+    'Tobar', 'Hammad', 'Selim', 'El Deeb', 'El Amir', 'Fayad', 'Abu El Ezz', 'El Qahwagi',
+    'Shelbaia', 'El Khuraibi', 'El Baradei', 'El Erian', 'El Koush', 'El Alami', 'Hal', 'El Zeiny',
+    'El Teir', 'El Balqa', 'Abu Hassan', 'Qasim', 'Rahmo', 'El Kholy', 'El Banna', 'Shehab',
+    'Ashour', 'Samaha', 'Shahbo', 'El Saqti', 'El Hawary', 'Mansour', 'Zein El Din', 'Menisy',
+    'El Kamouny', 'El Souda', 'El Baz', 'Bakr', 'Meshaly', 'Abu Negm', 'Tantawy', 'Oreib',
+    'Qahwa', 'Zarzour', 'Galal', 'Ragab', 'El Beheiry'
+  ];
+
+  // 100% Muslim Male First Names (أسماء رجال مسلمين فقط)
+  const FIRST_NAMES_AR_M = [
+    'أحمد', 'محمد', 'محمود', 'مصطفى', 'كريم', 'عمر', 'طارق', 'حسام', 'إبراهيم', 'عمرو',
+    'يوسف', 'شريف', 'رامي', 'وليد', 'ياسر', 'حمدي', 'أشرف', 'مروان', 'خالد', 'عادل',
+    'سامح', 'حسن', 'عبد الرحمن', 'ماجد', 'تامر', 'هيثم', 'وائل', 'علاء', 'هشام', 'مدحت',
+    'إيهاب', 'زياد', 'بلال', 'معتز', 'أكرم', 'حازم', 'عصام', 'ضياء', 'باسم', 'نبيل',
+    'وجدي', 'هاني', 'عماد', 'سامي', 'ماهر', 'مجدي', 'صلاح', 'أيمن', 'عاطف', 'نادر',
+    'يحيى', 'حمزة', 'أنس', 'إسلام', 'سعيد', 'رمضان', 'شعبان', 'مختار', 'بدر', 'جابر'
+  ];
+
+  // 100% Muslim Female First Names (أسماء نساء مسلمات فقط)
   const FIRST_NAMES_AR_F = [
-    'سارة', 'مريم', 'نورهان', 'ياسمين', 'آية', 'دينا', 'منى', 'رنا', 'ريم', 'مروة',
-    'داليا', 'شيماء', 'هدى', 'مي', 'سلمى', 'إنجي', 'فاطمة', 'خلود', 'هدير', 'رضوى',
-    'إسراء', 'ندى', 'أمنية', 'ريهام', 'نهى', 'أسماء', 'بسنت', 'ميرنا', 'هاجر', 'شروق',
-    'رحمة', 'حبيبة', 'تسنيم', 'هايدي', 'نورا', 'يارا', 'روان', 'فريدة', 'جنى', 'ملك'
+    'فاطمة', 'عائشة', 'خديجة', 'مريم', 'سارة', 'ياسمين', 'آية', 'نور', 'هدى', 'أسماء',
+    'سلمى', 'شيماء', 'دعاء', 'رحمة', 'حبيبة', 'تسنيم', 'هاجر', 'أروى', 'أماني', 'سمية',
+    'روضة', 'جهاد', 'رضوى', 'إسراء', 'ندى', 'أمنية', 'ريهام', 'نهى', 'إيمان', 'شروق',
+    'زينب', 'رقية', 'حفصة', 'مروة', 'منى', 'داليا', 'وفاء', 'هناء', 'نادية', 'ماجدة',
+    'نورهان', 'دينا', 'رنا', 'ريم', 'خلود', 'هدير', 'بسنت', 'نورا', 'يارا', 'روان'
   ];
 
   const FIRST_NAMES_EN = [
     'Ahmed', 'Mohamed', 'Mahmoud', 'Mostafa', 'Karim', 'Omar', 'Tarek', 'Hossam', 'Ibrahim', 'Amr',
-    'Youssef', 'Sherif', 'Ramy', 'Waleed', 'Yasser', 'Hamdy', 'Ashraf', 'Bishoy', 'Marwan', 'Fady',
-    'Khaled', 'Adel', 'Sameh', 'Hassan', 'Abdelrahman', 'Maged', 'Tamer', 'Sarah', 'Mariam', 'Nourhan',
-    'Dina', 'Aya', 'Rania', 'Mona', 'Reem', 'Hadeer', 'Salma', 'Farida', 'Nada', 'Nour'
+    'Youssef', 'Sherif', 'Ramy', 'Waleed', 'Yasser', 'Hamdy', 'Ashraf', 'Marwan', 'Khaled', 'Adel',
+    'Sameh', 'Hassan', 'Abdelrahman', 'Maged', 'Tamer', 'Sarah', 'Mariam', 'Nourhan', 'Dina', 'Aya',
+    'Rania', 'Mona', 'Reem', 'Hadeer', 'Salma', 'Farida', 'Nada', 'Nour', 'Fatima', 'Aisha'
   ];
 
-  const LAST_NAMES_AR = [
-    'محمود', 'السيد', 'علي', 'حسن', 'إبراهيم', 'أحمد', 'عبد الرحمن', 'الجمال', 'النجار', 'الشناوي',
-    'الدسوقي', 'الشربيني', 'سمير', 'عادل', 'كمال', 'مصطفى', 'بدر', 'توفيق', 'غانم', 'زهران',
-    'الباز', 'عطية', 'يونس', 'منصور', 'سليمان', 'مطاوع', 'فهمي', 'رضوان', 'زكي', 'عثمان',
-    'عوض', 'حجازي', 'غريب', 'الشرقاوي', 'السعيد', 'خليل', 'عبد العال', 'شلبي', 'حامد', 'زايد',
-    'صقر', 'قنديل', 'العوضي', 'بركات', 'الجزار', 'فودة', 'البسيوني', 'خطاب', 'صبري', 'يحيى'
-  ];
-
-  const LAST_NAMES_EN = [
-    'Mahmoud', 'Elsayed', 'Ali', 'Hassan', 'Ibrahim', 'Ahmed', 'Abdelrahman', 'Gamal', 'Naggar', 'Shennawy',
-    'Desouky', 'Sherbiny', 'Samir', 'Adel', 'Kamal', 'Mostafa', 'Badr', 'Tawfik', 'Ghanem', 'Zahran',
-    'Baz', 'Attia', 'Younis', 'Mansour', 'Soliman', 'Fahmy', 'Radwan', 'Zaki', 'Osman', 'Awad'
-  ];
+  const LAST_NAMES_AR = MANZALA_MATARIYA_FAMILIES;
+  const LAST_NAMES_EN = MANZALA_MATARIYA_FAMILIES_EN;
 
   // 100% Authentic Egyptian Dialect Arabic Comments with Place & Specialty Integration
   const TEMPLATES_5 = [
