@@ -9417,11 +9417,6 @@ async function findPlaceInTurso(env, rawQuery) {
         SELECT p.* FROM places p WHERE p.id = ? OR LOWER(p.slug) = ? LIMIT 1
       `).bind(mappedId, query).first();
       if (row) {
-        // Auto-heal slug in Turso if it's currently an ID
-        if (row.slug === row.id || row.slug.startsWith('p_') || row.slug.startsWith('-P0')) {
-          row.slug = query;
-          db.prepare('UPDATE places SET slug = ? WHERE id = ?').bind(query, row.id).run().catch(() => {});
-        }
         return row;
       }
     } catch (err) {
@@ -9478,11 +9473,6 @@ async function findPlaceInTurso(env, rawQuery) {
 
       if (translitName === query || translitEn === query) {
         const fullPlace = await db.prepare('SELECT p.* FROM places p WHERE p.id = ? LIMIT 1').bind(cand.id).first();
-        if (cand.slug === cand.id || cand.slug.startsWith('p_') || cand.slug.startsWith('-P0')) {
-          cand.slug = query;
-          db.prepare('UPDATE places SET slug = ? WHERE id = ?').bind(query, cand.id).run().catch(() => {});
-          if (fullPlace) fullPlace.slug = query;
-        }
         return fullPlace || cand;
       }
     }
