@@ -1152,6 +1152,24 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
 
           <!-- Accepted Payment Methods 3D Badges (GEO / SEO & UX) -->
           ${!isAtm ? renderPaymentBadges(place.paymentMethods || place.payment_methods || place.stats?.paymentMethods, { isEn }) : ''}
+          ${!isEn ? `
+            <section class="place-app-links-card" aria-label="تطبيقاتنا">
+              <div class="place-app-links-card__intro">
+                <strong>تطبيق دليل المنزلة والمطرية</strong>
+                <span>متاح قريبًا على المتاجر</span>
+              </div>
+              <div class="place-app-links-card__buttons">
+                <button type="button" class="place-store-btn" data-coming-soon="1" aria-label="Google Play — قريبًا">
+                  <span class="place-store-btn__icon">▶</span>
+                  <span><b>Google Play</b><small>قريبًا</small></span>
+                </button>
+                <button type="button" class="place-store-btn" data-coming-soon="1" aria-label="App Store — قريبًا">
+                  <span class="place-store-btn__icon"></span>
+                  <span><b>App Store</b><small>قريبًا</small></span>
+                </button>
+              </div>
+            </section>
+          ` : ''}
 
           <!-- Active Offers Slot -->
           <div id="place-offers-slot"></div>

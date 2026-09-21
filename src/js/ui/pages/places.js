@@ -156,6 +156,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     const sortSelect = document.getElementById('places-sort-filter');
     const grid = document.getElementById('places-directory-grid');
     const countMeta = document.getElementById('places-count-meta');
+    if (countMeta) countMeta.hidden = true;
 
     async function applyFilters() {
       const q = searchInput?.value.trim() || '';
