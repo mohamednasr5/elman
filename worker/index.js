@@ -9879,8 +9879,12 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   // 1. Search for the place in Turso (Tier 1 hits B-Tree index)
   const place = await findPlaceInTurso(env, cleanSlug);
 
-  // 2. If place not found
-  if (!place) {
+  // Public SEO/SSR pages may expose published places only.
+  // Admin/API code can still use findPlaceInTurso for unpublished records.
+  const publicPlace = place && String(place.status || '').toLowerCase() === 'published' ? place : null;
+
+  // 2. If place not found or is not publicly published
+  if (!publicPlace) {
     if (!isCrawler) {
       return Response.redirect(`${canonicalBase}/${isEn ? 'en/places' : 'places.html'}`, 302);
     }
@@ -9909,6 +9913,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   }
 
   // 3. Place metadata resolution
+  const place = publicPlace;
   const rawPlaceName = (isEn && place.name_en) ? place.name_en : (place.name || (isEn ? 'Business Profile' : 'تفاصيل ومواعيد وأرقام التواصل'));
   const fullShareTitle = isEn
     ? `${rawPlaceName} | Dalil El Manzala & El Matariya Official Directory`
