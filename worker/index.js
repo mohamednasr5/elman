@@ -10110,17 +10110,22 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
 
       // Geographic coordinates & GEO tags for local place SEO
-      const placeLat = Number(place.latitude || place.lat || 31.1578);
-      const placeLng = Number(place.longitude || place.lng || 31.9333);
+      const rawLat = place.latitude ?? place.lat;\n      const rawLng = place.longitude ?? place.lng;\n      const placeLat = Number(rawLat);
+      const placeLng = Number(rawLng);
       const placeAreaName = place.area || (isEn ? 'El Manzala & El Matariya' : 'المنزلة والمطرية');
       const geoPlacename = isEn ? `${placeAreaName}, Dakahlia, Egypt` : `${placeAreaName}، الدقهلية، مصر`;
-      hydratedHtml = hydratedHtml.replace(/<meta name="geo\.position" content="[^"]*"/i, `<meta name="geo.position" content="${placeLat};${placeLng}"`);
-      hydratedHtml = hydratedHtml.replace(/<meta name="ICBM" content="[^"]*"/i, `<meta name="ICBM" content="${placeLat}, ${placeLng}"`);
+      if (Number.isFinite(placeLat) && placeLat >= -90 && placeLat <= 90 && Number.isFinite(placeLng) && placeLng >= -180 && placeLng <= 180) {
+        hydratedHtml = hydratedHtml.replace(/<meta name="geo\.position" content="[^"]*"/i, `<meta name="geo.position" content="${placeLat};${placeLng}"`);
+        hydratedHtml = hydratedHtml.replace(/<meta name="ICBM" content="[^"]*"/i, `<meta name="ICBM" content="${placeLat}, ${placeLng}"`);
+      } else {
+        hydratedHtml = hydratedHtml.replace(/\s*<meta name="geo\.position" content="[^"]*"\s*\/?>/i, '');
+        hydratedHtml = hydratedHtml.replace(/\s*<meta name="ICBM" content="[^"]*"\s*\/?>/i, '');
+      }
       hydratedHtml = hydratedHtml.replace(/<meta name="geo\.placename" content="[^"]*"/i, `<meta name="geo.placename" content="${escapeHtml(geoPlacename)}"`);
 
       // Ensure Google Fonts Cairo, Tajawal & Amiri are present in SSR HTML
       if (!hydratedHtml.includes('family=Cairo')) {
-        hydratedHtml = hydratedHtml.replace('<head>', `<head>\n  <link rel="preconnect" href="https://fonts.googleapis.com"/>\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>\n  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&display=swap"/>`);
+        hydratedHtml = hydratedHtml.replace('<head>', `<head>\n  <link rel="preconnect" href="https://fonts.googleapis.com"/>\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>\n  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"/><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&display=swap"/></noscript>`);
       }
 
       // Inject hreflang alternate tags
