@@ -306,7 +306,7 @@ export function generateBusinessSEO(place) {
     ]
   };
 
-  // FAQPage Schema for AI Engines & Voice Search (Perplexity, ChatGPT, Google SGE)
+  // AEO/GEO factual question-and-answer data for the visible page content
   const faqQuestions = [];
   if (place.phone) {
     faqQuestions.push({
