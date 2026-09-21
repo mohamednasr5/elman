@@ -417,9 +417,9 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     });
   }
 
-  // Check edge cache for dynamic sitemaps (v1)
+  // Check edge cache for dynamic sitemaps (v2)
   const cache = caches.default;
-  const cacheKey = new Request(`https://cache.local/sitemap/v1${p}`);
+  const cacheKey = new Request(`https://cache.local/sitemap/v2${p}`);
   if (cache) {
     const cached = await cache.match(cacheKey).catch(() => null);
     if (cached) return cached;
@@ -435,11 +435,9 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     ['/categories.html', '/en/categories/', 'weekly', '0.7'],
     ['/manzala.html', '/en/manzala/', 'weekly', '0.7'],
     ['/matariya.html', '/en/matariya/', 'weekly', '0.7'],
-    ['/offers.html', '/en/offers/', 'daily', '0.7'],
-    ['/now.html', '/en/now/', 'hourly', '0.7'],
+
     ['/emergency.html', '/en/emergency/', 'monthly', '0.7'],
-    ['/around-me.html', '/en/around-me/', 'weekly', '0.7'],
-    ['/products.html', '/en/products/', 'weekly', '0.7'],
+
     ['/about.html', '/en/about.html', 'monthly', '0.7'],
     ['/contact.html', '/en/contact/', 'monthly', '0.7'],
     ['/privacy.html', '/en/privacy/', 'yearly', '0.7'],
@@ -450,10 +448,7 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     ['/quran-search.html', '/en/quran-search/', 'weekly', '0.7'],
     ['/quran-surah.html', '/en/quran-surah/', 'weekly', '0.7'],
     ['/qibla.html', '/en/qibla/', 'weekly', '0.7'],
-    ['/jobs.html', '/en/jobs/', 'daily', '0.8'],
-    ['/job-seekers.html', '/en/job-seekers/', 'daily', '0.8'],
-    ['/popular.html', '/en/popular/', 'daily', '0.7'],
-    ['/wallet.html', '/en/wallet/', 'weekly', '0.7'],
+
     ['/free-verification.html', '/en/free-verification/', 'monthly', '0.7']
   ];
 
@@ -469,7 +464,7 @@ async function handleDynamicSitemap(request, url, env, ctx) {
       'sitemap-static-en.xml'
     ];
     xml = `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-      files.map(f => `  <sitemap>\n    <loc>${site}/${f}</loc>\n    <lastmod>${today}</lastmod>\n  </sitemap>`).join('\n') +
+      files.map(f => `  <sitemap>\n    <loc>${site}/${f}</loc>\n  </sitemap>`).join('\n') +
       `\n</sitemapindex>\n`;
   } else if (p === '/sitemap-places-ar.xml' || p === '/sitemap-places-en.xml') {
     const isEn = p === '/sitemap-places-en.xml';
@@ -485,10 +480,10 @@ async function handleDynamicSitemap(request, url, env, ctx) {
       const enPath = `/en/place/${slugVal}/`;
       const loc = isEn ? enPath : arPath;
       const d = place.updated_at ? new Date(place.updated_at) : null;
-      const lm = (d && !Number.isNaN(d.getTime())) ? d.toISOString().slice(0, 10) : today;
+      const lm = (d && !Number.isNaN(d.getTime())) ? d.toISOString().slice(0, 10) : null;
       const img = place.cover_image_url || place.logo_url;
 
-      let item = `  <url>\n    <loc>${esc(abs(loc))}</loc>\n    <lastmod>${lm}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n    <xhtml:link rel="alternate" hreflang="ar" href="${esc(abs(arPath))}"/>\n    <xhtml:link rel="alternate" hreflang="en" href="${esc(abs(enPath))}"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(abs(arPath))}"/>`;
+      let item = `  <url>\n    <loc>${esc(abs(loc))}</loc>\n${lm ? `    <lastmod>${lm}</lastmod>\n` : ''}    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n    <xhtml:link rel="alternate" hreflang="ar" href="${esc(abs(arPath))}"/>\n    <xhtml:link rel="alternate" hreflang="en" href="${esc(abs(enPath))}"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(abs(arPath))}"/>`;
       if (img) {
         item += `\n    <image:image>\n      <image:loc>${esc(abs(img))}</image:loc>\n    </image:image>`;
       }
@@ -522,7 +517,7 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     let entries = [];
     for (const [arPath, enPath, freq, prio] of STATIC_PAGES) {
       const loc = isEn ? enPath : arPath;
-      entries.push(`  <url>\n    <loc>${esc(abs(loc))}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${freq}</changefreq>\n    <priority>${prio}</priority>\n    <xhtml:link rel="alternate" hreflang="ar" href="${esc(abs(arPath))}"/>\n    <xhtml:link rel="alternate" hreflang="en" href="${esc(abs(enPath))}"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(abs(arPath))}"/>\n  </url>`);
+      entries.push(`  <url>\n    <loc>${esc(abs(loc))}</loc>\n    <changefreq>${freq}</changefreq>\n    <priority>${prio}</priority>\n    <xhtml:link rel="alternate" hreflang="ar" href="${esc(abs(arPath))}"/>\n    <xhtml:link rel="alternate" hreflang="en" href="${esc(abs(enPath))}"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(abs(arPath))}"/>\n  </url>`);
     }
     xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n` +
       entries.join('\n') +
