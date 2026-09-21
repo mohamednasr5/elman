@@ -81,12 +81,12 @@ export function isNotificationSoundEnabled() {
 
 // ── Read & Deleted IDs Tracking ──
 
-export function getDeletedNotifIds(uid) {
+export function getDeletedNotifIds(normalizedUid) {
   const merged = new Set();
   if (typeof localStorage === 'undefined') return merged;
 
   const keys = ['manzala_user_dismissed_notifs'];
-  if (uid) keys.push(`dismissed_notifs_${uid}`);
+  if (uid) keys.push(`dismissed_notifs_${normalizedUid}`);
 
   keys.forEach(k => {
     try {
@@ -98,12 +98,12 @@ export function getDeletedNotifIds(uid) {
   return merged;
 }
 
-export function getReadNotifIds(uid) {
+export function getReadNotifIds(normalizedUid) {
   const merged = new Set();
   if (typeof localStorage === 'undefined') return merged;
 
   const keys = ['manzala_read_notifs_all'];
-  if (uid) keys.push(`read_global_notifs_${uid}`);
+  if (uid) keys.push(`read_global_notifs_${normalizedUid}`);
 
   keys.forEach(k => {
     try {
@@ -119,19 +119,19 @@ export async function deleteSingleNotification(notifId, uid) {
   if (!notifId) return;
   const idStr = String(notifId);
 
-  const set = getDeletedNotifIds(uid);
+  const set = getDeletedNotifIds(normalizedUid);
   set.add(idStr);
   const arr = Array.from(set);
 
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('manzala_user_dismissed_notifs', JSON.stringify(arr));
-    if (uid) localStorage.setItem(`dismissed_notifs_${uid}`, JSON.stringify(arr));
+    if (uid) localStorage.setItem(`dismissed_notifs_${normalizedUid}`, JSON.stringify(arr));
   }
 }
 
 export async function clearAllUserNotifications(uid) {
   const allNotifs = await fetchManagedUserNotifications(uid);
-  const set = getDeletedNotifIds(uid);
+  const set = getDeletedNotifIds(normalizedUid);
 
   allNotifs.forEach(n => {
     if (n.id) set.add(String(n.id));
@@ -140,13 +140,13 @@ export async function clearAllUserNotifications(uid) {
   const arr = Array.from(set);
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('manzala_user_dismissed_notifs', JSON.stringify(arr));
-    if (uid) localStorage.setItem(`dismissed_notifs_${uid}`, JSON.stringify(arr));
+    if (uid) localStorage.setItem(`dismissed_notifs_${normalizedUid}`, JSON.stringify(arr));
   }
 }
 
 export async function clearReadNotifications(uid) {
   const allNotifs = await fetchManagedUserNotifications(uid);
-  const set = getDeletedNotifIds(uid);
+  const set = getDeletedNotifIds(normalizedUid);
 
   allNotifs.filter(n => n.isRead).forEach(n => {
     if (n.id) set.add(String(n.id));
@@ -155,7 +155,7 @@ export async function clearReadNotifications(uid) {
   const arr = Array.from(set);
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('manzala_user_dismissed_notifs', JSON.stringify(arr));
-    if (uid) localStorage.setItem(`dismissed_notifs_${uid}`, JSON.stringify(arr));
+    if (uid) localStorage.setItem(`dismissed_notifs_${normalizedUid}`, JSON.stringify(arr));
   }
 }
 
@@ -176,13 +176,13 @@ export async function markSingleNotificationAsRead(notifId, uid) {
   if (!notifId) return;
   const idStr = String(notifId);
 
-  const set = getReadNotifIds(uid);
+  const set = getReadNotifIds(normalizedUid);
   set.add(idStr);
   const arr = Array.from(set);
 
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('manzala_read_notifs_all', JSON.stringify(arr));
-    if (uid) localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(arr));
+    if (uid) localStorage.setItem(`read_global_notifs_${normalizedUid}`, JSON.stringify(arr));
   }
 
   if (uid) {
@@ -192,7 +192,7 @@ export async function markSingleNotificationAsRead(notifId, uid) {
 
 export async function markAllUserNotificationsAsRead(uid) {
   const allNotifs = await fetchManagedUserNotifications(uid);
-  const set = getReadNotifIds(uid);
+  const set = getReadNotifIds(normalizedUid);
 
   allNotifs.forEach(n => {
     if (n.id) set.add(String(n.id));
@@ -201,7 +201,7 @@ export async function markAllUserNotificationsAsRead(uid) {
   const arr = Array.from(set);
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('manzala_read_notifs_all', JSON.stringify(arr));
-    if (uid) localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(arr));
+    if (uid) localStorage.setItem(`read_global_notifs_${normalizedUid}`, JSON.stringify(arr));
   }
 
   if (uid && arr.length > 0) {
@@ -213,11 +213,11 @@ export async function markAllUserNotificationsAsRead(uid) {
 export function getCachedManagedUserNotifications(uid) {
   if (typeof localStorage === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(`manzala_cached_managed_notifs_${uid || 'anon'}`);
+    const raw = localStorage.getItem(`manzala_cached_managed_notifs_${normalizedUid || 'anon'}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    const deletedIds = getDeletedNotifIds(uid);
-    const readIds = getReadNotifIds(uid);
+    const deletedIds = getDeletedNotifIds(normalizedUid);
+    const readIds = getReadNotifIds(normalizedUid);
     return (Array.isArray(parsed) ? parsed : [])
       .filter(n => n && n.id && !deletedIds.has(String(n.id)))
       .map(n => ({
@@ -234,20 +234,28 @@ export function getCachedManagedUserNotifications(uid) {
  * Fetch all notifications (Turso Announcements + Verified/New Places Synthesizer with SWR Cache & Deduplication)
  */
 export async function fetchManagedUserNotifications(uid) {
-  const deletedIds = getDeletedNotifIds(uid);
-  const readIds = getReadNotifIds(uid);
+  // Normalize callers that accidentally pass the Firebase/user object.
+  // The notification API only accepts a scalar user id.
+  const normalizedUid = typeof uid === 'string'
+    ? uid.trim()
+    : (uid && typeof uid === 'object'
+      ? String(uid.uid || uid.id || '').trim()
+      : String(uid || '').trim());
+
+  const deletedIds = getDeletedNotifIds(normalizedUid);
+  const readIds = getReadNotifIds(normalizedUid);
 
   // Sync server-side read IDs if user is logged in
-  if (uid) {
+  if (normalizedUid) {
     try {
       const workerUrl = (typeof window !== 'undefined' && window.__MANZALA_CONFIG__?.WORKER_URL) || '';
-      const srvRes = await fetch(`${workerUrl}/api/notifications/read?userId=${encodeURIComponent(uid)}`, { method: 'GET' }).catch(() => null);
+      const srvRes = await fetch(`${workerUrl}/api/notifications/read?userId=${encodeURIComponent(normalizedUid)}`, { method: 'GET' }).catch(() => null);
       if (srvRes && srvRes.ok) {
         const srvData = await srvRes.json().catch(() => null);
         if (Array.isArray(srvData?.readIds)) {
           srvData.readIds.forEach(id => readIds.add(String(id)));
           if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(`read_global_notifs_${uid}`, JSON.stringify(Array.from(readIds)));
+            localStorage.setItem(`read_global_notifs_${normalizedUid}`, JSON.stringify(Array.from(readIds)));
           }
         }
       }
@@ -428,7 +436,7 @@ export async function fetchManagedUserNotifications(uid) {
   // Save to instant local storage cache for 0ms loads
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(`manzala_cached_managed_notifs_${uid || 'anon'}`, JSON.stringify(sorted.slice(0, 150)));
+      localStorage.setItem(`manzala_cached_managed_notifs_${normalizedUid || 'anon'}`, JSON.stringify(sorted.slice(0, 150)));
     }
   } catch (_) {}
 
@@ -659,7 +667,7 @@ export function initLiveNotificationSubscriber(uid) {
 export function showLiveNotificationPopup(notification, uid) {
   if (typeof document === 'undefined' || !notification) return;
 
-  const deletedIds = getDeletedNotifIds(uid);
+  const deletedIds = getDeletedNotifIds(normalizedUid);
   if (notification.id && deletedIds.has(String(notification.id))) return;
 
   // Session deduplication: prevent playing chime / showing popup multiple times for same event

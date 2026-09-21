@@ -6658,6 +6658,48 @@ try {
     }
   }
 
+  // ── Global Announcements (GET /api/announcements) ───────────────────────
+  // The notification client treats this endpoint as optional. Keep it stable
+  // even when no announcement table is provisioned yet.
+  if (url.pathname === '/api/announcements' && request.method === 'GET') {
+    try {
+      const now = Date.now();
+      // Use a lightweight Turso table only when it already exists. Missing-table
+      // errors intentionally fall back to an empty list instead of HTTP 404/500.
+      const rows = await createTursoDB(env).prepare(`
+        SELECT id, title, content, url, created_at, updated_at
+        FROM announcements
+        WHERE (is_published IS NULL OR is_published = 1)
+          AND (starts_at IS NULL OR starts_at <= ?)
+          AND (ends_at IS NULL OR ends_at = 0 OR ends_at >= ?)
+        ORDER BY created_at DESC
+        LIMIT 100
+      `).bind(now, now).all().catch(() => ({ results: [] }));
+
+      const data = (rows.results || []).map(item => ({
+        id: item.id,
+        title: item.title || 'إشعار من الدليل',
+        content: item.content || '',
+        message: item.content || '',
+        url: item.url || '/',
+        created_at: Number(item.created_at || now),
+        createdAt: Number(item.created_at || now),
+        updated_at: Number(item.updated_at || item.created_at || now)
+      }));
+
+      return jsonResponse({ success: true, announcements: data, data }, 200, {
+        ...corsHeaders,
+        'Cache-Control': 'no-store'
+      });
+    } catch (err) {
+      console.warn('[GET /api/announcements] non-fatal:', err?.message || err);
+      return jsonResponse({ success: true, announcements: [], data: [] }, 200, {
+        ...corsHeaders,
+        'Cache-Control': 'no-store'
+      });
+    }
+  }
+
   // ── Turso: Notification Read State (GET & POST /api/notifications/read) ───────────
   if (url.pathname === '/api/notifications/read') {
     const db = createTursoDB(env);
