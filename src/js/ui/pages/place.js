@@ -1150,18 +1150,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             </section>
           ` : ''}
 
-          <!-- Accepted Payment Methods: inline within the place header card -->
-          ${!isEn ? `
-            <section class="place-app-links-card" aria-label="تطبيقاتنا">
-              <div class="place-app-links-card__intro">
-                <strong>تطبيق دليل المنزلة والمطرية</strong><span>قريبًا على Google Play وApp Store</span>
-              </div>
-              <div class="place-app-links-card__buttons">
-                <button type="button" class="place-store-btn place-store-btn--play" data-coming-soon="1" title="Google Play — قريبًا" aria-label="Google Play — قريبًا"><span class="place-store-btn__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="#34A853" d="M2.5 3.5 13.8 12 2.5 20.5a2 2 0 0 1-.5-1.4V4.9a2 2 0 0 1 .5-1.4Z"/><path fill="#FBBC04" d="M13.8 12 2.5 3.5 17.1 8.8Z"/><path fill="#4285F4" d="m13.8 12 4.3-3.2 3.1 1.8c1 .6 1 1.3 0 1.9l-3.1 1.8Z"/><path fill="#EA4335" d="m13.8 12-11.3 8.5L17.1 15.2Z"/></svg></span><span><b>Google Play</b><small>قريبًا</small></span></button>
-                <button type="button" class="place-store-btn place-store-btn--ios" data-coming-soon="1" aria-label="App Store — قريبًا" title="App Store — قريبًا"><span class="place-store-btn__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M17.1 12.7c0-2.4 2-3.6 2.1-3.7-1.1-1.6-2.8-1.8-3.4-1.8-1.5-.2-3 .9-3.8.9-.8 0-2.1-.9-3.4-.8-1.7 0-3.2 1-4.1 2.5-1.8 3.1-.5 7.7 1.2 10.2.9 1.2 1.9 2.6 3.3 2.5 1.3-.1 1.8-.8 3.4-.8s2 .8 3.4.8c1.4 0 2.3-1.2 3.2-2.5 1-1.4 1.4-2.8 1.5-2.9-.1 0-2.8-1.1-2.8-4.4Zm-2.5-7.1c.7-.9 1.2-2.2 1-3.4-1.1.1-2.4.8-3.1 1.7-.7.8-1.2 2.1-1.1 3.3 1.2.1 2.4-.7 3.2-1.6Z"/></svg></span><span><b>App Store</b><small>قريبًا</small></span></button>
-              </div>
-            </section>
-          ` : ''}
+          <!-- App-store availability is shown in the shared footer only. -->
 
           <!-- Active Offers Slot -->
           <div id="place-offers-slot"></div>
