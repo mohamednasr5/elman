@@ -84,91 +84,11 @@ async function repairRuntimeSchema(env, client) {
     }
   };
 
-  // Places: columns used by the current place/branch API.
-  await addMissing('places', {
-    parent_id: 'TEXT',
-    branches_json: 'TEXT',
-    availability_status: "TEXT DEFAULT 'available'",
-    description_en: 'TEXT',
-    address_en: 'TEXT',
-    custom_category_en: 'TEXT',
-    services_en_json: 'TEXT'
-  });
-
-  // Reviews: authoritative public review store.
-  await runDirect(`CREATE TABLE IF NOT EXISTS reviews (
-    id TEXT PRIMARY KEY,
-    place_id TEXT NOT NULL,
-    user_id TEXT,
-    user_name TEXT,
-    user_photo TEXT,
-    place_name TEXT,
-    place_slug TEXT,
-    rating INTEGER,
-    comment TEXT,
-    is_admin_generated INTEGER DEFAULT 0,
-    edit_count INTEGER DEFAULT 0,
-    created_at INTEGER,
-    updated_at INTEGER
-  )`);
-  await addMissing('reviews', {
-    is_reported: 'INTEGER DEFAULT 0',
-    report_count: 'INTEGER DEFAULT 0',
-    last_report_reason: 'TEXT',
-    reported_at: 'INTEGER',
-    last_reporter_name: 'TEXT',
-    is_reviewed_by_admin: 'INTEGER DEFAULT 0',
-    admin_review_status: 'TEXT',
-    admin_review_note: 'TEXT',
-    reviewed_at: 'INTEGER'
-  });
-  await runDirect('CREATE INDEX IF NOT EXISTS idx_reviews_place_id ON reviews(place_id)');
-  await runDirect('CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at)');
-
-  // Offers/products: authoritative public place inventory.
-  await runDirect(`CREATE TABLE IF NOT EXISTS offers (
-    id TEXT PRIMARY KEY,
-    place_id TEXT NOT NULL,
-    title TEXT NOT NULL,
-    description TEXT,
-    old_price REAL DEFAULT 0,
-    new_price REAL DEFAULT 0,
-    discount_percent REAL DEFAULT 0,
-    image_url TEXT,
-    start_date INTEGER,
-    end_date INTEGER,
-    status TEXT DEFAULT 'active',
-    owner_id TEXT,
-    is_verified_place INTEGER DEFAULT 0,
-    views INTEGER DEFAULT 0,
-    clicks INTEGER DEFAULT 0,
-    created_at INTEGER,
-    updated_at INTEGER
-  )`);
-  await runDirect('CREATE INDEX IF NOT EXISTS idx_offers_place ON offers(place_id, created_at DESC)');
-
-  await runDirect(`CREATE TABLE IF NOT EXISTS products (
-    id TEXT PRIMARY KEY,
-    place_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT,
-    price REAL DEFAULT 0,
-    old_price REAL DEFAULT 0,
-    image_url TEXT,
-    category TEXT,
-    sku TEXT,
-    in_stock INTEGER DEFAULT 1,
-    is_featured INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'pending',
-    is_approved INTEGER DEFAULT 0,
-    views INTEGER DEFAULT 0,
-    clicks INTEGER DEFAULT 0,
-    created_at INTEGER,
-    updated_at INTEGER
-  )`);
-  await addMissing('products', { rejection_reason: 'TEXT' });
-  await runDirect('CREATE INDEX IF NOT EXISTS idx_products_place ON products(place_id, created_at DESC)');
-  await runDirect('CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)');
+  // Runtime schema repair is intentionally limited to cheap, read-only checks.
+  // DDL such as ALTER TABLE / CREATE INDEX must be handled by explicit migrations,
+  // never on the hot request path. Running several DDL statements from every
+  // Worker isolate can serialize on SQLite/Turso and cascade into HTTP 500/timeout
+  // responses across unrelated API endpoints.
 }
 
 function ensureRuntimeSchema(env) {
