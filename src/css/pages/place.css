@@ -23,11 +23,13 @@
 .place-payment-header__icon{width:34px;height:34px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;background:rgba(2,132,199,.1)}
 .place-payment-header__title{margin:0;flex:1;font-size:1.05rem;font-weight:900;color:#0f172a}
 .place-payment-header__badge{font-size:.72rem;font-weight:800;padding:6px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1}
-.place-payment-badges-grid{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.payment-badge-wrapper{position:relative;display:inline-flex}
-.payment-badge-3d{width:74px;height:62px;border-radius:16px;background:#fff;border:1px solid rgba(148,163,184,.22);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(15,23,42,.08);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
-.payment-badge-wrapper:hover .payment-badge-3d,.payment-badge-wrapper:focus-within .payment-badge-3d{transform:translateY(-3px) scale(1.035);border-color:rgba(2,132,199,.35);box-shadow:0 13px 26px rgba(15,23,42,.13)}
-.payment-badge-3d__icon img{width:46px;height:46px;object-fit:contain}
+.place-payment-badges-grid{display:flex;gap:14px;flex-wrap:nowrap;align-items:center;justify-content:flex-start;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:none}
+.place-payment-badges-grid::-webkit-scrollbar{display:none}
+.payment-badge-wrapper{position:relative;display:inline-flex;flex:0 0 auto;cursor:pointer}
+.payment-badge-3d{width:64px;height:64px;border-radius:50%;background:#fff;border:1px solid rgba(148,163,184,.22);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(15,23,42,.08);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;cursor:pointer}
+.payment-badge-wrapper:hover .payment-badge-3d,.payment-badge-wrapper:focus-within .payment-badge-3d{transform:translateY(-2px) scale(1.04);border-color:rgba(2,132,199,.35);box-shadow:0 13px 26px rgba(15,23,42,.13)}
+.payment-badge-3d__icon img{width:42px;height:42px;object-fit:contain;pointer-events:none}
+.payment-badge-3d__name{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .payment-badge-tooltip{position:absolute;z-index:60;bottom:calc(100% + 9px);right:50%;transform:translate(50%,4px);width:max-content;max-width:240px;padding:10px 12px;border-radius:13px;background:#0f172a;color:#fff;opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease;box-shadow:0 14px 30px rgba(15,23,42,.25)}
 .payment-badge-wrapper:hover .payment-badge-tooltip,.payment-badge-wrapper:focus-within .payment-badge-tooltip{opacity:1;transform:translate(50%,0)}
 .payment-badge-tooltip__title{display:block;font-weight:900;font-size:.8rem;margin-bottom:2px}
