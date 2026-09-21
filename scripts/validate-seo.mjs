@@ -47,17 +47,17 @@ const noindexPages=['wallet.html','around-me.html','now.html','offers.html','pro
 const allSitemapXml=['sitemap.xml','sitemap-static-ar.xml','sitemap-static-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml','sitemap-places-ar.xml','sitemap-places-en.xml'].map(read).join('\\n');
 for(const page of noindexPages){
   const pageHtml=read(page);
-  must(/<meta\\s+name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(pageHtml),`${page}: expected noindex robots directive`);
+  must(/<meta\s+name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(pageHtml),`${page}: expected noindex robots directive`);
   const publicUrl=page==='wallet.html'?'https://dalilmanzala.com/wallet.html':`https://dalilmanzala.com/${page}`;
   must(!allSitemapXml.includes(`<loc>${publicUrl}</loc>`),`${page}: noindex URL must not appear in sitemap assets`);
 }
 
 for(const template of ['place.html','category.html','404.html']){
   const html=read(template);
-  must(!/<meta\\s+name=["']geo\\.position["'][^>]*content=["']31\\.1578;31\\.9333/i.test(html), template + ': must not hard-code Manzala city-centre coordinates');
-  must(!/<meta\\s+name=["']ICBM["'][^>]*content=["']31\\.1578,\\s*31\\.9333/i.test(html), template + ': must not hard-code Manzala ICBM coordinates');
-  must(!/<meta\\s+name=["']geo\\.position["'][^>]*content=["']31\\.1833;32\\.0333/i.test(html), template + ': must not hard-code Matariya city-centre coordinates');
-  must(!/<meta\\s+name=["']ICBM["'][^>]*content=["']31\\.1833,\\s*32\\.0333/i.test(html), template + ': must not hard-code Matariya ICBM coordinates');
+  must(!/<meta\s+name=["']geo\\.position["'][^>]*content=["']31\\.1578;31\\.9333/i.test(html), template + ': must not hard-code Manzala city-centre coordinates');
+  must(!/<meta\s+name=["']ICBM["'][^>]*content=["']31\\.1578,\s*31\\.9333/i.test(html), template + ': must not hard-code Manzala ICBM coordinates');
+  must(!/<meta\s+name=["']geo\\.position["'][^>]*content=["']31\\.1833;32\\.0333/i.test(html), template + ': must not hard-code Matariya city-centre coordinates');
+  must(!/<meta\s+name=["']ICBM["'][^>]*content=["']31\\.1833,\s*32\\.0333/i.test(html), template + ': must not hard-code Matariya ICBM coordinates');
 }
 
 const redirects=read('_redirects');
@@ -91,9 +91,9 @@ function scanHtmlTree(dir){
 for(const dir of ['place','category','en/place','en/category']){
   for(const file of scanHtmlTree(dir)){
     const html=fs.readFileSync(file,'utf8');
-    must(!/"currenciesAccepted"\\s*:/.test(html),`${file}: generated business schema must not infer currenciesAccepted`);
-    must(!/"areaServed"\\s*:/.test(html),`${file}: generated business schema must not infer areaServed`);
-    must(!/"@type"\\s*:\\s*"FAQPage"/.test(html),`${file}: generated business schema must not emit FAQPage`);
+    must(!/"currenciesAccepted"\s*:/.test(html),`${file}: generated business schema must not infer currenciesAccepted`);
+    must(!/"areaServed"\s*:/.test(html),`${file}: generated business schema must not infer areaServed`);
+    must(!/"@type"\s*:\s*"FAQPage"/.test(html),`${file}: generated business schema must not emit FAQPage`);
   }
 }
 
