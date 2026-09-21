@@ -327,33 +327,30 @@ export function generateBusinessSEO(place) {
     }
   });
 
-  // Payment methods question for GEO
+  // Payment Q&A: include only methods explicitly stored for this place.
   const pmList = place.paymentMethods || place.payment_methods || [];
-  const pmNames = ['الدفع نقداً'];
-  if (Array.isArray(pmList)) {
-    pmList.forEach(id => {
+  if (Array.isArray(pmList) && pmList.length > 0) {
+    const pmNames = [...new Set(pmList.map(id => {
       const s = String(id).toLowerCase();
-      if (s.includes('vodafone')) pmNames.push('فودافون كاش');
-      else if (s.includes('insta')) pmNames.push('انستاباي (InstaPay)');
-      else if (s.includes('visa') || s.includes('card')) pmNames.push('فيزا وبطاقات بنكية');
-      else if (s.includes('fawry')) pmNames.push('فوري بلس');
-      else if (s.includes('bank')) pmNames.push('تحويل بنكي');
-    });
-  }
-  faqQuestions.push({
-    '@type': 'Question',
-    name: `هل يقبل ${rawName} الدفع بفودافون كاش أو انستاباي وما هي طرق الدفع المتاحة لديه؟`,
-    acceptedAnswer: {
-      '@type': 'Answer',
-      text: `طرق الدفع والتحويل المقبولة لدى ${rawName} تشمل: ${pmNames.join('، ')}. العملة المعتمدة هي الجنيه المصري (EGP).`
+      if (s.includes('vodafone')) return 'فودافون كاش';
+      if (s.includes('insta')) return 'إنستاباي (InstaPay)';
+      if (s.includes('visa') || s.includes('card')) return 'فيزا وبطاقات بنكية';
+      if (s.includes('fawry')) return 'فوري';
+      if (s.includes('bank')) return 'تحويل بنكي';
+      if (s.includes('cash')) return 'الدفع نقداً';
+      return null;
+    }).filter(Boolean))];
+    if (pmNames.length > 0) {
+      faqQuestions.push({
+        '@type': 'Question',
+        name: `ما هي طرق الدفع المتاحة لدى ${rawName}؟`,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: `طرق الدفع المسجلة لدى ${rawName} هي: ${pmNames.join('، ')}.`
+        }
+      });
     }
-  });
-
-  const faqSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqQuestions
-  };
+  }
 
   return {
     rawName,
@@ -368,7 +365,7 @@ export function generateBusinessSEO(place) {
     image,
     phone: place.phone ? String(place.phone).trim() : null,
     whatsapp: place.whatsapp ? String(place.whatsapp).trim() : null,
-    schemas: [businessSchema, breadcrumbSchema, faqSchema],
+    schemas: [businessSchema, breadcrumbSchema],
     qa: faqQuestions
   };
 }
@@ -379,7 +376,7 @@ export function generateBusinessSEO(place) {
 export function generateCategorySEO(categoryName, places = []) {
   const catName = getArabicCategoryName(categoryName);
   const categorySlug = encodeURIComponent(String(categoryName).toLowerCase().replace(/\s+/g, '-'));
-  const canonicalUrl = `${SITE_DOMAIN}/category/${categorySlug}`;
+  const canonicalUrl = `${SITE_DOMAIN}/category/${categorySlug}/`;
 
   const title = `${catName} في المنزلة والمطرية | دليل الأنشطة والخدمات الموثقة`;
   const description = `تصفح قائمة ${catName} في المنزلة والمطرية والقرى المجاورة. عناوين دقيقة، أرقام التواصل الفوري، مواعيد العمل، وتقييمات الأهالي بدليل المنزلة والمطرية.`;
@@ -417,7 +414,7 @@ export function generateCategorySEO(categoryName, places = []) {
     itemListElement: places.slice(0, 20).map((p, index) => ({
       '@type': 'ListItem',
       position: index + 1,
-      url: `${SITE_DOMAIN}/place/${encodeURIComponent(p.slug || p.id)}`,
+      url: `${SITE_DOMAIN}/place/${encodeURIComponent(p.slug || p.id)}/`,
       name: p.name
     }))
   };
