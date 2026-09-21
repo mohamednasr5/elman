@@ -365,7 +365,7 @@ function buildCategoryPageHTML(catName, places) {
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(0,0,0,0.06);padding-top:12px;margin-top:8px">
           ${phone ? `<a href="tel:${phone.replace(/\s+/g,'')}" style="color:#0284c7;font-weight:700;font-size:0.88rem;text-decoration:none">📞 ${escapeHtml(phone)}</a>` : '<span></span>'}
-          <a href="/place/${encodeURIComponent(slug)}" style="font-weight:800;font-size:0.85rem;color:#0284c7;text-decoration:none">
+          <a href="/place/${encodeURIComponent(slug)}/" style="font-weight:800;font-size:0.85rem;color:#0284c7;text-decoration:none">
             عرض التفاصيل ←
           </a>
         </div>
@@ -474,6 +474,32 @@ async function run() {
   }
 
   console.log(`Processing ${places.length} places for static pre-rendering...`);
+
+  // Remove stale generated place/category pages before regeneration. This prevents unpublished,
+  // deleted, archived, or renamed slugs from remaining crawlable after they disappear from the API.
+  const desiredPlaceSlugs = new Set(places.map(p => String(p.slug || p.id || '').trim()).filter(Boolean));
+  const desiredCategorySlugs = new Set([...categoryMapKeys(places)]);
+  function removeStaleGeneratedDirs(rootDir, desiredSlugs) {
+    if (!fs.existsSync(rootDir)) return 0;
+    let removed = 0;
+    for (const name of fs.readdirSync(rootDir, { withFileTypes: true })) {
+      if (!name.isDirectory() || name.name === 'index') continue;
+      if (!desiredSlugs.has(name.name)) {
+        fs.rmSync(path.join(rootDir, name.name), { recursive: true, force: true });
+        removed++;
+      }
+    }
+    return removed;
+  }
+  function categoryMapKeys(items) {
+    return new Set(items.map(p => {
+      const raw = p.customCategory || p.category || p.categoryId || p.category_id || 'عام';
+      return encodeURIComponent(String(raw).toLowerCase().replace(/\\s+/g, '-'));
+    }));
+  }
+  const removedPlaces = removeStaleGeneratedDirs(path.join(__dirname, 'place'), desiredPlaceSlugs);
+  const removedCategories = removeStaleGeneratedDirs(path.join(__dirname, 'category'), desiredCategorySlugs);
+  console.log(`✓ Removed ${removedPlaces} stale place directories and ${removedCategories} stale category directories.`);
 
   // Group places by category
   const categoryMap = new Map();
@@ -639,3 +665,4 @@ async function run() {
 }
 
 run();
+
