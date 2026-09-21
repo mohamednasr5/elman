@@ -507,21 +507,15 @@ export function getSharedFooterHTML() {
               </div>
  
           <div class="footer__app-stores" aria-label="تطبيق دليل المنزلة والمطرية">
-            <div class="app-store-coming-soon" role="status" tabindex="0" aria-label="تطبيق Apple Store قريباً">
-              <span class="app-store-coming-soon__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="25" height="25" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.94-3.01.4-.97-.55-2.08-.58-3.12 0-1.3.73-1.99.52-2.86-.4C3.79 15.25 4.51 7.59 9.05 7.31c1.16.06 1.97.64 2.65.7 1.02-.2 2-.79 3.09-.74 1.31.11 2.3.63 2.95 1.51-2.71 1.62-2.07 5.18.42 6.22-.5 1.31-1.14 2.61-2.11 3.85zM12.03 7.25C11.88 5.31 13.48 3.7 15.32 3.6c.25 2.24-2.04 3.92-3.29 3.65z"/></svg>
-              </span>
-              <span class="app-store-coming-soon__copy"><small>متاح قريباً على</small><strong>App Store</strong></span>
-              <span class="app-store-coming-soon__soon">قريباً</span>
-            </div>
-            <div class="app-store-coming-soon" role="status" tabindex="0" aria-label="تطبيق Google Play قريباً">
-              <span class="app-store-coming-soon__icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="25" height="25"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg>
-              </span>
-              <span class="app-store-coming-soon__copy"><small>متاح قريباً على</small><strong>Google Play</strong></span>
-              <span class="app-store-coming-soon__soon">قريباً</span>
-            </div>
-          </div>             <div class="apk-btn-text-box">
+            <button type="button" class="app-store-icon-coming-soon" aria-label="App Store — قريبًا" title="App Store — قريبًا">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.94-3.01 0-.97-.55-2.08-.58-3.12 0-1.3.73-1.99.52-2.86-.4C3.79 15.25 4.51 7.59 9.05 7.31c1.16.06 1.97.64 2.65.7 1.02-.2 2-.79 3.09-.74 1.31.11 2.3.63 2.95 1.51-2.71 1.62-2.07 5.18.42 6.22-.5 1.31-1.14 2.61-2.11 3.85zM12.03 7.25C11.88 5.31 13.48 3.7 15.32 3.6c.25 2.24-2.04 3.92-3.29 3.65z"/></svg>
+              <span class="app-store-icon-coming-soon__tooltip">قريبًا</span>
+            </button>
+            <button type="button" class="app-store-icon-coming-soon" aria-label="Google Play — قريبًا" title="Google Play — قريبًا">
+              <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg>
+              <span class="app-store-icon-coming-soon__tooltip">قريبًا</span>
+            </button>
+          </div>          </div>             <div class="apk-btn-text-box">
                 <span class="apk-btn-sub">تطبيق الأندرويد المباشر</span>
                 <span class="apk-btn-main">تحميل تطبيق الدليل APK</span>
               </div>
