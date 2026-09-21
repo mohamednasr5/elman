@@ -47,21 +47,27 @@ const noindexPages=['wallet.html','around-me.html','now.html','offers.html','pro
 const allSitemapXml=['sitemap.xml','sitemap-static-ar.xml','sitemap-static-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml','sitemap-places-ar.xml','sitemap-places-en.xml'].map(read).join('\\n');
 for(const page of noindexPages){
   const pageHtml=read(page);
-  must(/<meta\\s+name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(pageHtml),`${page}: expected noindex robots directive`);
+  must(/<meta\s+name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(pageHtml),`${page}: expected noindex robots directive`);
   const publicUrl=page==='wallet.html'?'https://dalilmanzala.com/wallet.html':`https://dalilmanzala.com/${page}`;
   must(!allSitemapXml.includes(`<loc>${publicUrl}</loc>`),`${page}: noindex URL must not appear in sitemap assets`);
 }
 
 for(const template of ['place.html','category.html','404.html']){
   const html=read(template);
-  must(!/<meta\\s+name=["']geo\\.position["'][^>]*content=["']31\\.1578;31\\.9333/i.test(html), template + ': must not hard-code Manzala city-centre coordinates');
-  must(!/<meta\\s+name=["']ICBM["'][^>]*content=["']31\\.1578,\\s*31\\.9333/i.test(html), template + ': must not hard-code Manzala ICBM coordinates');
-  must(!/<meta\\s+name=["']geo\\.position["'][^>]*content=["']31\\.1833;32\\.0333/i.test(html), template + ': must not hard-code Matariya city-centre coordinates');
-  must(!/<meta\\s+name=["']ICBM["'][^>]*content=["']31\\.1833,\\s*32\\.0333/i.test(html), template + ': must not hard-code Matariya ICBM coordinates');
+  must(!/<meta\s+name=["']geo\\.position["'][^>]*content=["']31\\.1578;31\\.9333/i.test(html), template + ': must not hard-code Manzala city-centre coordinates');
+  must(!/<meta\s+name=["']ICBM["'][^>]*content=["']31\\.1578,\s*31\\.9333/i.test(html), template + ': must not hard-code Manzala ICBM coordinates');
+  must(!/<meta\s+name=["']geo\\.position["'][^>]*content=["']31\\.1833;32\\.0333/i.test(html), template + ': must not hard-code Matariya city-centre coordinates');
+  must(!/<meta\s+name=["']ICBM["'][^>]*content=["']31\\.1833,\s*32\\.0333/i.test(html), template + ': must not hard-code Matariya ICBM coordinates');
 }
 
 const redirects=read('_redirects');
-must(redirects.includes('/place/*')&&redirects.includes('/category/*'),'Public place/category routes missing');
+must(redirects.includes('/place/*'),'Public place route missing');
+must(!/^\\/en\\/category\\/\\*\\s+\\/en\\/category\\/index\\.html\\s+200$/m.test(redirects),'_redirects must not wildcard-fallback /en/category/* to an indexable listing');
+must(!/^\\/category\\/\\*\\s+\\/category\\.html\\?slug=:splat\\s+200$/m.test(redirects),'_redirects must not wildcard-fallback /category/* to category.html with HTTP 200');
+
+const worker=read('worker/index.js');
+must(!/place\\.(?:latitude|lat)\\s*\\|\\|\\s*31\\.1578|place\\.(?:longitude|lng)\\s*\\|\\|\\s*31\\.9333/.test(worker),'Worker must not use Manzala city-centre coordinates as place fallbacks');
+must(!/place\\.(?:latitude|lat)\\s*\\|\\|\\s*31\\.1833|place\\.(?:longitude|lng)\\s*\\|\\|\\s*32\\.0333/.test(worker),'Worker must not use Matariya city-centre coordinates as place fallbacks');
 
 const entity=read('src/js/utils/seo-entity.js');
 must((entity.includes("'@type': 'LocalBusiness'")||entity.includes("return 'LocalBusiness'"))&&entity.includes("'@type': 'BreadcrumbList'"),'Required structured data generators missing');
@@ -69,11 +75,56 @@ must(entity.includes('generateBusinessSEOEnglish'),'English business SEO generat
 must(!entity.includes("'@type': 'FAQPage'"),'FAQPage schema should not be emitted as a Google rich-result strategy');
 must(!entity.includes('31.1578') || !entity.includes('32.0333'),'SEO generator must not use guessed city-centre coordinates as business coordinates');
 
+must(!entity.includes('areaServed: COVERAGE_AREAS') && !entity.includes('areaServed: COVERAGE_AREAS.map'),'Business schema must not assert generic coverage areas for every business');
+
+function collectHtml(dir) {
+  if (!fs.existsSync(path.join(ROOT, dir))) return [];
+  const out = [];
+  const walk = abs => {
+    for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+      const full = path.join(abs, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile() && entry.name.endsWith('.html')) out.push(full);
+    }
+  };
+  walk(path.join(ROOT, dir));
+  return out;
+}
+for (const file of [...collectHtml('place'), ...collectHtml('category'), ...collectHtml('en/place'), ...collectHtml('en/category')]) {
+  const html = fs.readFileSync(file, 'utf8');
+  must(!/['"]?(currenciesAccepted|areaServed|priceRange)['"]?\s*:/.test(html), `${file}: unsupported generic business claim in generated schema`);
+  must(!/['"]?FAQPage['"]?/.test(html), `${file}: FAQPage must not be emitted on business/category profile pages`);
+}
+
+
 const builder=read('build-seo-pages.mjs');
 const englishBuilder=read('generate-english-pages.mjs');
 must(englishBuilder.includes('generateBusinessSEOEnglish')&&englishBuilder.includes('Questions &amp; answers'),'English profiles must contain entity metadata and crawlable Q&A');
 must(englishBuilder.includes('englishLandingBody')&&englishBuilder.includes('<h1>'),'English landing pages must contain crawlable H1/content without JS');
 must(englishBuilder.includes('writeEnglishCategory')&&englishBuilder.includes('CollectionPage'),'English category pages must contain crawlable category content');
+// Generated business-page invariants: generated artifacts must not retain inferred entity claims.
+function scanHtmlTree(dir){
+  const out=[];
+  if(!fs.existsSync(path.join(ROOT,dir))) return out;
+  const walk=abs=>{
+    for(const entry of fs.readdirSync(abs,{withFileTypes:true})){
+      const full=path.join(abs,entry.name);
+      if(entry.isDirectory()) walk(full);
+      else if(entry.isFile() && entry.name.endsWith('.html')) out.push(full);
+    }
+  };
+  walk(path.join(ROOT,dir));
+  return out;
+}
+for(const dir of ['place','category','en/place','en/category']){
+  for(const file of scanHtmlTree(dir)){
+    const html=fs.readFileSync(file,'utf8');
+    must(!/"currenciesAccepted"\s*:/.test(html),`${file}: generated business schema must not infer currenciesAccepted`);
+    must(!/"areaServed"\s*:/.test(html),`${file}: generated business schema must not infer areaServed`);
+    must(!/"@type"\s*:\s*"FAQPage"/.test(html),`${file}: generated business schema must not emit FAQPage`);
+  }
+}
+
 const workflow=read('.github/workflows/generate-english-pages.yml');
 must(workflow.includes('node build-seo-pages.mjs'),'Bilingual SEO workflow must regenerate Arabic static profiles');
 for(const needle of ['Semantic Body Content (Discoverable immediately without JS execution)','Crawlable Breadcrumb Navigation','Related Places in Same Category','Inject Internal Links into places.html','AEO/GEO answer block','${qaHtml}'])must(builder.includes(needle),`build-seo-pages.mjs missing ${needle}`);

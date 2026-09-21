@@ -4,6 +4,7 @@ import { getLang, isEnglish, switchLanguage, applyLangToDOM } from './i18n.js';
 import { bindGlobalVoiceAssistantFab } from '../services/voice.service.js';
 import { initContentProtection } from './content-protection.js';
 import { api } from './api.js';
+import { initAnchorCursor } from '../components/anchor-cursor.js';
 
 function _escShell(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -544,6 +545,7 @@ export function setupInstantLinkPrefetcher() {
 
 export async function initPage(activeFile=''){
   try{initContentProtection()}catch(_){}
+  try{initAnchorCursor()}catch(_){}
   applyLangToDOM(getLang());
   _loadShellCSS();
   _inject('header-slot',_headerHTML(activeFile));

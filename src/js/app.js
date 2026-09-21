@@ -11,6 +11,7 @@ import { route, notFound, initRouter, navigate } from './core/router.js';
 import { getSettings, getCategories } from './core/db.js';
 import { setMeta } from './utils/seo.js';
 import { toast } from './ui/components/Toast.js';
+import { initAnchorCursor } from './ui/components/anchor-cursor.js';
 
 // Import page handlers
 import { renderHomePage } from './ui/pages/home.js';
@@ -21,6 +22,9 @@ import { renderAdmin } from './ui/pages/admin.js';
 
 // ── Bootstrap ──
 async function bootstrap() {
+  // 0. Initialize the site pointer
+  try { initAnchorCursor(); } catch (_) {}
+
   // 1. Initialize Firebase
   initFirebase();
 

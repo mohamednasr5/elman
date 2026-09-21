@@ -101,9 +101,12 @@ export function renderPaymentBadges(paymentMethods = [], options = {}) {
       : `يقبل الدفع بواسطة: ${method.nameAr}`;
 
     return `
-      <div class="payment-badge-wrapper" tabindex="0" role="img" aria-label="${escapeHtml(tooltipText)}">
+      <div class="payment-badge-wrapper" tabindex="0" role="img" aria-label="${escapeHtml(tooltipText)}" data-payment-id="${escapeHtml(method.id)}">
         <div class="payment-badge-3d" data-payment-id="${escapeHtml(method.id)}">
-          <img src="${escapeHtml(method.icon)}" alt="${escapeHtml(name)}" width="48" height="48" loading="lazy" decoding="async" />
+          <span class="payment-badge-3d__icon">
+            <img src="${escapeHtml(method.icon)}" alt="" width="42" height="42" loading="lazy" decoding="async" />
+          </span>
+          <span class="payment-badge-3d__name">${escapeHtml(name)}</span>
         </div>
         <div class="payment-badge-tooltip" role="tooltip">
           <span class="payment-badge-tooltip__title">${escapeHtml(name)}</span>
@@ -120,7 +123,7 @@ export function renderPaymentBadges(paymentMethods = [], options = {}) {
       <div class="place-payment-header">
         <span class="place-payment-header__icon">💳</span>
         <h3 class="place-payment-header__title">${escapeHtml(headingText)}</h3>
-        <span class="place-payment-header__badge">${isEn ? `${cleanList.length} Verified Methods` : `${cleanList.length} طرق دفع معتمدة`}</span>
+        <span class="place-payment-header__badge">${isEn ? 'Available Methods' : 'وسائل الدفع المتاحة'}</span>
       </div>
       <div class="place-payment-badges-grid">
         ${badgesHtml}
