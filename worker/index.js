@@ -7775,9 +7775,14 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
           const userAgent = request.headers.get('user-agent') || '';
           const isCrawler = /facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|telegrambot|googlebot|bingbot/i.test(userAgent);
           if (isCrawler) {
-            return new Response(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>دليل المنزلة والمطرية الرقمي</title><meta property="og:title" content="دليل المنزلة والمطرية الرقمي"></head><body></body></html>`, {
-              status: 200,
-              headers: { 'Content-Type': 'text/html; charset=utf-8' }
+            // Never return a generic 200 page for a failed place render.
+            // A transient SSR failure must not become an indexable soft-404.
+            return new Response(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="robots" content="noindex"><title>Temporary Error | Dalil El Manzala</title></head><body><h1>Temporary Error</h1></body></html>`, {
+              status: 503,
+              headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-store, max-age=0'
+              }
             });
           }
           const fallbackPath = url.pathname.startsWith('/en/') ? '/en/places' : '/places.html';
