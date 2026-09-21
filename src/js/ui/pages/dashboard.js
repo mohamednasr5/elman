@@ -90,6 +90,9 @@ export async function renderDashboard($container, { user, section = 'overview', 
           <a href="dashboard.html?section=places" data-section="places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📍</span> أماكني
           </a>
+          <a href="dashboard.html?section=my-ads" data-section="my-ads" class="dashboard-nav-item ${section === 'my-ads' ? 'active' : ''}" style="background:linear-gradient(135deg,rgba(245,166,35,0.10),rgba(217,119,6,0.08));color:#92400E;font-weight:800;border:1px solid rgba(245,166,35,0.28)">
+            <span class="dashboard-nav-item__icon">📣</span> إعلاناتي
+          </a>
           <a href="dashboard.html?section=analytics" data-section="analytics" class="dashboard-nav-item ${section === 'analytics' || section === 'reports' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📈</span> التقارير والإحصائيات
           </a>
@@ -210,6 +213,8 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
       await renderOverviewSection($mainArea, _dashUser);
     } else if (section === 'places') {
       await renderPlacesSection($mainArea, _dashUser);
+    } else if (section === 'my-ads') {
+      await renderMyAdsSection($mainArea, _dashUser);
     } else if (section === 'analytics' || section === 'reports') {
       await renderAnalyticsSection($mainArea, _dashUser, placeId);
     } else if (section === 'add' || section === 'add-place') {
@@ -5959,6 +5964,144 @@ function escAttr(str) {
 /**
  * Render Followed Places & Active Offers Section
  */
+function formatMyAdDateTime(value) {
+  const ts = Number(value || 0);
+  if (!Number.isFinite(ts) || ts <= 0) return 'غير محدد';
+  try {
+    return new Intl.DateTimeFormat('ar-EG', { timeZone: 'Africa/Cairo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date(ts));
+  } catch (_) { return new Date(ts).toLocaleString('ar-EG'); }
+}
+
+function getMyAdTiming(place) {
+  const end = Number(place?.sponsoredUntil || place?.sponsored_until || 0);
+  const startExplicit = Number(place?.sponsoredAt || place?.sponsored_at || 0);
+  const start = startExplicit || (end > 0 ? Math.max(0, end - (30 * 86400000)) : 0);
+  const flagged = Boolean(place?.isSponsored || place?.is_sponsored || place?.isFeatured || place?.is_featured);
+  const active = Boolean(flagged && end > Date.now());
+  const expired = Boolean(end > 0 && end <= Date.now());
+  const remainingMs = active ? Math.max(0, end - Date.now()) : 0;
+  return { start, end, active, expired, remainingMs };
+}
+
+function formatMyAdRemaining(ms) {
+  if (!ms || ms <= 0) return 'انتهى الإعلان';
+  const totalHours = Math.ceil(ms / 3600000);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  if (days > 0) return hours > 0 ? \`متبقٍ \${days} يوم و\${hours} ساعة\` : \`متبقٍ \${days} يوم\`;
+  return \`متبقٍ \${Math.max(1, hours)} ساعة\`;
+}
+
+async function renderMyAdsSection($container, user) {
+  $container.innerHTML = \`
+    <div class="dashboard-section-header">
+      <div>
+        <h1 class="dashboard-section-title">📣 إعلاناتي</h1>
+        <p class="dashboard-section-subtitle">إدارة ومتابعة إعلاناتك المميزة ومعرفة بداية الإعلان ونهايته والمدة المتبقية.</p>
+      </div>
+    </div>
+    <div class="spinner spinner-lg" style="margin:3rem auto"></div>
+  \`;
+
+  try {
+    const places = await getPlacesByOwner(user);
+    const ads = (Array.isArray(places) ? places : []).map(place => ({
+      place,
+      timing: getMyAdTiming(place)
+    })).filter(item => item.timing.end > 0 || item.timing.active);
+
+    const activeCount = ads.filter(a => a.timing.active).length;
+    const expiredCount = ads.filter(a => a.timing.expired).length;
+
+    if (!ads.length) {
+      $container.innerHTML = \`
+        <div class="dashboard-section-header">
+          <div>
+            <h1 class="dashboard-section-title">📣 إعلاناتي</h1>
+            <p class="dashboard-section-subtitle">لا توجد إعلانات مميزة مسجلة على أماكنك حالياً.</p>
+          </div>
+        </div>
+        <div class="empty-state" style="padding:4rem 1rem;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border)">
+          <div class="empty-state__icon">📣</div>
+          <h2 class="empty-state__title">لم تقم بتفعيل إعلان مميز بعد</h2>
+          <p class="empty-state__text">فعّل إعلاناً مميزاً لمدة 30 يوماً مقابل 500 ذهبية، وسيظهر هنا تاريخ البداية والنهاية والمدة المتبقية.</p>
+          <a href="dashboard.html?section=places" class="btn btn-primary" style="margin-top:1rem;background:linear-gradient(135deg,#F5A623,#D97706);border:none">🌟 ترويج أحد أماكني</a>
+        </div>
+      \`;
+      return;
+    }
+
+    const activeAds = ads.filter(a => a.timing.active);
+    const expiredAds = ads.filter(a => a.timing.expired);
+
+    const renderAdCard = ({place, timing}) => {
+      const stats = place.stats || {};
+      const views = Number(stats.views || place.views || 0);
+      const phoneClicks = Number(stats.phoneClicks || place.phoneClicks || 0);
+      const whatsappClicks = Number(stats.whatsappClicks || place.whatsappClicks || 0);
+      const directionsClicks = Number(stats.directionsClicks || place.directionsClicks || 0);
+      const totalDays = timing.start && timing.end ? Math.max(1, Math.round((timing.end - timing.start) / 86400000)) : 30;
+
+      return \`
+        <article style="background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.06);margin-bottom:18px">
+          <div style="padding:16px 18px;background:linear-gradient(135deg,rgba(245,166,35,.13),rgba(217,119,6,.06));border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:12px">
+              \${place.logoUrl || place.coverImageUrl ? \`<img src="\${escAttr(place.logoUrl || place.coverImageUrl)}" alt="\${escAttr(place.name)}" style="width:52px;height:52px;border-radius:12px;object-fit:cover;border:2px solid rgba(245,166,35,.4)">\` : '<div style="width:52px;height:52px;border-radius:12px;background:#fff3d6;display:flex;align-items:center;justify-content:center;font-size:26px">📣</div>'}
+              <div>
+                <h2 style="margin:0 0 4px;font-size:17px;font-weight:900;color:var(--text-primary)">\${escHtml(place.name || 'المكان')}</h2>
+                <div style="font-size:12px;color:var(--text-secondary)">📍 \${escHtml(place.area || 'المنزلة')} · إعلان مميز</div>
+              </div>
+            </div>
+            <span style="padding:7px 12px;border-radius:999px;font-size:12px;font-weight:900;\${timing.active ? 'background:#DCFCE7;color:#166534' : 'background:#FEE2E2;color:#991B1B'}">
+              \${timing.active ? '🟢 الإعلان نشط' : '🔴 الإعلان منتهٍ'}
+            </span>
+          </div>
+          <div style="padding:18px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:16px">
+              <div style="padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)"><div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">🟢 بدأ الإعلان</div><strong style="font-size:14px">\${escHtml(formatMyAdDateTime(timing.start))}</strong></div>
+              <div style="padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)"><div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">🔴 ينتهي الإعلان</div><strong style="font-size:14px">\${escHtml(formatMyAdDateTime(timing.end))}</strong></div>
+              <div style="padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)"><div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">⏱️ مدة الإعلان</div><strong style="font-size:14px">\${totalDays} يوم</strong></div>
+              <div style="padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)"><div style="font-size:11px;color:var(--text-muted);margin-bottom:5px">⏳ الحالة الزمنية</div><strong style="font-size:14px;color:\${timing.active ? '#166534' : '#991B1B'}">\${escHtml(formatMyAdRemaining(timing.remainingMs))}</strong></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px">
+              <div style="padding:11px;border-radius:10px;background:var(--surface-2);text-align:center"><strong style="display:block;font-size:20px;color:var(--primary)">\${views}</strong><span style="font-size:11px;color:var(--text-muted)">مشاهدة</span></div>
+              <div style="padding:11px;border-radius:10px;background:var(--surface-2);text-align:center"><strong style="display:block;font-size:20px;color:var(--primary)">\${phoneClicks}</strong><span style="font-size:11px;color:var(--text-muted)">اتصال</span></div>
+              <div style="padding:11px;border-radius:10px;background:var(--surface-2);text-align:center"><strong style="display:block;font-size:20px;color:var(--primary)">\${whatsappClicks}</strong><span style="font-size:11px;color:var(--text-muted)">واتساب</span></div>
+              <div style="padding:11px;border-radius:10px;background:var(--surface-2);text-align:center"><strong style="display:block;font-size:20px;color:var(--primary)">\${directionsClicks}</strong><span style="font-size:11px;color:var(--text-muted)">خرائط</span></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <a href="dashboard.html?section=places" class="btn btn-sm btn-outline">📍 إدارة المكان</a>
+              <a href="dashboard.html?section=analytics&id=\${escAttr(place.id || place._key || '')}" class="btn btn-sm btn-outline">📊 تقرير الأداء</a>
+            </div>
+          </div>
+        </article>
+      \`;
+    };
+
+    $container.innerHTML = \`
+      <div class="dashboard-section-header">
+        <div><h1 class="dashboard-section-title">📣 إعلاناتي</h1><p class="dashboard-section-subtitle">كل تفاصيل الإعلانات المميزة الخاصة بأماكنك.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="padding:7px 12px;border-radius:999px;background:#DCFCE7;color:#166534;font-weight:800;font-size:12px">🟢 نشط: \${activeCount}</span>
+          <span style="padding:7px 12px;border-radius:999px;background:#FEE2E2;color:#991B1B;font-weight:800;font-size:12px">🔴 منتهٍ: \${expiredCount}</span>
+        </div>
+      </div>
+      \${activeAds.length ? \`<h2 style="font-size:16px;font-weight:900;margin:0 0 10px;color:var(--text-primary)">🟢 الإعلانات النشطة</h2>\${activeAds.map(renderAdCard).join('')}\` : ''}
+      \${expiredAds.length ? \`<h2 style="font-size:16px;font-weight:900;margin:22px 0 10px;color:var(--text-primary)">🔴 الإعلانات المنتهية</h2>\${expiredAds.map(renderAdCard).join('')}\` : ''}
+    \`;
+  } catch (err) {
+    console.error('[Dashboard] My Ads error:', err);
+    $container.innerHTML = \`
+      <div class="empty-state">
+        <div class="empty-state__icon">⚠️</div>
+        <h2 class="empty-state__title">تعذر تحميل إعلاناتك</h2>
+        <p class="empty-state__text">حدث خطأ أثناء قراءة بيانات إعلاناتك. حاول مرة أخرى.</p>
+        <button class="btn btn-primary" onclick="window.switchDashboardSection('my-ads', null, false)">إعادة المحاولة</button>
+      </div>
+    \`;
+  }
+}
+
 async function renderFollowingSection($container, user) {
   $container.innerHTML = `
     <div class="dashboard-section-header">
