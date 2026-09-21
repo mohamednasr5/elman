@@ -1150,8 +1150,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             </section>
           ` : ''}
 
-          <!-- Accepted Payment Methods 3D Badges (GEO / SEO & UX) -->
-          ${!isAtm ? renderPaymentBadges(place.paymentMethods || place.payment_methods || place.stats?.paymentMethods, { isEn }) : ''}
+          <!-- Accepted Payment Methods: inline within the place header card -->
           ${!isEn ? `
             <section class="place-app-links-card" aria-label="تطبيقاتنا">
               <div class="place-app-links-card__intro">
