@@ -112,7 +112,7 @@ export function renderPaymentBadges(paymentMethods = [], options = {}) {
           <span class="payment-badge-tooltip__title">${escapeHtml(name)}</span>
           <span class="payment-badge-tooltip__desc">${escapeHtml(method.description)}</span>
         </div>
-      </div>     </div>
+      </div>
     `;
   }).join('');
 
