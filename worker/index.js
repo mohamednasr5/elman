@@ -10125,7 +10125,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
 
       // Ensure Google Fonts Cairo, Tajawal & Amiri are present in SSR HTML
       if (!hydratedHtml.includes('family=Cairo')) {
-        hydratedHtml = hydratedHtml.replace('<head>', `<head>\n  <link rel="preconnect" href="https://fonts.googleapis.com"/>\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>\n  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"/><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&display=swap"/></noscript>`);
+        hydratedHtml = hydratedHtml.replace('<head>', `<head>\n  <link rel="preconnect" href="https://fonts.googleapis.com"/>\n  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>\n  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'"/><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap"/></noscript>`);
       }
 
       // Inject hreflang alternate tags
