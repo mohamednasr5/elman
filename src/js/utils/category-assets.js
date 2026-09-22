@@ -333,6 +333,79 @@ export const CATEGORY_ASSET_DEFINITIONS = [
   }
 ];
 
+const GENERIC_PLACE_MEDIA_RE = /(?:^|\\/)(?:default-cover|default-logo|og-whatsapp)\\.(?:jpe?g|png|webp)(?:[?#].*)?$/i;
+
+function readMediaCandidates(value) {
+  if (Array.isArray(value)) return value.flatMap(readMediaCandidates);
+  if (value && typeof value === 'object') {
+    return readMediaCandidates(value.url || value.src || value.image || value.imageUrl || value.coverImageUrl || '');
+  }
+  if (typeof value === 'string') {
+    const s = value.trim();
+    if (!s) return [];
+    if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('{') && s.endsWith('}'))) {
+      try { return readMediaCandidates(JSON.parse(s)); } catch (_) {}
+    }
+    return GENERIC_PLACE_MEDIA_RE.test(s) ? [] : [s];
+  }
+  return [];
+}
+
+function firstUsableMedia(...values) {
+  for (const value of values) {
+    const found = readMediaCandidates(value);
+    if (found.length) return found[0];
+  }
+  return '';
+}
+
+export function resolvePlaceMedia(place = {}) {
+  const p = place || {};
+  const rawCustom = String(p.customCategory || p.custom_category || '').trim();
+  const rawCat = String(p.categoryName || p.category_name || '').trim();
+  const categoryName = rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCustom.toLowerCase())
+    ? rawCustom
+    : (rawCat || rawCustom);
+
+  const asset = resolveCategoryAsset(categoryName, p.name || '');
+
+  const cover = firstUsableMedia(
+    p.coverImageUrl,
+    p.cover_image_url,
+    p.coverImage,
+    p.cover,
+    p.imageUrl,
+    p.image_url,
+    p.image,
+    p.gallery,
+    p.imageUrls,
+    p.image_urls,
+    p.photos,
+    p.photo
+  );
+
+  const logo = firstUsableMedia(
+    p.logoUrl,
+    p.logo_url,
+    p.logo,
+    p.logoImageUrl,
+    p.logo_image_url,
+    p.photoURL,
+    p.avatarUrl,
+    p.avatar_url
+  );
+
+  const categoryCover = firstUsableMedia(asset?.cover);
+  return {
+    cover,
+    logo,
+    // Category-specific visual fallback — never the generic directory cover.
+    categoryCover,
+    // A real uploaded cover is also a safe logo fallback when no separate logo exists.
+    logoFallback: logo || cover || ''
+  };
+}
+
 export const DEFAULT_PLACE_COVER = '/assets/images/default-cover.jpg';
 export const DEFAULT_PLACE_LOGO = '/assets/images/default-logo.jpg';
 
@@ -372,13 +445,13 @@ export function getDefaultPlaceAssets(place = {}, category = {}) {
   const pName = safePlace.name || '';
   const asset = resolveCategoryAsset(catName, pName);
 
-  let finalCover = place.coverImageUrl || place.cover_image_url || place.coverImage || place.image || place.photos?.[0] || '';
+  let finalCover = firstUsableMedia(place.coverImageUrl, place.cover_image_url, place.coverImage, place.image, place.cover, place.gallery, place.imageUrls, place.image_urls, place.photos);
   if (!finalCover || String(finalCover).includes('placeholder') || String(finalCover).length < 8) {
     // Priority: Default Directory Cover requested by user
     finalCover = DEFAULT_PLACE_COVER;
   }
 
-  let finalLogo = place.logoUrl || place.logo_url || place.logo || place.photoURL || '';
+  let finalLogo = firstUsableMedia(place.logoUrl, place.logo_url, place.logo, place.photoURL);
   if (!finalLogo || String(finalLogo).includes('placeholder') || String(finalLogo).length < 8) {
     // Priority: Default Directory Logo requested by user
     finalLogo = DEFAULT_PLACE_LOGO;
