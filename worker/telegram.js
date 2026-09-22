@@ -579,7 +579,7 @@ async function togglePlaceVerification(chatId, placeId, isVerified, env, editMes
       env._broadcastFcmNotification({
         title: `👑 توثيق رسمي جديد: ${placeName || 'مكان موثق'}`,
         body: `تم توثيق (${placeName || 'المكان'}) رسمياً بالعلامة الزرقاء ليتصدر دليل المنزلة والمطرية!`,
-        url: `./place.html?id=${encodeURIComponent(targetPlaceId)}`,
+        url: `/place/${encodeURIComponent(targetPlaceId)}/`,
         icon: './icons/icon-192x192.png',
         tag: `verified-${targetPlaceId}`,
         actionTitle: 'مشاهدة المكان الموثق'
