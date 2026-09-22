@@ -154,7 +154,7 @@ export function renderPlaceCard(place) {
   const coverImg = finalCover
     ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" width="280" height="160" loading="lazy" decoding="async"
          data-category-fallback="${escAttr(fallbackCover)}"
-         onerror="if(this.dataset.triedR2!=='1'&&this.src.includes('.r2.dev')){this.dataset.triedR2='1';this.src='/api/r2/'+this.src.split('.r2.dev/')[1];this.dataset.triedR2='1';}else if(this.dataset.categoryFallback&&this.dataset.fallbackApplied!=='1'&&this.src!==this.dataset.categoryFallback){this.dataset.fallbackApplied='1';this.src=this.dataset.categoryFallback;}else if(this.dataset.categoryFallback&&this.src!==this.dataset.categoryFallback){this.dataset.fallbackApplied='1';this.src=this.dataset.categoryFallback;}else{this.style.display='none';this.closest('.place-card__cover')?.classList.add('media-missing');}" />`
+         onerror="if(this.dataset.triedR2!=='1'&&this.src.includes('.r2.dev')){this.dataset.triedR2='1';this.src='/api/r2/'+this.src.split('.r2.dev/')[1];this.dataset.triedR2='1';}else{this.style.display='none';this.closest('.place-card__cover')?.classList.add('media-missing');}" />`
     : `<div class="place-card__cover-placeholder" style="background:${catStyle.gradient}">
         <span class="place-card__cover-icon">${catStyle.icon}</span>
         <span class="place-card__cover-tag">${escHtml(catStyle.label)}</span>
