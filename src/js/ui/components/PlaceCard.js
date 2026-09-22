@@ -8,7 +8,7 @@ import { translateArea, translateCategory } from '../../utils/category-i18n.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge } from './VerifiedBadge.js';
 import { isPlaceSponsored } from './SponsoredShowcase.js';
 import { resolveDoctorSpecialty } from '../../utils/specialty.js';
-import { getDefaultPlaceAssets, resolvePlaceMedia } from '../../utils/category-assets.js';
+import { getDefaultPlaceAssets, resolvePlaceMedia } from '../../utils/category-assets.js?v=20260923_01';
 import { isAtmPlace, ATM_UNIFIED_COVER, ATM_UNIFIED_LOGO, getAtmLiveStatus, formatAtmTimeAgo } from '../../utils/atm.js';
 import { getPlaceLiveStatus } from '../../utils/live-hours.js';
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
