@@ -29,6 +29,18 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Validate dashboard parity
         run: node scripts/validate-dashboard-parity.mjs
+      - name: Validate modified runtime JavaScript
+        run: |
+          node --check src/js/ui/pages/places.js
+          node --check src/js/ui/components/PlaceCard.js
+          node --check src/js/core/db.js
+          node --check src/js/utils/seo.js
+          node --check src/js/services/upload.service.js
+          node --check src/js/services/image-cdn.service.js
+          node --check src/js/core/pwa-install.js
+          node --check src/js/services/realtime-sync.service.js
+          node --check sw.js
+          node --check worker/index.js
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run browser smoke tests
