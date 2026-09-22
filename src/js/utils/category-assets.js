@@ -367,7 +367,14 @@ export function resolvePlaceMedia(place = {}) {
     ? rawCustom
     : (rawCat || rawCustom);
 
-  const asset = resolveCategoryAsset(categoryName, p.name || '');
+  const semanticContext = [
+    categoryName,
+    p.name || '',
+    p.description || p.description_en || '',
+    p.address || '',
+    p.area || ''
+  ].filter(Boolean).join(' ');
+  const asset = resolveCategoryAsset(semanticContext, p.name || '');
 
   const cover = firstUsableMedia(
     p.coverImageUrl,
@@ -410,7 +417,10 @@ export const DEFAULT_PLACE_COVER = '/assets/images/default-cover.jpg';
 export const DEFAULT_PLACE_LOGO = '/assets/images/default-logo.jpg';
 
 const DEFAULT_BUSINESS_ASSET = {
-  cover: DEFAULT_PLACE_COVER,
+  // Generic business visual only when a place has no usable uploaded/gallery image
+  // and no more specific category match. This is intentionally NOT the directory's
+  // default-cover/default-logo asset.
+  cover: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&h=500&q=85',
   icon: '🏪',
   name: 'نشاط تجاري وخدمات',
   color: '#1B4F72',
