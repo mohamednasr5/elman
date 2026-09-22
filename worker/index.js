@@ -793,6 +793,24 @@ export default {
       return Response.redirect(`${url.origin}${cleanPath}${url.search}`, 301);
     }
 
+    // Canonical place URLs: /place/<slug>/ is the single public URL.
+    // Legacy /p/<slug>/ and /place.html?slug=<slug> are permanently redirected.
+    const placeSlugFromQuery = url.searchParams.get('slug') || url.searchParams.get('id') || '';
+    if (url.pathname === '/place.html' && placeSlugFromQuery) {
+      return Response.redirect(`${url.origin}/place/${encodeURIComponent(placeSlugFromQuery)}/`, 301);
+    }
+    if (url.pathname === '/en/place.html' && placeSlugFromQuery) {
+      return Response.redirect(`${url.origin}/en/place/${encodeURIComponent(placeSlugFromQuery)}/`, 301);
+    }
+    if (url.pathname.startsWith('/p/')) {
+      const legacySlug = decodeURIComponent(url.pathname.slice(3).replace(/^\/+|\/+$/g, ''));
+      if (legacySlug) return Response.redirect(`${url.origin}/place/${encodeURIComponent(legacySlug)}/`, 301);
+    }
+    if (url.pathname.startsWith('/en/p/')) {
+      const legacySlug = decodeURIComponent(url.pathname.slice(6).replace(/^\/+|\/+$/g, ''));
+      if (legacySlug) return Response.redirect(`${url.origin}/en/place/${encodeURIComponent(legacySlug)}/`, 301);
+    }
+
 // ── Static AI/SEO Discovery Files ────────────────────────────────
 // GET /llms.txt — AI Agentic Discovery (required for 3/3 score)
 // GET /llms.txt — AI Agentic Discovery (llmstxt.org standard)
@@ -1681,6 +1699,8 @@ try {
     const categoryFilter = (url.searchParams.get('category') || url.searchParams.get('category_id') || '').trim();
     const areaFilter = (url.searchParams.get('area') || '').trim();
     const searchFilter = (url.searchParams.get('q') || url.searchParams.get('search') || '').trim();
+    const verifiedOnly = url.searchParams.get('verified') === '1';
+    const sortFilter = String(url.searchParams.get('sort') || 'default').trim().toLowerCase();
     const ownerIdFilter = (url.searchParams.get('owner_id') || '').trim();
     const ownerEmailFilter = (url.searchParams.get('owner_email') || '').trim().toLowerCase();
 
@@ -1736,16 +1756,27 @@ try {
     }
 
     if (searchFilter) {
-      conditions.push(`(p.name LIKE ? OR p.name_en LIKE ? OR p.description LIKE ? OR p.custom_category LIKE ?)`);
+      conditions.push(`(p.name LIKE ? OR p.name_en LIKE ? OR p.description LIKE ? OR p.custom_category LIKE ? OR p.address LIKE ? OR p.area LIKE ? OR p.phone LIKE ? OR p.whatsapp LIKE ?)`);
       const sLike = `%${searchFilter}%`;
-      params.push(sLike, sLike, sLike, sLike);
+      params.push(sLike, sLike, sLike, sLike, sLike, sLike, sLike, sLike);
+    }
+
+    if (verifiedOnly && !adminList) {
+      conditions.push('p.is_verified = 1');
     }
 
     if (conditions.length > 0) {
       sql += ` WHERE ` + conditions.join(' AND ');
     }
 
-    sql += ` ORDER BY p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, p.updated_at DESC LIMIT ? OFFSET ?`;
+    const orderByMap = {
+      default: 'p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, p.updated_at DESC',
+      newest: 'p.updated_at DESC, p.created_at DESC',
+      rating: `COALESCE(CAST(json_extract(p.stats_json, '$.rating') AS REAL), 0) DESC, p.updated_at DESC`,
+      reviews: `COALESCE(CAST(json_extract(p.stats_json, '$.reviewCount') AS INTEGER), 0) DESC, p.updated_at DESC`
+    };
+    const orderBy = orderByMap[sortFilter] || orderByMap.default;
+    sql += ` ORDER BY ${orderBy} LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
     // Public list requests are identical for most visitors. Cache the response at the
@@ -1758,7 +1789,7 @@ try {
       try {
         listCache = caches.default;
         const v = await getDataVersion(env);
-        listCacheKey = new Request(`https://cache.local/api/places/list?limit=${limit}&offset=${offset}&page=${pageParam}&cat=${encodeURIComponent(categoryFilter)}&area=${encodeURIComponent(areaFilter)}&q=${encodeURIComponent(searchFilter)}&v=${v}`, { method: 'GET' });
+        listCacheKey = new Request(`https://cache.local/api/places/list?limit=${limit}&offset=${offset}&page=${pageParam}&cat=${encodeURIComponent(categoryFilter)}&area=${encodeURIComponent(areaFilter)}&q=${encodeURIComponent(searchFilter)}&verified=${verifiedOnly ? 1 : 0}&sort=${encodeURIComponent(sortFilter)}&v=${v}`, { method: 'GET' });
         const cachedList = await listCache.match(listCacheKey);
         if (cachedList) {
           const cached = new Response(cachedList.body, cachedList);
