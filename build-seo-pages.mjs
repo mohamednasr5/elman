@@ -23,17 +23,42 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const API_PLACES_URL = 'https://dalilmanzala.com/api/places?limit=1000';
+const API_PLACES_URL = 'https://dalilmanzala.com/api/places';
 
 async function fetchAllPlaces() {
   console.log('Fetching all published places from Turso...');
+  const out = [];
+  const limit = 1000;
+
   try {
-    const res = await fetch(API_PLACES_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    const json = await res.json();
-    return json?.data || [];
+    for (let offset = 0; offset < 100000; offset += limit) {
+      const res = await fetch(`${API_PLACES_URL}?limit=${limit}&offset=${offset}`, {
+        headers: { Accept: 'application/json' }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText} at offset ${offset}`);
+
+      const json = await res.json();
+      const batch = Array.isArray(json?.data) ? json.data : [];
+      out.push(...batch);
+
+      if (batch.length < limit) break;
+    }
+
+    // De-duplicate by canonical slug/id and keep only indexable public records.
+    const unique = [...new Map(
+      out
+        .map(place => [String(place?.slug || place?.id || '').trim(), place])
+        .filter(([key]) => key)
+    ).values()];
+
+    return unique.filter(place => {
+      const status = String(place?.status || place?.state || '').toLowerCase();
+      return !['draft', 'deleted', 'rejected', 'archived', 'hidden'].includes(status)
+        && place?.isPublished !== false
+        && place?.is_published !== false;
+    });
   } catch (err) {
-    console.warn('API fetch error, attempting fallback to local seed if available:', err.message);
+    console.warn('API fetch error, aborting static generation safely:', err.message);
     return [];
   }
 }
