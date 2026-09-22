@@ -1,4 +1,4 @@
-import { getPublishedPlaces, getCategories } from '../../core/db.js';
+import { getPlacesPaginated, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js?v=20260922_02';
 import { isAtmPlace, filterAtmPlaces, isAtmReadyAndOperational } from '../../utils/atm.js';
@@ -10,6 +10,7 @@ import { isPhoneSearchQuery, normalizePhoneNumber, matchPlaceByPhone, formatPhon
 import { toast } from '../components/Toast.js';
 
 let _userLocationCoords = null;
+let _cleanupPlacesPage = null;
 
 export async function renderPlacesPage($container, { query = {}, user }) {
   const towns = MANZALA_VILLAGES_LIST;
@@ -110,180 +111,196 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       <div class="places-grid" id="places-directory-grid">
         ${Array(8).fill(renderPlaceCardSkeleton()).join('')}
       </div>
+      <div id="places-load-state" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;margin:20px 0 8px">
+        <div id="places-load-spinner" hidden aria-hidden="true" style="width:24px;height:24px;border:3px solid rgba(27,79,114,.16);border-top-color:#1B4F72;border-radius:50%;animation:placesSpin .8s linear infinite"></div>
+        <button id="places-load-more" type="button" class="btn btn-outline" hidden style="min-width:190px;border-radius:14px;padding:10px 18px;font-weight:800">عرض المزيد من الأماكن</button>
+        <div id="places-load-sentinel" style="height:2px;width:100%" aria-hidden="true"></div>
+        <span id="places-load-message" style="font-size:12px;color:var(--text-secondary);text-align:center"></span>
+      </div>
+      <style>@keyframes placesSpin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){#places-load-spinner{animation:none!important}}</style>
     </div>
   `;
 
   try {
     let places = [];
     let categories = [];
-    [places, categories] = await Promise.all([
-      getPublishedPlaces({ limit: 1000 }),
-      getCategories()
-    ]);
+    let page = 1;
+    let hasMore = true;
+    let isLoading = false;
+    let requestSerial = 0;
+    let currentUser = getCurrentUser() || user;
+    let currentCategories = [];
+    const PAGE_SIZE = 24;
 
-    // Mount Sponsored Showcase
-    mountSponsoredShowcase('places-sponsored-showcase', places || [], {
-      title: 'إعلانات وأنشطة مميزة',
-      subtitle: 'أبرز الأنشطة التجارية في دليل المنزلة والمطرية الرقمي'
-    });
+    _cleanupPlacesPage?.();
+    let realtimeHandler = null;
+    let intersectionObserver = null;
+    let rotationTimer = null;
 
-    const currentUser = getCurrentUser() || user;
-
-    // Populate Category dropdown
     const catSelect = document.getElementById('places-category-filter');
-    if (catSelect && categories) {
-      categories.forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat.slug || cat._key;
-        opt.textContent = `${cat.icon || '📁'} ${cat.name}`;
-        if (query.category === opt.value) opt.selected = true;
-        catSelect.appendChild(opt);
-      });
-    }
-
-    let _currentAtmPlacesFilter = 'all';
-    const atmSlot = document.getElementById('places-atm-filters-slot');
     const searchInput = document.getElementById('places-search-filter');
     const areaSelect = document.getElementById('places-area-filter');
     const verifiedSelect = document.getElementById('places-verified-filter');
     const sortSelect = document.getElementById('places-sort-filter');
+    const atmSlot = document.getElementById('places-atm-filters-slot');
     const grid = document.getElementById('places-directory-grid');
-    const countMeta = document.getElementById('places-count-meta');
-    if (countMeta) countMeta.remove();
+    const loadMoreBtn = document.getElementById('places-load-more');
+    const loadSpinner = document.getElementById('places-load-spinner');
+    const loadMessage = document.getElementById('places-load-message');
+    const loadSentinel = document.getElementById('places-load-sentinel');
 
-    async function applyFilters() {
-      const q = searchInput?.value.trim() || '';
-      const selectedArea = areaSelect?.value || '';
-      const selectedCat = catSelect?.value || '';
-      const onlyVerified = verifiedSelect?.value === 'verified';
-      const sortBy = sortSelect?.value || 'default';
+    categories = await getCategories().catch(() => []);
+    currentCategories = categories || [];
+    if (catSelect && currentCategories.length) {
+      catSelect.innerHTML = '<option value="">جميع التصنيفات</option>' + currentCategories.map(cat => {
+        const value = cat.slug || cat._key || cat.id || '';
+        const selected = query.category === value ? ' selected' : '';
+        return `<option value="${escAttr(value)}"${selected}>${cat.icon || '📁'} ${escHtml(cat.name || value)}</option>`;
+      }).join('');
+    }
 
-      let filtered = [...places];
+    mountSponsoredShowcase('places-sponsored-showcase', [], {
+      title: 'إعلانات وأنشطة مميزة',
+      subtitle: 'أبرز الأنشطة التجارية في دليل المنزلة والمطرية الرقمي'
+    });
 
-      // Filter by area / town (STRICT village & city isolation)
-      if (selectedArea) {
-        filtered = filtered.filter(p => {
-          const pArea = (p.area || '').trim();
-          return pArea === selectedArea || arabicMatch(pArea, selectedArea);
-        });
-      }
+    function getFilterState() {
+      return {
+        q: searchInput?.value.trim() || '',
+        area: areaSelect?.value || '',
+        category: catSelect?.value || '',
+        verified: verifiedSelect?.value === 'verified',
+        sort: sortSelect?.value || 'default'
+      };
+    }
 
-      // Filter by category
-      const isAtmFilterActive = selectedCat === 'atm' || selectedCat.includes('صراف') || (q && (q.includes('صراف') || q.includes('atm')));
-      if (atmSlot) {
-        atmSlot.style.display = isAtmFilterActive ? 'block' : 'none';
-      }
-
-      if (selectedCat) {
-        filtered = filtered.filter(p => p.categoryId === selectedCat || p.subcategoryId === selectedCat || (selectedCat === 'atm' && isAtmPlace(p)));
-      }
-
-      // Exclude broken or empty ATMs from standard search queries unless explicit ATM filter is chosen
-      if (isAtmFilterActive && _currentAtmPlacesFilter === 'all') {
-        filtered = filtered.filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
-      }
-
-      if (isAtmFilterActive && _currentAtmPlacesFilter !== 'all') {
-        filtered = filterAtmPlaces(filtered, _currentAtmPlacesFilter, 15);
-      }
-
-      // Filter by verified (Exclude ATMs from general commercial verified list)
-      if (onlyVerified) {
-        filtered = filtered.filter(p => p.isVerified && !isAtmPlace(p));
-      }
-
-      // Filter by search query
-      if (q) {
-        const isPhone = isPhoneSearchQuery(q);
-        if (isPhone) {
-          const qPhone = normalizePhoneNumber(q);
-          const displayPhone = formatPhoneNumberForDisplay(qPhone);
-          filtered = filtered.filter(p => matchPlaceByPhone(p, qPhone));
-
-          if (filtered.length === 0) {
-            toast.warning(`لا يوجد أي نشاط تجاري مرتبط برقم الهاتف (${displayPhone})`);
-            
-            if (grid) {
-              grid.innerHTML = `
-                <div class="empty-state phone-empty-state animate-fade-in" style="grid-column:1/-1;border:1.5px solid #F59E0B;border-radius:18px;padding:36px 20px;text-align:center;background:var(--surface);box-shadow:0 8px 24px rgba(245,158,11,0.08);max-width:560px;margin:1rem auto">
-                  <div style="font-size:38px;margin-bottom:10px">📞</div>
-                  <h3 style="font-size:1.25rem;font-weight:900;color:var(--text-primary);margin-bottom:6px">لا يوجد نشاط مرتبط برقم الهاتف</h3>
-                  <div style="direction:ltr;font-weight:900;color:#0284C7;font-size:16px;margin-bottom:12px">${escHtml(displayPhone)}</div>
-                  <p style="font-size:13.5px;color:var(--text-secondary);max-width:450px;margin:0 auto 18px auto;line-height:1.5">لم نجد أي مكان مسجل بهذا الرقم في دليل المنزلة والمطرية الرقمي.</p>
-                  <a href="dashboard.html?section=add&phone=${encodeURIComponent(qPhone)}" class="btn btn-primary btn-sm" style="border-radius:10px;padding:8px 18px">➕ أضف هذا المكان الآن</a>
-                </div>
-              `;
-            }
-            return;
-          }
-        } else {
-          filtered = filtered
-            .map(p => {
-              const score = Math.max(
-                arabicScore(p.name, q),
-                arabicScore(p.categoryName || '', q) * 0.9,
-                p.medicalSpecialty && arabicMatch(p.medicalSpecialty, q) ? 90 : 0,
-                p.services?.some(s => arabicMatch(s, q)) ? 75 : 0,
-                arabicScore(p.area || '', q) * 0.85,
-                arabicScore(p.address || '', q) * 0.7,
-                matchPlaceByPhone(p, q) ? 100 : 0
-              );
-              return { place: p, score };
-            })
-            .filter(item => item.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .map(item => item.place);
-        }
-      }
-
-      // Sorting & Location Distance Filter
-      let sorted = [];
-      if (sortBy === 'nearest') {
-        if (!_userLocationCoords) {
-          toast.info('جاري تحديد موقعك الجغرافي لحساب الأماكن الأقرب إليك... 📍');
-          try {
-            _userLocationCoords = await getUserLocation();
-            toast.success('تم تحديد موقعك! تم ترتيب الأماكن من الأقرب إلى الأبعد 📍');
-          } catch (err) {
-            if (err.code === 1) {
-              toast.warning('يرجى السماح للمتصفح بالوصول للموقع (Allow Location) في شريط العنوان 📍');
-            } else {
-              toast.info('تم الترتيب حسب المسافة من مركز المنزلة 📍');
-            }
-            _userLocationCoords = MANZALA_CENTER;
-          }
-        }
-        sorted = sortPlacesByDistance(filtered, _userLocationCoords);
-      } else if (sortBy === 'highest-rating') {
-        sorted = filtered.sort((a, b) => (Number(b.rating) || 5.0) - (Number(a.rating) || 5.0));
-      } else if (sortBy === 'most-reviews') {
-        sorted = filtered.sort((a, b) => (Number(b.reviewCount) || 0) - (Number(a.reviewCount) || 0));
-      } else if (sortBy === 'negative') {
-        sorted = filtered.sort((a, b) => (Number(a.rating) || 5.0) - (Number(b.rating) || 5.0));
-      } else if (sortBy === 'newest') {
-        sorted = filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      } else {
-        // Default: Verified first -> Current User's -> Others
-        sorted = sortDirectoryPlaces(filtered, currentUser?.uid);
-      }
-
-      // Render
-      
-
-      if (sorted.length === 0) {
-        grid.innerHTML = `
-          <div class="empty-state" style="grid-column:1/-1">
-            <div class="empty-state__icon">🔍</div>
-            <h3 class="empty-state__title">لا توجد نتائج تطابق بحثك</h3>
-            <p class="empty-state__text">جرب البحث بكلمات أخرى أو اختر مدينة/قرية أو تصنيفاً مختلفاً</p>
-          </div>
-        `;
-      } else {
-        grid.innerHTML = sorted.map(p => renderPlaceCard(p)).join('');
+    function updateLoadingUI() {
+      if (loadSpinner) loadSpinner.hidden = !isLoading;
+      if (loadMoreBtn) loadMoreBtn.hidden = isLoading || !hasMore;
+      if (loadMessage) {
+        if (isLoading) loadMessage.textContent = 'جاري تحميل النتائج من الخادم…';
+        else if (!hasMore && places.length) loadMessage.textContent = `تم عرض ${places.length} مكانًا`;
+        else loadMessage.textContent = '';
       }
     }
 
-    // ATM Places Filter buttons handler
+    function getClientVisiblePlaces() {
+      const state = getFilterState();
+      let visible = [...places];
+      const isPhone = isPhoneSearchQuery(state.q);
+      const isAtmFilterActive = state.category === 'atm' || state.category.includes('صراف') || (state.q && (state.q.includes('صراف') || state.q.toLowerCase().includes('atm')));
+
+      if (atmSlot) atmSlot.style.display = isAtmFilterActive ? 'block' : 'none';
+
+      if (isPhone) {
+        const qPhone = normalizePhoneNumber(state.q);
+        visible = visible.filter(p => matchPlaceByPhone(p, qPhone));
+      }
+
+      if (isAtmFilterActive && _currentAtmPlacesFilter === 'all') {
+        visible = visible.filter(p => !isAtmPlace(p) || isAtmReadyAndOperational(p, 15));
+      }
+      if (isAtmFilterActive && _currentAtmPlacesFilter !== 'all') {
+        visible = filterAtmPlaces(visible, _currentAtmPlacesFilter, 15);
+      }
+
+      if (state.sort === 'nearest') {
+        if (_userLocationCoords) visible = sortPlacesByDistance(visible, _userLocationCoords);
+      }
+      return visible;
+    }
+
+    function renderCurrentPage() {
+      const visible = getClientVisiblePlaces();
+      if (!grid) return;
+
+      if (!visible.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+          <div class="empty-state__icon">🔍</div>
+          <h3 class="empty-state__title">لا توجد نتائج تطابق بحثك</h3>
+          <p class="empty-state__text">جرب تغيير كلمة البحث أو المدينة أو التصنيف</p>
+        </div>`;
+        return;
+      }
+
+      grid.innerHTML = visible.map(p => renderPlaceCard(p)).join('');
+      updateLoadingUI();
+    }
+
+    async function fetchPlacesPage({ reset = false } = {}) {
+      if (isLoading) return;
+      const serial = ++requestSerial;
+      const state = getFilterState();
+      isLoading = true;
+      updateLoadingUI();
+
+      try {
+        let pageLimit = PAGE_SIZE;
+        let selectedSort = state.sort;
+
+        // Distance sorting needs a larger candidate pool, but only when explicitly requested.
+        if (selectedSort === 'nearest') {
+          pageLimit = 100;
+          page = 1;
+        }
+
+        const result = await getPlacesPaginated({
+          page,
+          limit: pageLimit,
+          category: state.category,
+          area: state.area,
+          q: state.q,
+          sort: selectedSort === 'highest-rating' ? 'rating' : (selectedSort === 'most-reviews' ? 'reviews' : (selectedSort === 'newest' ? 'newest' : 'default')),
+          verified: state.verified,
+          forceFresh: reset
+        });
+
+        if (serial !== requestSerial) return;
+
+        const incoming = Array.isArray(result?.places) ? result.places : [];
+        if (reset) places = [];
+
+        const seen = new Set(places.map(p => String(p?.id || p?.slug || '').toLowerCase()));
+        incoming.forEach(p => {
+          const key = String(p?.id || p?.slug || '').toLowerCase();
+          if (key && !seen.has(key)) { places.push(p); seen.add(key); }
+        });
+
+        hasMore = selectedSort === 'nearest' ? false : Boolean(result?.pagination?.hasMore);
+
+        if (reset) {
+          mountSponsoredShowcase('places-sponsored-showcase', places, {
+            title: 'إعلانات وأنشطة مميزة',
+            subtitle: 'أبرز الأنشطة التجارية في دليل المنزلة والمطرية الرقمي'
+          });
+        }
+
+        renderCurrentPage();
+      } catch (err) {
+        console.warn('[PlacesPage] Paginated load:', err);
+        if (reset && !places.length && grid) {
+          grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">⚠️</div><h3 class="empty-state__title">تعذر تحميل الأماكن الآن</h3><p class="empty-state__text">تحقق من الاتصال وحاول مرة أخرى.</p></div>`;
+        }
+      } finally {
+        if (serial === requestSerial) {
+          isLoading = false;
+          updateLoadingUI();
+        }
+      }
+    }
+
+    async function applyFilters() {
+      page = 1;
+      hasMore = true;
+      await fetchPlacesPage({ reset: true });
+    }
+
+    async function loadMore() {
+      if (isLoading || !hasMore) return;
+      page += 1;
+      await fetchPlacesPage({ reset: false });
+    }
+
     document.querySelectorAll('#places-atm-pills-bar .btn-atm-places-filter').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('#places-atm-pills-bar .btn-atm-places-filter').forEach(b => {
@@ -296,48 +313,61 @@ export async function renderPlacesPage($container, { query = {}, user }) {
         btn.style.background = '#F5A623';
         btn.style.color = '#0F2B48';
         btn.style.borderColor = '#F5A623';
-
         _currentAtmPlacesFilter = btn.getAttribute('data-atm-filter') || 'all';
-        applyFilters();
+        renderCurrentPage();
       });
     });
 
-    // Event listeners
-    searchInput?.addEventListener('input', debounce(applyFilters, 250));
-    areaSelect?.addEventListener('change', applyFilters);
-    catSelect?.addEventListener('change', applyFilters);
-    verifiedSelect?.addEventListener('change', applyFilters);
-    sortSelect?.addEventListener('change', applyFilters);
+    loadMoreBtn?.addEventListener('click', loadMore);
+    searchInput?.addEventListener('input', debounce(() => applyFilters(), 300));
+    areaSelect?.addEventListener('change', () => applyFilters());
+    catSelect?.addEventListener('change', () => applyFilters());
+    verifiedSelect?.addEventListener('change', () => applyFilters());
+    sortSelect?.addEventListener('change', async () => {
+      if (sortSelect.value === 'nearest' && !_userLocationCoords) {
+        toast.info('جاري تحديد موقعك الجغرافي لحساب الأماكن الأقرب إليك… 📍');
+        try {
+          _userLocationCoords = await getUserLocation();
+          toast.success('تم تحديد موقعك! 📍');
+        } catch (err) {
+          _userLocationCoords = MANZALA_CENTER;
+          toast.info('تعذر الوصول لموقعك، تم استخدام مركز المنزلة للمقارنة.');
+        }
+      }
+      applyFilters();
+    });
 
-    // Initialize Smart Voice Search
     mountVoiceSearchButton({
       inputEl: searchInput,
-      onSearch: (spokenText) => {
-        applyFilters();
-      }
+      onSearch: () => applyFilters()
     });
 
-    // Initial render
-    applyFilters();
+    // First page only: no more 1000-record download on initial navigation.
+    await fetchPlacesPage({ reset: true });
 
-    // Realtime Zero-Delay Live Updates (No refresh needed)
-    window.addEventListener('manzala:realtime_sync', async (e) => {
+    realtimeHandler = async (e) => {
       const type = e.detail?.type;
-      if (type === 'NEW_PLACE' || type === 'PLACE_UPDATED' || type === 'DATA_VERSION_CHANGED') {
-        places = await getPublishedPlaces({ forceFresh: true });
-        applyFilters();
+      if (type === 'NEW_PLACE' || type === 'PLACE_UPDATED' || type === 'PLACE_DELETED' || type === 'DATA_VERSION_CHANGED') {
+        await applyFilters();
       }
-    });
+    };
+    window.addEventListener('manzala:realtime_sync', realtimeHandler);
 
-    // Auto-rotate sponsored ads order every 60 seconds for fair visibility
-    const placesRotationTimer = setInterval(() => {
-      // Only re-apply if user is on default sort and not currently typing a search query
-      if (sortSelect?.value === 'default' && !searchInput?.value.trim()) {
-        applyFilters();
-      }
+    intersectionObserver = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) loadMore();
+    }, { rootMargin: '700px 0px' });
+    if (loadSentinel) intersectionObserver.observe(loadSentinel);
+
+    rotationTimer = setInterval(() => {
+      if (sortSelect?.value === 'default' && !searchInput?.value.trim()) renderCurrentPage();
     }, 60000);
 
-  } catch (err) {
+    _cleanupPlacesPage = () => {
+      try { if (realtimeHandler) window.removeEventListener('manzala:realtime_sync', realtimeHandler); } catch (_) {}
+      try { intersectionObserver?.disconnect(); } catch (_) {}
+      try { if (rotationTimer) clearInterval(rotationTimer); } catch (_) {}
+      _cleanupPlacesPage = null;
+    };  } catch (err) {
     console.error('[PlacesPage] Load error:', err);
   }
 }
@@ -388,6 +418,10 @@ function debounce(func, wait) {
   };
 }
 
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');
+}
 function escAttr(str) {
   if (!str) return '';
   return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
