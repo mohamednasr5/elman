@@ -305,7 +305,7 @@ export async function fetchManagedUserNotifications(uid) {
       if (!place) return;
       const id = String(place.id || place._key);
 
-      const targetUrl = '/place.html?slug=' + encodeURIComponent(place.slug || id);
+      const targetUrl = '/place/' + encodeURIComponent(place.slug || id) + '/';
 
       // Verified Place Notification
       const isPlaceVerified = Boolean(
@@ -524,7 +524,7 @@ export function initLiveNotificationSubscriber(uid) {
               id:'notif_new_place_'+id,type:'new_place',
               title:'🎉 انضمام نشاط جديد: '+(p.name||'نشاط جديد'),
               message:'('+(p.name||'مكان جديد')+') انضم حديثاً إلى دليل المنزلة والمطرية.',
-              actionUrl:'/place.html?slug='+encodeURIComponent(p.slug||id),createdAt:created
+              actionUrl:'/place/'+encodeURIComponent(p.slug||id)+'/',createdAt:created
             },uid);
           } else if (verified > now - 45000 && verified > Number(previous.get(id)?.verifiedAt||0)) {
             showLiveNotificationPopup({
@@ -532,7 +532,7 @@ export function initLiveNotificationSubscriber(uid) {
               title:'👑 توثيق رسمي جديد: '+(p.name||'مكان موثق'),
               placeName:p.name||'المكان',
               message:'تم توثيق ('+(p.name||'المكان')+') رسمياً بالعلامة الزرقاء.',
-              actionUrl:'/place.html?slug='+encodeURIComponent(p.slug||id),createdAt:verified
+              actionUrl:'/place/'+encodeURIComponent(p.slug||id)+'/',createdAt:verified
             },uid);
           }
         }
@@ -647,7 +647,7 @@ export function initLiveNotificationSubscriber(uid) {
                   type: 'place_review',
                   title: `💬 تعليق جديد: ${r.userName || 'مستخدم'}`,
                   message: `قام ${r.userName || 'مستخدم'} بالتعليق على (${r.placeName || 'مكان'}): ${commentText}`,
-                  actionUrl: `/place.html?slug=${encodeURIComponent(r.placeSlug || r.placeId)}#reviews`,
+                  actionUrl: `/place/${encodeURIComponent(r.placeSlug || r.placeId)}/#reviews`,
                   createdAt: Number(r.createdAt || now)
                 }, uid);
               }
