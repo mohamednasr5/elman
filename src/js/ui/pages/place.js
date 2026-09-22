@@ -1969,7 +1969,7 @@ function mountSpotlightPlaceWidget(allPlaces = [], currentPlaceId = '', waBaseUr
       </div>
 
       <div class="spotlight-body animate-fade-in" id="spotlight-body-content">
-        <a href="/place.html?slug=${encodeURIComponent(pSlug)}" class="spotlight-profile-link" title="عرض ملف ${escAttr(pName)}">
+        <a href="/place/${encodeURIComponent(pSlug)}/" class="spotlight-profile-link" title="عرض ملف ${escAttr(pName)}">
           <div class="spotlight-avatar-box">
             <img src="${escAttr(pImg)}" alt="${escAttr(pName)}" class="spotlight-avatar-img" onerror="this.src='./icons/icon-72x72.png'" />
           </div>
