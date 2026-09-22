@@ -333,7 +333,7 @@ export const CATEGORY_ASSET_DEFINITIONS = [
   }
 ];
 
-const GENERIC_PLACE_MEDIA_RE = /(?:^|\\/)(?:default-cover|default-logo|og-whatsapp)\\.(?:jpe?g|png|webp)(?:[?#].*)?$/i;
+const GENERIC_PLACE_MEDIA_RE = /(?:^|\/)(?:default-cover|default-logo|og-whatsapp)\.(?:jpe?g|png|webp)(?:[?#].*)?$/i;
 
 function readMediaCandidates(value) {
   if (Array.isArray(value)) return value.flatMap(readMediaCandidates);
