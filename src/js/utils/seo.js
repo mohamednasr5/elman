@@ -149,6 +149,11 @@ export function setWebsiteSearchSchema() {
     name: 'دليل المنزلة والمطرية الرقمي',
     alternateName: ['Dalil Manzala', 'دليل المنزلة', 'دليل المطرية'],
     url: SITE_URL + '/',
+    inLanguage: 'ar-EG',
+    areaServed: [
+      { '@type': 'AdministrativeArea', name: 'المنزلة، محافظة الدقهلية، مصر' },
+      { '@type': 'AdministrativeArea', name: 'المطرية، محافظة الدقهلية، مصر' }
+    ],
     potentialAction: {
       '@type': 'SearchAction',
       target: {
@@ -167,7 +172,19 @@ export function setWebsiteSearchSchema() {
     name: 'دليل المنزلة والمطرية الرقمي',
     url: SITE_URL + '/',
     logo: `${SITE_URL}/icons/icon-512x512.png`,
-    image: `${SITE_URL}/icons/icon-512x512.png`
+    image: `${SITE_URL}/icons/icon-512x512.png`,
+    inLanguage: ['ar-EG', 'en-EG'],
+    areaServed: [
+      { '@type': 'AdministrativeArea', name: 'المنزلة، محافظة الدقهلية، مصر' },
+      { '@type': 'AdministrativeArea', name: 'المطرية، محافظة الدقهلية، مصر' }
+    ],
+    knowsAbout: [
+      'المحلات والأنشطة التجارية المحلية',
+      'الأطباء والعيادات والصيدليات',
+      'الحرفيين والخدمات المحلية',
+      'العروض والمنتجات المحلية',
+      'الخدمات والأماكن في المنزلة والمطرية'
+    ]
   };
   injectSchema('organization-brand-schema', orgSchema);
 }
