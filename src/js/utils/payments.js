@@ -199,11 +199,7 @@ export function resolvePlacePaymentMethods(placeOrMethods) {
   } else if (placeOrMethods && typeof placeOrMethods === 'object') {
     raw = placeOrMethods.paymentMethods || placeOrMethods.payment_methods || placeOrMethods.payments || [];
   }
-  let normalized = normalizePaymentMethods(raw);
-  if (!normalized || normalized.length === 0) {
-    normalized = DEFAULT_PAYMENT_METHOD_IDS;
-  }
-  return normalized;
+  return normalizePaymentMethods(raw);
 }
 
 /**
