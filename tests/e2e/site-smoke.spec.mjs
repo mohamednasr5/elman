@@ -40,7 +40,10 @@ test.describe('responsive public shell', () => {
     const sw = await request.get('/sw.js');
     expect(sw.ok()).toBeTruthy();
     await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
-    await expect.poll(async () => (await page.evaluate(() => navigator.serviceWorker?.getRegistrations().then(r => r.length))) || 0).toBeGreaterThan(0);
+    // The app can navigate/reload while the service worker claims the page.
+    // Read registrations from Playwright's browser context instead of the page
+    // execution context, which may be destroyed during that navigation.
+    await expect.poll(() => page.context().serviceWorkers().length).toBeGreaterThan(0);
   });
 
   test('English dashboard exposes the same core user feature set', async ({ request }) => {
