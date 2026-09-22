@@ -559,7 +559,7 @@ function initHomeVerifiedShowcase(allPlaces = null) {
                data-cover="${escAttr(p.coverImageUrl || p.cover || '')}"
                data-logo="${escAttr(p.logoUrl || p.logo || '')}"
                data-category="${escAttr(p.category || '')}"
-               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place/${encodeURIComponent(targetSlug)}/')"
                ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
                onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
                onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
@@ -578,7 +578,7 @@ function initHomeVerifiedShowcase(allPlaces = null) {
             <span>📍 ${escHtml(p.area)}</span>
             <span>🏷️ ${escHtml(p.category)}</span>
           </div>
-          <a href="/place.html?slug=${encodeURIComponent(targetSlug)}" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')">عرض بطاقة المكان ↗</a>
+          <a href="/place/${encodeURIComponent(targetSlug)}/" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place/${encodeURIComponent(targetSlug)}/')">عرض بطاقة المكان ↗</a>
         </div>
       </article>
     `;
@@ -723,7 +723,7 @@ function renderDeliveryServices(places) {
     const locationPart = place.area ? ` • ${escHtml(place.area)}` : ' بالمنزلة';
 
     return `
-    <a href="/place.html?slug=${encodeURIComponent(targetSlug)}" class="delivery-card"
+    <a href="/place/${encodeURIComponent(targetSlug)}/" class="delivery-card"
        style="--vehicle-color: ${vMeta.color}; --vehicle-bg: ${vMeta.bgColor}; --vehicle-border: ${vMeta.borderColor}; --vehicle-glow: ${vMeta.glowColor};"
        data-place-id="${escAttr(place.id || place._key || '')}"
        data-place-slug="${escAttr(targetSlug)}"
@@ -733,7 +733,7 @@ function renderDeliveryServices(places) {
        data-area="${escAttr(place.area || '')}"
        data-cover="${escAttr(place.coverImageUrl || '')}"
        data-logo="${escAttr(place.logoUrl || '')}"
-       onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(targetSlug)}')"
+       onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place/${encodeURIComponent(targetSlug)}/')"
        ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
        onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)"
        onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${escAttr(targetSlug)}', this)">
