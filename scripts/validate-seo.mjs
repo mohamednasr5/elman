@@ -66,8 +66,17 @@ must(!/^\/en\/category\/\*\s+\/en\/category\/index\.html\s+200$/m.test(redirects
 must(!/^\/category\/\*\s+\/category\.html\?slug=:splat\s+200$/m.test(redirects),'_redirects must not wildcard-fallback /category/* to category.html with HTTP 200');
 
 const worker=read('worker/index.js');
-must(!/place\\.(?:latitude|lat)\\s*\\|\\|\\s*31\\.1578|place\\.(?:longitude|lng)\\s*\\|\\|\\s*31\\.9333/.test(worker),'Worker must not use Manzala city-centre coordinates as place fallbacks');
-must(!/place\\.(?:latitude|lat)\\s*\\|\\|\\s*31\\.1833|place\\.(?:longitude|lng)\\s*\\|\\|\\s*32\\.0333/.test(worker),'Worker must not use Matariya city-centre coordinates as place fallbacks');
+const forbiddenWorkerFallbacks = [
+  'place.latitude || 31.1578',
+  'place.lat || 31.1578',
+  'place.longitude || 31.9333',
+  'place.lng || 31.9333',
+  'place.latitude || 31.1833',
+  'place.lat || 31.1833',
+  'place.longitude || 32.0333',
+  'place.lng || 32.0333'
+];
+must(!forbiddenWorkerFallbacks.some(value => worker.includes(value)),'Worker must not use city-centre coordinates as place fallbacks');
 
 const entity=read('src/js/utils/seo-entity.js');
 must((entity.includes("'@type': 'LocalBusiness'")||entity.includes("return 'LocalBusiness'"))&&entity.includes("'@type': 'BreadcrumbList'"),'Required structured data generators missing');
