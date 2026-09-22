@@ -225,12 +225,16 @@ export function closeAzan() {
     try {
       _activeAudio.pause();
       _activeAudio.currentTime = 0;
+      _activeAudio.removeAttribute('src');
+      _activeAudio.load();
     } catch (_) {}
   }
 
   if (_activeVideo) {
     try {
       _activeVideo.pause();
+      _activeVideo.removeAttribute('src');
+      _activeVideo.load();
     } catch (_) {}
   }
 
@@ -530,9 +534,20 @@ export function initAzanService() {
   if (typeof window !== 'undefined') {
     window.__testAzan = (prayerName = 'asr') => {
       const prayers = calculateElmanzalaPrayers(new Date());
-      const selected = prayers.find(p => p.id === prayerName.toLowerCase()) || prayers[2];
+      const selected = prayers.find(p => p.id === String(prayerName).toLowerCase()) || prayers[2];
       playAzan(selected, null);
     };
     window.__closeAzan = closeAzan;
   }
 }
+
+// تسجيل فوري عند تحميل الموديول لضمان توفرها المباشر في الكونسول
+if (typeof window !== 'undefined') {
+  window.__testAzan = (prayerName = 'asr') => {
+    const prayers = calculateElmanzalaPrayers(new Date());
+    const selected = prayers.find(p => p.id === String(prayerName).toLowerCase()) || prayers[2];
+    playAzan(selected, null);
+  };
+  window.__closeAzan = closeAzan;
+}
+

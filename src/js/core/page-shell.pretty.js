@@ -57,6 +57,10 @@ function _applyCoinsBalanceToUI(balance) {
   if (moreValEl) moreValEl.textContent = valStr;
   const walletLiveBal = document.getElementById('wallet-live-balance');
   if (walletLiveBal) walletLiveBal.textContent = valStr;
+  const headerUserBadge = document.getElementById('header-user-coins-badge');
+  if (headerUserBadge) headerUserBadge.textContent = `${valStr} ${isEn ? 'coins' : 'ذهبية'}`;
+  const sidebarBadge = document.getElementById('sidebar-coins-balance-badge');
+  if (sidebarBadge) sidebarBadge.textContent = `${valStr} ذهبية`;
 }
 
 if (typeof window !== 'undefined' && !window.__headerCoinsListenerBound) {
@@ -80,7 +84,8 @@ function _renderHeaderUserSlot(user = null) {
     const firstName = name.split(/\s+/)[0] || (isEn ? 'Account' : 'حسابي');
     const photo = u.photoURL || u.photo_url || '/icons/icon-72x72.png';
     const isUserAdmin = isAdmin(u);
-    return `<div class="header__user-group"><div class="header__user" style="position:relative"><button class="header__user-btn" id="header-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" title="${_escShell(name)}"><img src="${_escShell(photo)}" alt="${_escShell(firstName)}" class="header__avatar" width="32" height="32" onerror="this.src='/icons/icon-72x72.png'"><span class="header__user-name">${_escShell(firstName)}</span><span aria-hidden="true" style="font-size:10px">▾</span></button><div class="header__dropdown" id="header-user-dropdown" role="menu"><a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800">🪙 ${isEn ? 'Wallet & Coins' : 'الرصيد والعملات الذهبية'}</a><a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="header__dropdown-item" role="menuitem">🏠 ${isEn ? 'Dashboard' : 'لوحة تحكمي'}</a><a href="${isEn ? '/en/dashboard/?section=places' : '/dashboard.html?section=places'}" class="header__dropdown-item" role="menuitem">📍 ${isEn ? 'My Places' : 'أماكني'}</a><a href="${isEn ? '/en/dashboard/?section=add' : '/dashboard.html?section=add'}" class="header__dropdown-item" role="menuitem">➕ ${isEn ? 'Add Place' : 'إضافة مكان'}</a><a href="${isEn ? '/en/dashboard/?section=loyalty' : '/dashboard.html?section=loyalty'}" class="header__dropdown-item" role="menuitem">🎁 ${isEn ? 'Loyalty Rewards' : 'نادي الولاء'}</a><a href="${isEn ? '/en/dashboard/?section=notifications' : '/dashboard.html?section=notifications'}" class="header__dropdown-item" role="menuitem">🔔 ${isEn ? 'Notifications' : 'الإشعارات'}</a>${isUserAdmin ? `<div class="header__dropdown-divider"></div><a href="/admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ ${isEn ? 'Administration' : 'لوحة الإدارة'}</a>` : ''}<div class="header__dropdown-divider"></div><button class="header__dropdown-item header__dropdown-item--danger" id="header-logout-btn" type="button" role="menuitem">🚪 ${isEn ? 'Sign Out' : 'تسجيل الخروج'}</button></div></div></div>`;
+    const coinsDisplay = _getStoredCoinsBalance().toLocaleString(isEn ? 'en-US' : 'ar-EG');
+    return `<div class="header__user-group"><div class="header__user" style="position:relative"><button class="header__user-btn" id="header-user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" title="${_escShell(name)}"><img src="${_escShell(photo)}" alt="${_escShell(firstName)}" class="header__avatar" width="32" height="32" onerror="this.src='/icons/icon-72x72.png'"><span class="header__user-name">${_escShell(firstName)}</span><span aria-hidden="true" style="font-size:10px">▾</span></button><div class="header__dropdown" id="header-user-dropdown" role="menu"><a href="/wallet.html" class="header__dropdown-item" role="menuitem" style="color:#D97706;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:8px"><span>🪙 ${isEn ? 'Wallet & Coins' : 'محفظة الذهبيات'}</span><span class="badge" id="header-user-coins-badge" style="background:#F5A623;color:#0B1E30;font-size:11.5px;font-weight:900;padding:2px 8px;border-radius:9999px">${coinsDisplay} ${isEn ? 'coins' : 'ذهبية'}</span></a><a href="${isEn ? '/en/dashboard/' : '/dashboard.html'}" class="header__dropdown-item" role="menuitem">🏠 ${isEn ? 'Dashboard' : 'لوحة تحكمي'}</a><a href="${isEn ? '/en/dashboard/?section=places' : '/dashboard.html?section=places'}" class="header__dropdown-item" role="menuitem">📍 ${isEn ? 'My Places' : 'أماكني'}</a><a href="${isEn ? '/en/dashboard/?section=add' : '/dashboard.html?section=add'}" class="header__dropdown-item" role="menuitem">➕ ${isEn ? 'Add Place' : 'إضافة مكان'}</a><a href="${isEn ? '/en/dashboard/?section=loyalty' : '/dashboard.html?section=loyalty'}" class="header__dropdown-item" role="menuitem">🎁 ${isEn ? 'Loyalty Rewards' : 'نادي الولاء'}</a><a href="${isEn ? '/en/dashboard/?section=notifications' : '/dashboard.html?section=notifications'}" class="header__dropdown-item" role="menuitem">🔔 ${isEn ? 'Notifications' : 'الإشعارات'}</a>${isUserAdmin ? `<div class="header__dropdown-divider"></div><a href="/admin/index.html" class="header__dropdown-item" style="color:var(--secondary)" role="menuitem">⚙️ ${isEn ? 'Administration' : 'لوحة الإدارة'}</a>` : ''}<div class="header__dropdown-divider"></div><button class="header__dropdown-item header__dropdown-item--danger" id="header-logout-btn" type="button" role="menuitem">🚪 ${isEn ? 'Sign Out' : 'تسجيل الخروج'}</button></div></div></div>`;
   }
   const loginHref = isEn ? '/en/login/' : '/login.html';
   const loginText = isEn ? 'Sign In' : 'دخول';
@@ -149,7 +154,7 @@ function _bottomNavHTML(active = '') {
   const items = isEn ? [['/en/','🏠','Home'],['/en/categories/','📋','Categories'],['/en/offers/','🏷️','Offers'],['#more','☰','More']] : [['/index.html','🏠','الرئيسية'],['/categories.html','📋','التصنيفات'],['/offers.html','🏷️','العروض'],['#more','☰','المزيد']];
   const norm = p => String(p || '').replace(/^\/+/, '').replace(/\/+$/, '').replace(/\.html$/, '');
   const a = norm(active);
-  return `<nav class="bottom-nav" id="bottom-nav" role="navigation" aria-label="${isEn ? 'Quick Navigation' : 'تنقل سريع'}"><a href="${items[0][0]}" class="bottom-nav__item${norm(items[0][0]) === a ? ' active' : ''}"><span class="bottom-nav__icon">${items[0][1]}</span><span class="bottom-nav__label">${items[0][2]}</span></a><a href="${items[1][0]}" class="bottom-nav__item${norm(items[1][0]) === a ? ' active' : ''}"><span class="bottom-nav__icon">${items[1][1]}</span><span class="bottom-nav__label">${items[1][2]}</span></a><div class="bottom-nav__fab"><button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="${isEn ? 'Voice Assistant' : 'مساعد المنزلة الصوتي'}"><span class="fab-letter-m">M</span><span class="fab-mic-badge">🎙️</span></button></div><a href="${items[2][0]}" class="bottom-nav__item${norm(items[2][0]) === a ? ' active' : ''}"><span class="bottom-nav__icon">${items[2][1]}</span><span class="bottom-nav__label">${items[2][2]}</span></a><button type="button" class="bottom-nav__item" id="bottom-nav-more-btn" aria-expanded="false" aria-label="${items[3][2]}"><span class="bottom-nav__icon">${items[3][1]}</span><span class="bottom-nav__label">${items[3][2]}</span></button></nav>`;
+  return `<nav class="bottom-nav" id="bottom-nav" role="navigation" aria-label="${isEn ? 'Quick Navigation' : 'تنقل سريع'}"><a href="${items[0][0]}" class="bottom-nav__item${norm(items[0][0]) === a ? ' active' : ''}"><span class="bottom-nav__icon">${items[0][1]}</span><span class="bottom-nav__label">${items[0][2]}</span></a><a href="${items[1][0]}" class="bottom-nav__item${norm(items[1][0]) === a ? ' active' : ''}"><span class="bottom-nav__icon">${items[1][1]}</span><span class="bottom-nav__label">${items[1][2]}</span></a><div class="bottom-nav__fab"><button type="button" class="bottom-nav__fab-btn bottom-nav__voice-assistant-fab" id="global-voice-assistant-fab" aria-label="${isEn ? 'M - Voice Assistant' : 'M - مساعد المنزلة الصوتي'}"><span class="fab-letter-m" aria-hidden="true">M</span><span class="fab-mic-badge" aria-hidden="true">🎙️</span></button></div><a href="${items[2][0]}" class="bottom-nav__item${norm(items[2][0]) === a ? ' active' : ''}"><span class="bottom-nav__icon">${items[2][1]}</span><span class="bottom-nav__label">${items[2][2]}</span></a><button type="button" class="bottom-nav__item" id="bottom-nav-more-btn" aria-expanded="false" aria-label="${items[3][2]}"><span class="bottom-nav__icon">${items[3][1]}</span><span class="bottom-nav__label">${items[3][2]}</span></button></nav>`;
 }
 
 function _footerHTML() {
@@ -166,7 +171,7 @@ function _footerHTML() {
     {title:'الخدمات والدليل',links:[['/dashboard.html?section=add','إضافة مكان'],['/dashboard.html','لوحة التحكم'],['/free-verification.html','التوثيق المجاني'],['/emergency.html','خدمات الطوارئ'],['/search.html','البحث في الدليل'],['/now.html','طلبات أهالينا']]},
     {title:'المساعدة والتواصل',links:[['/legal.html','السياسة القانونية'],['/contact.html','تواصل معنا'],['/terms.html','الشروط والأحكام'],['/privacy.html','الخصوصية'],['/manzala.html','عن المنزلة'],['/matariya.html','عن المطرية']]}
   ];
-  return `<footer class="footer" id="site-footer" role="contentinfo"><div class="container"><div class="footer__grid"><div class="footer__brand"><a href="${homeHref}" class="footer__logo"><img src="/icons/icon-96x96.png" alt="${title}" width="40" height="40" onerror="this.src='/favicon-48x48.png';"><span class="footer__logo-name">${title}</span></a><p class="footer__description">${tagline}</p></div>${groups.map(g=>`<div class="footer__column"><h3 class="footer__col-title">${g.title}</h3><ul class="footer__links">${g.links.map(([h,l])=>`<li><a href="${h}" class="footer__link">${l}</a></li>`).join('')}</ul></div>`).join('')}</div><div class="footer__bottom"><p class="footer__copyright">${isEn ? '© 2026 Dalil El Manzala & El Matariya. All rights reserved.' : '© 2026 دليل المنزلة والمطرية الرقمي. جميع الحقوق محفوظة.'}</p><div class="footer__bottom-links"><a href="${isEn?'/en/about.html':'/about.html'}" class="footer__bottom-link">${isEn?'About Us':'عن الدليل'}</a><a href="${isEn?'/en/privacy/':'/privacy.html'}" class="footer__bottom-link">${isEn?'Privacy':'الخصوصية'}</a><a href="${isEn?'/en/terms/':'/terms.html'}" class="footer__bottom-link">${isEn?'Terms':'الشروط'}</a><a href="${isEn?'/en/contact/':'/contact.html'}" class="footer__bottom-link">${isEn?'Contact':'تواصل'}</a></div></div></div></footer>`;
+  return `<footer class="footer" id="site-footer" role="contentinfo"><div class="container"><div class="footer__grid"><div class="footer__brand"><a href="${homeHref}" class="footer__logo"><img src="/icons/icon-96x96.png" alt="${title}" width="40" height="40" onerror="this.src='/favicon-48x48.png';"><span class="footer__logo-name">${title}</span></a><p class="footer__description">${tagline}</p><div class="footer__app-stores" aria-label="تحميل تطبيق دليل المنزلة والمطرية"><button type="button" class="app-store-btn app-store-btn--google" data-store="google" aria-label="${isEn ? 'Get it on Google Play (Coming Soon)' : 'احصل عليه من Google Play (قريباً)'}" title="${isEn ? 'Google Play — Coming Soon' : 'Google Play — قريباً بإذن الله'}"><span class="app-store-btn__badge">${isEn ? 'Soon' : 'قريباً'}</span><div class="app-store-btn__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg></div><div class="app-store-btn__text"><span class="app-store-btn__sub">${isEn ? 'GET IT ON' : 'احصل عليه من'}</span><span class="app-store-btn__title">Google Play</span></div></button><button type="button" class="app-store-btn app-store-btn--apple" data-store="apple" aria-label="${isEn ? 'Download on App Store (Coming Soon)' : 'حمله من App Store (قريباً)'}" title="${isEn ? 'App Store — Coming Soon' : 'App Store — قريباً بإذن الله'}"><span class="app-store-btn__badge">${isEn ? 'Soon' : 'قريباً'}</span><div class="app-store-btn__icon"><svg viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.84.94-2.91-.91.04-2.02.61-2.67 1.38-.58.67-1.08 1.76-.94 2.8.03.01.07.01.11.01.93 0 1.94-.52 2.56-1.28z"/></svg></div><div class="app-store-btn__text"><span class="app-store-btn__sub">${isEn ? 'Download on the' : 'حمله من'}</span><span class="app-store-btn__title">App Store</span></div></button></div></div>${groups.map(g=>`<div class="footer__column"><h3 class="footer__col-title">${g.title}</h3><ul class="footer__links">${g.links.map(([h,l])=>`<li><a href="${h}" class="footer__link">${l}</a></li>`).join('')}</ul></div>`).join('')}</div><div class="footer__bottom"><p class="footer__copyright">${isEn ? '© 2026 Dalil El Manzala & El Matariya. All rights reserved.' : '© 2026 دليل المنزلة والمطرية الرقمي. جميع الحقوق محفوظة.'}</p><div class="footer__bottom-links"><a href="${isEn?'/en/about.html':'/about.html'}" class="footer__bottom-link">${isEn?'About Us':'عن الدليل'}</a><a href="${isEn?'/en/privacy/':'/privacy.html'}" class="footer__bottom-link">${isEn?'Privacy':'الخصوصية'}</a><a href="${isEn?'/en/terms/':'/terms.html'}" class="footer__bottom-link">${isEn?'Terms':'الشروط'}</a><a href="${isEn?'/en/contact/':'/contact.html'}" class="footer__bottom-link">${isEn?'Contact':'تواصل'}</a></div></div></div></footer>`;
 }
 
 function _setupHeaderSearch() {
@@ -426,6 +431,9 @@ function _bindMoreMenu(){
   const close = () => {
     const sheet = document.getElementById('mobile-more-sheet');
     if (!sheet) return;
+    if (document.activeElement && sheet.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
     sheet.classList.remove('is-open');
     sheet.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('mobile-more-open');
@@ -534,6 +542,24 @@ export function setupInstantLinkPrefetcher() {
   document.addEventListener('touchstart', onPointerOver, { passive: true });
 }
 
+function _setupAppStoreButtons() {
+  document.querySelectorAll('.app-store-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isEn = isEnglish();
+      const storeName = btn.getAttribute('data-store') === 'apple' ? 'App Store' : 'Google Play';
+      const msg = isEn
+        ? `🚀 Dalil El Manzala & El Matariya App is coming soon to ${storeName}!`
+        : `🚀 تطبيق دليل المنزلة والمطرية قريباً بإذن الله على ${storeName}!`;
+      if (typeof window !== 'undefined' && window.toast?.info) {
+        window.toast.info(msg);
+      } else {
+        import('../ui/components/Toast.js').then(m => m.toast?.info(msg)).catch(() => alert(msg));
+      }
+    });
+  });
+}
+
 export async function initPage(activeFile=''){
   try{initContentProtection()}catch(_){}
   applyLangToDOM(getLang());
@@ -547,6 +573,7 @@ export async function initPage(activeFile=''){
   _bindMoreMenu();
   _bindHeaderUserEvents();
   _bindGlobalPhoneAutoFormat();
+  _setupAppStoreButtons();
   setupInstantLinkPrefetcher();
   try{bindGlobalVoiceAssistantFab()}catch(_){}
   try{
@@ -582,5 +609,26 @@ export async function initPage(activeFile=''){
     }
   }catch(_){}
 }
+
+if (typeof window !== 'undefined') {
+  if (!window.__testAzan) {
+    window.__testAzan = (prayerName = 'asr') => {
+      import('../services/azan-service.js').then(m => {
+        m.initAzanService();
+        if (typeof window.__testAzan === 'function') {
+          window.__testAzan(prayerName);
+        }
+      }).catch(err => console.error('[Azan Load Error]:', err));
+    };
+  }
+  if (!window.__closeAzan) {
+    window.__closeAzan = () => {
+      import('../services/azan-service.js').then(m => {
+        m.closeAzan();
+      }).catch(()=>{});
+    };
+  }
+}
+
 export { waitForAuth, isAdmin };
 

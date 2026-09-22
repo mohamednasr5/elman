@@ -20,8 +20,8 @@ export const firebaseConfig = {
 // Cloudflare Worker base URL
 export const WORKER_URL = '';
 
-// R2 Public CDN base URL
-export const R2_PUBLIC_URL = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev';
+// R2 Public CDN base URL (routed via /api/r2 to prevent Egyptian ISP blocking of r2.dev)
+export const R2_PUBLIC_URL = 'https://dalilmanzala.com/api/r2';
 
 // Web Push VAPID Key Pair
 export const FCM_VAPID_KEY = 'BEm1Vn_Ol2QKgHvU91MMprcgs3uMjp36fJrO591d0PCzn_lZ0ITSwSwYVzDSgEed5V2HFvN8fiy8DMOTLR8BuE8';

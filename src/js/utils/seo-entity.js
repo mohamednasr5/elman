@@ -125,6 +125,16 @@ export function getArabicCategoryName(category = '') {
 /**
  * Generates comprehensive, valid Local SEO metadata and JSON-LD for a business entity
  */
+export function toProxyImageUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const clean = url.trim();
+  if (clean.includes('r2.dev')) {
+    const match = clean.match(/\.r2\.dev\/(.+)$/);
+    if (match) return `${SITE_DOMAIN}/api/r2/${match[1].replace(/^\/+/, '')}`;
+  }
+  return clean;
+}
+
 export function generateBusinessSEO(place) {
   if (!place) return null;
 
@@ -154,6 +164,7 @@ export function generateBusinessSEO(place) {
 
   // Images
   let image = place.coverImageUrl || place.cover_image_url || place.logoUrl || place.logo_url || DEFAULT_OG_IMAGE;
+  image = toProxyImageUrl(image);
   if (!image.startsWith('http://') && !image.startsWith('https://')) {
     image = `${SITE_DOMAIN}/${image.replace(/^\/+/, '')}`;
   }
@@ -386,7 +397,9 @@ export function generateBusinessSEOEnglish(place) {
   const description = `Find ${rawName} in ${rawArea}${rawAddress ? ` — Address: ${rawAddress}` : ''}${place.phone ? ` — Phone: ${String(place.phone).trim()}` : ''}. Contact details, location, working hours and local information from Dalil El Manzala & El Matariya.`;
   const image = (() => {
     const v = place.coverImageUrl || place.cover_image_url || place.coverUrl || place.cover_url || place.logoUrl || place.logo_url || place.imageUrl || place.image_url || '';
-    return v ? (String(v).startsWith('http') ? String(v) : `${SITE_DOMAIN}/${String(v).replace(/^\/+/, '')}`) : DEFAULT_OG_IMAGE;
+    if (!v) return DEFAULT_OG_IMAGE;
+    const proxied = toProxyImageUrl(String(v));
+    return proxied.startsWith('http') ? proxied : `${SITE_DOMAIN}/${proxied.replace(/^\/+/, '')}`;
   })();
   const schemaType = mapCategoryToSchemaType(rawCategory || place.customCategory || place.category || '');
   const businessSchema = {

@@ -609,5 +609,26 @@ export async function initPage(activeFile=''){
     }
   }catch(_){}
 }
+
+if (typeof window !== 'undefined') {
+  if (!window.__testAzan) {
+    window.__testAzan = (prayerName = 'asr') => {
+      import('../services/azan-service.js').then(m => {
+        m.initAzanService();
+        if (typeof window.__testAzan === 'function') {
+          window.__testAzan(prayerName);
+        }
+      }).catch(err => console.error('[Azan Load Error]:', err));
+    };
+  }
+  if (!window.__closeAzan) {
+    window.__closeAzan = () => {
+      import('../services/azan-service.js').then(m => {
+        m.closeAzan();
+      }).catch(()=>{});
+    };
+  }
+}
+
 export { waitForAuth, isAdmin };
 

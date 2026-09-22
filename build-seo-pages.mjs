@@ -319,9 +319,9 @@ ${JSON.stringify(seo.schemas[1], null, 2)}
 
 <!-- Progressive Enhancement / Hydration Module -->
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=2.8.1';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=2.8.1';
-  import { waitForAuth } from '/src/js/core/auth.js?v=2.8.1';
+  import { initPage } from '/src/js/core/page-shell.js?v=5.6.2';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=5.6.2';
+  import { waitForAuth } from '/src/js/core/auth.js?v=5.6.2';
 
   // Concurrently initialize shell without clearing static content
   initPage('').catch(err => console.warn('[PageShell Error]:', err));
@@ -457,8 +457,8 @@ ${JSON.stringify(seo.schemas[1], null, 2)}
 </div>
 
 <script type="module">
-  import { initPage } from '/src/js/core/page-shell.js?v=2.8.1';
-  import { renderCategoryPage } from '/src/js/ui/pages/categories.js?v=2.8.1';
+  import { initPage } from '/src/js/core/page-shell.js?v=5.6.2';
+  import { renderCategoryPage } from '/src/js/ui/pages/categories.js?v=5.6.2';
   initPage('categories.html').catch(console.warn);
   renderCategoryPage(document.getElementById('page-container'), { slug: '${seo.categorySlug}' }).catch(console.warn);
 </script>

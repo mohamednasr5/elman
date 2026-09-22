@@ -1605,8 +1605,10 @@ try {
 
         const place = {
           ...result,
-          logoUrl: result.logo_url || result.logoUrl || null,
-          coverImageUrl: result.cover_image_url || result.coverImageUrl || null,
+          logoUrl: toProxyImageUrl(result.logo_url || result.logoUrl || null, ''),
+          coverImageUrl: toProxyImageUrl(result.cover_image_url || result.coverImageUrl || null, ''),
+          logo_url: toProxyImageUrl(result.logo_url || result.logoUrl || null, ''),
+          cover_image_url: toProxyImageUrl(result.cover_image_url || result.coverImageUrl || null, ''),
           categoryId: result.category_id || result.categoryId || '',
           customCategory: result.custom_category || result.customCategory || '',
           subcategoryId: result.subcategory_id || result.subcategoryId || '',
@@ -1783,8 +1785,10 @@ try {
       const ratingVal = Number(place.rating ?? stats.rating ?? 0.0);
       return {
         ...place,
-        logoUrl: place.logo_url || place.logoUrl || null,
-        coverImageUrl: place.cover_image_url || place.coverImageUrl || null,
+        logoUrl: toProxyImageUrl(place.logo_url || place.logoUrl || null, ''),
+        coverImageUrl: toProxyImageUrl(place.cover_image_url || place.coverImageUrl || null, ''),
+        logo_url: toProxyImageUrl(place.logo_url || place.logoUrl || null, ''),
+        cover_image_url: toProxyImageUrl(place.cover_image_url || place.coverImageUrl || null, ''),
         categoryId: place.category_id || place.categoryId || '',
         customCategory: place.custom_category || place.customCategory || '',
         subcategoryId: place.subcategory_id || place.subcategoryId || '',
@@ -6738,7 +6742,7 @@ try {
           await env.elmanzala.put(r2Key, buffer, {
             httpMetadata: { contentType: `image/${matches[1]}`, cacheControl: 'public, max-age=31536000' }
           });
-          photoUrl = `https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/${r2Key}`;
+          photoUrl = `https://dalilmanzala.com/api/r2/${r2Key}`;
         }
       } catch (uploadErr) {
         console.warn('[FreeVerification R2 Upload Warning]:', uploadErr?.message || uploadErr);
@@ -7170,7 +7174,7 @@ try {
         await env.elmanzala.put(key, file.stream(), {
           httpMetadata: { contentType, cacheControl: 'public, max-age=31536000, immutable' }
         });
-        const publicUrl = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/' + key;
+        const publicUrl = 'https://dalilmanzala.com/api/r2/' + key;
         return jsonResponse({ success: true, key, url: publicUrl }, 200, corsHeaders);
       }
 
@@ -7587,7 +7591,7 @@ ${categoriesContextStr}
           delivery: 'https://images.unsplash.com/photo-1526367790999-0150786686a2?w=1200&q=80'
         };
 
-        const defaultCover = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/assets/og-default.webp';
+        const defaultCover = 'https://dalilmanzala.com/api/r2/assets/og-default.webp';
         const matched = Object.entries(coverUrls).find(([k]) => categoryName.toLowerCase().includes(k));
         const selectedUrl = matched ? matched[1] : coverUrls.supermarket || defaultCover;
 
@@ -9875,7 +9879,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   const placeDesc = isEn
     ? (place.description_en || place.description || `Discover address, working hours, phone number, and services for ${rawPlaceName} in El Manzala and El Matariya, Egypt.`)
     : (place.description || `تعرف على عنوان ومواعيد وخدمات وأرقام التواصل الخاصة بـ ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`);
-  const placeImg = place.cover_image_url || place.logo_url || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg';
+  const placeImg = toProxyImageUrl(place.cover_image_url || place.logo_url || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg', canonicalBase);
 
   const isIdLike = (s) => !s || s.startsWith('p_') || s.startsWith('-P0') || (s.length > 20 && /^[a-zA-Z0-9_-]+$/.test(s));
   const cleanTranslit = slugifyWorker(place.name);
@@ -9901,8 +9905,8 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   const waClean = (place.whatsapp || '').replace(/\D/g, '').replace(/^0+/, '').trim();
   const isValidPh = phoneClean && !/^0+$/.test(phoneClean) && phoneClean.length >= 7;
   const isValidWa = waClean && !/^0+$/.test(waClean) && waClean.length >= 7;
-  const coverImg = place.cover_image_url || '';
-  const logoImg = place.logo_url || '';
+  const coverImg = toProxyImageUrl(place.cover_image_url || '', '');
+  const logoImg = toProxyImageUrl(place.logo_url || '', '');
   const placeArea = isEn
     ? (place.area_en || (place.area === 'المطرية' ? 'El Matariya' : 'El Manzala'))
     : (place.area || 'المنزلة والمطرية');
@@ -10040,14 +10044,14 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
       const preRenderedContent = `
         <!-- Edge SSR Instant Place View (0ms Perceived FCP) -->
         <section class="place-hero animate-fade-in" style="min-height:220px;background:linear-gradient(135deg,#1B4F72 0%,#0E2F44 100%);position:relative;overflow:hidden">
-          ${coverImg ? `<img src="${escapeHtml(coverImg)}" alt="${escapeHtml(rawPlaceName)}" class="place-hero__cover" fetchpriority="high" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.85" />` : ''}
+          ${coverImg ? `<img src="${escapeHtml(coverImg)}" alt="${escapeHtml(rawPlaceName)}" class="place-hero__cover" fetchpriority="high" loading="eager" decoding="async" onerror="this.style.display='none'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.85" />` : ''}
           <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)"></div>
         </section>
         <div class="container" style="max-width:var(--container-xl, 1200px);margin:0 auto;padding:1rem;position:relative;z-index:10;">
           <div class="place-header-card animate-fade-in-up" style="margin-top:-45px;padding:1.25rem;background:var(--surface,#fff);border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.08);border:1px solid var(--border,rgba(0,0,0,0.06));">
             <div style="display:flex;align-items:center;gap:1rem;">
               <div style="width:72px;height:72px;border-radius:50%;overflow:hidden;flex-shrink:0;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.12);background:var(--surface-2,#f1f5f9);display:flex;align-items:center;justify-content:center;font-size:28px">
-                ${logoImg ? `<img src="${escapeHtml(logoImg)}" alt="${escapeHtml(rawPlaceName)}" style="width:100%;height:100%;object-fit:cover" loading="eager" decoding="async" />` : '📍'}
+                ${logoImg ? `<img src="${escapeHtml(logoImg)}" alt="${escapeHtml(rawPlaceName)}" style="width:100%;height:100%;object-fit:cover" loading="eager" decoding="async" onerror="this.onerror=null;this.src='/icons/icon-96x96.png';" />` : '📍'}
               </div>
               <div style="flex:1;min-width:0">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -10404,6 +10408,19 @@ function toEnglishCategoryWorker(cat = '') {
   if (!cat) return '';
   const key = String(cat).toLowerCase().trim();
   return CATEGORY_NAMES_EN_WORKER[cat] || CATEGORY_NAMES_EN_WORKER[key] || cat;
+}
+
+function toProxyImageUrl(url, baseUrl = 'https://dalilmanzala.com') {
+  if (!url || typeof url !== 'string') return '';
+  const clean = url.trim();
+  if (clean.includes('r2.dev')) {
+    const match = clean.match(/\.r2\.dev\/(.+)$/);
+    if (match) {
+      const key = match[1].replace(/^\/+/, '');
+      return baseUrl ? `${baseUrl}/api/r2/${key}` : `/api/r2/${key}`;
+    }
+  }
+  return clean;
 }
 
 function escapeHtml(str) {
