@@ -123,32 +123,37 @@ async function requireAdmin(request, env, superadminOnly = false) {
 let _cachedDataVersion = '0';
 let _lastDataVersionFetch = 0;
 
-async function getDataVersion(env) {
+async function getDataVersion(env, options = {}) {
   const now = Date.now();
-  if (now - _lastDataVersionFetch < 60000) return _cachedDataVersion;
+  const force = Boolean(options?.force);
+  // Keep the normal API cache very small; the realtime stream can force a fresh R2 read.
+  if (!force && now - _lastDataVersionFetch < 2000) return _cachedDataVersion;
   try {
     if (env?.elmanzala?.get) {
       const obj = await Promise.race([
         env.elmanzala.get('config/data-version'),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 500))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1200))
       ]);
-      if (obj) {
-        _cachedDataVersion = await obj.text();
-        _lastDataVersionFetch = now;
-      }
+      _lastDataVersionFetch = now;
+      if (obj) _cachedDataVersion = await obj.text();
     }
   } catch (_) {}
   return _cachedDataVersion;
 }
 
-function bumpDataVersion(env, ctx) {
+async function bumpDataVersion(env, ctx) {
   _cachedDataVersion = String(Date.now());
   _lastDataVersionFetch = Date.now();
-  if (ctx?.waitUntil && env?.elmanzala?.put) {
-    ctx.waitUntil(
-      env.elmanzala.put('config/data-version', _cachedDataVersion)
-        .catch(err => console.warn('[Cache] data-version update failed:', err?.message || err))
-    );
+  if (env?.elmanzala?.put) {
+    try {
+      await env.elmanzala.put(
+        'config/data-version',
+        _cachedDataVersion,
+        { httpMetadata: { contentType: 'text/plain; charset=utf-8', cacheControl: 'no-cache, no-store, must-revalidate' } }
+      );
+    } catch (err) {
+      console.warn('[Cache] data-version update failed:', err?.message || err);
+    }
   }
 }
 
@@ -1515,7 +1520,7 @@ try {
           await new Promise(r => setTimeout(r, 15000));
           if (isClosed) break;
 
-          const latestVersion = await getDataVersion(env);
+          const latestVersion = await getDataVersion(env, { force: true });
           if (latestVersion !== activeVersion) {
             activeVersion = latestVersion;
             await writer.write(encoder.encode(`event: change\ndata: ${JSON.stringify({ type: 'DATA_VERSION_CHANGED', version: latestVersion, timestamp: Date.now() })}\n\n`));
@@ -7144,38 +7149,71 @@ try {
   // ── 1. Upload to R2 (POST /api/upload) ──
       // ── 1. Upload to R2 (POST /api/upload) ──
       if (url.pathname === '/api/upload' && request.method === 'POST') {
-        const auth = await requireAuth(request, env);
-        if (auth.response) return auth.response
-        const formData = await request.formData();
-        const file = formData.get('file');
-        const customKey = formData.get('key');
-        const folder = formData.get('folder') || 'places';
+        try {
+          const auth = await requireAuth(request, env);
+          if (auth.response) return auth.response;
 
-        if (!file) {
-          return jsonResponse({ error: 'لم يتم إرسال ملف' }, 400, corsHeaders);
-        }
+          const formData = await request.formData();
+          const file = formData.get('file');
+          const customKey = formData.get('key') || formData.get('path');
+          const folder = formData.get('folder') || 'places';
 
-        if (!env.elmanzala) return jsonResponse({success:false,error:'R2 غير مهيأ على Worker'},503,corsHeaders);
-        const contentType = String(file.type || '').toLowerCase();
-        const allowedTypes = new Set(['image/jpeg','image/png','image/webp','image/gif','image/avif']);
-        if (!allowedTypes.has(contentType)) return jsonResponse({success:false,error:'نوع الملف غير مسموح. الصور فقط.'},415,corsHeaders);
-        const size = Number(file.size || 0);
-        if (!Number.isFinite(size) || size <= 0 || size > 10 * 1024 * 1024) return jsonResponse({success:false,error:'حجم الصورة يجب ألا يتجاوز 10 ميجابايت'},413,corsHeaders);
-        const safeFolder = String(folder).replace(/[^a-zA-Z0-9_-]/g,'').slice(0,40) || 'places';
-        const extMap = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/avif':'avif'};
-        const ext = extMap[contentType] || 'webp';
-        let key = String(customKey || '').trim().replace(/^\/+|\/+$/g, '');
-        if (key) {
-          key = key.replace(/[^a-zA-Z0-9_./-]/g,'').slice(0,300);
-          if (!key || key.includes('..')) return jsonResponse({success:false,error:'مفتاح التخزين غير صالح'},400,corsHeaders);
-        } else {
-          key = safeFolder + '/' + Date.now() + '-' + Math.random().toString(36).substring(2,9) + '.' + ext;
+          if (!file || typeof file.stream !== 'function') {
+            return jsonResponse({ success:false, error:'لم يتم إرسال ملف صالح للرفع' }, 400, corsHeaders);
+          }
+
+          if (!env.elmanzala || typeof env.elmanzala.put !== 'function') {
+            return jsonResponse({ success:false, error:'R2 غير مهيأ على Worker' }, 503, corsHeaders);
+          }
+
+          const contentType = String(file.type || '').toLowerCase();
+          const allowedTypes = new Set(['image/jpeg','image/png','image/webp','image/gif','image/avif']);
+          if (!allowedTypes.has(contentType)) {
+            return jsonResponse({ success:false, error:'نوع الملف غير مسموح. الصور فقط (JPG/PNG/WebP/GIF/AVIF).' },415,corsHeaders);
+          }
+
+          const size = Number(file.size || 0);
+          if (!Number.isFinite(size) || size <= 0) {
+            return jsonResponse({success:false,error:'حجم الملف غير صالح'},400,corsHeaders);
+          }
+          if (size > 10 * 1024 * 1024) {
+            return jsonResponse({success:false,error:'حجم الصورة يجب ألا يتجاوز 10 ميجابايت بعد الضغط'},413,corsHeaders);
+          }
+
+          const safeFolder = String(folder).replace(/[^a-zA-Z0-9_-]/g,'').slice(0,40) || 'places';
+          const extMap = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','image/avif':'avif'};
+          const ext = extMap[contentType] || 'webp';
+          let key = String(customKey || '').trim().replace(/^\/+|\/+$/g, '');
+          if (key) {
+            key = key.replace(/[^a-zA-Z0-9_./-]/g,'').slice(0,300);
+            if (!key || key.includes('..')) return jsonResponse({success:false,error:'مفتاح التخزين غير صالح'},400,corsHeaders);
+          } else {
+            key = safeFolder + '/' + Date.now() + '-' + Math.random().toString(36).substring(2,9) + '.' + ext;
+          }
+
+          await env.elmanzala.put(key, file.stream(), {
+            httpMetadata: {
+              contentType,
+              cacheControl: 'public, max-age=31536000, immutable'
+            }
+          });
+
+          const publicUrl = 'https://dalilmanzala.com/api/r2/' + key;
+          return jsonResponse({ success:true, key, url:publicUrl, size, contentType }, 200, corsHeaders);
+        } catch (err) {
+          console.error('[R2 Upload Error]', {
+            message: err?.message || String(err),
+            name: err?.name || '',
+            stack: err?.stack || ''
+          });
+          const message = String(err?.message || '');
+          const status = /payload|body|request|formdata|too large|limit/i.test(message) ? 413 : 500;
+          return jsonResponse({
+            success:false,
+            error: status === 413 ? 'تعذر استقبال الصورة لأنها كبيرة جدًا. اضغطها وحاول مرة أخرى.' : 'تعذر رفع الصورة إلى التخزين الآن. حاول مرة أخرى.',
+            details: message.slice(0,240)
+          }, status, corsHeaders);
         }
-        await env.elmanzala.put(key, file.stream(), {
-          httpMetadata: { contentType, cacheControl: 'public, max-age=31536000, immutable' }
-        });
-        const publicUrl = 'https://dalilmanzala.com/api/r2/' + key;
-        return jsonResponse({ success: true, key, url: publicUrl }, 200, corsHeaders);
       }
 
       // ── 2. Delete from R2 (DELETE /api/upload/:key) ──
