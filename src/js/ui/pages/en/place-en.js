@@ -17,6 +17,7 @@ import { resolveDoctorSpecialty } from '../../../utils/specialty.js';
 import { resolvePlaceProfession } from '../../../utils/professions-data.js';
 import { translateArea, translateCategory } from '../../../utils/category-i18n.js';
 import { renderMarketWidgetsHTML, bindMarketWidgetsEvents } from '../../components/MarketWidgets.js';
+import { renderPlaceViewsBadgeHTML } from '../../../utils/place-views.js';
 
 export async function renderEnglishPlacePage($container, { slug, user, initialPlace = null } = {}) {
   const cleanSlug = String(slug || '').toLowerCase().trim();
@@ -123,6 +124,7 @@ export async function renderEnglishPlacePage($container, { slug, user, initialPl
                 <button type="button" id="place-en-rating-badge" class="badge" style="background:#fef3c7;color:#b45309;font-size:12px;padding:3px 8px;border-radius:4px;border:none;cursor:pointer;font-weight:700" title="Click to jump to customer reviews">
                   ⭐ Reviews
                 </button>
+                ${renderPlaceViewsBadgeHTML(place, { isEn: true })}
                 ${liveHoursBadge}
               </div>
               <h1 class="place-detail-title">

@@ -16,6 +16,7 @@ import { isFavorite, toggleFavorite } from '../../services/favorites.service.js'
 import { resolvePlaceProfession, getProfessionSvg } from '../../utils/professions-data.js';
 import { isValidPhoneNumber } from '../../utils/phone.js';
 import { renderPlaceCardPaymentStripHTML } from '../../utils/payments.js';
+import { renderPlaceViewsBadgeHTML } from '../../utils/place-views.js';
 
 // ── Instant 0ms Place Registry & Navigation Helpers ──
 if (typeof window !== 'undefined') {
@@ -321,28 +322,31 @@ export function renderPlaceCard(place) {
             ${place._distanceStr ? `<span class="badge" style="background:rgba(16,185,129,0.12);color:var(--success);font-size:10.5px;padding:1px 6px;border-radius:var(--radius-sm);font-weight:700">${isEn ? `${escHtml(place._distanceStr)} away` : `على بعد ${escHtml(place._distanceStr)}`}</span>` : ''}
             ${deliveryBadge}
           </div>
-          ${(() => {
-            let rCount = Number(place.reviewCount != null ? place.reviewCount : (place.review_count != null ? place.review_count : (place.reviewsCount != null ? place.reviewsCount : (place.reviews ? (Array.isArray(place.reviews) ? place.reviews.length : Object.keys(place.reviews).length) : (place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0)))));
-            if (rCount === 0 && (place.slug === 'almhnds-mhmd-hmad' || place.slug === 'mhnds-mhmd-hmad-5lQJ1o' || place.id === 'p_1788742873778_6k8a9v')) {
-              rCount = 500;
-            }
-            if (rCount === 0) {
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${renderPlaceViewsBadgeHTML(place, { isEn, compact: true })}
+            ${(() => {
+              let rCount = Number(place.reviewCount != null ? place.reviewCount : (place.review_count != null ? place.review_count : (place.reviewsCount != null ? place.reviewsCount : (place.reviews ? (Array.isArray(place.reviews) ? place.reviews.length : Object.keys(place.reviews).length) : (place.stats?.reviewCount ?? place.stats?.reviewsCount ?? 0)))));
+              if (rCount === 0 && (place.slug === 'almhnds-mhmd-hmad' || place.slug === 'mhnds-mhmd-hmad-5lQJ1o' || place.id === 'p_1788742873778_6k8a9v')) {
+                rCount = 500;
+              }
+              if (rCount === 0) {
+                return `
+                  <div style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text-muted);background:var(--surface-2);padding:2px 7px;border-radius:var(--radius-sm);border:1px solid var(--border)">
+                    <span>✨</span>
+                    <span>${isEn ? 'No reviews yet' : 'لا توجد تقييمات بعد'}</span>
+                  </div>
+                `;
+              }
+              const rScore = Number(place.rating || place.stats?.rating || 5.0).toFixed(1);
               return `
-                <div style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text-muted);background:var(--surface-2);padding:2px 7px;border-radius:var(--radius-sm);border:1px solid var(--border)">
-                  <span>✨</span>
-                  <span>${isEn ? 'No reviews yet' : 'لا توجد تقييمات بعد'}</span>
+                <div style="display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:#F59E0B;font-weight:700;background:rgba(245,158,11,0.08);padding:2px 7px;border-radius:var(--radius-sm)">
+                  <span>★</span>
+                  <span>${rScore}</span>
+                  <span style="color:var(--text-muted);font-weight:normal;font-size:10px">(${rCount} ${isEn ? 'reviews' : 'تقييم'})</span>
                 </div>
               `;
-            }
-            const rScore = Number(place.rating || place.stats?.rating || 5.0).toFixed(1);
-            return `
-              <div style="display:inline-flex;align-items:center;gap:3px;font-size:11.5px;color:#F59E0B;font-weight:700;background:rgba(245,158,11,0.08);padding:2px 7px;border-radius:var(--radius-sm)">
-                <span>★</span>
-                <span>${rScore}</span>
-                <span style="color:var(--text-muted);font-weight:normal;font-size:10px">(${rCount} ${isEn ? 'reviews' : 'تقييم'})</span>
-              </div>
-            `;
-          })()}
+            })()}
+          </div>
         </div>
         ${atmCashBadge}
         ${!isAtm ? renderPlaceCardPaymentStripHTML(place, { isEn }) : ''}

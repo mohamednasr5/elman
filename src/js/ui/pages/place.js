@@ -39,6 +39,7 @@ import { renderPlaceCard } from '../components/PlaceCard.js';
 import { openAppointmentModal } from '../components/AppointmentModal.js';
 import { renderMarketWidgetsHTML, bindMarketWidgetsEvents } from '../components/MarketWidgets.js';
 import { renderPaymentBadges, renderPlacePaymentStripHTML } from '../../utils/payments.js';
+import { renderPlaceViewsBadgeHTML } from '../../utils/place-views.js';
 
 export function renderAvailabilityBadge(status) {
   if (!status) return '';
@@ -887,6 +888,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
                     `}
                   </div>
                 ` : ''}
+                ${renderPlaceViewsBadgeHTML(place, { isEn })}
                 ${profInfo ? `
                   <a href="category.html?slug=${encodeURIComponent(profInfo.categorySlug || catInfo?.slug || 'crafts')}&prof=${encodeURIComponent(profInfo.id || '')}" class="place-profession-badge" style="text-decoration:none;padding:4px 12px;font-size:12.5px;display:inline-flex;align-items:center;gap:6px" title="تصفح جميع فنيي ${escHtml(profInfo.name || '')}">
                     ${getProfessionSvg(profInfo.id, { size: 16, color: profInfo.categoryColor || 'currentColor' })}
