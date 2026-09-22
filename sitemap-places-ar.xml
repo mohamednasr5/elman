@@ -805,6 +805,18 @@
     </image:image>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/place/hwawshy-eskndrany-altyb/</loc>
+    <lastmod>2026-09-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/hwawshy-eskndrany-altyb/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/hwawshy-eskndrany-altyb/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/hwawshy-eskndrany-altyb/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789190995999-rnwfxe7.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/place/mtam-fhyd-sea-food/</loc>
     <lastmod>2026-09-22</lastmod>
     <changefreq>weekly</changefreq>
@@ -3838,18 +3850,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/haybr-alahram/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789185101210-18g1qmd.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/hwawshy-eskndrany-altyb/</loc>
-    <lastmod>2026-09-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/hwawshy-eskndrany-altyb/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/hwawshy-eskndrany-altyb/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/hwawshy-eskndrany-altyb/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789190995999-rnwfxe7.webp</image:loc>
     </image:image>
   </url>
   <url>
