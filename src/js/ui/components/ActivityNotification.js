@@ -237,7 +237,7 @@ function renderNotificationCard(item) {
   card.setAttribute('aria-label', `نشاط حقيقي على الدليل: ${place.name}`);
 
   const logoSrc = place.logo || '/icons/icon-96x96.png';
-  const placeUrl = place.url || `/place.html?id=${encodeURIComponent(place.id)}`;
+  const placeUrl = place.url || `/place/${encodeURIComponent(place.slug || place.id)}/`;
 
   card.innerHTML = `
     <a href="${placeUrl}" class="activity-notif-inner" aria-label="عرض تفاصيل ${escapeHtml(place.name)}">
