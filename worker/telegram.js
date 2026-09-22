@@ -430,7 +430,7 @@ async function sendStats(chatId, env, editMessageId = null) {
     const sortedPlaces = [...places].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     const lastPlace = sortedPlaces[0];
     const lastPlaceStr = lastPlace 
-      ? `🏢 *آخر نشاط مضاف:* [${lastPlace.name}](https://elmanzla.web.app/place.html?slug=${lastPlace.slug || lastPlace._id}) (${lastPlace.categoryName || 'عام'})` 
+      ? `🏢 *آخر نشاط مضاف:* [${lastPlace.name}](https://dalilmanzala.com/place/${encodeURIComponent(lastPlace.slug || lastPlace._id)}/) (${lastPlace.categoryName || 'عام'})` 
       : 'لا يوجد';
 
     // Pending verifications
@@ -687,7 +687,7 @@ async function searchPlaces(chatId, query, env) {
             { text: p.isSponsored ? '⭐ إلغاء التمييز' : '🌟 جعله إعلان مميز', callback_data: `toggle_sponsored:${p._id}` }
           ],
           [
-            { text: '🌐 فتح في الموقع', url: `https://elmanzla.web.app/place.html?slug=${p.slug || p._id}` }
+            { text: '🌐 فتح في الموقع', url: `https://dalilmanzala.com/place/${encodeURIComponent(p.slug || p._id)}/` }
           ]
         ]
       };
@@ -846,7 +846,7 @@ async function addPlaceQuick(chatId, content, env) {
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🌐 فتح في الموقع', url: `https://elmanzla.web.app/place.html?slug=${slug}` }]
+          [{ text: '🌐 فتح في الموقع', url: `https://dalilmanzala.com/place/${encodeURIComponent(slug)}/` }]
         ]
       }
     }, env);
@@ -1179,7 +1179,7 @@ export async function sendAdminPushNotification(type, payload, env) {
           { text: '🌟 جعله إعلان', callback_data: `toggle_sponsored:${payload.id || payload._id}` }
         ],
         [
-          { text: '🌐 عرض في الموقع', url: `https://dalilmanzala.com/place.html?slug=${placeSlug}` }
+          { text: '🌐 عرض في الموقع', url: `https://dalilmanzala.com/place/${encodeURIComponent(placeSlug)}/` }
         ]
       ]
     };
@@ -1248,7 +1248,7 @@ export async function sendAdminPushNotification(type, payload, env) {
           { text: '❌ رفض', callback_data: `verify_reject:${payload.requestId || payload.placeId}` }
         ],
         [
-          { text: '🌐 صفحة المكان', url: `https://dalilmanzala.com/place.html?slug=${placeSlug}` }
+          { text: '🌐 صفحة المكان', url: `https://dalilmanzala.com/place/${encodeURIComponent(placeSlug)}/` }
         ]
       ]
     };
@@ -1302,7 +1302,7 @@ export async function sendAdminPushNotification(type, payload, env) {
     keyboard = {
       inline_keyboard: [
         [
-          { text: '🌐 عرض في صفحة المكان', url: `https://dalilmanzala.com/place.html?slug=${placeSlug}#reviews` }
+          { text: '🌐 عرض في صفحة المكان', url: `https://dalilmanzala.com/place/${encodeURIComponent(placeSlug)}/#reviews` }
         ]
       ]
     };
