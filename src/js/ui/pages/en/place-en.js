@@ -6,7 +6,7 @@
 import { getPlace, getPlaceBySlug, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getPlaceReviews, addPlaceReview, trackPlaceView } from '../../../core/db.js';
 import { getCurrentUser } from '../../../core/auth.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../../components/VerifiedBadge.js';
-import { renderPlaceCard } from '../../components/PlaceCard.js';
+import { renderPlaceCard } from '../../components/PlaceCard.js?v=20260922_02';
 import { isFavorite, toggleFavorite } from '../../../services/favorites.service.js';
 import { buildContextualWhatsAppLink } from '../../../services/whatsapp.service.js';
 import { getOptimizedImageUrl, IMAGE_SIZES } from '../../../services/image-cdn.service.js';

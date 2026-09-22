@@ -1,6 +1,6 @@
 import { getPublishedPlaces } from '../../core/db.js';
 import { getFavoriteIds } from '../../services/favorites.service.js';
-import { renderPlaceCard } from '../components/PlaceCard.js';
+import { renderPlaceCard } from '../components/PlaceCard.js?v=20260922_02';
 
 export async function renderFavoritesPage(container) {
   container.innerHTML = `

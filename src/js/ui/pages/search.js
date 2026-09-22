@@ -6,7 +6,7 @@
 
 import { getPublishedPlaces, getCategories, getAllProducts, getActiveOffers, searchPlacesTurso } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
-import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
+import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js?v=20260922_02';
 import { isPlaceSponsored } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore, extractSearchKeywords, expandArabicSearchIntent } from '../../utils/arabic.js';
 import { isAtmPlace, isAtmReadyAndOperational } from '../../utils/atm.js';

@@ -1,6 +1,6 @@
 import { getPublishedPlaces, getCategories } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
-import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
+import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js?v=20260922_02';
 import { isAtmPlace, filterAtmPlaces, isAtmReadyAndOperational } from '../../utils/atm.js';
 import { mountSponsoredShowcase, isPlaceSponsored } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';

@@ -5,7 +5,7 @@
  */
 
 import { getPublishedPlaces, getCategories } from '../../core/db.js';
-import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js';
+import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js?v=20260922_02';
 import { normalizeArabic, arabicMatch } from '../../utils/arabic.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { toast } from '../components/Toast.js';

@@ -1,6 +1,6 @@
 import { getCategories, getPlacesByCategory, getPublishedPlaces } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
-import { renderPlaceCard } from '../components/PlaceCard.js';
+import { renderPlaceCard } from '../components/PlaceCard.js?v=20260922_02';
 import { mountSponsoredShowcase } from '../components/SponsoredShowcase.js';
 import { setMeta, setBreadcrumbSchema } from '../../utils/seo.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER } from '../../utils/maps.js';

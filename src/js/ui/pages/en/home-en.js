@@ -5,7 +5,7 @@
 
 import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getCached, FALLBACK_CATEGORIES } from '../../../core/db.js';
 import { WORKER_URL } from '../../../core/firebase.js';
-import { renderPlaceCard, renderPlaceCardSkeleton } from '../../components/PlaceCard.js';
+import { renderPlaceCard, renderPlaceCardSkeleton } from '../../components/PlaceCard.js?v=20260922_02';
 import { isAtmPlace } from '../../../utils/atm.js';
 import { mountSponsoredShowcase, isPlaceSponsored } from '../../components/SponsoredShowcase.js';
 import { formatPrice, calcDiscount } from '../../../utils/arabic.js';

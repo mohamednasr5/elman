@@ -35,11 +35,11 @@ import { generateCleanSlug } from '../../utils/slug.js';
 import { formatSocialUrl } from '../../utils/social.js';
 import { isValidPhoneNumber } from '../../utils/phone.js';
 import { renderTrustCard } from '../components/TrustCard.js';
-import { renderPlaceCard } from '../components/PlaceCard.js';
+import { renderPlaceCard } from '../components/PlaceCard.js?v=20260922_02';
 import { openAppointmentModal } from '../components/AppointmentModal.js';
 import { renderMarketWidgetsHTML, bindMarketWidgetsEvents } from '../components/MarketWidgets.js';
-import { renderPaymentBadges, renderPlacePaymentStripHTML } from '../../utils/payments.js';
-import { renderPlaceViewsBadgeHTML } from '../../utils/place-views.js';
+import { renderPaymentBadges, renderPlacePaymentStripHTML, resolvePlacePaymentMethods } from '../../utils/payments.js?v=20260922_02';
+import { renderPlaceViewsBadgeHTML } from '../../utils/place-views.js?v=20260922_02';
 
 export function renderAvailabilityBadge(status) {
   if (!status) return '';
@@ -924,7 +924,12 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
             </div>
 
             <!-- Row 3.5: Accepted Payment Methods Strip (Image 1 placement) -->
-            ${!isAtm ? renderPlacePaymentStripHTML(place, { isEn }) : ''}
+            ${(() => {
+              if (isAtm) return '';
+              const pMethods = resolvePlacePaymentMethods(place);
+              if (!pMethods || !pMethods.length) return '';
+              return renderPlacePaymentStripHTML(place, { isEn });
+            })()}
 
             <!-- Row 4: Primary Contact Actions (Call / Suggest Phone + WhatsApp) -->
             <div class="place-card-row-contact">

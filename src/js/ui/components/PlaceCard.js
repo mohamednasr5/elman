@@ -15,8 +15,8 @@ import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.serv
 import { isFavorite, toggleFavorite } from '../../services/favorites.service.js';
 import { resolvePlaceProfession, getProfessionSvg } from '../../utils/professions-data.js';
 import { isValidPhoneNumber } from '../../utils/phone.js';
-import { renderPlaceCardPaymentStripHTML } from '../../utils/payments.js';
-import { renderPlaceViewsBadgeHTML } from '../../utils/place-views.js';
+import { renderPlaceCardPaymentStripHTML, resolvePlacePaymentMethods } from '../../utils/payments.js?v=20260922_02';
+import { renderPlaceViewsBadgeHTML } from '../../utils/place-views.js?v=20260922_02';
 
 // ── Instant 0ms Place Registry & Navigation Helpers ──
 if (typeof window !== 'undefined') {
@@ -349,7 +349,12 @@ export function renderPlaceCard(place) {
           </div>
         </div>
         ${atmCashBadge}
-        ${!isAtm ? renderPlaceCardPaymentStripHTML(place, { isEn }) : ''}
+        ${(() => {
+          if (isAtm) return '';
+          const pMethods = resolvePlacePaymentMethods(place);
+          if (!pMethods || !pMethods.length) return '';
+          return renderPlaceCardPaymentStripHTML(place, { isEn });
+        })()}
         ${displayDesc ? `<p class="place-card__description">${escHtml(displayDesc)}</p>` : ''}
       </div>
       <div class="place-card__footer">

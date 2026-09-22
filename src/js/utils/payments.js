@@ -197,9 +197,10 @@ export function resolvePlacePaymentMethods(placeOrMethods) {
   if (Array.isArray(placeOrMethods)) {
     raw = placeOrMethods;
   } else if (placeOrMethods && typeof placeOrMethods === 'object') {
-    raw = placeOrMethods.paymentMethods || placeOrMethods.payment_methods || placeOrMethods.payments || [];
+    raw = placeOrMethods.paymentMethods || placeOrMethods.payment_methods || placeOrMethods.payments || placeOrMethods.stats?.paymentMethods || placeOrMethods.stats?.payment_methods || [];
   }
-  return normalizePaymentMethods(raw);
+  const clean = normalizePaymentMethods(raw);
+  return Array.isArray(clean) ? clean : [];
 }
 
 /**
@@ -223,9 +224,10 @@ export function renderPaymentItemHTML(methodId, options = {}) {
 export function renderPlacePaymentStripHTML(placeOrMethods, options = {}) {
   const isEn = Boolean(options.isEn);
   const list = resolvePlacePaymentMethods(placeOrMethods);
-  if (!list || list.length === 0) return '';
+  if (!list || !Array.isArray(list) || list.length === 0) return '';
 
   const badgesHtml = list.map(id => renderPaymentItemHTML(id, options)).filter(Boolean).join('');
+  if (!badgesHtml || !badgesHtml.trim()) return '';
 
   return `
     <div class="place-payment-methods-wrapper" style="margin:10px 0 8px 0" aria-label="${isEn ? 'Accepted Payment Methods' : 'وسائل الدفع المقبولة'}">
@@ -247,9 +249,10 @@ export function renderPlacePaymentStripHTML(placeOrMethods, options = {}) {
 export function renderPlaceCardPaymentStripHTML(placeOrMethods, options = {}) {
   const isEn = Boolean(options.isEn);
   const list = resolvePlacePaymentMethods(placeOrMethods);
-  if (!list || list.length === 0) return '';
+  if (!list || !Array.isArray(list) || list.length === 0) return '';
 
   const badgesHtml = list.map(id => renderPaymentItemHTML(id, options)).filter(Boolean).join('');
+  if (!badgesHtml || !badgesHtml.trim()) return '';
 
   return `
     <div class="place-card__payments-strip" aria-label="${isEn ? 'Accepted Payment Methods' : 'وسائل الدفع المقبولة'}">
