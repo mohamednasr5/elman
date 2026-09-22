@@ -1772,8 +1772,8 @@ try {
     const orderByMap = {
       default: 'p.is_sponsored DESC, p.is_featured DESC, p.is_verified DESC, p.updated_at DESC',
       newest: 'p.updated_at DESC, p.created_at DESC',
-      rating: `COALESCE(CAST(json_extract(p.stats_json, '$.rating') AS REAL), 0) DESC, p.updated_at DESC`,
-      reviews: `COALESCE(CAST(json_extract(p.stats_json, '$.reviewCount') AS INTEGER), 0) DESC, p.updated_at DESC`
+      rating: `CASE WHEN json_valid(COALESCE(p.stats_json, '')) THEN COALESCE(CAST(json_extract(p.stats_json, '$.rating') AS REAL), 0) ELSE 0 END DESC, p.updated_at DESC`,
+      reviews: `CASE WHEN json_valid(COALESCE(p.stats_json, '')) THEN COALESCE(CAST(json_extract(p.stats_json, '$.reviewCount') AS INTEGER), 0) ELSE 0 END DESC, p.updated_at DESC`
     };
     const orderBy = orderByMap[sortFilter] || orderByMap.default;
     sql += ` ORDER BY ${orderBy} LIMIT ? OFFSET ?`;
