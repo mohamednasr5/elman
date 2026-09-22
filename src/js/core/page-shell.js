@@ -560,6 +560,8 @@ function _setupAppStoreButtons() {
   });
 }
 
+export function installDisplayControlsRail(){if(document.getElementById('display-controls-rail'))return;const lang=document.getElementById('lang-toggle-btn'),theme=document.getElementById('theme-toggle-btn');if(!lang&&!theme)return;const en=isEnglish(),rail=document.createElement('aside');rail.id='display-controls-rail';rail.className='display-controls-rail is-collapsed';rail.setAttribute('aria-label',en?'Language and theme controls':'عناصر التحكم في اللغة والمظهر');const content=document.createElement('div');content.className='display-controls-content';if(theme)content.appendChild(theme);if(lang)content.appendChild(lang);const handle=document.createElement('button');handle.type='button';handle.id='display-controls-handle';handle.className='display-controls-handle';handle.setAttribute('aria-label',en?'Toggle display controls':'إظهار / إخفاء أدوات المظهر واللغة');handle.setAttribute('title',en?'Display controls':'أدوات المظهر واللغة');handle.innerHTML='<span class="display-controls-handle__bar" aria-hidden="true"></span><span class="display-controls-handle__badge" aria-hidden="true">🌓</span>';if(en){rail.appendChild(handle);rail.appendChild(content);}else{rail.appendChild(content);rail.appendChild(handle);}document.body.appendChild(rail);let collapseTimer=null;function scheduleCollapse(delay=3500){clearTimeout(collapseTimer);collapseTimer=setTimeout(()=>{rail.classList.remove('is-expanded');rail.classList.add('is-collapsed')},delay)}function toggleRail(force){const expand=typeof force==='boolean'?force:!rail.classList.contains('is-expanded');if(expand){rail.classList.remove('is-collapsed');rail.classList.add('is-expanded');scheduleCollapse(3500)}else{rail.classList.remove('is-expanded');rail.classList.add('is-collapsed');clearTimeout(collapseTimer)}}handle.addEventListener('click',e=>{e.stopPropagation();toggleRail()});rail.addEventListener('pointerenter',()=>{rail.classList.remove('is-collapsed');rail.classList.add('is-expanded');clearTimeout(collapseTimer)});rail.addEventListener('pointerleave',()=>scheduleCollapse(1200));window.addEventListener('scroll',()=>{if(rail.classList.contains('is-expanded')){rail.classList.remove('is-expanded');rail.classList.add('is-collapsed');clearTimeout(collapseTimer)}},{passive:true});document.addEventListener('pointerdown',e=>{if(rail.classList.contains('is-expanded')&&!rail.contains(e.target)){rail.classList.remove('is-expanded');rail.classList.add('is-collapsed');clearTimeout(collapseTimer)}},{passive:true});let touchStartX=0;rail.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX},{passive:true});rail.addEventListener('touchend',e=>{const touchEndX=e.changedTouches[0].clientX;const diff=touchEndX-touchStartX;if(en){if(diff<-20)toggleRail(true);else if(diff>20)toggleRail(false)}else{if(diff>20)toggleRail(true);else if(diff<-20)toggleRail(false)}},{passive:true})}
+
 export async function initPage(activeFile=''){
   try{initContentProtection()}catch(_){}
   applyLangToDOM(getLang());
@@ -569,6 +571,7 @@ export async function initPage(activeFile=''){
   _inject('nav-slot',_bottomNavHTML(activeFile));
   _bindLanguageToggle();
   _bindThemeToggle();
+  installDisplayControlsRail();
   _setupHeaderSearch();
   _bindMoreMenu();
   _bindHeaderUserEvents();

@@ -8,20 +8,24 @@
   .header__user, #header-user-section { flex: 0 0 auto !important; min-width: 44px !important; width: auto !important; overflow: visible !important; order: 10 !important; }
   #header-user-section .btn { min-width: 44px !important; width: auto !important; height: 40px !important; padding: 0 10px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; white-space: nowrap !important; }
   #header-user-section .btn span { display: inline !important; }
-  .lang-toggle-btn,
-  .theme-toggle-btn {
-    position: fixed !important;
-    left: 8px !important;
-    z-index: 10070 !important;
-    box-shadow: 0 6px 18px rgba(15,23,42,.14) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
+  /* Hide loose toggle buttons in mobile header before they are mounted into the side rail */
+  .header .lang-toggle-btn,
+  .header .theme-toggle-btn {
+    display: none !important;
   }
-  .theme-toggle-btn { top: max(78px, env(safe-area-inset-top) + 70px) !important; width: 42px !important; height: 42px !important; min-width: 42px !important; border-radius: 13px !important; }
-  .lang-toggle-btn { top: calc(max(78px, env(safe-area-inset-top) + 70px) + 48px) !important; width: 42px !important; height: 38px !important; min-width: 42px !important; border-radius: 13px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
-  .lang-toggle-btn .lang-globe,
-  .lang-toggle-btn .lang-name { display: none !important; }
-  .lang-toggle-btn .lang-flag-icon { width: 25px !important; height: 18px !important; display: block !important; }
+  /* Inside the collapsing side rail, buttons are nicely sized and styled */
+  .display-controls-rail .theme-toggle-btn,
+  .display-controls-rail .lang-toggle-btn {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  .display-controls-rail .lang-toggle-btn .lang-globe,
+  .display-controls-rail .lang-toggle-btn .lang-name { display: none !important; }
+  .display-controls-rail .lang-toggle-btn .lang-flag-icon { width: 24px !important; height: 17px !important; display: block !important; }
   .header-search-expandable { flex: 0 0 auto !important; }
   .bottom-nav { z-index: 10050 !important; pointer-events: auto !important; }
   .bottom-nav__item, .bottom-nav__fab-btn { pointer-events: auto !important; touch-action: manipulation !important; }
@@ -34,9 +38,14 @@
   body.modal-open .pwa-banner,
   body.modal-open #manzala-push-prompt-card,
   body.modal-open .push-prompt-card,
+  body.modal-open .display-controls-rail,
   body.mobile-more-open #mobile-action-hints,
+  body.mobile-more-open .display-controls-rail,
   body.voice-modal-open #mobile-action-hints,
+  body.voice-modal-open .display-controls-rail,
+  body.azan-active .display-controls-rail,
   body:has(.manzala-voice-modal-backdrop) #mobile-action-hints,
+  body:has(.manzala-voice-modal-backdrop) .display-controls-rail,
   body.mobile-more-open .pwa-banner,
   body.mobile-more-open #manzala-push-prompt-card,
   body.mobile-more-open .push-prompt-card {
