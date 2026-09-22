@@ -9,3 +9,4 @@ scratch/
 !worker/schema.sql
 *.apk
 *.mp4
+!azan/*.mp4

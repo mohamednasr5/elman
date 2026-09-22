@@ -595,6 +595,19 @@ export async function initPage(activeFile=''){
       m.mountMarketWidgets();
     }).catch(()=>{});
   }catch(_){}
+  try{
+    const isDashboard = activeFile === 'dashboard.html' || 
+                        activeFile === 'admin.html' || 
+                        (typeof window !== 'undefined' && (
+                          window.location.pathname.includes('/dashboard') || 
+                          window.location.pathname.includes('/admin')
+                        ));
+    if (!isDashboard) {
+      import('../services/azan-service.js').then(m => {
+        m.initAzanService();
+      }).catch(()=>{});
+    }
+  }catch(_){}
 }
 export { waitForAuth, isAdmin };
 
