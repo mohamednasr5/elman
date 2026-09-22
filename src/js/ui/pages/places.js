@@ -367,7 +367,8 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       try { intersectionObserver?.disconnect(); } catch (_) {}
       try { if (rotationTimer) clearInterval(rotationTimer); } catch (_) {}
       _cleanupPlacesPage = null;
-    };  } catch (err) {
+    };
+  } catch (err) {
     console.error('[PlacesPage] Load error:', err);
   }
 }
@@ -420,7 +421,7 @@ function debounce(func, wait) {
 
 function escHtml(str) {
   if (str == null) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function escAttr(str) {
   if (!str) return '';
