@@ -49,8 +49,8 @@ function handleIncomingRealtimeEvent(type,payload,isRemote=false){
   if(typeof window!=='undefined')window.dispatchEvent(new CustomEvent('manzala:realtime_sync',{detail:{type,payload,isRemote,timestamp:Date.now()}}));
   if(isRemote){
     const p=payload?.place,n=payload?.news,isEn=String(document.documentElement.lang||'').toLowerCase().startsWith('en');
-    if(type==='NEW_PLACE'&&p)showPwaNativeSystemNotification(isEn?'🎉 New business: '+p.name:'🎉 انضمام نشاط جديد: '+p.name,isEn?`${p.name} has joined the directory.`:`${p.name} من ${p.area||'المنزلة والمطرية'} انضم حديثاً للدليل`,'/place.html?slug='+encodeURIComponent(p.slug||p.id));
-    else if(type==='PLACE_UPDATED'&&p?.isVerified)showPwaNativeSystemNotification(isEn?'👑 Profile verified: '+p.name:'👑 تم توثيق رسمي جديد: '+p.name,isEn?`${p.name} is now officially verified.`:`تم توثيق ${p.name} رسمياً بالعلامة الزرقاء`,'/place.html?slug='+encodeURIComponent(p.slug||p.id));
+    if(type==='NEW_PLACE'&&p)showPwaNativeSystemNotification(isEn?'🎉 New business: '+p.name:'🎉 انضمام نشاط جديد: '+p.name,isEn?`${p.name} has joined the directory.`:`${p.name} من ${p.area||'المنزلة والمطرية'} انضم حديثاً للدليل`,'/place/'+encodeURIComponent(p.slug||p.id)+'/');
+    else if(type==='PLACE_UPDATED'&&p?.isVerified)showPwaNativeSystemNotification(isEn?'👑 Profile verified: '+p.name:'👑 تم توثيق رسمي جديد: '+p.name,isEn?`${p.name} is now officially verified.`:`تم توثيق ${p.name} رسمياً بالعلامة الزرقاء`,'/place/'+encodeURIComponent(p.slug||p.id)+'/');
     else if(type==='NEW_LIVE_NEWS'&&n)showPwaNativeSystemNotification(isEn?'🔥 Live update: '+n.title:'🔥 تحديث حي: '+n.title,(n.location||'')+' — '+(n.details||(isEn?'New live update':'تحديث مباشر جديد')),'now.html');
   }
 }
