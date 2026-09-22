@@ -145,7 +145,7 @@ async function loadCraftsmen($container) {
               </a>
             ` : ''}
             ${c.placeId ? `
-              <a href="place.html?id=${encodeURIComponent(c.placeId)}" class="oncall-btn-view" style="display:inline-flex;align-items:center;gap:4px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.08);color:#e2e8f0;text-decoration:none;font-size:0.82rem;font-weight:700;border:1px solid rgba(255,255,255,0.15)">
+              <a href="/place/${encodeURIComponent(c.placeId)}/" class="oncall-btn-view" style="display:inline-flex;align-items:center;gap:4px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.08);color:#e2e8f0;text-decoration:none;font-size:0.82rem;font-weight:700;border:1px solid rgba(255,255,255,0.15)">
                 <span>👤</span>
                 <span>مشاهدة ملفه</span>
               </a>
