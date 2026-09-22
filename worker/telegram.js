@@ -740,7 +740,7 @@ async function viewPlaceDetails(chatId, placeId, env) {
           { text: p.isSponsored ? '⭐ إلغاء الإعلان' : '🌟 تثبيت كإعلان', callback_data: `toggle_sponsored:${placeId}` }
         ],
         [
-          { text: '🌐 معاينة بالموقع', url: `https://elmanzla.web.app/place.html?slug=${p.slug || placeId}` }
+          { text: '🌐 معاينة بالموقع', url: `https://dalilmanzala.com/place/${encodeURIComponent(p.slug || placeId)}/` }
         ]
       ]
     };
