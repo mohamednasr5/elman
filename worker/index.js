@@ -2237,13 +2237,16 @@ try {
       const mapsLink = (body.mapsLink !== undefined || body.maps_link !== undefined)
         ? (body.mapsLink || body.maps_link || '')
         : (existingPlace?.maps_link || '');
-      const isMatariya = area.includes('المطرية');
       let rawLat = body.location?.lat !== undefined ? body.location.lat : (body.latitude !== undefined ? body.latitude : (existingPlace?.latitude ?? null));
       let rawLng = body.location?.lng !== undefined ? body.location.lng : (body.longitude !== undefined ? body.longitude : (existingPlace?.longitude ?? null));
       const latNum = Number(rawLat);
       const lngNum = Number(rawLng);
-      const lat = (!isNaN(latNum) && latNum > 20) ? latNum : (isMatariya ? 31.1833 : 31.1578);
-      const lng = (!isNaN(lngNum) && lngNum > 20) ? lngNum : (isMatariya ? 32.0333 : 31.9333);
+      const hasValidCoordinates =
+        Number.isFinite(latNum) && Number.isFinite(lngNum) &&
+        Math.abs(latNum) <= 90 && Math.abs(lngNum) <= 180 &&
+        !(latNum === 0 && lngNum === 0);
+      const lat = hasValidCoordinates ? latNum : null;
+      const lng = hasValidCoordinates ? lngNum : null;
       const description = body.description !== undefined ? body.description : (existingPlace?.description || '');
       const logoUrl = (body.logoUrl !== undefined || body.logo_url !== undefined)
         ? (body.logoUrl || body.logo_url || '')
@@ -10312,8 +10315,15 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
   <!-- Geographic / Local Engine Optimization (GEO) -->
   <meta name="geo.region" content="EG-DK">
   <meta name="geo.placename" content="${escapeHtml(isEn ? (place.area ? `${place.area}, Dakahlia, Egypt` : 'El Manzala & El Matariya, Dakahlia, Egypt') : (place.area ? `${place.area}، الدقهلية، مصر` : 'المنزلة والمطرية، الدقهلية، مصر'))}">
-  <meta name="geo.position" content="${Number(place.latitude || place.lat || 31.1578)};${Number(place.longitude || place.lng || 31.9333)}">
-  <meta name="ICBM" content="${Number(place.latitude || place.lat || 31.1578)}, ${Number(place.longitude || place.lng || 31.9333)}">
+  ${(() => {
+    const lat = Number(place.latitude ?? place.lat);
+    const lng = Number(place.longitude ?? place.lng);
+    const valid = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0);
+    return valid
+      ? `<meta name="geo.position" content="${lat};${lng}">` +
+        `<meta name="ICBM" content="${lat}, ${lng}">`
+      : '';
+  })()}
   <meta property="og:type" content="business.business">
   <meta property="og:url" content="${escapeHtml(shareUrl)}">
   <meta property="og:title" content="${escapeHtml(fullShareTitle)}">
