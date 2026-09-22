@@ -865,7 +865,7 @@ function renderPlacesListHTML(places) {
                 </div>
                 <div class="my-place-item__meta">
                   <span class="chip chip--primary">📍 ${escHtml(place.area || 'المنزلة')}</span>
-                  <a href="/place.html?slug=${escAttr(place.slug)}" target="_blank" style="font-size:var(--font-size-xs)">🔗 الصفحة العامة</a>
+                  <a href="/place/${encodeURIComponent(place.slug || place.id || place._key || '')}/" target="_blank" style="font-size:var(--font-size-xs)">🔗 الصفحة العامة</a>
                 </div>
               </div>
 
