@@ -58,8 +58,8 @@ const fixes = [
       ["url: `/#/places`",                 "url: 'https://elmanzala.com/places.html'"],
       ["url: '/#/places'",                 "url: 'https://elmanzala.com/places.html'"],
       ["url: `/#/category/${category?.slug || place.categoryId}`", "url: `https://elmanzala.com/category.html?slug=${category?.slug || place.categoryId}`"],
-      ["url: `/#/place/${place.slug}`",    "url: `https://elmanzala.com/place.html?slug=${place.slug}`"],
-      ["https://elmanzala.com/#/place/",   "https://elmanzala.com/place.html?slug="],
+      ["url: `/#/place/${place.slug}`",    "url: `https://dalilmanzala.com/place/${encodeURIComponent(place.slug)}/`"],
+      ["https://elmanzala.com/#/place/",   "https://dalilmanzala.com/place/"],
     ]
   },
 
