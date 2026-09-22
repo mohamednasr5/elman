@@ -105,7 +105,7 @@ export function switchLanguage(newLang) {
     if (clean === '/place' || clean.startsWith('/place/')) {
       const slug = clean.startsWith('/place/') ? clean.replace('/place/', '').replace(/\/$/, '') : '';
       if (slug) {
-        window.location.assign(`/place.html?slug=${encodeURIComponent(slug)}${hash}`);
+        window.location.assign(`/place/${encodeURIComponent(slug)}/${hash}`);
         return;
       }
       window.location.assign(`/places.html${search}${hash}`);
