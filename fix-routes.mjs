@@ -24,7 +24,7 @@ const fixes = [
       ['href="#/admin/settings"',    'href="admin.html?section=settings"'],
       ['href="#/dashboard"',         'href="dashboard.html"'],
       ['href="#/"',                  'href="index.html"'],
-      ['href="#/place/',             'href="place.html?slug='],
+      ['href="#/place/',             'href="/place/'],
     ]
   },
 
@@ -41,7 +41,7 @@ const fixes = [
       ['href="#/dashboard/places/add"',   'href="dashboard.html?section=add"'],
       ['href="#/admin"',                  'href="admin.html"'],
       ['href="#/"',                       'href="index.html"'],
-      ['href="#/place/',                  'href="place.html?slug='],
+      ['href="#/place/',                  'href="/place/'],
     ]
   },
 
@@ -50,7 +50,7 @@ const fixes = [
     file: 'src/js/ui/pages/place.js',
     replacements: [
       ['href="#/places"',                  'href="places.html"'],
-      ['href="#/place/',                   'href="place.html?slug='],
+      ['href="#/place/',                   'href="/place/'],
       ['href="#/category/',                'href="category.html?slug='],
       ['href="#/dashboard/places/',        'href="dashboard.html?section=places&id='],
       ["url: `/#/`",                       "url: 'https://elmanzala.com/'"],
@@ -76,7 +76,7 @@ const fixes = [
       ['href="#/search"',      'href="search.html"'],
       ['href="#/login"',       'href="login.html"'],
       ['href="#/dashboard"',   'href="dashboard.html"'],
-      ['href="#/place/',       'href="place.html?slug='],
+      ['href="#/place/',       'href="/place/'],
       ['href="#/category/',    'href="category.html?slug='],
     ]
   },
@@ -99,7 +99,7 @@ const fixes = [
     replacements: [
       ["import { navigate } from '../../core/router.js';", '// navigate removed'],
       ["navigate('/login');", "window.location.href = 'login.html';"],
-      ['href="#/place/', 'href="place.html?slug='],
+      ['href="#/place/', 'href="/place/'],
       ['href="#/places"', 'href="places.html"'],
       ['href="#/category/', 'href="category.html?slug='],
     ]
@@ -110,7 +110,7 @@ const fixes = [
     file: 'src/js/ui/pages/offers.js',
     replacements: [
       ["import { navigate } from '../../core/router.js';", '// navigate removed'],
-      ['href="#/place/', 'href="place.html?slug='],
+      ['href="#/place/', 'href="/place/'],
     ]
   },
 
@@ -119,7 +119,7 @@ const fixes = [
     file: 'src/js/ui/pages/products.js',
     replacements: [
       ["import { navigate } from '../../core/router.js';", '// navigate removed'],
-      ['href="#/place/', 'href="place.html?slug='],
+      ['href="#/place/', 'href="/place/'],
     ]
   },
 
@@ -149,7 +149,7 @@ const fixes = [
     file: 'src/js/ui/components/PlaceCard.js',
     replacements: [
       ["import { navigate } from '../../core/router.js';", '// navigate removed'],
-      ['href="#/place/', 'href="place.html?slug='],
+      ['href="#/place/', 'href="/place/'],
       ['href="#/category/', 'href="category.html?slug='],
     ]
   },
