@@ -109,7 +109,7 @@ if (typeof window !== 'undefined') {
     if (targetSlug && !document.querySelector(`link[rel="prefetch"][href*="${encodeURIComponent(targetSlug)}"]`)) {
       const link = document.createElement('link');
       link.rel = 'prefetch';
-      link.href = `/place.html?slug=${encodeURIComponent(targetSlug)}`;
+      link.href = `/place/${encodeURIComponent(targetSlug)}/`;
       document.head.appendChild(link);
     }
   };
