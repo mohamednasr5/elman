@@ -20,7 +20,7 @@ import{getCategories as pe,getPublishedPlaces as Q,getActiveOffers as J,getAds a
                data-cover="${n(e.coverImageUrl||e.cover||"")}"
                data-logo="${n(e.logoUrl||e.logo||"")}"
                data-category="${n(e.category||"")}"
-               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${n(d)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(d)}')"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${n(d)}', event) : (window.location.href='/place/${encodeURIComponent(d)}/')"
                ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${n(d)}', this)"
                onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${n(d)}', this)"
                onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${n(d)}', this)"
@@ -39,7 +39,7 @@ import{getCategories as pe,getPublishedPlaces as Q,getActiveOffers as J,getAds a
             <span>\u{1F4CD} ${_(e.area)}</span>
             <span>\u{1F3F7}\uFE0F ${_(e.category)}</span>
           </div>
-          <a href="/place.html?slug=${encodeURIComponent(d)}" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${n(d)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(d)}')">\u0639\u0631\u0636 \u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0645\u0643\u0627\u0646 \u2197</a>
+          <a href="/place/${encodeURIComponent(d)}/" class="fair-place-card__link" onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${n(d)}', event) : (window.location.href='/place/${encodeURIComponent(d)}/')">\u0639\u0631\u0636 \u0628\u0637\u0627\u0642\u0629 \u0627\u0644\u0645\u0643\u0627\u0646 \u2197</a>
         </div>
       </article>
     `}).join("")}const l=C.length,u=[];for(let h=0;h<Math.min(4,l);h++)u.push(C[(P+h)%l]);if(s(u),I&&(clearInterval(I),I=null),l>=2){let h=1;I=setInterval(()=>{r.querySelectorAll(".fair-place-card").forEach(a=>a.classList.add("anim-swap")),setTimeout(()=>{P=(P+1)%C.length,h++;const a=[],d=C.length;for(let p=0;p<Math.min(4,d);p++)a.push(C[(P+p)%d]);s(a),i&&(i.innerHTML=`<b>تدوير الصدارة الذكي (${h}):</b> كل الأماكن نسبة ظهورها وترتيبها واحدة بعدالة 100% ✨`)},300)},4500)}}function ie(c){const r=[...c];for(let i=r.length-1;i>0;i--){const t=Math.floor(Math.random()*(i+1));[r[i],r[t]]=[r[t],r[i]]}return r}function F(c){const r=document.getElementById("latest-places-grid");if(r){if(!c||!c.length){if(r.querySelector(".fair-place-card")||r.querySelector(".place-card"))return;r.innerHTML=`
@@ -53,7 +53,7 @@ import{getCategories as pe,getPublishedPlaces as Q,getActiveOffers as J,getAds a
                data-place-slug="${n(t.placeSlug||"")}"
                data-name="${n(t.placeName||t.title||"")}"
                data-cover="${n(t.imageUrl||"")}"
-               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${n(t.placeSlug||"")}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(t.placeSlug||"")}')"
+               onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${n(t.placeSlug||"")}', event) : (window.location.href='/place/${encodeURIComponent(t.placeSlug||"")}/')"
                ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${n(t.placeSlug||"")}', this)"
                onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${n(t.placeSlug||"")}', this)"
                onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${n(t.placeSlug||"")}', this)"
@@ -77,7 +77,7 @@ import{getCategories as pe,getPublishedPlaces as Q,getActiveOffers as J,getAds a
         </div>
       </article>
     `}).join("")}}function ke(c){const r=document.getElementById("delivery-grid"),i=document.getElementById("delivery-section");if(r){if(!c||!c.length){r.querySelector(".delivery-card")||i&&(i.style.display="none");return}i&&(i.style.display=""),r.innerHTML=c.slice(0,8).map(t=>{const o=t.slug||t._key||t.id||"",s=$e(t),l=t.area?` \u2022 ${_(t.area)}`:" \u0628\u0627\u0644\u0645\u0646\u0632\u0644\u0629";return`
-    <a href="/place.html?slug=${encodeURIComponent(o)}" class="delivery-card"
+    <a href="/place/${encodeURIComponent(o)}/" class="delivery-card"
        style="--vehicle-color: ${s.color}; --vehicle-bg: ${s.bgColor}; --vehicle-border: ${s.borderColor}; --vehicle-glow: ${s.glowColor};"
        data-place-id="${n(t.id||t._key||"")}"
        data-place-slug="${n(o)}"
@@ -87,7 +87,7 @@ import{getCategories as pe,getPublishedPlaces as Q,getActiveOffers as J,getAds a
        data-area="${n(t.area||"")}"
        data-cover="${n(t.coverImageUrl||"")}"
        data-logo="${n(t.logoUrl||"")}"
-       onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${n(o)}', event) : (window.location.href='/place.html?slug=${encodeURIComponent(o)}')"
+       onclick="event.preventDefault(); window.__openPlaceCard ? window.__openPlaceCard(this, '${n(o)}', event) : (window.location.href='/place/${encodeURIComponent(o)}/')"
        ontouchstart="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${n(o)}', this)"
        onpointerdown="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${n(o)}', this)"
        onmouseenter="window.__prefetchPlaceCard && window.__prefetchPlaceCard('${n(o)}', this)">
