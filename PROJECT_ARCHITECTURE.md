@@ -60,6 +60,7 @@ The Worker may communicate with FCM to trigger push notifications.
 
 ### Performance / Cost Principles
 Do NOT load the entire `places` table on every search or page load.
+Public directory pages use server-side pagination (default 24 records) with targeted filters and sort order.
 Use targeted Turso queries, pagination, appropriate indexes, and only the required columns.
 Retrieve a single place by slug/ID when opening a place.
 Retrieve reviews only when needed.
@@ -70,16 +71,15 @@ Keep Firebase out of the main directory data path.
 Goal: LOW database reads + LOW latency + HIGH scalability.
 
 ### Public Place URLs
-Canonical sharing URLs use:
-`https://dalilmanzala.com/p/{slug}`
+Canonical public place URLs use:
+`https://dalilmanzala.com/place/{slug}/`
 
-Example:
-`https://dalilmanzala.com/p/dktwr-by-sy-lkhdmat-alkmbywtr-walantrnt`
+English:
+`https://dalilmanzala.com/en/place/{slug}/`
 
-Normal visitors may be redirected to:
-`https://dalilmanzala.com/place.html?slug={slug}`
+Legacy `/p/{slug}/` and `/place.html?slug={slug}` URLs are permanent-redirect aliases only.
 
-For crawler HTML, `canonical` and `og:url` MUST point to `/p/{slug}`, never `/place.html`.
+For crawler HTML, `canonical`, `og:url`, internal links, RSS, IndexNow, and sitemaps MUST use `/place/{slug}/` (or `/en/place/{slug}/` for English).
 
 ### Legacy Firebase Code
 Some Firebase SDK code may remain because Auth and FCM are still required. Do not interpret Firebase SDK presence as permission to restore Firebase database usage.
