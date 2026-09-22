@@ -15,7 +15,7 @@ export function renderEnglishPlaceCard(source={}){
   const rawCover=normalizeAsset(place.coverImageUrl||fallbackCover,fallbackCover),rawLogo=normalizeAsset(place.logoUrl||fallbackLogo,fallbackLogo);
   const placeVersion = source.updatedAt || source.updated_at || place.updatedAt || place.updated_at || null;
   const cover=getOptimizedImageUrl(rawCover,IMAGE_SIZES.THUMB,placeVersion)||fallbackCover,logo=getOptimizedImageUrl(rawLogo,IMAGE_SIZES.LOGO,placeVersion)||fallbackLogo;
-  const slug=place.slug||place.id||place._key||'',url=`/en/place/${encodeURIComponent(slug)}`;
+  const slug=place.slug||place.id||place._key||'',url=`/en/place/${encodeURIComponent(slug)}/`;
   const verified=Boolean(place.isVerified||place.is_verified||place.verified);
   const liveHours=getPlaceLiveStatus(place.openHours||place.open_hours||place.workingHours||place.working_hours);
   const open=liveHours&&!liveHours.isUnknown?Boolean(liveHours.isOpen):null,services=englishServices(place);
