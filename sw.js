@@ -9,7 +9,8 @@ try {
   firebase.initializeApp({apiKey:"AIzaSyCUGCecmvBdf6b38UVIM9zcxhbbux7VSzM",authDomain:"elmanzla-7402a.firebaseapp.com",projectId:"elmanzla-7402a",storageBucket:"elmanzla-7402a.firebasestorage.app",messagingSenderId:"252271215500",appId:"1:252271215500:web:adc234e58f4ba455fdcca9",measurementId:"G-EY6TEPLGSK"});
   const messaging=firebase.messaging();
   messaging.onBackgroundMessage(payload=>{const title=payload.notification?.title||payload.data?.title||'دليل المنزلة والمطرية 🔔';const body=payload.notification?.body||payload.data?.body||payload.data?.message||'تنبيه جديد في دليل المنزلة والمطرية';const url=payload.data?.url||payload.data?.actionUrl||payload.notification?.click_action||'./';eventlessNotification(title,body,url,payload)});
-const CACHE_VERSION='v5.6.0-fullscreen-azan';
+} catch(err) { console.warn('[SW] Firebase messaging init warning:', err); }
+const CACHE_VERSION='v5.6.1-fix-sw-syntax';
 const STATIC_CACHE='manzala-static-'+CACHE_VERSION;
 const DYNAMIC_CACHE='manzala-dynamic-'+CACHE_VERSION;
 const IMAGE_CACHE='manzala-images-'+CACHE_VERSION;

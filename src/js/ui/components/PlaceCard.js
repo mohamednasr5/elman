@@ -142,14 +142,14 @@ export function renderPlaceCard(place) {
   const finalLogo = getOptimizedImageUrl(rawLogo, IMAGE_SIZES.LOGO, placeVersion);
 
   const coverImg = finalCover
-    ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" width="280" height="160" loading="lazy" decoding="async" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src='/assets/images/default-cover.jpg';}" />`
+    ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" width="280" height="160" loading="lazy" decoding="async" onerror="if(this.dataset.triedR2!=='1'&&this.src.includes('.r2.dev')){this.dataset.triedR2='1';this.src='/api/r2/'+this.src.split('.r2.dev/')[1];}else if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src='/assets/images/default-cover.jpg';}" />`
     : `<div class="place-card__cover-placeholder" style="background:${catStyle.gradient}">
         <span class="place-card__cover-icon">${catStyle.icon}</span>
         <span class="place-card__cover-tag">${escHtml(catStyle.label)}</span>
        </div>`;
 
   const logoImg = finalLogo
-    ? `<img src="${escAttr(finalLogo)}" alt="${escAttr(place.name)}" width="44" height="44" loading="lazy" decoding="async" onerror="if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src='/assets/images/default-logo.jpg';}else{this.onerror=null;this.src='/icons/icon-96x96.png';}" />`
+    ? `<img src="${escAttr(finalLogo)}" alt="${escAttr(place.name)}" width="44" height="44" loading="lazy" decoding="async" onerror="if(this.dataset.triedR2!=='1'&&this.src.includes('.r2.dev')){this.dataset.triedR2='1';this.src='/api/r2/'+this.src.split('.r2.dev/')[1];}else if(this.dataset.fallbackApplied!=='1'){this.dataset.fallbackApplied='1';this.src='/assets/images/default-logo.jpg';}else{this.onerror=null;this.src='/icons/icon-96x96.png';}" />`
     : `<div class="place-card__logo-placeholder">${catStyle.icon}</div>`;
 
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';

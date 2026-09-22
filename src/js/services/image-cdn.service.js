@@ -29,20 +29,26 @@ export function getOptimizedImageUrl(url, size = IMAGE_SIZES.THUMB, timestamp = 
     }
   }
 
-  // Cloudflare R2 images: Direct, high-speed CDN delivery
-  // Client-side upload already optimizes to WebP. Avoid unnecessary proxy hops.
+  // Cloudflare R2 images: Routed through /api/r2/ on dalilmanzala.com
+  // This completely eliminates ERR_NAME_NOT_RESOLVED caused by Egyptian ISP blocking of r2.dev
   if (cleanUrl.includes('r2.dev') || (R2_PUBLIC_URL && cleanUrl.includes(R2_PUBLIC_URL))) {
-    if (timestamp) {
-      try {
-        const u = new URL(cleanUrl);
-        u.searchParams.set('t', String(timestamp));
-        return u.toString();
-      } catch (_) {
-        const sep = cleanUrl.includes('?') ? '&' : '?';
-        return `${cleanUrl}${sep}t=${timestamp}`;
+    try {
+      const u = new URL(cleanUrl);
+      const r2Key = u.pathname.replace(/^\/+/, '');
+      let target = `/api/r2/${r2Key}`;
+      if (timestamp) {
+        target += (target.includes('?') ? '&' : '?') + `t=${timestamp}`;
       }
+      return target;
+    } catch (_) {
+      const match = cleanUrl.match(/\.r2\.dev\/(.+)$/);
+      if (match) {
+        let target = `/api/r2/${match[1]}`;
+        if (timestamp) target += `?t=${timestamp}`;
+        return target;
+      }
+      return cleanUrl;
     }
-    return cleanUrl;
   }
 
   return cleanUrl;

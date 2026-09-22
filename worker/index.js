@@ -747,7 +747,7 @@ export default {
       // Never fall back from a public place URL to place.html after a fatal
       // Worker exception. That can turn a broken canonical URL into a 200
       // generic page (soft-404 / duplicate-content signal).
-      if (/^\\/(?:en\\/)?place(?:\\/|$)/i.test(url.pathname)) {
+      if (/^\/(?:en\/)?place(?:\/|$)/i.test(url.pathname)) {
         return new Response('Temporary server error', {
           status: 503,
           headers: {
@@ -1041,6 +1041,46 @@ try {
       }
     } catch (ipErr) {
       console.warn('[IP Ban] enforcement lookup failed:', ipErr?.message || ipErr);
+    }
+  }
+
+  // ── Direct Cloudflare R2 Object Delivery: GET /api/r2/* ───────
+  // Serves R2 images directly through dalilmanzala.com to bypass any ISP/DNS blocking of r2.dev
+  if (url.pathname.startsWith('/api/r2/') && request.method === 'GET') {
+    const rawKey = url.pathname.slice('/api/r2/'.length);
+    const key = decodeURIComponent(rawKey).trim();
+    if (!key) return new Response('Missing key', { status: 400 });
+    try {
+      if (!env.elmanzala) {
+        const publicFallback = await fetch(`https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/${key}`);
+        return new Response(publicFallback.body, publicFallback);
+      }
+      const object = await env.elmanzala.get(key);
+      if (!object) {
+        return new Response('Image Not Found', { status: 404 });
+      }
+      const headers = new Headers();
+      object.writeHttpMetadata(headers);
+      headers.set('etag', object.httpEtag);
+      headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+      headers.set('Access-Control-Allow-Origin', '*');
+      if (!headers.get('Content-Type')) {
+        const ext = key.split('.').pop().toLowerCase();
+        const mimes = {
+          webp: 'image/webp',
+          png: 'image/png',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          svg: 'image/svg+xml',
+          gif: 'image/gif',
+          avif: 'image/avif'
+        };
+        headers.set('Content-Type', mimes[ext] || 'image/webp');
+      }
+      return new Response(object.body, { headers });
+    } catch (err) {
+      console.error('[Worker R2 Error]:', err);
+      return new Response('R2 Error: ' + err.message, { status: 500 });
     }
   }
 
@@ -9715,7 +9755,8 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
     } : undefined
   };
 
-  // FAQPage rich-result markup is intentionally omitted from the business graph.\n  const webPageEntity = {
+  // FAQPage rich-result markup is intentionally omitted from the business graph.
+  const webPageEntity = {
     "@type": "WebPage",
     "@id": shareUrl,
     "url": shareUrl,
@@ -9747,7 +9788,8 @@ function generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, sha
       webPageEntity,
       breadcrumbList,
       cleanObj(businessEntity),
-      // FAQPage omitted; visible Q&A remains crawlable in the rendered page.\n    ]
+      // FAQPage omitted; visible Q&A remains crawlable in the rendered page.
+    ]
   };
 }
 
@@ -10110,7 +10152,9 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
       hydratedHtml = hydratedHtml.replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${escapeHtml(placeImg)}"`);
 
       // Geographic coordinates & GEO tags for local place SEO
-      const rawLat = place.latitude ?? place.lat;\n      const rawLng = place.longitude ?? place.lng;\n      const placeLat = Number(rawLat);
+      const rawLat = place.latitude ?? place.lat;
+      const rawLng = place.longitude ?? place.lng;
+      const placeLat = Number(rawLat);
       const placeLng = Number(rawLng);
       const placeAreaName = place.area || (isEn ? 'El Manzala & El Matariya' : 'المنزلة والمطرية');
       const geoPlacename = isEn ? `${placeAreaName}, Dakahlia, Egypt` : `${placeAreaName}، الدقهلية، مصر`;
