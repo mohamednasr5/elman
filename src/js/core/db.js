@@ -1245,11 +1245,11 @@ export async function getPublishedPlaces({ limit = 100, lastKey = null, forceFre
  * Authoritative Server-Side Paginated Query Engine (Cursor / Page Pagination)
  * Scalable for 10,000+ places with targeted category, area, and text search filters.
  */
-export async function getPlacesPaginated({ page = 1, limit = 24, category = '', area = '', q = '', forceFresh = false } = {}) {
+export async function getPlacesPaginated({ page = 1, limit = 24, category = '', area = '', q = '', sort = 'default', verified = false, forceFresh = false } = {}) {
   const p = Math.max(1, parseInt(page, 10) || 1);
   const l = Math.min(100, Math.max(1, parseInt(limit, 10) || 24));
   const offset = (p - 1) * l;
-  const cacheKey = `places_p_${p}_l_${l}_c_${category}_a_${area}_q_${q}`;
+  const cacheKey = `places_p_${p}_l_${l}_c_${category}_a_${area}_q_${q}_s_${sort}_v_${verified ? 1 : 0}`;
 
   if (!forceFresh) {
     const mem = getCached(cacheKey, 180000);
@@ -1264,6 +1264,8 @@ export async function getPlacesPaginated({ page = 1, limit = 24, category = '', 
   if (category) queryParams.set('category', category);
   if (area) queryParams.set('area', area);
   if (q) queryParams.set('q', q);
+  if (sort) queryParams.set('sort', sort);
+  if (verified) queryParams.set('verified', '1');
 
   try {
     const res = await fetch(`${WORKER_URL}/api/places?${queryParams.toString()}`, {
@@ -1290,12 +1292,23 @@ export async function getPlacesPaginated({ page = 1, limit = 24, category = '', 
     try {
       const all = await idbGetAll(STORES.PLACES);
       let filtered = (all || []).filter(item => item && item.status === 'published');
-      if (category) filtered = filtered.filter(item => (item.category_id === category || item.custom_category === category));
+      if (category) filtered = filtered.filter(item => (item.category_id === category || item.custom_category === category || item.subcategory_id === category));
       if (area) filtered = filtered.filter(item => item.area === area);
+      if (verified) filtered = filtered.filter(item => Boolean(item.is_verified || item.isVerified));
       if (q) {
         const normQ = q.toLowerCase().trim();
-        filtered = filtered.filter(item => String(item.name || '').toLowerCase().includes(normQ));
+        filtered = filtered.filter(item => {
+          const hay = [item.name, item.name_en, item.description, item.custom_category, item.address, item.area, item.phone, item.whatsapp].filter(Boolean).join(' ').toLowerCase();
+          return hay.includes(normQ);
+        });
       }
+      const score = item => {
+        const stats = item.stats || {};
+        return sort === 'rating' ? Number(item.rating || stats.rating || 0) :
+          sort === 'reviews' ? Number(item.reviewCount || stats.reviewCount || stats.reviewsCount || 0) :
+          Number(item.updatedAt || item.updated_at || item.createdAt || item.created_at || 0);
+      };
+      if (sort !== 'default') filtered.sort((a,b) => score(b) - score(a));
       const paged = filtered.slice(offset, offset + l);
       return {
         places: paged,
