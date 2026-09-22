@@ -156,7 +156,7 @@ export function renderPlaceCard(place) {
   const isDeliveryPlace = !isAtm && (place.deliveryType || place.categoryId === 'delivery' || place.categoryId?.includes('delivery') || /توكتوك|تاكسي|شانجي|اتوبيس|وصلي/i.test(place.name || ''));
   const deliveryBadge = (isDeliveryPlace && !/صيدلية|مطعم|كشري|حلواني|سوبر\s*ماركت/i.test(place.name || '')) ? renderDeliveryBadge(place) : '';
   const targetSlug = place.slug || place.id || place._key || '';
-  const placeUrl = `/place.html?slug=${encodeURIComponent(targetSlug)}`;
+  const placeUrl = `/place/${encodeURIComponent(targetSlug)}/`;
   const placeId = place._key || place.id || place.slug || '';
   const hasValidPhone = isValidPhoneNumber(place.phone);
   const hasValidWhatsapp = isValidPhoneNumber(place.whatsapp);
@@ -176,7 +176,7 @@ export function renderPlaceCard(place) {
   const displayDesc = (isEn && (place.descriptionEn || place.description_en)) ? (place.descriptionEn || place.description_en) : (place.description || '');
   const rawArea = place.areaEn || place.area_en || place.area || '';
   const displayArea = isEn ? (translateArea(rawArea, true) || 'El Manzala') : (place.area || 'المنزلة');
-  const targetPlaceUrl = isEn ? `/en/place/${encodeURIComponent(targetSlug)}` : placeUrl;
+  const targetPlaceUrl = isEn ? `/en/place/${encodeURIComponent(targetSlug)}/` : placeUrl;
 
   const hasManualTrustScore = place.trustScore !== undefined || place.trust_score !== undefined;
   const completeness = hasManualTrustScore ? Math.max(0, Math.min(100, Number(place.trustScore ?? place.trust_score) || 0)) : calculatedCompleteness;
