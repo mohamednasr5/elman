@@ -375,7 +375,7 @@ export async function fetchManagedUserNotifications(uid) {
       const notifId = 'notif_craftsman_' + c.id;
       const eventId = 'craftsman_' + c.id;
       if (!deletedIds.has(notifId) && !deletedIds.has(eventId) && !mergedMap[notifId]) {
-        const targetUrl = c.placeId ? `/place.html?id=${encodeURIComponent(c.placeId)}` : `/now.html#craftsman-${c.id}`;
+        const targetUrl = c.placeId ? `/place/${encodeURIComponent(c.placeId)}/` : `/now.html#craftsman-${c.id}`;
         mergedMap[notifId] = {
           id: notifId,
           eventId,
@@ -552,7 +552,7 @@ export function initLiveNotificationSubscriber(uid) {
                 type: 'craftsman_live',
                 title: `⚡ (${c.craftsmanName}) متاح حالياً لأي طلب!`,
                 message: `فني (${c.professionName}) متاح الآن للتحرك والطلبات بالمنزلة والمطرية — مشاهدة ملفه والتواصل`,
-                actionUrl: c.placeId ? `/place.html?id=${encodeURIComponent(c.placeId)}` : `/now.html#craftsman-${id}`,
+                actionUrl: c.placeId ? `/place/${encodeURIComponent(c.placeId)}/` : `/now.html#craftsman-${id}`,
                 createdAt: updated || now
               }, uid);
             }
