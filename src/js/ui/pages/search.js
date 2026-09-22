@@ -717,7 +717,7 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
   async function ensureLocalPlaces() {
     if (allPlaces.length > 0) return allPlaces;
     try {
-      allPlaces = await getPublishedPlaces({ limit: 400 });
+      allPlaces = await getPublishedPlaces({ limit: 120 });
     } catch (_) {
       allPlaces = [];
     }
