@@ -2116,129 +2116,93 @@ body.dark-theme .payment-status-badge.is-active {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ACCEPTED PAYMENT METHODS STRIP (INLINE PLACE HEADER & CARDS)
+   ACCEPTED PAYMENT METHODS (EXACT SNIPPET SPECIFICATION)
    ═══════════════════════════════════════════════════════════════ */
-.place-payment-strip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 8px 0 6px 0;
-  padding: 4px 0;
+.payment-badge-pill {
+  display: flex !important;
+  height: 32px !important;
+  align-items: center !important;
+  gap: 6px !important;
+  overflow: hidden !important;
+  border-radius: 6px !important;
+  border: 1px solid #e5e7eb !important;
+  background-color: #ffffff !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+  cursor: default !important;
+  user-select: none !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease !important;
 }
-.place-payment-strip__label {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--text-secondary, #475569);
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+.payment-badge-pill:hover {
+  border-color: #0284c7 !important;
+  transform: translateY(-1px) !important;
 }
-[data-theme="dark"] .place-payment-strip__label,
-body.dark-theme .place-payment-strip__label {
-  color: #94A3B8;
+[data-theme="dark"] .payment-badge-pill,
+body.dark-theme .payment-badge-pill {
+  border-color: #333333 !important;
+  background-color: #1c1c1c !important;
 }
-.place-payment-strip__pills {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+.payment-badge-pill img,
+.payment-badge-pill svg {
+  height: 18px !important;
+  width: 18px !important;
+  flex-shrink: 0 !important;
+  object-fit: contain !important;
+  display: block !important;
 }
-.payment-pill {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  min-width: 46px;
-  padding: 3px 8px;
-  border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
-  cursor: pointer;
-  user-select: none;
-  text-decoration: none;
+.payment-badge-pill span {
+  white-space: nowrap !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  line-height: 1 !important;
 }
-.payment-pill:hover,
-.payment-pill:focus-visible {
-  transform: translateY(-2px);
-  border-color: #3b82f6;
-  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.15);
-  outline: none;
+[data-theme="dark"] .payment-badge-pill span,
+body.dark-theme .payment-badge-pill span {
+  color: rgba(255, 255, 255, 0.6) !important;
 }
-[data-theme="dark"] .payment-pill,
-body.dark-theme .payment-pill {
-  background: #1e293b;
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-}
-.payment-pill svg,
-.payment-pill img {
-  display: block;
-  max-height: 22px;
-  max-width: 44px;
-  object-fit: contain;
-}
-/* Pill Tooltip */
-.payment-pill .pill-tooltip {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
-  background: #0f172a;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  z-index: 50;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-.payment-pill:hover .pill-tooltip,
-.payment-pill:focus-visible .pill-tooltip {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+
+/* Specific utilities matching Tailwind classes from user snippet */
+.h-4\.5 { height: 18px !important; }
+.w-4\.5 { width: 18px !important; }
+.text-\[10px\] { font-size: 10px !important; line-height: 1 !important; }
+.text-ink-2 { color: #1e293b !important; }
+[data-theme="dark"] .dark\:border-\[\#333\],
+body.dark-theme .dark\:border-\[\#333\] { border-color: #333333 !important; }
+[data-theme="dark"] .dark\:bg-\[\#1c1c1c\],
+body.dark-theme .dark\:bg-\[\#1c1c1c\] { background-color: #1c1c1c !important; }
+[data-theme="dark"] .dark\:text-white\/60,
+body.dark-theme .dark\:text-white\/60 { color: rgba(255, 255, 255, 0.6) !important; }
+
+/* Place Detail Page Wrapper */
+.place-payment-methods-wrapper {
+  margin: 10px 0 8px 0;
+  padding: 2px 0;
 }
 
 /* Compact version for Place Cards */
-.place-card__payments {
+.place-card__payments-strip {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   margin: 6px 0 4px 0;
-  padding-top: 4px;
+  padding-top: 5px;
   border-top: 1px dashed rgba(148, 163, 184, 0.2);
 }
-.place-card__payments-label {
-  font-size: 11px;
-  font-weight: 750;
-  color: var(--text-muted, #64748b);
-  white-space: nowrap;
+.place-card__payments-strip .payment-badge-pill {
+  height: 26px !important;
+  padding: 0 6px !important;
+  gap: 4px !important;
+  border-radius: 5px !important;
 }
-.place-card__payments-pills {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
+.place-card__payments-strip .payment-badge-pill img,
+.place-card__payments-strip .payment-badge-pill svg {
+  height: 15px !important;
+  width: 15px !important;
 }
-.place-card__payments-pills .payment-pill {
-  height: 24px;
-  min-width: 36px;
-  padding: 2px 5px;
-  border-radius: 6px;
-}
-.place-card__payments-pills .payment-pill svg,
-.place-card__payments-pills .payment-pill img {
-  max-height: 16px;
-  max-width: 32px;
+.place-card__payments-strip .payment-badge-pill span {
+  font-size: 9.5px !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
