@@ -601,6 +601,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/medical-supplies-and-cosmetics/"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/category/motorcycle-sales/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/motorcycle-sales/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/motorcycle-sales/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/motorcycle-sales/"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/category/natural-and-artificial-roses/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

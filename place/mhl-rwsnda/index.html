@@ -72,69 +72,6 @@
     "addressRegion": "الدقهلية",
     "addressCountry": "EG"
   },
-  "currenciesAccepted": "EGP",
-  "areaServed": [
-    {
-      "@type": "AdministrativeArea",
-      "name": "المنزلة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "المطرية"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "العصافرة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الجمالية"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "ميت سلسيل"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "البصراط"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "العزيزة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الأحمدية"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الروضة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الحوتة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "النسايمة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "ميت خضير"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "ميت شريف"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الشبول"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "محافظة الدقهلية"
-    }
-  ],
   "geo": {
     "@type": "GeoCoordinates",
     "latitude": 31.1578,
@@ -248,7 +185,7 @@
         
         <!-- Cover Photo -->
         <div style="position:relative;width:100%;height:260px;background:linear-gradient(135deg,#1E3E62 0%,#0077FF 100%);overflow:hidden">
-          <img src="https://dalilmanzala.com/api/r2/places/1789833765393-vu7t0jj.webp" alt="محل روسندا - محلات ملابس في المنزلة" style="width:100%;height:100%;object-fit:cover" loading="eager" width="960" height="260"/>
+          <img src="https://dalilmanzala.com/api/r2/places/1789833765393-vu7t0jj.webp" alt="محل روسندا - محلات ملابس في المنزلة" style="width:100%;height:100%;object-fit:cover" loading="eager" fetchpriority="high" decoding="async" width="960" height="260"/>
         </div>
 
         <div style="padding:24px 20px">
@@ -371,23 +308,23 @@
     
       <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
         <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
-          <a href="/place/mhlat-bwnswar-wksr-alelyzyh-llmlabs-alhrymy/" style="color:var(--primary,#0284c7);text-decoration:none">
-            محلات بونسوار وقصر الإليزيه للملابس الحريمي
+          <a href="/place/mhl-bwb-llmlabs/" style="color:var(--primary,#0284c7);text-decoration:none">
+            محل بوب للملابس
           </a>
         </h3>
         <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
-          📍 المنزلة • 📞 012200602804‏
+          📍 المنزلة • 📞 01273339922
         </p>
       </div>
     
       <div style="padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.08);background:var(--surface,#fff)">
         <h3 style="margin:0 0 6px;font-size:0.95rem;font-weight:800">
-          <a href="/place/mwl-amrw-alswyda/" style="color:var(--primary,#0284c7);text-decoration:none">
-            مول عمرو السويدى
+          <a href="/place/mhl-fyfw/" style="color:var(--primary,#0284c7);text-decoration:none">
+            محل فيفو
           </a>
         </h3>
         <p style="margin:0;font-size:0.82rem;color:var(--text-muted,#64748b)">
-          📍 المنزلة • 📞 01286244488
+          📍 المنزلة 
         </p>
       </div>
     
@@ -408,8 +345,8 @@
 <!-- Progressive Enhancement / Hydration Module -->
 <script type="module">
   import { initPage } from '/src/js/core/page-shell.js?v=5.6.2';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=2.8.1';
-  import { waitForAuth } from '/src/js/core/auth.js?v=2.8.1';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=5.6.2';
+  import { waitForAuth } from '/src/js/core/auth.js?v=5.6.2';
 
   // Concurrently initialize shell without clearing static content
   initPage('').catch(err => console.warn('[PageShell Error]:', err));

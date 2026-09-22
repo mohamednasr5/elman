@@ -73,69 +73,6 @@
     "addressRegion": "الدقهلية",
     "addressCountry": "EG"
   },
-  "currenciesAccepted": "EGP",
-  "areaServed": [
-    {
-      "@type": "AdministrativeArea",
-      "name": "المنزلة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "المطرية"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "العصافرة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الجمالية"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "ميت سلسيل"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "البصراط"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "العزيزة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الأحمدية"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الروضة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الحوتة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "النسايمة"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "ميت خضير"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "ميت شريف"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "الشبول"
-    },
-    {
-      "@type": "AdministrativeArea",
-      "name": "محافظة الدقهلية"
-    }
-  ],
   "geo": {
     "@type": "GeoCoordinates",
     "latitude": 31.1578,
@@ -250,7 +187,7 @@
         
         <!-- Cover Photo -->
         <div style="position:relative;width:100%;height:260px;background:linear-gradient(135deg,#1E3E62 0%,#0077FF 100%);overflow:hidden">
-          <img src="https://dalilmanzala.com/api/r2/places/1789336253776-qwe881p.webp" alt="مجوهرات الحديدي - ذهب ومجوهرات في العزيزة" style="width:100%;height:100%;object-fit:cover" loading="eager" width="960" height="260"/>
+          <img src="https://dalilmanzala.com/api/r2/places/1789336253776-qwe881p.webp" alt="مجوهرات الحديدي - ذهب ومجوهرات في العزيزة" style="width:100%;height:100%;object-fit:cover" loading="eager" fetchpriority="high" decoding="async" width="960" height="260"/>
         </div>
 
         <div style="padding:24px 20px">
@@ -414,8 +351,8 @@
 <!-- Progressive Enhancement / Hydration Module -->
 <script type="module">
   import { initPage } from '/src/js/core/page-shell.js?v=5.6.2';
-  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=2.8.1';
-  import { waitForAuth } from '/src/js/core/auth.js?v=2.8.1';
+  import { renderPlacePage } from '/src/js/ui/pages/place.js?v=5.6.2';
+  import { waitForAuth } from '/src/js/core/auth.js?v=5.6.2';
 
   // Concurrently initialize shell without clearing static content
   initPage('').catch(err => console.warn('[PageShell Error]:', err));
