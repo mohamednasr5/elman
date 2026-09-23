@@ -1185,8 +1185,19 @@ try {
         if (article.place?.slug) {
           notifyUrls.push(`https://dalilmanzala.com/place/${encodeURIComponent(article.place.slug)}/`);
         }
+        if (article.status === 'published') {
+          notifyUrls.push('https://dalilmanzala.com/blog/');
+          notifyUrls.push('https://dalilmanzala.com/');
+        }
         if (article.status === 'published' && ctx?.waitUntil) {
           ctx.waitUntil(notifyIndexNow(notifyUrls, env).catch(err => console.warn('[Article IndexNow]', err?.message || err)));
+          try {
+            const cache = caches.default;
+            ctx.waitUntil(Promise.allSettled([
+              cache.delete(new Request('https://cache.local/sitemap/v2/sitemap.xml')),
+              cache.delete(new Request('https://cache.local/sitemap/v2/sitemap-articles-ar.xml'))
+            ]));
+          } catch (_) {}
           ctx.waitUntil(safeBackgroundNotify('new_article', {
             articleSlug: article.slug || article.id || '',
             title: article.title || '',

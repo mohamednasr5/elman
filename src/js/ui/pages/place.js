@@ -460,16 +460,16 @@ function renderPlaceArticlesClient(container, placeId, place = {}, canManage = f
     section.style.cssText = 'margin-top:20px;';
 
     const headerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap">
         <div>
-          <h2 class="info-card__title" style="margin:0 0 4px">
-            <span>📝</span> مقالات تهمك عن المكان ${count > 0 ? `(${count}/6)` : ''}
+          <h2 class="info-card__title" style="margin:0 0 4px;display:flex;align-items:center;gap:8px">
+            <span>📝</span> مقالات تهمك عن المكان
           </h2>
-          <p style="margin:0;color:#64748b;font-size:.85rem">مقالات وتفاصيل يشاركها صاحب المكان لخدمتكم ومعرفة أدق التفاصيل.</p>
+          <p style="margin:0;color:#64748b;font-size:.85rem">مقالات وتفاصيل يشاركها صاحب المكان لخدمتكم ومعرفة أدق التفاصيل والعروض.</p>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           ${canAdd ? `<a href="/dashboard.html?section=articles&placeId=${encodeURIComponent(placeId)}" class="btn btn--outline btn--sm" style="font-size:.82rem;font-weight:700">✍️ أضف مقالاً جديداً</a>` : ''}
-          <a href="/blog/" style="color:#0f4c5c;font-weight:800;text-decoration:none;font-size:.85rem">كل المقالات ←</a>
+          <a href="/blog/" style="color:#0f766e;font-weight:800;text-decoration:none;font-size:.85rem;display:inline-flex;align-items:center;gap:4px">المدونة الرسمية ←</a>
         </div>
       </div>
     `;
@@ -477,29 +477,42 @@ function renderPlaceArticlesClient(container, placeId, place = {}, canManage = f
     let contentHTML = '';
     if (!articles.length && canManage) {
       contentHTML = `
-        <div style="text-align:center;padding:24px 16px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px">
-          <p style="margin:0 0 10px;color:#64748b;font-size:.88rem">لم تقم بكتابة أي مقالات لهذا المكان بعد. يمكنك إضافة حتى 6 مقالات تبرز خدماتك وتقوي ظهورك في محركات البحث وبحث الذكاء الاصطناعي.</p>
+        <div style="text-align:center;padding:24px 16px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:16px">
+          <p style="margin:0 0 10px;color:#64748b;font-size:.88rem">لم تقم بكتابة أي مقالات لهذا المكان بعد. يمكنك إضافة مقالات تبرز خدماتك وتقوي ظهورك في محركات البحث وبحث الذكاء الاصطناعي.</p>
           <a href="/dashboard.html?section=articles&placeId=${encodeURIComponent(placeId)}" class="btn btn--primary btn--sm" style="font-size:.85rem">✍️ كتابة مقالك الأول الآن</a>
         </div>
       `;
     } else {
       contentHTML = `
-        <div class="place-articles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+        <div class="place-articles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px">
           ${articles.map(a => {
             const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
+            const safeTitle = String(a.title || 'مقال').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const safeExcerpt = String(a.excerpt || a.content || '').slice(0, 130).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const safePlaceName = String(place.name || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
             const image = a.coverImageUrl
-              ? `<img src="${String(a.coverImageUrl).replace(/"/g,'&quot;')}" alt="${String(a.title||'مقال').replace(/"/g,'&quot;')}" width="640" height="360" loading="lazy" decoding="async" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">`
-              : `<div style="aspect-ratio:16/9;background:#eef2f7;display:grid;place-items:center;font-size:32px">📝</div>`;
+              ? `<img src="${String(a.coverImageUrl).replace(/"/g,'&quot;')}" alt="${safeTitle}" width="640" height="360" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease">`
+              : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%);display:grid;place-items:center;font-size:36px">📝</div>`;
             return `
-              <article style="overflow:hidden;border:1px solid #e2e8f0;border-radius:14px;background:#fff;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s">
-                <a href="${href}" style="display:block;overflow:hidden">${image}</a>
-                <div style="padding:12px;display:flex;flex-direction:column;flex-grow:1">
-                  <div style="color:#0f766e;font-weight:700;font-size:.72rem;margin-bottom:4px">مقال موثق • ${String(place.name||'').replace(/</g,'&lt;')}</div>
-                  <h3 style="margin:0 0 6px;font-size:.95rem;line-height:1.5;font-weight:800">
-                    <a href="${href}" style="color:#0f172a;text-decoration:none">${String(a.title||'').replace(/</g,'&lt;')}</a>
+              <article class="place-article-card" style="overflow:hidden;border:1.5px solid #e2e8f0;border-radius:18px;background:#fff;display:flex;flex-direction:column;box-shadow:0 4px 16px rgba(15,23,42,.04);transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease">
+                <a href="${href}" style="display:block;aspect-ratio:16/9;overflow:hidden;position:relative;background:#edf2f7" aria-label="${safeTitle}">
+                  ${image}
+                </a>
+                <div style="padding:16px;display:flex;flex-direction:column;flex-grow:1">
+                  <div style="color:#0f766e;font-weight:800;font-size:.75rem;margin-bottom:6px;display:inline-flex;align-items:center;gap:4px">
+                    <span style="background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;border-radius:50%;width:14px;height:14px;display:inline-grid;place-items:center;font-size:9px;font-weight:900">✓</span>
+                    <span>مقال موثق • ${safePlaceName}</span>
+                  </div>
+                  <h3 style="margin:0 0 8px;font-size:1rem;line-height:1.5;font-weight:900;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+                    <a href="${href}" style="color:#0f172a;text-decoration:none">${safeTitle}</a>
                   </h3>
-                  <p style="margin:0 0 10px;color:#64748b;font-size:.8rem;line-height:1.6;flex-grow:1">${String(a.excerpt||a.content||'').slice(0,110).replace(/</g,'&lt;')}...</p>
-                  <a href="${href}" style="color:#0f4c5c;font-weight:800;font-size:.8rem;text-decoration:none">اقرأ التفاصيل ←</a>
+                  <p style="margin:0 0 14px;color:#64748b;font-size:.84rem;line-height:1.7;flex-grow:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${safeExcerpt}...</p>
+                  <div style="margin-top:auto;padding-top:10px;border-top:1px solid #f1f5f9">
+                    <a href="${href}" style="color:#0f766e;font-weight:800;font-size:.84rem;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+                      <span>اقرأ التفاصيل</span>
+                      <span>←</span>
+                    </a>
+                  </div>
                 </div>
               </article>
             `;

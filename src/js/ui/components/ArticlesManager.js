@@ -262,7 +262,7 @@ export async function renderArticlesManager(container, user) {
 
             <button type="button" class="article-ai-cta-btn" id="btn-generate-ai" ${isMaxReached ? 'disabled' : ''}>
               <span>✨</span>
-              <span>توليد المقال بالذكاء الاصطناعي (عنوان + ~500 حرف + سيو 100%)</span>
+              <span>توليد المقال بالذكاء الاصطناعي (مقال غني 400-500 كلمة + رابط إنجليزي + سيو 100%)</span>
             </button>
             ${isMaxReached ? '<div style="margin-top:8px;font-size:12px;color:#b91c1c;font-weight:700;text-align:center">⚠️ اكتمل الحد الأقصى (6 مقالات) لهذا النشاط. يمكنك تعديل مقال سابق أو حذفه.</div>' : ''}
           </div>
@@ -274,14 +274,25 @@ export async function renderArticlesManager(container, user) {
           </div>
 
           <div class="article-form-group">
+            <label for="art-slug-input">
+              <span>رابط المقال بالإنجليزية (URL Slug)</span>
+              <span style="font-size:11.5px;color:#0f766e;font-weight:normal">مختصر بالإنجليزية فقط لسهولة المشاركة والسيو</span>
+            </label>
+            <div style="display:flex;align-items:center;direction:ltr;background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:14px;padding:0 12px;overflow:hidden">
+              <span style="color:#64748b;font-size:12.5px;font-family:monospace;white-space:nowrap">dalilmanzala.com/article/</span>
+              <input type="text" id="art-slug-input" style="border:none;background:transparent;padding:12px 6px;font-family:monospace;font-size:13px;color:#0f172a;flex:1;outline:none" placeholder="al-hassan-phone-repair-offers" value="${esc(editingArticle?.slug || '')}">
+            </div>
+          </div>
+
+          <div class="article-form-group">
             <label for="art-content-input">
-              <span>محتوى المقال (مكتوب بأسلوب بشري جذاب)</span>
-              <span id="art-char-badge" class="article-counter-badge article-counter--short">0 حرف</span>
+              <span>محتوى المقال (مكتوب بأسلوب بشري جذاب ومتوافق مع السيو)</span>
+              <span id="art-char-badge" class="article-counter-badge article-counter--short">0 كلمة</span>
             </label>
             <textarea id="art-content-input" placeholder="اكتب المقال هنا أو دعه يُولّد تلقائياً من الزر أعلاه...">${esc(editingArticle?.content || '')}</textarea>
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#64748b">
-              <span>المعيار الذهبي للسيو والذكاء الاصطناعي: حوالي 480 إلى 540 حرفاً</span>
-              <span id="art-words-count">0 كلمة</span>
+              <span>المعيار الذهبي للسيو والذكاء الاصطناعي: حوالي 400 إلى 520 كلمة مقسمة بعناوين فرعية</span>
+              <span id="art-words-count">0 حرف</span>
             </div>
           </div>
 
@@ -397,20 +408,19 @@ export async function renderArticlesManager(container, user) {
       const val = contentInput.value || '';
       const len = val.length;
       const words = val.trim() ? val.trim().split(/\s+/).length : 0;
-      if (wordsCount) wordsCount.textContent = `${words} كلمة`;
+      if (wordsCount) wordsCount.textContent = `${len} حرف`;
 
       if (charBadge) {
-        charBadge.textContent = `${len} حرف`;
         charBadge.className = 'article-counter-badge';
-        if (len >= 450 && len <= 560) {
+        if (words >= 350 && words <= 650) {
           charBadge.classList.add('article-counter--good');
-          charBadge.textContent = `${len} حرف — مثالي ومطابق للمواصفات ✅`;
-        } else if (len < 450) {
+          charBadge.textContent = `${words} كلمة — طول مثالي ومطابق للسيو ✅`;
+        } else if (words < 350) {
           charBadge.classList.add('article-counter--short');
-          charBadge.textContent = `${len} حرف (الهدف ~500)`;
+          charBadge.textContent = `${words} كلمة (الموصى به ~400-500)`;
         } else {
           charBadge.classList.add('article-counter--long');
-          charBadge.textContent = `${len} حرف`;
+          charBadge.textContent = `${words} كلمة (مقال مفصل)`;
         }
       }
     }
@@ -428,7 +438,7 @@ export async function renderArticlesManager(container, user) {
       }
 
       btnGenAi.disabled = true;
-      btnGenAi.innerHTML = '<span>⏳</span> <span>جاري توليد مقال بشري احترافي متوافق مع السيو...</span>';
+      btnGenAi.innerHTML = '<span>⏳</span> <span>جاري كتابة مقال غني (~450 كلمة) متوافق 100% مع السيو ومحركات الذكاء الاصطناعي...</span>';
 
       try {
         const titleVal = bodyEl.querySelector('#art-title-input').value.trim();
@@ -443,18 +453,22 @@ export async function renderArticlesManager(container, user) {
 
         if (draft) {
           if (draft.title) bodyEl.querySelector('#art-title-input').value = draft.title;
+          if (draft.slug) {
+            const slugInp = bodyEl.querySelector('#art-slug-input');
+            if (slugInp) slugInp.value = draft.slug;
+          }
           if (draft.content) bodyEl.querySelector('#art-content-input').value = draft.content;
           if (Array.isArray(draft.keywords) && draft.keywords.length) {
             bodyEl.querySelector('#art-keywords-input').value = draft.keywords.join(', ');
           }
           updateCounters();
-          toast.success?.('تم توليد المقال بنجاح! راجع النص وأضف صورة ثم انقر على نشر ✨');
+          toast.success?.('تم توليد المقال بنجاح! راجع النص ورابط السيو وأضف صورة ثم انقر على نشر 🚀');
         }
       } catch (err) {
         toast.error?.(err?.message || 'تعذر توليد المقال حالياً، يرجى المحاولة مرة أخرى');
       } finally {
         btnGenAi.disabled = isMaxReached;
-        btnGenAi.innerHTML = '<span>✨</span> <span>توليد المقال بالذكاء الاصطناعي (عنوان + ~500 حرف + سيو 100%)</span>';
+        btnGenAi.innerHTML = '<span>✨</span> <span>توليد المقال بالذكاء الاصطناعي (مقال غني 400-500 كلمة + رابط إنجليزي + سيو 100%)</span>';
       }
     });
 
@@ -540,9 +554,12 @@ export async function renderArticlesManager(container, user) {
         }
       }
 
+      const slug = bodyEl.querySelector('#art-slug-input')?.value.trim() || undefined;
+
       const payload = {
         id: editingArticle?.id,
         placeId: currentPlaceId,
+        slug,
         title,
         content,
         excerpt: content.slice(0, 180),
