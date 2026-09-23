@@ -51,6 +51,7 @@ import { getUserLoyaltyProfile, getLoyaltyLevelInfo, redeemPointsForVerification
 import { renderPaymentSelectForm, getSelectedPaymentMethods, initPaymentFormEvents } from '../../utils/payments.js';
 import { createBusinessCardScanner } from '../components/BusinessCardScanner.js?v=174f66d3';
 import { normalizeSocialLink, attachSmartSocialInput } from '../../utils/social.js?v=174f66d3';
+import { renderArticlesManager } from '../components/ArticlesManager.js?v=20260923_01';
 
 let _dashUser = null;
 let _dashPlacesCache = null;
@@ -90,6 +91,9 @@ export async function renderDashboard($container, { user, section = 'overview', 
           </a>
           <a href="dashboard.html?section=places" data-section="places" class="dashboard-nav-item ${section === 'places' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📍</span> أماكني
+          </a>
+          <a href="dashboard.html?section=articles" data-section="articles" class="dashboard-nav-item ${section === 'articles' ? 'active' : ''}">
+            <span class="dashboard-nav-item__icon">📝</span> المدونة والمقالات
           </a>
           <a href="dashboard.html?section=analytics" data-section="analytics" class="dashboard-nav-item ${section === 'analytics' || section === 'reports' ? 'active' : ''}">
             <span class="dashboard-nav-item__icon">📈</span> التقارير والإحصائيات
@@ -211,6 +215,8 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
       await renderOverviewSection($mainArea, _dashUser);
     } else if (section === 'places') {
       await renderPlacesSection($mainArea, _dashUser);
+    } else if (section === 'articles') {
+      await renderArticlesManager($mainArea, _dashUser);
     } else if (section === 'analytics' || section === 'reports') {
       await renderAnalyticsSection($mainArea, _dashUser, placeId);
     } else if (section === 'add' || section === 'add-place') {
