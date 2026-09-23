@@ -8,7 +8,7 @@ const read = file => fs.readFileSync(path.join(ROOT, file), 'utf8');
 
 const required = [
   'robots.txt','sitemap.xml',
-  'sitemap-places-ar.xml','sitemap-places-en.xml',
+  'sitemap-articles-ar.xml','sitemap-places-ar.xml','sitemap-places-en.xml',
   'sitemap-categories-ar.xml','sitemap-categories-en.xml',
   'sitemap-static-ar.xml','sitemap-static-en.xml',
   'indexnow-key.txt','.indexnow-urls.json',
