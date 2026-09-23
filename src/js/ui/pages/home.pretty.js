@@ -1730,19 +1730,6 @@ function getHomeHTML() {
     <!-- Dedicated Sponsored Showcase Section -->
     <div class="container section" style="padding-bottom:0" id="home-sponsored-container"></div>
 
-    <!-- Categories Section -->
-    <section class="section">
-      <div class="container">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">
-          <h2 class="section-title">تصفح التصنيفات</h2>
-          <a href="categories.html" class="section-link">عرض الكل ←</a>
-        </div>
-        <div class="categories-grid" id="categories-grid">
-          ${Array(8).fill('<div class="skeleton-category-card"><div class="skeleton-category-card__icon skeleton"></div><div class="skeleton-category-card__name skeleton"></div></div>').join('')}
-        </div>
-      </div>
-    </section>
-
     <!-- Verified Places Showcase Section (أماكن وثقت صفحتها معنا) -->
     <style>
       .home-verified-section {
@@ -2023,7 +2010,10 @@ function getHomeHTML() {
       </div>
     </section>
 
-    <!-- Offers Section -->
+    <!-- Local Blog Section -->
+<section class="section" id="home-blog-section"><div class="container"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6);gap:12px;flex-wrap:wrap"><div><h2 class="section-title">📝 من مدونة المنزلة والمطرية</h2><p style="margin:0;color:var(--text-muted);font-size:13px">مقالات مفيدة يكتبها أصحاب الأنشطة عن خدماتهم وأعمالهم.</p></div><a href="/blog/" class="section-link">كل المقالات ←</a></div><div class="blog-grid" id="home-blog-grid"></div></div></section>
+
+<!-- Offers Section -->
     <section class="section" id="offers-section" style="background:var(--surface);padding-block:var(--space-10)">
       <div class="container">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">
