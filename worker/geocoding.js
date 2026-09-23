@@ -176,6 +176,29 @@ export async function geocodePlaceAddress({placeName='',address='',area='',exclu
   const conflicts=await findConflicts(query.db,best.lat,best.lng,excludePlaceId);
   const conflict=conflicts[0]||null;
 
+  const candidates = [];
+  for (const candidate of scored.slice(0,5)) {
+    const candidateConflicts = await findConflicts(query.db, candidate.lat, candidate.lng, excludePlaceId);
+    const candidateConflict = candidateConflicts[0] || null;
+    candidates.push({
+      lat:candidate.lat,
+      lng:candidate.lng,
+      name:candidate.name,
+      formattedAddress:candidate.formattedAddress||candidate.display_name||'',
+      score:Number(candidate.score.toFixed(3)),
+      placeId:candidate.placeId||'',
+      provider:candidate.provider,
+      coordinateConflict:candidateConflict ? {
+        id:candidateConflict.id,
+        name:candidateConflict.name,
+        address:candidateConflict.address,
+        area:candidateConflict.area,
+        distanceMeters:Number(candidateConflict.distanceMeters.toFixed(2))
+      } : null,
+      safe: !candidateConflict
+    });
+  }
+
   return {
     success:true,
     provider,
@@ -190,8 +213,6 @@ export async function geocodePlaceAddress({placeName='',address='',area='',exclu
       formattedAddress:best.formattedAddress||best.display_name||'',
       mapsLink:mapsSearchUrl(query.placeName,query.address,best.provider==='google'?best.placeId:'')
     } : null,
-    candidates:scored.slice(0,5).map(c=>({
-      lat:c.lat,lng:c.lng,name:c.name,formattedAddress:c.formattedAddress||c.display_name||'',score:Number(c.score.toFixed(3)),placeId:c.placeId||'',provider:c.provider
-    }))
+    candidates
   };
 }
