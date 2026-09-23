@@ -457,14 +457,14 @@ export function getDefaultPlaceAssets(place = {}, category = {}) {
 
   let finalCover = firstUsableMedia(place.coverImageUrl, place.cover_image_url, place.coverImage, place.image, place.cover, place.gallery, place.imageUrls, place.image_urls, place.photos);
   if (!finalCover || String(finalCover).includes('placeholder') || String(finalCover).length < 8) {
-    // Priority: Default Directory Cover requested by user
-    finalCover = DEFAULT_PLACE_COVER;
+    // Priority: Category-specific high-resolution photographic cover
+    finalCover = asset?.cover || DEFAULT_PLACE_COVER;
   }
 
   let finalLogo = firstUsableMedia(place.logoUrl, place.logo_url, place.logo, place.photoURL);
   if (!finalLogo || String(finalLogo).includes('placeholder') || String(finalLogo).length < 8) {
-    // Priority: Default Directory Logo requested by user
-    finalLogo = DEFAULT_PLACE_LOGO;
+    // Empty so place card renders the stylish colored category icon badge
+    finalLogo = '';
   }
 
   return {

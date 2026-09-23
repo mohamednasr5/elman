@@ -6,7 +6,7 @@
 import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings, getCached, FALLBACK_CATEGORIES } from '../../core/db.js';
 import { WORKER_URL } from '../../core/firebase.js';
 import { appState } from '../../core/state.js';
-import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js?v=20260922_02';
+import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js?v=20260923_04';
 import { isAtmPlace } from '../../utils/atm.js';
 import { mountSponsoredShowcase, isPlaceSponsored } from '../components/SponsoredShowcase.js';
 import { formatPrice, calcDiscount, normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
@@ -416,6 +416,7 @@ function initHomeVerifiedShowcase(allPlaces = null) {
           categoryName: catLabel,
           customCategory: rawCustom,
           cover: media.cover || media.categoryCover || '',
+          categoryCover: media.categoryCover || '',
           isSponsored: Boolean(p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > Date.now()))
         };
       });
@@ -458,6 +459,15 @@ function initHomeVerifiedShowcase(allPlaces = null) {
   function renderCards(slice) {
     grid.innerHTML = slice.map((p, index) => {
       const targetSlug = p.slug || p.id || '';
+      const catStyle = getCategoryVisualMeta(p.categoryId || p.category || p.categoryName || '');
+      const coverUrl = p.coverImageUrl || p.cover || '';
+      const fallbackCover = p.categoryCover || catStyle.cover || '';
+      const coverHtml = coverUrl
+        ? `<img src="${escAttr(coverUrl)}" alt="${escAttr(p.name)}" loading="eager" fetchpriority="high" decoding="async" width="640" height="360"
+             data-category-fallback="${escAttr(fallbackCover)}"
+             onerror="if(!this.dataset.triedCdn&&this.src.includes('/api/r2/')){this.dataset.triedCdn='1';this.src='https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/'+this.src.split('/api/r2/')[1];}else if(!this.dataset.triedCat&&this.dataset.categoryFallback){this.dataset.triedCat='1';this.src=this.dataset.categoryFallback;}else{this.onerror=null;this.closest('.fair-place-card__cover')?.classList.remove('media-missing');this.outerHTML='<div class=\\'fair-place-card__cover-placeholder\\' style=\\'background:${catStyle.gradient};display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;\\'><span>${catStyle.icon}</span></div>';}">`
+        : `<div class="fair-place-card__cover-placeholder" style="background:${catStyle.gradient};display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;"><span>${catStyle.icon}</span></div>`;
+
       return `
       <article class="fair-place-card" data-card-index="${index}"
                data-place-id="${escAttr(p.id || '')}"
@@ -467,7 +477,7 @@ function initHomeVerifiedShowcase(allPlaces = null) {
                data-whatsapp="${escAttr(p.whatsapp || '')}"
                data-area="${escAttr(p.area || '')}"
                data-address="${escAttr(p.address || '')}"
-               data-cover="${escAttr(p.coverImageUrl || p.cover || '')}"
+               data-cover="${escAttr(coverUrl)}"
                data-logo="${escAttr(p.logoUrl || p.logo || '')}"
                data-category="${escAttr(p.category || '')}"
                onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(targetSlug)}', event) : (window.location.href='/place/${encodeURIComponent(targetSlug)}/')"
@@ -477,7 +487,7 @@ function initHomeVerifiedShowcase(allPlaces = null) {
                style="cursor:pointer">
         <span class="fair-place-card__rank">${rankLabels[index] || `🎖️ الصدارة #${index + 1}`}</span>
         <div class="fair-place-card__cover">
-          <img src="${escAttr(p.coverImageUrl || p.cover)}" alt="${escAttr(p.name)}" loading="eager" fetchpriority="high" decoding="async" width="640" height="360" onerror="this.closest('.fair-place-card__cover')?.classList.add('media-missing');this.style.display='none';">
+          ${coverHtml}
           <div class="fair-place-card__badges">
             ${p.isSponsored ? '<span class="fair-badge-sponsored">⭐ إعلان مميز</span>' : ''}
             <span class="fair-badge-verified">✓ موثق رسمياً</span>

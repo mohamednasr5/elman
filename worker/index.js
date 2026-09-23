@@ -1045,6 +1045,85 @@ Sitemap: https://dalilmanzala.com/sitemap-articles-ar.xml
   });
 }
 
+// ── Direct Cloudflare R2 Object Delivery: GET /api/r2/* ───────
+// Ultra-fast streaming directly from Cloudflare Edge Cache & R2.
+// Placed before ANY database or auth checks to guarantee sub-millisecond static asset delivery.
+if (url.pathname.startsWith('/api/r2/') && request.method === 'GET') {
+  const rawKey = url.pathname.slice('/api/r2/'.length);
+  const key = decodeURIComponent(rawKey).trim();
+  if (!key) return new Response('Missing key', { status: 400 });
+
+  // 1. Cloudflare Edge Cache: Check if already cached in edge PoP
+  const cache = caches.default;
+  const cacheKey = new Request(request.url, request);
+  try {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  } catch (_) {}
+
+  // 2. Fetch from R2 bucket or public CDN fallback
+  try {
+    let response = null;
+    if (env.elmanzala) {
+      try {
+        const object = await env.elmanzala.get(key);
+        if (object) {
+          const headers = new Headers();
+          object.writeHttpMetadata(headers);
+          headers.set('etag', object.httpEtag);
+          headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+          headers.set('Access-Control-Allow-Origin', '*');
+          if (!headers.get('Content-Type')) {
+            const ext = key.split('.').pop().toLowerCase();
+            const mimes = {
+              webp: 'image/webp',
+              png: 'image/png',
+              jpg: 'image/jpeg',
+              jpeg: 'image/jpeg',
+              svg: 'image/svg+xml',
+              gif: 'image/gif',
+              avif: 'image/avif'
+            };
+            headers.set('Content-Type', mimes[ext] || 'image/webp');
+          }
+          response = new Response(object.body, { headers });
+        }
+      } catch (r2Err) {
+        console.warn('[Worker R2 Binding Error, falling back to CDN]:', r2Err?.message);
+      }
+    }
+
+    // 3. Fallback to public R2 CDN if object wasn't found or binding failed
+    if (!response) {
+      const publicUrl = `https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/${key}`;
+      const cdnRes = await fetch(publicUrl, { cf: { cacheTtl: 31536000, cacheEverything: true } });
+      if (cdnRes.ok) {
+        const headers = new Headers(cdnRes.headers);
+        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        headers.set('Access-Control-Allow-Origin', '*');
+        response = new Response(cdnRes.body, {
+          status: 200,
+          headers
+        });
+      } else {
+        return new Response('Image Not Found', { status: 404, headers: { 'Cache-Control': 'public, max-age=60' } });
+      }
+    }
+
+    // 4. Cache in edge cache asynchronously
+    if (response && response.status === 200) {
+      try {
+        ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
+      } catch (_) {}
+    }
+
+    return response;
+  } catch (err) {
+    console.error('[Worker R2 Fatal Error]:', err);
+    return Response.redirect(`https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/${key}`, 302);
+  }
+}
+
 // ── Canonical Redirect: /index.html → / (fixes Lighthouse SEO canonical mismatch)
 if (url.pathname === '/index.html') {
   const redirectUrl = new URL(request.url);
@@ -1115,7 +1194,7 @@ try {
 
   // Server-side IP enforcement for API traffic. Admins can still reach
   // the management endpoints so a ban can be reviewed/removed.
-  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && url.pathname !== '/api/image' && url.pathname !== '/api/market-widgets' && url.pathname !== '/api/live-indicators' && request.method !== 'OPTIONS') {
+  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/r2/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && url.pathname !== '/api/image' && url.pathname !== '/api/market-widgets' && url.pathname !== '/api/live-indicators' && request.method !== 'OPTIONS') {
     try {
       const clientIp = String(request.headers.get('CF-Connecting-IP') || '').trim();
       if (clientIp && clientIp !== '156.197.215.243') {
@@ -1136,46 +1215,6 @@ try {
       }
     } catch (ipErr) {
       console.warn('[IP Ban] enforcement lookup failed:', ipErr?.message || ipErr);
-    }
-  }
-
-  // ── Direct Cloudflare R2 Object Delivery: GET /api/r2/* ───────
-  // Serves R2 images directly through dalilmanzala.com to bypass any ISP/DNS blocking of r2.dev
-  if (url.pathname.startsWith('/api/r2/') && request.method === 'GET') {
-    const rawKey = url.pathname.slice('/api/r2/'.length);
-    const key = decodeURIComponent(rawKey).trim();
-    if (!key) return new Response('Missing key', { status: 400 });
-    try {
-      if (!env.elmanzala) {
-        const publicFallback = await fetch(`https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/${key}`);
-        return new Response(publicFallback.body, publicFallback);
-      }
-      const object = await env.elmanzala.get(key);
-      if (!object) {
-        return new Response('Image Not Found', { status: 404 });
-      }
-      const headers = new Headers();
-      object.writeHttpMetadata(headers);
-      headers.set('etag', object.httpEtag);
-      headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-      headers.set('Access-Control-Allow-Origin', '*');
-      if (!headers.get('Content-Type')) {
-        const ext = key.split('.').pop().toLowerCase();
-        const mimes = {
-          webp: 'image/webp',
-          png: 'image/png',
-          jpg: 'image/jpeg',
-          jpeg: 'image/jpeg',
-          svg: 'image/svg+xml',
-          gif: 'image/gif',
-          avif: 'image/avif'
-        };
-        headers.set('Content-Type', mimes[ext] || 'image/webp');
-      }
-      return new Response(object.body, { headers });
-    } catch (err) {
-      console.error('[Worker R2 Error]:', err);
-      return new Response('R2 Error: ' + err.message, { status: 500 });
     }
   }
 

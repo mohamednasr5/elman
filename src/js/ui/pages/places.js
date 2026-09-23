@@ -1,6 +1,6 @@
-import { getPlacesPaginated, getCategories } from '../../core/db.js';
+import { getPlacesPaginated, getCategories, getCached } from '../../core/db.js';
 import { getCurrentUser } from '../../core/auth.js';
-import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js?v=20260922_02';
+import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js?v=20260923_04';
 import { isAtmPlace, filterAtmPlaces, isAtmReadyAndOperational } from '../../utils/atm.js';
 import { mountSponsoredShowcase, isPlaceSponsored } from '../components/SponsoredShowcase.js';
 import { normalizeArabic, arabicScore, arabicMatch } from '../../utils/arabic.js';
@@ -123,6 +123,7 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
   try {
     let places = [];
+    let masterPool = [];
     let categories = [];
     let page = 1;
     let hasMore = true;
@@ -148,6 +149,14 @@ export async function renderPlacesPage($container, { query = {}, user }) {
     const loadSpinner = document.getElementById('places-load-spinner');
     const loadMessage = document.getElementById('places-load-message');
     const loadSentinel = document.getElementById('places-load-sentinel');
+
+    // Instant sub-second initial paint from local memory/cache
+    const cachedInitial = getCached('published_100_') || getCached('places_all') || [];
+    if (Array.isArray(cachedInitial) && cachedInitial.length > 0) {
+      masterPool = [...cachedInitial];
+      places = [...cachedInitial];
+      renderCurrentPage();
+    }
 
     categories = await getCategories().catch(() => []);
     currentCategories = categories || [];
@@ -186,15 +195,43 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
     function getClientVisiblePlaces() {
       const state = getFilterState();
-      let visible = [...places];
+      const source = (places && places.length > 0) ? places : masterPool;
+      let visible = [...source];
       const isPhone = isPhoneSearchQuery(state.q);
       const isAtmFilterActive = state.category === 'atm' || state.category.includes('صراف') || (state.q && (state.q.includes('صراف') || state.q.toLowerCase().includes('atm')));
 
       if (atmSlot) atmSlot.style.display = isAtmFilterActive ? 'block' : 'none';
 
-      if (isPhone) {
-        const qPhone = normalizePhoneNumber(state.q);
-        visible = visible.filter(p => matchPlaceByPhone(p, qPhone));
+      if (state.category) {
+        const catNorm = state.category.toLowerCase().trim();
+        visible = visible.filter(p => {
+          const cId = String(p.categoryId || p.category_id || '').toLowerCase();
+          const cSlug = String(p.categorySlug || p.category_slug || '').toLowerCase();
+          const cCustom = String(p.customCategory || p.custom_category || '').toLowerCase();
+          const cName = String(p.categoryName || p.category_name || '').toLowerCase();
+          return cId === catNorm || cSlug === catNorm || cCustom.includes(catNorm) || cName.includes(catNorm);
+        });
+      }
+
+      if (state.area) {
+        visible = visible.filter(p => String(p.area || '').includes(state.area));
+      }
+
+      if (state.verified) {
+        visible = visible.filter(p => Boolean(p.isVerified || p.is_verified));
+      }
+
+      if (state.q) {
+        if (isPhone) {
+          const qPhone = normalizePhoneNumber(state.q);
+          visible = visible.filter(p => matchPlaceByPhone(p, qPhone));
+        } else {
+          const normQ = normalizeArabic(state.q.toLowerCase().trim());
+          visible = visible.filter(p => {
+            const hay = normalizeArabic([p.name, p.nameEn, p.description, p.address, p.area, p.phone, p.whatsapp].filter(Boolean).join(' ').toLowerCase());
+            return hay.includes(normQ);
+          });
+        }
       }
 
       if (isAtmFilterActive && _currentAtmPlacesFilter === 'all') {
@@ -206,6 +243,12 @@ export async function renderPlacesPage($container, { query = {}, user }) {
 
       if (state.sort === 'nearest') {
         if (_userLocationCoords) visible = sortPlacesByDistance(visible, _userLocationCoords);
+      } else if (state.sort === 'highest-rating') {
+        visible.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+      } else if (state.sort === 'most-reviews') {
+        visible.sort((a, b) => Number(b.reviewCount || b.reviewsCount || 0) - Number(a.reviewCount || a.reviewsCount || 0));
+      } else if (state.sort === 'newest') {
+        visible.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
       }
       return visible;
     }
@@ -264,6 +307,9 @@ export async function renderPlacesPage($container, { query = {}, user }) {
         incoming.forEach(p => {
           const key = String(p?.id || p?.slug || '').toLowerCase();
           if (key && !seen.has(key)) { places.push(p); seen.add(key); }
+          if (key && !masterPool.some(m => String(m?.id || m?.slug || '').toLowerCase() === key)) {
+            masterPool.push(p);
+          }
         });
 
         hasMore = selectedSort === 'nearest' ? false : Boolean(result?.pagination?.hasMore);
@@ -289,10 +335,12 @@ export async function renderPlacesPage($container, { query = {}, user }) {
       }
     }
 
-    async function applyFilters() {
+    function applyFilters() {
       page = 1;
       hasMore = true;
-      await fetchPlacesPage({ reset: true });
+      // Instant sub-second UI response
+      renderCurrentPage();
+      fetchPlacesPage({ reset: true });
     }
 
     async function loadMore() {

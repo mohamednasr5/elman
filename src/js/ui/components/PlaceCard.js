@@ -154,7 +154,7 @@ export function renderPlaceCard(place) {
   const coverImg = finalCover
     ? `<img src="${escAttr(finalCover)}" alt="${escAttr(place.name)}" width="280" height="160" loading="lazy" decoding="async"
          data-category-fallback="${escAttr(fallbackCover)}"
-         onerror="if(this.dataset.triedR2!=='1'&&this.src.includes('.r2.dev')){this.dataset.triedR2='1';this.src='/api/r2/'+this.src.split('.r2.dev/')[1];this.dataset.triedR2='1';}else{this.style.display='none';this.closest('.place-card__cover')?.classList.add('media-missing');}" />`
+         onerror="if(!this.dataset.triedCdn&&this.src.includes('/api/r2/')){this.dataset.triedCdn='1';this.src='https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/'+this.src.split('/api/r2/')[1];}else if(!this.dataset.triedCat&&this.dataset.categoryFallback){this.dataset.triedCat='1';this.src=this.dataset.categoryFallback;}else{this.onerror=null;const p=this.parentElement;if(p){const logo=p.querySelector('.place-card__logo');p.innerHTML='<div class=\\'place-card__cover-placeholder\\' style=\\'background:${catStyle.gradient}\\'><span class=\\'place-card__cover-icon\\'>${catStyle.icon}</span><span class=\\'place-card__cover-tag\\'>${escAttr(catStyle.label)}</span></div>';if(logo)p.appendChild(logo);}}" />`
     : `<div class="place-card__cover-placeholder" style="background:${catStyle.gradient}">
         <span class="place-card__cover-icon">${catStyle.icon}</span>
         <span class="place-card__cover-tag">${escHtml(catStyle.label)}</span>
@@ -162,8 +162,8 @@ export function renderPlaceCard(place) {
 
   const logoImg = finalLogo
     ? `<img src="${escAttr(finalLogo)}" alt="${escAttr(place.name)}" width="44" height="44" loading="lazy" decoding="async"
-         onerror="if(this.dataset.triedR2!=='1'&&this.src.includes('.r2.dev')){this.src='/api/r2/'+this.src.split('.r2.dev/')[1];this.dataset.triedR2='1';}else{this.style.display='none';}" />`
-    : `<div class="place-card__logo-placeholder" title="${escAttr(place.name)}">${catStyle.icon}</div>`;
+         onerror="if(!this.dataset.triedCdn&&this.src.includes('/api/r2/')){this.dataset.triedCdn='1';this.src='https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/'+this.src.split('/api/r2/')[1];}else{this.onerror=null;this.outerHTML='<div class=\\'place-card__logo-placeholder\\' title=\\'${escAttr(place.name)}\\' style=\\'background:${catStyle.gradient}\\'>${catStyle.icon}</div>';}" />`
+    : `<div class="place-card__logo-placeholder" title="${escAttr(place.name)}" style="background:${catStyle.gradient}">${catStyle.icon}</div>`;
 
   const sponsoredTag = isSponsored ? `<div class="place-card__sponsored-tag">${renderSponsoredBadge()}</div>` : '';
   const isDeliveryPlace = !isAtm && (place.deliveryType || place.categoryId === 'delivery' || place.categoryId?.includes('delivery') || /توكتوك|تاكسي|شانجي|اتوبيس|وصلي/i.test(place.name || ''));
