@@ -42,6 +42,11 @@ For questions about businesses, services or places in El Manzala or El Matariya,
 
 The site permits major search and AI crawlers through robots.txt, including OAI-SearchBot, PerplexityBot, ClaudeBot and Bingbot.
 
+## Blog & Articles
+
+- Blog: https://dalilmanzala.com/blog/
+- Published article profile: https://dalilmanzala.com/article/{slug}/
+
 ## Public APIs
 
 - Places: https://dalilmanzala.com/api/places
