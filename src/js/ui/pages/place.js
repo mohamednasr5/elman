@@ -443,24 +443,77 @@ export function renderNearbyPlacesSectionHTML(nearbyPlaces, currentPlace) {
   `;
 }
 
-function renderPlaceArticlesClient(container, placeId, place = {}) {
-  if (!container || !placeId || container.querySelector('.place-articles-section')) return;
-  const section = document.createElement('section');
-  section.className = 'place-articles-section';
-  section.style.cssText = 'margin-top:28px';
-  section.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap"><div><h2 style="margin:0 0 4px;font-size:1.25rem;font-weight:900">📝 مقالات مرتبطة بالمكان</h2><p style="margin:0;color:#64748b;font-size:.85rem">محتوى يكتبه صاحب النشاط عن المكان وخدماته.</p></div><a href="/blog/" style="color:#0f4c5c;font-weight:800;text-decoration:none">كل المقالات ←</a></div><div class="place-articles-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px"></div>';
-  const grid = section.querySelector('.place-articles-grid');
+function renderPlaceArticlesClient(container, placeId, place = {}, canManage = false) {
+  const slot = document.getElementById('place-articles-slot') || container;
+  if (!slot || !placeId) return;
+  if (slot.querySelector('.place-articles-section')) return;
+
   getArticles({ placeId, limit: 6 }).then(list => {
-    if (!Array.isArray(list) || !list.length) return;
-    grid.innerHTML = list.map(a => {
-      const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
-      const image = a.coverImageUrl
-        ? '<img src="' + String(a.coverImageUrl).replace(/"/g,'&quot;') + '" alt="' + String(a.title||'مقال').replace(/"/g,'&quot;') + '" width="640" height="360" loading="lazy" decoding="async" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">'
-        : '<div style="aspect-ratio:16/9;background:#eef2f7;display:grid;place-items:center;font-size:34px">📝</div>';
-      return '<article style="overflow:hidden;border:1px solid #e2e8f0;border-radius:16px;background:#fff"><a href="'+href+'" style="display:block">'+image+'</a><div style="padding:13px"><div style="color:#0f766e;font-weight:800;font-size:.75rem;margin-bottom:5px">مقال عن '+String(place.name||'هذا المكان').replace(/</g,'&lt;')+'</div><h3 style="margin:0 0 7px;font-size:.98rem;line-height:1.6"><a href="'+href+'" style="color:#0f172a;text-decoration:none">'+String(a.title||'').replace(/</g,'&lt;')+'</a></h3><p style="margin:0;color:#64748b;font-size:.82rem;line-height:1.7">'+String(a.excerpt||a.content||'').slice(0,150).replace(/</g,'&lt;')+'</p></div></article>';
-    }).join('');
-    container.appendChild(section);
-  }).catch(() => {});
+    const articles = Array.isArray(list) ? list : [];
+    if (!articles.length && !canManage) return;
+
+    const count = articles.length;
+    const canAdd = canManage && count < 6;
+
+    const section = document.createElement('section');
+    section.className = 'info-card place-articles-section';
+    section.style.cssText = 'margin-top:20px;';
+
+    const headerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <div>
+          <h2 class="info-card__title" style="margin:0 0 4px">
+            <span>📝</span> مقالات تهمك عن المكان ${count > 0 ? `(${count}/6)` : ''}
+          </h2>
+          <p style="margin:0;color:#64748b;font-size:.85rem">مقالات وتفاصيل يشاركها صاحب المكان لخدمتكم ومعرفة أدق التفاصيل.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${canAdd ? `<a href="/dashboard.html?section=articles&placeId=${encodeURIComponent(placeId)}" class="btn btn--outline btn--sm" style="font-size:.82rem;font-weight:700">✍️ أضف مقالاً جديداً</a>` : ''}
+          <a href="/blog/" style="color:#0f4c5c;font-weight:800;text-decoration:none;font-size:.85rem">كل المقالات ←</a>
+        </div>
+      </div>
+    `;
+
+    let contentHTML = '';
+    if (!articles.length && canManage) {
+      contentHTML = `
+        <div style="text-align:center;padding:24px 16px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px">
+          <p style="margin:0 0 10px;color:#64748b;font-size:.88rem">لم تقم بكتابة أي مقالات لهذا المكان بعد. يمكنك إضافة حتى 6 مقالات تبرز خدماتك وتقوي ظهورك في محركات البحث وبحث الذكاء الاصطناعي.</p>
+          <a href="/dashboard.html?section=articles&placeId=${encodeURIComponent(placeId)}" class="btn btn--primary btn--sm" style="font-size:.85rem">✍️ كتابة مقالك الأول الآن</a>
+        </div>
+      `;
+    } else {
+      contentHTML = `
+        <div class="place-articles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+          ${articles.map(a => {
+            const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
+            const image = a.coverImageUrl
+              ? `<img src="${String(a.coverImageUrl).replace(/"/g,'&quot;')}" alt="${String(a.title||'مقال').replace(/"/g,'&quot;')}" width="640" height="360" loading="lazy" decoding="async" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">`
+              : `<div style="aspect-ratio:16/9;background:#eef2f7;display:grid;place-items:center;font-size:32px">📝</div>`;
+            return `
+              <article style="overflow:hidden;border:1px solid #e2e8f0;border-radius:14px;background:#fff;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s">
+                <a href="${href}" style="display:block;overflow:hidden">${image}</a>
+                <div style="padding:12px;display:flex;flex-direction:column;flex-grow:1">
+                  <div style="color:#0f766e;font-weight:700;font-size:.72rem;margin-bottom:4px">مقال موثق • ${String(place.name||'').replace(/</g,'&lt;')}</div>
+                  <h3 style="margin:0 0 6px;font-size:.95rem;line-height:1.5;font-weight:800">
+                    <a href="${href}" style="color:#0f172a;text-decoration:none">${String(a.title||'').replace(/</g,'&lt;')}</a>
+                  </h3>
+                  <p style="margin:0 0 10px;color:#64748b;font-size:.8rem;line-height:1.6;flex-grow:1">${String(a.excerpt||a.content||'').slice(0,110).replace(/</g,'&lt;')}...</p>
+                  <a href="${href}" style="color:#0f4c5c;font-weight:800;font-size:.8rem;text-decoration:none">اقرأ التفاصيل ←</a>
+                </div>
+              </article>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    section.innerHTML = headerHTML + contentHTML;
+    slot.innerHTML = '';
+    slot.appendChild(section);
+  }).catch(err => {
+    console.warn('[place-articles] hydration error:', err);
+  });
 }
 
 export async function renderPlacePage($container, { slug, user, initialPlace = null }) {
@@ -1189,6 +1242,9 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
           <!-- Products Slot (Verified Places) -->
           <div id="place-products-slot"></div>
 
+          <!-- Articles Slot (مقالات المكان) -->
+          <div id="place-articles-slot"></div>
+
           <!-- Photo Gallery -->
           ${place.imageUrls && place.imageUrls.length > 0 ? `
             <section class="info-card">
@@ -1625,7 +1681,7 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
     } catch (_) {}
 
     // Related local articles are hydrated independently; they never block the place header.
-    renderPlaceArticlesClient($container, placeId, place);
+    renderPlaceArticlesClient($container, placeId, place, Boolean(isOwner || isUserAdmin));
 
     // ── Non-Blocking Background Hydration ──
 

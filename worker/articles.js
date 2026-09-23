@@ -48,13 +48,14 @@ function mapRow(row) {
     place: row.place_name ? {
       id: row.place_id, name: row.place_name, slug: row.place_slug,
       area: row.place_area || '', address: row.place_address || '', phone: row.place_phone || '',
+      whatsapp: row.place_whatsapp || '',
       logoUrl: imageUrl(row.place_logo_url), coverImageUrl: imageUrl(row.place_cover_url)
     } : null
   };
 }
 
 async function bySlug(db, slug, includeUnpublished) {
-  let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.slug = ?';
+  let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.slug = ?';
   if (!includeUnpublished) sql += " AND a.status = 'published'";
   sql += ' LIMIT 1';
   return mapRow(await db.prepare(sql).bind(slug).first().catch(() => null));
@@ -79,30 +80,50 @@ function card(article) {
 
 function css() {
   return '<style>' +
-  ':root{--blog-primary:#0f4c5c;--blog-muted:#64748b;--blog-border:#e2e8f0}' +
+  ':root{--blog-primary:#0f4c5c;--blog-muted:#64748b;--blog-border:#e2e8f0;--blog-surface:#ffffff}' +
   '.blog-page{max-width:1180px;margin:0 auto;padding:32px 16px 64px}' +
   '.blog-hero{padding:28px 22px;margin-bottom:24px;border:1px solid var(--blog-border);border-radius:24px;background:linear-gradient(135deg,#f0fdfa,#fff)}' +
   '.blog-hero h1{margin:0 0 8px;font-size:clamp(1.7rem,4vw,2.5rem);font-weight:900;color:#0f172a}' +
   '.blog-hero p{margin:0;color:var(--blog-muted);line-height:1.9}' +
   '.blog-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}' +
-  '.blog-card{display:flex;flex-direction:column;overflow:hidden;background:#fff;border:1px solid var(--blog-border);border-radius:18px;box-shadow:0 6px 24px rgba(15,23,42,.06)}' +
+  '.blog-card{display:flex;flex-direction:column;overflow:hidden;background:#fff;border:1px solid var(--blog-border);border-radius:18px;box-shadow:0 6px 24px rgba(15,23,42,.06);transition:transform .2s,box-shadow .2s}' +
+  '.blog-card:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(15,23,42,.1)}' +
   '.blog-card__image-link{display:block;aspect-ratio:16/9;background:#edf2f7;overflow:hidden}' +
   '.blog-card__image{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s ease}' +
   '.blog-card:hover .blog-card__image{transform:scale(1.03)}' +
-  '.blog-card__image--placeholder{display:grid;place-items:center;font-size:42px}' +
-  '.blog-card__body{padding:16px}.blog-card__meta{font-size:.78rem;color:#0f766e;font-weight:800;margin-bottom:7px}' +
-  '.blog-card__meta a{color:inherit;text-decoration:none}.blog-card__title{font-size:1.08rem;line-height:1.55;margin:0 0 7px;font-weight:900;color:#0f172a}' +
-  '.blog-card__title a{color:inherit;text-decoration:none}.blog-card__excerpt{margin:0 0 13px;line-height:1.85;color:#475569;font-size:.92rem}' +
-  '.blog-card__read{color:#0f4c5c;font-weight:800;text-decoration:none}' +
-  '.article-page{max-width:960px;margin:0 auto;padding:30px 16px 72px}.article-breadcrumb{font-size:.85rem;color:#64748b;margin-bottom:14px}.article-breadcrumb a{color:#0f4c5c;text-decoration:none}' +
+  '.blog-card__image--placeholder{display:grid;place-items:center;font-size:42px;height:100%}' +
+  '.blog-card__body{padding:16px;display:flex;flex-direction:column;flex:1}' +
+  '.blog-card__meta{font-size:.78rem;color:#0f766e;font-weight:800;margin-bottom:7px}' +
+  '.blog-card__meta a{color:inherit;text-decoration:none}' +
+  '.blog-card__title{font-size:1.08rem;line-height:1.55;margin:0 0 7px;font-weight:900;color:#0f172a}' +
+  '.blog-card__title a{color:inherit;text-decoration:none}' +
+  '.blog-card__excerpt{margin:0 0 13px;line-height:1.85;color:#475569;font-size:.92rem;flex:1}' +
+  '.blog-card__read{color:#0f4c5c;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:4px}' +
+  '.article-page{max-width:960px;margin:0 auto;padding:30px 16px 72px}' +
+  '.article-breadcrumb{font-size:.85rem;color:#64748b;margin-bottom:14px}' +
+  '.article-breadcrumb a{color:#0f4c5c;text-decoration:none}' +
   '.article-shell{background:#fff;border:1px solid var(--blog-border);border-radius:24px;overflow:hidden;box-shadow:0 10px 38px rgba(15,23,42,.07)}' +
-  '.article-cover{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#edf2f7}.article-content{padding:28px 22px}' +
-  '.article-content h1{font-size:clamp(1.8rem,4vw,2.7rem);line-height:1.35;margin:0 0 12px;color:#0f172a;font-weight:900}' +
-  '.article-meta{display:flex;gap:8px;flex-wrap:wrap;color:#64748b;font-size:.84rem;margin-bottom:22px}.article-prose{font-size:1.03rem;line-height:2.05;color:#243447}.article-prose p{margin:0 0 1em}' +
-  '.place-context{margin-top:28px;border:1px solid #cbd5e1;border-radius:18px;padding:16px;background:#f8fafc}.place-context__head{display:flex;align-items:center;gap:12px}' +
-  '.place-context__logo{width:54px;height:54px;border-radius:14px;object-fit:cover;background:#e2e8f0}.place-context__name{font-size:1rem;font-weight:900;color:#0f172a}.place-context__name a{color:inherit;text-decoration:none}' +
-  '.place-context__data{margin:10px 0 0;color:#475569;line-height:1.8;font-size:.9rem}.related-articles{margin-top:30px}.related-articles h2{font-size:1.2rem;font-weight:900;margin:0 0 14px}' +
-  '.article-keywords{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}.article-keywords span{background:#ecfeff;color:#0f766e;border-radius:999px;padding:5px 10px;font-size:.75rem;font-weight:800}' +
+  '.article-cover{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#edf2f7}' +
+  '.article-content{padding:28px 22px}' +
+  '.article-content h1{font-size:clamp(1.7rem,4vw,2.5rem);line-height:1.4;margin:0 0 12px;color:#0f172a;font-weight:900}' +
+  '.article-meta{display:flex;gap:8px;flex-wrap:wrap;color:#64748b;font-size:.84rem;margin-bottom:22px;align-items:center}' +
+  '.article-prose{font-size:1.08rem;line-height:2.15;color:#1e293b}' +
+  '.article-prose p{margin:0 0 1.2em}' +
+  '.place-context{margin-top:36px;border:1.5px solid rgba(15,118,110,.25);border-radius:20px;padding:22px;background:linear-gradient(135deg,#f0fdfa 0%,#ffffff 100%);box-shadow:0 8px 30px rgba(15,118,110,.07)}' +
+  '.place-context__badge{display:inline-flex;align-items:center;gap:6px;background:#0f766e;color:#fff;font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;margin-bottom:14px}' +
+  '.place-context__head{display:flex;align-items:center;gap:16px;flex-wrap:wrap}' +
+  '.place-context__logo{width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.08)}' +
+  '.place-context__name{font-size:1.25rem;font-weight:900;color:#0f172a;line-height:1.4}' +
+  '.place-context__name a{color:inherit;text-decoration:none}' +
+  '.place-context__data{margin:12px 0 16px;color:#475569;line-height:1.8;font-size:.92rem;display:flex;gap:12px;flex-wrap:wrap}' +
+  '.place-context__actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}' +
+  '.place-context__btn-primary{background:#0f4c5c;color:#fff;padding:11px 22px;border-radius:12px;font-weight:800;font-size:.92rem;text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(15,76,92,.25)}' +
+  '.place-context__btn-call{background:#10b981;color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;font-size:.88rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px}' +
+  '.place-context__btn-wa{background:#25d366;color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;font-size:.88rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px}' +
+  '.related-articles{margin-top:36px;border-top:1px solid #e2e8f0;padding-top:28px}' +
+  '.related-articles h2{font-size:1.25rem;font-weight:900;margin:0 0 16px;color:#0f172a}' +
+  '.article-keywords{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;padding-top:16px;border-top:1px solid #f1f5f9}' +
+  '.article-keywords span{background:#ecfeff;color:#0f766e;border-radius:999px;padding:6px 12px;font-size:.78rem;font-weight:800;border:1px solid #cffafe}' +
   '</style>';
 }
 
@@ -249,11 +270,31 @@ export async function handleArticlePublicPage(request, url, env) {
   ]};
   const kws=article.keywords.map(k=>'<span>'+esc(k)+'</span>').join('');
   const logo=place.logoUrl||place.coverImageUrl;
-  const placeCard='<aside class="place-context" aria-label="المقال مرتبط بالمكان"><div class="place-context__head">' +
-    (logo?'<img class="place-context__logo" src="'+esc(logo)+'" alt="'+esc(place.name)+'">':'') +
-    '<div><div class="place-context__name"><a href="'+esc(placeUrl)+'">'+esc(place.name)+'</a></div><div style="color:#0f766e;font-size:.8rem;font-weight:700">مقال مرتبط بهذا المكان</div></div></div>' +
-    '<p class="place-context__data">📍 '+esc(place.area||'المنزلة والمطرية')+(place.address?' — '+esc(place.address):'')+(place.phone?' · 📞 '+esc(place.phone):'')+'</p>' +
-    '<a href="'+esc(placeUrl)+'" style="font-weight:900;color:#0f4c5c;text-decoration:none">فتح بطاقة المكان والتفاصيل ←</a></aside>';
+  const rawPhone=String(place.phone||'').trim();
+  const rawWa=String(place.whatsapp||rawPhone).trim();
+  const phoneClean=rawPhone.replace(/\D/g,'');
+  const waClean=rawWa.replace(/\D/g,'');
+  const waLink=waClean?`https://wa.me/2${waClean.startsWith('0')?waClean.slice(1):waClean}`:'';
+
+  const placeCard='<aside class="place-context" aria-label="المقال مرتبط بالمكان">' +
+    '<div class="place-context__badge">🏪 مقال رسمي وموثق مرتبط بنشاط في الدليل</div>' +
+    '<div class="place-context__head">' +
+      (logo?'<img class="place-context__logo" src="'+esc(logo)+'" alt="'+esc(place.name)+'" width="64" height="64" loading="lazy">':'') +
+      '<div>' +
+        '<div class="place-context__name"><a href="'+esc(placeUrl)+'">'+esc(place.name)+'</a></div>' +
+        '<div style="color:#0f766e;font-size:.85rem;font-weight:800;margin-top:3px">📍 '+esc(place.area||'المنزلة والمطرية')+'</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="place-context__data">' +
+      (place.address?'<span>📌 '+esc(place.address)+'</span>':'') +
+      (place.phone?'<span>📞 '+esc(place.phone)+'</span>':'') +
+    '</div>' +
+    '<div class="place-context__actions">' +
+      '<a href="'+esc(placeUrl)+'" class="place-context__btn-primary">عرض بطاقة المكان وتفاصيل النشاط ↗</a>' +
+      (phoneClean?'<a href="tel:'+esc(phoneClean)+'" class="place-context__btn-call">اتصال 📞</a>':'') +
+      (waLink?'<a href="'+esc(waLink)+'" target="_blank" rel="noopener noreferrer" class="place-context__btn-wa">واتساب 💬</a>':'') +
+    '</div>' +
+  '</aside>';
   const relatedHtml=related.length?'<section class="related-articles"><h2>مقالات أخرى عن '+esc(place.name)+'</h2><div class="blog-grid">'+related.map(card).join('')+'</div></section>':'';
   const html='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>'+esc(article.title)+' | '+esc(place.name)+' | دليل المنزلة والمطرية</title>' +
