@@ -713,11 +713,40 @@ export async function handleArticlePublicPage(request, url, env) {
     '}' +
   '</script>';
 
+  // Extract FAQ items for FAQPage Schema (Google Rich Snippets & AI Search Q&A)
+  const faqItems = [];
+  const faqSection = (article.content || '').split(/##\s+(?:الأسئلة الشائعة|أسئلة شائعة|FAQ)/i)[1];
+  if (faqSection) {
+    const rawFaqContent = faqSection.split(/\n##\s+/)[0];
+    const qMatches = rawFaqContent.match(/###\s+([^\n]+)\n+([\s\S]*?)(?=\n###\s+|$)/g) || [];
+    for (const block of qMatches) {
+      const qTitle = block.match(/###\s+(?:س\d*[:：\-]?\s*)?([^\n?؟]+[?؟]?)/)?.[1]?.trim();
+      const aText = block.replace(/^###[^\n]+\n+/, '').replace(/^[-*]\s+/gm, '').trim();
+      if (qTitle && aText) {
+        faqItems.push({
+          '@type': 'Question',
+          name: qTitle,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: aText
+          }
+        });
+      }
+    }
+  }
+  const faqSchema = faqItems.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqItems
+  } : null;
+
   const html = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>' + esc(article.title) + ' | ' + esc(place.name) + ' | دليل المنزلة والمطرية</title>' +
     '<meta name="description" content="' + esc(article.excerpt || article.content.slice(0, 180)) + '">' +
     '<meta name="keywords" content="' + esc(article.keywords.join(', ')) + '">' +
     '<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">' +
+    '<meta name="googlebot" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">' +
+    '<meta name="bingbot" content="index,follow,max-snippet:-1,max-image-preview:large">' +
     '<link rel="canonical" href="' + esc(canonical) + '">' +
     '<link rel="alternate" hreflang="ar" href="' + esc(canonical) + '">' +
     '<link rel="alternate" hreflang="x-default" href="' + esc(canonical) + '">' +
@@ -729,6 +758,9 @@ export async function handleArticlePublicPage(request, url, env) {
     '<meta property="og:image" content="' + esc(article.coverImageUrl || SITE + '/assets/images/og-whatsapp.jpg') + '">' +
     '<meta property="og:image:width" content="1200">' +
     '<meta property="og:image:height" content="675">' +
+    '<meta property="article:published_time" content="' + esc(published) + '">' +
+    '<meta property="article:modified_time" content="' + esc(modified) + '">' +
+    '<meta property="article:section" content="' + esc(place.category || 'أعمال محلية') + '">' +
     '<meta name="twitter:card" content="summary_large_image">' +
     '<meta name="twitter:title" content="' + esc(article.title) + '">' +
     '<meta name="twitter:description" content="' + esc(article.excerpt || article.content.slice(0, 180)) + '">' +
@@ -736,6 +768,7 @@ export async function handleArticlePublicPage(request, url, env) {
     css() +
     '<script type="application/ld+json">' + JSON.stringify(schema) + '</script>' +
     '<script type="application/ld+json">' + JSON.stringify(breadcrumb) + '</script>' +
+    (faqSchema ? '<script type="application/ld+json">' + JSON.stringify(faqSchema) + '</script>' : '') +
     '</head><body>' +
     '<div id="readingProgressBar"></div>' +
     '<div class="article-nav-wrap"><div class="article-nav-container"><div class="article-breadcrumb"><a href="/">الرئيسية</a><span class="sep">/</span><a href="/blog/">المدونة</a><span class="sep">/</span><a href="' + esc(placeUrl) + '">' + esc(place.name || 'المكان') + '</a><span class="sep">/</span><span>' + esc(article.title) + '</span></div><a href="' + esc(placeUrl) + '" class="nav-home-btn">🏪 صفحة النشاط</a></div></div>' +

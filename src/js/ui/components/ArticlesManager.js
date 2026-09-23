@@ -310,6 +310,14 @@ export async function renderArticlesManager(container, user) {
               <div style="font-size:11.5px;color:#64748b;margin-top:4px">سيتم ضغطها تلقائياً بتقنية WebP لتفتح فوراً للزوار بأعلى سرعة</div>
             </div>
 
+            <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm btn-outline" id="btn-use-place-cover" style="background:#f0fdfa;color:#0f766e;border-color:#99f6e4;font-weight:800;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px">
+                <span>🖼️</span>
+                <span>استخدام نفس صورة غلاف المكان للغلاف</span>
+              </button>
+              <span style="font-size:11.5px;color:#64748b">أو اختر صورة جديدة من جهازك عبر المربع أعلاه</span>
+            </div>
+
             <div class="article-preview-container" id="art-preview-wrap" style="${(stagedPreviewUrl || editingArticle?.coverImageUrl) ? '' : 'display:none'}">
               <img id="art-preview-img" src="${esc(stagedPreviewUrl || editingArticle?.coverImageUrl || '')}" alt="معاينة غلاف المقال">
               <button type="button" class="article-preview-remove" id="btn-remove-cover">🗑️ إزالة الصورة</button>
@@ -513,6 +521,32 @@ export async function renderArticlesManager(container, user) {
       imageStatus.textContent = '';
     });
 
+    // Use place cover button
+    const btnUsePlaceCover = bodyEl.querySelector('#btn-use-place-cover');
+    if (btnUsePlaceCover) {
+      btnUsePlaceCover.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentPlace = places.find(p => String(p.id || p._key) === String(currentPlaceId)) || places[0];
+        const placeCover = currentPlace?.coverImageUrl || currentPlace?.cover_image_url || currentPlace?.cover || currentPlace?.categoryCover || '';
+
+        if (!placeCover) {
+          toast.info?.('النشاط التجاري المختار ليس له صورة غلاف مسجلة بعد. يرجى رفع صورة مخصصة للمقال.');
+          return;
+        }
+
+        stagedImageFile = null;
+        stagedPreviewUrl = placeCover;
+        fileInput.value = '';
+        if (editingArticle) editingArticle.coverImageUrl = placeCover;
+
+        previewImg.src = placeCover;
+        previewWrap.style.display = 'block';
+        imageStatus.textContent = '✅ تم اختيار صورة غلاف المكان كغلاف للمقال بنجاح';
+        toast.success?.('تم استخدام صورة غلاف المكان كغلاف للمقال بنجاح 🖼️');
+      });
+    }
+
     // Cancel Edit
     const cancelEditBtn = bodyEl.querySelector('#btn-cancel-edit');
     if (cancelEditBtn) {
@@ -561,7 +595,7 @@ export async function renderArticlesManager(container, user) {
       saveBtn.disabled = true;
       saveBtn.innerHTML = '⏳ جاري الحفظ والمعالجة...';
 
-      let coverUrl = editingArticle?.coverImageUrl || '';
+      let coverUrl = stagedPreviewUrl || editingArticle?.coverImageUrl || '';
 
       // Upload staged image if changed
       if (stagedImageFile) {

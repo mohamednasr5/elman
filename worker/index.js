@@ -369,7 +369,9 @@ async function notifyIndexNow(urls) {
     });
     const endpoints = [
       'https://api.indexnow.org/indexnow',
-      'https://www.bing.com/indexnow'
+      'https://www.bing.com/indexnow',
+      'https://yandex.com/indexnow',
+      'https://search.seznam.cz/indexnow'
     ];
     await Promise.allSettled(endpoints.map(ep =>
       fetch(ep, {
@@ -378,6 +380,14 @@ async function notifyIndexNow(urls) {
         body: payload
       })
     ));
+
+    // Ping search engines with sitemaps (Google & Bing)
+    await Promise.allSettled([
+      fetch('https://www.google.com/ping?sitemap=' + encodeURIComponent('https://dalilmanzala.com/sitemap-articles-ar.xml')),
+      fetch('https://www.bing.com/ping?sitemap=' + encodeURIComponent('https://dalilmanzala.com/sitemap-articles-ar.xml')),
+      fetch('https://www.google.com/ping?sitemap=' + encodeURIComponent('https://dalilmanzala.com/sitemap.xml')),
+      fetch('https://www.bing.com/ping?sitemap=' + encodeURIComponent('https://dalilmanzala.com/sitemap.xml'))
+    ]);
   } catch (err) {
     console.warn('[IndexNow Notification Warning]:', err?.message || err);
   }
@@ -386,13 +396,12 @@ async function notifyIndexNow(urls) {
 async function ensureDailyPlacesIndexed(env, forceAll = false) {
   try {
     const db = createTursoDB(env);
-    // Guarantee that all active places in the directory are submitted to IndexNow every single day.
-    // With ~414 places (828 URLs AR+EN), submitting the full catalog is well within IndexNow's 10,000 URLs/day quota.
+    // Guarantee that all active places and published articles are submitted to IndexNow every single day.
     const query = "SELECT slug, id, updated_at FROM places WHERE status = 'published' ORDER BY updated_at DESC LIMIT 1000";
     const rows = (await db.prepare(query).all().catch(() => ({ results: [] }))).results || [];
     
+    const urls = [];
     if (rows.length > 0) {
-      const urls = [];
       for (const r of rows) {
         const rawSlug = String(r.slug || r.id || '').trim();
         if (rawSlug) {
@@ -401,13 +410,25 @@ async function ensureDailyPlacesIndexed(env, forceAll = false) {
           urls.push(`https://dalilmanzala.com/en/place/${s}/`);
         }
       }
+    }
 
+    // Also include all published articles in daily search engine indexing
+    const articleRows = (await db.prepare("SELECT slug FROM articles WHERE status = 'published' ORDER BY updated_at DESC LIMIT 500").all().catch(() => ({ results: [] }))).results || [];
+    for (const a of articleRows) {
+      const artSlug = String(a.slug || '').trim();
+      if (artSlug) {
+        urls.push(`https://dalilmanzala.com/article/${encodeURIComponent(artSlug)}/`);
+      }
+    }
+    urls.push('https://dalilmanzala.com/blog/');
+
+    if (urls.length > 0) {
       // Submit in chunks of 500 URLs
       for (let i = 0; i < urls.length; i += 500) {
         const batch = urls.slice(i, i + 500);
         await notifyIndexNow(batch);
       }
-      console.log(`[Daily Automated Indexing]: Successfully submitted ${urls.length} place URLs to IndexNow.`);
+      console.log(`[Daily Automated Indexing]: Successfully submitted ${urls.length} places & articles URLs to search engines.`);
       return { success: true, count: urls.length, timestamp: new Date().toISOString() };
     }
     return { success: true, count: 0, timestamp: new Date().toISOString() };
@@ -514,14 +535,15 @@ async function handleDynamicSitemap(request, url, env, ctx) {
       `\n</urlset>\n`;
   } else if (p === '/sitemap-articles-ar.xml') {
     const db = createTursoDB(env);
-    const rows = (await db.prepare("SELECT slug, updated_at FROM articles a JOIN places p ON p.id=a.place_id WHERE a.status='published' AND p.status='published' ORDER BY COALESCE(a.updated_at,a.created_at) DESC").all().catch(() => ({results:[]}))).results || [];
+    const rows = (await db.prepare("SELECT a.slug, a.title, a.cover_image_url, a.updated_at, a.created_at FROM articles a JOIN places p ON p.id=a.place_id WHERE a.status='published' AND p.status='published' ORDER BY COALESCE(a.updated_at,a.created_at) DESC").all().catch(() => ({results:[]}))).results || [];
     const entries = rows.map(r => {
       const slug = encodeURIComponent(String(r.slug || '').trim());
-      const d = r.updated_at ? new Date(r.updated_at) : null;
-      const lm = d && !Number.isNaN(d.getTime()) ? '<lastmod>'+d.toISOString().slice(0,10)+'</lastmod>' : '';
-      return '  <url><loc>'+site+'/article/'+slug+'/</loc>'+lm+'</url>';
+      const d = r.updated_at || r.created_at ? new Date(r.updated_at || r.created_at) : null;
+      const lm = d && !Number.isNaN(d.getTime()) ? `\n    <lastmod>${d.toISOString().slice(0,10)}</lastmod>` : '';
+      const img = r.cover_image_url ? `\n    <image:image>\n      <image:loc>${esc(abs(r.cover_image_url))}</image:loc>\n      <image:title>${esc(r.title||'')}</image:title>\n    </image:image>` : '';
+      return `  <url>\n    <loc>${site}/article/${slug}/</loc>${lm}\n    <changefreq>weekly</changefreq>\n    <priority>0.85</priority>${img}\n  </url>`;
     }).join('\n');
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+entries+'\n</urlset>\n';
+    xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${entries}\n</urlset>\n`;
   } else if (p === '/sitemap-categories-ar.xml' || p === '/sitemap-categories-en.xml') {
     const isEn = p === '/sitemap-categories-en.xml';
     const db = createTursoDB(env);
