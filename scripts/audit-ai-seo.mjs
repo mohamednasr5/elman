@@ -103,8 +103,17 @@ for (const file of profileFiles) {
   must(/<meta\s+name=["']robots["'][^>]*index,\s*follow/i.test(html), file + ': profile not indexable');
   must(/<link\s+rel=["']canonical["'][^>]*https:\/\/dalilmanzala\.com\//i.test(html), file + ': canonical missing');
   must(/application\/ld\+json/i.test(html) && /BreadcrumbList/i.test(html), file + ': structured data incomplete');
-  must(/(?:LocalBusiness|Restaurant|Pharmacy|Dentist|Physician|Store|ClothingStore|ShoeStore|JewelryStore|GroceryStore|Bakery|Hotel|BeautySalon|AutoRepair|Plumber|Electrician|ProfessionalService|RealEstateAgent|HomeAndConstructionBusiness)/i.test(html),
-    file + ': local business entity type missing');
+  const ldScripts = [...html.matchAll(/<script[^>]*type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)]
+    .map(match => { try { return JSON.parse(match[1]); } catch (_) { return null; } })
+    .filter(Boolean);
+  const businessEntity = ldScripts.find(schema => {
+    const types = Array.isArray(schema?.['@type']) ? schema['@type'] : [schema?.['@type']];
+    return String(schema?.['@id'] || '').endsWith('#business') && types.some(Boolean);
+  });
+  must(Boolean(businessEntity), file + ': business entity JSON-LD missing');
+  must(Boolean(businessEntity?.name), file + ': business entity name missing');
+  must(Boolean(businessEntity?.url), file + ': business entity URL missing');
+  must(Boolean(businessEntity?.address), file + ': business entity address missing');
   must(/(?:أسئلة وأجوبة|معلومات أساسية|Questions &amp; answers|Key information)/i.test(html),
     file + ': AI-readable fact/Q&A section missing');
   must(!/place\.html\?slug=/i.test(html), file + ': legacy place URL remains');
