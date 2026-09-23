@@ -1,0 +1,47 @@
+name: Clean Legacy Place Coordinates
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'worker/audit-clean-place-coordinates.mjs'
+      - '.github/workflows/cleanup-legacy-place-coordinates.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      TURSO_DATABASE_URL: https://dalilmanzala-mohamednasr.aws-eu-west-1.turso.io
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Worker dependencies
+        working-directory: worker
+        run: npm ci --ignore-scripts
+
+      - name: Audit and clean legacy place coordinates in Turso
+        run: node worker/audit-clean-place-coordinates.mjs
+
+      - name: Trigger bilingual SEO regeneration
+        run: gh workflow run generate-english-pages.yml --ref main
+
+      - name: Commit workflow marker
+        run: |
+          mkdir -p .seo-maintenance
+          printf '%s\n' "Legacy place coordinate audit/cleanup completed at $(date -u +%Y-%m-%dT%H:%M:%SZ)." > .seo-maintenance/coordinate-cleanup-last-run.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .seo-maintenance/coordinate-cleanup-last-run.txt
+          git diff --cached --quiet || git commit -m 'chore(seo): record Turso coordinate cleanup'
+          git push
