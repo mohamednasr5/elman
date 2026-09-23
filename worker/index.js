@@ -9542,7 +9542,10 @@ async function cleanupLegacyPlaceCoordinates(env, ctx) {
       }
 
       if (cleaned > 0) {
-        console.warn(`[CoordinateAudit] cleared ${cleaned} legacy fallback coordinate record(s) from Turso.`);
+        // Invalidate all public place-list caches after database cleanup so SEO
+        // generation cannot receive stale coordinates from the edge cache.
+        try { await bumpDataVersion(env, ctx); } catch (_) {}
+        console.warn(`[CoordinateAudit] cleared ${cleaned} legacy fallback coordinate record(s) from Turso and invalidated place caches.`);
       } else {
         console.log('[CoordinateAudit] no documented legacy fallback coordinates found.');
       }
