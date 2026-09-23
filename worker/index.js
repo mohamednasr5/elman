@@ -1097,8 +1097,16 @@ try {
         if (article.place?.slug) {
           notifyUrls.push(`https://dalilmanzala.com/place/${encodeURIComponent(article.place.slug)}/`);
         }
-        if (notifyUrls.length && ctx?.waitUntil) {
+        if (article.status === 'published' && ctx?.waitUntil) {
           ctx.waitUntil(notifyIndexNow(notifyUrls, env).catch(err => console.warn('[Article IndexNow]', err?.message || err)));
+          ctx.waitUntil(safeBackgroundNotify('new_article', {
+            articleSlug: article.slug || article.id || '',
+            title: article.title || '',
+            coverImageUrl: article.coverImageUrl || article.cover_image_url || '',
+            placeName: article.place?.name || '',
+            placeSlug: article.place?.slug || article.place?.id || '',
+            ownerName: auth.user?.name || ''
+          }, env, ctx));
         }
       }
       return response;
