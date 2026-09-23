@@ -9,6 +9,8 @@
 import { handleTelegramWebhook, sendAdminPushNotification, telegramApi } from './telegram.js';
 import { createTursoDB, checkTursoHealth } from './turso.js';
 import { handleMarketWidgetsRequest } from './market-widgets.js';
+import { handleArticlePublicPage, handleArticlesApi, getPublishedArticlesForPlace } from './articles.js';
+import { geocodePlaceAddress } from './geocoding.js';
 const SUPERADMIN_EMAILS = new Set([
   'elfannanm@gmail.com',
   'mohamednasrofficial@gmail.com'
@@ -463,6 +465,7 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     const files = [
       'sitemap-places-ar.xml',
       'sitemap-places-en.xml',
+      'sitemap-articles-ar.xml',
       'sitemap-categories-ar.xml',
       'sitemap-categories-en.xml',
       'sitemap-static-ar.xml',
@@ -498,6 +501,16 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n` +
       entries.join('\n') +
       `\n</urlset>\n`;
+  } else if (p === '/sitemap-articles-ar.xml') {
+    const db = createTursoDB(env);
+    const rows = (await db.prepare("SELECT slug, updated_at FROM articles a JOIN places p ON p.id=a.place_id WHERE a.status='published' AND p.status='published' ORDER BY COALESCE(a.updated_at,a.created_at) DESC").all().catch(() => ({results:[]}))).results || [];
+    const entries = rows.map(r => {
+      const slug = encodeURIComponent(String(r.slug || '').trim());
+      const d = r.updated_at ? new Date(r.updated_at) : null;
+      const lm = d && !Number.isNaN(d.getTime()) ? '<lastmod>'+d.toISOString().slice(0,10)+'</lastmod>' : '';
+      return '  <url><loc>'+site+'/article/'+slug+'/</loc>'+lm+'</url>';
+    }).join('\n');
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+entries+'\n</urlset>\n';
   } else if (p === '/sitemap-categories-ar.xml' || p === '/sitemap-categories-en.xml') {
     const isEn = p === '/sitemap-categories-en.xml';
     const db = createTursoDB(env);
@@ -2121,7 +2134,27 @@ try {
     }
   }
 
-  // ── Turso: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
+    // ── Address-to-location resolver (owner-only) ───────────────────────────
+  if (url.pathname === '/api/maps/geocode' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    try {
+      const body = await request.json().catch(() => ({}));
+      const result = await geocodePlaceAddress({
+        placeName: body.placeName || body.name || '',
+        address: body.address || '',
+        area: body.area || '',
+        excludePlaceId: body.excludePlaceId || body.placeId || '',
+        env
+      });
+      return jsonResponse(result, result.success ? 200 : 422, corsHeaders);
+    } catch (err) {
+      console.warn('[/api/maps/geocode] Error:', err?.message || err);
+      return jsonResponse({ success:false, error:'تعذر تحديد موقع العنوان تلقائياً الآن' }, 503, corsHeaders);
+    }
+  }
+
+// ── Turso: Sync/Update Place (POST/PUT /api/places/sync or /api/places) ──
   if ((url.pathname === '/api/places/sync' || url.pathname === '/api/places') && (request.method === 'POST' || request.method === 'PUT')) {
     try {
       const auth = await requireAuth(request, env);
@@ -2260,6 +2293,31 @@ try {
         !(latNum === 0 && lngNum === 0);
       const lat = hasValidCoordinates ? latNum : null;
       const lng = hasValidCoordinates ? lngNum : null;
+
+      // Never allow unrelated places to occupy the same physical point within 3m.
+      if (lat !== null && lng !== null) {
+        const dLat = 3 / 111320;
+        const dLng = 3 / (111320 * Math.max(0.1, Math.cos(lat * Math.PI / 180)));
+        const nearbyRows = (await db.prepare(
+          'SELECT id,name,address,area,latitude,longitude FROM places WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ? LIMIT 50'
+        ).bind(lat - dLat, lat + dLat, lng - dLng, lng + dLng).all().catch(() => ({ results: [] }))).results || [];
+        for (const other of nearbyRows) {
+          if (String(other.id) === String(placeId)) continue;
+          if (!Number.isFinite(Number(other.latitude)) || !Number.isFinite(Number(other.longitude))) continue;
+          const dLatM = (Number(other.latitude) - lat) * Math.PI / 180;
+          const dLngM = (Number(other.longitude) - lng) * Math.PI / 180;
+          const aa = Math.sin(dLatM/2) ** 2 + Math.cos(lat*Math.PI/180) * Math.cos(Number(other.latitude)*Math.PI/180) * Math.sin(dLngM/2) ** 2;
+          const distanceMeters = 6371000 * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
+          if (distanceMeters <= 3) {
+            return jsonResponse({
+              success:false,
+              error:'يوجد مكان آخر داخل نطاق 3 أمتار من هذه الإحداثيات. حدّد المدخل أو المبنى بدقة أكبر من الخريطة، ولا يتم تحريك الموقع تلقائياً.',
+              locationConflict:{id:other.id,name:other.name,address:other.address,area:other.area,distanceMeters:Number(distanceMeters.toFixed(2))}
+            },409,corsHeaders);
+          }
+        }
+      }
+
       const description = body.description !== undefined ? body.description : (existingPlace?.description || '');
       const logoUrl = (body.logoUrl !== undefined || body.logo_url !== undefined)
         ? (body.logoUrl || body.logo_url || '')
