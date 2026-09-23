@@ -64,7 +64,7 @@ export async function extractCoordinates(urlOrText) {
 //  GEOLOCATION & DISTANCE CALCULATIONS (أقرب مكان)
 // ─────────────────────────────────────────────
 
-/** Complete List of 55 Towns, Villages, and Neighborhoods in El-Manzala & El-Matareya */
+/** Complete List of 55 Towns and villages */
 export const MANZALA_VILLAGES_LIST = [
   'المنزلة',
   'المطرية',
@@ -123,141 +123,7 @@ export const MANZALA_VILLAGES_LIST = [
   'القبلية'
 ];
 
-/** Default Coordinates for El-Manzala Center (مدينة المنزلة) */
-export const MANZALA_CENTER = { lat: 31.1578, lng: 31.9356 };
 
-/** Known Coordinates for El-Manzala Areas & Neighborhoods */
-export const MANZALA_AREAS_COORDINATES = {
-  'المنزلة': { lat: 31.1578, lng: 31.9356 },
-  'المطرية': { lat: 31.1830, lng: 32.0310 },
-  'العصافرة': { lat: 31.1730, lng: 31.9540 },
-  'وسط البلد': { lat: 31.1578, lng: 31.9356 },
-  'شارع البحر': { lat: 31.1595, lng: 31.9320 },
-  'القومية': { lat: 31.1540, lng: 31.9390 },
-  'المحطة': { lat: 31.1535, lng: 31.9380 },
-  'المعهد الديني': { lat: 31.1610, lng: 31.9420 },
-  'العزيزة': { lat: 31.1420, lng: 31.9180 },
-  'الضهير': { lat: 31.1730, lng: 31.9540 },
-  'البصراط': { lat: 31.1780, lng: 31.9120 },
-  'الجمالية': { lat: 31.1850, lng: 31.9820 },
-  'ميت سلسيل': { lat: 31.1920, lng: 31.8950 },
-  'النسايمة': { lat: 31.1350, lng: 31.9700 },
-  'مستشفى المنزلة': { lat: 31.1560, lng: 31.9410 },
-  'ميدان الأنصاري': { lat: 31.1630, lng: 31.9310 },
-  'الأحمدية': { lat: 31.1510, lng: 31.9250 },
-  'الجلاء': { lat: 31.1565, lng: 31.9340 },
-  'حي الجامعة': { lat: 31.1625, lng: 31.9315 }
-};
-
-function hashString(str) {
-  let hash = 0;
-  if (!str) return 42;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return hash;
-}
-
-/**
- * Calculate Distance in Kilometers between two coordinates using Haversine formula
- */
-export function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return Infinity;
-
-  const R = 6371; // Radius of the Earth in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-/**
- * Format distance into friendly Arabic string (e.g. "450 متر" or "1.2 كم")
- */
-export function formatDistance(distanceKm) {
-  if (distanceKm == null || distanceKm === Infinity || isNaN(distanceKm)) return '';
-  if (distanceKm < 1) {
-    const meters = Math.max(50, Math.round(distanceKm * 1000));
-    return `${meters} متر`;
-  }
-  return `${distanceKm.toFixed(1)} كم`;
-}
-
-/**
- * Get Place Coordinates from place object with smart multi-tier detection:
- * 1. Exact place.location if custom
- * 2. Regex from Google Maps URL (!3d/!4d, @lat,lng, query=)
- * 3. Area / neighborhood specific coordinates (العزيزة، الضهير، البحر...)
- * 4. Deterministic distinct street coordinates
- */
-export function getPlaceCoords(place) {
-  if (!place) return null;
-
-  // 1. Direct Location Object (if distinct from generic center)
-  if (place.location && typeof place.location.lat === 'number' && typeof place.location.lng === 'number') {
-    const isGenericDefault = (
-      Math.abs(place.location.lat - 31.1578) < 0.0001 &&
-      Math.abs(place.location.lng - 31.9367) < 0.0001
-    );
-    if (!isGenericDefault) {
-      return { lat: place.location.lat, lng: place.location.lng };
-    }
-  }
-
-  // 2. Direct lat / lng properties
-  if (place.lat && place.lng) {
-    const lat = parseFloat(place.lat);
-    const lng = parseFloat(place.lng);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      return { lat, lng };
-    }
-  }
-
-  // 3. Try extracting from mapsLink synchronously (Google Maps URL parameters)
-  if (place.mapsLink && typeof place.mapsLink === 'string') {
-    const m = place.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-              place.mapsLink.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
-              place.mapsLink.match(/[?&](?:q|ll|query|destination|center)=(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (m) {
-      const lat = parseFloat(m[1]);
-      const lng = parseFloat(m[2]);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        return { lat, lng };
-      }
-    }
-  }
-
-  // 4. Match Area / Address / Name with Known Neighborhood Coordinates
-  const fullLocText = `${place.area || ''} ${place.address || ''} ${place.name || ''}`;
-  for (const [areaName, areaCoord] of Object.entries(MANZALA_AREAS_COORDINATES)) {
-    if (fullLocText.includes(areaName)) {
-      const seed = Math.abs(hashString(place.id || place.slug || place.name || 'seed'));
-      const latOffset = ((seed % 100) - 50) * 0.00004; // ~ ±180m distinct street spread
-      const lngOffset = (((seed >> 3) % 100) - 50) * 0.00004;
-      return {
-        lat: areaCoord.lat + latOffset,
-        lng: areaCoord.lng + lngOffset
-      };
-    }
-  }
-
-  // 5. Fallback: Base Manzala Center with unique deterministic street offset for each place
-  const seed = Math.abs(hashString(place.id || place.slug || place.name || 'seed'));
-  const latOffset = ((seed % 200) - 100) * 0.00005; // ~ ±350m distinct street spread
-  const lngOffset = (((seed >> 4) % 200) - 100) * 0.00005;
-
-  return {
-    lat: MANZALA_CENTER.lat + latOffset,
-    lng: MANZALA_CENTER.lng + lngOffset
-  };
-}
 
 /**
  * Get User Live GPS Coordinates with Smart Multi-Tier Fallback
@@ -343,87 +209,43 @@ export function sortPlacesByDistance(places = [], userCoords) {
  * - Returns { embedUrl, directLink, isPinpointed, lat, lng }
  */
 export function resolveMapEmbedInfo(place) {
-  let embedUrl = '';
-  let directLink = place?.mapsLink || '';
+  const p = place || {};
+  let directLink = typeof p.mapsLink === 'string' ? p.mapsLink.trim() : '';
+  let rawLink = typeof p.mapsEmbed === 'string' ? p.mapsEmbed.trim() : directLink;
 
-  // 0. Direct Google Maps Embed URL or iframe code
-  let rawLink = (place?.mapsEmbed || place?.mapsLink || '').trim();
   if (rawLink.includes('<iframe') || rawLink.includes('src=')) {
-    const srcMatch = rawLink.match(/src=["']([^"']+)["']/i);
-    if (srcMatch) rawLink = srcMatch[1].trim();
+    const match = rawLink.match(/src=["']([^"']+)["']/i);
+    if (match) rawLink = match[1].trim();
   }
 
   if (rawLink.includes('google.com/maps/embed') || rawLink.includes('google.com/maps?pb=')) {
-    embedUrl = rawLink;
-    const pbLat = rawLink.match(/!3d(-?\d+\.\d+)/);
-    const pbLng = rawLink.match(/!2d(-?\d+\.\d+)/) || rawLink.match(/!4d(-?\d+\.\d+)/);
+    const pbLat = rawLink.match(/!3d(-?\d+(?:\.\d+)?)/);
+    const pbLng = rawLink.match(/!2d(-?\d+(?:\.\d+)?)/) || rawLink.match(/!4d(-?\d+(?:\.\d+)?)/);
     if (pbLat && pbLng) {
-      const lat = parseFloat(pbLat[1]);
-      const lng = parseFloat(pbLng[1]);
-      directLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-      return { embedUrl, directLink, isPinpointed: true, lat, lng };
-    }
-    if (!directLink || directLink.includes('<iframe')) {
-      directLink = rawLink.replace('/embed', '');
-    }
-    return { embedUrl, directLink, isPinpointed: true };
-  }
-
-  // 1. Exact coordinates from place.location
-  if (place?.location && place.location.lat && place.location.lng) {
-    const lat = Number(place.location.lat);
-    const lng = Number(place.location.lng);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=17&output=embed`;
-      directLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-      return { embedUrl, directLink, isPinpointed: true, lat, lng };
-    }
-  }
-
-  // 2. Direct lat / lng attributes
-  if (place?.lat && place?.lng) {
-    const lat = parseFloat(place.lat);
-    const lng = parseFloat(place.lng);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=17&output=embed`;
-      directLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-      return { embedUrl, directLink, isPinpointed: true, lat, lng };
-    }
-  }
-
-  // 3. Direct Coordinates inside mapsLink (@lat,lng or !3dlat!4dlng or q=lat,lng)
-  if (place?.mapsLink) {
-    const m = place.mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-              place.mapsLink.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
-              place.mapsLink.match(/[?&](?:q|ll|query|destination|center)=(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (m) {
-      const lat = parseFloat(m[1]);
-      const lng = parseFloat(m[2]);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=17&output=embed`;
+      const lat = Number(pbLat[1]), lng = Number(pbLng[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
         directLink = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-        return { embedUrl, directLink, isPinpointed: true, lat, lng };
+        return { embedUrl: rawLink, directLink, isPinpointed: true, lat, lng };
       }
     }
+    directLink = rawLink.replace('/embed','');
+    return { embedUrl: rawLink, directLink, isPinpointed: false };
   }
 
-  // 4. Fallback based on known Village / Neighborhood coordinates
-  const areaName = place?.area || '';
-  const addressText = place?.address || '';
-  const placeName = place?.name || '';
-
-  for (const [vName, coord] of Object.entries(MANZALA_AREAS_COORDINATES)) {
-    if (areaName.includes(vName) || addressText.includes(vName)) {
-      embedUrl = `https://maps.google.com/maps?q=${coord.lat},${coord.lng}&hl=ar&z=16&output=embed`;
-      directLink = `https://www.google.com/maps/dir/?api=1&destination=${coord.lat},${coord.lng}`;
-      return { embedUrl, directLink, isPinpointed: false, lat: coord.lat, lng: coord.lng };
-    }
+  const coords = getPlaceCoords(p);
+  if (coords) {
+    const embedUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&hl=ar&z=18&output=embed`;
+    const directions = `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`;
+    return { embedUrl, directLink: directions, isPinpointed: true, lat: coords.lat, lng: coords.lng };
   }
 
-  // 5. Query Search Target
-  const queryTarget = `${placeName} ${areaName} المنزلة الدقهلية`.trim();
-  embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(queryTarget)}&hl=ar&z=16&output=embed`;
-  if (!directLink) directLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryTarget)}`;
-
-  return { embedUrl, directLink, isPinpointed: false };
+  // No stored coordinates: use a real Google Maps search query, never an invented pin.
+  const query = [p.name || '', p.address || '', p.area || '', 'الدقهلية', 'مصر'].filter(Boolean).join(', ');
+  const search = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  return {
+    embedUrl: `https://www.google.com/maps?q=${encodeURIComponent(query)}&hl=ar&z=16&output=embed`,
+    directLink: directLink || search,
+    searchLink: search,
+    isPinpointed: false
+  };
 }
