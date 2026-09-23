@@ -791,9 +791,6 @@ export default {
   async handleRequest(request, env, ctx) {
     const corsHeaders = getCorsHeaders(request);
 
-    // Non-blocking data hygiene: clean only documented legacy coordinate fallbacks.
-    ctx.waitUntil(cleanupLegacyPlaceCoordinates(env, ctx));
-
     // Preflight OPTIONS must be handled first before any redirects or auth
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
@@ -5804,8 +5801,6 @@ try {
 
     try {
       const db = createTursoDB(env);
-      await db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run().catch(() => {});
-      await db.prepare("ALTER TABLE users ADD COLUMN photo_url TEXT").run().catch(() => {});
 
       // Check if existing record with email has points
       let existingPoints = 0;

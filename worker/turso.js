@@ -210,12 +210,8 @@ function ensureRuntimeSchema(env) {
   if (!promise) {
     promise = Promise.resolve();
     schemaPromises.set(env, promise);
-    try {
-      const client = getTursoClient(env);
-      repairRuntimeSchema(env, client).catch(err => {
-        console.warn('[Turso schema repair] Notice:', err?.message || err);
-      });
-    } catch (_) {}
+    // Production schema is fully migrated and persistent in Turso.
+    // Background DDL storm on isolate boot avoided to preserve concurrency.
   }
   return promise;
 }
