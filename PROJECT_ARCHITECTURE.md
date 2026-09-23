@@ -79,7 +79,7 @@ English:
 
 Legacy `/p/{slug}/` and `/place.html?slug={slug}` URLs are permanent-redirect aliases only.
 
-For crawler HTML, `canonical`, `og:url`, internal links, RSS, IndexNow, and sitemaps MUST use `/place/{slug}/` (or `/en/place/{slug}/` for English).
+For crawler HTML, `canonical`, `og:url`, internal links, RSS, IndexNow, and sitemaps MUST use `/place/{slug}/` (or `/en/place/{slug}/` for English).\nNew or updated published places MUST trigger a non-blocking IndexNow notification from the Worker for both Arabic and English canonical profile URLs. The sitemap/index remains the source for Google discovery; IndexNow acknowledgement means the URL was received, not that indexing is guaranteed.
 
 ### Legacy Firebase Code
 Some Firebase SDK code may remain because Auth and FCM are still required. Do not interpret Firebase SDK presence as permission to restore Firebase database usage.
