@@ -58,14 +58,32 @@ async function bySlug(db, slug, includeUnpublished) {
   let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE (a.slug = ? OR a.slug = ? OR a.id = ?)';
   if (!includeUnpublished) sql += " AND a.status = 'published'";
   sql += ' LIMIT 1';
-  const rawRow = await db.prepare(sql).bind(s, decodeURIComponent(s), s).first().catch(() => null);
+  let rawRow = await db.prepare(sql).bind(s, decodeURIComponent(s), s).first().catch(() => null);
+
+  // Fallback: If not found, check if a legacy non-English slug corresponds to this English slug
+  if (!rawRow) {
+    let legacySql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id';
+    if (!includeUnpublished) legacySql += " WHERE a.status = 'published'";
+    legacySql += ' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 20';
+    const candidates = (await db.prepare(legacySql).all().catch(() => ({results:[]}))).results || [];
+    for (const r of candidates) {
+      const generated = toConciseEnglishSlug(`${r.place_name || ''} ${r.title}`, 'article');
+      if (generated === s || generated.startsWith(s) || s.startsWith(generated)) {
+        await db.prepare('UPDATE articles SET slug=? WHERE id=?').bind(generated, r.id).run().catch(() => {});
+        r.slug = generated;
+        rawRow = r;
+        break;
+      }
+    }
+  }
+
   if (!rawRow) return null;
 
-  // Auto-upgrade legacy Arabic slugs to clean English slugs in background
+  // Auto-upgrade legacy Arabic slugs to clean English slugs in DB
   if (rawRow.slug && !/^[a-z0-9-]+$/.test(rawRow.slug)) {
     const cleanSlug = toConciseEnglishSlug(`${rawRow.place_name || ''} ${rawRow.title}`, 'article');
     if (cleanSlug) {
-      db.prepare('UPDATE articles SET slug=? WHERE id=?').bind(cleanSlug, rawRow.id).run().catch(() => {});
+      await db.prepare('UPDATE articles SET slug=? WHERE id=?').bind(cleanSlug, rawRow.id).run().catch(() => {});
       rawRow.slug = cleanSlug;
     }
   }
