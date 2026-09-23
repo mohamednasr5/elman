@@ -77,5 +77,22 @@ jobs:
         if: steps.auth_check.outputs.has_token == 'true'
         run: npx wrangler@latest deploy
 
+      - name: Verify Turso coordinate hygiene through deployed Worker
+        if: steps.auth_check.outputs.has_token == 'true'
+        run: |
+          set -e
+          url="https://dalilmanzala.com/robots.txt?coordinate_audit=1"
+          for i in {1..12}; do
+            headers="$(curl -fsS -D - -o /dev/null "$url" || true)"
+            echo "$headers"
+            if echo "$headers" | grep -qi '^x-coordinate-audit-cleaned:'; then
+              echo "Turso coordinate hygiene executed by the deployed Worker."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Coordinate hygiene verification did not receive the audit header." >&2
+          exit 1
+
 # Production deployment trigger verified by maintainer.
 # API availability refresh trigger: repair the Turso schema when a CI database token is available, and always deploy the Worker runtime self-healing path.
