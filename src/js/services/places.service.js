@@ -18,11 +18,33 @@ async function resolveAddressLocation({name='', address='', area='', placeId='' 
   try {
     const data = await tursoFetch('/api/maps/geocode', {
       method: 'POST',
-      body: JSON.stringify({ placeName: name, address, area, placeId })
+      body: JSON.stringify({ placeName: name, address, area, placeId }),
+      requiresAuth: true
     });
-    if (data?.success && data.selected && !data.coordinateConflict) return data.selected;
+
+    if (data?.success && data.selected && !data.coordinateConflict) {
+      return {
+        ...data.selected,
+        confidence: data.confidence,
+        provider: data.provider,
+        matchedAddress: data.selected.formattedAddress || ''
+      };
+    }
+
+    if (data?.success && data?.requiresConfirmation) {
+      const distance = Number(data.coordinateConflict?.distanceMeters || 0);
+      const message = data.coordinateConflict
+        ? `الموقع المقترح يطابق مكاناً آخر على بُعد ${distance} متر. اختر موقعاً مختلفاً من نتائج الخريطة.`
+        : 'يوجد أكثر من تطابق محتمل للعنوان. اختر الموقع الصحيح من نتائج الخريطة.';
+      const err = new Error(message);
+      err.code = 'MAP_CONFIRMATION_REQUIRED';
+      err.data = data;
+      throw err;
+    }
+
     return null;
   } catch (err) {
+    if (err?.code === 'MAP_CONFIRMATION_REQUIRED') throw err;
     console.warn('[places.service] automatic geocoding skipped:', err?.message || err);
     return null;
   }
