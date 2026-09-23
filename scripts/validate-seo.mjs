@@ -31,6 +31,11 @@ for(const f of ['sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categor
   if (f.includes('categories')) must(/\/category\/[^<\s]+\//.test(x) && !/\/category\/[^<\s]*[^\/]<\/loc>/.test(x),'Category sitemap contains a non-canonical URL');
 }
 
+for (const f of ['sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml','sitemap-static-ar.xml','sitemap-static-en.xml']) {
+  const x = read(f);
+  must(!x.includes('https://dalilmanzala.comassets/'), `${f}: malformed absolute URL without slash`);
+}
+
 const en=read('en/index.html');
 must(/<html lang="en" dir="ltr">/i.test(en),'English home language/direction is invalid');
 must(en.includes('hreflang="ar"')&&en.includes('hreflang="en"'),'English home hreflang missing');
