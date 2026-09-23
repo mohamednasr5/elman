@@ -910,6 +910,11 @@ if ((url.pathname === '/llms-full.txt' || url.pathname === '/llms-en.txt' || url
 
 // GET /robots.txt
 if (url.pathname === '/robots.txt' && request.method === 'GET') {
+  // A maintenance ping can await the idempotent Turso coordinate cleanup so the
+  // deployment pipeline can verify that the database hygiene ran successfully.
+  const coordinateAudit = url.searchParams.has('coordinate_audit')
+    ? await cleanupLegacyPlaceCoordinates(env, ctx)
+    : null;
   const robotsContent = `# Robots policy for https://dalilmanzala.com
 # Public directory pages and business profiles are crawlable.
 # Account, administration, internal search results and API endpoints are not index targets.
@@ -1012,6 +1017,10 @@ Sitemap: https://dalilmanzala.com/sitemap-static-en.xml
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'public, max-age=86400, s-maxage=86400',
       'Access-Control-Allow-Origin': '*',
+      ...(coordinateAudit ? {
+        'X-Coordinate-Audit-Cleaned': String(coordinateAudit.cleaned || 0),
+        'X-Coordinate-Audit-Groups': String(coordinateAudit.suspiciousGroups || 0)
+      } : {}),
       ...corsHeaders
     }
   });
