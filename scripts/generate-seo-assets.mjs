@@ -4,7 +4,7 @@ import { execFileSync } from 'child_process';
 const ROOT=process.cwd(),SITE='https://dalilmanzala.com',API=`${SITE}/api/places`,TODAY=new Date().toISOString().slice(0,10);
 const STATIC=[['/','/en/','daily','index.html'],['/places.html','/en/places/','daily','places.html'],['/categories.html','/en/categories/','weekly','categories.html'],['/manzala.html','/en/manzala/','weekly','manzala.html'],['/matariya.html','/en/matariya/','weekly','matariya.html'],['/emergency.html','/en/emergency/','monthly','emergency.html'],['/about.html','/en/about.html','monthly','about.html'],['/contact.html','/en/contact/','monthly','contact.html'],['/privacy.html','/en/privacy/','yearly','privacy.html'],['/terms.html','/en/terms/','yearly','terms.html'],['/legal.html','/en/legal/','yearly','legal.html'],['/hadith.html','/en/hadith/','weekly','hadith.html'],['/quran.html','/en/quran/','weekly','quran.html'],['/quran-search.html','/en/quran-search/','weekly','quran-search.html'],['/quran-surah.html','/en/quran-surah/','weekly','quran-surah.html'],['/prayer-times.html','/prayer-times.html','daily','prayer-times.html'],['/qibla.html','/qibla.html','weekly','qibla.html'],['/free-verification.html','/free-verification.html','monthly','free-verification.html']];
 const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
-const abs=p=>p.startsWith('http')?p:`${SITE}${p}`;
+const abs=p=>{const s=String(p??'').trim();if(!s)return '';if(/^https?:\/\//i.test(s))return s;return `${SITE}/${s.replace(/^\/+/, '')}`};
 const slug=p=>String(p.slug||p.id||'').trim();
 const pathSlug=v=>encodeURIComponent(String(v||'').trim());
 const arPlaceUrl=p=>`/place/${pathSlug(slug(p))}/`;
