@@ -1061,12 +1061,44 @@ if (url.pathname === '/rss.xml' || url.pathname === '/rss' || url.pathname === '
   if (rssResponse) return rssResponse;
 }
 
+// ── Public Blog / Article SSR ─────────────────────────────────────
+if (request.method === 'GET' && (url.pathname === '/blog' || url.pathname === '/blog/' || url.pathname.startsWith('/article/'))) {
+  const articleResponse = await handleArticlePublicPage(request, url, env);
+  if (articleResponse) return articleResponse;
+}
+
 // ── Live Market Indicators (Gold, Currency, Weather from Masrawy) ──
 if ((url.pathname === '/api/market-widgets' || url.pathname === '/api/live-indicators') && request.method === 'GET') {
   return await handleMarketWidgetsRequest(request, corsHeaders);
 }
 
 try {
+
+  // ── Blog / Articles API ───────────────────────────────────────────
+  if (url.pathname === '/api/articles' || url.pathname.startsWith('/api/articles/')) {
+    const needsAuth = request.method !== 'GET';
+    const auth = needsAuth ? await requireAuth(request, env) : { user: null, response: null };
+    if (auth.response) return auth.response;
+
+    const articleResult = await handleArticlesApi(request, url, env, auth.user);
+    if (articleResult) {
+      const response = jsonResponse(articleResult.body, articleResult.status, corsHeaders);
+      if (articleResult.body?.success && ['POST','PUT'].includes(request.method)) {
+        const article = articleResult.body.data || {};
+        const notifyUrls = [];
+        if (article.slug && article.status === 'published') {
+          notifyUrls.push(`https://dalilmanzala.com/article/${encodeURIComponent(article.slug)}/`);
+        }
+        if (article.place?.slug) {
+          notifyUrls.push(`https://dalilmanzala.com/place/${encodeURIComponent(article.place.slug)}/`);
+        }
+        if (notifyUrls.length && ctx?.waitUntil) {
+          ctx.waitUntil(notifyIndexNow(notifyUrls, env).catch(err => console.warn('[Article IndexNow]', err?.message || err)));
+        }
+      }
+      return response;
+    }
+  }
 
   // Server-side IP enforcement for API traffic. Admins can still reach
   // the management endpoints so a ban can be reviewed/removed.
