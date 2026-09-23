@@ -1027,7 +1027,7 @@ Sitemap: https://dalilmanzala.com/sitemap-categories-ar.xml
 Sitemap: https://dalilmanzala.com/sitemap-categories-en.xml
 Sitemap: https://dalilmanzala.com/sitemap-static-ar.xml
 Sitemap: https://dalilmanzala.com/sitemap-static-en.xml
-Sitemap: https://dalilmanzala.com/sitemap-articles.xml
+Sitemap: https://dalilmanzala.com/sitemap-articles-ar.xml
 `;
 
   return new Response(robotsContent, {
