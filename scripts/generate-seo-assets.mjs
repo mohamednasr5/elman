@@ -16,15 +16,20 @@ const indexable=p=>{if(!p||!slug(p))return false;const s=String(p.status||p.stat
 async function fetchAllPlaces(){const out=[],limit=1000;let offset=0;for(;;offset+=limit){const r=await fetch(`${API}?limit=${limit}&offset=${offset}`,{headers:{accept:'application/json'}});if(!r.ok)throw new Error(`Places API HTTP ${r.status} at offset ${offset}`);const j=await r.json(),batch=Array.isArray(j?.data)?j.data:[];out.push(...batch);if(batch.length<limit)break}return [...new Map(out.map(p=>[slug(p),p])).values()].filter(indexable)}
 async function fetchAllArticles(){
   const out=[];const limit=1000;let offset=0;
-  for(;;offset+=limit){
-    const r=await fetch(`${ARTICLE_API}?limit=${limit}&offset=${offset}`,{headers:{accept:'application/json'}});
-    if(!r.ok)throw new Error(`Articles API HTTP ${r.status} at offset ${offset}`);
-    const j=await r.json(),batch=Array.isArray(j?.data)?j.data:[];
-    out.push(...batch);
-    if(batch.length<limit)break;
+  try{
+    for(;;offset+=limit){
+      const r=await fetch(`${ARTICLE_API}?limit=${limit}&offset=${offset}`,{headers:{accept:'application/json'}});
+      if(!r.ok)throw new Error(`Articles API HTTP ${r.status} at offset ${offset}`);
+      const j=await r.json(),batch=Array.isArray(j?.data)?j.data:[];
+      out.push(...batch);
+      if(batch.length<limit)break;
+    }
+    return [...new Map(out.map(a=>[String(a?.slug||a?.id||'').trim(),a]).filter(([k])=>k)).values()]
+      .filter(a=>String(a?.status||'published').toLowerCase()==='published');
+  }catch(err){
+    console.warn('Articles sitemap source unavailable:',err?.message||err);
+    return [];
   }
-  return [...new Map(out.map(a=>[String(a?.slug||a?.id||'').trim(),a]).filter(([k])=>k)).values()]
-    .filter(a=>String(a?.status||'published').toLowerCase()==='published');
 }
 function entry(loc,lm,freq,prio,alt){let a=['  <url>',`    <loc>${esc(abs(loc))}</loc>`];if(lm)a.push(`    <lastmod>${lm}</lastmod>`);a.push(`    <changefreq>${freq}</changefreq>`,`    <priority>${prio}</priority>`);if(alt)a.push(`    <xhtml:link rel="alternate" hreflang="ar" href="${esc(abs(alt.ar))}"/>`,`    <xhtml:link rel="alternate" hreflang="en" href="${esc(abs(alt.en))}"/>`,`    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(abs(alt.ar))}"/>`);if(alt?.image)a.push('    <image:image>',`      <image:loc>${esc(alt.image)}</image:loc>`,'    </image:image>');a.push('  </url>');return a.join('\n')}
 const doc=es=>['<?xml version="1.0" encoding="UTF-8"?>','<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',es.join('\n'),'</urlset>',''].join('\n');
