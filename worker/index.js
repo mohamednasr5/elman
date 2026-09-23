@@ -9544,7 +9544,7 @@ async function cleanupLegacyPlaceCoordinates(env, ctx) {
       let cleaned = 0;
       for (const item of legacy) {
         const rows = await db.prepare(`
-          SELECT id, name, area, latitude, longitude
+          SELECT id, name, slug, area, latitude, longitude
           FROM places
           WHERE latitude IS NOT NULL
             AND longitude IS NOT NULL
