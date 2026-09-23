@@ -13,6 +13,21 @@ import { getIdToken } from '../core/auth.js';
 import { isValidPhoneNumber, normalizePhoneNumber, isIncompleteMobilePhone } from '../utils/phone.js';
 import { awardPoints } from './loyalty.service.js';
 
+async function resolveAddressLocation({name='', address='', area='', placeId='' } = {}) {
+  if (!address && !name) return null;
+  try {
+    const data = await tursoFetch('/api/maps/geocode', {
+      method: 'POST',
+      body: JSON.stringify({ placeName: name, address, area, placeId })
+    });
+    if (data?.success && data.selected && !data.coordinateConflict) return data.selected;
+    return null;
+  } catch (err) {
+    console.warn('[places.service] automatic geocoding skipped:', err?.message || err);
+    return null;
+  }
+}
+
 export function extractBrandRoot(name) {
   if (!name) return '';
   let str = String(name).trim();
@@ -118,11 +133,29 @@ export async function createPlace(placeData, currentUser) {
   const now = Date.now();
   const isPhoneUnavailable = Boolean(placeData.phoneUnavailable || !placeData.phone);
   const targetArea = (placeData.area || 'المنزلة').trim();
-  const validLocation = (placeData.location && Number(placeData.location.lat) > 20 && Number(placeData.location.lng) > 20)
+  let validLocation = (placeData.location && Number(placeData.location.lat) > 20 && Number(placeData.location.lng) > 20)
     ? { lat: Number(placeData.location.lat), lng: Number(placeData.location.lng) }
     : (placeData.latitude && placeData.longitude && Number(placeData.latitude) > 20 && Number(placeData.longitude) > 20)
       ? { lat: Number(placeData.latitude), lng: Number(placeData.longitude) }
       : null;
+
+  let autoMapsLink = String(placeData.mapsLink || '').trim();
+  if (!validLocation && (placeData.address || placeData.name)) {
+    const geocoded = await resolveAddressLocation({
+      name: String(placeData.name || '').trim(),
+      address: String(placeData.address || '').trim(),
+      area: targetArea,
+      placeId: ''
+    });
+    if (geocoded?.lat != null && geocoded?.lng != null) {
+      validLocation = { lat: Number(geocoded.lat), lng: Number(geocoded.lng) };
+      autoMapsLink = geocoded.mapsLink || geocoded.mapsLinkUrl || autoMapsLink;
+    } else if (placeData.address) {
+      // Keep a real Maps search URL rather than inventing coordinates.
+      const q = [placeData.name || '', placeData.address || '', targetArea, 'الدقهلية', 'مصر'].filter(Boolean).join(', ');
+      autoMapsLink = autoMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+    }
+  }
 
   const newPlace = {
     id: placeId, slug, ownerId: currentUser.uid, ownerEmail: currentUser.email || '', name: placeData.name.trim(), nameEn: placeData.nameEn || '',
@@ -131,7 +164,7 @@ export async function createPlace(placeData, currentUser) {
     phone: isPhoneUnavailable ? '' : normalizePhoneNumber(placeData.phone || ''),
     phoneUnavailable: isPhoneUnavailable,
     whatsapp: normalizePhoneNumber(placeData.whatsapp || ''),
-    address: placeData.address || '', area: targetArea, mapsLink: placeData.mapsLink || '', location: validLocation, latitude: validLocation?.lat ?? null, longitude: validLocation?.lng ?? null,
+    address: placeData.address || '', area: targetArea, mapsLink: autoMapsLink, location: validLocation, latitude: validLocation?.lat ?? null, longitude: validLocation?.lng ?? null,
     alwaysOpen: Boolean(placeData.alwaysOpen), alwaysOpenExcept: Boolean(placeData.alwaysOpenExcept), workingHours: placeData.workingHours || getDefaultWorkingHours(),
     coverImageUrl: placeData.coverImageUrl || '', logoUrl: placeData.logoUrl || '', imageUrls: placeData.imageUrls || [], services: placeData.services || [],
     paymentMethods: placeData.paymentMethods || placeData.payment_methods || [],
@@ -160,13 +193,32 @@ export async function updatePlace(placeId, placeData) {
     : (placeData.phone === '' ? true : Boolean(current.phoneUnavailable));
 
     const targetArea = (placeData.area || current.area || 'المنزلة').trim();
-    const resolvedLocation = (placeData.location && Number(placeData.location.lat) > 20 && Number(placeData.location.lng) > 20)
+    let resolvedLocation = (placeData.location && Number(placeData.location.lat) > 20 && Number(placeData.location.lng) > 20)
       ? { lat: Number(placeData.location.lat), lng: Number(placeData.location.lng) }
       : (placeData.latitude && placeData.longitude && Number(placeData.latitude) > 20 && Number(placeData.longitude) > 20)
         ? { lat: Number(placeData.latitude), lng: Number(placeData.longitude) }
         : (current.location && Number(current.location.lat) > 20 && Number(current.location.lng) > 20)
           ? { lat: Number(current.location.lat), lng: Number(current.location.lng) }
           : null;
+
+    let resolvedMapsLink = placeData.mapsLink !== undefined ? String(placeData.mapsLink || '').trim() : String(current.mapsLink || '').trim();
+    const addressChanged = placeData.address !== undefined && String(placeData.address || '').trim() !== String(current.address || '').trim();
+    const areaChanged = placeData.area !== undefined && String(placeData.area || '').trim() !== String(current.area || '').trim();
+    if ((addressChanged || areaChanged || !resolvedLocation) && (placeData.address !== undefined || current.address || placeData.name || current.name)) {
+      const geocoded = await resolveAddressLocation({
+        name: String(placeData.name || current.name || '').trim(),
+        address: String(placeData.address !== undefined ? placeData.address : current.address || '').trim(),
+        area: targetArea,
+        placeId
+      });
+      if (geocoded?.lat != null && geocoded?.lng != null) {
+        resolvedLocation = { lat: Number(geocoded.lat), lng: Number(geocoded.lng) };
+        resolvedMapsLink = geocoded.mapsLink || geocoded.mapsLinkUrl || resolvedMapsLink;
+      } else if (addressChanged) {
+        const q = [placeData.name || current.name || '', placeData.address || current.address || '', targetArea, 'الدقهلية', 'مصر'].filter(Boolean).join(', ');
+        resolvedMapsLink = resolvedMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+      }
+    }
 
     const updates = {
     name: placeData.name ? placeData.name.trim() : current.name,
@@ -181,7 +233,7 @@ export async function updatePlace(placeId, placeData) {
     whatsapp: placeData.whatsapp !== undefined ? normalizePhoneNumber(placeData.whatsapp || '') : (current.whatsapp || ''),
     address: placeData.address !== undefined ? placeData.address : current.address,
     area: targetArea,
-    mapsLink: placeData.mapsLink !== undefined ? placeData.mapsLink : (current.mapsLink || ''),
+    mapsLink: resolvedMapsLink,
     location: resolvedLocation,
     latitude: resolvedLocation?.lat ?? null,
     longitude: resolvedLocation?.lng ?? null,
