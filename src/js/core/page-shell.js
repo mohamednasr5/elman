@@ -562,6 +562,42 @@ function _setupAppStoreButtons() {
 
 export function installDisplayControlsRail(){if(document.getElementById('display-controls-rail'))return;const lang=document.getElementById('lang-toggle-btn'),theme=document.getElementById('theme-toggle-btn');if(!lang&&!theme)return;const en=isEnglish(),rail=document.createElement('aside');rail.id='display-controls-rail';rail.className='display-controls-rail is-collapsed';rail.setAttribute('aria-label',en?'Language and theme controls':'عناصر التحكم في اللغة والمظهر');const content=document.createElement('div');content.className='display-controls-content';if(theme)content.appendChild(theme);if(lang)content.appendChild(lang);const handle=document.createElement('button');handle.type='button';handle.id='display-controls-handle';handle.className='display-controls-handle';handle.setAttribute('aria-label',en?'Toggle display controls':'إظهار / إخفاء أدوات المظهر واللغة');handle.setAttribute('title',en?'Display controls':'أدوات المظهر واللغة');handle.innerHTML='<span class="display-controls-handle__bar" aria-hidden="true"></span><span class="display-controls-handle__badge" aria-hidden="true">🌓</span>';if(en){rail.appendChild(handle);rail.appendChild(content);}else{rail.appendChild(content);rail.appendChild(handle);}document.body.appendChild(rail);let collapseTimer=null;function scheduleCollapse(delay=3500){clearTimeout(collapseTimer);collapseTimer=setTimeout(()=>{rail.classList.remove('is-expanded');rail.classList.add('is-collapsed')},delay)}function toggleRail(force){const expand=typeof force==='boolean'?force:!rail.classList.contains('is-expanded');if(expand){rail.classList.remove('is-collapsed');rail.classList.add('is-expanded');scheduleCollapse(3500)}else{rail.classList.remove('is-expanded');rail.classList.add('is-collapsed');clearTimeout(collapseTimer)}}handle.addEventListener('click',e=>{e.stopPropagation();toggleRail()});rail.addEventListener('pointerenter',()=>{rail.classList.remove('is-collapsed');rail.classList.add('is-expanded');clearTimeout(collapseTimer)});rail.addEventListener('pointerleave',()=>scheduleCollapse(1200));window.addEventListener('scroll',()=>{if(rail.classList.contains('is-expanded')){rail.classList.remove('is-expanded');rail.classList.add('is-collapsed');clearTimeout(collapseTimer)}},{passive:true});document.addEventListener('pointerdown',e=>{if(rail.classList.contains('is-expanded')&&!rail.contains(e.target)){rail.classList.remove('is-expanded');rail.classList.add('is-collapsed');clearTimeout(collapseTimer)}},{passive:true});let touchStartX=0;rail.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX},{passive:true});rail.addEventListener('touchend',e=>{const touchEndX=e.changedTouches[0].clientX;const diff=touchEndX-touchStartX;if(en){if(diff<-20)toggleRail(true);else if(diff>20)toggleRail(false)}else{if(diff>20)toggleRail(true);else if(diff<-20)toggleRail(false)}},{passive:true})}
 
+function installBackToTop() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const existing = document.getElementById('global-back-to-top');
+  if (existing) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'global-back-to-top';
+  btn.type = 'button';
+  btn.setAttribute('aria-label', isEnglish() ? 'Back to top' : 'العودة إلى أعلى الصفحة');
+  btn.title = isEnglish() ? 'Back to top' : 'العودة إلى أعلى الصفحة';
+  btn.innerHTML = '<span aria-hidden="true">⌃</span>';
+  btn.style.cssText = [
+    'position:fixed','right:22px','bottom:24px','z-index:1200',
+    'width:52px','height:52px','border-radius:50%','border:1px solid rgba(15,76,92,.18)',
+    'background:rgba(255,255,255,.96)','color:#334155','box-shadow:0 8px 24px rgba(15,23,42,.14)',
+    'display:grid','place-items:center','font-size:25px','font-weight:900',
+    'cursor:pointer','opacity:0','transform:translateY(12px)','pointer-events:none',
+    'transition:opacity .2s ease,transform .2s ease'
+  ].join(';');
+
+  btn.addEventListener('click', () => {
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    catch (_) { window.scrollTo(0, 0); }
+  });
+
+  const sync = () => {
+    const visible = window.scrollY > 500;
+    btn.style.opacity = visible ? '1' : '0';
+    btn.style.transform = visible ? 'translateY(0)' : 'translateY(12px)';
+    btn.style.pointerEvents = visible ? 'auto' : 'none';
+  };
+  window.addEventListener('scroll', sync, { passive: true });
+  document.body.appendChild(btn);
+  sync();
+}
+
 export async function initPage(activeFile=''){
   try{initContentProtection()}catch(_){}
   applyLangToDOM(getLang());
@@ -572,6 +608,7 @@ export async function initPage(activeFile=''){
   _bindLanguageToggle();
   _bindThemeToggle();
   installDisplayControlsRail();
+  installBackToTop();
   _setupHeaderSearch();
   _bindMoreMenu();
   _bindHeaderUserEvents();
