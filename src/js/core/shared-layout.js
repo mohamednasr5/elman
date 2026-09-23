@@ -293,14 +293,40 @@ function _setupHeaderSearch() {
 }
 
 function _setupScrollToTop() {
-  const btn = document.getElementById('scroll-to-top-btn');
-  if (!btn) return;
-  window.addEventListener('scroll', () => {
-    btn.classList.toggle('visible', window.scrollY > 300);
-  }, { passive: true });
-  btn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  let btn = document.getElementById('scroll-to-top-btn');
+
+  // Guaranteed fallback: some page templates do not include the footer button.
+  // Create one directly under <body> so the control exists on every long page.
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'scroll-to-top-btn';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'العودة إلى أعلى الصفحة');
+    btn.setAttribute('title', 'العودة إلى أعلى الصفحة');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    btn.style.cssText = 'position:fixed;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:12000;width:46px;height:46px;border:1px solid rgba(15,76,92,.18);border-radius:50%;background:rgba(255,255,255,.96);color:#0f4c5c;display:grid;place-items:center;box-shadow:0 8px 24px rgba(15,23,42,.16);cursor:pointer;opacity:0;visibility:hidden;transform:translateY(8px);transition:opacity .2s ease,visibility .2s ease,transform .2s ease;';
+    document.body.appendChild(btn);
+  } else {
+    btn.style.zIndex = '12000';
+    btn.style.bottom = 'calc(92px + env(safe-area-inset-bottom))';
+  }
+
+  const update = () => {
+    const visible = window.scrollY > 300;
+    btn.classList.toggle('visible', visible);
+    btn.style.opacity = visible ? '1' : '0';
+    btn.style.visibility = visible ? 'visible' : 'hidden';
+    btn.style.transform = visible ? 'translateY(0)' : 'translateY(8px)';
+    btn.style.pointerEvents = visible ? 'auto' : 'none';
+  };
+
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+
+  if (!btn.dataset.bound) {
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
 }
 
 function _renderUserSection(user) {
