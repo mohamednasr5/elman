@@ -351,19 +351,41 @@ export async function handleArticlesApi(request, url, env, user) {
 
     const existingId=String(body.id||'').trim();
     const existing=existingId?await db.prepare('SELECT * FROM articles WHERE id=? LIMIT 1').bind(existingId).first().catch(()=>null):null;
-    const countRow=await db.prepare("SELECT COUNT(*) AS count FROM articles WHERE place_id=? AND status<>'deleted' AND id<>?").bind(placeId,existingId||'').first().catch(()=>({count:0}));
-    if(!existing && Number(countRow?.count||0)>=6) return {status:409,body:{success:false,error:'يمكنك إضافة 6 مقالات كحد أقصى لهذا المكان'}};
     if(existing && !user.isAdmin && String(existing.owner_id)!==String(user.uid) && !isPlaceOwner) return {status:403,body:{success:false,error:'لا يمكنك تعديل هذا المقال'}};
 
     const title=text(body.title,180), content=text(body.content,10000);
     if(title.length<6) return {status:400,body:{success:false,error:'عنوان المقال قصير جدًا'}};
     if(content.length<80) return {status:400,body:{success:false,error:'محتوى المقال قصير جدًا'}};
 
+    const now=Date.now(), status=body.status==='draft'?'draft':'published';
+    const ARTICLE_COIN_COST = 200;
+    const isPublishingNew = status === 'published' && (!existing || existing.status !== 'published');
+
+    let userRow = null;
+    let currentBalance = 0;
+    if (isPublishingNew) {
+      userRow = await db.prepare('SELECT id, points FROM users WHERE id = ? OR (LOWER(email) = ? AND email != "") ORDER BY points DESC LIMIT 1')
+        .bind(user.uid, (user.email || '').toLowerCase().trim()).first().catch(() => null);
+      currentBalance = Number(userRow?.points || 0);
+
+      if (!user.isAdmin && currentBalance < ARTICLE_COIN_COST) {
+        return {
+          status: 402,
+          body: {
+            success: false,
+            code: 'INSUFFICIENT_COINS',
+            error: `رصيدك الحالي (${currentBalance} ذهبية) غير كافٍ. يلزم ${ARTICLE_COIN_COST} عملة ذهبية لنشر المقال. يرجى شحن محفظتك للمتابعة.`,
+            required: ARTICLE_COIN_COST,
+            balance: currentBalance
+          }
+        };
+      }
+    }
+
     let slug=slugify(body.slug||title, place.slug||place.name||'article');
     const slugOwner=await db.prepare('SELECT id FROM articles WHERE slug=? AND id<>? LIMIT 1').bind(slug,existingId||'').first().catch(()=>null);
     if(slugOwner) slug=slug+'-'+(existingId||('x'+Date.now())).slice(-4);
 
-    const now=Date.now(), status=body.status==='draft'?'draft':'published';
     const cover=imageUrl(body.cover_image_url||body.coverImageUrl);
     const kws=JSON.stringify(keywords(body.keywords));
     const excerpt=text(body.excerpt||content.slice(0,180),280);
@@ -377,7 +399,27 @@ export async function handleArticlesApi(request, url, env, user) {
         .bind(id,placeId,user.uid,slug,title,excerpt,content,kws,cover,status,body.ai_generated?1:0,now,now,status==='published'?now:null).run();
     }
 
-    return {status:200,body:{success:true,data:await bySlug(db,slug,true)}};
+    let newBalance = currentBalance;
+    if (isPublishingNew && !user.isAdmin) {
+      const targetUserId = userRow?.id || user.uid;
+      await db.prepare('UPDATE users SET points = MAX(0, points - ?), updated_at = ? WHERE id = ?')
+        .bind(ARTICLE_COIN_COST, now, targetUserId).run().catch(() => {});
+      const logId = 'lh_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      await db.prepare(`
+        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
+        VALUES (?, ?, 'redeem', 'ARTICLE_PUBLISH', ?, ?, ?, ?)
+      `).bind(
+        logId,
+        user.uid,
+        -ARTICLE_COIN_COST,
+        `نشر مقال: ${title.slice(0, 45)}`,
+        JSON.stringify({ articleId: id, placeId, title }),
+        now
+      ).run().catch(() => {});
+      newBalance = Math.max(0, currentBalance - ARTICLE_COIN_COST);
+    }
+
+    return {status:200,body:{success:true,data:await bySlug(db,slug,true),newBalance}};
   }
 
   if (request.method === 'PUT' && match) {
@@ -400,6 +442,29 @@ export async function handleArticlesApi(request, url, env, user) {
     const excerpt=text(body.excerpt??content.slice(0,180),280);
     const status=body.status==='draft'?'draft':'published', now=Date.now();
 
+    const ARTICLE_COIN_COST = 200;
+    const isPublishingNew = status === 'published' && existing.status !== 'published';
+    let userRow = null;
+    let currentBalance = 0;
+    if (isPublishingNew) {
+      userRow = await db.prepare('SELECT id, points FROM users WHERE id = ? OR (LOWER(email) = ? AND email != "") ORDER BY points DESC LIMIT 1')
+        .bind(user.uid, (user.email || '').toLowerCase().trim()).first().catch(() => null);
+      currentBalance = Number(userRow?.points || 0);
+
+      if (!user.isAdmin && currentBalance < ARTICLE_COIN_COST) {
+        return {
+          status: 402,
+          body: {
+            success: false,
+            code: 'INSUFFICIENT_COINS',
+            error: `رصيدك الحالي (${currentBalance} ذهبية) غير كافٍ. يلزم ${ARTICLE_COIN_COST} عملة ذهبية لنشر المقال. يرجى شحن محفظتك للمتابعة.`,
+            required: ARTICLE_COIN_COST,
+            balance: currentBalance
+          }
+        };
+      }
+    }
+
     let slug = existing.slug;
     if (body.slug || !slug || !/^[a-z0-9-]+$/.test(slug)) {
       slug = slugify(body.slug || existing.slug || title, place?.slug || place?.name || 'article');
@@ -409,7 +474,28 @@ export async function handleArticlesApi(request, url, env, user) {
 
     await db.prepare("UPDATE articles SET title=?,slug=?,excerpt=?,content=?,keywords_json=?,cover_image_url=?,status=?,ai_generated=?,updated_at=?,published_at=CASE WHEN ?='published' THEN COALESCE(published_at,?) ELSE published_at END WHERE id=?")
       .bind(title,slug,excerpt,content,kws,cover,status,body.ai_generated==null?Number(existing.ai_generated||0):body.ai_generated?1:0,now,status,now,id).run();
-    return {status:200,body:{success:true,data:mapRow(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.id=? LIMIT 1').bind(id).first())}};
+
+    let newBalance = currentBalance;
+    if (isPublishingNew && !user.isAdmin) {
+      const targetUserId = userRow?.id || user.uid;
+      await db.prepare('UPDATE users SET points = MAX(0, points - ?), updated_at = ? WHERE id = ?')
+        .bind(ARTICLE_COIN_COST, now, targetUserId).run().catch(() => {});
+      const logId = 'lh_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      await db.prepare(`
+        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
+        VALUES (?, ?, 'redeem', 'ARTICLE_PUBLISH', ?, ?, ?, ?)
+      `).bind(
+        logId,
+        user.uid,
+        -ARTICLE_COIN_COST,
+        `نشر مقال: ${title.slice(0, 45)}`,
+        JSON.stringify({ articleId: id, placeId: existing.place_id, title }),
+        now
+      ).run().catch(() => {});
+      newBalance = Math.max(0, currentBalance - ARTICLE_COIN_COST);
+    }
+
+    return {status:200,body:{success:true,data:mapRow(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.id=? LIMIT 1').bind(id).first()),newBalance}};
   }
 
   if (request.method === 'DELETE' && match) {

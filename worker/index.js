@@ -2283,8 +2283,6 @@ try {
       if (!isPlaceOwner) {
         return jsonResponse({success:false,error:'يمكن لصاحب المكان فقط توليد مقالاته'},403,corsHeaders);
       }
-      const countRow = await db.prepare("SELECT COUNT(*) AS count FROM articles WHERE place_id=? AND status<>'deleted'").bind(placeId).first().catch(() => ({count:0}));
-      if (Number(countRow?.count || 0) >= 6) return jsonResponse({success:false,error:'اكتمل الحد الأقصى: 6 مقالات لهذا المكان'},409,corsHeaders);
 
       let services=[]; try{services=place.services_json?JSON.parse(place.services_json):[]}catch(_){}
       let workingHours=null; try{workingHours=place.working_hours_json?JSON.parse(place.working_hours_json):null}catch(_){}

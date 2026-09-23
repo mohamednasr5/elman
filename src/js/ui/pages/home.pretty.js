@@ -276,13 +276,13 @@ export async function renderHomePage($main, { user } = {}) {
         .catch(e => console.warn('[Home] HomeJobBoardFeed load err:', e));
     } catch (_) {}
 
-    // Local Blog Articles Feed (مقالات المدونة المحلية للأماكن)
+    // Local Blog Articles Feed (مقالات المدونة الحصرية للأماكن)
     try {
       import('../../services/articles.service.js').then(async ({ getArticles }) => {
         const blogSection = document.getElementById('home-blog-section');
         const blogGrid = document.getElementById('home-blog-grid');
         if (!blogSection || !blogGrid) return;
-        const list = await getArticles({ limit: 4 }).catch(() => []);
+        const list = await getArticles({ limit: 3 }).catch(() => []);
         if (!Array.isArray(list) || !list.length) {
           blogSection.style.display = 'none';
           return;
@@ -291,17 +291,30 @@ export async function renderHomePage($main, { user } = {}) {
         blogGrid.innerHTML = list.map(a => {
           const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
           const p = a.place || {};
+          const placeHref = '/place/' + encodeURIComponent(p.slug || p.id || '') + '/';
+          const words = String(a.content || '').trim().split(/\s+/).length;
+          const readTime = Math.max(1, Math.ceil(words / 150));
           const img = a.coverImageUrl
-            ? `<img src="${String(a.coverImageUrl).replace(/"/g,'&quot;')}" alt="${String(a.title||'مقال').replace(/"/g,'&quot;')}" width="640" height="360" loading="lazy" decoding="async" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">`
-            : `<div style="aspect-ratio:16/9;background:#f1f5f9;display:grid;place-items:center;font-size:36px">📝</div>`;
+            ? `<img class="blog-card__image" src="${String(a.coverImageUrl).replace(/"/g,'&quot;')}" alt="${String(a.title||'مقال').replace(/"/g,'&quot;')}" width="640" height="360" loading="lazy" decoding="async">`
+            : `<div class="blog-card__image blog-card__image--placeholder" aria-hidden="true"><span>📝</span></div>`;
+
           return `
-            <article class="blog-card" style="display:flex;flex-direction:column;overflow:hidden;background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 4px 20px rgba(15,23,42,.05);transition:transform .2s">
-              <a href="${href}" style="display:block;overflow:hidden">${img}</a>
-              <div style="padding:16px;display:flex;flex-direction:column;flex-grow:1">
-                ${p.name ? `<div style="font-size:.78rem;color:#0f766e;font-weight:800;margin-bottom:6px"><a href="/place/${encodeURIComponent(p.slug||p.id||'')}/" style="color:inherit;text-decoration:none">${String(p.name).replace(/</g,'&lt;')}</a></div>` : ''}
-                <h3 style="font-size:1.02rem;line-height:1.5;margin:0 0 8px;font-weight:900"><a href="${href}" style="color:#0f172a;text-decoration:none">${String(a.title||'').replace(/</g,'&lt;')}</a></h3>
-                <p style="margin:0 0 12px;line-height:1.7;color:#64748b;font-size:.85rem;flex-grow:1">${String(a.excerpt||a.content||'').slice(0,120).replace(/</g,'&lt;')}...</p>
-                <a href="${href}" style="color:#0f4c5c;font-weight:800;font-size:.85rem;text-decoration:none;display:inline-flex;align-items:center;gap:4px">قراءة المقال ←</a>
+            <article class="blog-card">
+              <a class="blog-card__image-link" href="${href}" aria-label="${String(a.title||'').replace(/"/g,'&quot;')}">
+                ${img}
+                <div class="blog-card__overlay-gradient" aria-hidden="true"></div>
+                <div class="blog-card__overlay-badge"><span>📍</span> ${String(p.area || 'المنزلة والمطرية').replace(/</g,'&lt;')}</div>
+              </a>
+              <div class="blog-card__body">
+                <div class="blog-card__meta">
+                  ${p.name ? `<a class="blog-card__place-chip" href="${placeHref}" title="${String(p.name).replace(/"/g,'&quot;')}"><span class="blog-card__verified-badge">✓</span><span>${String(p.name).replace(/</g,'&lt;')}</span></a>` : '<span></span>'}
+                  <span class="blog-card__time">⏱️ ${readTime} د قراءة</span>
+                </div>
+                <h3 class="blog-card__title"><a href="${href}">${String(a.title||'').replace(/</g,'&lt;')}</a></h3>
+                <p class="blog-card__excerpt">${String(a.excerpt || a.content || '').slice(0, 130).replace(/</g,'&lt;')}...</p>
+                <div class="blog-card__footer">
+                  <a class="blog-card__read" href="${href}"><span>قراءة المقال كاملاً</span><span class="blog-card__arrow-circle" aria-hidden="true">←</span></a>
+                </div>
               </div>
             </article>
           `;
@@ -1930,9 +1943,19 @@ function getHomeHTML() {
     </section>
 
     <!-- Local Blog Section -->
-<section class="section" id="home-blog-section" style="display:none"><div class="container"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6);gap:12px;flex-wrap:wrap"><div><h2 class="section-title">📝 من مدونة المنزلة والمطرية</h2><p style="margin:0;color:var(--text-muted);font-size:13px">مقالات مفيدة يكتبها أصحاب الأنشطة عن خدماتهم وأعمالهم.</p></div><a href="/blog/" class="section-link">كل المقالات ←</a></div><div class="blog-grid" id="home-blog-grid"></div></div></section>
+    <section class="section" id="home-blog-section" style="background:var(--surface);padding-block:var(--space-10);display:none">
+      <div class="container">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">
+          <h2 class="section-title">
+            <span>📝</span> مقالات وأخبار حصرية
+          </h2>
+          <a href="/blog/" class="section-link">عرض الكل ←</a>
+        </div>
+        <div class="blog-grid" id="home-blog-grid"></div>
+      </div>
+    </section>
 
-<!-- Offers Section -->
+    <!-- Offers Section -->
     <section class="section" id="offers-section" style="background:var(--surface);padding-block:var(--space-10)">
       <div class="container">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">

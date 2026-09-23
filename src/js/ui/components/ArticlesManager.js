@@ -1,5 +1,6 @@
 import { getPlacesByOwner } from '../../core/db.js';
 import { getArticles, generateArticle, saveArticle, updateArticle, deleteArticle, uploadArticleCover } from '../../services/articles.service.js';
+import { getStoredCoinsBalance, setStoredCoinsBalance, fetchLiveCoinsBalance } from '../../core/coins-sync.js';
 import { toast } from './Toast.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -10,13 +11,10 @@ function injectStyles() {
   s.id = 'article-manager-styles';
   s.textContent = `
     .article-manager { display: grid; gap: 24px; }
-    .article-manager__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 18px; }
+    .article-manager__head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 18px; }
     .article-manager__header-text h1 { margin: 0 0 6px; font-size: 1.5rem; font-weight: 900; color: #0f172a; }
     .article-manager__header-text p { margin: 0; color: #64748b; font-size: 0.9rem; line-height: 1.6; }
-    .article-manager__quota { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 10px 16px; }
-    .article-manager__quota-bar-wrap { width: 100px; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
-    .article-manager__quota-bar { height: 100%; background: #0f766e; border-radius: 999px; transition: width .3s ease; }
-    .article-manager__quota-text { font-size: 13px; font-weight: 800; color: #0f172a; white-space: nowrap; }
+    .article-manager__coins-badge { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1.5px solid #f59e0b; border-radius: 16px; padding: 10px 16px; box-shadow: 0 2px 10px rgba(245,158,11,.1); }
 
     .article-editor-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 24px; align-items: start; }
     @media (max-width: 960px) { .article-editor-layout { grid-template-columns: 1fr; } }
@@ -164,11 +162,13 @@ export async function renderArticlesManager(container, user) {
           <h1>📝 المدونة ومقالات الأماكن</h1>
           <p>اكتب مقالات حصرية عن نشاطك التجاري تدعم محركات البحث الذكية (AI Search & GEO)، واربطها بصفحة المكان لزيادة الزيارات والاتصالات.</p>
         </div>
-        <div class="article-manager__quota" id="article-quota-box">
-          <div class="article-manager__quota-bar-wrap">
-            <div class="article-manager__quota-bar" id="article-quota-bar" style="width:0%"></div>
+        <div class="article-manager__coins-badge" id="article-coins-box">
+          <div style="font-size:24px">🪙</div>
+          <div>
+            <div style="font-size:11.5px;font-weight:700;color:#92400e">رصيد محفظتك</div>
+            <div style="font-size:15px;font-weight:900;color:#78350f"><span id="article-user-coins-val" class="live-coins-val">${Number(getStoredCoinsBalance()).toLocaleString('ar-EG')}</span> ذهبية</div>
           </div>
-          <span class="article-manager__quota-text" id="article-quota-text">0 / 6 مقالات</span>
+          <a href="/wallet.html" style="background:#f59e0b;color:#fff;font-size:12px;font-weight:800;padding:6px 12px;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">شحن ⚡</a>
         </div>
       </div>
       <div id="article-manager-body">
@@ -176,6 +176,9 @@ export async function renderArticlesManager(container, user) {
       </div>
     </div>
   `;
+
+  // Live coins balance sync for this component
+  fetchLiveCoinsBalance().catch(() => {});
 
   const bodyEl = container.querySelector('#article-manager-body');
 
@@ -205,7 +208,7 @@ export async function renderArticlesManager(container, user) {
 
   async function loadArticles() {
     try {
-      articles = await getArticles({ placeId: currentPlaceId, limit: 6 }) || [];
+      articles = await getArticles({ placeId: currentPlaceId, limit: 50 }) || [];
     } catch (_) {
       articles = [];
     }
@@ -214,14 +217,11 @@ export async function renderArticlesManager(container, user) {
 
   function renderUI() {
     const selectedPlace = places.find(p => String(p.id || p._key) === String(currentPlaceId)) || places[0];
-    const totalCount = articles.length;
-    const isMaxReached = totalCount >= 6 && !editingArticle;
-
-    // Update quota badge
-    const quotaBar = document.getElementById('article-quota-bar');
-    const quotaText = document.getElementById('article-quota-text');
-    if (quotaBar) quotaBar.style.width = `${Math.min(100, Math.round((totalCount / 6) * 100))}%`;
-    if (quotaText) quotaText.textContent = `${totalCount} / 6 مقالات`;
+    const isAlreadyPublished = editingArticle && editingArticle.status === 'published';
+    const publishBtnText = isAlreadyPublished
+      ? '💾 حفظ التعديلات (مجاناً)'
+      : '🚀 نشر المقال وتثبيته في صفحة المكان (200 ذهبية)';
+    const draftBtnText = editingArticle ? '💾 حفظ كمسودة' : '💾 حفظ كمسودة (مجاناً)';
 
     bodyEl.innerHTML = `
       <div class="article-editor-layout">
@@ -247,7 +247,7 @@ export async function renderArticlesManager(container, user) {
             <div class="article-form-group" style="margin-bottom:10px">
               <label for="art-topic-input">
                 <span>عن ماذا تريد أن يتحدث المقال؟ ✨</span>
-                <span style="font-size:11.5px;color:#0f766e;font-weight:normal">اكتب فكرتك وسيتولى الذكاء الاصطناعي الباقي</span>
+                <span style="font-size:11.5px;color:#0f766e;font-weight:normal">اكتب فكرتك وسيتولى الذكاء الاصطناعي صياغة مقال 550 كلمة متكامل</span>
               </label>
               <textarea id="art-topic-input" style="min-height:85px" placeholder="مثال: خصومات العيد، أشهى الوجبات العائلية، سرعة التوصيل لجميع مناطق المنزلة والمطرية، أو نصائح لاختيار أفضل المنتجات..."></textarea>
               
@@ -260,11 +260,10 @@ export async function renderArticlesManager(container, user) {
               </div>
             </div>
 
-            <button type="button" class="article-ai-cta-btn" id="btn-generate-ai" ${isMaxReached ? 'disabled' : ''}>
+            <button type="button" class="article-ai-cta-btn" id="btn-generate-ai">
               <span>✨</span>
-              <span>توليد المقال بالذكاء الاصطناعي (مقال غني 400-500 كلمة + رابط إنجليزي + سيو 100%)</span>
+              <span>توليد المقال بالذكاء الاصطناعي (مقال احترافي ~550 كلمة + رابط إنجليزي + سيو 100%)</span>
             </button>
-            ${isMaxReached ? '<div style="margin-top:8px;font-size:12px;color:#b91c1c;font-weight:700;text-align:center">⚠️ اكتمل الحد الأقصى (6 مقالات) لهذا النشاط. يمكنك تعديل مقال سابق أو حذفه.</div>' : ''}
           </div>
 
           <!-- Form Fields -->
@@ -291,7 +290,7 @@ export async function renderArticlesManager(container, user) {
             </label>
             <textarea id="art-content-input" placeholder="اكتب المقال هنا أو دعه يُولّد تلقائياً من الزر أعلاه...">${esc(editingArticle?.content || '')}</textarea>
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#64748b">
-              <span>المعيار الذهبي للسيو والذكاء الاصطناعي: حوالي 400 إلى 520 كلمة مقسمة بعناوين فرعية</span>
+              <span>المعيار الذهبي للسيو والذكاء الاصطناعي: حوالي 550 كلمة مقسمة بعناوين فرعية H2 و H3 وفقرة أسئلة شائعة وخاتمة</span>
               <span id="art-words-count">0 حرف</span>
             </div>
           </div>
@@ -319,15 +318,19 @@ export async function renderArticlesManager(container, user) {
           </div>
 
           <div class="article-actions-row">
-            <button type="button" class="btn btn-outline" id="btn-save-draft" style="flex:1" ${isMaxReached ? 'disabled' : ''}>💾 حفظ كمسودة</button>
-            <button type="button" class="btn btn-primary" id="btn-publish-article" style="flex:2" ${isMaxReached ? 'disabled' : ''}>🚀 نشر المقال وتثبيته في صفحة المكان</button>
+            <button type="button" class="btn btn-outline" id="btn-save-draft" style="flex:1">${draftBtnText}</button>
+            <button type="button" class="btn btn-primary" id="btn-publish-article" style="flex:2">${publishBtnText}</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;font-size:12px;color:#475569;line-height:1.6">
+            <span>⚡</span>
+            <span>نشر المقال لأول مرة يتطلب <b>200 عملة ذهبية</b> تُخصم من محفظتك. التعديلات اللاحقة على المقال المنشور <b>مجانية تماماً</b>. حفظ المسودات مجاني.</span>
           </div>
         </section>
 
         <!-- Sidebar: Existing Articles for this place -->
         <aside class="article-card-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <h2 style="margin:0">مقالات النشاط (${articles.length}/6)</h2>
+            <h2 style="margin:0">مقالات النشاط (${articles.length})</h2>
             <span style="font-size:12px;color:#0f766e;font-weight:800">${esc(selectedPlace.name || 'المكان')}</span>
           </div>
 
@@ -412,15 +415,15 @@ export async function renderArticlesManager(container, user) {
 
       if (charBadge) {
         charBadge.className = 'article-counter-badge';
-        if (words >= 350 && words <= 650) {
+        if (words >= 480 && words <= 650) {
           charBadge.classList.add('article-counter--good');
-          charBadge.textContent = `${words} كلمة — طول مثالي ومطابق للسيو ✅`;
-        } else if (words < 350) {
+          charBadge.textContent = `${words} كلمة — طول مثالي ومطابق لمعيار 550 كلمة ✅`;
+        } else if (words < 480) {
           charBadge.classList.add('article-counter--short');
-          charBadge.textContent = `${words} كلمة (الموصى به ~400-500)`;
+          charBadge.textContent = `${words} كلمة (الموصى به ~550 كلمة)`;
         } else {
           charBadge.classList.add('article-counter--long');
-          charBadge.textContent = `${words} كلمة (مقال مفصل)`;
+          charBadge.textContent = `${words} كلمة (مقال مفصل وممتاز)`;
         }
       }
     }
@@ -438,7 +441,7 @@ export async function renderArticlesManager(container, user) {
       }
 
       btnGenAi.disabled = true;
-      btnGenAi.innerHTML = '<span>⏳</span> <span>جاري كتابة مقال غني (~450 كلمة) متوافق 100% مع السيو ومحركات الذكاء الاصطناعي...</span>';
+      btnGenAi.innerHTML = '<span>⏳</span> <span>جاري صياغة مقال 550 كلمة متوافق 100% مع معايير السيو والذكاء الاصطناعي...</span>';
 
       try {
         const titleVal = bodyEl.querySelector('#art-title-input').value.trim();
@@ -467,8 +470,8 @@ export async function renderArticlesManager(container, user) {
       } catch (err) {
         toast.error?.(err?.message || 'تعذر توليد المقال حالياً، يرجى المحاولة مرة أخرى');
       } finally {
-        btnGenAi.disabled = isMaxReached;
-        btnGenAi.innerHTML = '<span>✨</span> <span>توليد المقال بالذكاء الاصطناعي (مقال غني 400-500 كلمة + رابط إنجليزي + سيو 100%)</span>';
+        btnGenAi.disabled = false;
+        btnGenAi.innerHTML = '<span>✨</span> <span>توليد المقال بالذكاء الاصطناعي (مقال احترافي ~550 كلمة + رابط إنجليزي + سيو 100%)</span>';
       }
     });
 
@@ -538,6 +541,21 @@ export async function renderArticlesManager(container, user) {
         return;
       }
 
+      const isAlreadyPublished = editingArticle && editingArticle.status === 'published';
+      const isPublishingNew = !isDraft && !isAlreadyPublished;
+
+      if (isPublishingNew) {
+        const currentBalance = getStoredCoinsBalance();
+        const isSuperAdmin = user?.role === 'superadmin' || user?.isAdmin;
+        if (!isSuperAdmin && currentBalance < 200) {
+          toast.error?.(`رصيدك الحالي (${currentBalance} ذهبية) غير كافٍ لنشر المقال. تكلفة النشر 200 ذهبية.`);
+          if (confirm(`رصيدك الحالي (${currentBalance} ذهبية) غير كافٍ لنشر المقال.\n\nتكلفة نشر المقال هي 200 ذهبية.\nهل ترغب بالانتقال لشحن محفظتك الآن؟`)) {
+            window.location.href = '/wallet.html';
+          }
+          return;
+        }
+      }
+
       const saveBtn = isDraft ? bodyEl.querySelector('#btn-save-draft') : bodyEl.querySelector('#btn-publish-article');
       const originalText = saveBtn.innerHTML;
       saveBtn.disabled = true;
@@ -570,11 +588,21 @@ export async function renderArticlesManager(container, user) {
 
       try {
         if (editingArticle) {
-          await updateArticle(editingArticle.id, payload, { draft: isDraft });
-          toast.success?.(isDraft ? 'تم حفظ تعديلات المسودة بنجاح' : 'تم تحديث ونشر المقال بنجاح 🚀');
+          const res = await updateArticle(editingArticle.id, payload, { draft: isDraft });
+          if (typeof res?.newBalance === 'number') {
+            setStoredCoinsBalance(res.newBalance);
+          } else {
+            fetchLiveCoinsBalance().catch(() => {});
+          }
+          toast.success?.(isDraft ? 'تم حفظ تعديلات المسودة بنجاح' : (isAlreadyPublished ? 'تم حفظ التعديلات بنجاح مجاناً 🚀' : 'تم نشر المقال بنجاح وخصم 200 ذهبية 🚀'));
         } else {
-          await saveArticle(payload, { draft: isDraft });
-          toast.success?.(isDraft ? 'تم حفظ المقال كمسودة' : 'تم نشر المقال بنجاح وتثبيته في صفحة المكان 🚀');
+          const res = await saveArticle(payload, { draft: isDraft });
+          if (typeof res?.newBalance === 'number') {
+            setStoredCoinsBalance(res.newBalance);
+          } else {
+            fetchLiveCoinsBalance().catch(() => {});
+          }
+          toast.success?.(isDraft ? 'تم حفظ المقال كمسودة' : 'تم نشر المقال بنجاح وتثبيته في صفحة المكان وخصم 200 ذهبية 🚀');
         }
 
         editingArticle = null;

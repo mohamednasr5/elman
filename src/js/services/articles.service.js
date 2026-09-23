@@ -26,7 +26,12 @@ export async function getArticles({ placeId = '', limit = 6, offset = 0 } = {}) 
   if (placeId) qs.set('place_id', placeId);
   qs.set('limit', String(Math.min(50, Math.max(1, limit))));
   qs.set('offset', String(Math.max(0, offset)));
-  const idToken = await token().catch(() => '');
+  let idToken = null;
+  if (placeId) {
+    idToken = await token().catch(() => null);
+  } else {
+    try { idToken = await getIdToken(false).catch(() => null); } catch (_) {}
+  }
   const data = await api.get('/api/articles?' + qs.toString(), idToken || null);
   return Array.isArray(data?.data) ? data.data : [];
 }
@@ -51,7 +56,7 @@ export async function saveArticle(article, { draft = false } = {}) {
   const payload = { ...article, status: draft ? 'draft' : 'published' };
   const data = await api.post('/api/articles', payload, idToken, { timeout: 15000 });
   if (!data?.success) throw new Error(data?.error || 'تعذر حفظ المقال');
-  return data.data;
+  return { ...(data.data || {}), newBalance: data.newBalance };
 }
 
 export async function updateArticle(id, article, { draft = false } = {}) {
@@ -59,7 +64,7 @@ export async function updateArticle(id, article, { draft = false } = {}) {
   if (!idToken) throw new Error('يجب تسجيل الدخول أولاً');
   const data = await api.put('/api/articles/' + encodeURIComponent(id), { ...article, status: draft ? 'draft' : 'published' }, idToken, { timeout: 15000 });
   if (!data?.success) throw new Error(data?.error || 'تعذر تحديث المقال');
-  return data.data;
+  return { ...(data.data || {}), newBalance: data.newBalance };
 }
 
 export async function deleteArticle(id) {
