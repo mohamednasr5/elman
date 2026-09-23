@@ -180,6 +180,56 @@ export function getUserLocation() {
 }
 
 /**
+ * Haversine distance between two GPS coordinates in kilometers.
+ * Returns Infinity for invalid coordinates.
+ */
+export function calculateDistanceKm(lat1, lng1, lat2, lng2) {
+  const a = [lat1, lng1, lat2, lng2].map(Number);
+  if (a.some(v => !Number.isFinite(v))) return Infinity;
+  const [p1, l1, p2, l2] = a;
+  const rad = Math.PI / 180;
+  const dLat = (p2 - p1) * rad;
+  const dLng = (l2 - l1) * rad;
+  const h = Math.sin(dLat / 2) ** 2 +
+    Math.cos(p1 * rad) * Math.cos(p2 * rad) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+/**
+ * Format a distance for Egyptian Arabic UI.
+ */
+export function formatDistance(distanceKm) {
+  const km = Number(distanceKm);
+  if (!Number.isFinite(km)) return '—';
+  if (km < 1) return `${Math.round(km * 1000)} متر`;
+  return `${km < 10 ? km.toFixed(1) : Math.round(km)} كم`;
+}
+
+/**
+ * Read stored place coordinates without inventing a fallback pin.
+ */
+export function getPlaceCoords(place) {
+  const p = place || {};
+  const location = p.location || p.coordinates || {};
+  const lat = Number(p.lat ?? p.latitude ?? location.lat ?? location.latitude);
+  const lng = Number(p.lng ?? p.longitude ?? location.lng ?? location.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng };
+}
+
+/**
+ * Reference point used only when a user has not granted live GPS.
+ * This is a UI/search origin, never assigned to a business record.
+ */
+export const MANZALA_CENTER = Object.freeze({
+  lat: 31.1578,
+  lng: 31.9367,
+  accuracy: null,
+  source: 'directory_reference'
+});
+
+/**
  * Sort array of places by proximity to user location
  */
 export function sortPlacesByDistance(places = [], userCoords) {
