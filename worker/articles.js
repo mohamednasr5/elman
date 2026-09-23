@@ -117,13 +117,25 @@ function formatProse(rawContent) {
   }).filter(Boolean).join('\n');
 }
 
+function formatDate(ts) {
+  if (!ts) return '';
+  try {
+    const d = new Date(Number(ts));
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch (_) {
+    return '';
+  }
+}
+
 function card(article) {
   const p = article.place || {};
   const href = '/article/' + encodeURIComponent(article.slug) + '/';
   const placeHref = '/place/' + encodeURIComponent(p.slug || p.id || '') + '/';
-  const excerpt = article.excerpt || text(article.content, 150);
+  const excerpt = article.excerpt || text(article.content, 160);
   const words = String(article.content || '').trim().split(/\s+/).length;
   const readTime = Math.max(1, Math.ceil(words / 150));
+  const pubDate = formatDate(article.publishedAt);
   const img = article.coverImageUrl
     ? '<img class="blog-card__image" src="' + esc(article.coverImageUrl) + '" width="640" height="360" loading="lazy" decoding="async" alt="' + esc(article.title) + '">'
     : '<div class="blog-card__image blog-card__image--placeholder" aria-hidden="true"><span>📝</span></div>';
@@ -131,17 +143,19 @@ function card(article) {
   return '<article class="blog-card">' +
     '<a class="blog-card__image-link" href="' + esc(href) + '" aria-label="' + esc(article.title) + '">' +
       img +
+      '<div class="blog-card__overlay-gradient" aria-hidden="true"></div>' +
       '<div class="blog-card__overlay-badge"><span>📍</span> ' + esc(p.area || 'المنزلة والمطرية') + '</div>' +
     '</a>' +
     '<div class="blog-card__body">' +
       '<div class="blog-card__meta">' +
-        (p.name ? '<a class="blog-card__place-link" href="' + esc(placeHref) + '"><span class="blog-card__verified-badge">✓</span> ' + esc(p.name) + '</a>' : '') +
+        (p.name ? '<a class="blog-card__place-chip" href="' + esc(placeHref) + '" title="' + esc(p.name) + '"><span class="blog-card__verified-badge">✓</span><span>' + esc(p.name) + '</span></a>' : '<span></span>') +
         '<span class="blog-card__time">⏱️ ' + readTime + ' د قراءة</span>' +
       '</div>' +
       '<h2 class="blog-card__title"><a href="' + esc(href) + '">' + esc(article.title) + '</a></h2>' +
       '<p class="blog-card__excerpt">' + esc(excerpt) + '</p>' +
       '<div class="blog-card__footer">' +
-        '<a class="blog-card__read" href="' + esc(href) + '"><span>قراءة المقال كاملاً</span><span class="blog-card__arrow">←</span></a>' +
+        '<a class="blog-card__read" href="' + esc(href) + '"><span>قراءة المقال كاملاً</span><span class="blog-card__arrow-circle" aria-hidden="true">←</span></a>' +
+        (pubDate ? '<span class="blog-card__date">' + esc(pubDate) + '</span>' : '') +
       '</div>' +
     '</div></article>';
 }
@@ -167,7 +181,7 @@ function css() {
   '#readingProgressBar{position:fixed;top:0;left:0;height:3.5px;background:linear-gradient(90deg,#0f766e,#06b6d4,#10b981);z-index:99999;width:0%;transition:width .1s ease-out}' +
   
   '.article-nav-wrap{background:rgba(255,255,255,.94);border-bottom:1px solid var(--blog-border);position:sticky;top:0;z-index:1000;backdrop-filter:blur(10px)}' +
-  '.article-nav-container{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}' +
+  '.article-nav-container{max-width:1240px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}' +
   '.article-breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--blog-muted);flex-wrap:wrap}' +
   '.article-breadcrumb a{color:var(--blog-primary);text-decoration:none;font-weight:700;transition:color .2s}' +
   '.article-breadcrumb a:hover{color:var(--blog-primary-dark);text-decoration:underline}' +
@@ -175,36 +189,55 @@ function css() {
   '.nav-home-btn{display:inline-flex;align-items:center;gap:6px;font-size:.84rem;font-weight:800;color:#0f4c5c;background:#f0fdfa;border:1px solid #ccfbf1;padding:6px 14px;border-radius:999px;text-decoration:none;transition:all .2s}' +
   '.nav-home-btn:hover{background:#ccfbf1;transform:translateY(-1px)}' +
 
-  '.blog-page{max-width:1180px;margin:0 auto;padding:32px 16px 80px}' +
-  '.blog-hero{padding:36px 28px;margin-bottom:32px;border:1px solid var(--blog-border);border-radius:28px;background:linear-gradient(135deg,#0f4c5c 0%,#0f766e 60%,#115e59 100%);color:#fff;box-shadow:0 16px 36px -10px rgba(15,76,92,.25);position:relative;overflow:hidden}' +
-  '.blog-hero__badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.25);padding:4px 12px;border-radius:999px;font-size:.8rem;font-weight:800;margin-bottom:14px}' +
-  '.blog-hero h1{margin:0 0 10px;font-size:clamp(1.8rem,4vw,2.6rem);font-weight:900;line-height:1.35;color:#fff}' +
-  '.blog-hero p{margin:0;color:#e2e8f0;font-size:1.05rem;line-height:1.9;max-width:760px}' +
-  '.blog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}' +
-  '@media(max-width:640px){.blog-grid{grid-template-columns:1fr;gap:18px}}' +
+  '.blog-page{max-width:1240px;margin:0 auto;padding:36px 20px 80px}' +
+  '.blog-hero{padding:38px 30px;margin-bottom:36px;border:1px solid rgba(255,255,255,.15);border-radius:28px;background:linear-gradient(135deg,#0f4c5c 0%,#0f766e 55%,#115e59 100%);color:#fff;box-shadow:0 18px 40px -10px rgba(15,76,92,.28);position:relative;overflow:hidden}' +
+  '.blog-hero__badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.28);padding:5px 14px;border-radius:999px;font-size:.82rem;font-weight:800;margin-bottom:14px;color:#fff}' +
+  '.blog-hero h1{margin:0 0 10px;font-size:clamp(1.85rem,4.2vw,2.7rem);font-weight:900;line-height:1.35;color:#fff}' +
+  '.blog-hero p{margin:0;color:#f1f5f9;font-size:1.05rem;line-height:1.9;max-width:800px}' +
 
-  '.blog-card{display:flex;flex-direction:column;overflow:hidden;background:#fff;border:1.5px solid var(--blog-border);border-radius:22px;box-shadow:0 4px 20px rgba(15,23,42,.04);transition:transform .28s cubic-bezier(.16,1,.3,1),box-shadow .28s cubic-bezier(.16,1,.3,1),border-color .28s;position:relative}' +
-  '.blog-card:hover{transform:translateY(-6px);box-shadow:0 18px 36px -8px rgba(15,76,92,.14);border-color:rgba(15,118,110,.35)}' +
-  '.blog-card__image-link{display:block;aspect-ratio:16/9;background:#edf2f7;overflow:hidden;position:relative}' +
-  '.blog-card__image{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s cubic-bezier(.16,1,.3,1)}' +
-  '.blog-card:hover .blog-card__image{transform:scale(1.05)}' +
-  '.blog-card__image--placeholder{display:grid;place-items:center;font-size:42px;height:100%;background:linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%)}' +
-  '.blog-card__overlay-badge{position:absolute;bottom:10px;right:10px;background:rgba(15,23,42,.75);backdrop-filter:blur(6px);color:#fff;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:4px}' +
-  '.blog-card__body{padding:20px;display:flex;flex-direction:column;flex:1}' +
-  '.blog-card__meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;font-size:.8rem}' +
-  '.blog-card__place-link{color:#0f766e;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:4px}' +
-  '.blog-card__place-link:hover{text-decoration:underline}' +
-  '.blog-card__verified-badge{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;border-radius:50%;width:16px;height:16px;display:inline-grid;place-items:center;font-size:10px;font-weight:900}' +
-  '.blog-card__time{color:var(--blog-muted);font-size:.76rem;font-weight:600}' +
-  '.blog-card__title{font-size:1.15rem;line-height:1.5;margin:0 0 10px;font-weight:900;color:var(--blog-text-main);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
-  '.blog-card__title a{color:inherit;text-decoration:none;transition:color .2s}' +
-  '.blog-card__title a:hover{color:var(--blog-primary)}' +
-  '.blog-card__excerpt{margin:0 0 16px;line-height:1.85;color:#475569;font-size:.92rem;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
-  '.blog-card__footer{margin-top:auto;padding-top:14px;border-top:1px solid #f1f5f9}' +
-  '.blog-card__read{color:var(--blog-primary);font-weight:800;font-size:.88rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:gap .2s,color .2s}' +
-  '.blog-card:hover .blog-card__read{color:var(--blog-primary-dark);gap:10px}' +
-  '.blog-card__arrow{transition:transform .2s}' +
-  '.blog-card:hover .blog-card__arrow{transform:translateX(-4px)}' +
+  '@keyframes cardEntrance{0%{opacity:0;transform:translateY(24px) scale(.98)}100%{opacity:1;transform:translateY(0) scale(1)}}' +
+  '.blog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}' +
+  '@media(max-width:1080px){.blog-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}}' +
+  '@media(max-width:680px){.blog-grid{grid-template-columns:minmax(0,1fr);gap:20px}}' +
+
+  '.blog-card{display:flex;flex-direction:column;overflow:hidden;background:#ffffff;border:1px solid #e2e8f0;border-radius:24px;box-shadow:0 4px 20px -2px rgba(15,23,42,.05);transition:transform .32s cubic-bezier(.16,1,.3,1),box-shadow .32s cubic-bezier(.16,1,.3,1),border-color .32s;position:relative;animation:cardEntrance .5s cubic-bezier(.16,1,.3,1) both}' +
+  '.blog-card:nth-child(1){animation-delay:.04s}' +
+  '.blog-card:nth-child(2){animation-delay:.10s}' +
+  '.blog-card:nth-child(3){animation-delay:.16s}' +
+  '.blog-card:nth-child(4){animation-delay:.22s}' +
+  '.blog-card:nth-child(5){animation-delay:.28s}' +
+  '.blog-card:nth-child(6){animation-delay:.34s}' +
+  '.blog-card:nth-child(7){animation-delay:.40s}' +
+  '.blog-card:nth-child(8){animation-delay:.46s}' +
+  '.blog-card:nth-child(9){animation-delay:.52s}' +
+  '.blog-card:nth-child(n+10){animation-delay:.58s}' +
+  '.blog-card:hover{transform:translateY(-8px);box-shadow:0 22px 42px -10px rgba(15,76,92,.18),0 0 0 1px rgba(15,118,110,.25);border-color:rgba(15,118,110,.45)}' +
+
+  '.blog-card__image-link{display:block;aspect-ratio:16/9;background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);overflow:hidden;position:relative}' +
+  '.blog-card__image{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.16,1,.3,1)}' +
+  '.blog-card:hover .blog-card__image{transform:scale(1.08)}' +
+  '.blog-card__image--placeholder{display:grid;place-items:center;font-size:44px;height:100%;background:linear-gradient(135deg,#0f4c5c 0%,#0f766e 100%);color:#fff}' +
+  '.blog-card__overlay-gradient{position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,.6) 0%,transparent 60%);pointer-events:none}' +
+  '.blog-card__overlay-badge{position:absolute;bottom:12px;right:12px;background:rgba(15,23,42,.85);backdrop-filter:blur(8px);color:#fff;font-size:.76rem;font-weight:700;padding:4px 12px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(255,255,255,.2);box-shadow:0 4px 12px rgba(0,0,0,.2)}' +
+
+  '.blog-card__body{padding:22px;display:flex;flex-direction:column;flex:1}' +
+  '.blog-card__meta{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;font-size:.82rem}' +
+  '.blog-card__place-chip{display:inline-flex;align-items:center;gap:6px;background:#f0fdfa;color:#0f766e;border:1px solid #ccfbf1;padding:3px 10px;border-radius:999px;font-weight:800;font-size:.78rem;text-decoration:none;max-width:65%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .2s ease}' +
+  '.blog-card__place-chip:hover{background:#ccfbf1;color:#115e59}' +
+  '.blog-card__verified-badge{background:#0f766e;color:#fff;border-radius:50%;width:14px;height:14px;display:inline-grid;place-items:center;font-size:9px;font-weight:900;flex-shrink:0}' +
+  '.blog-card__time{color:#64748b;font-size:.76rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}' +
+
+  '.blog-card__title{font-size:1.18rem;line-height:1.55;margin:0 0 10px;font-weight:900;color:var(--blog-text-main);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:3em}' +
+  '.blog-card__title a{color:inherit;text-decoration:none;transition:color .2s ease}' +
+  '.blog-card:hover .blog-card__title a{color:#0f766e}' +
+
+  '.blog-card__excerpt{margin:0 0 18px;line-height:1.75;color:#475569;font-size:.92rem;flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}' +
+  '.blog-card__footer{margin-top:auto;padding-top:14px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between}' +
+  '.blog-card__read{color:#0f766e;font-weight:800;font-size:.88rem;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:color .2s ease}' +
+  '.blog-card__arrow-circle{width:30px;height:30px;border-radius:50%;background:#f0fdfa;color:#0f766e;border:1px solid #ccfbf1;display:inline-grid;place-items:center;font-size:13px;font-weight:900;transition:transform .25s cubic-bezier(.16,1,.3,1),background .2s,color .2s,border-color .2s}' +
+  '.blog-card:hover .blog-card__read{color:#0f4c5c}' +
+  '.blog-card:hover .blog-card__arrow-circle{transform:translateX(-5px);background:#0f766e;color:#fff;border-color:#0f766e}' +
+  '.blog-card__date{font-size:.76rem;color:#94a3b8;font-weight:600}' +
 
   '.article-page{max-width:920px;margin:0 auto;padding:24px 16px 80px}' +
   '.article-shell{background:#ffffff;border:1.5px solid var(--blog-border);border-radius:28px;overflow:hidden;box-shadow:0 12px 42px rgba(15,23,42,.06)}' +
@@ -285,13 +318,13 @@ export async function handleArticlesApi(request, url, env, user) {
       return { status:200, body:{success:true,data:a} };
     }
 
-    let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id';
+    let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id';
     const args = [];
     if (placeId) {
       sql += " WHERE a.place_id = ? AND a.status <> 'deleted'";
       args.push(placeId);
     } else {
-      sql += " WHERE a.status = 'published' AND (p.status = 'published' OR p.status = 'approved' OR p.status = 'active' OR p.status IS NULL)";
+      sql += " WHERE a.status = 'published'";
     }
     sql += ' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT ? OFFSET ?';
     args.push(limit, offset);
@@ -337,7 +370,7 @@ export async function handleArticlesApi(request, url, env, user) {
     const id=existing?.id||existingId||('art_'+Date.now()+'_'+Math.random().toString(36).slice(2,8));
 
     if(existing) {
-      await db.prepare('UPDATE articles SET title=?,slug=?,excerpt=?,content=?,keywords_json=?,cover_image_url=?,status=?,ai_generated=?,updated_at=?,published_at=CASE WHEN ?="published" THEN COALESCE(published_at,?) ELSE published_at END WHERE id=?')
+      await db.prepare("UPDATE articles SET title=?,slug=?,excerpt=?,content=?,keywords_json=?,cover_image_url=?,status=?,ai_generated=?,updated_at=?,published_at=CASE WHEN ?='published' THEN COALESCE(published_at,?) ELSE published_at END WHERE id=?")
         .bind(title,slug,excerpt,content,kws,cover,status,body.ai_generated?1:0,now,status,now,id).run();
     } else {
       await db.prepare('INSERT INTO articles(id,place_id,owner_id,slug,title,excerpt,content,keywords_json,cover_image_url,status,ai_generated,created_at,updated_at,published_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
@@ -374,7 +407,7 @@ export async function handleArticlesApi(request, url, env, user) {
       if (slugOwner) slug = slug + '-' + id.slice(-4);
     }
 
-    await db.prepare('UPDATE articles SET title=?,slug=?,excerpt=?,content=?,keywords_json=?,cover_image_url=?,status=?,ai_generated=?,updated_at=?,published_at=CASE WHEN ?="published" THEN COALESCE(published_at,?) ELSE published_at END WHERE id=?')
+    await db.prepare("UPDATE articles SET title=?,slug=?,excerpt=?,content=?,keywords_json=?,cover_image_url=?,status=?,ai_generated=?,updated_at=?,published_at=CASE WHEN ?='published' THEN COALESCE(published_at,?) ELSE published_at END WHERE id=?")
       .bind(title,slug,excerpt,content,kws,cover,status,body.ai_generated==null?Number(existing.ai_generated||0):body.ai_generated?1:0,now,status,now,id).run();
     return {status:200,body:{success:true,data:mapRow(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.id=? LIMIT 1').bind(id).first())}};
   }
@@ -405,7 +438,7 @@ export async function handleArticlePublicPage(request, url, env) {
   if(p!=='/blog' && !p.startsWith('/article/')) return null;
 
   if(p==='/blog') {
-    const rows=(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.status="published" AND (p.status="published" OR p.status="approved" OR p.status="active" OR p.status IS NULL) ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 30').all().catch(()=>({results:[]}))).results||[];
+    const rows=(await db.prepare("SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE a.status='published' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 120").all().catch(()=>({results:[]}))).results||[];
     const title='المدونة المحلية | مقالات محلات وخدمات المنزلة والمطرية';
     const desc='مقالات محلية مفيدة يكتبها أصحاب الأنشطة عن خدماتهم وأعمالهم في المنزلة والمطرية مع روابط مباشرة لكل مكان.';
     const emptyStateHTML = `
@@ -417,9 +450,32 @@ export async function handleArticlePublicPage(request, url, env) {
       </div>
     `;
     const gridContent = rows.length ? rows.map(r=>card(mapRow(r))).join('') : emptyStateHTML;
+    const blogSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'Blog',
+      '@id': SITE + '/blog/#blog',
+      name: title,
+      description: desc,
+      url: SITE + '/blog/',
+      inLanguage: 'ar-EG',
+      publisher: {
+        '@type': 'Organization',
+        name: 'دليل المنزلة والمطرية الرقمي',
+        url: SITE,
+        logo: { '@type': 'ImageObject', url: SITE + '/icons/icon-512x512.png' }
+      },
+      blogPost: rows.slice(0, 30).map(r => ({
+        '@type': 'BlogPosting',
+        headline: r.title,
+        url: SITE + '/article/' + encodeURIComponent(r.slug) + '/',
+        datePublished: new Date(r.published_at || r.created_at).toISOString(),
+        image: r.cover_image_url || (SITE + '/assets/images/og-whatsapp.jpg')
+      }))
+    };
     const html='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<title>'+esc(title)+'</title><meta name="description" content="'+esc(desc)+'"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">' +
       '<link rel="canonical" href="'+SITE+'/blog/"><meta property="og:type" content="website"><meta property="og:url" content="'+SITE+'/blog/"><meta property="og:title" content="'+esc(title)+'"><meta property="og:description" content="'+esc(desc)+'">'+css()+
+      '<script type="application/ld+json">' + JSON.stringify(blogSchema) + '</script>' +
       '</head><body>' +
       '<div class="article-nav-wrap"><div class="article-nav-container"><div class="article-breadcrumb"><a href="/">الرئيسية</a><span class="sep">/</span><span>المدونة الرسمية</span></div><a href="/" class="nav-home-btn">🏠 دليل المنزلة والمطرية</a></div></div>' +
       '<main class="blog-page"><header class="blog-hero"><div class="blog-hero__badge">📰 المقالات والأخبار الحصرية</div><h1>'+esc(title)+'</h1><p>'+esc(desc)+'</p></header><section class="blog-grid" aria-label="أحدث المقالات">'+gridContent+'</section></main></body></html>';
@@ -447,7 +503,7 @@ export async function handleArticlePublicPage(request, url, env) {
   const place = article.place || {};
   const placeUrl = SITE + '/place/' + encodeURIComponent(place.slug || place.id || '') + '/';
   const canonical = SITE + '/article/' + encodeURIComponent(article.slug) + '/';
-  const relatedRows = (await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.status="published" AND p.status="published" AND a.place_id=? AND a.id<>? ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 6').bind(article.placeId,article.id).all().catch(()=>({results:[]}))).results||[];
+  const relatedRows = (await db.prepare("SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE a.status='published' AND a.place_id=? AND a.id<>? ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 6").bind(article.placeId,article.id).all().catch(()=>({results:[]}))).results||[];
   const related = relatedRows.map(mapRow);
   const published = new Date(article.publishedAt || article.createdAt).toISOString();
   const modified = new Date(article.updatedAt || article.createdAt).toISOString();
@@ -635,6 +691,6 @@ export async function handleArticlePublicPage(request, url, env) {
 
 export async function getPublishedArticlesForPlace(env, placeId, limit) {
   const db=createTursoDB(env);
-  const rows=(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.place_id=? AND a.status="published" AND p.status="published" ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT ?').bind(placeId,Math.min(6,Math.max(1,Number(limit||6)))).all().catch(()=>({results:[]}))).results||[];
+  const rows=(await db.prepare("SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE a.place_id=? AND a.status='published' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT ?").bind(placeId,Math.min(6,Math.max(1,Number(limit||6)))).all().catch(()=>({results:[]}))).results||[];
   return rows.map(mapRow);
 }
