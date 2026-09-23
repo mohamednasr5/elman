@@ -3744,7 +3744,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
         placeName: name,
         address,
         area,
-        placeId: '${escAttr(place?.id || '')}'
+        placeId: place?.id || ''
       };
       const data = await api.post('/api/maps/geocode', payload, token, { timeout: 20000 });
 
