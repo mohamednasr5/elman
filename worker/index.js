@@ -7102,68 +7102,73 @@ try {
 
   // ── Turso: Notification Read State (GET & POST /api/notifications/read) ───────────
   if (url.pathname === '/api/notifications/read') {
-    const db = createTursoDB(env);
-    if (!globalThis._hasEnsuredNotifsTable) {
-      try {
-        await db.prepare(`CREATE TABLE IF NOT EXISTS user_notifications_read (
-          user_id TEXT NOT NULL,
-          notif_id TEXT NOT NULL,
-          read_at INTEGER NOT NULL,
-          PRIMARY KEY (user_id, notif_id)
-        )`).run();
-        await db.prepare("CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)").run().catch(() => {});
-        globalThis._hasEnsuredNotifsTable = true;
-      } catch (_) {}
-    }
-
-    if (request.method === 'GET') {
-      const user = await authenticateRequest(request, env).catch(() => null);
-      const userId = user?.uid || (url.searchParams.get('userId') || url.searchParams.get('user_id') || '').trim();
-      if (!userId) {
-        return jsonResponse({ success: true, readIds: [] }, 200, corsHeaders);
-      }
-      try {
-        const rows = await db.prepare(
-          'SELECT notif_id FROM user_notifications_read WHERE user_id = ?'
-        ).bind(userId).all();
-        const readIds = (rows.results || []).map(r => r.notif_id);
-        return jsonResponse({ success: true, readIds }, 200, corsHeaders);
-      } catch (err) {
-        return jsonResponse({ success: true, readIds: [] }, 200, corsHeaders);
-      }
-    }
-
-    if (request.method === 'POST') {
-      const body = await request.json().catch(() => ({}));
-      const user = await authenticateRequest(request, env).catch(() => null);
-      const userId = user?.uid || (typeof body.userId === 'string' && body.userId ? body.userId : '').trim();
-      
-      let notifIds = [];
-      if (Array.isArray(body.notifIds)) {
-        notifIds = body.notifIds.map(id => String(id).trim()).filter(Boolean);
-      } else if (body.notifId) {
-        notifIds = [String(body.notifId).trim()];
+    try {
+      const db = createTursoDB(env);
+      if (!globalThis._hasEnsuredNotifsTable) {
+        try {
+          await db.prepare(`CREATE TABLE IF NOT EXISTS user_notifications_read (
+            user_id TEXT NOT NULL,
+            notif_id TEXT NOT NULL,
+            read_at INTEGER NOT NULL,
+            PRIMARY KEY (user_id, notif_id)
+          )`).run().catch(() => {});
+          await db.prepare("CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)").run().catch(() => {});
+          globalThis._hasEnsuredNotifsTable = true;
+        } catch (_) {}
       }
 
-      if (!userId || notifIds.length === 0) {
-        return jsonResponse({ success: true, count: 0 }, 200, corsHeaders);
-      }
-
-      try {
-        const now = Date.now();
-        for (const nid of notifIds) {
-          await db.prepare(
-            'INSERT INTO user_notifications_read (user_id, notif_id, read_at) VALUES (?, ?, ?) ON CONFLICT(user_id, notif_id) DO UPDATE SET read_at = excluded.read_at'
-          ).bind(userId, nid, now).run();
+      if (request.method === 'GET') {
+        const user = await authenticateRequest(request, env).catch(() => null);
+        const userId = user?.uid || (url.searchParams.get('userId') || url.searchParams.get('user_id') || '').trim();
+        if (!userId) {
+          return jsonResponse({ success: true, readIds: [] }, 200, corsHeaders);
         }
-        return jsonResponse({ success: true, count: notifIds.length }, 200, corsHeaders);
-      } catch (err) {
-        console.warn('[notifications/read POST error]:', err?.message || err);
-        return jsonResponse({ success: false, error: err?.message || String(err) }, 500, corsHeaders);
+        try {
+          const rows = await db.prepare(
+            'SELECT notif_id FROM user_notifications_read WHERE user_id = ?'
+          ).bind(userId).all();
+          const readIds = (rows.results || []).map(r => r.notif_id);
+          return jsonResponse({ success: true, readIds }, 200, corsHeaders);
+        } catch (err) {
+          return jsonResponse({ success: true, readIds: [] }, 200, corsHeaders);
+        }
       }
-    }
 
-    return jsonResponse({ error: 'Method not allowed' }, 405, corsHeaders);
+      if (request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const user = await authenticateRequest(request, env).catch(() => null);
+        const userId = user?.uid || (typeof body.userId === 'string' && body.userId ? body.userId : '').trim();
+        
+        let notifIds = [];
+        if (Array.isArray(body.notifIds)) {
+          notifIds = body.notifIds.map(id => String(id).trim()).filter(Boolean);
+        } else if (body.notifId) {
+          notifIds = [String(body.notifId).trim()];
+        }
+
+        if (!userId || notifIds.length === 0) {
+          return jsonResponse({ success: true, count: 0 }, 200, corsHeaders);
+        }
+
+        try {
+          const now = Date.now();
+          for (const nid of notifIds) {
+            await db.prepare(
+              'INSERT INTO user_notifications_read (user_id, notif_id, read_at) VALUES (?, ?, ?) ON CONFLICT(user_id, notif_id) DO UPDATE SET read_at = excluded.read_at'
+            ).bind(userId, nid, now).run();
+          }
+          return jsonResponse({ success: true, count: notifIds.length }, 200, corsHeaders);
+        } catch (err) {
+          console.warn('[notifications/read POST error]:', err?.message || err);
+          return jsonResponse({ success: true, count: 0 }, 200, corsHeaders);
+        }
+      }
+
+      return jsonResponse({ error: 'Method not allowed' }, 405, corsHeaders);
+    } catch (outerNotifErr) {
+      console.warn('[notifications/read outer error]:', outerNotifErr?.message || outerNotifErr);
+      return jsonResponse({ success: true, readIds: [] }, 200, corsHeaders);
+    }
   }
 
   // ── Turso: Track Place Stat (POST /api/places/track-stat) ─────────
