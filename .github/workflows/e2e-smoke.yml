@@ -34,7 +34,7 @@ jobs:
           node --check src/js/ui/pages/places.js
           node --check src/js/ui/components/PlaceCard.js
           node --check src/js/core/db.js
-            src/js/utils/maps.js
+          node --check src/js/utils/maps.js
           node --check src/js/utils/seo.js
           node --check src/js/services/upload.service.js
           node --check src/js/services/image-cdn.service.js
