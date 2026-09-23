@@ -176,11 +176,11 @@ export async function geocodePlaceAddress({placeName='',address='',area='',exclu
   const conflicts=await findConflicts(query.db,best.lat,best.lng,excludePlaceId);
   const conflict=conflicts[0]||null;
 
-  const candidates = [];
+  const rankedCandidates = [];
   for (const candidate of scored.slice(0,5)) {
     const candidateConflicts = await findConflicts(query.db, candidate.lat, candidate.lng, excludePlaceId);
     const candidateConflict = candidateConflicts[0] || null;
-    candidates.push({
+    rankedCandidates.push({
       lat:candidate.lat,
       lng:candidate.lng,
       name:candidate.name,
@@ -213,6 +213,6 @@ export async function geocodePlaceAddress({placeName='',address='',area='',exclu
       formattedAddress:best.formattedAddress||best.display_name||'',
       mapsLink:mapsSearchUrl(query.placeName,query.address,best.provider==='google'?best.placeId:'')
     } : null,
-    candidates
+    candidates: rankedCandidates
   };
 }
