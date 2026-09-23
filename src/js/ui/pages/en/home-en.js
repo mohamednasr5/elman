@@ -311,7 +311,7 @@ function renderVerifiedShowcase(places) {
   const grid = document.getElementById('home-verified-cards-grid');
   if (!grid) return;
 
-  const verified = (places || []).filter(p => p && (p.isVerified || p.is_verified) && !isAtmPlace(p));
+  const seen = new Set(); const verified = (places || []).filter(p => p && (p.isVerified || p.is_verified) && !isAtmPlace(p)).filter(p => { const k=String(p.id||p._key||p.slug||'').toLowerCase(); if(!k||seen.has(k)) return false; seen.add(k); return true; });
   if (!verified.length) {
     grid.innerHTML = places.slice(0, 4).map(p => renderPlaceCard(p)).join('');
     return;
@@ -331,12 +331,12 @@ function renderVerifiedShowcase(places) {
       const name = p.nameEn || p.name_en || p.name || '';
       const area = translateArea(p.areaEn || p.area || '', true) || 'El Manzala';
       const cat = translateCategory(p.categoryName || p.category || '', true);
-      const cover = p.coverImageUrl || p.cover || '/assets/images/og-whatsapp.jpg';
+      const media = resolvePlaceMedia(p); const cover = media.cover || media.categoryCover || '';
       return `
         <article class="fair-place-card" style="cursor:pointer" onclick="window.__openPlaceCard ? window.__openPlaceCard(this, '${escAttr(slug)}', event) : (window.location.href='/en/place/${encodeURIComponent(slug)}')">
           <span class="fair-place-card__rank">${ranks[idx] || `Featured #${idx + 1}`}</span>
           <div class="fair-place-card__cover">
-            <img src="${escAttr(cover)}" alt="${escAttr(name)}" loading="lazy" onerror="this.src='/assets/images/og-whatsapp.jpg'" />
+            <img src="${escAttr(cover)}" alt="${escAttr(name)}" loading="eager" fetchpriority="high" decoding="async" width="640" height="360" />
             <div class="fair-place-card__badges">
               <span class="fair-badge-verified">✓ Verified</span>
             </div>
