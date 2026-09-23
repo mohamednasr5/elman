@@ -774,6 +774,7 @@ export default {
     ctx.waitUntil(ensureSlugsHealedInTurso(env));
     ctx.waitUntil(ensureNewSchemaColumnsInTurso(env));
     ctx.waitUntil(ensureDataSanitizedInTurso(env));
+    ctx.waitUntil(cleanupLegacyPlaceCoordinates(env, ctx));
     ctx.waitUntil(ensureRecentPlacesIndexed(env));
     ctx.waitUntil(sendDailyQuranReminder(env).catch(err => console.error('[Daily Quran Push]', err)));
   },
@@ -834,6 +835,9 @@ export default {
 
   async handleRequest(request, env, ctx) {
     const corsHeaders = getCorsHeaders(request);
+
+    // Non-blocking data hygiene: clean only documented legacy coordinate fallbacks.
+    ctx.waitUntil(cleanupLegacyPlaceCoordinates(env, ctx));
 
     // Preflight OPTIONS must be handled first before any redirects or auth
     if (request.method === 'OPTIONS') {
@@ -9488,6 +9492,119 @@ async function ensureNewSchemaColumnsInTurso(env) {
   } catch (err) {
     console.warn('[ensureNewSchemaColumnsInTurso] Notice:', err.message);
   }
+}
+
+let _legacyCoordinateCleanupPromise = null;
+
+async function cleanupLegacyPlaceCoordinates(env, ctx) {
+  if (_legacyCoordinateCleanupPromise) return _legacyCoordinateCleanupPromise;
+
+  _legacyCoordinateCleanupPromise = (async () => {
+    try {
+      const db = createTursoDB(env);
+
+      await db.prepare(`CREATE TABLE IF NOT EXISTS place_coordinate_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        place_id TEXT NOT NULL,
+        place_name TEXT,
+        area TEXT,
+        old_latitude REAL NOT NULL,
+        old_longitude REAL NOT NULL,
+        reason TEXT NOT NULL,
+        action TEXT NOT NULL,
+        audited_at INTEGER NOT NULL
+      )`).run();
+
+      // Only these coordinates are auto-cleared because the codebase explicitly
+      // documents them as historical/generic fallbacks. Other duplicate groups
+      // are reported but intentionally left untouched until verified.
+      const legacy = [
+        { lat: 31.1578, lng: 31.9367, reason: 'legacy_generic_manzala_default_31.1578_31.9367' },
+        { lat: 31.1578, lng: 31.9333, reason: 'legacy_worker_manzala_fallback_31.1578_31.9333' },
+        { lat: 31.1833, lng: 32.0333, reason: 'legacy_worker_matariya_fallback_31.1833_32.0333' }
+      ];
+
+      const suspicious = await db.prepare(`
+        SELECT latitude, longitude, COUNT(*) AS place_count
+        FROM places
+        WHERE latitude IS NOT NULL
+          AND longitude IS NOT NULL
+        GROUP BY latitude, longitude
+        HAVING COUNT(*) >= 3
+        ORDER BY place_count DESC
+        LIMIT 100
+      `).all();
+
+      if (suspicious?.results?.length) {
+        console.warn('[CoordinateAudit] duplicate coordinate groups:', JSON.stringify(
+          suspicious.results.slice(0, 25)
+        ));
+      }
+
+      let cleaned = 0;
+      for (const item of legacy) {
+        const rows = await db.prepare(`
+          SELECT id, name, area, latitude, longitude
+          FROM places
+          WHERE latitude IS NOT NULL
+            AND longitude IS NOT NULL
+            AND ABS(latitude - ?) < 0.00001
+            AND ABS(longitude - ?) < 0.00001
+        `).bind(item.lat, item.lng).all();
+
+        const matches = rows?.results || [];
+        for (const row of matches) {
+          await db.prepare(`
+            INSERT INTO place_coordinate_audit
+              (place_id, place_name, area, old_latitude, old_longitude, reason, action, audited_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'cleared_to_null', ?)
+          `).bind(
+            String(row.id),
+            row.name || null,
+            row.area || null,
+            Number(row.latitude),
+            Number(row.longitude),
+            item.reason,
+            Date.now()
+          ).run();
+
+          await db.prepare(`
+            UPDATE places
+            SET latitude = NULL, longitude = NULL
+            WHERE id = ?
+              AND latitude IS NOT NULL
+              AND longitude IS NOT NULL
+          `).bind(String(row.id)).run();
+
+          cleaned += 1;
+
+          // Purge any previously cached canonical HTML for the cleaned entity.
+          const slug = String(row.slug || row.id || '').trim();
+          if (ctx?.waitUntil && slug) {
+            for (const url of [
+              `https://dalilmanzala.com/place/${encodeURIComponent(slug)}/`,
+              `https://dalilmanzala.com/en/place/${encodeURIComponent(slug)}/`
+            ]) {
+              try { ctx.waitUntil(caches.default.delete(new Request(url))); } catch (_) {}
+            }
+          }
+        }
+      }
+
+      if (cleaned > 0) {
+        console.warn(`[CoordinateAudit] cleared ${cleaned} legacy fallback coordinate record(s) from Turso.`);
+      } else {
+        console.log('[CoordinateAudit] no documented legacy fallback coordinates found.');
+      }
+
+      return { cleaned, suspiciousGroups: suspicious?.results?.length || 0 };
+    } catch (err) {
+      console.warn('[CoordinateAudit] non-fatal:', err?.message || err);
+      return { cleaned: 0, error: err?.message || String(err) };
+    }
+  })();
+
+  return _legacyCoordinateCleanupPromise;
 }
 
 let _hasSanitizedData = false;
