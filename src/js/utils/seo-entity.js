@@ -59,6 +59,26 @@ export function mapCategoryToSchemaType(categoryStr = '') {
 /**
  * Generate human-readable Arabic category name from slug or ID
  */
+export function getEnglishCategoryName(category = '') {
+  const raw = String(category || '').trim();
+  if (!raw) return 'Local Services';
+  const key = raw.toLowerCase().replace(/\s+/g, '-');
+  const map = {
+    doctor: 'Doctors & Clinics', clinic: 'Doctors & Clinics', pharmacy: 'Pharmacies', dentist: 'Dental Clinics',
+    restaurant: 'Restaurants', cafe: 'Cafes & Coffee Shops', bakery: 'Bakeries',
+    supermarket: 'Supermarkets & Grocery', 'clothing-store': 'Clothing Stores', clothing: 'Clothing Stores',
+    phones: 'Mobile Phones & Accessories', atm: 'ATMs & Banking Services', delivery: 'Delivery & Courier Services',
+    plumbing: 'Plumbing Services', electrician: 'Electrical Services', carpenter: 'Carpentry & Furniture',
+    painter: 'Painting & Decor', blacksmith: 'Blacksmiths & Metalwork', alumital: 'Aluminum & Glass',
+    gym: 'Gyms & Fitness', hotel: 'Hotels', auto_repair: 'Auto Repair', 'auto-repair': 'Auto Repair',
+    'real-estate': 'Real Estate', real_estate: 'Real Estate', bookstore: 'Bookstores & Stationery'
+  };
+  if (map[key]) return map[key];
+  if (/^[a-z0-9][a-z0-9\s&'\/_-]*$/i.test(raw)) {
+    return raw.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b[a-z]/g, ch => ch.toUpperCase());
+  }
+  return 'Local Services';
+}
 export function getArabicCategoryName(category = '') {
   if (!category) return 'نشاط وخدمة';
   const c = String(category).trim().toLowerCase();
@@ -227,7 +247,7 @@ export function generateBusinessSEO(place) {
     address: {
       '@type': 'PostalAddress',
       streetAddress: rawAddress || rawArea,
-      addressLocality: rawArea.includes('المطرية') ? 'المطرية' : 'المنزلة',
+      addressLocality: rawArea || 'المنزلة',
       addressRegion: 'الدقهلية',
       addressCountry: 'EG'
     },
@@ -388,7 +408,7 @@ export function generateBusinessSEOEnglish(place) {
   const rawCategoryEn = String(place.customCategoryEn || place.custom_category_en || '').trim();
   const rawCategoryId = String(place.categoryId || place.category_id || '').trim();
   const rawCategory = rawCategoryEn || rawCategoryId || String(place.customCategory || place.category || '').trim();
-  const catName = rawCategoryEn || rawCategoryId || 'Local Services';
+  const catName = rawCategoryEn || getEnglishCategoryName(rawCategoryId || rawCategory) || 'Local Services';
   const slug = String(place.slug || place.id || '').trim();
   const categorySlug = encodeURIComponent(String(rawCategoryId || rawCategoryEn || rawCategory || 'local-services').toLowerCase().replace(/\s+/g, '-'));
   const canonicalUrl = `${SITE_DOMAIN}/en/place/${encodeURIComponent(slug)}/`;
