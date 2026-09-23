@@ -17,6 +17,14 @@ const SUPERADMIN_EMAILS = new Set([
   'mohamednasrofficial@gmail.com'
 ]);
 
+const SUPERADMIN_PHONES = new Set([
+  '01279934735',
+  '+201279934735',
+  '201279934735',
+  '01070007430',
+  '+201070007430'
+]);
+
 function safeBackgroundNotify(type, payload, env, ctx) {
   if (!ctx || typeof ctx.waitUntil !== 'function') {
     sendAdminPushNotification(type, payload, env).catch(() => {});
@@ -56,11 +64,13 @@ async function authenticateRequest(request, env) {
     if (!fb?.localId) return null;
     const profile = await createTursoDB(env).prepare(
       'SELECT id, name, email, role, status FROM users WHERE id = ? LIMIT 1'
-    ).bind(fb.localId).first();
-    const email = String(fb.email || '').trim().toLowerCase();
+    ).bind(fb.localId).first().catch(() => null);
+    const email = String(fb.email || profile?.email || '').trim().toLowerCase();
     const phone = String(profile?.phone || fb.phoneNumber || '').trim();
     const role = String(profile?.role || 'user').trim().toLowerCase();
     const status = String(profile?.status || 'active').trim().toLowerCase();
+    const cleanPhone = phone.replace(/[\s-]/g, '');
+    const isHammad = email === 'elfannanm@gmail.com' || SUPERADMIN_PHONES.has(cleanPhone);
     return {
       uid: fb.localId,
       email,
@@ -68,8 +78,8 @@ async function authenticateRequest(request, env) {
       name: profile?.name || fb.displayName || 'مستخدم',
       role,
       status,
-      isSuperAdmin: SUPERADMIN_EMAILS.has(email) || role === 'superadmin',
-      isAdmin: SUPERADMIN_EMAILS.has(email) || role === 'admin' || role === 'superadmin'
+      isSuperAdmin: isHammad || SUPERADMIN_EMAILS.has(email) || role === 'superadmin',
+      isAdmin: isHammad || SUPERADMIN_EMAILS.has(email) || role === 'admin' || role === 'superadmin'
     };
   } catch (err) {
     console.warn('[Auth] Firebase token validation failed:', err?.message || err);
@@ -1155,13 +1165,15 @@ if ((url.pathname === '/api/market-widgets' || url.pathname === '/api/live-indic
 
 try {
 
-  // ── Blog / Articles API ───────────────────────────────────────────
   if (url.pathname === '/api/articles' || url.pathname.startsWith('/api/articles/')) {
     const needsAuth = request.method !== 'GET';
-    const auth = needsAuth ? await requireAuth(request, env) : { user: null, response: null };
-    if (auth.response) return auth.response;
+    const authUser = await authenticateRequest(request, env).catch(() => null);
+    if (needsAuth && !authUser) {
+      const auth = await requireAuth(request, env);
+      if (auth.response) return auth.response;
+    }
 
-    const articleResult = await handleArticlesApi(request, url, env, auth.user);
+    const articleResult = await handleArticlesApi(request, url, env, authUser);
     if (articleResult) {
       const response = jsonResponse(articleResult.body, articleResult.status, corsHeaders);
       if (articleResult.body?.success && ['POST','PUT'].includes(request.method)) {
@@ -2249,10 +2261,15 @@ try {
 
       const db = createTursoDB(env);
       const place = await db.prepare(
-        'SELECT id,name,slug,area,address,description,custom_category,category_id,services_json,working_hours_json,is_verified,owner_id FROM places WHERE id=? LIMIT 1'
+        'SELECT id,name,slug,area,address,description,custom_category,category_id,services_json,working_hours_json,is_verified,owner_id,owner_email FROM places WHERE id=? LIMIT 1'
       ).bind(placeId).first().catch(() => null);
       if (!place) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
-      if (!auth.user.isAdmin && String(place.owner_id || '') !== String(auth.user.uid || '')) {
+      const isPlaceOwner = (
+        Boolean(auth.user?.isAdmin) ||
+        String(place.owner_id || '').trim() === String(auth.user?.uid || '').trim() ||
+        (place.owner_email && auth.user?.email && String(place.owner_email).trim().toLowerCase() === String(auth.user.email).trim().toLowerCase())
+      );
+      if (!isPlaceOwner) {
         return jsonResponse({success:false,error:'يمكن لصاحب المكان فقط توليد مقالاته'},403,corsHeaders);
       }
       const countRow = await db.prepare("SELECT COUNT(*) AS count FROM articles WHERE place_id=? AND status<>'deleted'").bind(placeId).first().catch(() => ({count:0}));

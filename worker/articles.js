@@ -144,9 +144,14 @@ export async function handleArticlesApi(request, url, env, user) {
       return { status:200, body:{success:true,data:a} };
     }
 
-    let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.status = "published" AND p.status = "published"';
+    let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id';
     const args = [];
-    if (placeId) { sql += ' AND a.place_id = ?'; args.push(placeId); }
+    if (placeId) {
+      sql += " WHERE a.place_id = ? AND a.status <> 'deleted'";
+      args.push(placeId);
+    } else {
+      sql += " WHERE a.status = 'published' AND (p.status = 'published' OR p.status = 'approved' OR p.status = 'active' OR p.status IS NULL)";
+    }
     sql += ' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT ? OFFSET ?';
     args.push(limit, offset);
     const rows = (await db.prepare(sql).bind(...args).all().catch(() => ({results:[]}))).results || [];
@@ -160,19 +165,25 @@ export async function handleArticlesApi(request, url, env, user) {
     const body=await request.json().catch(()=>({}));
     const placeId=String(body.place_id||body.placeId||'').trim();
     if(!placeId) return {status:400,body:{success:false,error:'المكان مطلوب'}};
-    const place=await db.prepare('SELECT id,name,slug,area,address,phone,logo_url,cover_image_url,owner_id,status FROM places WHERE id=? LIMIT 1').bind(placeId).first().catch(()=>null);
+    const place=await db.prepare('SELECT id,name,slug,area,address,phone,logo_url,cover_image_url,owner_id,owner_email,status FROM places WHERE id=? LIMIT 1').bind(placeId).first().catch(()=>null);
     if(!place) return {status:404,body:{success:false,error:'المكان غير موجود'}};
-    if(!user.isAdmin && String(place.owner_id)!==String(user.uid)) return {status:403,body:{success:false,error:'يمكن لصاحب المكان فقط إدارة مقالاته'}};
+
+    const isPlaceOwner = Boolean(
+      user?.isAdmin ||
+      String(place.owner_id || '').trim() === String(user?.uid || '').trim() ||
+      (place.owner_email && user?.email && String(place.owner_email).trim().toLowerCase() === String(user.email).trim().toLowerCase())
+    );
+    if(!isPlaceOwner) return {status:403,body:{success:false,error:'يمكن لصاحب المكان فقط إدارة مقالاته'}};
 
     const existingId=String(body.id||'').trim();
     const existing=existingId?await db.prepare('SELECT * FROM articles WHERE id=? LIMIT 1').bind(existingId).first().catch(()=>null):null;
     const countRow=await db.prepare("SELECT COUNT(*) AS count FROM articles WHERE place_id=? AND status<>'deleted' AND id<>?").bind(placeId,existingId||'').first().catch(()=>({count:0}));
     if(!existing && Number(countRow?.count||0)>=6) return {status:409,body:{success:false,error:'يمكنك إضافة 6 مقالات كحد أقصى لهذا المكان'}};
-    if(existing && !user.isAdmin && String(existing.owner_id)!==String(user.uid)) return {status:403,body:{success:false,error:'لا يمكنك تعديل هذا المقال'}};
+    if(existing && !user.isAdmin && String(existing.owner_id)!==String(user.uid) && !isPlaceOwner) return {status:403,body:{success:false,error:'لا يمكنك تعديل هذا المقال'}};
 
     const title=text(body.title,180), content=text(body.content,10000);
     if(title.length<6) return {status:400,body:{success:false,error:'عنوان المقال قصير جدًا'}};
-    if(content.length<120) return {status:400,body:{success:false,error:'محتوى المقال قصير جدًا'}};
+    if(content.length<80) return {status:400,body:{success:false,error:'محتوى المقال قصير جدًا'}};
 
     let slug=slugify(body.slug||title);
     const slugOwner=await db.prepare('SELECT id FROM articles WHERE slug=? AND id<>? LIMIT 1').bind(slug,existingId||'').first().catch(()=>null);
@@ -200,7 +211,14 @@ export async function handleArticlesApi(request, url, env, user) {
     const id=decodeURIComponent(match[1]);
     const existing=await db.prepare('SELECT * FROM articles WHERE id=? LIMIT 1').bind(id).first().catch(()=>null);
     if(!existing) return {status:404,body:{success:false,error:'المقال غير موجود'}};
-    if(!user.isAdmin && String(existing.owner_id)!==String(user.uid)) return {status:403,body:{success:false,error:'لا يمكنك تعديل هذا المقال'}};
+    const place=await db.prepare('SELECT owner_id,owner_email FROM places WHERE id=? LIMIT 1').bind(existing.place_id).first().catch(()=>null);
+    const isOwner = Boolean(
+      user.isAdmin ||
+      String(existing.owner_id || '').trim() === String(user.uid || '').trim() ||
+      (place?.owner_id && String(place.owner_id).trim() === String(user.uid).trim()) ||
+      (place?.owner_email && user.email && String(place.owner_email).trim().toLowerCase() === String(user.email).trim().toLowerCase())
+    );
+    if(!isOwner) return {status:403,body:{success:false,error:'لا يمكنك تعديل هذا المقال'}};
     const body=await request.json().catch(()=>({}));
     const title=text(body.title??existing.title,180), content=text(body.content??existing.content,10000);
     const cover=imageUrl(body.cover_image_url??body.coverImageUrl??existing.cover_image_url);
@@ -209,15 +227,22 @@ export async function handleArticlesApi(request, url, env, user) {
     const status=body.status==='draft'?'draft':'published', now=Date.now();
     await db.prepare('UPDATE articles SET title=?,excerpt=?,content=?,keywords_json=?,cover_image_url=?,status=?,ai_generated=?,updated_at=?,published_at=CASE WHEN ?="published" THEN COALESCE(published_at,?) ELSE published_at END WHERE id=?')
       .bind(title,excerpt,content,kws,cover,status,body.ai_generated==null?Number(existing.ai_generated||0):body.ai_generated?1:0,now,status,now,id).run();
-    return {status:200,body:{success:true,data:mapRow(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.id=? LIMIT 1').bind(id).first())}};
+    return {status:200,body:{success:true,data:mapRow(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.id=? LIMIT 1').bind(id).first())}};
   }
 
   if (request.method === 'DELETE' && match) {
     if (!user) return {status:401,body:{success:false,error:'يجب تسجيل الدخول'}};
     const id=decodeURIComponent(match[1]);
-    const existing=await db.prepare('SELECT owner_id FROM articles WHERE id=? LIMIT 1').bind(id).first().catch(()=>null);
+    const existing=await db.prepare('SELECT place_id, owner_id FROM articles WHERE id=? LIMIT 1').bind(id).first().catch(()=>null);
     if(!existing) return {status:404,body:{success:false,error:'المقال غير موجود'}};
-    if(!user.isAdmin && String(existing.owner_id)!==String(user.uid)) return {status:403,body:{success:false,error:'لا يمكنك حذف هذا المقال'}};
+    const place=await db.prepare('SELECT owner_id,owner_email FROM places WHERE id=? LIMIT 1').bind(existing.place_id).first().catch(()=>null);
+    const isOwner = Boolean(
+      user.isAdmin ||
+      String(existing.owner_id || '').trim() === String(user.uid || '').trim() ||
+      (place?.owner_id && String(place.owner_id).trim() === String(user.uid).trim()) ||
+      (place?.owner_email && user.email && String(place.owner_email).trim().toLowerCase() === String(user.email).trim().toLowerCase())
+    );
+    if(!isOwner) return {status:403,body:{success:false,error:'لا يمكنك حذف هذا المقال'}};
     await db.prepare('DELETE FROM articles WHERE id=?').bind(id).run();
     return {status:200,body:{success:true}};
   }
@@ -231,14 +256,23 @@ export async function handleArticlePublicPage(request, url, env) {
   if(p!=='/blog' && !p.startsWith('/article/')) return null;
 
   if(p==='/blog') {
-    const rows=(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.status="published" AND p.status="published" ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 30').all().catch(()=>({results:[]}))).results||[];
+    const rows=(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.status="published" AND (p.status="published" OR p.status="approved" OR p.status="active" OR p.status IS NULL) ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 30').all().catch(()=>({results:[]}))).results||[];
     const title='المدونة المحلية | مقالات محلات وخدمات المنزلة والمطرية';
     const desc='مقالات محلية مفيدة يكتبها أصحاب الأنشطة عن خدماتهم وأعمالهم في المنزلة والمطرية مع روابط مباشرة لكل مكان.';
+    const emptyStateHTML = `
+      <div style="text-align:center;padding:50px 20px;background:#fff;border-radius:24px;border:1px solid #e2e8f0;grid-column:1/-1">
+        <div style="font-size:52px;margin-bottom:12px">✍️</div>
+        <h2 style="font-size:1.35rem;font-weight:900;margin:0 0 8px;color:#0f172a">لا توجد مقالات منشورة بعد</h2>
+        <p style="color:#64748b;margin:0 0 20px;font-size:0.95rem;max-width:500px;margin-left:auto;margin-right:auto">كن أول من ينشر مقالاً حصرياً عن نشاطك التجاري في المنزلة والمطرية مع روابط قوية لصفحتك في جوجل والدليل.</p>
+        <a href="/dashboard.html?section=articles" style="display:inline-flex;align-items:center;gap:6px;background:#0f4c5c;color:#fff;padding:12px 24px;border-radius:12px;font-weight:800;text-decoration:none;box-shadow:0 4px 14px rgba(15,76,92,.25)">✍️ اكتب مقالك الآن من لوحة التحكم</a>
+      </div>
+    `;
+    const gridContent = rows.length ? rows.map(r=>card(mapRow(r))).join('') : emptyStateHTML;
     const html='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<title>'+esc(title)+'</title><meta name="description" content="'+esc(desc)+'"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">' +
       '<link rel="canonical" href="'+SITE+'/blog/"><meta property="og:type" content="website"><meta property="og:url" content="'+SITE+'/blog/"><meta property="og:title" content="'+esc(title)+'"><meta property="og:description" content="'+esc(desc)+'">'+css()+
-      '</head><body><main class="blog-page"><header class="blog-hero"><h1>'+esc(title)+'</h1><p>'+esc(desc)+'</p></header><section class="blog-grid" aria-label="أحدث المقالات">'+rows.map(r=>card(mapRow(r))).join('')+'</section></main></body></html>';
-    return new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'public,max-age=300'}});
+      '</head><body><main class="blog-page"><header class="blog-hero"><h1>'+esc(title)+'</h1><p>'+esc(desc)+'</p></header><section class="blog-grid" aria-label="أحدث المقالات">'+gridContent+'</section></main></body></html>';
+    return new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'public,max-age=60'}});
   }
 
   const slug=decodeURIComponent(p.slice('/article/'.length).replace(/^\/+/,''));

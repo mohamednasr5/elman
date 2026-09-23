@@ -3,7 +3,21 @@ import { getIdToken } from '../core/auth.js';
 import { uploadImage } from './upload.service.js';
 
 async function token() {
-  try { return await getIdToken(false); } catch (_) {}
+  try {
+    const t = await getIdToken(false);
+    if (t) return t;
+  } catch (_) {}
+  try {
+    const { getAuth } = await import('../core/auth.js');
+    const auth = getAuth();
+    for (let i = 0; i < 20; i++) {
+      if (auth?.currentUser) {
+        const t = await auth.currentUser.getIdToken().catch(() => null);
+        if (t) return t;
+      }
+      await new Promise(r => setTimeout(r, 100));
+    }
+  } catch (_) {}
   return '';
 }
 
@@ -12,7 +26,8 @@ export async function getArticles({ placeId = '', limit = 6, offset = 0 } = {}) 
   if (placeId) qs.set('place_id', placeId);
   qs.set('limit', String(Math.min(50, Math.max(1, limit))));
   qs.set('offset', String(Math.max(0, offset)));
-  const data = await api.get('/api/articles?' + qs.toString());
+  const idToken = await token().catch(() => '');
+  const data = await api.get('/api/articles?' + qs.toString(), idToken || null);
   return Array.isArray(data?.data) ? data.data : [];
 }
 
