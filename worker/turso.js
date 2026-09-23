@@ -170,6 +170,17 @@ async function repairRuntimeSchema(env, client) {
   await runDirect('CREATE INDEX IF NOT EXISTS idx_products_place ON products(place_id, created_at DESC)');
   await runDirect('CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)');
 
+  // Cached address geocoding results.
+  await runDirect(`CREATE TABLE IF NOT EXISTS geocode_cache (
+    query_key TEXT PRIMARY KEY,
+    query_text TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    result_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`);
+  await runDirect('CREATE INDEX IF NOT EXISTS idx_geocode_cache_updated ON geocode_cache(updated_at DESC)');
+
   // Local business articles / blog.
   await runDirect(`CREATE TABLE IF NOT EXISTS articles (
     id TEXT PRIMARY KEY,
