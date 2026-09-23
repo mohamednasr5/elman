@@ -206,6 +206,7 @@ async function handleMessage(msg, env) {
         `• /services - عرض أحدث طلبات الخدمات المفتوحة\n` +
         `• /available - عرض قائمة الحرفيين المتاحين الآن\n` +
         `• /reviews - عرض أحدث تقييمات وتعليقات العملاء\n` +
+        `• /articles - عرض أحدث مقالات المدونة وروابطها\n` +
         `• /offers - استعراض العروض والخصومات النشطة\n` +
         `• /sponsored - استعراض الأماكن المثبتة في الإعلانات\n` +
         `• /search &lt;كلمة&gt; - البحث الفوري عن أي مكان\n` +
@@ -216,6 +217,12 @@ async function handleMessage(msg, env) {
         `• /addplace - إضافة مكان جديد سريعاً`,
       parse_mode: 'HTML'
     }, env);
+    return;
+  }
+
+  // Command: /articles
+  if (text.startsWith('/articles') || text === '📝 المقالات' || text === 'المقالات') {
+    await sendTelegramArticles(chatId, env);
     return;
   }
 
@@ -324,6 +331,8 @@ async function handleCallbackQuery(cb, env) {
     await sendTelegramAvailableCraftsmen(chatId, env, messageId);
   } else if (data === 'menu_reviews') {
     await sendTelegramRecentReviews(chatId, env, messageId);
+  } else if (data === 'menu_articles') {
+    await sendTelegramArticles(chatId, env, messageId);
   } else if (data === 'menu_offers') {
     await sendActiveOffers(chatId, env, messageId);
   } else if (data === 'menu_sponsored') {
@@ -369,7 +378,11 @@ async function sendMainMenu(chatId, name, env, editMessageId = null) {
       ],
       [
         { text: '⭐ أحدث التعليقات والآراء', callback_data: 'menu_reviews' },
-        { text: '🔥 العروض النشطة', callback_data: 'menu_offers' }
+        { text: '📝 مقالات المدونة', callback_data: 'menu_articles' }
+      ],
+      [
+        { text: '🔥 العروض النشطة', callback_data: 'menu_offers' },
+        { text: '🌟 الإعلانات المميزة', callback_data: 'menu_sponsored' }
       ],
       [
         { text: '🌟 الإعلانات المميزة', callback_data: 'menu_sponsored' },
@@ -393,6 +406,40 @@ async function sendMainMenu(chatId, name, env, editMessageId = null) {
       parse_mode: 'Markdown',
       reply_markup: keyboard
     }, env);
+  }
+}
+
+async function sendTelegramArticles(chatId, env, editMessageId = null) {
+  try {
+    const rows = await tursoRows(env, `
+      SELECT a.id,a.slug,a.title,a.excerpt,a.status,a.created_at,a.updated_at,
+             p.name AS place_name,p.slug AS place_slug,p.area AS place_area
+      FROM articles a
+      JOIN places p ON p.id=a.place_id
+      WHERE a.status='published' AND p.status='published'
+      ORDER BY COALESCE(a.published_at,a.created_at) DESC
+      LIMIT 10
+    `);
+    if (!rows.length) {
+      const empty='📝 <b>مدونة المنزلة والمطرية</b>\n\nلا توجد مقالات منشورة حالياً.';
+      const keyboard={inline_keyboard:[[{text:'🔙 القائمة الرئيسية',callback_data:'menu_main'}]]};
+      return telegramApi(editMessageId?'editMessageText':'sendMessage',
+        {chat_id:chatId,...(editMessageId?{message_id:editMessageId}:{}),text:empty,parse_mode:'HTML',reply_markup:keyboard},env);
+    }
+    const body=rows.map((a,i)=>{
+      const url=`https://dalilmanzala.com/article/${encodeURIComponent(a.slug)}/`;
+      const placeUrl=`https://dalilmanzala.com/place/${encodeURIComponent(a.place_slug||'')}/`;
+      return `<b>${i+1}. ${tgEscape(a.title||'مقال')}</b>\n🏪 <a href="${placeUrl}">${tgEscape(a.place_name||'المكان')}</a>\n📍 ${tgEscape(a.place_area||'المنزلة والمطرية')}\n🔗 <a href="${url}">فتح المقال</a>`;
+    }).join('\n\n');
+    const text='📝 <b>آخر مقالات المدونة</b>\n\n'+body;
+    const keyboard={inline_keyboard:[
+      [{text:'🌐 فتح المدونة',url:'https://dalilmanzala.com/blog/'}],
+      [{text:'🔙 القائمة الرئيسية',callback_data:'menu_main'}]
+    ]};
+    return telegramApi(editMessageId?'editMessageText':'sendMessage',
+      {chat_id:chatId,...(editMessageId?{message_id:editMessageId}:{}),text,parse_mode:'HTML',disable_web_page_preview:true,reply_markup:keyboard},env);
+  } catch(err) {
+    return telegramApi('sendMessage',{chat_id:chatId,text:'❌ تعذر جلب مقالات المدونة: '+tgEscape(err?.message||'خطأ غير معروف'),parse_mode:'HTML'},env);
   }
 }
 
