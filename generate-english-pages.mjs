@@ -48,7 +48,20 @@ function writeEnglishCategory(rel, slug, items) {
   const dir=path.join(EN,'category',slug);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'index.html'),html,'utf8');
 }
 
-function writeEnglishPlace(rel, place) {
+function articleCardsForPlace(placeArticles = []) {
+  if (!placeArticles.length) return '';
+  const cards = placeArticles.slice(0,6).map((a,index)=>{
+    const s=String(a.slug||a.id||'').trim();
+    const href=`/article/${encodeURIComponent(s)}/`;
+    const img=a.coverImageUrl||a.cover_image_url||a.coverUrl||a.cover_url||'';
+    return `<article style="overflow:hidden;border:1px solid #e2e8f0;border-radius:14px;background:#fff">`+
+      `<a href="${href}" style="display:block;aspect-ratio:16/9;background:#eef2f7;overflow:hidden">`+
+      (img?`<img src="${escapeHtml(img)}" alt="${escapeHtml(a.title||'Article')}" width="640" height="360" loading="${index===0?'eager':'lazy'}" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block">`:`<div style="height:100%;display:grid;place-items:center;font-size:36px">📝</div>`)+
+      `</a><div style="padding:12px"><h3 style="margin:0 0 6px;font-size:.98rem;line-height:1.6"><a href="${href}" style="color:#0f172a;text-decoration:none">${escapeHtml(a.title||'Related article')}</a></h3><p style="margin:0;color:#64748b;font-size:.82rem;line-height:1.7">${escapeHtml(a.excerpt||String(a.content||'').slice(0,150))}</p></div></article>`;
+  }).join('');
+  return `<section aria-labelledby="related-articles-title" style="margin-top:24px;padding:20px;border:1px solid #e2e8f0;border-radius:16px"><h2 id="related-articles-title" style="font-size:1.1rem;margin:0 0 14px">📝 Related articles</h2><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${cards}</div></section>`;
+}
+function writeEnglishPlace(rel, place, placeArticles = []) {
   const seo = generateBusinessSEOEnglish(place);
   if (!seo) return;
   const phone = seo.phone ? seo.phone.replace(/\s+/g, '') : '';
@@ -71,11 +84,24 @@ function writeEnglishPlace(rel, place) {
   <p><strong>Location:</strong> ${escapeHtml(seo.rawAddress || seo.rawArea)}</p>${phone ? `<p><a href="tel:${phone}">Call ${escapeHtml(seo.phone)}</a></p>` : ''}${waLink ? `<p><a href="${waLink}" rel="noopener noreferrer">WhatsApp</a></p>` : ''}
   <div class="place-description"><h2>About ${escapeHtml(seo.rawName)}</h2><p style="line-height:1.8">${escapeHtml(place.descriptionEn || place.description_en || seo.description)}</p></div>
   <section class="place-qa" aria-labelledby="qa-title" style="margin-top:24px;padding:20px;border:1px solid #e2e8f0;border-radius:16px"><h2 id="qa-title">Questions &amp; answers</h2>${qa}</section>
+  ${articleCardsForPlace(placeArticles)}
   </article></div></main></div><script type="module" src="/src/js/core/english-pages.js?v=20260913.9"></script></body></html>`;
   const dir = path.join(EN, rel); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'index.html'), html, 'utf8');
 }
+async function fetchAllArticlesForSEO(){
+  const out=[];const limit=1000;let offset=0;
+  try{
+    for(;;offset+=limit){
+      const r=await fetch(`${SITE}/api/articles?limit=${limit}&offset=${offset}`,{headers:{accept:'application/json'}});
+      if(!r.ok) throw new Error(`Articles API HTTP ${r.status} at offset ${offset}`);
+      const j=await r.json();const batch=Array.isArray(j?.data)?j.data:[];out.push(...batch);if(batch.length<limit)break;
+    }
+  }catch(err){ console.warn('English SEO article fetch skipped:',err?.message||err); }
+  return [...new Map(out.map(a=>[String(a.slug||a.id||'').trim(),a]).filter(([k])=>k)).values()].filter(a=>String(a.status||'published').toLowerCase()==='published');
+}
 async function fetchAllPlaces(){const out=[],limit=1000;for(let offset=0;offset<100000;offset+=limit){const r=await fetch(`${SITE}/api/places?limit=${limit}&offset=${offset}`,{headers:{accept:'application/json'}});if(!r.ok)throw new Error(`Places API HTTP ${r.status} at offset ${offset}`);const j=await r.json(),batch=Array.isArray(j?.data)?j.data:[];out.push(...batch);if(batch.length<limit)break}return [...new Map(out.map(p=>[String(p.slug||p.id||'').trim(),p])).values()].filter(p=>{const s=String(p.status||p.state||'').toLowerCase();return String(p.slug||p.id||'').trim()&&!['draft','deleted','rejected','archived','hidden'].includes(s)&&p.isPublished!==false&&p.is_published!==false})}
 const items=await fetchAllPlaces();
+const articles=await fetchAllArticlesForSEO();
 const desiredEnglishPlaceSlugs=new Set(items.map(p=>String(p.slug||p.id||'').trim()).filter(Boolean));
 const englishPlaceRoot=path.join(EN,'place');
 if(fs.existsSync(englishPlaceRoot)){
@@ -85,7 +111,7 @@ if(fs.existsSync(englishPlaceRoot)){
     }
   }
 }
-for(const p of items){const s=String(p.slug||p.id).trim();if(s)writeEnglishPlace(`place/${s}`,p)}
+for(const p of items){const s=String(p.slug||p.id).trim();if(s){const placeArticles=articles.filter(a=>String(a.placeId||a.place_id||a.place?.id||'').trim()===String(p.id||p._key||'').trim());writeEnglishPlace(`place/${s}`,p,placeArticles)}}
 for(const s of fs.existsSync(path.join(ROOT,'category')) ? fs.readdirSync(path.join(ROOT,'category')) : []) { if(s!=='index' && fs.existsSync(path.join(ROOT,'category',s,'index.html'))) writeEnglishCategory(s,s,items); }
 const enPlacesFile = path.join(EN, 'places', 'index.html');
 if (fs.existsSync(enPlacesFile)) {
