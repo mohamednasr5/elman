@@ -9,6 +9,7 @@
  * The form remains savable without coordinates or a Maps link.
  */
 import { extractCoordinates, getUserLocation } from '../../utils/maps.js';
+import { tursoFetch } from '../../core/db.js';
 
 const GOOGLE_MAPS_URL = 'https://www.google.com/maps';
 
@@ -34,6 +35,8 @@ function ensureStyles() {
     .gm-location-picker__status{margin-top:8px;font-size:12px;color:#475569;min-height:18px}
     .gm-location-picker__preview{margin-top:10px;border-radius:12px;overflow:hidden;border:1px solid #dbe4ea;background:#fff}
     .gm-location-picker__preview iframe{display:block;width:100%;height:230px;border:0}
+    .gm-location-picker__result{margin-top:9px;padding:10px;border-radius:10px;background:#ecfdf5;color:#065f46;font-size:12px;line-height:1.8}
+    .gm-location-picker__result strong{display:block;margin-bottom:3px}
     .gm-location-picker__coords{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;font-size:11px;color:#475569;background:#fff}
     @media(max-width:640px){.gm-location-picker__actions{display:grid;grid-template-columns:1fr}.gm-location-picker__btn{width:100%}.gm-location-picker__preview iframe{height:210px}}
   `;
@@ -90,13 +93,14 @@ function mountForForm() {
   wrap.className = 'gm-location-picker';
   wrap.innerHTML = `
     <div style="font-weight:800;color:#1b4f72">📍 تحديد موقع النشاط</div>
-    <div class="gm-location-picker__hint">يمكنك كتابة العنوان التفصيلي فقط، أو إضافة رابط مشاركة من خرائط Google، أو استخدام موقعك الحالي. تحديد الموقع على الخريطة <strong>اختياري</strong> ولن يمنع حفظ النشاط.</div>
+    <div class="gm-location-picker__hint">اكتب المدينة/المنطقة ثم العنوان التفصيلي، مثل: <strong>المنزلة — شارع الرياح بجوار فرن أم أميرة</strong>. سيبحث النظام تلقائياً عن الشارع والمعلم ويقترح الإحداثيات الحقيقية، ولن ينشئ إحداثيات وهمية.</div>
     <div class="gm-location-picker__actions">
       <button type="button" class="gm-location-picker__btn gm-location-picker__btn--primary" data-gm-open>🗺️ فتح خرائط Google لاختيار الموقع</button>
       <button type="button" class="gm-location-picker__btn gm-location-picker__btn--gps" data-gm-gps>📍 استخدام موقعي الحالي</button>
       <button type="button" class="gm-location-picker__btn" data-gm-paste>🔗 لصق رابط خرائط Google</button>
     </div>
-    <div class="gm-location-picker__status" data-gm-status>رابط الخرائط اختياري — يمكنك الحفظ بدونه.</div>
+    <div class="gm-location-picker__status" data-gm-status>اكتب العنوان التفصيلي ليتم البحث عنه تلقائياً.</div>
+    <div class="gm-location-picker__result" data-gm-result hidden></div>
     <div class="gm-location-picker__preview" data-gm-preview></div>
     <div class="gm-location-picker__coords" data-gm-coords></div>
   `;
@@ -105,6 +109,68 @@ function mountForForm() {
   const status = wrap.querySelector('[data-gm-status]');
   const preview = wrap.querySelector('[data-gm-preview]');
   const coords = wrap.querySelector('[data-gm-coords]');
+  const resultBox = wrap.querySelector('[data-gm-result]');
+
+  async function resolveAddressAutomatically() {
+    const address = addressInput?.value?.trim() || '';
+    const areaInput = document.getElementById('p-area');
+    const area = areaInput?.value?.trim() || '';
+    const nameInput = document.getElementById('p-name');
+    const name = nameInput?.value?.trim() || '';
+    if (!address && !name) return null;
+
+    if (status) status.textContent = '🔎 جاري البحث عن الشارع والمعلم والمكان على الخرائط…';
+    if (resultBox) { resultBox.hidden = false; resultBox.innerHTML = 'جاري مطابقة العنوان مع الخرائط…'; }
+
+    try {
+      const data = await tursoFetch('/api/maps/geocode', {
+        method: 'POST',
+        body: JSON.stringify({ placeName:name, address, area })
+      });
+      if (!data?.success) throw new Error(data?.error || 'لم يتم العثور على موقع');
+
+      if (data.selected && !data.coordinateConflict) {
+        const point = data.selected;
+        mapsInput.dataset.coordinates = JSON.stringify({lat:Number(point.lat),lng:Number(point.lng)});
+        mapsInput.value = point.mapsLink || mapsInput.value;
+        renderPreview(point, preview, coords);
+        if (resultBox) {
+          resultBox.hidden = false;
+          resultBox.innerHTML = '<strong>✓ تم تحديد الموقع</strong>' +
+            esc(point.formattedAddress || 'موقع مطابق') +
+            '<br><span>دقة المطابقة: '+Math.round(Number(data.confidence||0)*100)+'%</span>';
+        }
+        if (status) status.textContent = 'تم العثور على موقع حقيقي متوافق مع العنوان ✓';
+        mapsInput.dispatchEvent(new Event('input', { bubbles:true }));
+        return point;
+      }
+
+      if (data.coordinateConflict) {
+        if (resultBox) {
+          resultBox.hidden = false;
+          resultBox.innerHTML = '<strong>⚠ يوجد مكان قريب جداً من الإحداثيات المقترحة</strong>' +
+            esc(data.coordinateConflict.name || '') +
+            ' — المسافة '+esc(String(data.coordinateConflict.distanceMeters||0))+' متر. اختر نقطة المبنى يدوياً ولا يتم تحريكها تلقائياً.';
+        }
+        if (status) status.textContent = 'تم إيقاف الحفظ التلقائي لأن هناك تعارضاً أقل من 3 أمتار.';
+        return null;
+      }
+
+      if (Array.isArray(data.candidates) && data.candidates.length) {
+        if (resultBox) {
+          resultBox.hidden = false;
+          resultBox.innerHTML = '<strong>تم العثور على عدة نتائج</strong> يجب اختيار النقطة الصحيحة من خرائط Google قبل الحفظ.';
+        }
+        if (status) status.textContent = 'العنوان غير حاسم بما يكفي؛ راجع النتائج قبل اعتماد الموقع.';
+        return null;
+      }
+      throw new Error('لم يتم العثور على موقع موثوق');
+    } catch (err) {
+      if (resultBox) { resultBox.hidden = false; resultBox.innerHTML = esc(err?.message || 'تعذر تحديد الموقع تلقائياً'); }
+      if (status) status.textContent = 'تعذر تحديد موقع موثوق تلقائياً. يمكنك استخدام رابط خرائط Google أو GPS.';
+      return null;
+    }
+  }
 
   wrap.querySelector('[data-gm-open]').addEventListener('click', () => {
     const query = addressInput?.value?.trim() || 'المنزلة الدقهلية مصر';
@@ -142,12 +208,27 @@ function mountForForm() {
   });
 
   let timer = null;
+  let addressTimer = null;
   mapsInput.addEventListener('input', () => {
     clearTimeout(timer);
     timer = setTimeout(() => resolveMapsInput(mapsInput, status, preview, coords), 450);
   });
 
+  const triggerAddressResolve = () => {
+    clearTimeout(addressTimer);
+    addressTimer = setTimeout(() => {
+      if (!(mapsInput.value || '').trim()) resolveAddressAutomatically();
+    }, 900);
+  };
+  [addressInput, document.getElementById('p-area'), document.getElementById('p-name')]
+    .filter(Boolean)
+    .forEach(el => el.addEventListener('input', triggerAddressResolve));
+  [addressInput, document.getElementById('p-area')]
+    .filter(Boolean)
+    .forEach(el => el.addEventListener('blur', triggerAddressResolve));
+
   if (mapsInput.value.trim()) resolveMapsInput(mapsInput, status, preview, coords);
+  else if ((addressInput?.value || '').trim()) resolveAddressAutomatically();
 }
 
 export function initGoogleMapsLocationPicker() {
