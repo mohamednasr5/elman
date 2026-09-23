@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT=process.cwd();
-const required=['robots.txt','sitemap.xml','sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml','sitemap-static-ar.xml','sitemap-static-en.xml','indexnow-key.txt','llms.txt','llms-full.txt','llms-en.txt','llms-full-en.txt'];
+const required=['robots.txt','sitemap.xml','sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml','sitemap-static-ar.xml','sitemap-static-en.xml','sitemap-articles-ar.xml','indexnow-key.txt','llms.txt','llms-full.txt','llms-en.txt','llms-full-en.txt'];
 for(const f of required)if(!fs.existsSync(path.join(ROOT,f)))throw new Error(`Missing SEO asset: ${f}`);
 
 const read=f=>fs.readFileSync(path.join(ROOT,f),'utf8');
