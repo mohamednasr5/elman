@@ -31,9 +31,15 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Audit and clean legacy place coordinates in Turso
+        if: ${{ env.TURSO_AUTH_TOKEN != '' }}
         run: node worker/audit-clean-place-coordinates.mjs
 
+      - name: Skip direct Turso cleanup when GitHub has no Turso token
+        if: ${{ env.TURSO_AUTH_TOKEN == '' }}
+        run: echo "TURSO_AUTH_TOKEN is not available in GitHub Secrets; the deployed Worker performs the same idempotent cleanup using its Cloudflare secret."
+
       - name: Trigger bilingual SEO regeneration
+        if: ${{ env.TURSO_AUTH_TOKEN != '' }}
         run: gh workflow run generate-english-pages.yml --ref main
 
       - name: Commit workflow marker
