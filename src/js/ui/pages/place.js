@@ -11,6 +11,7 @@ import { WORKER_URL } from '../../core/firebase.js';
 import { getPlace, getPlaceBySlug, getCategories, getCached, getPublishedPlaces, getPlaceOffers, getPlaceProducts, getSettings, trackPlaceView, trackPlaceStat, getPlaceReviews, addPlaceReview, updatePlaceReview, deletePlaceReview, isFollowingPlace, followPlace, unfollowPlace, isPlaceBanned, reportPlaceReview, reportPlaceData, submitPhoneSuggestion, dbUpdate, subscribeToOwnerPresence, HAMMAD_PLACE_SLUG, getPlaceBranches, updatePlaceAvailability } from '../../core/db.js?v=a58f9ed6';
 import { getCurrentUser, signInWithGoogle, isAdmin, onAuthStateChange, getIdToken } from '../../core/auth.js';
 import { api } from '../../core/api.js';
+import { getArticles } from '../../services/articles.service.js';
 import { getStoredCoinsBalance, fetchLiveCoinsBalance, setStoredCoinsBalance } from '../../core/coins-sync.js';
 import { setMeta, setPlaceSchema, setBreadcrumbSchema } from '../../utils/seo.js';
 import { renderVerifiedBadge, renderDeliveryBadge, renderSponsoredBadge, renderOnlineBadge } from '../components/VerifiedBadge.js';
@@ -440,6 +441,26 @@ export function renderNearbyPlacesSectionHTML(nearbyPlaces, currentPlace) {
       </div>
     </section>
   `;
+}
+
+function renderPlaceArticlesClient(container, placeId, place = {}) {
+  if (!container || !placeId || container.querySelector('.place-articles-section')) return;
+  const section = document.createElement('section');
+  section.className = 'place-articles-section';
+  section.style.cssText = 'margin-top:28px';
+  section.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap"><div><h2 style="margin:0 0 4px;font-size:1.25rem;font-weight:900">📝 مقالات مرتبطة بالمكان</h2><p style="margin:0;color:#64748b;font-size:.85rem">محتوى يكتبه صاحب النشاط عن المكان وخدماته.</p></div><a href="/blog/" style="color:#0f4c5c;font-weight:800;text-decoration:none">كل المقالات ←</a></div><div class="place-articles-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px"></div>';
+  const grid = section.querySelector('.place-articles-grid');
+  getArticles({ placeId, limit: 6 }).then(list => {
+    if (!Array.isArray(list) || !list.length) return;
+    grid.innerHTML = list.map(a => {
+      const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
+      const image = a.coverImageUrl
+        ? '<img src="' + String(a.coverImageUrl).replace(/"/g,'&quot;') + '" alt="' + String(a.title||'مقال').replace(/"/g,'&quot;') + '" width="640" height="360" loading="lazy" decoding="async" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">'
+        : '<div style="aspect-ratio:16/9;background:#eef2f7;display:grid;place-items:center;font-size:34px">📝</div>';
+      return '<article style="overflow:hidden;border:1px solid #e2e8f0;border-radius:16px;background:#fff"><a href="'+href+'" style="display:block">'+image+'</a><div style="padding:13px"><div style="color:#0f766e;font-weight:800;font-size:.75rem;margin-bottom:5px">مقال عن '+String(place.name||'هذا المكان').replace(/</g,'&lt;')+'</div><h3 style="margin:0 0 7px;font-size:.98rem;line-height:1.6"><a href="'+href+'" style="color:#0f172a;text-decoration:none">'+String(a.title||'').replace(/</g,'&lt;')+'</a></h3><p style="margin:0;color:#64748b;font-size:.82rem;line-height:1.7">'+String(a.excerpt||a.content||'').slice(0,150).replace(/</g,'&lt;')+'</p></div></article>';
+    }).join('');
+    container.appendChild(section);
+  }).catch(() => {});
 }
 
 export async function renderPlacePage($container, { slug, user, initialPlace = null }) {
@@ -1602,6 +1623,9 @@ export async function renderPlacePage($container, { slug, user, initialPlace = n
         window.hideSplash();
       }
     } catch (_) {}
+
+    // Related local articles are hydrated independently; they never block the place header.
+    renderPlaceArticlesClient($container, placeId, place);
 
     // ── Non-Blocking Background Hydration ──
 
