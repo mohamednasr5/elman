@@ -32,6 +32,65 @@ function safeBackgroundNotify(type, payload, env, ctx) {
   })());
 }
 
+async function notifyIndexNow(urls = [], env = {}) {
+  const site = 'https://dalilmanzala.com';
+  const cleanUrls = [...new Set((Array.isArray(urls) ? urls : [])
+    .map(u => String(u || '').trim())
+    .filter(u => /^https:\/\/dalilmanzala\.com\//i.test(u)))].slice(0, 10000);
+  if (!cleanUrls.length) return { ok: true, accepted: 0 };
+
+  let key = String(env.INDEXNOW_KEY || env.INDEXNOW_API_KEY || '').trim();
+  if (!key) {
+    try {
+      const res = await fetch(`${site}/indexnow-key.txt`, {
+        headers: { accept: 'text/plain' },
+        cf: { cacheTtl: 300, cacheEverything: true }
+      });
+      if (res.ok) key = (await res.text()).trim();
+    } catch (_) {}
+  }
+  if (!key) {
+    console.warn('[IndexNow] key unavailable; skipping real-time submission.');
+    return { ok: false, accepted: 0, error: 'key_unavailable' };
+  }
+
+  const body = JSON.stringify({
+    host: 'dalilmanzala.com',
+    key,
+    keyLocation: `${site}/indexnow-key.txt`,
+    urlList: cleanUrls
+  });
+
+  const endpoints = [
+    'https://api.indexnow.org/indexnow',
+    'https://www.bing.com/indexnow'
+  ];
+
+  let lastStatus = 0;
+  let lastBody = '';
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json; charset=utf-8' },
+        body,
+        signal: AbortSignal.timeout(7000)
+      });
+      lastStatus = response.status;
+      lastBody = await response.text().catch(() => '');
+      if (response.status === 200 || response.status === 202) {
+        console.log(`[IndexNow] accepted ${cleanUrls.length} URL(s) with HTTP ${response.status}`);
+        return { ok: true, accepted: cleanUrls.length, status: response.status };
+      }
+    } catch (err) {
+      lastBody = err?.message || String(err);
+    }
+  }
+
+  console.warn('[IndexNow] submission failed:', lastStatus, lastBody.slice(0, 300));
+  return { ok: false, accepted: 0, status: lastStatus, error: lastBody.slice(0, 300) };
+}
+
 async function authenticateRequest(request, env) {
   const header = request.headers.get('Authorization') || '';
   const match = header.match(/^Bearer\s+(.+)$/i);
@@ -2561,7 +2620,11 @@ try {
           `https://dalilmanzala.com/en/place/${previousSlugForIndexing}/`
         );
       }
-      if (indexNowUrls.length) ctx.waitUntil(notifyIndexNow(indexNowUrls));
+      if (indexNowUrls.length && ctx && typeof ctx.waitUntil === 'function') {
+        ctx.waitUntil(notifyIndexNow(indexNowUrls, env).catch(err => {
+          console.warn('[IndexNow background error]:', err?.message || err);
+        }));
+      }
 
       // Cache Invalidation for this place and dynamic sitemaps
       try {
