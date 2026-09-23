@@ -60,6 +60,9 @@ jobs:
           node --check scripts/submit-indexnow.mjs
           node --check scripts/validate-seo.mjs
           node scripts/validate-seo.mjs
+      - name: Run full AI/Search readiness audit
+        run: node scripts/audit-ai-seo.mjs
+
       - name: Verify generated HTML contains no forbidden business/category schema claims
         run: |
           node - <<'NODE'
