@@ -17,6 +17,7 @@ import { executeFastSearch, warmupSearchEngine } from '../../services/search-eng
 import { getCategorySvg } from '../../utils/professions-data.js';
 import { getCategoryVisualMeta, renderCategoryCardIcon } from '../../utils/category-visual.js';
 import { resolveDeliveryVehicle } from '../../utils/delivery-vehicle.js';
+import { resolvePlaceMedia } from '../../utils/category-assets.js?v=20260923_04';
 // NOTE: mountLivePulseSection, mountAroundMeRadar, renderWhoIsAvailableNow are
 // loaded lazily (dynamic import) because they render below-the-fold content.
 
@@ -112,7 +113,6 @@ export async function renderHomePage($main, { user } = {}) {
     const cachedCats = getCached('categories_all');
     const cachedPlaces = getCached('published_100_');
     if (Array.isArray(cachedCats) && cachedCats.length > 0) {
-      renderCategories(cachedCats);
       setupHeroSearch(cachedCats);
     }
     if (Array.isArray(cachedPlaces) && cachedPlaces.length > 0) {
@@ -178,10 +178,6 @@ export async function renderHomePage($main, { user } = {}) {
   }
 
   // ── Render above-fold sections (Synchronous & resilient) ──
-  try {
-    if (categories && categories.length) renderCategories(categories);
-  } catch (e) { console.warn('[Home] renderCategories err:', e); }
-
   // Verified Places: 4-Card Horizontal Rotating Showcase with SWR Caching
   try {
     initHomeVerifiedShowcase(allPlaces);
@@ -229,11 +225,6 @@ export async function renderHomePage($main, { user } = {}) {
   // Setup hero search
   try {
     setupHeroSearch(categories || []);
-  } catch (_) {}
-
-  // Setup villages and towns quick search filter
-  try {
-    setupVillagesSearch();
   } catch (_) {}
 
   // ── Lazy-load below-fold sections (dynamic imports) ──
@@ -357,96 +348,15 @@ function sortLatestPlaces(places, currentUid = null, shuffleSponsored = true) {
   return [...finalSponsored, ...rotatedRecent, ...olderPlaces];
 }
 
-function renderCategories(categories) {
-  const grid = document.getElementById('categories-grid');
-  if (!grid) return;
-
-  const list = (Array.isArray(categories) && categories.length > 0)
-    ? categories
-    : (getCached('categories_all') || FALLBACK_CATEGORIES || []);
-
-  if (!list || !list.length) {
-    if (grid.querySelector('.category-card')) return;
-    return;
-  }
-
-  grid.innerHTML = list.map(cat => {
-    const slug = cat.slug || cat._key || cat.id || '';
-    const visual = getCategoryVisualMeta(cat);
-    const iconHtml = renderCategoryCardIcon(cat, { size: 40 });
-    return `
-      <a href="category.html?slug=${encodeURIComponent(slug)}"
-         class="category-card animate-fade-in"
-         style="--cat-color:${visual.color};--cat-bg:${visual.bgColor};--cat-border:${visual.borderColor}"
-         aria-label="${cat.name}">
-        <div class="category-card__icon" style="background:${visual.bgColor};border-color:${visual.borderColor};--cat-color:${visual.color};">
-          ${iconHtml}
-        </div>
-        <div class="category-card__name">${escHtml(cat.name)}</div>
-      </a>
-    `;
-  }).join('');
-}
+function renderCategories() { return; }
 
 const VERIFIED_STORAGE_KEY = 'manzala_verified_showcase_v1';
 let _homeVerifiedInterval = null;
 let _homeVerifiedPool = [];
 let _homeVerifiedRotationIndex = 0;
 
-const FALLBACK_VERIFIED_PLACES = [
-  {
-    id: 'p_1788703900620_oae8ka',
-    slug: 'mtam-basl-wbaha-llmakwlat-albhrya',
-    name: 'مطعم باسل وباهى للمأكولات البحرية',
-    area: 'المطرية دقهلية',
-    address: 'المطرية - ش الثورة',
-    phone: '01062944644',
-    whatsapp: '01062944644',
-    category: 'مطاعم وأسماك',
-    cover: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=180&q=75',
-    coverImageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=180&q=75',
-    isSponsored: true
-  },
-  {
-    id: '-P03LX9MledW_z7QfyHO',
-    slug: '-P03LX9MledW_z7QfyHO',
-    name: 'الحسن لصيانة الهواتف المحمولة',
-    area: 'المنزلة - شارع البحر',
-    address: 'المنزلة - شارع البحر أمام البنك',
-    phone: '01026046049',
-    whatsapp: '01026046049',
-    category: 'صيانة وموبايل',
-    cover: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=300&h=180&q=75',
-    coverImageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=300&h=180&q=75',
-    isSponsored: true
-  },
-  {
-    id: 'p_1788801925745_vuxmjs',
-    slug: 'mtbkh-eyma-llaakl-albyty',
-    name: 'مطبخ إيمى للأكل البيتي',
-    area: 'المنزلة - طريق المنصورة',
-    address: 'المنزلة - طريق المنصورة الرئيسي',
-    phone: '01090123456',
-    whatsapp: '01090123456',
-    category: 'أكل بيتي وحلويات',
-    cover: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=300&h=180&q=75',
-    coverImageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=300&h=180&q=75',
-    isSponsored: false
-  },
-  {
-    id: '-P0hEa0K6ZfAM65O27G9',
-    slug: 'kwafyr-mnh-asad',
-    name: 'كوافير منه أسعد',
-    area: 'المنزلة - حي السلام',
-    address: 'المنزلة - حي السلام',
-    phone: '01099887766',
-    whatsapp: '01099887766',
-    category: 'بيوتي وكوافير',
-    cover: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&h=180&q=75',
-    coverImageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&h=180&q=75',
-    isSponsored: false
-  }
-];
+const FALLBACK_VERIFIED_PLACES = [];
+
 
 function initHomeVerifiedShowcase(allPlaces = null) {
   const grid = document.getElementById('home-verified-cards-grid');
@@ -490,7 +400,8 @@ function initHomeVerifiedShowcase(allPlaces = null) {
         const catLabel = (rawCustom && !['other', 'أخرى', 'عام', 'نشاط عام'].includes(rawCustom.toLowerCase()))
           ? rawCustom
           : (rawCat || p.categoryId || 'نشاط تجاري');
-        return {
+        const media = resolvePlaceMedia(p);
+      return {
           ...p,
           id: p.id || p._key,
           slug: p.slug || p.id,
@@ -499,12 +410,12 @@ function initHomeVerifiedShowcase(allPlaces = null) {
           address: p.address || '',
           phone: p.phone || '',
           whatsapp: p.whatsapp || '',
-          logoUrl: p.logoUrl || '',
-          coverImageUrl: p.coverImageUrl || (p.gallery && p.gallery[0]) || '',
+          logoUrl: media.logoFallback || '',
+          coverImageUrl: media.cover || media.categoryCover || '',
           category: catLabel,
           categoryName: catLabel,
           customCategory: rawCustom,
-          cover: p.coverImageUrl || p.logoUrl || (p.gallery && p.gallery[0]) || '/assets/images/og-whatsapp.jpg',
+          cover: media.cover || media.categoryCover || '',
           isSponsored: Boolean(p.isSponsored && (!p.sponsoredUntil || p.sponsoredUntil > Date.now()))
         };
       });
@@ -566,7 +477,7 @@ function initHomeVerifiedShowcase(allPlaces = null) {
                style="cursor:pointer">
         <span class="fair-place-card__rank">${rankLabels[index] || `🎖️ الصدارة #${index + 1}`}</span>
         <div class="fair-place-card__cover">
-          <img src="${escAttr(p.coverImageUrl || p.cover)}" alt="${escAttr(p.name)}" loading="lazy" onerror="this.src='/assets/images/og-whatsapp.jpg'">
+          <img src="${escAttr(p.coverImageUrl || p.cover)}" alt="${escAttr(p.name)}" loading="eager" fetchpriority="high" decoding="async" width="640" height="360" onerror="this.closest('.fair-place-card__cover')?.classList.add('media-missing');this.style.display='none';">
           <div class="fair-place-card__badges">
             ${p.isSponsored ? '<span class="fair-badge-sponsored">⭐ إعلان مميز</span>' : ''}
             <span class="fair-badge-verified">✓ موثق رسمياً</span>
@@ -1676,44 +1587,6 @@ function getHomeHTML() {
 
     <div id="ads-container" class="container" style="min-height:0"></div>
 
-    <!-- Towns & Villages Directory Section -->
-    <section class="section" style="background:var(--surface);padding-block:var(--space-8);border-bottom:1px solid var(--border)">
-      <div class="container">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-wrap:wrap;gap:12px">
-          <div>
-            <h2 class="section-title" style="margin-bottom:2px">
-              <span>🗺️</span> استكشف حسب المدينة والقرية (${villageList.length})
-            </h2>
-            <p style="font-size:13px;color:var(--text-muted);margin:0">تصفح الخدمات والأنشطة التجارية في المنزلة والمطرية وكافة القرى المجاورة</p>
-          </div>
-          
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <input type="text" id="villages-filter-input" placeholder="🔍 ابحث عن قريتك أو مدينتك..." class="form-input" style="font-size:12.5px;padding:6px 12px;width:210px;margin:0" />
-            <a href="places.html" class="section-link" style="white-space:nowrap">كل المدن والقرى ←</a>
-          </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-top:14px" id="villages-grid-container">
-          ${villageList.map(t => {
-            const villageHubMap = {
-              'العزيزة': '#/village/al-aziza',
-              'البصراط': '#/village/al-basrat',
-              'الشبول': '#/village/al-shabboul',
-              'العصافرة': '#/village/al-asafra',
-              'النسايمة': '#/village/al-nasayma'
-            };
-            const targetHref = villageHubMap[t.name] || `places.html?area=${encodeURIComponent(t.name)}`;
-            return `
-            <a href="${targetHref}" class="category-card village-grid-item" data-name="${escAttr(t.name)}" style="padding:12px 8px;text-align:center;text-decoration:none;border-radius:var(--radius-md);transition:all 0.2s ease;display:flex;flex-direction:column;align-items:center" title="دليل أماكن وخدمات ومواصلات ${t.name}">
-              <div style="font-size:22px;margin-bottom:4px">${t.icon}</div>
-              <div style="font-weight:700;font-size:13px;color:var(--text-primary)">${t.name}</div>
-              <div style="font-size:11px;color:var(--text-secondary);font-weight:600;margin-top:2px">${t.desc}</div>
-            </a>
-          `;}).join('')}
-        </div>
-      </div>
-    </section>
-
     <!-- ⚡ قسم مين متاح ييجي دلوقتي (طوارئ الحرفيين) -->
     <div class="container section" style="padding-top:0;padding-bottom:0">
       <div id="home-oncall-craftsmen-container"></div>
@@ -1730,7 +1603,7 @@ function getHomeHTML() {
     <!-- Dedicated Sponsored Showcase Section -->
     <div class="container section" style="padding-bottom:0" id="home-sponsored-container"></div>
 
-    <!-- Verified Places Showcase Section (أماكن وثقت صفحتها معنا) -->
+    <!-- Verified Places Showcase Section (أماكن موثقة ومحدثة باستمرار) -->
     <style>
       .home-verified-section {
         background: var(--surface);
@@ -1969,7 +1842,7 @@ function getHomeHTML() {
               أماكن وثقت صفحتها معنا
             </h2>
             <p class="home-verified-subtitle">
-              أنشطة تجارية وخدمات معتمدة بالعلامة الرسمية في المنزلة والمطرية مع تدوير عادل ومستمر في الصدارة
+              أماكن أكملت التوثيق وبياناتها قابلة للمراجعة، مع عرض متجدد للأماكن الموثقة.
             </p>
           </div>
           <a href="places.html?filter=verified" class="section-link">كل الأماكن الموثقة ←</a>
