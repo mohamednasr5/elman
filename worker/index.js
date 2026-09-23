@@ -11,6 +11,7 @@ import { createTursoDB, checkTursoHealth } from './turso.js';
 import { handleMarketWidgetsRequest } from './market-widgets.js';
 import { handleArticlePublicPage, handleArticlesApi, getPublishedArticlesForPlace } from './articles.js';
 import { geocodePlaceAddress } from './geocoding.js';
+import { generateArticleDraft } from './article-ai.js';
 const SUPERADMIN_EMAILS = new Set([
   'elfannanm@gmail.com',
   'mohamednasrofficial@gmail.com'
@@ -2151,6 +2152,39 @@ try {
     } catch (err) {
       console.warn('[/api/maps/geocode] Error:', err?.message || err);
       return jsonResponse({ success:false, error:'تعذر تحديد موقع العنوان تلقائياً الآن' }, 503, corsHeaders);
+    }
+  }
+
+  // ── AI article generation for place owners ─────────────────────────
+  if (url.pathname === '/api/articles/generate' && request.method === 'POST') {
+    const auth = await requireAuth(request, env);
+    if (auth.response) return auth.response;
+    try {
+      const body = await request.json().catch(() => ({}));
+      const placeId = String(body.placeId || body.place_id || '').trim();
+      const topic = String(body.topic || '').trim();
+      const requestedTitle = String(body.title || '').trim();
+      if (!placeId || !topic) return jsonResponse({success:false,error:'حدد المكان وموضوع المقال أولاً'},400,corsHeaders);
+
+      const db = createTursoDB(env);
+      const place = await db.prepare(
+        'SELECT id,name,slug,area,address,description,custom_category,category_id,services_json,working_hours_json,is_verified,owner_id FROM places WHERE id=? LIMIT 1'
+      ).bind(placeId).first().catch(() => null);
+      if (!place) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
+      if (!auth.user.isAdmin && String(place.owner_id || '') !== String(auth.user.uid || '')) {
+        return jsonResponse({success:false,error:'يمكن لصاحب المكان فقط توليد مقالاته'},403,corsHeaders);
+      }
+      const countRow = await db.prepare("SELECT COUNT(*) AS count FROM articles WHERE place_id=? AND status<>'deleted'").bind(placeId).first().catch(() => ({count:0}));
+      if (Number(countRow?.count || 0) >= 6) return jsonResponse({success:false,error:'اكتمل الحد الأقصى: 6 مقالات لهذا المكان'},409,corsHeaders);
+
+      let services=[]; try{services=place.services_json?JSON.parse(place.services_json):[]}catch(_){}
+      let workingHours=null; try{workingHours=place.working_hours_json?JSON.parse(place.working_hours_json):null}catch(_){}
+      const facts={name:place.name||'',area:place.area||'',address:place.address||'',category:place.custom_category||place.category_id||'',description:place.description||'',services:Array.isArray(services)?services.slice(0,30):[],workingHours:workingHours||undefined};
+      const draft=await generateArticleDraft({env,topic,title:requestedTitle,facts});
+      return jsonResponse({success:true,data:{...draft,placeId,placeName:place.name||'',placeSlug:place.slug||''}},200,corsHeaders);
+    } catch (err) {
+      console.warn('[/api/articles/generate] Error:',err?.message||err);
+      return jsonResponse({success:false,error:'تعذر توليد المقال حالياً. حاول مرة أخرى.'},503,corsHeaders);
     }
   }
 
