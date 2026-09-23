@@ -1336,6 +1336,39 @@ export async function sendAdminPushNotification(type, payload, env) {
         ]
       ]
     };
+  } else if (type === 'new_article') {
+    const articleUrl = payload.articleSlug
+      ? `https://dalilmanzala.com/article/${encodeURIComponent(payload.articleSlug)}/`
+      : 'https://dalilmanzala.com/blog/';
+    const placeUrl = payload.placeSlug
+      ? `https://dalilmanzala.com/place/${encodeURIComponent(payload.placeSlug)}/`
+      : '';
+    text = `📝 <b>مقال جديد تم نشره في المدونة!</b>\n\n` +
+      `📰 <b>العنوان:</b> ${tgEscape(payload.title || 'مقال جديد')}\n` +
+      `🏢 <b>المكان:</b> ${tgEscape(payload.placeName || 'مكان في الدليل')}\n` +
+      (payload.category ? `📂 <b>التصنيف:</b> ${tgEscape(payload.category)}\n` : '') +
+      (payload.ownerName ? `👤 <b>الكاتب / صاحب المكان:</b> ${tgEscape(payload.ownerName)}\n` : '') +
+      `⏰ <b>التوقيت:</b> ${timeStr}`;
+
+    keyboard = {
+      inline_keyboard: [
+        [{ text: '📰 فتح المقال', url: articleUrl }],
+        ...(placeUrl ? [[{ text: '🏢 صفحة المكان', url: placeUrl }]] : []),
+        [{ text: '📚 فتح المدونة', url: 'https://dalilmanzala.com/blog/' }]
+      ]
+    };
+
+    if (payload.coverImageUrl && String(payload.coverImageUrl).startsWith('http')) {
+      const caption = text.length > 1024 ? text.slice(0,1020) + '...' : text;
+      const photoRes = await telegramApi('sendPhoto', {
+        chat_id: chatId,
+        photo: payload.coverImageUrl,
+        caption,
+        parse_mode: 'HTML',
+        reply_markup: keyboard
+      }, env);
+      if (photoRes?.ok) return photoRes;
+    }
   } else if (type === 'new_review') {
     const starStr = '⭐'.repeat(Math.min(5, Math.max(1, payload.rating || 5)));
     text = `⭐ <b>تعليق وتقييم جديد على مكان!</b>\n\n` +
