@@ -20,7 +20,8 @@ const robots=read('robots.txt');
 for(const x of ['User-agent: *','User-agent: Googlebot','User-agent: OAI-SearchBot','User-agent: Bingbot','Sitemap: https://dalilmanzala.com/sitemap.xml'])must(robots.includes(x),`robots.txt missing: ${x}`);
 must(!/Disallow:\s*\/place\//i.test(robots),'robots.txt must not disallow /place/');
 
-const sitemapFiles=['sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml','sitemap-static-ar.xml','sitemap-static-en.xml'];\nconst sm=validateXml('sitemap.xml');
+const sitemapFiles=['sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml','sitemap-static-ar.xml','sitemap-static-en.xml'];
+const sm=validateXml('sitemap.xml');
 for(const x of ['sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml','sitemap-static-ar.xml','sitemap-static-en.xml'])must(sm.includes(x),`sitemap index missing: ${x}`);
 
 for(const f of ['sitemap-places-ar.xml','sitemap-places-en.xml','sitemap-categories-ar.xml','sitemap-categories-en.xml']){
