@@ -63,6 +63,19 @@ async function fetchAllPlaces() {
   }
 }
 
+async function fetchAllPublishedArticles(){
+  const out=[];const limit=1000;let offset=0;
+  try{
+    for(;;offset+=limit){
+      const res=await fetch(`https://dalilmanzala.com/api/articles?limit=${limit}&offset=${offset}`,{headers:{Accept:'application/json'}});
+      if(!res.ok) throw new Error(`Articles API HTTP ${res.status} at offset ${offset}`);
+      const json=await res.json();const batch=Array.isArray(json?.data)?json.data:[];
+      out.push(...batch);if(batch.length<limit)break;
+    }
+    return [...new Map(out.map(a=>[String(a?.slug||a?.id||'').trim(),a]).filter(([k])=>k)).values()]
+      .filter(a=>String(a?.status||'published').toLowerCase()==='published');
+  }catch(err){ console.warn('Articles fetch skipped:',err?.message||err); return []; }
+}
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
@@ -72,7 +85,7 @@ function ensureDir(dirPath) {
 /**
  * Builds HTML template for a single business entity
  */
-function buildBusinessPageHTML(place, relatedPlaces = []) {
+function buildBusinessPageHTML(place, relatedPlaces = [], relatedArticles = []) {
   const seo = generateBusinessSEO(place);
   if (!seo) return null;
 
@@ -129,6 +142,31 @@ function buildBusinessPageHTML(place, relatedPlaces = []) {
       </section>
     ` : '';
 
+  // Related owner articles: crawlable internal links from place -> article.
+  let relatedArticlesHtml = '';
+  if (relatedArticles.length > 0) {
+    const articleCards = relatedArticles.slice(0, 6).map((article, index) => {
+      const articleSlug = String(article.slug || article.id || '').trim();
+      const href = `/article/${encodeURIComponent(articleSlug)}/`;
+      const image = article.coverImageUrl || article.cover_image_url || article.coverUrl || article.cover_url || '';
+      return `<article style="overflow:hidden;border:1px solid rgba(0,0,0,.08);border-radius:14px;background:var(--surface,#fff)">
+        <a href="${href}" style="display:block;aspect-ratio:16/9;background:#eef2f7;overflow:hidden;text-decoration:none">
+          ${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(article.title || seo.rawName)}" width="640" height="360" loading="${index===0?'eager':'lazy'}" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block">` : '<div style="height:100%;display:grid;place-items:center;font-size:36px">📝</div>'}
+        </a>
+        <div style="padding:12px">
+          <h3 style="margin:0 0 6px;font-size:.98rem;font-weight:900;line-height:1.6"><a href="${href}" style="color:var(--text-primary,#0f172a);text-decoration:none">${escapeHtml(article.title || 'مقال مرتبط بالمكان')}</a></h3>
+          <p style="margin:0;color:var(--text-muted,#64748b);font-size:.82rem;line-height:1.7">${escapeHtml(article.excerpt || String(article.content || '').slice(0,150))}</p>
+        </div>
+      </article>`;
+    }).join('');
+    relatedArticlesHtml = `<section class="place-related-articles" aria-labelledby="place-related-articles-title" style="margin-top:24px;padding:20px;border-radius:16px;background:var(--surface,#fff);box-shadow:0 2px 12px rgba(0,0,0,.06)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <h2 id="place-related-articles-title" style="font-size:1.15rem;font-weight:900;margin:0">📝 مقالات مرتبطة بـ ${escapeHtml(seo.rawName)}</h2>
+        <a href="/blog/" style="font-size:.82rem;font-weight:800;color:#0284c7;text-decoration:none">كل مقالات المدونة ←</a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${articleCards}</div>
+    </section>`;
+  }
   // Related businesses in the same category & region
   let relatedHtml = '';
   if (relatedPlaces.length > 0) {
@@ -305,6 +343,8 @@ ${JSON.stringify(seo.schemas[1], null, 2)}
       </article>
 
       ${qaHtml}
+
+      ${relatedArticlesHtml}
 
       <!-- Working Hours -->
       ${workingHoursHtml}
@@ -493,6 +533,7 @@ ${JSON.stringify(seo.schemas[1], null, 2)}
 
 async function run() {
   const places = await fetchAllPlaces();
+  const articles = await fetchAllPublishedArticles();
   if (places.length === 0) {
     console.error('No places fetched. Aborting.');
     return;
@@ -545,7 +586,8 @@ async function run() {
     const rawCat = place.customCategory || place.category || place.categoryId || place.category_id || 'عام';
     const related = (categoryMap.get(rawCat) || []).filter(p => (p.slug || p.id) !== slug);
 
-    const html = buildBusinessPageHTML(place, related);
+    const relatedArticles = articles.filter(a => String(a.placeId || a.place_id || a.place?.id || '').trim() === String(place.id || place._key || '').trim());
+    const html = buildBusinessPageHTML(place, related, relatedArticles);
     if (!html) continue;
 
     const placeDir = path.join(__dirname, 'place', slug);
