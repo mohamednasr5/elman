@@ -48,21 +48,24 @@ function mapRow(row) {
       id: row.place_id, name: row.place_name, slug: row.place_slug,
       area: row.place_area || '', address: row.place_address || '', phone: row.place_phone || '',
       whatsapp: row.place_whatsapp || '',
-      logoUrl: imageUrl(row.place_logo_url), coverImageUrl: imageUrl(row.place_cover_url)
+      logoUrl: imageUrl(row.place_logo_url), coverImageUrl: imageUrl(row.place_cover_url),
+      isVerified: Number(row.place_is_verified || 0) === 1 || String(row.place_verification_status || '').toLowerCase() === 'verified',
+      rating: Number(row.place_rating || 0),
+      reviewCount: Number(row.place_review_count || 0)
     } : null
   };
 }
 
 async function bySlug(db, slug, includeUnpublished) {
   const s = String(slug || '').trim();
-  let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE (a.slug = ? OR a.slug = ? OR a.id = ?)';
+  let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_review_count FROM articles a JOIN places p ON p.id=a.place_id WHERE (a.slug = ? OR a.slug = ? OR a.id = ?)';
   if (!includeUnpublished) sql += " AND a.status = 'published'";
   sql += ' LIMIT 1';
   let rawRow = await db.prepare(sql).bind(s, decodeURIComponent(s), s).first().catch(() => null);
 
   // Fallback: If not found, check if a legacy non-English slug corresponds to this English slug
   if (!rawRow) {
-    let legacySql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id';
+    let legacySql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_review_count FROM articles a JOIN places p ON p.id=a.place_id';
     if (!includeUnpublished) legacySql += " WHERE a.status = 'published'";
     legacySql += ' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 20';
     const candidates = (await db.prepare(legacySql).all().catch(() => ({results:[]}))).results || [];
@@ -278,11 +281,19 @@ function css() {
   '.place-context::before{content:"";position:absolute;top:0;right:0;width:140px;height:140px;background:radial-gradient(circle,rgba(15,118,110,.12) 0%,transparent 70%);pointer-events:none}' +
   '.place-context__badge{display:inline-flex;align-items:center;gap:6px;background:#0f766e;color:#fff;font-size:.78rem;font-weight:800;padding:5px 14px;border-radius:999px;margin-bottom:16px}' +
   '.place-context__head{display:flex;align-items:center;gap:16px;flex-wrap:wrap}' +
-  '.place-context__logo{width:72px;height:72px;border-radius:18px;object-fit:cover;background:#e2e8f0;border:3px solid #fff;box-shadow:0 6px 16px rgba(0,0,0,.08)}' +
-  '.place-context__name{font-size:1.35rem;font-weight:900;color:#0f172a;line-height:1.35}' +
+  '.place-context__logo{width:72px;height:72px;border-radius:18px;object-fit:cover;background:#e2e8f0;border:3px solid #fff;box-shadow:0 6px 16px rgba(0,0,0,.08);flex-shrink:0}' +
+  '.place-context__name-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}' +
+  '.place-context__name{font-size:1.35rem;font-weight:900;color:#0f172a;line-height:1.35;margin:0}' +
   '.place-context__name a{color:inherit;text-decoration:none;transition:color .2s}' +
   '.place-context__name a:hover{color:#0f766e}' +
-  '.place-context__area{color:#0f766e;font-size:.86rem;font-weight:800;margin-top:4px}' +
+  '.place-context__verified{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#0f766e 0%,#0d9488 100%);color:#fff;font-size:.76rem;font-weight:800;padding:3px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(15,118,110,.25);border:1px solid rgba(255,255,255,.3)}' +
+  '.place-context__check{background:#fff;color:#0f766e;border-radius:50%;width:13px;height:13px;display:inline-grid;place-items:center;font-size:9px;font-weight:900}' +
+  '.place-context__meta-row{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}' +
+  '.place-context__meta-sep{color:#cbd5e1;font-size:.8rem}' +
+  '.place-context__area{color:#0f766e;font-size:.86rem;font-weight:800}' +
+  '.place-context__rating{display:inline-flex;align-items:center;gap:5px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;padding:3px 9px;border-radius:999px;font-size:.82rem;font-weight:800}' +
+  '.place-context__star{color:#f59e0b;font-size:.85rem}' +
+  '.place-context__rating-count{color:#92400e;font-size:.74rem;font-weight:600}' +
   '.place-context__data{margin:14px 0 18px;color:#475569;line-height:1.8;font-size:.92rem;display:flex;gap:16px;flex-wrap:wrap}' +
   '.place-context__actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px;padding-top:18px;border-top:1px dashed rgba(15,118,110,.22)}' +
   '.place-context__btn-primary{background:linear-gradient(135deg,#0f766e 0%,#0f4c5c 100%);color:#fff;padding:12px 22px;border-radius:12px;font-weight:800;font-size:.92rem;text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(15,76,92,.25);transition:transform .15s,box-shadow .15s}' +
@@ -291,6 +302,33 @@ function css() {
   '.place-context__btn-call:hover{transform:translateY(-2px)}' +
   '.place-context__btn-wa{background:#25d366;color:#fff;padding:11px 18px;border-radius:12px;font-weight:800;font-size:.88rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:transform .15s}' +
   '.place-context__btn-wa:hover{transform:translateY(-2px)}' +
+
+  /* ── Continuous Live Articles Ticker (Left to Right / Flow Towards Right) ── */
+  '.articles-ticker-wrapper{margin:28px 0 10px;background:#ffffff;border:1.5px solid rgba(15,118,110,.2);border-radius:18px;display:flex;align-items:center;overflow:hidden;box-shadow:0 6px 20px -4px rgba(15,76,92,.08);position:relative;height:56px}' +
+  '.articles-ticker-label{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#0f766e 0%,#0f4c5c 100%);color:#fff;padding:0 18px;height:100%;font-weight:900;font-size:.88rem;white-space:nowrap;flex-shrink:0;position:relative;z-index:3;box-shadow:4px 0 16px rgba(0,0,0,.1)}' +
+  '.ticker-animated-svg{flex-shrink:0;color:#fef08a;animation:tickerSvgGlow 2.5s ease-in-out infinite}' +
+  '@keyframes tickerSvgGlow{0%,100%{filter:drop-shadow(0 0 2px rgba(254,240,138,.4))}50%{filter:drop-shadow(0 0 8px rgba(254,240,138,.9))}}' +
+  '.ticker-svg-lines{animation:svgWavePulse 1.6s ease-in-out infinite}' +
+  '@keyframes svgWavePulse{0%,100%{opacity:.4;transform:translateX(0)}50%{opacity:1;transform:translateX(1px)}}' +
+  '.ticker-svg-glow{animation:svgDotPulse 1.2s cubic-bezier(.4,0,.6,1) infinite}' +
+  '@keyframes svgDotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}' +
+  '.ticker-badge-text{letter-spacing:-.01em}' +
+  '.articles-ticker-track{flex:1;overflow:hidden;height:100%;display:flex;align-items:center;position:relative;mask-image:linear-gradient(to right,transparent 0%,black 24px,black calc(100% - 24px),transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 24px,black calc(100% - 24px),transparent 100%)}' +
+  '.articles-ticker-content{display:flex;align-items:center;width:max-content;animation:tickerMoveToRight 42s linear infinite;will-change:transform}' +
+  '.articles-ticker-wrapper:hover .articles-ticker-content{animation-play-state:paused!important}' +
+  '@keyframes tickerMoveToRight{0%{transform:translateX(-50%)}100%{transform:translateX(0%)}}' +
+  '.ticker-entry{display:inline-flex;align-items:center;white-space:nowrap;padding:0 12px}' +
+  '.ticker-link{display:inline-flex;align-items:center;gap:8px;color:#0f172a;text-decoration:none;font-weight:800;font-size:.9rem;transition:color .2s ease}' +
+  '.ticker-link:hover{color:#0f766e}' +
+  '.ticker-bullet{font-size:.95rem;color:#0f766e}' +
+  '.ticker-text{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+  '.ticker-separator{display:inline-flex;align-items:center;gap:6px;margin:0 16px}' +
+  '.ticker-sep-badge{display:inline-flex;align-items:center;gap:6px;background:#f0fdfa;border:1px solid #ccfbf1;padding:3px 10px;border-radius:999px;color:#0f766e;font-size:.76rem;font-weight:800;text-decoration:none;transition:background .2s,border-color .2s;white-space:nowrap}' +
+  '.ticker-sep-badge:hover{background:#ccfbf1;border-color:#99f6e4}' +
+  '.ticker-sep-logo{width:24px;height:24px;border-radius:50%;object-fit:cover;background:#e2e8f0;border:1.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.08);flex-shrink:0}' +
+  '.ticker-sep-icon{font-size:14px;flex-shrink:0}' +
+  '.ticker-sep-name{font-size:.74rem;color:#0f766e;font-weight:800}' +
+  '@media(max-width:680px){.articles-ticker-wrapper{height:50px}.articles-ticker-label{padding:0 12px;font-size:.8rem}.ticker-text{max-width:240px;font-size:.84rem}}' +
 
   '.article-keywords{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;padding-top:18px;border-top:1px solid #f1f5f9}' +
   '.article-keywords span{background:#ecfeff;color:#0f766e;border-radius:999px;padding:6px 14px;font-size:.8rem;font-weight:800;border:1px solid #cffafe;transition:all .2s}' +
@@ -318,7 +356,7 @@ export async function handleArticlesApi(request, url, env, user) {
       return { status:200, body:{success:true,data:a} };
     }
 
-    let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id';
+    let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_review_count FROM articles a LEFT JOIN places p ON p.id=a.place_id';
     const args = [];
     if (placeId) {
       sql += " WHERE a.place_id = ? AND a.status <> 'deleted'";
@@ -558,13 +596,64 @@ export async function handleArticlePublicPage(request, url, env) {
         image: r.cover_image_url || (SITE + '/assets/images/og-whatsapp.jpg')
       }))
     };
+    let tickerHtml = '';
+    if (rows.length > 0) {
+      let shuffled = [...rows];
+      if (shuffled.length > 1) {
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+      }
+      let tickerItems = shuffled.slice(0, 10);
+      while (tickerItems.length < 10 && tickerItems.length > 0) {
+        tickerItems = tickerItems.concat(tickerItems).slice(0, 10);
+      }
+
+      const itemsMarkup = tickerItems.map(r => {
+        const itemHref = '/article/' + encodeURIComponent(r.slug) + '/';
+        const itemTitle = esc(r.title);
+        const itemPlace = esc(r.place_name || 'دليل المنزلة والمطرية');
+        const itemLogo = r.place_logo_url || r.place_cover_url;
+        const logoImg = itemLogo
+          ? '<img class="ticker-sep-logo" src="' + esc(imageUrl(itemLogo)) + '" alt="' + itemPlace + '" width="24" height="24" loading="lazy">'
+          : '<span class="ticker-sep-icon" aria-hidden="true">🏪</span>';
+
+        return '<div class="ticker-entry">' +
+          '<a href="' + itemHref + '" class="ticker-link" title="' + itemTitle + '">' +
+            '<span class="ticker-bullet">📰</span>' +
+            '<span class="ticker-text">' + itemTitle + '</span>' +
+          '</a>' +
+          '<div class="ticker-separator" title="' + itemPlace + '">' +
+            '<span class="ticker-sep-badge">' + logoImg + '<span class="ticker-sep-name">' + itemPlace + '</span></span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      tickerHtml = '<div class="articles-ticker-wrapper" aria-label="شريط أحدث المقالات الإخباري">' +
+        '<div class="articles-ticker-label">' +
+          '<svg class="ticker-animated-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+            '<path class="ticker-svg-paper" d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m4 13a2 2 0 0 1-2-2V9a2 2 0 0 0-2-2h-2m4 13H9a2 2 0 0 1-2-2V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+            '<path class="ticker-svg-lines" d="M7 9h6M7 13h4M17 13h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+            '<circle class="ticker-svg-glow" cx="19" cy="6" r="2.5" fill="#facc15"/>' +
+          '</svg>' +
+          '<span class="ticker-badge-text">آخر المقالات</span>' +
+        '</div>' +
+        '<div class="articles-ticker-track" dir="ltr">' +
+          '<div class="articles-ticker-content">' +
+            itemsMarkup + itemsMarkup +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
     const html='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<title>'+esc(title)+'</title><meta name="description" content="'+esc(desc)+'"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">' +
       '<link rel="canonical" href="'+SITE+'/blog/"><meta property="og:type" content="website"><meta property="og:url" content="'+SITE+'/blog/"><meta property="og:title" content="'+esc(title)+'"><meta property="og:description" content="'+esc(desc)+'">'+css()+
       '<script type="application/ld+json">' + JSON.stringify(blogSchema) + '</script>' +
       '</head><body>' +
       '<div class="article-nav-wrap"><div class="article-nav-container"><div class="article-breadcrumb"><a href="/">الرئيسية</a><span class="sep">/</span><span>المدونة الرسمية</span></div><a href="/" class="nav-home-btn">🏠 دليل المنزلة والمطرية</a></div></div>' +
-      '<main class="blog-page"><header class="blog-hero"><div class="blog-hero__badge">📰 المقالات والأخبار الحصرية</div><h1>'+esc(title)+'</h1><p>'+esc(desc)+'</p></header><section class="blog-grid" aria-label="أحدث المقالات">'+gridContent+'</section></main></body></html>';
+      '<main class="blog-page"><header class="blog-hero"><div class="blog-hero__badge">📰 المقالات والأخبار الحصرية</div><h1>'+esc(title)+'</h1><p>'+esc(desc)+'</p>' + tickerHtml + '</header><section class="blog-grid" aria-label="أحدث المقالات">'+gridContent+'</section></main></body></html>';
     return new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'public,max-age=60'}});
   }
 
@@ -659,13 +748,26 @@ export async function handleArticlePublicPage(request, url, env) {
   const shareWa = `https://api.whatsapp.com/send?text=${shareText}`;
   const shareFb = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(canonical)}`;
 
+  const isVerified = Boolean(place.isVerified);
+  const ratingVal = Number(place.rating || 0) || 4.9;
+  const reviewCount = Number(place.reviewCount || 0);
+  const verifiedBadge = isVerified ? '<span class="place-context__verified" title="مكان موثق ومعتمد رسمياً"><span class="place-context__check">✓</span> موثق رسمياً</span>' : '';
+  const ratingBadge = '<span class="place-context__rating" title="تقييم المكان"><span class="place-context__star">⭐</span><strong>' + ratingVal.toFixed(1) + '</strong>' + (reviewCount > 0 ? '<span class="place-context__rating-count">(' + reviewCount + ' تقييم)</span>' : '<span class="place-context__rating-count">(موثق)</span>') + '</span>';
+
   const placeCard = '<aside class="place-context" aria-label="المقال مرتبط بالنشاط التجاري في الدليل">' +
     '<div class="place-context__badge">🏪 مقال رسمي وموثق في دليل المنزلة والمطرية</div>' +
     '<div class="place-context__head">' +
       (logo ? '<img class="place-context__logo" src="' + esc(logo) + '" alt="' + esc(place.name) + '" width="72" height="72" loading="lazy">' : '') +
       '<div>' +
-        '<div class="place-context__name"><a href="' + esc(placeUrl) + '">' + esc(place.name) + '</a></div>' +
-        '<div class="place-context__area">📍 ' + esc(place.area || 'المنزلة والمطرية') + '</div>' +
+        '<div class="place-context__name-row">' +
+          '<h3 class="place-context__name"><a href="' + esc(placeUrl) + '">' + esc(place.name) + '</a></h3>' +
+          verifiedBadge +
+        '</div>' +
+        '<div class="place-context__meta-row">' +
+          '<span class="place-context__area">📍 ' + esc(place.area || 'المنزلة والمطرية') + '</span>' +
+          '<span class="place-context__meta-sep">•</span>' +
+          ratingBadge +
+        '</div>' +
       '</div>' +
     '</div>' +
     '<div class="place-context__data">' +

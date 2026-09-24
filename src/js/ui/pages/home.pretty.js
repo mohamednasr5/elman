@@ -633,6 +633,62 @@ function renderBlogArticles(articles) {
 
   if (section) section.style.display = '';
 
+  const tickerContainer = document.getElementById('home-blog-ticker-container');
+  if (tickerContainer && articles.length > 0) {
+    let shuffled = [...articles];
+    if (shuffled.length > 1) {
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+    }
+    let tickerItems = shuffled.slice(0, 10);
+    while (tickerItems.length < 10 && tickerItems.length > 0) {
+      tickerItems = tickerItems.concat(tickerItems).slice(0, 10);
+    }
+
+    const itemsMarkup = tickerItems.map(a => {
+      const itemHref = '/article/' + encodeURIComponent(a.slug || '') + '/';
+      const itemTitle = escHtml(a.title || '');
+      const p = a.place || {};
+      const itemPlace = escHtml(p.name || 'دليل المنزلة والمطرية');
+      const itemLogo = p.logoUrl || p.coverImageUrl || a.coverImageUrl;
+      const logoImg = itemLogo
+        ? `<img class="ticker-sep-logo" src="${escAttr(itemLogo)}" alt="${itemPlace}" width="24" height="24" loading="lazy">`
+        : `<span class="ticker-sep-icon" aria-hidden="true">🏪</span>`;
+
+      return `
+        <div class="ticker-entry">
+          <a href="${itemHref}" class="ticker-link" title="${itemTitle}">
+            <span class="ticker-bullet">📰</span>
+            <span class="ticker-text">${itemTitle}</span>
+          </a>
+          <div class="ticker-separator" title="${itemPlace}">
+            <span class="ticker-sep-badge">${logoImg}<span class="ticker-sep-name">${itemPlace}</span></span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    tickerContainer.innerHTML = `
+      <div class="articles-ticker-wrapper" aria-label="شريط أحدث المقالات الإخباري">
+        <div class="articles-ticker-label">
+          <svg class="ticker-animated-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path class="ticker-svg-paper" d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m4 13a2 2 0 0 1-2-2V9a2 2 0 0 0-2-2h-2m4 13H9a2 2 0 0 1-2-2V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path class="ticker-svg-lines" d="M7 9h6M7 13h4M17 13h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle class="ticker-svg-glow" cx="19" cy="6" r="2.5" fill="#facc15"/>
+          </svg>
+          <span class="ticker-badge-text">آخر المقالات</span>
+        </div>
+        <div class="articles-ticker-track" dir="ltr">
+          <div class="articles-ticker-content">
+            ${itemsMarkup}${itemsMarkup}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   // Single article -> render Spotlight Feature Card
   if (articles.length === 1) {
     const a = articles[0];
@@ -2065,6 +2121,7 @@ function getHomeHTML() {
             </a>
           </div>
         </div>
+        <div id="home-blog-ticker-container"></div>
         <div class="blog-grid" id="home-blog-grid">
           ${renderBlogSkeletonCards(3)}
         </div>
