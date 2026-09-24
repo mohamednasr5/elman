@@ -3069,25 +3069,28 @@ try {
   }
 
   if (url.pathname === '/api/categories' && request.method === 'GET') {
-    const forceFresh = url.searchParams.has('_ts') || url.searchParams.has('fresh');
-    const cache = caches.default;
-    const v = await getDataVersion(env);
-    const cacheUrl = new URL('https://cache.local/api/categories');
-    cacheUrl.searchParams.set('v', v);
-    const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
-
-    if (!forceFresh) {
-      const cached = await cache.match(cacheKey);
-      if (cached) {
-        const response = new Response(cached.body, cached);
-        response.headers.set('X-Cache', 'HIT');
-        response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-        Object.entries(corsHeaders).forEach(([k, val]) => response.headers.set(k, val));
-        return response;
-      }
-    }
-
     try {
+      const forceFresh = url.searchParams.has('_ts') || url.searchParams.has('fresh');
+      const cache = caches.default;
+      let v = '0';
+      try { v = await getDataVersion(env); } catch (_) {}
+      const cacheUrl = new URL('https://cache.local/api/categories');
+      cacheUrl.searchParams.set('v', v);
+      const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+
+      if (!forceFresh) {
+        try {
+          const cached = await cache.match(cacheKey);
+          if (cached) {
+            const response = new Response(cached.body, cached);
+            response.headers.set('X-Cache', 'HIT');
+            response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+            Object.entries(corsHeaders).forEach(([k, val]) => response.headers.set(k, val));
+            return response;
+          }
+        } catch (_) {}
+      }
+
       const result = await createTursoDB(env).prepare(`
         SELECT id, name, name_en, slug, icon, description, sort_order as "order", created_at
         FROM categories
@@ -3103,12 +3106,14 @@ try {
         'X-Cache': 'MISS'
       });
 
-      if (categories.length > 0 && !forceFresh) {
-        ctx.waitUntil(cache.put(cacheKey, res.clone()));
+      if (categories.length > 0 && !forceFresh && ctx?.waitUntil) {
+        try {
+          ctx.waitUntil(cache.put(cacheKey, res.clone()));
+        } catch (_) {}
       }
       return res;
     } catch (err) {
-      console.warn('[GET /api/categories warning]:', err?.message || err);
+      console.warn('[GET /api/categories error]:', err?.message || err);
       return jsonResponse({ success: true, data: [] }, 200, corsHeaders);
     }
   }

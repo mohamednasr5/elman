@@ -38,7 +38,7 @@ export function getCached(key, maxAgeMs = 600000) {
   return null;
 }
 
-function setCache(key, data) {
+export function setCache(key, data) {
   if (!data) return data;
   const item = { data, ts: Date.now() };
   _dbMemoryCache.set(key, item);

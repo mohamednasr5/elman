@@ -3,7 +3,8 @@
  * Full homepage with hero, search, categories, places, offers, delivery
  */
 
-import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings, getCached, FALLBACK_CATEGORIES } from '../../core/db.js';
+import { getCategories, getPublishedPlaces, getActiveOffers, getAds, getSettings, getCached, setCache, FALLBACK_CATEGORIES } from '../../core/db.js';
+import { getArticles } from '../../services/articles.service.js';
 import { WORKER_URL } from '../../core/firebase.js';
 import { appState } from '../../core/state.js';
 import { renderPlaceCard, renderPlaceCardSkeleton } from '../components/PlaceCard.js?v=20260923_04';
@@ -112,6 +113,7 @@ export async function renderHomePage($main, { user } = {}) {
   try {
     const cachedCats = getCached('categories_all');
     const cachedPlaces = getCached('published_100_');
+    const cachedArticles = getCached('articles_home_3');
     if (Array.isArray(cachedCats) && cachedCats.length > 0) {
       setupHeroSearch(cachedCats);
     }
@@ -123,19 +125,24 @@ export async function renderHomePage($main, { user } = {}) {
       renderStatsBar(cachedPlaces.length, cachedCats?.length || 31);
       warmupSearchEngine(cachedPlaces, cachedCats || []);
     }
+    if (Array.isArray(cachedArticles) && cachedArticles.length > 0) {
+      renderBlogArticles(cachedArticles);
+    }
   } catch (_) {}
 
   let categories = [];
   let allPlaces = [];
   let offers = [];
   let ads = [];
+  let articles = [];
 
   try {
-    const [categoriesRes, placesRes, offersRes, adsRes] = await Promise.allSettled([
+    const [categoriesRes, placesRes, offersRes, adsRes, articlesRes] = await Promise.allSettled([
       getCategories(),
       getPublishedPlaces({ limit: 100 }),
       getActiveOffers(8),
-      getAds('homepage')
+      getAds('homepage'),
+      getArticles({ limit: 6 })
     ]);
 
     categories = (categoriesRes.status === 'fulfilled' && Array.isArray(categoriesRes.value) && categoriesRes.value.length)
@@ -153,12 +160,17 @@ export async function renderHomePage($main, { user } = {}) {
     ads = (adsRes.status === 'fulfilled' && Array.isArray(adsRes.value))
       ? adsRes.value
       : (getCached('ads_homepage') || []);
+
+    articles = (articlesRes.status === 'fulfilled' && Array.isArray(articlesRes.value))
+      ? articlesRes.value
+      : (getCached('articles_home_3') || []);
   } catch (err) {
     console.warn('[Home] Data load non-fatal warning:', err);
     categories = getCached('categories_all') || FALLBACK_CATEGORIES || [];
     allPlaces = getCached('published_100_') || [];
     offers = getCached('offers_active_8') || [];
     ads = getCached('ads_homepage') || [];
+    articles = getCached('articles_home_3') || [];
   }
 
   const currentUser = getCurrentUser() || user;
@@ -192,6 +204,13 @@ export async function renderHomePage($main, { user } = {}) {
   try {
     if (offers && offers.length) renderOffers(offers);
   } catch (e) { console.warn('[Home] renderOffers err:', e); }
+
+  try {
+    if (articles && articles.length) {
+      setCache('articles_home_3', articles);
+    }
+    renderBlogArticles(articles);
+  } catch (e) { console.warn('[Home] renderBlogArticles err:', e); }
 
   try {
     const deliveryPlaces = (allPlaces || []).filter(p => {
@@ -276,55 +295,6 @@ export async function renderHomePage($main, { user } = {}) {
         .catch(e => console.warn('[Home] HomeJobBoardFeed load err:', e));
     } catch (_) {}
 
-    // Local Blog Articles Feed (مقالات المدونة الحصرية للأماكن)
-    try {
-      import('../../services/articles.service.js').then(async ({ getArticles }) => {
-        const blogSection = document.getElementById('home-blog-section');
-        const blogGrid = document.getElementById('home-blog-grid');
-        if (!blogSection || !blogGrid) return;
-        const list = await getArticles({ limit: 3 }).catch(() => []);
-        if (!Array.isArray(list) || !list.length) {
-          blogSection.style.display = 'none';
-          return;
-        }
-        blogSection.style.display = '';
-        blogGrid.innerHTML = list.map(a => {
-          const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
-          const p = a.place || {};
-          const placeHref = '/place/' + encodeURIComponent(p.slug || p.id || '') + '/';
-          const words = String(a.content || '').trim().split(/\s+/).length;
-          const readTime = Math.max(1, Math.ceil(words / 150));
-          const img = a.coverImageUrl
-            ? `<img class="blog-card__image" src="${String(a.coverImageUrl).replace(/"/g,'&quot;')}" alt="${String(a.title||'مقال').replace(/"/g,'&quot;')}" width="640" height="360" loading="lazy" decoding="async">`
-            : `<div class="blog-card__image blog-card__image--placeholder" aria-hidden="true"><span>📝</span></div>`;
-
-          return `
-            <article class="blog-card">
-              <a class="blog-card__image-link" href="${href}" aria-label="${String(a.title||'').replace(/"/g,'&quot;')}">
-                ${img}
-                <div class="blog-card__overlay-gradient" aria-hidden="true"></div>
-                <div class="blog-card__overlay-badge"><span>📍</span> ${String(p.area || 'المنزلة والمطرية').replace(/</g,'&lt;')}</div>
-              </a>
-              <div class="blog-card__body">
-                <div class="blog-card__meta">
-                  ${p.name ? `<a class="blog-card__place-chip" href="${placeHref}" title="${String(p.name).replace(/"/g,'&quot;')}"><span class="blog-card__verified-badge">✓</span><span>${String(p.name).replace(/</g,'&lt;')}</span></a>` : '<span></span>'}
-                  <span class="blog-card__time">⏱️ ${readTime} د قراءة</span>
-                </div>
-                <h3 class="blog-card__title"><a href="${href}">${String(a.title||'').replace(/</g,'&lt;')}</a></h3>
-                <p class="blog-card__excerpt">${String(a.excerpt || a.content || '').slice(0, 130).replace(/</g,'&lt;')}...</p>
-                <div class="blog-card__footer">
-                  <a class="blog-card__read" href="${href}"><span>قراءة المقال كاملاً</span><span class="blog-card__arrow-circle" aria-hidden="true">←</span></a>
-                </div>
-              </div>
-            </article>
-          `;
-        }).join('');
-      }).catch(() => {
-        const sec = document.getElementById('home-blog-section');
-        if (sec) sec.style.display = 'none';
-      });
-    } catch (_) {}
-
     // First visit welcome video popup (1.mp4)
     try {
       checkAndShowFirstVisitVideo();
@@ -336,19 +306,24 @@ export async function renderHomePage($main, { user } = {}) {
     window._homeRealtimeSyncAttached = true;
     window.addEventListener('manzala:realtime_sync', async (event) => {
       try {
-        const [freshPlaces, freshOffers] = await Promise.all([
+        const [freshPlaces, freshOffers, freshArticles] = await Promise.all([
           getPublishedPlaces({ limit: 100, forceFresh: true }).catch(() => []),
-          getActiveOffers(8).catch(() => [])
+          getActiveOffers(8).catch(() => []),
+          getArticles({ limit: 6 }).catch(() => [])
         ]);
         if (freshPlaces && freshPlaces.length) {
-          const user = getCurrentUser() || userArg;
-          const sorted = sortLatestPlaces(freshPlaces, user?.uid);
+          const cu = getCurrentUser() || user;
+          const sorted = sortLatestPlaces(freshPlaces, cu?.uid);
           renderLatestPlaces(sorted.slice(0, 8));
           initHomeVerifiedShowcase(freshPlaces);
           warmupSearchEngine(freshPlaces, getCached('categories_all') || []);
         }
         if (freshOffers && freshOffers.length) {
           renderOffers(freshOffers);
+        }
+        if (freshArticles && freshArticles.length) {
+          setCache('articles_home_3', freshArticles);
+          renderBlogArticles(freshArticles);
         }
       } catch (err) {
         console.warn('[Home Realtime Sync Error]:', err);
@@ -620,6 +595,129 @@ function renderLatestPlaces(places) {
   }
 
   grid.innerHTML = places.map(p => renderPlaceCard(p)).join('');
+}
+
+function renderBlogSkeletonCards(count = 3) {
+  return Array(count).fill(0).map(() => `
+    <div class="blog-card blog-card--skeleton" style="pointer-events:none">
+      <div class="skeleton" style="aspect-ratio:16/9;width:100%;border-radius:20px 20px 0 0"></div>
+      <div class="blog-card__body">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+          <div class="skeleton" style="height:20px;width:35%;border-radius:999px"></div>
+          <div class="skeleton" style="height:18px;width:25%;border-radius:4px"></div>
+        </div>
+        <div class="skeleton" style="height:22px;width:85%;margin-bottom:8px;border-radius:6px"></div>
+        <div class="skeleton" style="height:18px;width:60%;margin-bottom:14px;border-radius:6px"></div>
+        <div class="skeleton" style="height:14px;width:100%;margin-bottom:6px;border-radius:4px"></div>
+        <div class="skeleton" style="height:14px;width:75%;margin-bottom:18px;border-radius:4px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--border,#eee)">
+          <div class="skeleton" style="height:20px;width:40%;border-radius:6px"></div>
+          <div class="skeleton" style="height:28px;width:28px;border-radius:50%"></div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderBlogArticles(articles) {
+  const section = document.getElementById('home-blog-section');
+  const grid = document.getElementById('home-blog-grid');
+  if (!grid) return;
+
+  if (!articles || !articles.length) {
+    if (!grid.querySelector('.blog-card:not(.blog-card--skeleton)')) {
+      if (section) section.style.display = 'none';
+    }
+    return;
+  }
+
+  if (section) section.style.display = '';
+
+  // Single article -> render Spotlight Feature Card
+  if (articles.length === 1) {
+    const a = articles[0];
+    const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
+    const p = a.place || {};
+    const placeHref = '/place/' + encodeURIComponent(p.slug || p.id || '') + '/';
+    const words = String(a.content || '').trim().split(/\s+/).length;
+    const readTime = Math.max(1, Math.ceil(words / 150));
+    const coverUrl = a.coverImageUrl || p.cover_image_url || '';
+    const imgHtml = coverUrl
+      ? `<img class="blog-card__image" src="${escAttr(coverUrl)}" alt="${escAttr(a.title || 'مقال')}" width="720" height="420" loading="lazy" decoding="async">`
+      : `<div class="blog-card__image blog-card__image--placeholder" aria-hidden="true"><span>📝</span></div>`;
+
+    grid.className = 'blog-grid-single';
+    grid.innerHTML = `
+      <article class="blog-card blog-card--featured">
+        <a class="blog-card__image-link" href="${href}" aria-label="${escAttr(a.title || '')}">
+          ${imgHtml}
+          <div class="blog-card__overlay-gradient" aria-hidden="true"></div>
+          <div class="blog-card__overlay-badge"><span>📍</span> ${escHtml(p.area || 'المنزلة والمطرية')}</div>
+          <div class="blog-card__featured-tag"><span>⭐</span> مقال الأسبوع المختار</div>
+        </a>
+        <div class="blog-card__body">
+          <div class="blog-card__meta">
+            ${p.name ? `<a class="blog-card__place-chip" href="${placeHref}" title="${escAttr(p.name)}"><span class="blog-card__verified-badge">✓</span><span>${escHtml(p.name)}</span></a>` : '<span></span>'}
+            <span class="blog-card__time">⏱️ ${readTime} دقائق قراءة</span>
+          </div>
+          <h3 class="blog-card__title blog-card__title--featured">
+            <a href="${href}">${escHtml(a.title || '')}</a>
+          </h3>
+          <p class="blog-card__excerpt blog-card__excerpt--featured">
+            ${escHtml(String(a.excerpt || a.content || '').slice(0, 220))}...
+          </p>
+          <div class="blog-card__footer">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <a class="btn btn-primary btn-sm" href="${href}" style="display:inline-flex;align-items:center;gap:8px;font-weight:800;border-radius:999px;padding:8px 18px">
+                <span>قراءة المقال كاملاً</span>
+                <span aria-hidden="true">←</span>
+              </a>
+              ${p.name ? `<a class="btn btn-ghost btn-sm" href="${placeHref}" style="font-size:0.84rem;color:var(--text-muted)">صفحة المكان 🏪</a>` : ''}
+            </div>
+            <a class="blog-card__read" href="${href}" aria-label="قراءة المقال">
+              <span class="blog-card__arrow-circle" aria-hidden="true">←</span>
+            </a>
+          </div>
+        </div>
+      </article>
+    `;
+    return;
+  }
+
+  // 2 or more articles -> responsive luxury grid
+  grid.className = 'blog-grid';
+  grid.innerHTML = articles.map(a => {
+    const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
+    const p = a.place || {};
+    const placeHref = '/place/' + encodeURIComponent(p.slug || p.id || '') + '/';
+    const words = String(a.content || '').trim().split(/\s+/).length;
+    const readTime = Math.max(1, Math.ceil(words / 150));
+    const coverUrl = a.coverImageUrl || p.cover_image_url || '';
+    const imgHtml = coverUrl
+      ? `<img class="blog-card__image" src="${escAttr(coverUrl)}" alt="${escAttr(a.title || 'مقال')}" width="640" height="360" loading="lazy" decoding="async">`
+      : `<div class="blog-card__image blog-card__image--placeholder" aria-hidden="true"><span>📝</span></div>`;
+
+    return `
+      <article class="blog-card">
+        <a class="blog-card__image-link" href="${href}" aria-label="${escAttr(a.title || '')}">
+          ${imgHtml}
+          <div class="blog-card__overlay-gradient" aria-hidden="true"></div>
+          <div class="blog-card__overlay-badge"><span>📍</span> ${escHtml(p.area || 'المنزلة والمطرية')}</div>
+        </a>
+        <div class="blog-card__body">
+          <div class="blog-card__meta">
+            ${p.name ? `<a class="blog-card__place-chip" href="${placeHref}" title="${escAttr(p.name)}"><span class="blog-card__verified-badge">✓</span><span>${escHtml(p.name)}</span></a>` : '<span></span>'}
+            <span class="blog-card__time">⏱️ ${readTime} د قراءة</span>
+          </div>
+          <h3 class="blog-card__title"><a href="${href}">${escHtml(a.title || '')}</a></h3>
+          <p class="blog-card__excerpt">${escHtml(String(a.excerpt || a.content || '').slice(0, 130))}...</p>
+          <div class="blog-card__footer">
+            <a class="blog-card__read" href="${href}"><span>قراءة المقال كاملاً</span><span class="blog-card__arrow-circle" aria-hidden="true">←</span></a>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
 }
 
 function renderOffers(offers) {
@@ -1946,15 +2044,30 @@ function getHomeHTML() {
     </section>
 
     <!-- Local Blog Section -->
-    <section class="section" id="home-blog-section" style="background:var(--surface);padding-block:var(--space-10);display:none">
+    <section class="section home-blog-section" id="home-blog-section" style="background:var(--surface);padding-block:var(--space-10)">
       <div class="container">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">
-          <h2 class="section-title">
-            <span>📝</span> مقالات وأخبار حصرية
-          </h2>
-          <a href="/blog/" class="section-link">عرض الكل ←</a>
+        <div class="home-blog-header" style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:var(--space-6);flex-wrap:wrap;gap:16px">
+          <div>
+            <div class="home-blog-header__tag">
+              <span>✍️</span> مدونة وتغطيات المنزلة والمطرية
+            </div>
+            <h2 class="section-title" style="margin:0 0 6px">
+              <span>📝</span> مقالات وتغطيات حصرية للأماكن
+            </h2>
+            <p style="margin:0;color:var(--text-muted,#64748b);font-size:0.9rem">
+              قصص وتفاصيل مميزة، نصائح موثقة، واستكشاف حصري لأفضل المحلات والأنشطة والخدمات
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <a href="/blog/" class="btn btn-outline btn-sm" style="display:inline-flex;align-items:center;gap:6px">
+              <span>تصفح كل المقالات</span>
+              <span aria-hidden="true">←</span>
+            </a>
+          </div>
         </div>
-        <div class="blog-grid" id="home-blog-grid"></div>
+        <div class="blog-grid" id="home-blog-grid">
+          ${renderBlogSkeletonCards(3)}
+        </div>
       </div>
     </section>
 
