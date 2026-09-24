@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://dalilmanzala.com/en/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/"/>
@@ -11,7 +11,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/places/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/places.html"/>
@@ -20,7 +20,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/categories/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/categories.html"/>
@@ -29,7 +29,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/manzala/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/manzala.html"/>
@@ -38,7 +38,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/matariya/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/matariya.html"/>
@@ -47,7 +47,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/emergency/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/emergency.html"/>
@@ -56,7 +56,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/about.html</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/about.html"/>
@@ -65,7 +65,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/contact/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/contact.html"/>
@@ -74,7 +74,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/privacy/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/privacy.html"/>
@@ -83,7 +83,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/terms/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/terms.html"/>
@@ -92,7 +92,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/legal/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/legal.html"/>
@@ -101,7 +101,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/hadith/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/hadith.html"/>
@@ -110,7 +110,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/quran/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/quran.html"/>
@@ -119,7 +119,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/quran-search/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/quran-search.html"/>
@@ -128,7 +128,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/en/quran-surah/</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/quran-surah.html"/>
@@ -137,7 +137,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/prayer-times.html</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/prayer-times.html"/>
@@ -146,7 +146,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/qibla.html</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/qibla.html"/>
@@ -155,7 +155,7 @@
   </url>
   <url>
     <loc>https://dalilmanzala.com/free-verification.html</loc>
-    <lastmod>2026-09-23</lastmod>
+    <lastmod>2026-09-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/free-verification.html"/>
