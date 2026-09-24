@@ -163,6 +163,122 @@ function card(article) {
     '</div></article>';
 }
 
+function renderSiteHeader(active = 'blog') {
+  return '<header class="header" id="site-header" role="banner">' +
+    '<div class="container header__inner">' +
+      '<a href="/index.html" class="header__logo" aria-label="دليل المنزلة والمطرية">' +
+        '<img src="/icons/icon-96x96.png" alt="دليل المنزلة والمطرية" width="36" height="36" class="header__logo-img" onerror="this.src=\'/favicon-48x48.png\';">' +
+        '<div class="header__logo-text"><span class="header__logo-name">دليل المنزلة والمطرية</span></div>' +
+      '</a>' +
+      '<div class="header-search-expandable" id="header-search-container" role="search">' +
+        '<div class="header-search-pill" id="header-search-pill">' +
+          '<button type="button" class="header-search-btn-trigger" id="header-search-trigger" aria-label="بحث في الدليل" title="بحث سريع في المنزلة والمطرية">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>' +
+          '</button>' +
+          '<input type="search" id="header-search-input" class="header-search-input" placeholder="ابحث عن مكان، دكتور، خدمة..." autocomplete="off" aria-label="ابحث عن مكان، دكتور، خدمة...">' +
+          '<button type="button" class="header-search-clear-btn" id="header-search-clear" aria-label="مسح" title="مسح">✕</button>' +
+        '</div>' +
+        '<div class="header-live-dropdown" id="header-live-dropdown" aria-live="polite">' +
+          '<div class="header-live-dropdown__header"><span>⚡ مقترحات سريعة:</span><span class="header-live-dropdown__count" id="header-live-count">0</span></div>' +
+          '<div class="header-live-dropdown__list" id="header-live-list"></div>' +
+          '<div class="header-live-dropdown__footer"><a href="/search.html" class="header-live-dropdown__all-btn"><span>عرض كافة النتائج في صفحة البحث</span><span>←</span></a></div>' +
+        '</div>' +
+      '</div>' +
+      '<nav class="header__nav" aria-label="التنقل الرئيسي">' +
+        '<a href="/index.html" class="header__nav-link"><span>الرئيسية</span></a>' +
+        '<a href="/places.html" class="header__nav-link"><span>الأماكن</span></a>' +
+        '<a href="/categories.html" class="header__nav-link"><span>التصنيفات</span></a>' +
+        '<a href="/offers.html" class="header__nav-link"><span>العروض</span></a>' +
+        '<a href="/blog" class="header__nav-link' + (active === 'blog' ? ' active' : '') + '"><span>المدونة</span><span class="header__nav-emoji">📰</span></a>' +
+        '<a href="/now.html" class="header__nav-link"><span>طلبات أهالينا</span><span class="header__nav-emoji">🤝</span></a>' +
+        '<a href="/around-me.html" class="header__nav-link"><span>بالقرب مني</span><span class="header__nav-emoji">🧭</span></a>' +
+        '<a href="/favorites.html" class="header__nav-link"><span>المفضلة</span><span class="header__nav-emoji">❤️</span></a>' +
+      '</nav>' +
+      '<button type="button" class="lang-toggle-btn" id="lang-toggle-btn" aria-label="Switch to English version" title="Switch to English version">' +
+        '<img src="/assets/icons/flags/us.svg" alt="US Flag - Switch to English" class="lang-flag-icon" width="26" height="19" loading="eager">' +
+      '</button>' +
+      '<button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="تبديل الوضع الليلي" title="تبديل الوضع الليلي / الفاتح">' +
+        '<span class="theme-icon-light">☀️</span><span class="theme-icon-dark">🌙</span>' +
+      '</button>' +
+      '<div class="header__user" id="header-user-section">' +
+        '<a href="/login.html" class="btn btn-primary btn-sm"><span>🔑</span> دخول</a>' +
+      '</div>' +
+    '</div>' +
+  '</header>';
+}
+
+function renderSiteFooter() {
+  return '<footer class="footer" id="site-footer" role="contentinfo">' +
+    '<div class="container">' +
+      '<div class="footer__grid">' +
+        '<div class="footer__brand">' +
+          '<a href="/index.html" class="footer__logo">' +
+            '<img src="/icons/icon-96x96.png" alt="دليل المنزلة والمطرية الرقمي" width="40" height="40" onerror="this.src=\'/favicon-48x48.png\';">' +
+            '<span class="footer__logo-name">دليل المنزلة والمطرية الرقمي</span>' +
+          '</a>' +
+          '<p class="footer__description">دليلك الرقمي الشامل لجميع الأماكن، المحلات، العيادات، الحرفيين والخدمات في المنزلة والمطرية والمناطق المجاورة بالدقهلية.</p>' +
+          '<div class="footer__app-stores" aria-label="تحميل تطبيق دليل المنزلة والمطرية">' +
+            '<button type="button" class="app-store-btn app-store-btn--google" data-store="google" aria-label="احصل عليه من Google Play (قريباً)" title="Google Play — قريباً بإذن الله">' +
+              '<span class="app-store-btn__badge">قريباً</span>' +
+              '<div class="app-store-btn__icon"><svg viewBox="0 0 24 24" width="22" height="22" style="width:22px;height:22px;max-width:22px;max-height:22px;flex-shrink:0" aria-hidden="true"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg></div>' +
+              '<div class="app-store-btn__text"><span class="app-store-btn__sub">احصل عليه من</span><span class="app-store-btn__title">Google Play</span></div>' +
+            '</button>' +
+            '<button type="button" class="app-store-btn app-store-btn--apple" data-store="apple" aria-label="حمله من App Store (قريباً)" title="App Store — قريباً بإذن الله">' +
+              '<span class="app-store-btn__badge">قريباً</span>' +
+              '<div class="app-store-btn__icon"><svg viewBox="0 0 24 24" width="22" height="22" style="width:22px;height:22px;max-width:22px;max-height:22px;flex-shrink:0" fill="#ffffff" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.84.94-2.91-.91.04-2.02.61-2.67 1.38-.58.67-1.08 1.76-.94 2.8.03.01.07.01.11.01.93 0 1.94-.52 2.56-1.28z"/></svg></div>' +
+              '<div class="app-store-btn__text"><span class="app-store-btn__sub">حمله من</span><span class="app-store-btn__title">App Store</span></div>' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="footer__column">' +
+          '<h3 class="footer__col-title">روابط سريعة</h3>' +
+          '<ul class="footer__links">' +
+            '<li><a href="/index.html" class="footer__link">الصفحة الرئيسية</a></li>' +
+            '<li><a href="/places.html" class="footer__link">دليل الأماكن</a></li>' +
+            '<li><a href="/categories.html" class="footer__link">التصنيفات</a></li>' +
+            '<li><a href="/offers.html" class="footer__link">العروض</a></li>' +
+            '<li><a href="/blog" class="footer__link">المدونة</a></li>' +
+            '<li><a href="/favorites.html" class="footer__link">المفضلة</a></li>' +
+            '<li><a href="/about.html" class="footer__link">عن الدليل</a></li>' +
+          '</ul>' +
+        '</div>' +
+        '<div class="footer__column">' +
+          '<h3 class="footer__col-title">الخدمات والدليل</h3>' +
+          '<ul class="footer__links">' +
+            '<li><a href="/dashboard.html?section=add" class="footer__link">إضافة مكان</a></li>' +
+            '<li><a href="/dashboard.html" class="footer__link">لوحة التحكم</a></li>' +
+            '<li><a href="/free-verification.html" class="footer__link">التوثيق المجاني</a></li>' +
+            '<li><a href="/emergency.html" class="footer__link">خدمات الطوارئ</a></li>' +
+            '<li><a href="/search.html" class="footer__link">البحث في الدليل</a></li>' +
+            '<li><a href="/now.html" class="footer__link">طلبات أهالينا</a></li>' +
+          '</ul>' +
+        '</div>' +
+        '<div class="footer__column">' +
+          '<h3 class="footer__col-title">المساعدة والتواصل</h3>' +
+          '<ul class="footer__links">' +
+            '<li><a href="/legal.html" class="footer__link">السياسة القانونية</a></li>' +
+            '<li><a href="/contact.html" class="footer__link">تواصل معنا</a></li>' +
+            '<li><a href="/terms.html" class="footer__link">الشروط والأحكام</a></li>' +
+            '<li><a href="/privacy.html" class="footer__link">الخصوصية</a></li>' +
+            '<li><a href="/manzala.html" class="footer__link">عن المنزلة</a></li>' +
+            '<li><a href="/matariya.html" class="footer__link">عن المطرية</a></li>' +
+          '</ul>' +
+        '</div>' +
+      '</div>' +
+      '<div class="footer__bottom">' +
+        '<p class="footer__copyright">© 2026 دليل المنزلة والمطرية الرقمي. جميع الحقوق محفوظة.</p>' +
+        '<div class="footer__bottom-links">' +
+          '<a href="/blog" class="footer__bottom-link">المدونة</a>' +
+          '<a href="/about.html" class="footer__bottom-link">عن الدليل</a>' +
+          '<a href="/privacy.html" class="footer__bottom-link">الخصوصية</a>' +
+          '<a href="/terms.html" class="footer__bottom-link">الشروط</a>' +
+          '<a href="/contact.html" class="footer__bottom-link">تواصل</a>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</footer>';
+}
+
 function css() {
   return '<style>' +
   '@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap");' +
@@ -179,11 +295,11 @@ function css() {
     '--blog-bg:#f8fafc;' +
   '}' +
   '*{box-sizing:border-box}' +
-  'body{margin:0;font-family:var(--font-sans);background:var(--blog-bg);color:var(--blog-text-body);direction:rtl;text-align:right;line-height:1.8;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}' +
+  'body{margin:0;padding-top:var(--header-height,64px);font-family:var(--font-sans);background:var(--blog-bg);color:var(--blog-text-body);direction:rtl;text-align:right;line-height:1.8;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}' +
   
-  '#readingProgressBar{position:fixed;top:0;left:0;height:3.5px;background:linear-gradient(90deg,#0f766e,#06b6d4,#10b981);z-index:99999;width:0%;transition:width .1s ease-out}' +
+  '#readingProgressBar{position:fixed;top:var(--header-height,64px);left:0;height:3.5px;background:linear-gradient(90deg,#0f766e,#06b6d4,#10b981);z-index:99999;width:0%;transition:width .1s ease-out}' +
   
-  '.article-nav-wrap{background:rgba(255,255,255,.94);border-bottom:1px solid var(--blog-border);position:sticky;top:0;z-index:1000;backdrop-filter:blur(10px)}' +
+  '.article-nav-wrap{background:rgba(255,255,255,.94);border-bottom:1px solid var(--blog-border);position:relative;z-index:10;backdrop-filter:blur(10px)}' +
   '.article-nav-container{max-width:1240px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}' +
   '.article-breadcrumb{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--blog-muted);flex-wrap:wrap}' +
   '.article-breadcrumb a{color:var(--blog-primary);text-decoration:none;font-weight:700;transition:color .2s}' +
@@ -668,11 +784,19 @@ export async function handleArticlePublicPage(request, url, env) {
 
     const html='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<title>'+esc(title)+'</title><meta name="description" content="'+esc(desc)+'"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">' +
-      '<link rel="canonical" href="'+SITE+'/blog/"><meta property="og:type" content="website"><meta property="og:url" content="'+SITE+'/blog/"><meta property="og:title" content="'+esc(title)+'"><meta property="og:description" content="'+esc(desc)+'">'+css()+
+      '<link rel="canonical" href="'+SITE+'/blog/"><meta property="og:type" content="website"><meta property="og:url" content="'+SITE+'/blog/"><meta property="og:title" content="'+esc(title)+'"><meta property="og:description" content="'+esc(desc)+'">' +
+      '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+      '<link rel="stylesheet" href="/src/css/main.css?v=20260924_05">' +
+      css()+
       '<script type="application/ld+json">' + JSON.stringify(blogSchema) + '</script>' +
       '</head><body>' +
+      '<div id="header-slot">' + renderSiteHeader('blog') + '</div>' +
       '<div class="article-nav-wrap"><div class="article-nav-container"><div class="article-breadcrumb"><a href="/">الرئيسية</a><span class="sep">/</span><span>المدونة الرسمية</span></div><a href="/" class="nav-home-btn">🏠 دليل المنزلة والمطرية</a></div></div>' +
-      '<main class="blog-page"><header class="blog-hero"><div class="blog-hero__badge">📰 المقالات والأخبار الحصرية</div><h1>'+esc(title)+'</h1><p>'+esc(desc)+'</p>' + tickerHtml + '</header><section class="blog-grid" aria-label="أحدث المقالات">'+gridContent+'</section></main></body></html>';
+      '<main class="blog-page"><header class="blog-hero"><div class="blog-hero__badge">📰 المقالات والأخبار الحصرية</div><h1>'+esc(title)+'</h1><p>'+esc(desc)+'</p>' + tickerHtml + '</header><section class="blog-grid" aria-label="أحدث المقالات">'+gridContent+'</section></main>' +
+      '<div id="footer-slot">' + renderSiteFooter() + '</div>' +
+      '<div id="nav-slot"></div>' +
+      '<script type="module">import { initPage } from "/src/js/core/page-shell.js?v=20260924_04"; initPage("blog").catch(function(e){console.warn(e);});</script>' +
+      '</body></html>';
     return new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'public,max-age=60'}});
   }
 
@@ -886,12 +1010,15 @@ export async function handleArticlePublicPage(request, url, env) {
     '<meta name="twitter:title" content="' + esc(article.title) + '">' +
     '<meta name="twitter:description" content="' + esc(article.excerpt || article.content.slice(0, 180)) + '">' +
     '<meta name="twitter:image" content="' + esc(article.coverImageUrl || SITE + '/assets/images/og-whatsapp.jpg') + '">' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+    '<link rel="stylesheet" href="/src/css/main.css?v=20260924_05">' +
     css() +
     '<script type="application/ld+json">' + JSON.stringify(schema) + '</script>' +
     '<script type="application/ld+json">' + JSON.stringify(breadcrumb) + '</script>' +
     (faqSchema ? '<script type="application/ld+json">' + JSON.stringify(faqSchema) + '</script>' : '') +
     '</head><body>' +
     '<div id="readingProgressBar"></div>' +
+    '<div id="header-slot">' + renderSiteHeader('blog') + '</div>' +
     '<div class="article-nav-wrap"><div class="article-nav-container"><div class="article-breadcrumb"><a href="/">الرئيسية</a><span class="sep">/</span><a href="/blog/">المدونة</a><span class="sep">/</span><a href="' + esc(placeUrl) + '">' + esc(place.name || 'المكان') + '</a><span class="sep">/</span><span>' + esc(article.title) + '</span></div><a href="' + esc(placeUrl) + '" class="nav-home-btn">🏪 صفحة النشاط</a></div></div>' +
     '<main class="article-page">' +
       '<article class="article-shell">' +
@@ -917,7 +1044,10 @@ export async function handleArticlePublicPage(request, url, env) {
         '</div>' +
       '</article>' +
     '</main>' +
+    '<div id="footer-slot">' + renderSiteFooter() + '</div>' +
+    '<div id="nav-slot"></div>' +
     clientScript +
+    '<script type="module">import { initPage } from "/src/js/core/page-shell.js?v=20260924_04"; initPage("blog").catch(function(e){console.warn(e);});</script>' +
     '</body></html>';
 
   return new Response(html, {

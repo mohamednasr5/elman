@@ -383,6 +383,8 @@ async function notifyIndexNow(urls) {
 
     // Ping search engines with sitemaps (Google & Bing)
     await Promise.allSettled([
+      fetch('https://www.google.com/ping?sitemap=' + encodeURIComponent('https://dalilmanzala.com/blog_sitemap.xml')),
+      fetch('https://www.bing.com/ping?sitemap=' + encodeURIComponent('https://dalilmanzala.com/blog_sitemap.xml')),
       fetch('https://www.google.com/ping?sitemap=' + encodeURIComponent('https://dalilmanzala.com/sitemap-articles-ar.xml')),
       fetch('https://www.bing.com/ping?sitemap=' + encodeURIComponent('https://dalilmanzala.com/sitemap-articles-ar.xml')),
       fetch('https://www.google.com/ping?sitemap=' + encodeURIComponent('https://dalilmanzala.com/sitemap.xml')),
@@ -498,6 +500,7 @@ async function handleDynamicSitemap(request, url, env, ctx) {
       'sitemap-places-ar.xml',
       'sitemap-places-en.xml',
       'sitemap-articles-ar.xml',
+      'blog_sitemap.xml',
       'sitemap-categories-ar.xml',
       'sitemap-categories-en.xml',
       'sitemap-static-ar.xml',
@@ -533,17 +536,19 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n` +
       entries.join('\n') +
       `\n</urlset>\n`;
-  } else if (p === '/sitemap-articles-ar.xml') {
+  } else if (p === '/sitemap-articles-ar.xml' || p === '/blog_sitemap.xml' || p === '/blog-sitemap.xml') {
     const db = createTursoDB(env);
     const rows = (await db.prepare("SELECT a.slug, a.title, a.cover_image_url, a.updated_at, a.created_at FROM articles a JOIN places p ON p.id=a.place_id WHERE a.status='published' AND p.status='published' ORDER BY COALESCE(a.updated_at,a.created_at) DESC").all().catch(() => ({results:[]}))).results || [];
+    const blogMainEntry = `  <url>\n    <loc>${site}/blog/</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>`;
     const entries = rows.map(r => {
       const slug = encodeURIComponent(String(r.slug || '').trim());
       const d = r.updated_at || r.created_at ? new Date(r.updated_at || r.created_at) : null;
       const lm = d && !Number.isNaN(d.getTime()) ? `\n    <lastmod>${d.toISOString().slice(0,10)}</lastmod>` : '';
       const img = r.cover_image_url ? `\n    <image:image>\n      <image:loc>${esc(abs(r.cover_image_url))}</image:loc>\n      <image:title>${esc(r.title||'')}</image:title>\n    </image:image>` : '';
       return `  <url>\n    <loc>${site}/article/${slug}/</loc>${lm}\n    <changefreq>weekly</changefreq>\n    <priority>0.85</priority>${img}\n  </url>`;
-    }).join('\n');
-    xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${entries}\n</urlset>\n`;
+    });
+    const allEntries = [blogMainEntry, ...entries].join('\n');
+    xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${allEntries}\n</urlset>\n`;
   } else if (p === '/sitemap-categories-ar.xml' || p === '/sitemap-categories-en.xml') {
     const isEn = p === '/sitemap-categories-en.xml';
     const db = createTursoDB(env);
@@ -1057,6 +1062,7 @@ Sitemap: https://dalilmanzala.com/sitemap-categories-en.xml
 Sitemap: https://dalilmanzala.com/sitemap-static-ar.xml
 Sitemap: https://dalilmanzala.com/sitemap-static-en.xml
 Sitemap: https://dalilmanzala.com/sitemap-articles-ar.xml
+Sitemap: https://dalilmanzala.com/blog_sitemap.xml
 `;
 
   return new Response(robotsContent, {
@@ -1162,6 +1168,8 @@ if (url.pathname === '/index.html') {
 
 // ── Dynamic SEO Sitemaps & IndexNow Verification ──────────────
 if ((url.pathname.startsWith('/sitemap') && url.pathname.endsWith('.xml')) ||
+    url.pathname === '/blog_sitemap.xml' ||
+    url.pathname === '/blog-sitemap.xml' ||
     url.pathname === '/indexnow-key.txt' ||
     url.pathname === `/${INDEXNOW_KEY}.txt`) {
   const sitemapResponse = await handleDynamicSitemap(request, url, env, ctx);
@@ -1217,7 +1225,9 @@ try {
             const cache = caches.default;
             ctx.waitUntil(Promise.allSettled([
               cache.delete(new Request('https://cache.local/sitemap/v2/sitemap.xml')),
-              cache.delete(new Request('https://cache.local/sitemap/v2/sitemap-articles-ar.xml'))
+              cache.delete(new Request('https://cache.local/sitemap/v2/sitemap-articles-ar.xml')),
+              cache.delete(new Request('https://cache.local/sitemap/v2/blog_sitemap.xml')),
+              cache.delete(new Request('https://cache.local/sitemap/v2/blog-sitemap.xml'))
             ]));
           } catch (_) {}
           ctx.waitUntil(safeBackgroundNotify('new_article', {

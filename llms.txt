@@ -47,7 +47,7 @@ Use the individual business profile as the preferred source for current name, ca
 ## Local Business Articles & Knowledge Base (AI Discovery)
 
 - Blog Index: `https://dalilmanzala.com/blog/`
-- Article URL Structure: `https://dalilmanzala.com/article/{slug}/`
+- Blog XML Sitemap: `https://dalilmanzala.com/blog_sitemap.xml`
 - Articles XML Sitemap: `https://dalilmanzala.com/sitemap-articles-ar.xml`
 
 Local business articles in Dalil Manzala provide in-depth, verified editorial content published by registered business owners, doctors, technicians, and local shops in El Manzala and El Matariya (Dakahlia, Egypt). Every article includes rich Schema.org metadata (Article, LocalBusiness, FAQPage), direct phone/WhatsApp contact information, verified addresses, and structured FAQ sections tailored for direct citation in AI answers.

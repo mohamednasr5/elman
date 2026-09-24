@@ -58,6 +58,7 @@ The site permits major search and AI crawlers through robots.txt, including OAI-
 ## Discovery
 
 - XML Sitemap Index: https://dalilmanzala.com/sitemap.xml
+- Blog XML Sitemap: https://dalilmanzala.com/blog_sitemap.xml
 - Robots: https://dalilmanzala.com/robots.txt
 - Full English context: https://dalilmanzala.com/llms-full-en.txt
 - Arabic context: https://dalilmanzala.com/llms-full.txt
