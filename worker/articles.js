@@ -795,7 +795,7 @@ export async function handleArticlePublicPage(request, url, env) {
       '<main class="blog-page"><header class="blog-hero"><div class="blog-hero__badge">📰 المقالات والأخبار الحصرية</div><h1>'+esc(title)+'</h1><p>'+esc(desc)+'</p>' + tickerHtml + '</header><section class="blog-grid" aria-label="أحدث المقالات">'+gridContent+'</section></main>' +
       '<div id="footer-slot">' + renderSiteFooter() + '</div>' +
       '<div id="nav-slot"></div>' +
-      '<script type="module">import { initPage } from "/src/js/core/page-shell.js?v=20260924_04"; initPage("blog").catch(function(e){console.warn(e);});</script>' +
+      '<script type="module">import { initPage } from "/src/js/core/page-shell.js?v=20260924_06"; initPage("blog").catch(function(e){console.warn(e);});</script>' +
       '</body></html>';
     return new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'public,max-age=60'}});
   }
@@ -1047,7 +1047,7 @@ export async function handleArticlePublicPage(request, url, env) {
     '<div id="footer-slot">' + renderSiteFooter() + '</div>' +
     '<div id="nav-slot"></div>' +
     clientScript +
-    '<script type="module">import { initPage } from "/src/js/core/page-shell.js?v=20260924_04"; initPage("blog").catch(function(e){console.warn(e);});</script>' +
+    '<script type="module">import { initPage } from "/src/js/core/page-shell.js?v=20260924_06"; initPage("blog").catch(function(e){console.warn(e);});</script>' +
     '</body></html>';
 
   return new Response(html, {

@@ -10,7 +10,7 @@ try {
   const messaging=firebase.messaging();
   messaging.onBackgroundMessage(payload=>{const title=payload.notification?.title||payload.data?.title||'دليل المنزلة والمطرية 🔔';const body=payload.notification?.body||payload.data?.body||payload.data?.message||'تنبيه جديد في دليل المنزلة والمطرية';const url=payload.data?.url||payload.data?.actionUrl||payload.notification?.click_action||'./';eventlessNotification(title,body,url,payload)});
 } catch(err) { console.warn('[SW] Firebase messaging init warning:', err); }
-const CACHE_VERSION='v5.7.5-blog-sitemap-header-footer';
+const CACHE_VERSION='v5.7.6-btt-circular-progress';
 const STATIC_CACHE='manzala-static-'+CACHE_VERSION;
 const DYNAMIC_CACHE='manzala-dynamic-'+CACHE_VERSION;
 const IMAGE_CACHE='manzala-images-'+CACHE_VERSION;

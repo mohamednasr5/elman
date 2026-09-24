@@ -596,35 +596,167 @@ function installBackToTop() {
   const existing = document.getElementById('global-back-to-top');
   if (existing) return;
 
+  if (!document.getElementById('global-btt-css')) {
+    const style = document.createElement('style');
+    style.id = 'global-btt-css';
+    style.textContent = `
+      #global-back-to-top {
+        position: fixed;
+        right: 22px;
+        bottom: 24px;
+        z-index: 1200;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        border: none;
+        padding: 0;
+        margin: 0;
+        background: rgba(255, 255, 255, 0.98);
+        color: #1e293b;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(0, 0, 0, 0.06);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        opacity: 0;
+        transform: translateY(16px) scale(0.85);
+        pointer-events: none;
+        transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background 0.2s ease;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      [data-theme="dark"] #global-back-to-top,
+      body.dark-theme #global-back-to-top {
+        background: rgba(15, 23, 42, 0.95);
+        color: #f8fafc;
+        box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+      }
+      #global-back-to-top.is-visible {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+      }
+      #global-back-to-top:hover {
+        transform: translateY(-4px) scale(1.06);
+        box-shadow: 0 12px 28px rgba(15, 76, 92, 0.24), 0 4px 10px rgba(0, 0, 0, 0.08);
+      }
+      #global-back-to-top:active {
+        transform: translateY(-1px) scale(0.96);
+      }
+      #global-back-to-top .btt-progress-svg {
+        position: absolute;
+        inset: -1px;
+        width: calc(100% + 2px);
+        height: calc(100% + 2px);
+        pointer-events: none;
+      }
+      #global-back-to-top .btt-track-circle {
+        stroke: rgba(15, 76, 92, 0.12);
+      }
+      [data-theme="dark"] #global-back-to-top .btt-track-circle,
+      body.dark-theme #global-back-to-top .btt-track-circle {
+        stroke: rgba(255, 255, 255, 0.14);
+      }
+      #global-back-to-top .btt-progress-circle {
+        stroke: url(#bttProgressGradient);
+        transition: stroke-dashoffset 0.06s linear;
+      }
+      #global-back-to-top .btt-icon-wrap {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.22s ease;
+      }
+      #global-back-to-top:hover .btt-icon-wrap {
+        transform: translateY(-2px);
+      }
+      #global-back-to-top .btt-chevron-svg {
+        display: block;
+      }
+      @media (max-width: 768px) {
+        #global-back-to-top {
+          right: 16px;
+          bottom: calc(var(--bottom-nav-height, 64px) + 14px + env(safe-area-inset-bottom, 0px));
+          width: 48px;
+          height: 48px;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   const btn = document.createElement('button');
   btn.id = 'global-back-to-top';
   btn.type = 'button';
   btn.setAttribute('aria-label', isEnglish() ? 'Back to top' : 'العودة إلى أعلى الصفحة');
   btn.title = isEnglish() ? 'Back to top' : 'العودة إلى أعلى الصفحة';
-  btn.innerHTML = '<span aria-hidden="true">⌃</span>';
-  btn.style.cssText = [
-    'position:fixed','right:22px','bottom:24px','z-index:1200',
-    'width:52px','height:52px','border-radius:50%','border:1px solid rgba(15,76,92,.18)',
-    'background:rgba(255,255,255,.96)','color:#334155','box-shadow:0 8px 24px rgba(15,23,42,.14)',
-    'display:grid','place-items:center','font-size:25px','font-weight:900',
-    'cursor:pointer','opacity:0','transform:translateY(12px)','pointer-events:none',
-    'transition:opacity .2s ease,transform .2s ease'
-  ].join(';');
+
+  const CIRCUMFERENCE = 144.51; // 2 * PI * 23
+
+  btn.innerHTML = `
+    <svg class="btt-progress-svg" viewBox="0 0 54 54" width="54" height="54" aria-hidden="true">
+      <defs>
+        <linearGradient id="bttProgressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0284c7"/>
+          <stop offset="50%" stop-color="#0f766e"/>
+          <stop offset="100%" stop-color="#10b981"/>
+        </linearGradient>
+      </defs>
+      <circle class="btt-track-circle" cx="27" cy="27" r="23" fill="none" stroke-width="3.5" />
+      <circle class="btt-progress-circle" id="btt-progress-circle" cx="27" cy="27" r="23" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${CIRCUMFERENCE}" stroke-dashoffset="${CIRCUMFERENCE}" transform="rotate(-90 27 27)" />
+    </svg>
+    <span class="btt-icon-wrap" aria-hidden="true">
+      <svg class="btt-chevron-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="18 15 12 9 6 15"></polyline>
+      </svg>
+    </span>
+  `;
 
   btn.addEventListener('click', () => {
     try { window.scrollTo({ top: 0, behavior: 'smooth' }); }
     catch (_) { window.scrollTo(0, 0); }
   });
 
-  const sync = () => {
-    const visible = window.scrollY > 500;
-    btn.style.opacity = visible ? '1' : '0';
-    btn.style.transform = visible ? 'translateY(0)' : 'translateY(12px)';
-    btn.style.pointerEvents = visible ? 'auto' : 'none';
+  const circle = btn.querySelector('#btt-progress-circle');
+  let ticking = false;
+
+  const updateProgress = () => {
+    const doc = document.documentElement;
+    const body = document.body;
+    const scrollTop = window.scrollY || doc.scrollTop || body.scrollTop || 0;
+    const scrollHeight = Math.max(
+      body.scrollHeight, doc.scrollHeight,
+      body.offsetHeight, doc.offsetHeight,
+      body.clientHeight, doc.clientHeight
+    ) - window.innerHeight;
+
+    const progress = scrollHeight > 0 ? Math.min(1, Math.max(0, scrollTop / scrollHeight)) : 0;
+    const offset = CIRCUMFERENCE * (1 - progress);
+    if (circle) {
+      circle.style.strokeDashoffset = offset.toFixed(2);
+    }
+
+    if (scrollTop > 200) {
+      btn.classList.add('is-visible');
+    } else {
+      btn.classList.remove('is-visible');
+    }
+    ticking = false;
   };
+
+  const sync = () => {
+    if (!ticking) {
+      window.requestAnimationFrame(updateProgress);
+      ticking = true;
+    }
+  };
+
   window.addEventListener('scroll', sync, { passive: true });
   document.body.appendChild(btn);
-  sync();
+  updateProgress();
 }
 
 export async function initPage(activeFile=''){
