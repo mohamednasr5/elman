@@ -392,6 +392,38 @@ function css() {
   '.btn-share--wa{background:linear-gradient(135deg,#25d366 0%,#128c7e 100%)}' +
   '.btn-share--fb{background:#1877f2}' +
   '.btn-share--copy{background:#0f4c5c}' +
+  '.btn-share--qr{background:linear-gradient(135deg,#0284c7 0%,#0f766e 100%)}' +
+
+  '.article-qr-modal-overlay{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}' +
+  '.article-qr-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.68);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);animation:qrFadeIn .2s ease}' +
+  '.article-qr-modal-dialog{position:relative;z-index:1;background:#fff;border-radius:24px;padding:24px;width:100%;max-width:390px;box-shadow:0 20px 48px rgba(15,23,42,.28);text-align:center;box-sizing:border-box;animation:qrPopUp .25s cubic-bezier(.16,1,.3,1)}' +
+  '.article-qr-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}' +
+  '.article-qr-modal-title{display:flex;align-items:center;gap:8px}' +
+  '.article-qr-modal-icon{font-size:1.4rem}' +
+  '.article-qr-modal-head h3{font-size:1.15rem;font-weight:900;color:#0f172a;margin:0}' +
+  '.article-qr-modal-close{background:none;border:none;color:#64748b;font-size:1.3rem;cursor:pointer;padding:4px 8px;border-radius:8px;line-height:1;transition:background .15s,color .15s}' +
+  '.article-qr-modal-close:hover{background:#f1f5f9;color:#0f172a}' +
+  '.article-qr-modal-desc{color:#64748b;font-size:.85rem;line-height:1.5;margin:0 0 16px;text-align:right}' +
+  '.article-qr-card{background:linear-gradient(135deg,#f8fafc 0%,#f0fdfa 100%);border:1.5px solid #ccfbf1;border-radius:20px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:18px}' +
+  '.article-qr-img-frame{background:#fff;padding:12px;border-radius:16px;box-shadow:0 6px 18px rgba(15,118,110,.1);display:inline-flex}' +
+  '.article-qr-img-frame img{display:block;width:200px;height:200px;border-radius:6px;max-width:100%;height:auto}' +
+  '.article-qr-meta{text-align:center;width:100%}' +
+  '.article-qr-site{display:block;font-size:.78rem;font-weight:700;color:#0f766e;margin-bottom:4px}' +
+  '.article-qr-article-title{display:block;font-size:.86rem;font-weight:800;color:#0f172a;line-height:1.4;max-height:2.8em;overflow:hidden;text-overflow:ellipsis}' +
+  '.article-qr-actions{display:flex;gap:10px}' +
+  '.btn-qr-action{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border-radius:12px;font-size:.88rem;font-weight:800;cursor:pointer;text-decoration:none;border:none;transition:transform .15s,opacity .15s}' +
+  '.btn-qr-action:hover{opacity:.92;transform:translateY(-1px)}' +
+  '.btn-qr-action--dl{background:linear-gradient(135deg,#0f766e 0%,#0284c7 100%);color:#fff}' +
+  '.btn-qr-action--copy{background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1}' +
+  '@keyframes qrFadeIn{from{opacity:0}to{opacity:1}}' +
+  '@keyframes qrPopUp{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}' +
+  '[data-theme="dark"] .article-qr-modal-dialog{background:#1e293b;box-shadow:0 20px 48px rgba(0,0,0,.6)}' +
+  '[data-theme="dark"] .article-qr-modal-head h3{color:#f8fafc}' +
+  '[data-theme="dark"] .article-qr-modal-desc{color:#94a3b8}' +
+  '[data-theme="dark"] .article-qr-modal-close:hover{background:#334155;color:#f8fafc}' +
+  '[data-theme="dark"] .article-qr-card{background:#0f172a;border-color:#1e3a47}' +
+  '[data-theme="dark"] .article-qr-article-title{color:#f8fafc}' +
+  '[data-theme="dark"] .btn-qr-action--copy{background:#334155;color:#f8fafc;border-color:#475569}' +
 
   '.place-context{margin-top:40px;border:1.5px solid rgba(15,118,110,.3);border-radius:24px;padding:26px;background:linear-gradient(135deg,#ffffff 0%,#f0fdfa 100%);box-shadow:0 12px 36px rgba(15,118,110,.08);position:relative;overflow:hidden}' +
   '.place-context::before{content:"";position:absolute;top:0;right:0;width:140px;height:140px;background:radial-gradient(circle,rgba(15,118,110,.12) 0%,transparent 70%);pointer-events:none}' +
@@ -924,12 +956,39 @@ export async function handleArticlePublicPage(request, url, env) {
     '</div>' +
   '</aside>';
 
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=2&data=${encodeURIComponent(canonical)}`;
+
   const shareBar = '<div class="article-share-strip">' +
     '<div class="article-share-title"><span>📢</span><span>مشاركة هذا المقال:</span></div>' +
     '<div class="article-share-buttons">' +
       '<a href="' + esc(shareWa) + '" target="_blank" rel="noopener noreferrer" class="btn-share btn-share--wa">واتساب 💬</a>' +
       '<a href="' + esc(shareFb) + '" target="_blank" rel="noopener noreferrer" class="btn-share btn-share--fb">فيسبوك f</a>' +
       '<button type="button" class="btn-share btn-share--copy" id="btnCopyLink">نسخ الرابط 📋</button>' +
+      '<button type="button" class="btn-share btn-share--qr" id="btnShareQr" aria-label="عرض رمز QR للمقال">رمز QR 📱</button>' +
+    '</div>' +
+  '</div>';
+
+  const qrModalHtml = '<div class="article-qr-modal-overlay" id="articleQrModal" role="dialog" aria-modal="true" aria-label="رمز QR للمقال">' +
+    '<div class="article-qr-modal-backdrop" id="articleQrBackdrop"></div>' +
+    '<div class="article-qr-modal-dialog">' +
+      '<div class="article-qr-modal-head">' +
+        '<div class="article-qr-modal-title"><span class="article-qr-modal-icon">📱</span><h3>رمز QR للمقال</h3></div>' +
+        '<button type="button" class="article-qr-modal-close" id="btnCloseQrModal" aria-label="إغلاق">✕</button>' +
+      '</div>' +
+      '<p class="article-qr-modal-desc">امسح الرمز بكاميرا هاتفك للوصول الفوري للمقال وقراءته ومشاركته بسهولة.</p>' +
+      '<div class="article-qr-card">' +
+        '<div class="article-qr-img-frame">' +
+          '<img id="articleQrImage" src="' + esc(qrImageUrl) + '" alt="رمز QR لمقال ' + esc(article.title) + '" width="200" height="200" loading="lazy">' +
+        '</div>' +
+        '<div class="article-qr-meta">' +
+          '<span class="article-qr-site">🌐 دليل المنزلة والمطرية الرقمي</span>' +
+          '<strong class="article-qr-article-title">' + esc(article.title) + '</strong>' +
+        '</div>' +
+      '</div>' +
+      '<div class="article-qr-actions">' +
+        '<a href="' + esc(qrImageUrl) + '" download="qr-' + esc(article.slug || 'article') + '.png" target="_blank" rel="noopener noreferrer" class="btn-qr-action btn-qr-action--dl" id="btnDownloadQr">تحميل الرمز 💾</a>' +
+        '<button type="button" class="btn-qr-action btn-qr-action--copy" id="btnCopyLinkModal">نسخ الرابط 📋</button>' +
+      '</div>' +
     '</div>' +
   '</div>';
 
@@ -945,17 +1004,29 @@ export async function handleArticlePublicPage(request, url, env) {
       'var el=document.getElementById("readingProgressBar");' +
       'if(el)el.style.width=Math.min(100,Math.max(0,p))+"%";' +
     '});' +
-    'var cb=document.getElementById("btnCopyLink");' +
-    'if(cb){' +
-      'cb.addEventListener("click",function(){' +
-        'if(navigator.clipboard&&navigator.clipboard.writeText){' +
-          'navigator.clipboard.writeText(window.location.href).then(function(){' +
-            'cb.textContent="تم النسخ! ✅";' +
-            'setTimeout(function(){cb.textContent="نسخ الرابط 📋";},2500);' +
-          '});' +
-        '}' +
-      '});' +
+    'function copyArticleUrl(btn){' +
+      'if(navigator.clipboard&&navigator.clipboard.writeText){' +
+        'navigator.clipboard.writeText(window.location.href).then(function(){' +
+          'var prev=btn.textContent;' +
+          'btn.textContent="تم النسخ! ✅";' +
+          'setTimeout(function(){btn.textContent=prev;},2500);' +
+        '});' +
+      '}' +
     '}' +
+    'var cb=document.getElementById("btnCopyLink");' +
+    'if(cb)cb.addEventListener("click",function(){copyArticleUrl(cb);});' +
+    'var cbm=document.getElementById("btnCopyLinkModal");' +
+    'if(cbm)cbm.addEventListener("click",function(){copyArticleUrl(cbm);});' +
+    'var qrModal=document.getElementById("articleQrModal");' +
+    'var btnOpenQr=document.getElementById("btnShareQr");' +
+    'var btnCloseQr=document.getElementById("btnCloseQrModal");' +
+    'var backdropQr=document.getElementById("articleQrBackdrop");' +
+    'function openQrModal(){if(qrModal){qrModal.style.display="flex";document.body.style.overflow="hidden";}}' +
+    'function closeQrModal(){if(qrModal){qrModal.style.display="none";document.body.style.overflow="";}}' +
+    'if(btnOpenQr)btnOpenQr.addEventListener("click",openQrModal);' +
+    'if(btnCloseQr)btnCloseQr.addEventListener("click",closeQrModal);' +
+    'if(backdropQr)backdropQr.addEventListener("click",closeQrModal);' +
+    'window.addEventListener("keydown",function(e){if(e.key==="Escape")closeQrModal();});' +
   '</script>';
 
   // Extract FAQ items for FAQPage Schema (Google Rich Snippets & AI Search Q&A)
@@ -1046,6 +1117,7 @@ export async function handleArticlePublicPage(request, url, env) {
     '</main>' +
     '<div id="footer-slot">' + renderSiteFooter() + '</div>' +
     '<div id="nav-slot"></div>' +
+    qrModalHtml +
     clientScript +
     '<script type="module">import { initPage } from "/src/js/core/page-shell.js?v=20260924_06"; initPage("blog").catch(function(e){console.warn(e);});</script>' +
     '</body></html>';

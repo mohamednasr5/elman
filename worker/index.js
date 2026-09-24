@@ -11,7 +11,7 @@ import { createTursoDB, checkTursoHealth } from './turso.js';
 import { handleMarketWidgetsRequest } from './market-widgets.js';
 import { handleArticlePublicPage, handleArticlesApi, getPublishedArticlesForPlace } from './articles.js';
 import { geocodePlaceAddress } from './geocoding.js';
-import { generateArticleDraft } from './article-ai.js';
+import { generateArticleDraft, toArabicCategory } from './article-ai.js';
 const SUPERADMIN_EMAILS = new Set([
   'elfannanm@gmail.com',
   'mohamednasrofficial@gmail.com'
@@ -2304,7 +2304,12 @@ try {
 
       const db = createTursoDB(env);
       const place = await db.prepare(
-        'SELECT id,name,slug,area,address,description,custom_category,category_id,services_json,working_hours_json,is_verified,owner_id,owner_email FROM places WHERE id=? LIMIT 1'
+        `SELECT p.id, p.name, p.slug, p.area, p.address, p.description, p.custom_category, p.category_id,
+                p.services_json, p.working_hours_json, p.is_verified, p.owner_id, p.owner_email,
+                c.name as db_category_name
+         FROM places p
+         LEFT JOIN categories c ON (p.category_id = c.id OR p.category_id = c.slug)
+         WHERE p.id=? LIMIT 1`
       ).bind(placeId).first().catch(() => null);
       if (!place) return jsonResponse({success:false,error:'المكان غير موجود'},404,corsHeaders);
       const isPlaceOwner = (
@@ -2318,8 +2323,18 @@ try {
 
       let services=[]; try{services=place.services_json?JSON.parse(place.services_json):[]}catch(_){}
       let workingHours=null; try{workingHours=place.working_hours_json?JSON.parse(place.working_hours_json):null}catch(_){}
-      const facts={name:place.name||'',area:place.area||'',address:place.address||'',category:place.custom_category||place.category_id||'',description:place.description||'',services:Array.isArray(services)?services.slice(0,30):[],workingHours:workingHours||undefined};
-      const draft=await generateArticleDraft({env,topic,title:requestedTitle,facts});
+      const rawCategory = place.custom_category || place.db_category_name || place.category_id || '';
+      const resolvedCategory = toArabicCategory(rawCategory);
+      const facts = {
+        name: place.name || '',
+        area: place.area || '',
+        address: place.address || '',
+        category: resolvedCategory,
+        description: place.description || '',
+        services: Array.isArray(services) ? services.slice(0, 30) : [],
+        workingHours: workingHours || undefined
+      };
+      const draft = await generateArticleDraft({env, topic, title: requestedTitle, facts});
       return jsonResponse({success:true,data:{...draft,placeId,placeName:place.name||'',placeSlug:place.slug||''}},200,corsHeaders);
     } catch (err) {
       console.warn('[/api/articles/generate] Error:',err?.message||err);
