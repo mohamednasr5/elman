@@ -442,3 +442,61 @@ html[dir="rtl"] .page-back-bar { display:flex !important; direction:ltr !importa
 html[dir="rtl"] .page-back-bar .btn-page-back { order:1 !important; margin-inline-start:0 !important; margin-inline-end:auto !important; direction:rtl !important; }
 html[dir="rtl"] .page-back-bar .page-breadcrumbs { order:2 !important; margin-inline-start:auto !important; margin-inline-end:0 !important; direction:rtl !important; text-align:right !important; }
 html[lang="en"] .page-back-bar { direction:ltr !important; }
+
+/* ── App Store Badges Mobile Hardening ── */
+.app-store-btn {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  height: 44px !important;
+  max-height: 44px !important;
+  padding: 0 12px !important;
+  box-sizing: border-box !important;
+}
+.app-store-btn__icon {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  flex: 0 0 24px !important;
+}
+.app-store-btn__icon svg {
+  width: 22px !important;
+  height: 22px !important;
+  max-width: 22px !important;
+  max-height: 22px !important;
+  object-fit: contain !important;
+  display: block !important;
+  flex-shrink: 0 !important;
+}
+
+/* ── Absolute Suppression of Obsolete Floating Hints ── */
+#mobile-action-hints,
+.mobile-action-hints,
+.mobile-action-hint,
+.mobile-action-hint--voice,
+.mobile-action-hint--add {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ── Hide Floating Display Controls On Mobile Viewports ── */
+@media (max-width: 767px) {
+  .display-controls-rail,
+  .display-controls-edge-trigger {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+}

@@ -523,7 +523,7 @@ export function getSharedFooterHTML() {
               <button type="button" class="app-store-btn app-store-btn--google" data-store="google" aria-label="احصل عليه من Google Play (قريباً)" title="Google Play — قريباً بإذن الله">
                 <span class="app-store-btn__badge">قريباً</span>
                 <div class="app-store-btn__icon">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg>
+                  <svg viewBox="0 0 24 24" width="22" height="22" style="width:22px;height:22px;max-width:22px;max-height:22px;flex-shrink:0" aria-hidden="true"><path fill="#63f0ae" d="M3.5 2.5 14 12 3.5 21.5V2.5z"/><path fill="#34a0ff" d="m14 12 3.2-2.9 3.3 1.9-3.3 1.9L14 12z"/><path fill="#ffd34d" d="m14 12-10.5-9.5L17.2 9.1 14 12z"/><path fill="#ff5b5b" d="m14 12 3.2 2.9L3.5 21.5 14 12z"/></svg>
                 </div>
                 <div class="app-store-btn__text">
                   <span class="app-store-btn__sub">احصل عليه من</span>
@@ -533,7 +533,7 @@ export function getSharedFooterHTML() {
               <button type="button" class="app-store-btn app-store-btn--apple" data-store="apple" aria-label="حمله من App Store (قريباً)" title="App Store — قريباً بإذن الله">
                 <span class="app-store-btn__badge">قريباً</span>
                 <div class="app-store-btn__icon">
-                  <svg viewBox="0 0 24 24" fill="#ffffff" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.84.94-2.91-.91.04-2.02.61-2.67 1.38-.58.67-1.08 1.76-.94 2.8.03.01.07.01.11.01.93 0 1.94-.52 2.56-1.28z"/></svg>
+                  <svg viewBox="0 0 24 24" width="22" height="22" style="width:22px;height:22px;max-width:22px;max-height:22px;flex-shrink:0" fill="#ffffff" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.77 1.06-1.84.94-2.91-.91.04-2.02.61-2.67 1.38-.58.67-1.08 1.76-.94 2.8.03.01.07.01.11.01.93 0 1.94-.52 2.56-1.28z"/></svg>
                 </div>
                 <div class="app-store-btn__text">
                   <span class="app-store-btn__sub">حمله من</span>
