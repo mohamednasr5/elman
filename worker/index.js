@@ -1197,10 +1197,11 @@ try {
 
   if (url.pathname === '/api/articles' || url.pathname.startsWith('/api/articles/')) {
     const needsAuth = request.method !== 'GET';
-    const authUser = await authenticateRequest(request, env).catch(() => null);
+    let authUser = await authenticateRequest(request, env).catch(() => null);
     if (needsAuth && !authUser) {
       const auth = await requireAuth(request, env);
       if (auth.response) return auth.response;
+      authUser = auth.user;
     }
 
     const articleResult = await handleArticlesApi(request, url, env, authUser);
@@ -1230,14 +1231,18 @@ try {
               cache.delete(new Request('https://cache.local/sitemap/v2/blog-sitemap.xml'))
             ]));
           } catch (_) {}
-          ctx.waitUntil(safeBackgroundNotify('new_article', {
-            articleSlug: article.slug || article.id || '',
-            title: article.title || '',
-            coverImageUrl: article.coverImageUrl || article.cover_image_url || '',
-            placeName: article.place?.name || '',
-            placeSlug: article.place?.slug || article.place?.id || '',
-            ownerName: auth.user?.name || ''
-          }, env, ctx));
+          try {
+            safeBackgroundNotify('new_article', {
+              articleSlug: article.slug || article.id || '',
+              title: article.title || '',
+              coverImageUrl: article.coverImageUrl || article.cover_image_url || '',
+              placeName: article.place?.name || '',
+              placeSlug: article.place?.slug || article.place?.id || '',
+              ownerName: authUser?.name || authUser?.displayName || authUser?.email || ''
+            }, env, ctx);
+          } catch (notifErr) {
+            console.warn('[Article safeBackgroundNotify warning]:', notifErr?.message || notifErr);
+          }
         }
       }
       return response;

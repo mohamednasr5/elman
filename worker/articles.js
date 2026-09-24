@@ -58,14 +58,14 @@ function mapRow(row) {
 
 async function bySlug(db, slug, includeUnpublished) {
   const s = String(slug || '').trim();
-  let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id) AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id) AS place_review_count FROM articles a JOIN places p ON p.id=a.place_id WHERE (a.slug = ? OR a.slug = ? OR a.id = ?)';
+  let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id) AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id) AS place_review_count FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE (a.slug = ? OR a.slug = ? OR a.id = ?)';
   if (!includeUnpublished) sql += " AND a.status = 'published'";
   sql += ' LIMIT 1';
   let rawRow = await db.prepare(sql).bind(s, decodeURIComponent(s), s).first().catch(() => null);
 
   // Fallback: If not found, check if a legacy non-English slug corresponds to this English slug
   if (!rawRow) {
-    let legacySql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id) AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id) AS place_review_count FROM articles a JOIN places p ON p.id=a.place_id';
+    let legacySql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id) AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id) AS place_review_count FROM articles a LEFT JOIN places p ON p.id=a.place_id';
     if (!includeUnpublished) legacySql += " WHERE a.status = 'published'";
     legacySql += ' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 20';
     const candidates = (await db.prepare(legacySql).all().catch(() => ({results:[]}))).results || [];
@@ -700,7 +700,8 @@ export async function handleArticlesApi(request, url, env, user) {
       newBalance = Math.max(0, currentBalance - ARTICLE_COIN_COST);
     }
 
-    return {status:200,body:{success:true,data:mapRow(await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a JOIN places p ON p.id=a.place_id WHERE a.id=? LIMIT 1').bind(id).first()),newBalance}};
+    const updatedRow = await db.prepare('SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE a.id=? LIMIT 1').bind(id).first().catch(() => null);
+    return {status:200,body:{success:true,data:mapRow(updatedRow),newBalance}};
   }
 
   if (request.method === 'DELETE' && match) {

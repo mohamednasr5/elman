@@ -621,8 +621,9 @@ export async function renderArticlesManager(container, user) {
       };
 
       try {
+        let res;
         if (editingArticle) {
-          const res = await updateArticle(editingArticle.id, payload, { draft: isDraft });
+          res = await updateArticle(editingArticle.id, payload, { draft: isDraft });
           if (typeof res?.newBalance === 'number') {
             setStoredCoinsBalance(res.newBalance);
           } else {
@@ -630,7 +631,7 @@ export async function renderArticlesManager(container, user) {
           }
           toast.success?.(isDraft ? 'تم حفظ تعديلات المسودة بنجاح' : (isAlreadyPublished ? 'تم حفظ التعديلات بنجاح مجاناً 🚀' : 'تم نشر المقال بنجاح وخصم 200 ذهبية 🚀'));
         } else {
-          const res = await saveArticle(payload, { draft: isDraft });
+          res = await saveArticle(payload, { draft: isDraft });
           if (typeof res?.newBalance === 'number') {
             setStoredCoinsBalance(res.newBalance);
           } else {
@@ -639,10 +640,12 @@ export async function renderArticlesManager(container, user) {
           toast.success?.(isDraft ? 'تم حفظ المقال كمسودة' : 'تم نشر المقال بنجاح وتثبيته في صفحة المكان وخصم 200 ذهبية 🚀');
         }
 
+        const savedSlug = res?.data?.slug;
         editingArticle = null;
         stagedImageFile = null;
         stagedPreviewUrl = '';
         await loadArticles();
+        window.scrollTo({ top: Math.max(0, container.offsetTop - 40), behavior: 'smooth' });
       } catch (saveErr) {
         toast.error?.(saveErr?.message || 'تعذر حفظ المقال، يرجى المحاولة مرة أخرى');
       } finally {
