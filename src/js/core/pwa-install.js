@@ -6,7 +6,7 @@ function loadPwaStyles() {
   const link = document.createElement('link');
   link.id = 'pwa-install-design';
   link.rel = 'stylesheet';
-  link.href = '/src/css/pwa-install.css?v=20260924_v1';
+  link.href = '/src/css/pwa-install.css?v=20260924_v2';
   document.head.appendChild(link);
 }
 
@@ -48,7 +48,6 @@ function ensureBanner() {
   banner.setAttribute('role', 'dialog');
   banner.setAttribute('aria-label', en ? 'Install application' : 'تثبيت التطبيق');
   banner.innerHTML = `
-    <div class="pwa-banner__backdrop" id="pwa-banner-backdrop"></div>
     <div class="pwa-banner__card">
       <div class="pwa-banner__header">
         <div class="pwa-banner__logo-wrap">
