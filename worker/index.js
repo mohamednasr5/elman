@@ -10286,7 +10286,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
 
   // 0. Edge SSR Cache check (Instant 15-30ms response from Cloudflare Edge for humans & Googlebot)
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const SSR_CACHE_VERSION = 'v11';
+  const SSR_CACHE_VERSION = 'v12';
   const ssrCacheKey = new Request(`https://cache.local/ssr/place/${SSR_CACHE_VERSION}?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
   if (cache) {
     try {
@@ -10629,7 +10629,13 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
 
       // 2. Set title, canonical, and alternate hreflangs
       hydratedHtml = hydratedHtml.replace(/<title>.*?<\/title>/i, `<title>${escapeHtml(fullShareTitle)}</title>`);
-      hydratedHtml = hydratedHtml.replace(/<link rel="canonical" id="place-canonical"[^>]*>/i, `<link rel="canonical" id="place-canonical" href="${escapeHtml(shareUrl)}"/>`);
+      if (/<link\s+rel=["']canonical["'][^>]*>/i.test(hydratedHtml)) {
+        hydratedHtml = hydratedHtml.replace(/<link\s+rel=["']canonical["'][^>]*>/i, `<link rel="canonical" id="place-canonical" href="${escapeHtml(shareUrl)}"/>`);
+      } else {
+        hydratedHtml = hydratedHtml.replace('</head>', `  <link rel="canonical" id="place-canonical" href="${escapeHtml(shareUrl)}"/>\n</head>`);
+      }
+      // Remove any static template JSON-LD from base html to prevent duplicate/conflicting WebPage schema
+      hydratedHtml = hydratedHtml.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/i, '');
       hydratedHtml = hydratedHtml.replace(/<meta name="description" content="[^"]*"/i, `<meta name="description" content="${escapeHtml(placeDesc)}"`);
       hydratedHtml = hydratedHtml.replace(/<meta property="og:title" content="[^"]*"/i, `<meta property="og:title" content="${escapeHtml(fullShareTitle)}"`);
       hydratedHtml = hydratedHtml.replace(/<meta property="og:description" content="[^"]*"/i, `<meta property="og:description" content="${escapeHtml(placeDesc)}"`);
