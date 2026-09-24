@@ -1,4 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://dalilmanzala.com/blog/</loc></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://dalilmanzala.com/article/abwalkhyrmratbsgadmfrwshatmratbw/</loc>
+    <lastmod>2026-09-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/abwalkhyrmratbsgadmfrwshatmratbw/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/abwalkhyrmratbsgadmfrwshatmratbw/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/abwalkhyrmratbsgadmfrwshatmratbw/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1790224330535-tj4tdbo.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/restaurant/</loc>
+    <lastmod>2026-09-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/restaurant/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/restaurant/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/restaurant/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1790209113427-9ff82o8.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/mgmdatwmagnatyafamgmdatwmagnatya/</loc>
+    <lastmod>2026-09-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/mgmdatwmagnatyafamgmdatwmagnatya/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/mgmdatwmagnatyafamgmdatwmagnatya/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/mgmdatwmagnatyafamgmdatwmagnatya/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1790210107269-es65yrd.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/workshop-workshop-mohamed/</loc>
+    <lastmod>2026-09-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/workshop-workshop-mohamed/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/workshop-workshop-mohamed/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/workshop-workshop-mohamed/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1787860226479-le4159b.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/dlylkalmtkamlllgwdawafdlalarwdfy/</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/dlylkalmtkamlllgwdawafdlalarwdfy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/dlylkalmtkamlllgwdawafdlalarwdfy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/dlylkalmtkamlllgwdawafdlalarwdfy/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/articles/---------1790200975596.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/al-hassan-al-hassan-sales-devices-repa/</loc>
+    <lastmod>2026-09-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/al-hassan-al-hassan-sales-devices-repa/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/al-hassan-al-hassan-sales-devices-repa/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/al-hassan-al-hassan-sales-devices-repa/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/articles/--------1790177482737.webp</image:loc>
+    </image:image>
+  </url>
 </urlset>

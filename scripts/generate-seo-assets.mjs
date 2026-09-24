@@ -43,8 +43,11 @@ for(const article of articles){
   articleEntries.push(entry(loc,lm,'weekly','0.8',img?{ar:loc,en:loc,image:abs(img)}:null));
   urls.push(abs(loc));
 }
-fs.writeFileSync(path.join(ROOT,'sitemap-static-ar.xml'),doc(ar));fs.writeFileSync(path.join(ROOT,'sitemap-static-en.xml'),doc(en));fs.writeFileSync(path.join(ROOT,'sitemap-categories-ar.xml'),doc(ca));fs.writeFileSync(path.join(ROOT,'sitemap-categories-en.xml'),doc(ce));fs.writeFileSync(path.join(ROOT,'sitemap-places-ar.xml'),doc(pa));fs.writeFileSync(path.join(ROOT,'sitemap-places-en.xml'),doc(pe));const sitemapMeta=[
+fs.writeFileSync(path.join(ROOT,'sitemap-static-ar.xml'),doc(ar));fs.writeFileSync(path.join(ROOT,'sitemap-static-en.xml'),doc(en));fs.writeFileSync(path.join(ROOT,'sitemap-categories-ar.xml'),doc(ca));fs.writeFileSync(path.join(ROOT,'sitemap-categories-en.xml'),doc(ce));fs.writeFileSync(path.join(ROOT,'sitemap-places-ar.xml'),doc(pa));fs.writeFileSync(path.join(ROOT,'sitemap-places-en.xml'),doc(pe));
+if(articleEntries.length) fs.writeFileSync(path.join(ROOT,'sitemap-articles-ar.xml'),doc(articleEntries));
+const sitemapMeta=[
   ['sitemap-places-ar.xml',pa],['sitemap-places-en.xml',pe],
+  ...(articleEntries.length?[['sitemap-articles-ar.xml',articleEntries]]:[]),
   ['sitemap-categories-ar.xml',ca],['sitemap-categories-en.xml',ce],
   ['sitemap-static-ar.xml',ar],['sitemap-static-en.xml',en]
 ];

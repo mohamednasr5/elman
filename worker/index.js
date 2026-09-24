@@ -10286,7 +10286,8 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
 
   // 0. Edge SSR Cache check (Instant 15-30ms response from Cloudflare Edge for humans & Googlebot)
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const ssrCacheKey = new Request(`https://cache.local/ssr/place/v9?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
+  const SSR_CACHE_VERSION = 'v10';
+  const ssrCacheKey = new Request(`https://cache.local/ssr/place/${SSR_CACHE_VERSION}?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
   if (cache) {
     try {
       const cachedResponse = await cache.match(ssrCacheKey);
@@ -10349,11 +10350,12 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   const cleanTranslit = slugifyWorker(place.name);
   const cleanPrefix = cleanSlug.replace(/-[a-z0-9_]{4,10}$/i, '');
 
+  // Canonical slug MUST be the official DB place.slug whenever available
   let canonicalSlug = '';
-  if (cleanSlug && !isIdLike(cleanSlug)) {
-    canonicalSlug = cleanSlug;
-  } else if (place.slug && !isIdLike(place.slug)) {
+  if (place.slug && !isIdLike(place.slug)) {
     canonicalSlug = place.slug;
+  } else if (cleanSlug && !isIdLike(cleanSlug)) {
+    canonicalSlug = cleanSlug;
   } else {
     canonicalSlug = cleanTranslit || cleanPrefix || place.id;
   }
@@ -10363,6 +10365,18 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
   const shareUrl = `${canonicalBase}${canonicalPath}`;
   const alternateArUrl = `${canonicalBase}/place/${encodeURIComponent(placeTargetSlug)}/`;
   const alternateEnUrl = `${canonicalBase}/en/place/${encodeURIComponent(placeTargetSlug)}/`;
+
+  // 3b. SEO Canonical Redirection:
+  // If the requested slug does not match the canonical slug, OR is missing a trailing slash,
+  // 301 redirect permanently so crawlers (Googlebot, Bing) consolidate all signals onto the single canonical URL.
+  const requestedSlugNormalized = cleanSlug.toLowerCase();
+  const canonicalSlugNormalized = String(placeTargetSlug || '').toLowerCase();
+  const hasTrailingSlash = url.pathname.endsWith('/');
+
+  if ((requestedSlugNormalized !== canonicalSlugNormalized || !hasTrailingSlash) && placeTargetSlug) {
+    const redirectSearch = url.search || '';
+    return Response.redirect(`${canonicalBase}${canonicalPath}${redirectSearch}`, 301);
+  }
 
   // 4. Metadata and place normalization variables
   const phoneClean = (place.phone || '').replace(/[^\d+]/g, '').trim();
