@@ -58,14 +58,14 @@ function mapRow(row) {
 
 async function bySlug(db, slug, includeUnpublished) {
   const s = String(slug || '').trim();
-  let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_review_count FROM articles a JOIN places p ON p.id=a.place_id WHERE (a.slug = ? OR a.slug = ? OR a.id = ?)';
+  let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id) AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id) AS place_review_count FROM articles a JOIN places p ON p.id=a.place_id WHERE (a.slug = ? OR a.slug = ? OR a.id = ?)';
   if (!includeUnpublished) sql += " AND a.status = 'published'";
   sql += ' LIMIT 1';
   let rawRow = await db.prepare(sql).bind(s, decodeURIComponent(s), s).first().catch(() => null);
 
   // Fallback: If not found, check if a legacy non-English slug corresponds to this English slug
   if (!rawRow) {
-    let legacySql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_review_count FROM articles a JOIN places p ON p.id=a.place_id';
+    let legacySql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id) AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id) AS place_review_count FROM articles a JOIN places p ON p.id=a.place_id';
     if (!includeUnpublished) legacySql += " WHERE a.status = 'published'";
     legacySql += ' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 20';
     const candidates = (await db.prepare(legacySql).all().catch(() => ({results:[]}))).results || [];
@@ -314,7 +314,7 @@ function css() {
   '@keyframes svgDotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}' +
   '.ticker-badge-text{letter-spacing:-.01em}' +
   '.articles-ticker-track{flex:1;overflow:hidden;height:100%;display:flex;align-items:center;position:relative;mask-image:linear-gradient(to right,transparent 0%,black 24px,black calc(100% - 24px),transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 24px,black calc(100% - 24px),transparent 100%)}' +
-  '.articles-ticker-content{display:flex;align-items:center;width:max-content;animation:tickerMoveToRight 42s linear infinite;will-change:transform}' +
+  '.articles-ticker-content{display:flex;align-items:center;width:max-content;animation:tickerMoveToRight 110s linear infinite;will-change:transform}' +
   '.articles-ticker-wrapper:hover .articles-ticker-content{animation-play-state:paused!important}' +
   '@keyframes tickerMoveToRight{0%{transform:translateX(-50%)}100%{transform:translateX(0%)}}' +
   '.ticker-entry{display:inline-flex;align-items:center;white-space:nowrap;padding:0 12px}' +
@@ -356,7 +356,7 @@ export async function handleArticlesApi(request, url, env, user) {
       return { status:200, body:{success:true,data:a} };
     }
 
-    let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id AND status = \'published\') AS place_review_count FROM articles a LEFT JOIN places p ON p.id=a.place_id';
+    let sql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status, (SELECT ROUND(AVG(rating), 1) FROM reviews WHERE place_id = p.id) AS place_rating, (SELECT COUNT(*) FROM reviews WHERE place_id = p.id) AS place_review_count FROM articles a LEFT JOIN places p ON p.id=a.place_id';
     const args = [];
     if (placeId) {
       sql += " WHERE a.place_id = ? AND a.status <> 'deleted'";
@@ -364,9 +364,28 @@ export async function handleArticlesApi(request, url, env, user) {
     } else {
       sql += " WHERE a.status = 'published'";
     }
-    sql += ' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT ? OFFSET ?';
-    args.push(limit, offset);
-    const rows = (await db.prepare(sql).bind(...args).all().catch(() => ({results:[]}))).results || [];
+    sql += ` ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT ${limit} OFFSET ${offset}`;
+    
+    let rows = [];
+    try {
+      rows = (await db.prepare(sql).bind(...args).all()).results || [];
+    } catch (err) {
+      console.error('[handleArticlesApi] primary query error, using robust fallback:', err?.message || err);
+      try {
+        let fallbackSql = 'SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.whatsapp AS place_whatsapp, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url, p.is_verified AS place_is_verified, p.verification_status AS place_verification_status FROM articles a LEFT JOIN places p ON p.id=a.place_id';
+        const fbArgs = [];
+        if (placeId) {
+          fallbackSql += " WHERE a.place_id = ? AND a.status <> 'deleted'";
+          fbArgs.push(placeId);
+        } else {
+          fallbackSql += " WHERE a.status = 'published'";
+        }
+        fallbackSql += ` ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT ${limit} OFFSET ${offset}`;
+        rows = (await db.prepare(fallbackSql).bind(...fbArgs).all()).results || [];
+      } catch (err2) {
+        console.error('[handleArticlesApi] fallback error:', err2);
+      }
+    }
     return {status:200,body:{success:true,data:rows.map(mapRow),total:rows.length}};
   }
 

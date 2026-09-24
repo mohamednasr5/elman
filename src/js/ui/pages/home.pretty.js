@@ -142,7 +142,7 @@ export async function renderHomePage($main, { user } = {}) {
       getPublishedPlaces({ limit: 100 }),
       getActiveOffers(8),
       getAds('homepage'),
-      getArticles({ limit: 6 })
+      getArticles({ limit: 10 })
     ]);
 
     categories = (categoriesRes.status === 'fulfilled' && Array.isArray(categoriesRes.value) && categoriesRes.value.length)
@@ -206,6 +206,12 @@ export async function renderHomePage($main, { user } = {}) {
   } catch (e) { console.warn('[Home] renderOffers err:', e); }
 
   try {
+    if (!articles || !articles.length) {
+      try {
+        const fresh = await getArticles({ limit: 10 });
+        if (fresh && fresh.length) articles = fresh;
+      } catch (_) {}
+    }
     if (articles && articles.length) {
       setCache('articles_home_3', articles);
     }
@@ -309,7 +315,7 @@ export async function renderHomePage($main, { user } = {}) {
         const [freshPlaces, freshOffers, freshArticles] = await Promise.all([
           getPublishedPlaces({ limit: 100, forceFresh: true }).catch(() => []),
           getActiveOffers(8).catch(() => []),
-          getArticles({ limit: 6 }).catch(() => [])
+          getArticles({ limit: 10 }).catch(() => [])
         ]);
         if (freshPlaces && freshPlaces.length) {
           const cu = getCurrentUser() || user;
@@ -740,9 +746,9 @@ function renderBlogArticles(articles) {
     return;
   }
 
-  // 2 or more articles -> responsive luxury grid
+  // 2 or more articles -> responsive luxury grid (top 6 cards)
   grid.className = 'blog-grid';
-  grid.innerHTML = articles.map(a => {
+  grid.innerHTML = articles.slice(0, 6).map(a => {
     const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
     const p = a.place || {};
     const placeHref = '/place/' + encodeURIComponent(p.slug || p.id || '') + '/';

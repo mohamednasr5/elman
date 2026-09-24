@@ -3315,7 +3315,7 @@ html[lang="en"] .display-controls-rail:focus-within {
   display: flex;
   align-items: center;
   width: max-content;
-  animation: tickerMoveToRight 42s linear infinite;
+  animation: tickerMoveToRight 110s linear infinite;
   will-change: transform;
 }
 .articles-ticker-wrapper:hover .articles-ticker-content {
