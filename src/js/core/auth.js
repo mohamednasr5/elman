@@ -17,6 +17,33 @@ export function initAuth(){
   const auth=getAuth();
   if(!auth){appState.set('authLoading',false);return null;}
   try{const fb=typeof window!=='undefined'?window.firebase:null;if(fb?.auth?.Auth?.Persistence?.LOCAL)auth.setPersistence(fb.auth.Auth.Persistence.LOCAL).catch(()=>{});}catch(_){}
+
+  // Seamlessly process redirect sign-in results if arriving from Google Redirect
+  if (typeof auth.getRedirectResult === 'function') {
+    auth.getRedirectResult().then(async result => {
+      if (result && result.user) {
+        try {
+          const profile = await _syncUserToTurso(result.user);
+          appState.set('user', profile);
+          appState.set('authLoading', false);
+          try { localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(profile)); } catch (_) {}
+          emit('auth:signedIn', profile);
+        } catch (err) {
+          console.error('[Auth] Redirect Turso sync failed, using Firebase profile:', err);
+          const basic = _buildBasicProfile(result.user);
+          appState.set('user', basic);
+          appState.set('authLoading', false);
+          try { localStorage.setItem(PERSISTENT_USER_KEY, JSON.stringify(basic)); } catch (_) {}
+          emit('auth:signedIn', basic);
+        }
+      }
+    }).catch(err => {
+      if (err?.code !== 'auth/no-auth-event') {
+        console.warn('[Auth] getRedirectResult notice:', err?.message || err);
+      }
+    });
+  }
+
   _authUnsubscribe?.();
   _authUnsubscribe=auth.onAuthStateChanged(async firebaseUser=>{
     if(firebaseUser){
@@ -27,11 +54,39 @@ export function initAuth(){
   return _authUnsubscribe;
 }
 
-export async function signInWithGoogle(){
+export async function signInWithGoogle(forceRedirect = false){
   const ready=await ensureFirebaseReady(8000);const auth=ready?.auth||getAuth();const fb=typeof window!=='undefined'?window.firebase:null;
   if(!auth||!fb?.auth?.GoogleAuthProvider){const err=new Error('Google sign-in is temporarily unavailable because Firebase Authentication could not be initialized.');err.code='auth/not-initialized';throw err;}
   const provider=new fb.auth.GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});
-  try{const result=await auth.signInWithPopup(provider);return result.user;}catch(err){if(err?.code==='auth/popup-closed-by-user')return null;throw err;}
+
+  if (forceRedirect) {
+    await auth.signInWithRedirect(provider);
+    return null;
+  }
+
+  try{
+    const result=await auth.signInWithPopup(provider);
+    return result.user;
+  }catch(err){
+    if(err?.code==='auth/popup-closed-by-user')return null;
+    // When popup fails due to third-party cookies or storage partitioning (auth/internal-error or auth/popup-blocked)
+    if(
+      err?.code==='auth/internal-error' ||
+      err?.code==='auth/popup-blocked' ||
+      err?.code==='auth/cancelled-popup-request' ||
+      err?.code==='auth/network-request-failed' ||
+      err?.message?.includes('popup')
+    ){
+      console.warn('[Auth] Popup failed, automatically falling back to redirect:', err);
+      try {
+        await auth.signInWithRedirect(provider);
+        return null;
+      } catch (redirectErr) {
+        throw redirectErr;
+      }
+    }
+    throw err;
+  }
 }
 export async function signOut(){const auth=getAuth();try{localStorage.removeItem(PERSISTENT_USER_KEY);localStorage.removeItem('manzala_user');}catch(_){}appState.set('user',null);if(auth)await auth.signOut();emit('auth:signedOut');}
 export async function getIdToken(forceRefresh=false){const auth=getAuth();const user=auth?.currentUser;if(!user)return null;return user.getIdToken(forceRefresh);}

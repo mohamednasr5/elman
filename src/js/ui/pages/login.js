@@ -52,6 +52,9 @@ export async function renderLoginPage($container) {
         setTimeout(() => {
           window.location.replace('dashboard.html');
         }, 800);
+      } else {
+        const textSpan = btn.querySelector('span');
+        if (textSpan) textSpan.textContent = 'جاري التوجيه إلى Google...';
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -62,7 +65,6 @@ export async function renderLoginPage($container) {
       } else {
         toast.error('حدث خطأ أثناء تسجيل الدخول: ' + (err.message || 'حاول مجدداً'));
       }
-    } finally {
       btn.classList.remove('loading');
       btn.disabled = false;
     }

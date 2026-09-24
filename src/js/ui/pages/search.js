@@ -17,6 +17,7 @@ import { isPhoneSearchQuery, normalizePhoneNumber, matchPlaceByPhone, formatPhon
 import { toast } from '../components/Toast.js';
 import { getPlaceLiveStatus } from '../../utils/live-hours.js';
 import { SERVICES_FEATURES_SYNONYMS } from '../../services/search-engine.service.js';
+import { getSmartSearchQueries } from '../../utils/keyboard-mapper.js';
 
 let _searchUserLocation = null;
 
@@ -762,13 +763,22 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
     let places = [...allPlaces];
 
     // Text search scoring
+    let smartQ = null;
     if (q) {
+      smartQ = getSmartSearchQueries(q);
       const rawClean = extractSearchKeywords(q);
       const normalQ = normalizeArabic(rawClean);
       const queryIntents = expandArabicSearchIntent(q);
 
+      const altClean = smartQ.isConverted ? extractSearchKeywords(smartQ.converted) : '';
+      const altNormalQ = smartQ.isConverted ? normalizeArabic(altClean) : '';
+      const altIntents = smartQ.isConverted ? expandArabicSearchIntent(smartQ.converted) : [];
+
       const scored = places.map(place => {
-        const nameScore = Math.max(arabicScore(place.name || '', q), arabicScore(place.name || '', rawClean));
+        let nameScore = Math.max(arabicScore(place.name || '', q), arabicScore(place.name || '', rawClean));
+        if (smartQ.isConverted) {
+          nameScore = Math.max(nameScore, arabicScore(place.name || '', smartQ.converted), arabicScore(place.name || '', altClean));
+        }
         const nameEnScore = place.nameEn ? (place.nameEn.toLowerCase().includes(q.toLowerCase()) ? 90 : 0) : 0;
 
         let categorySynonymScore = 0;
@@ -778,7 +788,7 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
 
         for (const [cKey, syns] of Object.entries(SEARCH_CATEGORY_SYNONYMS)) {
           if (placeCatKey.includes(cKey) || placeCatName.includes(cKey) || placeNameNorm.includes(cKey)) {
-            if (syns.some(s => normalQ.includes(s) || s.includes(normalQ) || queryIntents.includes(s))) {
+            if (syns.some(s => normalQ.includes(s) || s.includes(normalQ) || queryIntents.includes(s) || (smartQ.isConverted && (altNormalQ.includes(s) || s.includes(altNormalQ) || altIntents.includes(s))))) {
               categorySynonymScore = 95;
               break;
             }
@@ -788,7 +798,7 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
         let specialtyScore = 0;
         if (place.medicalSpecialty) {
           const specNorm = normalizeArabic(place.medicalSpecialty);
-          if (specNorm.includes(normalQ) || normalQ.includes(specNorm)) specialtyScore = 95;
+          if (specNorm.includes(normalQ) || normalQ.includes(specNorm) || (smartQ.isConverted && (specNorm.includes(altNormalQ) || altNormalQ.includes(specNorm)))) specialtyScore = 95;
         }
 
         let serviceScore = 0;
@@ -816,7 +826,7 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
         for (const [fKey, fData] of Object.entries(SERVICES_FEATURES_SYNONYMS)) {
           const isQueryForFeature = fData.synonyms.some(syn => {
             const nSyn = normalizeArabic(syn);
-            return normalQ.includes(nSyn) || rawClean.includes(nSyn) || queryIntents.includes(nSyn);
+            return normalQ.includes(nSyn) || rawClean.includes(nSyn) || queryIntents.includes(nSyn) || (smartQ.isConverted && (altNormalQ.includes(nSyn) || altClean.includes(nSyn) || altIntents.includes(nSyn)));
           });
           if (isQueryForFeature) {
             const hasFeature = fData.synonyms.some(syn => allServicesText.includes(normalizeArabic(syn)));
@@ -827,12 +837,20 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
           }
         }
 
-        if (serviceScore === 0 && allServicesText && (allServicesText.includes(normalQ) || (normalQ.length >= 3 && normalQ.split(/\s+/).some(w => w.length >= 3 && allServicesText.includes(w))))) {
-          serviceScore = 92;
+        if (serviceScore === 0 && allServicesText) {
+          if (allServicesText.includes(normalQ) || (normalQ.length >= 3 && normalQ.split(/\s+/).some(w => w.length >= 3 && allServicesText.includes(w)))) {
+            serviceScore = 92;
+          } else if (smartQ.isConverted && (allServicesText.includes(altNormalQ) || (altNormalQ.length >= 3 && altNormalQ.split(/\s+/).some(w => w.length >= 3 && allServicesText.includes(w))))) {
+            serviceScore = 92;
+          }
         }
 
-        const addressScore = place.address ? Math.max(arabicScore(place.address, q), arabicScore(place.address, rawClean)) * 0.9 : 0;
-        const areaScore = Math.max(arabicScore(place.area || '', q), arabicScore(place.area || '', rawClean)) * 0.85;
+        let addressScore = place.address ? Math.max(arabicScore(place.address, q), arabicScore(place.address, rawClean)) * 0.9 : 0;
+        let areaScore = Math.max(arabicScore(place.area || '', q), arabicScore(place.area || '', rawClean)) * 0.85;
+        if (smartQ.isConverted) {
+          if (place.address) addressScore = Math.max(addressScore, arabicScore(place.address, smartQ.converted) * 0.9);
+          areaScore = Math.max(areaScore, arabicScore(place.area || '', smartQ.converted) * 0.85);
+        }
 
         const total = Math.max(nameScore, nameEnScore, categorySynonymScore, specialtyScore, serviceScore, addressScore, areaScore);
         return { place, total };
@@ -912,14 +930,16 @@ export async function renderSearchPage($container, { q = '', user } = {}) {
       places.sort((a, b) => (b.created_at || b.updated_at || 0) - (a.created_at || a.updated_at || 0));
     }
 
-    renderResultsToDOM(places, q);
+    renderResultsToDOM(places, q, smartQ);
   }
 
-  function renderResultsToDOM(places, q) {
+  function renderResultsToDOM(places, q, smartQ = null) {
     if (!gridEl) return;
 
     if (metaEl) {
-      if (q) {
+      if (smartQ?.isConverted) {
+        metaEl.innerHTML = `عرض النتائج عن: "<strong>${escHtml(smartQ.converted)}</strong>" <span style="background:rgba(2,132,199,0.14);color:#0284C7;font-size:12px;font-weight:800;padding:3px 12px;border-radius:999px;margin-right:8px">تم الفهم تلقائياً من: ${escHtml(q)}</span>`;
+      } else if (q) {
         metaEl.innerHTML = `نتائج البحث عن: "<strong>${escHtml(q)}</strong>" <span style="background:rgba(16,185,129,0.12);color:#059669;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;margin-right:6px">⚡ فوري</span>`;
       } else {
         metaEl.innerHTML = 'استكشف نتائج الدليل';

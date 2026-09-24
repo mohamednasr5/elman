@@ -8,6 +8,7 @@ import { mountVoiceSearchButton } from '../../services/voice.service.js';
 import { getUserLocation, sortPlacesByDistance, MANZALA_CENTER, MANZALA_VILLAGES_LIST } from '../../utils/maps.js';
 import { isPhoneSearchQuery, normalizePhoneNumber, matchPlaceByPhone, formatPhoneNumberForDisplay } from '../../utils/phone.js';
 import { toast } from '../components/Toast.js';
+import { getSmartSearchQueries } from '../../utils/keyboard-mapper.js';
 
 let _userLocationCoords = null;
 let _cleanupPlacesPage = null;
@@ -226,10 +227,12 @@ export async function renderPlacesPage($container, { query = {}, user }) {
           const qPhone = normalizePhoneNumber(state.q);
           visible = visible.filter(p => matchPlaceByPhone(p, qPhone));
         } else {
+          const smartQ = getSmartSearchQueries(state.q);
           const normQ = normalizeArabic(state.q.toLowerCase().trim());
+          const altNormQ = smartQ.isConverted ? normalizeArabic(smartQ.converted.toLowerCase().trim()) : null;
           visible = visible.filter(p => {
             const hay = normalizeArabic([p.name, p.nameEn, p.description, p.address, p.area, p.phone, p.whatsapp].filter(Boolean).join(' ').toLowerCase());
-            return hay.includes(normQ);
+            return hay.includes(normQ) || (altNormQ && hay.includes(altNormQ));
           });
         }
       }

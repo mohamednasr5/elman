@@ -809,6 +809,11 @@ export async function initPage(activeFile=''){
       }).catch(()=>{});
     }
   }catch(_){}
+  try{
+    import('../utils/keyboard-mapper.js').then(m => {
+      m.initGlobalKeyboardCorrection();
+    }).catch(()=>{});
+  }catch(_){}
 }
 
 if (typeof window !== 'undefined') {

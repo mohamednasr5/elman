@@ -76,7 +76,7 @@
 </head><body><div id="app"><div id="header-slot"></div><main class="page-main" id="page-container"><div class="ih-loading"><div class="ih-pulse"></div></div></main><div id="nav-slot"></div><div id="pwa-slot"></div><div id="footer-slot"></div></div>
 <script type="module">
 import {initPage} from './src/js/core/page-shell.js?v=5.6.2';
-import {renderQuranSearch} from './src/js/ui/pages/islamic-hub.js?v=a58f9ed6';
+import {renderQuranSearch} from './src/js/ui/pages/islamic-hub.js?v=b71c2e40';
 await initPage('quran-search.html'); await renderQuranSearch(document.getElementById('page-container'));
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script><script type="module" src="/src/js/core/pwa-install.js?v=a58f9ed6"></script>

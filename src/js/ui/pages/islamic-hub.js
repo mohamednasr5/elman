@@ -1,4 +1,5 @@
 /* Premium Islamic Hub — local-first, zero D1/Firebase for Islamic data */
+import { isLikelyMistypedArabic, convertEnKeyboardToAr } from '../../utils/keyboard-mapper.js';
 const QURAN_META_URL = './quran/source/surah.json';
 const QURAN_SURAH_URL = n => './quran/source/surah/surah_' + n + '.json';
 
@@ -273,13 +274,24 @@ async function renderQuranSearch(container){
    tryPlay();
  };
  const draw=async()=>{
-   const q=norm(input.value);
+   const rawVal=(input.value||'').trim();
+   let q=norm(rawVal);
    stopAudio();
    if(!q){out.innerHTML='<div class="ih-empty">اكتب كلمة للبحث في القرآن الكريم.</div>';count.textContent='جاهز';return}
+
+   let convertedBanner='';
+   if(isLikelyMistypedArabic(rawVal)){
+     const converted=convertEnKeyboardToAr(rawVal);
+     if(converted&&converted!==rawVal){
+       q=norm(converted);
+       convertedBanner='<div class="ih-auto-converted-badge" style="background:rgba(2,132,199,0.12);color:#0284C7;padding:6px 14px;border-radius:12px;margin-bottom:12px;font-size:13px;font-weight:700">عرض النتائج عن: <strong>'+esc(converted)+'</strong> <small>(بدلاً من: '+esc(rawVal)+')</small></div>';
+     }
+   }
+
    const data=await ensure();
    const rows=data.map(v=>({v,s:score(v.text,q)})).filter(x=>x.s).sort((a,b)=>b.s-a.s).slice(0,80).map(x=>x.v);
    count.textContent=rows.length+' نتيجة';
-   out.innerHTML=rows.length?rows.map(v=>'<article class="ih-result"><div class="ih-meta"><b>سورة '+esc(v.snName)+'</b><span>آية '+v.n+'</span></div><div class="ih-result-content"><div class="ih-ayah">'+highlight(v.text,q)+'</div>'+(v.file?'<button class="ih-result-play" type="button" aria-label="تشغيل الآية '+v.n+'">▶</button>':'')+'</div></article>').join(''):'<div class="ih-empty">لا توجد نتائج مطابقة.</div>';
+   out.innerHTML=(convertedBanner||'')+(rows.length?rows.map(v=>'<article class="ih-result"><div class="ih-meta"><b>سورة '+esc(v.snName)+'</b><span>آية '+v.n+'</span></div><div class="ih-result-content"><div class="ih-ayah">'+highlight(v.text,q)+'</div>'+(v.file?'<button class="ih-result-play" type="button" aria-label="تشغيل الآية '+v.n+'">▶</button>':'')+'</div></article>').join(''):'<div class="ih-empty">لا توجد نتائج مطابقة.</div>');
    out.querySelectorAll('.ih-result').forEach((card,i)=>{const button=card.querySelector('.ih-result-play');if(button)button.addEventListener('click',()=>playResult(rows[i],card,button));});
  };
  input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>draw(),20)});
@@ -330,14 +342,15 @@ function tajweedHtml(text,rules){const arr=Array.isArray(rules)?rules.slice().so
 async function loadTajweed(n){try{return await getJson('./quran/source/tajweed/surah_'+n+'.json')}catch(_){return null}}
 async function loadAudioIndex(n){try{return await getJson('./quran/source/audio/'+String(n).padStart(3,'0')+'/index.json')}catch(_){return null}}
 async function loadEnglishTranslation(n){try{return await getJson('./quran/source/translation/en/en_translation_'+n+'.json')}catch(_){return null}}
+async function loadArabicTafsir(n){try{return await getJson('./quran/source/translation/ar/ar_translation_'+n+'.json')}catch(_){return null}}
 async function renderQuranSurah(container){
  const p=new URLSearchParams(location.search),n=Math.min(114,Math.max(1,Number(p.get('surah')||1)||1));
- container.innerHTML=shell('القرآن الكريم','صفحة مستقلة للسورة · قراءة محلية · تجويد · تلاوة صوتية · تعمل مع PWA.','✦',false);
+ container.innerHTML=shell('القرآن الكريم','صفحة مستقلة للسورة · قراءة محلية · تجويد · تلاوة صوتية · تفسير ميسر · تعمل مع PWA.','✦',false);
  const box=container.querySelector('#ih-content');
  try{
   const meta=await loadQuranMeta(),info=meta.find(x=>x.number===n)||{name:'السورة',count:0};
-  const s=await loadSurah(n),[tw,audio,en]=await Promise.all([loadTajweed(n),loadAudioIndex(n),loadEnglishTranslation(n)]);
-  const rules=tw?.verse||{},av=audio?.verse||{},ev=en?.verse||{};
+  const s=await loadSurah(n),[tw,audio,en,tafsir]=await Promise.all([loadTajweed(n),loadAudioIndex(n),loadEnglishTranslation(n),loadArabicTafsir(n)]);
+  const rules=tw?.verse||{},av=audio?.verse||{},ev=en?.verse||{},tv=tafsir?.verse||{};
   const favs=getFavorites();
   const isFavAyah=ayahNum=>favs.some(f=>f.key===`${n}:${ayahNum}`);
 
@@ -345,16 +358,18 @@ async function renderQuranSurah(container){
   '<div id="ih-last-read-slot">'+renderLastReadBanner(n)+'</div>'+
   '<div class="qr-head"><h2 class="qr-title">سورة '+esc(info.name||s.name)+'</h2><p class="qr-sub">'+s.ayahs.length+' آية · '+esc(info.type||'القرآن الكريم')+'</p>'+ 
   '<div class="qr-surah-picker" aria-label="التنقل بين السور"><button id="qr-prev-surah" class="qr-surah-arrow" type="button" aria-label="السورة السابقة" title="السورة السابقة" '+(n<=1?'disabled':'')+'>‹</button><div class="qr-surah-select-wrap"><label for="qr-surah-select">اختر السورة</label><select id="qr-surah-select" class="qr-select" aria-label="اختيار السورة">'+meta.map(m=>'<option value="'+m.number+'"'+(m.number===n?' selected':'')+'>'+m.number+' — سورة '+esc(m.name)+'</option>').join('')+'</select></div><button id="qr-next-surah" class="qr-surah-arrow" type="button" aria-label="السورة التالية" title="السورة التالية" '+(n>=114?'disabled':'')+'>›</button></div><div class="qr-actions"><select id="qr-font" class="qr-select"><option value="1">حجم الخط: متوسط</option><option value="1.15">حجم الخط: كبير</option><option value=".9">حجم الخط: صغير</option></select>'+ 
-  '<select id="qr-reciter" class="qr-select" aria-label="اختيار القارئ">'+Object.entries(QURAN_RECITERS).map(([k,r])=>'<option value="'+k+'">'+esc(r.name)+'</option>').join('')+'</select><select id="qr-lang" class="qr-select" aria-label="عرض الترجمة"><option value="ar">العربية</option><option value="en">English · الترجمة الإنجليزية</option><option value="both">العربية + English</option></select><button id="qr-play-all" class="qr-btn" type="button">▶ تشغيل السورة</button><button id="qr-tw" class="qr-btn" type="button">تفعيل التجويد</button><a class="qr-btn" href="quran.html">السور</a><a class="qr-btn" href="prayer-times.html">🕌 المواقيت</a><a class="qr-btn" href="qibla.html">🧭 القبلة</a><a class="qr-btn" href="quran-search.html">الباحث</a></div>'+ 
+  '<select id="qr-reciter" class="qr-select" aria-label="اختيار القارئ">'+Object.entries(QURAN_RECITERS).map(([k,r])=>'<option value="'+k+'">'+esc(r.name)+'</option>').join('')+'</select><select id="qr-lang" class="qr-select" aria-label="عرض الترجمة"><option value="ar">العربية</option><option value="en">English · الترجمة الإنجليزية</option><option value="both">العربية + English</option></select><button id="qr-tafsir-btn" class="qr-btn is-active" type="button" aria-pressed="true" title="عرض/إخفاء التفسير الميسر">📖 التفسير الميسر</button><button id="qr-play-all" class="qr-btn" type="button">▶ تشغيل السورة</button><button id="qr-tw" class="qr-btn" type="button">تفعيل التجويد</button><a class="qr-btn" href="quran.html">السور</a><a class="qr-btn" href="prayer-times.html">🕌 المواقيت</a><a class="qr-btn" href="qibla.html">🧭 القبلة</a><a class="qr-btn" href="quran-search.html">الباحث</a></div>'+ 
   '<div class="qr-legend" id="qr-legend" hidden><span>الأزرق: همزة وصل</span><span>الذهبي: لام شمسية</span><span>البنفسجي: مد</span></div></div>'+ 
-  (s.basmalah ? '<div class="qr-basmalah-wrap" aria-label="بسم الله الرحمن الرحيم"><div class="qr-basmalah-text">'+esc(s.basmalah)+'</div></div>' : '')+
+  (s.basmalah ? '<div class="qr-basmalah-wrap" aria-label="بسم الله الرحمن الرحيم" title="اضغط للاستماع إلى البسملة الشريفة"><div class="qr-basmalah-text">'+esc(s.basmalah)+'</div></div>' : '')+
   '<div id="qr-list">'+s.ayahs.map(a=>{
     const et=ev['verse_'+a.n]||ev['verse_'+(a.n-1)]||'';
+    const tafsirText=tv['verse_'+a.n]||tv['verse_'+(a.n-1)]||'';
     const faved=isFavAyah(a.n);
     return '<article class="qr-ayah" id="ayah-'+a.n+'" data-ayah="'+a.n+'">'+
       '<div class="qr-ayah-header">'+
         '<span class="qr-num" title="آية '+a.n+'">'+a.n+'</span>'+
         '<div class="qr-ayah-actions">'+
+          (tafsirText?'<button class="qr-ayah-btn qr-ayah-tafsir-btn" type="button" aria-label="عرض تفسير الآية '+a.n+'" title="التفسير الميسر للآية">📖</button>':'')+
           '<button class="qr-ayah-btn qr-ayah-share" type="button" aria-label="مشاركة الآية '+a.n+'" title="مشاركة الآية">'+
             '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>'+
           '</button>'+
@@ -365,6 +380,7 @@ async function renderQuranSurah(container){
         '</div>'+
       '</div>'+
       '<div class="qr-main"><div class="qr-text" data-base="'+esc(a.text)+'">'+esc(a.text)+'</div></div>'+
+      (tafsirText?'<div class="qr-tafsir" id="tafsir-'+a.n+'"><div class="qr-tafsir-header"><span class="qr-tafsir-badge"><span class="qr-tafsir-badge-icon">📖</span> التفسير الميسر</span></div><div class="qr-tafsir-body">'+esc(tafsirText)+'</div></div>':'')+
       (et?'<div class="qr-translation" data-en="'+esc(et)+'">'+esc(et)+'</div>':'')+
     '</article>'
   }).join('')+'</div>'+ 
@@ -463,12 +479,13 @@ async function renderQuranSurah(container){
   };
   checkHash();
 
-  let twOn=false, activeIndex=-1, playingAll=false, audioPlayer=null;
+  let twOn=false, activeIndex=-1, playingAll=false, isPlayingBasmalah=false, tafsirVisible=true, audioPlayer=null;
   const cards=[...box.querySelectorAll('.qr-ayah')];
   const texts=[...box.querySelectorAll('.qr-text')];
   const plays=[...box.querySelectorAll('.qr-play')];
   const playAllBtn=box.querySelector('#qr-play-all');
   const reciterSelect=box.querySelector('#qr-reciter');
+  const basmalahWrap=box.querySelector('.qr-basmalah-wrap');
 
   const savedReciter=localStorage.getItem('manzala_quran_reciter')||'alafasy';
   if(reciterSelect && QURAN_RECITERS[savedReciter]){
@@ -479,6 +496,7 @@ async function renderQuranSurah(container){
     cards.forEach(c=>c.classList.remove('is-playing'));
     texts.forEach(t=>t.classList.remove('is-reading'));
     plays.forEach(b=>{b.textContent='▶';b.classList.remove('is-active');});
+    if(basmalahWrap) basmalahWrap.classList.remove('is-playing');
   };
 
   const stopAudio=()=>{
@@ -490,6 +508,50 @@ async function renderQuranSurah(container){
     }
     clearActive();
     activeIndex=-1;
+    isPlayingBasmalah=false;
+  };
+
+  const playBasmalah=async(candidateIdx=0)=>{
+    const reciter=reciterSelect?.value||'alafasy';
+    const candidates=getAyahAudioCandidates(1,1,reciter);
+    if(candidateIdx>=candidates.length){
+      if(basmalahWrap) basmalahWrap.classList.remove('is-playing');
+      isPlayingBasmalah=false;
+      if(playingAll) playAyah(0,0);
+      return;
+    }
+    const src=candidates[candidateIdx];
+    if(!audioPlayer) audioPlayer=new Audio();
+    else{ try{audioPlayer.pause();}catch(_){} }
+
+    clearActive();
+    isPlayingBasmalah=true;
+    if(basmalahWrap){
+      basmalahWrap.classList.add('is-playing');
+      basmalahWrap.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+
+    audioPlayer.onended=()=>{
+      if(basmalahWrap) basmalahWrap.classList.remove('is-playing');
+      isPlayingBasmalah=false;
+      if(playingAll){
+        playAyah(0,0);
+      }else{
+        stopAudio();
+      }
+    };
+
+    audioPlayer.onerror=()=>{
+      playBasmalah(candidateIdx+1);
+    };
+
+    try{
+      audioPlayer.src=src;
+      await audioPlayer.play();
+    }catch(err){
+      if(err.name==='AbortError')return;
+      playBasmalah(candidateIdx+1);
+    }
   };
 
   const scrollTo=i=>cards[i]?.scrollIntoView({behavior:'smooth',block:'center'});
@@ -589,7 +651,7 @@ async function renderQuranSurah(container){
 
   if(playAllBtn){
     playAllBtn.onclick=()=>{
-      if(playingAll && audioPlayer && !audioPlayer.paused){
+      if((playingAll || isPlayingBasmalah) && audioPlayer && !audioPlayer.paused){
         stopAudio();
         playingAll=false;
         playAllBtn.textContent='▶ تشغيل السورة';
@@ -598,9 +660,52 @@ async function renderQuranSurah(container){
       playingAll=true;
       playAllBtn.textContent='❚❚ إيقاف السورة';
       const startIdx=activeIndex>=0?activeIndex:0;
-      playAyah(startIdx,0);
+      if(startIdx===0 && n!==9 && n!==1){
+        playBasmalah(0);
+      }else{
+        playAyah(startIdx,0);
+      }
     };
   }
+
+  if(basmalahWrap){
+    basmalahWrap.style.cursor='pointer';
+    basmalahWrap.addEventListener('click',()=>{
+      if(isPlayingBasmalah && audioPlayer && !audioPlayer.paused){
+        stopAudio();
+        return;
+      }
+      playingAll=false;
+      if(playAllBtn)playAllBtn.textContent='▶ تشغيل السورة';
+      playBasmalah(0);
+    });
+  }
+
+  const tafsirBtn=box.querySelector('#qr-tafsir-btn');
+  if(tafsirBtn){
+    tafsirBtn.onclick=()=>{
+      tafsirVisible=!tafsirVisible;
+      tafsirBtn.classList.toggle('is-active',tafsirVisible);
+      tafsirBtn.setAttribute('aria-pressed',String(tafsirVisible));
+      tafsirBtn.textContent=tafsirVisible?'📖 التفسير الميسر':'📖 إظهار التفسير';
+      box.querySelectorAll('.qr-tafsir').forEach(el=>{
+        el.style.display=tafsirVisible?'block':'none';
+      });
+    };
+  }
+
+  box.querySelectorAll('.qr-ayah-tafsir-btn').forEach(btn=>{
+    btn.onclick=e=>{
+      e.stopPropagation();
+      const card=btn.closest('.qr-ayah');
+      const tafsirEl=card?.querySelector('.qr-tafsir');
+      if(tafsirEl){
+        const isHidden=tafsirEl.style.display==='none';
+        tafsirEl.style.display=isHidden?'block':'none';
+        btn.classList.toggle('is-active',isHidden);
+      }
+    };
+  });
 
   if(reciterSelect){
     reciterSelect.onchange=()=>{
@@ -669,7 +774,7 @@ function computeCompassHeading(alpha, beta, gamma, webkitHeading=null, isCameraM
     return (h + screenAngle + 360) % 360;
   }
 
-  // 2. Android Chrome with 3D Matrix & Tilt Compensation
+  // 2. Android Chrome / Standard DeviceOrientation (with smooth 3D tilt compensation)
   if(alpha===null || typeof alpha==='undefined' || isNaN(alpha)) return null;
 
   const degToRad=Math.PI/180;
@@ -681,25 +786,20 @@ function computeCompassHeading(alpha, beta, gamma, webkitHeading=null, isCameraM
   const cb=Math.cos(b), sb=Math.sin(b);
   const cg=Math.cos(g), sg=Math.sin(g);
 
-  let east, north;
-
-  // In AR / Camera mode or when phone is held upright in front of eyes:
-  // Back camera points along the -Z axis of the phone
-  if(isCameraMode || Math.abs(b) > 45 * degToRad){
-    east = -(ca * sg + sa * sb * cg);
-    north = -(sa * sg - ca * sb * cg);
+  let heading;
+  if(isCameraMode || Math.abs(b) > 65 * degToRad){
+    // Camera / AR mode: phone held upright in front of eyes (aiming through back camera -Z axis)
+    const east = -(ca * sg + sa * sb * cg);
+    const north = -(sa * sg - ca * sb * cg);
+    heading = (Math.atan2(east, north) * (180 / Math.PI) + 360) % 360;
   } else {
-    // In flat / compass mode: top edge points along +Y axis of the phone
-    if(Math.abs(cb) < 0.1){
-      east = -(ca * sg + sa * sb * cg);
-      north = -(sa * sg - ca * sb * cg);
-    } else {
-      east = -sa * cb;
-      north = ca * cb;
-    }
+    // Compass mode: phone held flat or naturally tilted in hand
+    // Vector pointing along top of phone (+Y axis) projected onto horizontal plane
+    const east = -sa * cg - ca * sb * sg;
+    const north = ca * cg - sa * sb * sg;
+    heading = (Math.atan2(east, north) * (180 / Math.PI) + 360) % 360;
   }
 
-  let heading = (Math.atan2(east, north) * (180 / Math.PI) + 360) % 360;
   if(isNaN(heading)){
     heading = (360 - (alpha || 0) + 360) % 360;
   }
@@ -1239,8 +1339,17 @@ async function renderQibla(container){
     }
   }
 
-  // ── Multi-Source Sensor Listener (Absolute + 3D Tilt-Compensated) ──
-  function onOrientation(e){
+  // ── Multi-Source Sensor Listener (Absolute Geo-Magnetic North Priority) ──
+  let hasAbsoluteSensor = false;
+
+  function onSensorEvent(e, isAbsolute = false){
+    if(isAbsolute){
+      hasAbsoluteSensor = true;
+    }else if(hasAbsoluteSensor && e.absolute !== true){
+      // When deviceorientationabsolute is providing Earth coordinates, ignore relative deviceorientation
+      return;
+    }
+
     const webkitHeading = typeof e.webkitCompassHeading!=='undefined' ? e.webkitCompassHeading : null;
     const isCam = currentMode === 'ar';
     const computed = computeCompassHeading(e.alpha, e.beta, e.gamma, webkitHeading, isCam);
@@ -1249,33 +1358,12 @@ async function renderQibla(container){
       if(!hasSensor){
         hasSensor=true;
         sensorState.classList.add('is-active');
-        sensorTxt.textContent='مستشعر البوصلة الجيومغناطيسية نشط ومباشر 🟢';
+        sensorTxt.textContent=(isAbsolute || e.absolute || webkitHeading !== null)
+          ? 'مستشعر البوصلة الجيومغناطيسية الدقيق نشط ومباشر 🟢'
+          : 'مستشعر حركة الهاتف نشط ومباشر 🟢';
       }
       updateHeading(computed, false);
     }
-  }
-
-  // Generic Sensor API: AbsoluteOrientationSensor (Chrome / Android)
-  let absSensor=null;
-  if(typeof window!=='undefined' && 'AbsoluteOrientationSensor' in window){
-    try{
-      absSensor=new AbsoluteOrientationSensor({ frequency:60, referenceFrame:'device' });
-      absSensor.addEventListener('reading', ()=>{
-        if(absSensor.quaternion){
-          const [q0, q1, q2, q3] = absSensor.quaternion;
-          // Calculate heading from quaternion
-          const heading = Math.atan2(2 * (q0 * q1 + q2 * q3), 1 - 2 * (q1 * q1 + q2 * q2)) * (180 / Math.PI);
-          const trueHeading = (heading + 360) % 360;
-          if(!hasSensor){
-            hasSensor=true;
-            sensorState.classList.add('is-active');
-            sensorTxt.textContent='مستشعر AbsoluteOrientationSensor عالي الدقة نشط 🟢';
-          }
-          updateHeading(trueHeading, false);
-        }
-      });
-      absSensor.start();
-    }catch(_){}
   }
 
   if(typeof window!=='undefined'){
@@ -1286,7 +1374,7 @@ async function renderQibla(container){
           const res=await DeviceOrientationEvent.requestPermission();
           if(res==='granted'){
             permBtn.style.display='none';
-            window.addEventListener('deviceorientation', onOrientation, true);
+            window.addEventListener('deviceorientation', e=>onSensorEvent(e, false), true);
             showToast('تم تفعيل مستشعر البوصلة بنجاح 🧭');
           }
         }catch(err){
@@ -1295,9 +1383,9 @@ async function renderQibla(container){
       };
     }else{
       if('ondeviceorientationabsolute' in window){
-        window.addEventListener('deviceorientationabsolute', onOrientation, true);
+        window.addEventListener('deviceorientationabsolute', e=>onSensorEvent(e, true), true);
       }
-      window.addEventListener('deviceorientation', onOrientation, true);
+      window.addEventListener('deviceorientation', e=>onSensorEvent(e, false), true);
     }
   }
 

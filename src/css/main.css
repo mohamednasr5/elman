@@ -3424,3 +3424,43 @@ html[lang="en"] .display-controls-rail:focus-within {
   .ticker-text { max-width: 240px !important; font-size: 0.84rem; }
 }
 
+/* Global Keyboard Auto-Correction Suggestion Chip */
+.km-suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0F172A;
+  color: #FFFFFF;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.18);
+  font-size: 13px;
+  font-family: 'Cairo', var(--font-arabic, sans-serif);
+  pointer-events: auto;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: kmFadeIn 0.25s ease-out;
+}
+@keyframes kmFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.km-suggestion-chip strong {
+  color: #38BDF8;
+  font-weight: 800;
+}
+.km-apply-btn {
+  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.km-apply-btn:hover {
+  transform: scale(1.05);
+}
+
+
