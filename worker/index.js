@@ -10286,7 +10286,7 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
 
   // 0. Edge SSR Cache check (Instant 15-30ms response from Cloudflare Edge for humans & Googlebot)
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const SSR_CACHE_VERSION = 'v10';
+  const SSR_CACHE_VERSION = 'v11';
   const ssrCacheKey = new Request(`https://cache.local/ssr/place/${SSR_CACHE_VERSION}?slug=${encodeURIComponent(cleanSlug.toLowerCase())}&lang=${langPrefix}`, { method: 'GET' });
   if (cache) {
     try {
@@ -10346,7 +10346,14 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
     : (place.description || `تعرف على عنوان ومواعيد وخدمات وأرقام التواصل الخاصة بـ ${rawPlaceName} في دليل المنزلة والمطرية الرقمي.`);
   const placeImg = toProxyImageUrl(place.cover_image_url || place.logo_url || 'https://dalilmanzala.com/assets/images/og-whatsapp.jpg', canonicalBase);
 
-  const isIdLike = (s) => !s || s.startsWith('p_') || s.startsWith('-P0') || (s.length > 20 && /^[a-zA-Z0-9_-]+$/.test(s));
+  const isIdLike = (s) => {
+    if (!s || typeof s !== 'string') return true;
+    const str = s.trim();
+    if (/^p_\d+_[a-z0-9]+$/i.test(str)) return true; // e.g. p_1788789682272_ouzbt8
+    if (/^-[a-zA-Z0-9_-]{15,}$/.test(str)) return true; // Firebase push ID e.g. -P0XRSq2etJxs31mul5O
+    if (/^[a-zA-Z0-9]{25,}$/.test(str)) return true; // Long random hash without hyphens
+    return false;
+  };
   const cleanTranslit = slugifyWorker(place.name);
   const cleanPrefix = cleanSlug.replace(/-[a-z0-9_]{4,10}$/i, '');
 
