@@ -420,7 +420,7 @@ function css() {
   '.place-context__btn-wa:hover{transform:translateY(-2px)}' +
 
   /* ── Continuous Live Articles Ticker (Left to Right / Flow Towards Right) ── */
-  '.articles-ticker-wrapper{margin:28px 0 10px;background:#ffffff;border:1.5px solid rgba(15,118,110,.2);border-radius:18px;display:flex;align-items:center;overflow:hidden;box-shadow:0 6px 20px -4px rgba(15,76,92,.08);position:relative;height:56px}' +
+  '.articles-ticker-wrapper{margin:28px 0 10px;background:#ffffff;border:1.5px solid rgba(15,118,110,.2);border-radius:18px;display:flex;align-items:center;overflow:hidden;box-shadow:0 6px 20px -4px rgba(15,76,92,.08);position:relative;height:56px;width:100%;box-sizing:border-box}' +
   '.articles-ticker-label{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#0f766e 0%,#0f4c5c 100%);color:#fff;padding:0 18px;height:100%;font-weight:900;font-size:.88rem;white-space:nowrap;flex-shrink:0;position:relative;z-index:3;box-shadow:4px 0 16px rgba(0,0,0,.1)}' +
   '.ticker-animated-svg{flex-shrink:0;color:#fef08a;animation:tickerSvgGlow 2.5s ease-in-out infinite}' +
   '@keyframes tickerSvgGlow{0%,100%{filter:drop-shadow(0 0 2px rgba(254,240,138,.4))}50%{filter:drop-shadow(0 0 8px rgba(254,240,138,.9))}}' +
@@ -429,22 +429,22 @@ function css() {
   '.ticker-svg-glow{animation:svgDotPulse 1.2s cubic-bezier(.4,0,.6,1) infinite}' +
   '@keyframes svgDotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}' +
   '.ticker-badge-text{letter-spacing:-.01em}' +
-  '.articles-ticker-track{flex:1;overflow:hidden;height:100%;display:flex;align-items:center;position:relative;mask-image:linear-gradient(to right,transparent 0%,black 24px,black calc(100% - 24px),transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 24px,black calc(100% - 24px),transparent 100%)}' +
-  '.articles-ticker-content{display:flex;align-items:center;width:max-content;animation:tickerMoveToRight 110s linear infinite;will-change:transform}' +
+  '.articles-ticker-track{flex:1 1 0%;min-width:0;overflow:hidden;height:100%;display:flex;align-items:center;position:relative;direction:ltr!important;mask-image:linear-gradient(to right,transparent 0%,black 24px,black calc(100% - 24px),transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 24px,black calc(100% - 24px),transparent 100%)}' +
+  '.articles-ticker-content{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;width:max-content!important;min-width:max-content!important;flex-shrink:0!important;animation:tickerMoveToRight 90s linear infinite;will-change:transform}' +
   '.articles-ticker-wrapper:hover .articles-ticker-content{animation-play-state:paused!important}' +
   '@keyframes tickerMoveToRight{0%{transform:translateX(-50%)}100%{transform:translateX(0%)}}' +
-  '.ticker-entry{display:inline-flex;align-items:center;white-space:nowrap;padding:0 12px}' +
-  '.ticker-link{display:inline-flex;align-items:center;gap:8px;color:#0f172a;text-decoration:none;font-weight:800;font-size:.9rem;transition:color .2s ease}' +
-  '.ticker-link:hover{color:#0f766e}' +
-  '.ticker-bullet{font-size:.95rem;color:#0f766e}' +
-  '.ticker-text{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-  '.ticker-separator{display:inline-flex;align-items:center;gap:6px;margin:0 16px}' +
-  '.ticker-sep-badge{display:inline-flex;align-items:center;gap:6px;background:#f0fdfa;border:1px solid #ccfbf1;padding:3px 10px;border-radius:999px;color:#0f766e;font-size:.76rem;font-weight:800;text-decoration:none;transition:background .2s,border-color .2s;white-space:nowrap}' +
-  '.ticker-sep-badge:hover{background:#ccfbf1;border-color:#99f6e4}' +
-  '.ticker-sep-logo{width:24px;height:24px;border-radius:50%;object-fit:cover;background:#e2e8f0;border:1.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.08);flex-shrink:0}' +
-  '.ticker-sep-icon{font-size:14px;flex-shrink:0}' +
-  '.ticker-sep-name{font-size:.74rem;color:#0f766e;font-weight:800}' +
-  '@media(max-width:680px){.articles-ticker-wrapper{height:50px}.articles-ticker-label{padding:0 12px;font-size:.8rem}.ticker-text{max-width:240px;font-size:.84rem}}' +
+  '.ticker-entry{display:inline-flex!important;align-items:center!important;flex:0 0 auto!important;flex-shrink:0!important;white-space:nowrap!important;padding:0 14px!important}' +
+  '.ticker-link{display:inline-flex!important;align-items:center!important;gap:8px!important;flex:0 0 auto!important;flex-shrink:0!important;white-space:nowrap!important;color:#0f172a!important;text-decoration:none!important;font-weight:800!important;font-size:.92rem!important;transition:color .2s ease}' +
+  '.ticker-link:hover{color:#0f766e!important}' +
+  '.ticker-bullet{font-size:.95rem!important;color:#0f766e!important;flex-shrink:0!important}' +
+  '.ticker-text{display:inline-block!important;max-width:480px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;flex-shrink:0!important}' +
+  '.ticker-separator{display:inline-flex!important;align-items:center!important;gap:6px!important;margin:0 16px!important;flex:0 0 auto!important;flex-shrink:0!important;white-space:nowrap!important}' +
+  '.ticker-sep-badge{display:inline-flex!important;align-items:center!important;gap:6px!important;flex:0 0 auto!important;flex-shrink:0!important;white-space:nowrap!important;background:#f0fdfa!important;border:1px solid #ccfbf1!important;padding:3px 10px!important;border-radius:999px!important;color:#0f766e!important;font-size:.76rem!important;font-weight:800!important;text-decoration:none!important;transition:background .2s,border-color .2s}' +
+  '.ticker-sep-badge:hover{background:#ccfbf1!important;border-color:#99f6e4!important}' +
+  '.ticker-sep-logo{width:24px!important;height:24px!important;border-radius:50%!important;object-fit:cover!important;background:#e2e8f0!important;border:1.5px solid #fff!important;box-shadow:0 2px 6px rgba(0,0,0,.08)!important;flex-shrink:0!important}' +
+  '.ticker-sep-icon{font-size:14px!important;flex-shrink:0!important}' +
+  '.ticker-sep-name{font-size:.74rem!important;color:#0f766e!important;font-weight:800!important;white-space:nowrap!important;flex-shrink:0!important}' +
+  '@media(max-width:680px){.articles-ticker-wrapper{height:50px}.articles-ticker-label{padding:0 12px;font-size:.8rem}.ticker-text{max-width:240px!important;font-size:.84rem}}' +
 
   '.article-keywords{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;padding-top:18px;border-top:1px solid #f1f5f9}' +
   '.article-keywords span{background:#ecfeff;color:#0f766e;border-radius:999px;padding:6px 14px;font-size:.8rem;font-weight:800;border:1px solid #cffafe;transition:all .2s}' +
@@ -786,7 +786,7 @@ export async function handleArticlePublicPage(request, url, env) {
       '<title>'+esc(title)+'</title><meta name="description" content="'+esc(desc)+'"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">' +
       '<link rel="canonical" href="'+SITE+'/blog/"><meta property="og:type" content="website"><meta property="og:url" content="'+SITE+'/blog/"><meta property="og:title" content="'+esc(title)+'"><meta property="og:description" content="'+esc(desc)+'">' +
       '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-      '<link rel="stylesheet" href="/src/css/main.css?v=20260924_05">' +
+      '<link rel="stylesheet" href="/src/css/main.css?v=20260924_08">' +
       css()+
       '<script type="application/ld+json">' + JSON.stringify(blogSchema) + '</script>' +
       '</head><body>' +
@@ -1011,7 +1011,7 @@ export async function handleArticlePublicPage(request, url, env) {
     '<meta name="twitter:description" content="' + esc(article.excerpt || article.content.slice(0, 180)) + '">' +
     '<meta name="twitter:image" content="' + esc(article.coverImageUrl || SITE + '/assets/images/og-whatsapp.jpg') + '">' +
     '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link rel="stylesheet" href="/src/css/main.css?v=20260924_05">' +
+    '<link rel="stylesheet" href="/src/css/main.css?v=20260924_08">' +
     css() +
     '<script type="application/ld+json">' + JSON.stringify(schema) + '</script>' +
     '<script type="application/ld+json">' + JSON.stringify(breadcrumb) + '</script>' +
