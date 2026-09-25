@@ -38,7 +38,7 @@ export function initAuth(){
         }
       }
     }).catch(err => {
-      if (err?.code !== 'auth/no-auth-event') {
+      if (err?.code !== 'auth/no-auth-event' && err?.code !== 'auth/internal-error') {
         console.warn('[Auth] getRedirectResult notice:', err?.message || err);
       }
     });
