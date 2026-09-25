@@ -52,6 +52,9 @@ routes = [
 binding = "elmanzala"
 bucket_name = "elmanzala"
 
+[ai]
+binding = "AI"
+
 
 # OpenRouter API Secrets (Configure securely via Cloudflare Secrets):
 # - OPENROUTER_API_KEY    (Account #1 - Primary)
