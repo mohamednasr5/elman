@@ -5,6 +5,26 @@ import { toast } from './Toast.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+export function cleanArticleMarkdown(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  let out = raw;
+
+  // 1. Convert question patterns like "- **س: ...?**" or "**س: ...?**" to clean "### س: $1"
+  out = out.replace(/(?:^|\n)\s*[-*]?\s*\*\*(?:س|سؤال)\s*[:：\-]?\s*([^\n*]+)\*\*/g, '\n\n### س: $1\n');
+  out = out.replace(/(?:^|\n)\s*[-*]\s*(?:س|سؤال)\s*[:：\-]\s*([^\n]+)/g, '\n\n### س: $1\n');
+  out = out.replace(/(?:^|\n)\s*\*\*(?:س|سؤال)\s*[:：\-]?\s*([^\n*]+)\*\*/g, '\n\n### س: $1\n');
+
+  // 2. Strip all remaining ** markdown asterisks so text is completely natural and human
+  out = out.replace(/\*\*(.*?)\*\*/g, '$1');
+  out = out.replace(/\*\*/g, '');
+  out = out.replace(/(?:^|\s)\*([^*\n]+)\*(?=\s|$)/g, '$1');
+
+  // 3. Remove leftover bullet dashes attached directly to headings
+  out = out.replace(/(?:^|\n)[-*]\s+(###?\s+)/g, '\n$1');
+
+  return out.replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function injectStyles() {
   if (document.getElementById('article-manager-styles')) return;
   const s = document.createElement('style');
@@ -288,7 +308,7 @@ export async function renderArticlesManager(container, user) {
               <span>محتوى المقال (مكتوب بأسلوب بشري جذاب ومتوافق مع السيو)</span>
               <span id="art-char-badge" class="article-counter-badge article-counter--short">0 كلمة</span>
             </label>
-            <textarea id="art-content-input" placeholder="اكتب المقال هنا أو دعه يُولّد تلقائياً من الزر أعلاه...">${esc(editingArticle?.content || '')}</textarea>
+            <textarea id="art-content-input" placeholder="اكتب المقال هنا أو دعه يُولّد تلقائياً من الزر أعلاه...">${esc(cleanArticleMarkdown(editingArticle?.content || ''))}</textarea>
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#64748b">
               <span>المعيار الذهبي للسيو والذكاء الاصطناعي: حوالي 550 كلمة مقسمة بعناوين فرعية H2 و H3 وفقرة أسئلة شائعة وخاتمة</span>
               <span id="art-words-count">0 حرف</span>
@@ -468,7 +488,7 @@ export async function renderArticlesManager(container, user) {
             const slugInp = bodyEl.querySelector('#art-slug-input');
             if (slugInp) slugInp.value = draft.slug;
           }
-          if (draft.content) bodyEl.querySelector('#art-content-input').value = draft.content;
+          if (draft.content) bodyEl.querySelector('#art-content-input').value = cleanArticleMarkdown(draft.content);
           if (Array.isArray(draft.keywords) && draft.keywords.length) {
             bodyEl.querySelector('#art-keywords-input').value = draft.keywords.join(', ');
           }
@@ -561,7 +581,7 @@ export async function renderArticlesManager(container, user) {
     // Save Article Handler (Draft or Publish)
     async function handleSave(isDraft) {
       const title = bodyEl.querySelector('#art-title-input').value.trim();
-      const content = bodyEl.querySelector('#art-content-input').value.trim();
+      const content = cleanArticleMarkdown(bodyEl.querySelector('#art-content-input').value.trim());
       const keywords = bodyEl.querySelector('#art-keywords-input').value.split(',').map(s => s.trim()).filter(Boolean);
 
       if (!title || title.length < 5) {

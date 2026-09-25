@@ -35,11 +35,33 @@ function imageUrl(value) {
   return m ? SITE + '/api/r2/' + m[1] : '';
 }
 
+export function cleanArticleContent(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  let out = raw;
+
+  // 1. Convert question patterns (e.g. "- **س: ...?**" or "**س: ...?**" or "- س: ...?") to "### س: $1"
+  out = out.replace(/(?:^|\n)\s*[-*]?\s*\*\*(?:س|سؤال)\s*[:：\-]?\s*([^\n*]+)\*\*/g, '\n\n### س: $1\n');
+  out = out.replace(/(?:^|\n)\s*[-*]\s*(?:س|سؤال)\s*[:：\-]\s*([^\n]+)/g, '\n\n### س: $1\n');
+  out = out.replace(/(?:^|\n)\s*\*\*(?:س|سؤال)\s*[:：\-]?\s*([^\n*]+)\*\*/g, '\n\n### س: $1\n');
+
+  // 2. Strip all remaining ** markdown asterisks everywhere so text never looks AI-generated
+  out = out.replace(/\*\*(.*?)\*\*/g, '$1');
+  out = out.replace(/\*\*/g, '');
+  out = out.replace(/(?:^|\s)\*([^*\n]+)\*(?=\s|$)/g, '$1');
+
+  // 3. Remove leftover bullet dashes attached directly to headings
+  out = out.replace(/(?:^|\n)[-*]\s+(###?\s+)/g, '\n$1');
+
+  return out.replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function mapRow(row) {
   if (!row) return null;
   return {
     id: row.id, placeId: row.place_id, ownerId: row.owner_id, slug: row.slug,
-    title: row.title, excerpt: row.excerpt || '', content: row.content || '',
+    title: cleanArticleContent(row.title),
+    excerpt: cleanArticleContent(row.excerpt || ''),
+    content: cleanArticleContent(row.content || ''),
     keywords: keywords(row.keywords_json), coverImageUrl: imageUrl(row.cover_image_url),
     status: row.status || 'published', aiGenerated: Boolean(row.ai_generated),
     createdAt: Number(row.created_at || 0), updatedAt: Number(row.updated_at || 0),
@@ -94,30 +116,97 @@ async function bySlug(db, slug, includeUnpublished) {
   return mapRow(rawRow);
 }
 
-function formatProse(rawContent) {
-  const blocks = String(rawContent || '').split(/\n\n+/);
+export function formatProse(rawContent) {
+  const cleaned = cleanArticleContent(rawContent);
+  const blocks = cleaned.split(/\n\n+/);
   let isFirstParagraph = true;
-  return blocks.map(block => {
-    const trimmed = block.trim();
-    if (!trimmed) return '';
-    if (trimmed.startsWith('### ')) {
-      const headingText = trimmed.slice(4).trim();
-      return '<h3 class="prose-h3"><span class="prose-h3__icon" aria-hidden="true">✨</span><span>' + esc(headingText) + '</span></h3>';
-    }
+  let inFaqSection = false;
+  const out = [];
+
+  for (let i = 0; i < blocks.length; i++) {
+    const trimmed = blocks[i].trim();
+    if (!trimmed) continue;
+
+    // Check if it's an H2
     if (trimmed.startsWith('## ')) {
       const headingText = trimmed.slice(3).trim();
-      return '<h2 class="prose-h2"><span class="prose-h2__icon" aria-hidden="true">📌</span><span>' + esc(headingText) + '</span></h2>';
+      inFaqSection = /الأسئلة الشائعة|أسئلة شائعة|FAQ/i.test(headingText);
+      const icon = inFaqSection ? '❓' : '📌';
+      out.push('<h2 class="prose-h2' + (inFaqSection ? ' prose-h2--faq' : '') + '"><span class="prose-h2__icon" aria-hidden="true">' + icon + '</span><span>' + esc(headingText) + '</span></h2>');
+      continue;
     }
+
+    // Check if it's an FAQ Question:
+    // 1. Explicit Q prefix: "### س: ...", "### سؤال: ..."
+    // 2. OR any H3 ending with a question mark "?" or "؟"
+    // 3. OR any H3 while inside the FAQ section
+    const qExplicitMatch = trimmed.match(/^###\s*(?:س|سؤال)\s*[:：\-]?\s*([^\n]+)/);
+    const qQuestionMarkMatch = trimmed.match(/^###\s*([^\n]+[؟?])/);
+    const qInFaqMatch = (inFaqSection && trimmed.startsWith('### ')) ? trimmed.match(/^###\s*([^\n]+)/) : null;
+    const qMatch = qExplicitMatch || qQuestionMarkMatch || qInFaqMatch;
+
+    if (qMatch) {
+      let qTitle = qMatch[1].trim();
+      // Clean leading "س:" or "سؤال:" from title since we have a dedicated badge
+      qTitle = qTitle.replace(/^(?:س|سؤال)\s*[:：\-]?\s*/, '').trim();
+      if (!qTitle.endsWith('؟') && !qTitle.endsWith('?')) qTitle += '؟';
+
+      // The answer might be on the remaining lines of this same block, or in the next block
+      const linesInBlock = trimmed.split('\n').slice(1).join('\n').trim();
+      let answerText = linesInBlock;
+
+      if (!answerText && i + 1 < blocks.length && !blocks[i + 1].trim().startsWith('#')) {
+        i++;
+        answerText = blocks[i].trim();
+      }
+
+      out.push(
+        '<div class="prose-faq-card">' +
+          '<div class="prose-faq-card__q">' +
+            '<span class="prose-faq-card__q-badge">سؤال</span>' +
+            '<h3 class="prose-faq-card__q-title">' + esc(qTitle) + '</h3>' +
+          '</div>' +
+          (answerText ? (
+            '<div class="prose-faq-card__a">' +
+              '<div class="prose-faq-card__a-icon" aria-hidden="true">' +
+                '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
+              '</div>' +
+              '<div class="prose-faq-card__a-text">' +
+                '<p>' + esc(answerText) + '</p>' +
+              '</div>' +
+            '</div>'
+          ) : '') +
+        '</div>'
+      );
+      continue;
+    }
+
+    // Regular H3
+    if (trimmed.startsWith('### ')) {
+      const headingText = trimmed.slice(4).trim();
+      out.push('<h3 class="prose-h3"><span class="prose-h3__icon" aria-hidden="true">✨</span><span>' + esc(headingText) + '</span></h3>');
+      continue;
+    }
+
+    // List items
     if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
       const items = trimmed.split('\n').map(li => li.replace(/^[-*]\s+/, '').trim()).filter(Boolean);
-      return '<ul class="prose-list">' + items.map(it => '<li>' + esc(it) + '</li>').join('') + '</ul>';
+      out.push('<ul class="prose-list">' + items.map(it => '<li>' + esc(it) + '</li>').join('') + '</ul>');
+      continue;
     }
+
+    // Lead paragraph
     if (isFirstParagraph) {
       isFirstParagraph = false;
-      return '<p class="prose-p prose-lead">' + esc(trimmed) + '</p>';
+      out.push('<p class="prose-p prose-lead">' + esc(trimmed) + '</p>');
+      continue;
     }
-    return '<p class="prose-p">' + esc(trimmed) + '</p>';
-  }).filter(Boolean).join('\n');
+
+    // Standard paragraph
+    out.push('<p class="prose-p">' + esc(trimmed) + '</p>');
+  }
+
+  return out.join('\n');
 }
 
 function formatDate(ts) {
@@ -384,6 +473,25 @@ function css() {
   '.prose-list{margin:0 0 24px;padding-right:24px;line-height:2.1}' +
   '.prose-list li{margin-bottom:8px}' +
 
+  /* ── Professional FAQ Q&A Cards ── */
+  '.prose-h2--faq{margin-top:46px;color:#0f766e;border-bottom:2px dashed rgba(15,118,110,.25);padding-bottom:12px}' +
+  '.prose-faq-card{margin:22px 0 26px;background:#ffffff;border:1.5px solid #e2e8f0;border-radius:20px;overflow:hidden;box-shadow:0 4px 18px rgba(15,23,42,.04);transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}' +
+  '.prose-faq-card:hover{transform:translateY(-2px);border-color:#0f766e;box-shadow:0 8px 24px rgba(15,118,110,.1)}' +
+  '.prose-faq-card__q{display:flex;align-items:center;gap:12px;padding:16px 20px;background:linear-gradient(135deg,#f0fdfa 0%,#f8fafc 100%);border-bottom:1px solid #f1f5f9}' +
+  '.prose-faq-card__q-badge{background:linear-gradient(135deg,#0f766e 0%,#0d9488 100%);color:#ffffff;font-size:.78rem;font-weight:900;padding:4px 12px;border-radius:999px;letter-spacing:.02em;flex-shrink:0;box-shadow:0 2px 8px rgba(15,118,110,.25)}' +
+  '.prose-faq-card__q-title{margin:0;font-size:1.15rem;font-weight:800;color:#0f172a;line-height:1.45}' +
+  '.prose-faq-card__a{display:flex;align-items:flex-start;gap:14px;padding:18px 20px;background:#ffffff}' +
+  '.prose-faq-card__a-icon{width:28px;height:28px;border-radius:50%;background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;display:inline-grid;place-items:center;flex-shrink:0;margin-top:3px}' +
+  '.prose-faq-card__a-text{flex:1}' +
+  '.prose-faq-card__a-text p{margin:0;font-size:1.05rem;line-height:1.9;color:#334155;text-align:justify}' +
+  '[data-theme="dark"] .prose-faq-card{background:#1e293b;border-color:#334155;box-shadow:0 4px 20px rgba(0,0,0,.3)}' +
+  '[data-theme="dark"] .prose-faq-card:hover{border-color:#2dd4bf;box-shadow:0 8px 26px rgba(45,212,191,.15)}' +
+  '[data-theme="dark"] .prose-faq-card__q{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);border-bottom-color:#334155}' +
+  '[data-theme="dark"] .prose-faq-card__q-title{color:#f8fafc}' +
+  '[data-theme="dark"] .prose-faq-card__a{background:#1e293b}' +
+  '[data-theme="dark"] .prose-faq-card__a-text p{color:#cbd5e1}' +
+  '[data-theme="dark"] .prose-faq-card__a-icon{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:#34d399}' +
+
   '.article-share-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#f8fafc;border:1px solid var(--blog-border);border-radius:20px;padding:16px 22px;margin:36px 0 30px}' +
   '.article-share-title{font-size:.94rem;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px}' +
   '.article-share-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}' +
@@ -558,7 +666,7 @@ export async function handleArticlesApi(request, url, env, user) {
     const existing=existingId?await db.prepare('SELECT * FROM articles WHERE id=? LIMIT 1').bind(existingId).first().catch(()=>null):null;
     if(existing && !user.isAdmin && String(existing.owner_id)!==String(user.uid) && !isPlaceOwner) return {status:403,body:{success:false,error:'لا يمكنك تعديل هذا المقال'}};
 
-    const title=text(body.title,180), content=text(body.content,10000);
+    const title=cleanArticleContent(text(body.title,180)), content=cleanArticleContent(text(body.content,10000));
     if(title.length<6) return {status:400,body:{success:false,error:'عنوان المقال قصير جدًا'}};
     if(content.length<80) return {status:400,body:{success:false,error:'محتوى المقال قصير جدًا'}};
 
@@ -641,7 +749,7 @@ export async function handleArticlesApi(request, url, env, user) {
     );
     if(!isOwner) return {status:403,body:{success:false,error:'لا يمكنك تعديل هذا المقال'}};
     const body=await request.json().catch(()=>({}));
-    const title=text(body.title??existing.title,180), content=text(body.content??existing.content,10000);
+    const title=cleanArticleContent(text(body.title??existing.title,180)), content=cleanArticleContent(text(body.content??existing.content,10000));
     const cover=imageUrl(body.cover_image_url??body.coverImageUrl??existing.cover_image_url);
     const kws=JSON.stringify(keywords(body.keywords??existing.keywords_json));
     const excerpt=text(body.excerpt??content.slice(0,180),280);
@@ -1032,23 +1140,22 @@ export async function handleArticlePublicPage(request, url, env) {
 
   // Extract FAQ items for FAQPage Schema (Google Rich Snippets & AI Search Q&A)
   const faqItems = [];
-  const faqSection = (article.content || '').split(/##\s+(?:الأسئلة الشائعة|أسئلة شائعة|FAQ)/i)[1];
-  if (faqSection) {
-    const rawFaqContent = faqSection.split(/\n##\s+/)[0];
-    const qMatches = rawFaqContent.match(/###\s+([^\n]+)\n+([\s\S]*?)(?=\n###\s+|$)/g) || [];
-    for (const block of qMatches) {
-      const qTitle = block.match(/###\s+(?:س\d*[:：\-]?\s*)?([^\n?؟]+[?؟]?)/)?.[1]?.trim();
-      const aText = block.replace(/^###[^\n]+\n+/, '').replace(/^[-*]\s+/gm, '').trim();
-      if (qTitle && aText) {
-        faqItems.push({
-          '@type': 'Question',
-          name: qTitle,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: aText
-          }
-        });
-      }
+  const cleanBody = cleanArticleContent(article.content || '');
+  const qMatches = cleanBody.match(/###\s*(?:س|سؤال)?\s*[:：\-]?\s*([^\n]+)\n+([\s\S]*?)(?=\n###|\n##|$)/g) || [];
+  for (const block of qMatches) {
+    let qTitle = block.match(/###\s*(?:س|سؤال)?\s*[:：\-]?\s*([^\n]+)/)?.[1]?.trim() || '';
+    qTitle = qTitle.replace(/^(?:س|سؤال)\s*[:：\-]?\s*/, '').trim();
+    if (!qTitle.endsWith('؟') && !qTitle.endsWith('?')) qTitle += '؟';
+    const aText = block.replace(/^###[^\n]+\n+/, '').replace(/^[-*]\s+/gm, '').trim();
+    if (qTitle && aText && qTitle.length >= 6) {
+      faqItems.push({
+        '@type': 'Question',
+        name: qTitle,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: aText
+        }
+      });
     }
   }
   const faqSchema = faqItems.length > 0 ? {
