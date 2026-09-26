@@ -345,6 +345,14 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/factories/"/>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/category/feed/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/category/feed/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/category/feed/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/category/feed/"/>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/category/fesikh-%26-herring/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

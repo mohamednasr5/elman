@@ -1,6 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
+    <loc>https://dalilmanzala.com/article/mohamed-mohamed/</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/mohamed-mohamed/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/mohamed-mohamed/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/mohamed-mohamed/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/articles/---------1790335964555.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/store-elmanzala/</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/store-elmanzala/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/store-elmanzala/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/store-elmanzala/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1788894961722-bm92yzu.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/elmanzala-elmanzala/</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/elmanzala-elmanzala/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/elmanzala-elmanzala/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/elmanzala-elmanzala/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1788705593297-enxw6ec.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/4k-elmanzala/</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/4k-elmanzala/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/4k-elmanzala/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/4k-elmanzala/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789835800905-62vhj0o.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/clothes-elmanzala/</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/clothes-elmanzala/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/clothes-elmanzala/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/clothes-elmanzala/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789957233725-93hiqhe.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/article/super-market-super-market/</loc>
+    <lastmod>2026-09-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/article/super-market-super-market/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/article/super-market-super-market/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/article/super-market-super-market/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789863949447-ijz57d0.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/article/mohamed-ai/</loc>
     <lastmod>2026-09-25</lastmod>
     <changefreq>weekly</changefreq>
