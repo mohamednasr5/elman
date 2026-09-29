@@ -12,7 +12,7 @@
     <atom:link href="https://dalilmanzala.com/rss.xml" rel="self" type="application/rss+xml" />
     <link>https://dalilmanzala.com</link>
     <description>الدليل الرقمي الشامل لمدينة المنزلة والمطرية ودكرنس والجمالية — استكشف أحدث المحلات والشركات والأطباء والخدمات</description>
-    <lastBuildDate>Mon, 28 Sep 2026 09:28:25 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 29 Sep 2026 09:33:03 GMT</lastBuildDate>
     <language>ar-EG</language>
     <sy:updatePeriod>hourly</sy:updatePeriod>
     <sy:updateFrequency>1</sy:updateFrequency>
@@ -23,6 +23,37 @@
       <width>512</width>
       <height>512</height>
     </image>
+    <item>
+      <title><![CDATA[محل مركاتو للملابس | دليل المنزلة والمطرية الرقمي]]></title>
+      <link>https://dalilmanzala.com/place/mhl-mrkatw-llmlabs/</link>
+      <guid isPermaLink="true">https://dalilmanzala.com/place/mhl-mrkatw-llmlabs/</guid>
+      <pubDate>Mon, 28 Sep 2026 23:20:51 GMT</pubDate>
+      <category><![CDATA[محل بيع الملابس]]></category>
+      <dc:creator><![CDATA[دليل المنزلة والمطرية الرقمي]]></dc:creator>
+      <enclosure url="https://dalilmanzala.com/api/r2/places/1790637598551-91yx4xc.webp" type="image/webp" length="0" />
+      <media:content url="https://dalilmanzala.com/api/r2/places/1790637598551-91yx4xc.webp" medium="image" type="image/webp">
+        <media:title><![CDATA[محل مركاتو للملابس]]></media:title>
+      </media:content>
+      <media:thumbnail url="https://dalilmanzala.com/api/r2/places/1790637598551-91yx4xc.webp" />
+      <description><![CDATA[<p><strong>مكان جديد فى دليل المنزلة والمطرية الرقمي</strong></p>
+<p>📍 <strong>محل مركاتو للملابس</strong></p>
+<p>🏷️ <strong>القسم:</strong> محل بيع الملابس</p>
+<p>🗺️ <strong>الموقع:</strong> المنزلة - شارع امن الدولة بجوار السحاب</p>
+<p>📞 <strong>للتواصل:</strong> 01003712344</p>
+<p>📝 محل مركاتو للملابس في شارع امن الدولة بجوار السحاب - المنزلة هو محل بيع الملابس ومتخصص في توفير محل بيع الملابس، ملابس نسائية، محلات الملابس النسائية، ملابس البنات، ملابس رجالي، ملابس حريمي، ملابس أطفال.
+يتميز بتقديم أحدث التشكيلات والموديلات العصرية التي تناسب مختلف الأذواق، بخامات فاخرة وعالية الجودة وأسعار تنافسية تضمن لك أفضل تجربة تسوق.</p>
+<p><img src="https://dalilmanzala.com/api/r2/places/1790637598551-91yx4xc.webp" alt="محل مركاتو للملابس" style="max-width:100%;height:auto;border-radius:12px;" /></p>
+<p><a href="https://dalilmanzala.com/place/mhl-mrkatw-llmlabs/">اضغط هنا لفتح تفاصيل المكان بالكامل على الدليل</a></p>]]></description>
+      <content:encoded><![CDATA[<p><strong>مكان جديد فى دليل المنزلة والمطرية الرقمي</strong></p>
+<p>📍 <strong>محل مركاتو للملابس</strong></p>
+<p>🏷️ <strong>القسم:</strong> محل بيع الملابس</p>
+<p>🗺️ <strong>الموقع:</strong> المنزلة - شارع امن الدولة بجوار السحاب</p>
+<p>📞 <strong>للتواصل:</strong> 01003712344</p>
+<p>📝 محل مركاتو للملابس في شارع امن الدولة بجوار السحاب - المنزلة هو محل بيع الملابس ومتخصص في توفير محل بيع الملابس، ملابس نسائية، محلات الملابس النسائية، ملابس البنات، ملابس رجالي، ملابس حريمي، ملابس أطفال.
+يتميز بتقديم أحدث التشكيلات والموديلات العصرية التي تناسب مختلف الأذواق، بخامات فاخرة وعالية الجودة وأسعار تنافسية تضمن لك أفضل تجربة تسوق.</p>
+<p><img src="https://dalilmanzala.com/api/r2/places/1790637598551-91yx4xc.webp" alt="محل مركاتو للملابس" style="max-width:100%;height:auto;border-radius:12px;" /></p>
+<p><a href="https://dalilmanzala.com/place/mhl-mrkatw-llmlabs/">اضغط هنا لفتح تفاصيل المكان بالكامل على الدليل</a></p>]]></content:encoded>
+    </item>
     <item>
       <title><![CDATA[محل مافيا للملابس | دليل المنزلة والمطرية الرقمي]]></title>
       <link>https://dalilmanzala.com/place/mhl-mafya-llmlabs/</link>
@@ -1523,37 +1554,6 @@
 يتميز بتقديم أحدث التشكيلات والموديلات العصرية التي تناسب مختلف الأذواق، بخامات فاخرة وعالية الجودة وأسعار تنافسية تضمن لك أفضل تجربة تسوق.</p>
 <p><img src="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/places/1789833765393-vu7t0jj.webp" alt="محل روسندا" style="max-width:100%;height:auto;border-radius:12px;" /></p>
 <p><a href="https://dalilmanzala.com/place/mhl-rwsnda/">اضغط هنا لفتح تفاصيل المكان بالكامل على الدليل</a></p>]]></content:encoded>
-    </item>
-    <item>
-      <title><![CDATA[لودر و حفار الحاج أحمد عتيبه | دليل المنزلة والمطرية الرقمي]]></title>
-      <link>https://dalilmanzala.com/place/lwdr-w-hfar-alhag-ahmd-atybh/</link>
-      <guid isPermaLink="true">https://dalilmanzala.com/place/lwdr-w-hfar-alhag-ahmd-atybh/</guid>
-      <pubDate>Sat, 19 Sep 2026 06:00:37 GMT</pubDate>
-      <category><![CDATA[جرار  وحفار  ولودر]]></category>
-      <dc:creator><![CDATA[دليل المنزلة والمطرية الرقمي]]></dc:creator>
-      <enclosure url="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/places/1789797625929-zpo46nf.webp" type="image/webp" length="0" />
-      <media:content url="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/places/1789797625929-zpo46nf.webp" medium="image" type="image/webp">
-        <media:title><![CDATA[لودر و حفار الحاج أحمد عتيبه]]></media:title>
-      </media:content>
-      <media:thumbnail url="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/places/1789797625929-zpo46nf.webp" />
-      <description><![CDATA[<p><strong>مكان جديد فى دليل المنزلة والمطرية الرقمي</strong></p>
-<p>📍 <strong>لودر و حفار الحاج أحمد عتيبه</strong></p>
-<p>🏷️ <strong>القسم:</strong> جرار  وحفار  ولودر</p>
-<p>🗺️ <strong>الموقع:</strong> الأحمدية - الاحمدية - نهاية  شارع العمدة </p>
-<p>📞 <strong>للتواصل:</strong> 01205000712</p>
-<p>📝 لودر و حفار الحاج أحمد عتيبه في الاحمدية - نهاية  شارع العمدة - الأحمدية بمحافظة الدقهلية هو 🧮 جرار وحفار ولودر ومتخصص في توفير لودر، حفار، جرار، لودر وحفار، لودر احمد عتيبه.
-يتميز بالاهتمام الفائق بالجودة والحرص الدائم على تلبية رغبات الزبائن بأفضل الأسعار وأرقى معايير الخدمة.</p>
-<p><img src="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/places/1789797625929-zpo46nf.webp" alt="لودر و حفار الحاج أحمد عتيبه" style="max-width:100%;height:auto;border-radius:12px;" /></p>
-<p><a href="https://dalilmanzala.com/place/lwdr-w-hfar-alhag-ahmd-atybh/">اضغط هنا لفتح تفاصيل المكان بالكامل على الدليل</a></p>]]></description>
-      <content:encoded><![CDATA[<p><strong>مكان جديد فى دليل المنزلة والمطرية الرقمي</strong></p>
-<p>📍 <strong>لودر و حفار الحاج أحمد عتيبه</strong></p>
-<p>🏷️ <strong>القسم:</strong> جرار  وحفار  ولودر</p>
-<p>🗺️ <strong>الموقع:</strong> الأحمدية - الاحمدية - نهاية  شارع العمدة </p>
-<p>📞 <strong>للتواصل:</strong> 01205000712</p>
-<p>📝 لودر و حفار الحاج أحمد عتيبه في الاحمدية - نهاية  شارع العمدة - الأحمدية بمحافظة الدقهلية هو 🧮 جرار وحفار ولودر ومتخصص في توفير لودر، حفار، جرار، لودر وحفار، لودر احمد عتيبه.
-يتميز بالاهتمام الفائق بالجودة والحرص الدائم على تلبية رغبات الزبائن بأفضل الأسعار وأرقى معايير الخدمة.</p>
-<p><img src="https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/places/1789797625929-zpo46nf.webp" alt="لودر و حفار الحاج أحمد عتيبه" style="max-width:100%;height:auto;border-radius:12px;" /></p>
-<p><a href="https://dalilmanzala.com/place/lwdr-w-hfar-alhag-ahmd-atybh/">اضغط هنا لفتح تفاصيل المكان بالكامل على الدليل</a></p>]]></content:encoded>
     </item>
   </channel>
 </rss>
