@@ -327,6 +327,11 @@ function mountForForm() {
     }
 
     // Trigger input event so any listeners update
+    try {
+      mapsInput.dispatchEvent(new Event('input', { bubbles: true }));
+    } catch (_) {}
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Instant In-Browser Local Gazetteer (القاموس الجغرافي اللحظي بدون أي انتظار)
   // ─────────────────────────────────────────────────────────────────────────
