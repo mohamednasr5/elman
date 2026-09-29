@@ -592,6 +592,45 @@ function css() {
 
   '.related-articles{margin-top:40px;border-top:1px solid var(--blog-border);padding-top:32px}' +
   '.related-articles h2{font-size:1.35rem;font-weight:900;margin:0 0 20px;color:var(--blog-text-main);display:flex;align-items:center;gap:8px}' +
+  /* ── Similar Articles Section (مقالات مشابهة) ── */
+  '.similar-articles-section{margin-top:40px;border:1.5px solid rgba(15,118,110,.22);border-radius:24px;padding:28px 24px;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);box-shadow:0 10px 30px rgba(15,118,110,.06);position:relative;overflow:hidden}' +
+  '.similar-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid #e2e8f0}' +
+  '.similar-header__title-wrap{display:flex;flex-direction:column;gap:4px}' +
+  '.similar-header__badge{display:inline-flex;align-items:center;gap:6px;background:#ecfeff;color:#0f766e;border:1px solid #cffafe;font-size:.76rem;font-weight:800;padding:3px 10px;border-radius:999px;width:fit-content}' +
+  '.similar-header__title{font-size:1.4rem;font-weight:900;color:#0f172a;margin:0;display:flex;align-items:center;gap:8px}' +
+  '.similar-header__desc{font-size:.85rem;color:#64748b;margin:0}' +
+  '.similar-header__nav{display:flex;align-items:center;gap:10px;direction:rtl}' +
+  '.similar-nav-btn{display:inline-flex;align-items:center;gap:7px;background:#ffffff;color:#0f766e;border:1.5px solid #ccfbf1;padding:9px 16px;border-radius:12px;font-size:.86rem;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(15,118,110,.08);transition:all .2s cubic-bezier(.16,1,.3,1);user-select:none}' +
+  '.similar-nav-btn:hover{background:#0f766e;color:#ffffff;border-color:#0f766e;transform:translateY(-2px);box-shadow:0 6px 16px rgba(15,118,110,.22)}' +
+  '.similar-nav-btn:active{transform:translateY(0)}' +
+  '.similar-nav-arrow{font-size:.85rem;transition:transform .2s}' +
+  '.similar-nav-btn--next:hover .similar-nav-arrow{transform:translateX(-3px)}' +
+  '.similar-nav-btn--prev:hover .similar-nav-arrow{transform:translateX(3px)}' +
+  '.similar-nav-indicator{display:inline-flex;align-items:center;justify-content:center;font-size:.84rem;font-weight:800;color:#0f766e;background:#f0fdfa;border:1px solid #ccfbf1;padding:8px 14px;border-radius:10px;min-width:54px}' +
+  '.similar-carousel-viewport{position:relative;overflow:hidden;width:100%}' +
+  '.similar-carousel-track{position:relative;width:100%}' +
+  '.similar-page{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;opacity:0;transform:scale(.98);transition:opacity .3s ease,transform .3s ease}' +
+  '.similar-page.active{display:grid;opacity:1;transform:scale(1);animation:similarFadeIn .35s cubic-bezier(.16,1,.3,1) forwards}' +
+  '@keyframes similarFadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}' +
+  '@media(max-width:992px){.similar-page{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}}' +
+  '@media(max-width:640px){.similar-page{grid-template-columns:1fr;gap:14px}.similar-header{flex-direction:column;align-items:stretch}.similar-header__nav{justify-content:space-between;width:100%}.similar-nav-btn{padding:8px 12px;font-size:.8rem}}' +
+  '.articles-seo-backlinks{margin-top:26px;padding-top:20px;border-top:1px dashed rgba(15,118,110,.22)}' +
+  '.seo-backlinks-title{display:flex;align-items:center;gap:7px;font-size:.82rem;font-weight:800;color:#0f766e;margin-bottom:12px}' +
+  '.seo-backlinks-chips{display:flex;flex-wrap:wrap;gap:8px}' +
+  '.seo-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:999px;background:#ffffff;color:#334155;border:1px solid #e2e8f0;font-size:.78rem;font-weight:700;text-decoration:none;transition:all .2s ease}' +
+  '.seo-chip:hover{background:#0f766e;color:#ffffff;border-color:#0f766e;transform:translateY(-1px)}' +
+  '.seo-chip--highlight{background:#f0fdfa;color:#0f766e;border-color:#99f6e4;font-weight:800}' +
+  '.seo-chip--highlight:hover{background:#0f766e;color:#ffffff}' +
+  '[data-theme="dark"] .similar-articles-section{background:#0f172a;border-color:#1e3a47;box-shadow:none}' +
+  '[data-theme="dark"] .similar-header{border-color:#1e293b}' +
+  '[data-theme="dark"] .similar-header__title{color:#f8fafc}' +
+  '[data-theme="dark"] .similar-header__desc{color:#94a3b8}' +
+  '[data-theme="dark"] .similar-nav-btn{background:#1e293b;border-color:#334155;color:#38bdf8}' +
+  '[data-theme="dark"] .similar-nav-btn:hover{background:#0f766e;color:#fff}' +
+  '[data-theme="dark"] .similar-nav-indicator{background:#1e293b;border-color:#334155;color:#38bdf8}' +
+  '[data-theme="dark"] .seo-chip{background:#1e293b;color:#cbd5e1;border-color:#334155}' +
+  '[data-theme="dark"] .seo-chip:hover{background:#0f766e;color:#fff}' +
+  '[data-theme="dark"] .seo-chip--highlight{background:#132e35;color:#2dd4bf;border-color:#115e59}' +
   '</style>';
 }
 
@@ -996,7 +1035,17 @@ export async function handleArticlePublicPage(request, url, env) {
   const place = article.place || {};
   const placeUrl = SITE + '/place/' + encodeURIComponent(place.slug || place.id || '') + '/';
   const canonical = SITE + canonicalPath;
-  const relatedRows = (await db.prepare("SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE a.status='published' AND a.place_id=? AND a.id<>? ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 6").bind(article.placeId,article.id).all().catch(()=>({results:[]}))).results||[];
+  let relatedRows = [];
+  try {
+    const q1 = "SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE a.status='published' AND a.id <> ? ORDER BY (CASE WHEN a.place_id = ? THEN 1 WHEN p.area = ? THEN 2 ELSE 3 END), COALESCE(a.published_at, a.created_at) DESC LIMIT 18";
+    relatedRows = (await db.prepare(q1).bind(article.id, article.placeId || '', place.area || '').all().catch(()=>({results:[]}))).results || [];
+  } catch (err) {
+    console.warn('[renderArticleHtml] related query fallback:', err?.message || err);
+    try {
+      const q2 = "SELECT a.*, p.name AS place_name, p.slug AS place_slug, p.area AS place_area, p.address AS place_address, p.phone AS place_phone, p.logo_url AS place_logo_url, p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE a.status='published' AND a.id <> ? ORDER BY COALESCE(a.published_at, a.created_at) DESC LIMIT 18";
+      relatedRows = (await db.prepare(q2).bind(article.id).all().catch(()=>({results:[]}))).results || [];
+    } catch (_) {}
+  }
   const related = relatedRows.map(mapRow);
   const published = new Date(article.publishedAt || article.createdAt).toISOString();
   const modified = new Date(article.updatedAt || article.createdAt).toISOString();
@@ -1042,6 +1091,29 @@ export async function handleArticlePublicPage(request, url, env) {
       logo: { '@type': 'ImageObject', url: SITE + '/icons/icon-512x512.png' }
     }
   };
+
+  if (related.length > 0) {
+    schema.relatedLink = related.map(a => `${SITE}/blog/${encodeURIComponent(a.slug)}/`);
+    schema.isPartOf = {
+      '@type': 'Blog',
+      '@id': `${SITE}/blog/`,
+      'name': 'مدونة دليل المنزلة والمطرية'
+    };
+  }
+
+  const itemListSchema = related.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    'name': 'مقالات مشابهة في دليل المنزلة والمطرية',
+    'numberOfItems': related.length,
+    'itemListElement': related.map((a, idx) => ({
+      '@type': 'ListItem',
+      'position': idx + 1,
+      'name': a.title,
+      'url': `${SITE}/blog/${encodeURIComponent(a.slug)}/`,
+      'image': a.coverImageUrl || (SITE + '/assets/images/og-whatsapp.jpg')
+    }))
+  } : null;
 
   const breadcrumb = {
     '@context': 'https://schema.org',
@@ -1135,7 +1207,58 @@ export async function handleArticlePublicPage(request, url, env) {
     '</div>' +
   '</div>';
 
-  const relatedHtml = related.length ? '<section class="related-articles"><h2><span>📝</span><span>مقالات أخرى تهمك عن ' + esc(place.name) + '</span></h2><div class="blog-grid">' + related.map(card).join('') + '</div></section>' : '';
+  const pageSize = 3;
+  const pages = [];
+  for (let i = 0; i < related.length; i += pageSize) {
+    pages.push(related.slice(i, i + pageSize));
+  }
+  const totalPages = pages.length;
+
+  const pagesMarkup = pages.map((pageArticles, pageIdx) => {
+    const isActive = pageIdx === 0 ? ' active' : '';
+    return '<div class="similar-page' + isActive + '" data-page="' + pageIdx + '" aria-hidden="' + (pageIdx === 0 ? 'false' : 'true') + '">' +
+      pageArticles.map(card).join('') +
+    '</div>';
+  }).join('');
+
+  const similarArticlesHtml = related.length > 0 ? (
+    '<section class="similar-articles-section" aria-label="مقالات مشابهة" id="similarArticlesSection">' +
+      '<div class="similar-header">' +
+        '<div class="similar-header__title-wrap">' +
+          '<div class="similar-header__badge">✨ مقالات مختارة</div>' +
+          '<h2 class="similar-header__title"><span>📚</span><span>مقالات مشابهة</span></h2>' +
+          '<p class="similar-header__desc">استكشف مقالات وخدمات أخرى مرتبطة وموثقة في دليل المنزلة والمطرية</p>' +
+        '</div>' +
+        (totalPages > 1 ? (
+          '<div class="similar-header__nav" aria-label="التنقل بين المقالات المشابهة">' +
+            '<button type="button" class="similar-nav-btn similar-nav-btn--next" id="btnSimilarNext" aria-label="المقالات التالية">' +
+              '<span>المقال التالي</span><span class="similar-nav-arrow">◀</span>' +
+            '</button>' +
+            '<span class="similar-nav-indicator" id="similarNavIndicator">1 / ' + totalPages + '</span>' +
+            '<button type="button" class="similar-nav-btn similar-nav-btn--prev" id="btnSimilarPrev" aria-label="المقالات السابقة">' +
+              '<span class="similar-nav-arrow">▶</span><span>المقال السابق</span>' +
+            '</button>' +
+          '</div>'
+        ) : '') +
+      '</div>' +
+      '<div class="similar-carousel-viewport" id="similarCarouselViewport">' +
+        '<div class="similar-carousel-track">' +
+          pagesMarkup +
+        '</div>' +
+      '</div>' +
+      '<div class="articles-seo-backlinks" aria-label="شبكة الروابط الداخلية لدليل المنزلة والمطرية">' +
+        '<div class="seo-backlinks-title"><span>🔗</span><span>الروابط الداخلية الموثقة لمحركات البحث والذكاء الاصطناعي:</span></div>' +
+        '<div class="seo-backlinks-chips">' +
+          '<a href="/blog/" class="seo-chip" title="كافة مقالات وأخبار دليل المنزلة والمطرية">📰 كافة مقالات المدونة</a>' +
+          (place.name ? '<a href="' + esc(placeUrl) + '" class="seo-chip" title="صفحة ' + esc(place.name) + '">🏪 صفحة ' + esc(place.name) + '</a>' : '') +
+          (place.area ? '<a href="/places.html?area=' + encodeURIComponent(place.area) + '" class="seo-chip" title="أنشطة ' + esc(place.area) + '">📍 أنشطة وخدمات ' + esc(place.area) + '</a>' : '') +
+          (place.category ? '<a href="/places.html?category=' + encodeURIComponent(place.category) + '" class="seo-chip" title="قسم ' + esc(place.category) + '">🏷️ قسم ' + esc(place.category) + '</a>' : '') +
+          '<a href="/index.html" class="seo-chip" title="دليل المنزلة والمطرية الرقمي">🏠 دليل المنزلة والمطرية</a>' +
+          '<a href="/dashboard.html?section=articles" class="seo-chip seo-chip--highlight" title="كتابة مقال جديد">✍️ اكتب مقالاً رسمياً لنشاطك</a>' +
+        '</div>' +
+      '</div>' +
+    '</section>'
+  ) : '';
 
   const clientScript = '<script>' +
     'window.addEventListener("scroll",function(){' +
@@ -1170,6 +1293,37 @@ export async function handleArticlePublicPage(request, url, env) {
     'if(btnCloseQr)btnCloseQr.addEventListener("click",closeQrModal);' +
     'if(backdropQr)backdropQr.addEventListener("click",closeQrModal);' +
     'window.addEventListener("keydown",function(e){if(e.key==="Escape")closeQrModal();});' +
+    '(function(){' +
+      'var pages=document.querySelectorAll(".similar-page");' +
+      'var totalPages=pages.length;' +
+      'if(!totalPages||totalPages<=1)return;' +
+      'var cur=0;' +
+      'var ind=document.getElementById("similarNavIndicator");' +
+      'var btnNext=document.getElementById("btnSimilarNext");' +
+      'var btnPrev=document.getElementById("btnSimilarPrev");' +
+      'function setPage(n){' +
+        'if(n<0)n=totalPages-1;' +
+        'if(n>=totalPages)n=0;' +
+        'cur=n;' +
+        'for(var i=0;i<totalPages;i++){' +
+          'if(i===cur){pages[i].classList.add("active");pages[i].setAttribute("aria-hidden","false");}' +
+          'else{pages[i].classList.remove("active");pages[i].setAttribute("aria-hidden","true");}' +
+        '}' +
+        'if(ind)ind.textContent=(cur+1)+" / "+totalPages;' +
+      '}' +
+      'if(btnNext)btnNext.addEventListener("click",function(){setPage(cur+1);});' +
+      'if(btnPrev)btnPrev.addEventListener("click",function(){setPage(cur-1);});' +
+      'var vp=document.getElementById("similarCarouselViewport");' +
+      'if(vp){' +
+        'var sx=0;' +
+        'vp.addEventListener("touchstart",function(e){if(e.changedTouches[0])sx=e.changedTouches[0].screenX;},{passive:true});' +
+        'vp.addEventListener("touchend",function(e){' +
+          'if(!e.changedTouches[0])return;' +
+          'var dx=e.changedTouches[0].screenX-sx;' +
+          'if(Math.abs(dx)>45){if(dx<0)setPage(cur+1);else setPage(cur-1);}' +
+        '},{passive:true});' +
+      '}' +
+    '})();' +
   '</script>';
 
   // Extract FAQ items for FAQPage Schema (Google Rich Snippets & AI Search Q&A)
@@ -1229,6 +1383,7 @@ export async function handleArticlePublicPage(request, url, env) {
     '<script type="application/ld+json">' + JSON.stringify(schema) + '</script>' +
     '<script type="application/ld+json">' + JSON.stringify(breadcrumb) + '</script>' +
     (faqSchema ? '<script type="application/ld+json">' + JSON.stringify(faqSchema) + '</script>' : '') +
+    (itemListSchema ? '<script type="application/ld+json">' + JSON.stringify(itemListSchema) + '</script>' : '') +
     '</head><body>' +
     '<div id="readingProgressBar"></div>' +
     '<div id="header-slot">' + renderSiteHeader('blog') + '</div>' +
@@ -1253,7 +1408,7 @@ export async function handleArticlePublicPage(request, url, env) {
           (kws ? '<div class="article-keywords" aria-label="الكلمات المفتاحية">' + kws + '</div>' : '') +
           shareBar +
           placeCard +
-          relatedHtml +
+          similarArticlesHtml +
         '</div>' +
       '</article>' +
     '</main>' +
