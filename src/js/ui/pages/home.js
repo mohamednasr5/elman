@@ -58,7 +58,7 @@ import{getCategories as he,getPublishedPlaces as J,getActiveOffers as K,getAds a
         </div>
       </div>
     </div>
-  `).join("")}function V(l){const n=document.getElementById("home-blog-section"),t=document.getElementById("home-blog-grid");if(!t)return;if(!l||!l.length){t.querySelector(".blog-card:not(.blog-card--skeleton)")||n&&(n.style.display="none");return}n&&(n.style.display="");const a=document.getElementById("home-blog-ticker-container");if(a&&l.length>0){let i=[...l];if(i.length>1)for(let g=i.length-1;g>0;g--){const m=Math.floor(Math.random()*(g+1));[i[g],i[m]]=[i[m],i[g]]}let r=i.slice(0,10);for(;r.length<10&&r.length>0;)r=r.concat(r).slice(0,10);const o=r.map(g=>{const m="/article/"+encodeURIComponent(g.slug||"")+"/",p=b(g.title||""),e=g.place||{},s=b(e.name||"\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629"),d=e.logoUrl||e.coverImageUrl||g.coverImageUrl,h=d?`<img class="ticker-sep-logo" src="${c(d)}" alt="${s}" width="24" height="24" loading="lazy">`:'<span class="ticker-sep-icon" aria-hidden="true">\u{1F3EA}</span>';return`
+  `).join("")}function V(l){const n=document.getElementById("home-blog-section"),t=document.getElementById("home-blog-grid");if(!t)return;if(!l||!l.length){t.querySelector(".blog-card:not(.blog-card--skeleton)")||n&&(n.style.display="none");return}n&&(n.style.display="");const a=document.getElementById("home-blog-ticker-container");if(a&&l.length>0){let i=[...l];if(i.length>1)for(let g=i.length-1;g>0;g--){const m=Math.floor(Math.random()*(g+1));[i[g],i[m]]=[i[m],i[g]]}let r=i.slice(0,10);for(;r.length<10&&r.length>0;)r=r.concat(r).slice(0,10);const o=r.map(g=>{const m="/blog/"+encodeURIComponent(g.slug||"")+"/",p=b(g.title||""),e=g.place||{},s=b(e.name||"\u062F\u0644\u064A\u0644 \u0627\u0644\u0645\u0646\u0632\u0644\u0629 \u0648\u0627\u0644\u0645\u0637\u0631\u064A\u0629"),d=e.logoUrl||e.coverImageUrl||g.coverImageUrl,h=d?`<img class="ticker-sep-logo" src="${c(d)}" alt="${s}" width="24" height="24" loading="lazy">`:'<span class="ticker-sep-icon" aria-hidden="true">\u{1F3EA}</span>';return`
         <div class="ticker-entry">
           <a href="${m}" class="ticker-link" title="${p}">
             <span class="ticker-bullet">\u{1F4F0}</span>
@@ -84,7 +84,7 @@ import{getCategories as he,getPublishedPlaces as J,getActiveOffers as K,getAds a
           </div>
         </div>
       </div>
-    `}if(l.length===1){const i=l[0],r="/article/"+encodeURIComponent(i.slug||"")+"/",o=i.place||{},g="/place/"+encodeURIComponent(o.slug||o.id||"")+"/",m=String(i.content||"").trim().split(/\s+/).length,p=Math.max(1,Math.ceil(m/150)),e=i.coverImageUrl||o.cover_image_url||"",s=e?`<img class="blog-card__image" src="${c(e)}" alt="${c(i.title||"\u0645\u0642\u0627\u0644")}" width="720" height="420" loading="lazy" decoding="async">`:'<div class="blog-card__image blog-card__image--placeholder" aria-hidden="true"><span>\u{1F4DD}</span></div>';t.className="blog-grid-single",t.innerHTML=`
+    `}if(l.length===1){const i=l[0],r="/blog/"+encodeURIComponent(i.slug||"")+"/",o=i.place||{},g="/place/"+encodeURIComponent(o.slug||o.id||"")+"/",m=String(i.content||"").trim().split(/\s+/).length,p=Math.max(1,Math.ceil(m/150)),e=i.coverImageUrl||o.cover_image_url||"",s=e?`<img class="blog-card__image" src="${c(e)}" alt="${c(i.title||"\u0645\u0642\u0627\u0644")}" width="720" height="420" loading="lazy" decoding="async">`:'<div class="blog-card__image blog-card__image--placeholder" aria-hidden="true"><span>\u{1F4DD}</span></div>';t.className="blog-grid-single",t.innerHTML=`
       <article class="blog-card blog-card--featured">
         <a class="blog-card__image-link" href="${r}" aria-label="${c(i.title||"")}">
           ${s}
@@ -117,7 +117,7 @@ import{getCategories as he,getPublishedPlaces as J,getActiveOffers as K,getAds a
           </div>
         </div>
       </article>
-    `;return}t.className="blog-grid",t.innerHTML=l.slice(0,6).map(i=>{const r="/article/"+encodeURIComponent(i.slug||"")+"/",o=i.place||{},g="/place/"+encodeURIComponent(o.slug||o.id||"")+"/",m=String(i.content||"").trim().split(/\s+/).length,p=Math.max(1,Math.ceil(m/150)),e=i.coverImageUrl||o.cover_image_url||"",s=e?`<img class="blog-card__image" src="${c(e)}" alt="${c(i.title||"\u0645\u0642\u0627\u0644")}" width="640" height="360" loading="lazy" decoding="async">`:'<div class="blog-card__image blog-card__image--placeholder" aria-hidden="true"><span>\u{1F4DD}</span></div>';return`
+    `;return}t.className="blog-grid",t.innerHTML=l.slice(0,6).map(i=>{const r="/blog/"+encodeURIComponent(i.slug||"")+"/",o=i.place||{},g="/place/"+encodeURIComponent(o.slug||o.id||"")+"/",m=String(i.content||"").trim().split(/\s+/).length,p=Math.max(1,Math.ceil(m/150)),e=i.coverImageUrl||o.cover_image_url||"",s=e?`<img class="blog-card__image" src="${c(e)}" alt="${c(i.title||"\u0645\u0642\u0627\u0644")}" width="640" height="360" loading="lazy" decoding="async">`:'<div class="blog-card__image blog-card__image--placeholder" aria-hidden="true"><span>\u{1F4DD}</span></div>';return`
       <article class="blog-card">
         <a class="blog-card__image-link" href="${r}" aria-label="${c(i.title||"")}">
           ${s}

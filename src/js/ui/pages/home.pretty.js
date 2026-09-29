@@ -654,7 +654,7 @@ function renderBlogArticles(articles) {
     }
 
     const itemsMarkup = tickerItems.map(a => {
-      const itemHref = '/article/' + encodeURIComponent(a.slug || '') + '/';
+      const itemHref = '/blog/' + encodeURIComponent(a.slug || '') + '/';
       const itemTitle = escHtml(a.title || '');
       const p = a.place || {};
       const itemPlace = escHtml(p.name || 'دليل المنزلة والمطرية');
@@ -698,7 +698,7 @@ function renderBlogArticles(articles) {
   // Single article -> render Spotlight Feature Card
   if (articles.length === 1) {
     const a = articles[0];
-    const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
+    const href = '/blog/' + encodeURIComponent(a.slug || '') + '/';
     const p = a.place || {};
     const placeHref = '/place/' + encodeURIComponent(p.slug || p.id || '') + '/';
     const words = String(a.content || '').trim().split(/\s+/).length;
@@ -749,7 +749,7 @@ function renderBlogArticles(articles) {
   // 2 or more articles -> responsive luxury grid (top 6 cards)
   grid.className = 'blog-grid';
   grid.innerHTML = articles.slice(0, 6).map(a => {
-    const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
+    const href = '/blog/' + encodeURIComponent(a.slug || '') + '/';
     const p = a.place || {};
     const placeHref = '/place/' + encodeURIComponent(p.slug || p.id || '') + '/';
     const words = String(a.content || '').trim().split(/\s+/).length;

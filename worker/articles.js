@@ -222,7 +222,7 @@ function formatDate(ts) {
 
 function card(article) {
   const p = article.place || {};
-  const href = '/article/' + encodeURIComponent(article.slug) + '/';
+  const href = '/blog/' + encodeURIComponent(article.slug) + '/';
   const placeHref = '/place/' + encodeURIComponent(p.slug || p.id || '') + '/';
   const excerpt = article.excerpt || text(article.content, 160);
   const words = String(article.content || '').trim().split(/\s+/).length;
@@ -833,11 +833,43 @@ export async function handleArticlesApi(request, url, env, user) {
 }
 
 export async function handleArticlePublicPage(request, url, env) {
-  const db=createTursoDB(env);
-  const p=url.pathname.replace(/\/+$/,'') || '/';
-  if(p!=='/blog' && !p.startsWith('/article/')) return null;
+  const p = (url?.pathname || (request?.url ? new URL(request.url).pathname : '')).replace(/\/+$/, '') || '/';
+  if (p !== '/blog' && !p.startsWith('/blog/') && !p.startsWith('/article/')) return null;
 
-  if(p==='/blog') {
+  // 1. 301 Permanent Redirect for all legacy /article/* requests to /blog/*
+  if (p.startsWith('/article/')) {
+    const rawReqSlug = p.slice('/article/'.length).replace(/^\/+/, '');
+    const slug = decodeURIComponent(rawReqSlug).trim();
+    if (!slug) {
+      return new Response(null, {
+        status: 301,
+        headers: {
+          'Location': `${SITE}/blog/`,
+          'Cache-Control': 'public, max-age=31536000, immutable'
+        }
+      });
+    }
+    const db = (env?.TURSO_DATABASE_URL && env?.TURSO_AUTH_TOKEN) ? createTursoDB(env) : null;
+    let targetSlug = slug;
+    if (db) {
+      try {
+        const targetArticle = await bySlug(db, slug, false);
+        if (targetArticle?.slug) targetSlug = targetArticle.slug;
+      } catch (_) {}
+    }
+    return new Response(null, {
+      status: 301,
+      headers: {
+        'Location': `${SITE}/blog/${encodeURIComponent(targetSlug)}/`,
+        'Cache-Control': 'public, max-age=31536000, immutable'
+      }
+    });
+  }
+
+  const db = (env?.TURSO_DATABASE_URL && env?.TURSO_AUTH_TOKEN) ? createTursoDB(env) : null;
+  if (!db) return new Response('Database service unavailable', { status: 503 });
+
+  if (p === '/blog') {
     const rows=(await db.prepare("SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.whatsapp AS place_whatsapp,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE a.status='published' ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 120").all().catch(()=>({results:[]}))).results||[];
     const title='المدونة المحلية | مقالات محلات وخدمات المنزلة والمطرية';
     const desc='مقالات محلية مفيدة يكتبها أصحاب الأنشطة عن خدماتهم وأعمالهم في المنزلة والمطرية مع روابط مباشرة لكل مكان.';
@@ -867,7 +899,7 @@ export async function handleArticlePublicPage(request, url, env) {
       blogPost: rows.slice(0, 30).map(r => ({
         '@type': 'BlogPosting',
         headline: r.title,
-        url: SITE + '/article/' + encodeURIComponent(r.slug) + '/',
+        url: SITE + '/blog/' + encodeURIComponent(r.slug) + '/',
         datePublished: new Date(r.published_at || r.created_at).toISOString(),
         image: r.cover_image_url || (SITE + '/assets/images/og-whatsapp.jpg')
       }))
@@ -887,7 +919,7 @@ export async function handleArticlePublicPage(request, url, env) {
       }
 
       const itemsMarkup = tickerItems.map(r => {
-        const itemHref = '/article/' + encodeURIComponent(r.slug) + '/';
+        const itemHref = '/blog/' + encodeURIComponent(r.slug) + '/';
         const itemTitle = esc(r.title);
         const itemPlace = esc(r.place_name || 'دليل المنزلة والمطرية');
         const itemLogo = r.place_logo_url || r.place_cover_url;
@@ -941,19 +973,21 @@ export async function handleArticlePublicPage(request, url, env) {
     return new Response(html,{status:200,headers:{'content-type':'text/html; charset=utf-8','cache-control':'public,max-age=60'}});
   }
 
-  const rawReqSlug = p.slice('/article/'.length).replace(/^\/+/,'');
-  const slug = decodeURIComponent(rawReqSlug);
-  if(!slug) return null;
+  const rawReqSlug = p.startsWith('/blog/') ? p.slice('/blog/'.length).replace(/^\/+/,'') : p.slice('/article/'.length).replace(/^\/+/,'');
+  const slug = decodeURIComponent(rawReqSlug).trim();
+  if(!slug) return new Response(null, { status: 301, headers: { 'Location': `${SITE}/blog/`, 'Cache-Control': 'public, max-age=31536000, immutable' } });
 
   const article = await bySlug(db, slug, false);
   if(!article) return new Response('Not Found',{status:404,headers:{'content-type':'text/plain; charset=utf-8'}});
 
-  // 301 Permanent Redirect if accessed by legacy Arabic slug, encoded URI, or ID
-  if (article.slug && article.slug !== rawReqSlug && /^[a-z0-9-]+$/.test(article.slug)) {
+  // 301 Permanent Redirect if accessed by legacy slug, encoded URI, ID, or via /article/
+  const canonicalPath = `/blog/${encodeURIComponent(article.slug)}/`;
+  const currentPath = url.pathname.endsWith('/') ? url.pathname : (url.pathname + '/');
+  if (currentPath !== canonicalPath) {
     return new Response(null, {
       status: 301,
       headers: {
-        'Location': `${SITE}/article/${encodeURIComponent(article.slug)}/`,
+        'Location': `${SITE}${canonicalPath}`,
         'Cache-Control': 'public, max-age=31536000, immutable'
       }
     });
@@ -961,7 +995,7 @@ export async function handleArticlePublicPage(request, url, env) {
 
   const place = article.place || {};
   const placeUrl = SITE + '/place/' + encodeURIComponent(place.slug || place.id || '') + '/';
-  const canonical = SITE + '/article/' + encodeURIComponent(article.slug) + '/';
+  const canonical = SITE + canonicalPath;
   const relatedRows = (await db.prepare("SELECT a.*, p.name AS place_name,p.slug AS place_slug,p.area AS place_area,p.address AS place_address,p.phone AS place_phone,p.logo_url AS place_logo_url,p.cover_image_url AS place_cover_url FROM articles a LEFT JOIN places p ON p.id=a.place_id WHERE a.status='published' AND a.place_id=? AND a.id<>? ORDER BY COALESCE(a.published_at,a.created_at) DESC LIMIT 6").bind(article.placeId,article.id).all().catch(()=>({results:[]}))).results||[];
   const related = relatedRows.map(mapRow);
   const published = new Date(article.publishedAt || article.createdAt).toISOString();

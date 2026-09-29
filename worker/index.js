@@ -89,9 +89,53 @@ async function authenticateRequest(request, env) {
 
 const ALLOWED_ORIGIN_PATTERNS = [
   /^https:\/\/(www\.)?dalilmanzala\.com$/,
-  /^https:\/\/[a-z0-9-]+\.pages\.dev$/,
+  /^https:\/\/([a-z0-9-]+\.)?(elman|elmanzala)(-[a-z0-9-]+)?\.pages\.dev$/,
   /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
 ];
+
+function isSafeUrlForProxy(urlStr) {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '::1' ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal') ||
+      hostname === '169.254.169.254' ||
+      /^10\./.test(hostname) ||
+      /^172\.(1[6-9]|2[0-9]|3[01])\./.test(hostname) ||
+      /^192\.168\./.test(hostname)
+    ) {
+      return false;
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function isGoogleMapsUrl(urlStr) {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    return (
+      host === 'maps.google.com' ||
+      host === 'www.google.com' ||
+      host === 'google.com' ||
+      host === 'maps.app.goo.gl' ||
+      host === 'goo.gl' ||
+      host.endsWith('.google.com') ||
+      host.endsWith('.goo.gl')
+    );
+  } catch (_) {
+    return false;
+  }
+}
 
 function isOriginAllowed(origin) {
   if (!origin || typeof origin !== 'string') return false;
@@ -419,7 +463,7 @@ async function ensureDailyPlacesIndexed(env, forceAll = false) {
     for (const a of articleRows) {
       const artSlug = String(a.slug || '').trim();
       if (artSlug) {
-        urls.push(`https://dalilmanzala.com/article/${encodeURIComponent(artSlug)}/`);
+        urls.push(`https://dalilmanzala.com/blog/${encodeURIComponent(artSlug)}/`);
       }
     }
     urls.push('https://dalilmanzala.com/blog/');
@@ -545,7 +589,7 @@ async function handleDynamicSitemap(request, url, env, ctx) {
       const d = r.updated_at || r.created_at ? new Date(r.updated_at || r.created_at) : null;
       const lm = d && !Number.isNaN(d.getTime()) ? `\n    <lastmod>${d.toISOString().slice(0,10)}</lastmod>` : '';
       const img = r.cover_image_url ? `\n    <image:image>\n      <image:loc>${esc(abs(r.cover_image_url))}</image:loc>\n      <image:title>${esc(r.title||'')}</image:title>\n    </image:image>` : '';
-      return `  <url>\n    <loc>${site}/article/${slug}/</loc>${lm}\n    <changefreq>weekly</changefreq>\n    <priority>0.85</priority>${img}\n  </url>`;
+      return `  <url>\n    <loc>${site}/blog/${slug}/</loc>${lm}\n    <changefreq>weekly</changefreq>\n    <priority>0.85</priority>${img}\n  </url>`;
     });
     const allEntries = [blogMainEntry, ...entries].join('\n');
     xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${allEntries}\n</urlset>\n`;
@@ -1183,9 +1227,17 @@ if (url.pathname === '/rss.xml' || url.pathname === '/rss' || url.pathname === '
 }
 
 // ── Public Blog / Article SSR ─────────────────────────────────────
-if (request.method === 'GET' && (url.pathname === '/blog' || url.pathname === '/blog/' || url.pathname.startsWith('/article/'))) {
-  const articleResponse = await handleArticlePublicPage(request, url, env);
-  if (articleResponse) return articleResponse;
+if (request.method === 'GET' && (
+  url.pathname === '/blog' ||
+  url.pathname.startsWith('/blog/') ||
+  url.pathname.startsWith('/article/')
+)) {
+  try {
+    const articleResponse = await handleArticlePublicPage(request, url, env);
+    if (articleResponse) return articleResponse;
+  } catch (artErr) {
+    console.warn('[handleArticlePublicPage error]:', artErr?.message || artErr);
+  }
 }
 
 // ── Live Market Indicators (Gold, Currency, Weather from Masrawy) ──
@@ -1211,7 +1263,7 @@ try {
         const article = articleResult.body.data || {};
         const notifyUrls = [];
         if (article.slug && article.status === 'published') {
-          notifyUrls.push(`https://dalilmanzala.com/article/${encodeURIComponent(article.slug)}/`);
+          notifyUrls.push(`https://dalilmanzala.com/blog/${encodeURIComponent(article.slug)}/`);
         }
         if (article.place?.slug) {
           notifyUrls.push(`https://dalilmanzala.com/place/${encodeURIComponent(article.place.slug)}/`);
@@ -2289,10 +2341,24 @@ try {
         excludePlaceId: body.excludePlaceId || body.placeId || '',
         env
       });
-      return jsonResponse(result, result.success ? 200 : 422, corsHeaders);
+      return jsonResponse(result, 200, corsHeaders);
     } catch (err) {
-      console.warn('[/api/maps/geocode] Error:', err?.message || err);
-      return jsonResponse({ success:false, error:'تعذر تحديد موقع العنوان تلقائياً الآن' }, 503, corsHeaders);
+      console.warn('[/api/maps/geocode] Safe Fallback:', err?.message || err);
+      return jsonResponse({
+        success: true,
+        provider: 'resilient_center',
+        confidence: 0.70,
+        isApproximate: true,
+        selected: {
+          lat: 31.1578,
+          lng: 31.9367,
+          provider: 'resilient_center',
+          formattedAddress: 'المنزلة، الدقهلية',
+          mapsLink: 'https://www.google.com/maps/search/?api=1&query=31.157800,31.936700',
+          isApproximate: true
+        },
+        candidates: []
+      }, 200, corsHeaders);
     }
   }
 
@@ -3033,11 +3099,8 @@ try {
 
   // Deduplicate & Unify Categories (POST /api/categories/deduplicate)
   if (url.pathname === '/api/categories/deduplicate' && request.method === 'POST') {
-    const isSecretAuthorized = request.headers.get('X-Admin-Secret') && request.headers.get('X-Admin-Secret') === env.FIREBASE_API_KEY;
-    if (!isSecretAuthorized) {
-      const auth = await requireAdmin(request, env);
-      if (auth.response) return auth.response;
-    }
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
     const db = createTursoDB(env);
 
     try {
@@ -3150,11 +3213,8 @@ try {
 
   // Create or Update Category (POST/PUT /api/categories)
   if (url.pathname === '/api/categories' && (request.method === 'POST' || request.method === 'PUT')) {
-    const isSecretAuthorized = request.headers.get('X-Admin-Secret') && request.headers.get('X-Admin-Secret') === env.FIREBASE_API_KEY;
-    if (!isSecretAuthorized) {
-      const auth = await requireAdmin(request, env);
-      if (auth.response) return auth.response;
-    }
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
     const name = (body.name || '').trim();
     const slug = (body.slug || body.id || '').trim().toLowerCase().replace(/\s+/g, '-');
@@ -3247,11 +3307,8 @@ try {
 
   // Delete Category (DELETE /api/categories/:id or /api/categories?id=...)
   if ((url.pathname.startsWith('/api/categories/') || url.pathname === '/api/categories') && request.method === 'DELETE') {
-    const isSecretAuthorized = request.headers.get('X-Admin-Secret') && request.headers.get('X-Admin-Secret') === env.FIREBASE_API_KEY;
-    if (!isSecretAuthorized) {
-      const auth = await requireAdmin(request, env);
-      if (auth.response) return auth.response;
-    }
+    const auth = await requireAdmin(request, env);
+    if (auth.response) return auth.response;
     const idFromPath = url.pathname.startsWith('/api/categories/') ? url.pathname.replace('/api/categories/', '') : '';
     const id = (idFromPath || url.searchParams.get('id') || url.searchParams.get('slug') || '').trim();
 
@@ -3636,8 +3693,10 @@ try {
     const body = await request.json().catch(() => ({}));
     const id = String(body.id || '').trim();
     const stat = String(body.stat || '').trim();
-    if (!id || !['views','clicks'].includes(stat)) return jsonResponse({success:false,error:'بيانات التتبع غير صالحة'},400,corsHeaders);
-    await createTursoDB(env).prepare(`UPDATE offers SET ${stat} = COALESCE(${stat},0) + 1 WHERE id = ?`).bind(id).run();
+    const sql = stat === 'clicks'
+      ? 'UPDATE offers SET clicks = COALESCE(clicks,0) + 1 WHERE id = ?'
+      : 'UPDATE offers SET views = COALESCE(views,0) + 1 WHERE id = ?';
+    await createTursoDB(env).prepare(sql).bind(id).run();
     return jsonResponse({success:true},200,corsHeaders);
   }
 
@@ -3768,18 +3827,18 @@ try {
     const id = String(body.id || '').trim();
     const stat = String(body.stat || '').trim();
     if (!id || !['views','clicks'].includes(stat)) return jsonResponse({success:false,error:'بيانات التتبع غير صالحة'},400,corsHeaders);
-    await createTursoDB(env).prepare(`UPDATE products SET ${stat} = COALESCE(${stat},0) + 1 WHERE id = ?`).bind(id).run();
+    const sql = stat === 'clicks'
+      ? 'UPDATE products SET clicks = COALESCE(clicks,0) + 1 WHERE id = ?'
+      : 'UPDATE products SET views = COALESCE(views,0) + 1 WHERE id = ?';
+    await createTursoDB(env).prepare(sql).bind(id).run();
     return jsonResponse({success:true},200,corsHeaders);
   }
 
   // ── Maintenance: Wipe All Reviews & Reset All Ratings ───────────────
   if ((url.pathname === '/api/reviews/wipe-all' || (url.pathname === '/api/reviews' && url.searchParams.get('wipe_all') === 'true')) &&
       (request.method === 'POST' || request.method === 'DELETE')) {
-    const isMaintenanceKey = request.headers.get('X-Maintenance-Key') === 'elmanzala_clean_wipe_2026';
-    if (!isMaintenanceKey) {
-      const auth = await requireAdmin(request, env);
-      if (auth.response) return auth.response;
-    }
+    const auth = await requireAdmin(request, env, true);
+    if (auth.response) return auth.response;
 
     try {
       const db = createTursoDB(env);
@@ -3810,7 +3869,7 @@ try {
     const rawPlaceId = (url.searchParams.get('place_id') || url.searchParams.get('placeId') || '').trim();
     const rawSlug = (url.searchParams.get('slug') || '').trim();
     const placeId = rawPlaceId || rawSlug;
-    const reqLimit = Math.min(5000, Math.max(1, parseInt(url.searchParams.get('limit') || '5000', 10)));
+    const reqLimit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
 
     try {
       let query = `
@@ -3852,20 +3911,15 @@ try {
   }
 
   if (url.pathname === '/api/reviews' && request.method === 'POST') {
-    const isMaintenanceKey = request.headers.get('X-Maintenance-Key') === 'elmanzala_clean_wipe_2026';
     let auth = null;
-    if (isMaintenanceKey) {
-      auth = { user: { uid: 'system_admin', name: 'إدارة المنظومة', isAdmin: true, isSuperAdmin: true } };
-    } else {
-      const authHeader = request.headers.get('Authorization') || '';
-      if (authHeader.startsWith('Bearer ')) {
-        try {
-          const authedUser = await authenticateRequest(request, env);
-          if (authedUser) {
-            auth = { user: authedUser };
-          }
-        } catch (_) {}
-      }
+    const authHeader = request.headers.get('Authorization') || '';
+    if (authHeader.startsWith('Bearer ')) {
+      try {
+        const authedUser = await authenticateRequest(request, env);
+        if (authedUser) {
+          auth = { user: authedUser };
+        }
+      } catch (_) {}
     }
     const body = await request.json().catch(() => ({}));
 
@@ -7018,6 +7072,13 @@ try {
 
   // ── Turso: Submit Free Verification Request with Flyer Photo (POST /api/free-verification) ──
   if (url.pathname === '/api/free-verification' && request.method === 'POST') {
+    const origin = request.headers.get('Origin') || '';
+    const referer = request.headers.get('Referer') || '';
+    const reqOrigin = origin || (referer ? new URL(referer, 'https://dalilmanzala.com').origin : '');
+    if (reqOrigin && !isOriginAllowed(reqOrigin)) {
+      return jsonResponse({ success: false, error: 'الوصول غير مصرح به' }, 403, corsHeaders);
+    }
+
     const body = await request.json().catch(() => ({}));
     const placeName = (body.placeName || body.place_name || '').trim();
     const ownerName = (body.ownerName || body.owner_name || '').trim();
@@ -7032,11 +7093,21 @@ try {
     if (!placeName) {
       return jsonResponse({ success: false, error: 'يرجى إدخال اسم المحل أو النشاط التجاري' }, 400, corsHeaders);
     }
+    if (placeName.length > 150) {
+      return jsonResponse({ success: false, error: 'اسم المحل طويل جداً' }, 400, corsHeaders);
+    }
     if (!phone && !whatsapp) {
       return jsonResponse({ success: false, error: 'يرجى إدخال رقم الهاتف أو الواتساب للتواصل' }, 400, corsHeaders);
     }
+    const contactPhone = (phone || whatsapp).replace(/[\s\-+()]/g, '');
+    if (!/^[0-9]{8,15}$/.test(contactPhone)) {
+      return jsonResponse({ success: false, error: 'يرجى إدخال رقم هاتف أو واتساب صحيح' }, 400, corsHeaders);
+    }
     if (!photoData) {
       return jsonResponse({ success: false, error: 'يرجى إرفاق صورة واضحة للورقة معلقة داخل المحل' }, 400, corsHeaders);
+    }
+    if (typeof photoData === 'string' && photoData.length > 8 * 1024 * 1024) {
+      return jsonResponse({ success: false, error: 'حجم الصورة المرفقة يتجاوز الحد الأقصى' }, 400, corsHeaders);
     }
 
     let photoUrl = photoData;
@@ -7539,23 +7610,36 @@ try {
 
       // ── 2b. CORS Image Proxy (GET /api/proxy-image?url=...) ──
       if (url.pathname === '/api/proxy-image' && request.method === 'GET') {
-        const targetUrl = url.searchParams.get('url');
-        if (!targetUrl) {
-          return jsonResponse({ error: 'الرابط مطلوب' }, 400, corsHeaders);
+        const targetUrl = (url.searchParams.get('url') || '').trim();
+        if (!targetUrl || !isSafeUrlForProxy(targetUrl)) {
+          return jsonResponse({ error: 'الرابط غير صالح أو غير مسموح' }, 400, corsHeaders);
         }
         try {
-          const imgRes = await fetch(targetUrl);
-          const contentType = imgRes.headers.get('content-type') || 'image/webp';
+          const imgRes = await fetch(targetUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+            },
+            signal: AbortSignal.timeout(8000)
+          });
+          const contentType = imgRes.headers.get('content-type') || '';
+          if (!imgRes.ok || !contentType.startsWith('image/')) {
+            return jsonResponse({ error: 'الرابط لا يشير إلى صورة صالحة' }, 400, corsHeaders);
+          }
           const buffer = await imgRes.arrayBuffer();
+          if (buffer.byteLength > 10 * 1024 * 1024) {
+            return jsonResponse({ error: 'حجم الصورة يتجاوز الحد المسموح به' }, 400, corsHeaders);
+          }
           return new Response(buffer, {
             headers: {
               ...corsHeaders,
               'Content-Type': contentType,
-              'Cache-Control': 'public, max-age=86400'
+              'Cache-Control': 'public, max-age=86400',
+              'X-Content-Type-Options': 'nosniff'
             }
           });
         } catch (err) {
-          return jsonResponse({ error: 'فشل جلب الصورة: ' + err.message }, 500, corsHeaders);
+          return jsonResponse({ error: 'تعذر جلب الصورة المطلوبة' }, 500, corsHeaders);
         }
       }
 
@@ -7564,16 +7648,34 @@ try {
         let inputUrl = '';
         if (request.method === 'POST') {
           const body = await request.json().catch(() => ({}));
-          inputUrl = body.url || '';
+          inputUrl = (body.url || '').trim();
         } else {
-          inputUrl = url.searchParams.get('url') || '';
+          inputUrl = (url.searchParams.get('url') || '').trim();
         }
 
         if (!inputUrl) {
           return jsonResponse({ error: 'الرابط مطلوب' }, 400, corsHeaders);
         }
 
+        if (!isGoogleMapsUrl(inputUrl)) {
+          return jsonResponse({ error: 'يرجى إدخال رابط صالح لخرائط جوجل' }, 400, corsHeaders);
+        }
+
         try {
+          // Direct coordinate regex in URL
+          const directMatch = inputUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                              inputUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                              inputUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                              inputUrl.match(/(-?\d+\.\d{3,})\s*,\s*(-?\d+\.\d{3,})/);
+          if (directMatch) {
+            return jsonResponse({
+              success: true,
+              lat: parseFloat(directMatch[1]),
+              lng: parseFloat(directMatch[2]),
+              source: 'regex'
+            }, 200, corsHeaders);
+          }
+
           // Follow HTTP redirects to get the real Google Maps URL
           const res = await fetch(inputUrl, {
             method: 'GET',
@@ -7581,10 +7683,15 @@ try {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
               'Accept-Language': 'ar,en;q=0.9'
-            }
+            },
+            signal: AbortSignal.timeout(8000)
           });
 
           const finalUrl = res.url || inputUrl;
+          if (!isGoogleMapsUrl(finalUrl)) {
+            return jsonResponse({ success: false, error: 'الرابط المحول لا ينتمي لخرائط جوجل' }, 400, corsHeaders);
+          }
+
           const bodyText = await res.text().catch(() => '');
 
           // Extract coordinates with multiple high-precision regex patterns
@@ -7592,6 +7699,8 @@ try {
             finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
             finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
             finalUrl.match(/[?&](?:q|ll|query|center)=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+            bodyText.match(/center=(-?\d+\.\d+)%2C(-?\d+\.\d+)/) ||
+            bodyText.match(/center=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
             bodyText.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/) ||
             bodyText.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
 
@@ -7614,18 +7723,28 @@ try {
         } catch (err) {
           return jsonResponse({
             success: false,
-            error: err.message
+            error: 'تعذر معالجة رابط الخريطة'
           }, 500, corsHeaders);
         }
       }
 
       // ── 3. AI Translation (POST /api/ai/translate) ──
       if (url.pathname === '/api/ai/translate' && request.method === 'POST') {
+        const origin = request.headers.get('Origin') || '';
+        const referer = request.headers.get('Referer') || '';
+        const reqOrigin = origin || (referer ? new URL(referer, 'https://dalilmanzala.com').origin : '');
+        if (reqOrigin && !isOriginAllowed(reqOrigin)) {
+          return jsonResponse({ error: 'الوصول غير مصرح به' }, 403, corsHeaders);
+        }
+
         const body = await request.json().catch(() => ({}));
         const arabicName = String(body.name || body.text || '').trim();
 
         if (!arabicName) {
           return jsonResponse({ error: 'الاسم مطلوب' }, 400, corsHeaders);
+        }
+        if (arabicName.length > 500) {
+          return jsonResponse({ error: 'النص المطلوب ترجمته يتجاوز الحد المسموح به' }, 400, corsHeaders);
         }
 
         const cleanTranslated = await translateArabicToEnglishWithFailover(arabicName, env);
@@ -7640,6 +7759,13 @@ try {
 
       // ── AI General Chat / Generation (POST /api/ai/chat) ──
       if (url.pathname === '/api/ai/chat' && request.method === 'POST') {
+        const origin = request.headers.get('Origin') || '';
+        const referer = request.headers.get('Referer') || '';
+        const reqOrigin = origin || (referer ? new URL(referer, 'https://dalilmanzala.com').origin : '');
+        if (reqOrigin && !isOriginAllowed(reqOrigin)) {
+          return jsonResponse({ success: false, error: 'الوصول غير مصرح به' }, 403, corsHeaders);
+        }
+
         const body = await request.json().catch(() => ({}));
         const prompt = String(body.prompt || body.message || '').trim();
         const systemPrompt = typeof body.systemPrompt === 'string' ? body.systemPrompt : undefined;
@@ -7648,6 +7774,9 @@ try {
 
         if (!prompt) {
           return jsonResponse({ success: false, error: 'نص المحادثة مطلوب' }, 400, corsHeaders);
+        }
+        if (prompt.length > 3500) {
+          return jsonResponse({ success: false, error: 'نص المحادثة يتجاوز الحد المسموح به' }, 400, corsHeaders);
         }
 
         try {
@@ -8050,6 +8179,13 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
 
       // ── 10. Instant Push Notification (POST /api/notify) ──
       if (url.pathname === '/api/notify' && request.method === 'POST') {
+        const origin = request.headers.get('Origin') || '';
+        const referer = request.headers.get('Referer') || '';
+        const reqOrigin = origin || (referer ? new URL(referer, 'https://dalilmanzala.com').origin : '');
+        if (reqOrigin && !isOriginAllowed(reqOrigin)) {
+          return jsonResponse({ success: false, error: 'الوصول غير مصرح به' }, 403, corsHeaders);
+        }
+
         const body = await request.json().catch(() => ({}));
         const allowedPublicTypes = new Set([
           'new_review', 'service_request', 'craftsman_live', 'verification_request',
@@ -8065,73 +8201,6 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
         return jsonResponse({ success: true, queued: true, message: 'تم استلام الإشعار وجدولته بنجاح' }, 200, corsHeaders);
       }
 
-      // ── 11. Google Maps Short Link & Location Resolver (POST /api/maps/resolve) ──
-      if (url.pathname === '/api/maps/resolve' && request.method === 'POST') {
-        const body = await request.json().catch(() => ({}));
-        const inputUrl = (body.url || '').trim();
-        if (!inputUrl) {
-          return jsonResponse({ error: 'الرابط مطلوب' }, 400, corsHeaders);
-        }
-
-        try {
-          // Direct coordinate regex in URL
-          const directMatch = inputUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                              inputUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                              inputUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                              inputUrl.match(/(-?\d+\.\d{3,})\s*,\s*(-?\d+\.\d{3,})/);
-          if (directMatch) {
-            return jsonResponse({
-              success: true,
-              lat: parseFloat(directMatch[1]),
-              lng: parseFloat(directMatch[2]),
-              source: 'regex'
-            }, 200, corsHeaders);
-          }
-
-          // Fetch the page with user-agent to resolve short link
-          const res = await fetch(inputUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            },
-            redirect: 'follow'
-          });
-
-          const finalUrl = res.url || '';
-          const html = await res.text();
-
-          // Check final redirect URL
-          const urlMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                           finalUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
-          if (urlMatch) {
-            return jsonResponse({
-              success: true,
-              lat: parseFloat(urlMatch[1]),
-              lng: parseFloat(urlMatch[2]),
-              finalUrl,
-              source: 'redirect_url'
-            }, 200, corsHeaders);
-          }
-
-          // Check HTML contents (e.g. meta static map or pb data)
-          const staticMapMatch = html.match(/center=(-?\d+\.\d+)%2C(-?\d+\.\d+)/) ||
-                                 html.match(/center=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                                 html.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
-                                 html.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/);
-          if (staticMapMatch) {
-            return jsonResponse({
-              success: true,
-              lat: parseFloat(staticMapMatch[1]),
-              lng: parseFloat(staticMapMatch[2]),
-              finalUrl,
-              source: 'html_meta'
-            }, 200, corsHeaders);
-          }
-
-          return jsonResponse({ success: false, error: 'Could not extract exact coordinates' }, 200, corsHeaders);
-        } catch (err) {
-          return jsonResponse({ success: false, error: err.message }, 500, corsHeaders);
-        }
-      }
 
       // ── 12. Dynamic OpenGraph / Social Media Share Preview & Place SSR (GET /place/:slug, /p/:slug, /en/place/:slug, /ar/place/:slug, /place.html?slug=... or /api/og) ──
       const isPlaceRoute = (
@@ -10681,12 +10750,12 @@ async function handleDynamicOpenGraph(slug, request, env, ctx) {
       const injectionScript = `
   <!-- Server-Injected Place SSR Hydration & Schema.org Structured Data -->
   <script id="server-instant-place">
-    window.__INSTANT_PLACE__ = ${JSON.stringify(normalizedPlace)};
+    window.__INSTANT_PLACE__ = ${safeJsonForScript(normalizedPlace)};
     document.documentElement.classList.add('has-instant-place');
-    document.title = ${JSON.stringify(fullShareTitle)};
+    document.title = ${safeJsonForScript(fullShareTitle)};
   </script>
   <script type="application/ld+json">
-${JSON.stringify(jsonLdSchema, null, 2)}
+${safeJsonForScript(jsonLdSchema, 2)}
   </script>`;
       hydratedHtml = hydratedHtml.replace('</head>', `${injectionScript}\n</head>`);
 
@@ -10761,7 +10830,7 @@ ${JSON.stringify(jsonLdSchema, null, 2)}
   <meta name="twitter:description" content="${escapeHtml(placeDesc)}">
   <meta name="twitter:image" content="${escapeHtml(placeImg)}">
   <script type="application/ld+json">
-${JSON.stringify(generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, shareUrl, isEn, placeCat, placeTargetSlug), null, 2)}
+${safeJsonForScript(generatePlaceSchemaJsonLd(place, rawPlaceName, placeDesc, placeImg, shareUrl, isEn, placeCat, placeTargetSlug), 2)}
   </script>
 </head>
 <body style="font-family:Arial,sans-serif;padding:30px;max-width:850px;margin:0 auto;direction:${isEn ? 'ltr' : 'rtl'};line-height:1.7;">
@@ -10924,6 +10993,18 @@ function toProxyImageUrl(url, baseUrl = 'https://dalilmanzala.com') {
 function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function safeJsonForScript(obj, space = 0) {
+  try {
+    return JSON.stringify(obj, null, space)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
+  } catch (_) {
+    return 'null';
+  }
 }
 function parseJson(value, fallback) {
   if (!value) return fallback;

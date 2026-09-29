@@ -486,7 +486,7 @@ function renderPlaceArticlesClient(container, placeId, place = {}, canManage = f
       contentHTML = `
         <div class="place-articles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px">
           ${articles.map(a => {
-            const href = '/article/' + encodeURIComponent(a.slug || '') + '/';
+            const href = '/blog/' + encodeURIComponent(a.slug || '') + '/';
             const safeTitle = String(a.title || 'مقال').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
             const safeExcerpt = String(a.excerpt || a.content || '').slice(0, 130).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
             const safePlaceName = String(place.name || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

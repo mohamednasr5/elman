@@ -298,7 +298,7 @@ export async function renderArticlesManager(container, user) {
               <span style="font-size:11.5px;color:#0f766e;font-weight:normal">مختصر بالإنجليزية فقط لسهولة المشاركة والسيو</span>
             </label>
             <div style="display:flex;align-items:center;direction:ltr;background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:14px;padding:0 12px;overflow:hidden">
-              <span style="color:#64748b;font-size:12.5px;font-family:monospace;white-space:nowrap">dalilmanzala.com/article/</span>
+              <span style="color:#64748b;font-size:12.5px;font-family:monospace;white-space:nowrap">dalilmanzala.com/blog/</span>
               <input type="text" id="art-slug-input" style="border:none;background:transparent;padding:12px 6px;font-family:monospace;font-size:13px;color:#0f172a;flex:1;outline:none" placeholder="al-hassan-phone-repair-offers" value="${esc(editingArticle?.slug || '')}">
             </div>
           </div>
@@ -372,7 +372,7 @@ export async function renderArticlesManager(container, user) {
             <div class="article-items-list">
               ${articles.map(a => {
                 const isPub = a.status === 'published';
-                const href = `/article/${encodeURIComponent(a.slug || '')}/`;
+                const href = `/blog/${encodeURIComponent(a.slug || '')}/`;
                 return `
                   <article class="article-item-card">
                     ${a.coverImageUrl ? `

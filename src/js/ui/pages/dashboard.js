@@ -1962,24 +1962,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           <input type="text" id="p-address" class="form-input" placeholder="مثال: شارع البحر، بجوار المسجد الكبير" value="${escAttr(place?.address || '')}" />
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="p-maps-group">
           <label class="form-label" id="p-maps-label">رابط خرائط جوجل (Google Maps Link)</label>
-          <div style="display:flex;gap:8px;align-items:stretch"><input type="text" id="p-maps" class="form-input" placeholder="يمكنك تركه فارغاً؛ سنبحث تلقائياً بالمدينة + الشارع + اسم المكان" value="${escAttr(place?.mapsLink || '')}" style="direction:ltr;text-align:left;flex:1" /><button type="button" class="btn btn-outline" id="btn-auto-map-search" style="white-space:nowrap">🔎 ابحث عن الموقع الحقيقي</button></div>
-          <p style="font-size:11.5px;color:var(--text-muted);margin-top:4px">💡 يمكنك وضع رابط خرائط جوجل أو كود بلس أو العنوان وسيتم استخراج وتثبيت موقعك الفعلي بدقة على الخريطة.</p>
-          <div id="map-live-preview-box" style="margin-top:8px;${place?.location?.lat ? '' : 'display:none'}">
-            ${place?.location?.lat ? `
-              <div style="padding:8px 12px;background:rgba(16, 185, 129, 0.08);border:1px solid rgba(16, 185, 129, 0.3);border-radius:var(--radius-md)">
-                <div style="font-size:12px;font-weight:700;color:#059669;margin-bottom:6px;display:flex;align-items:center;gap:6px">
-                  <span>✅</span> تم استخراج الموقع الجغرافي بدقة (${Number(place.location.lat).toFixed(4)}, ${Number(place.location.lng).toFixed(4)})
-                </div>
-                <iframe 
-                  src="https://maps.google.com/maps?q=${place.location.lat},${place.location.lng}&hl=ar&z=17&output=embed" 
-                  style="border:0;width:100%;height:150px;border-radius:var(--radius-sm);display:block" 
-                  loading="lazy">
-                </iframe>
-              </div>
-            ` : ''}
-          </div>
+          <input type="text" id="p-maps" class="form-input" placeholder="رابط Google Maps أو دعه يُستخرج تلقائياً من الخريطة بالأسفل" value="${escAttr(place?.mapsLink || '')}" ${place?.location?.lat && place?.location?.lng ? `data-coordinates="${escAttr(JSON.stringify({ lat: place.location.lat, lng: place.location.lng }))}"` : ''} style="direction:ltr;text-align:left;width:100%" />
         </div>
 
         <div class="form-row" id="p-phone-row">
@@ -3639,154 +3624,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   // Only real geocoded coordinates returned by Google Places/Nominatim are accepted.
   // Coordinates within 3m of another place are NEVER auto-assigned.
   let _currentCoords = place?.location || null;
-  let _mapSearchTimer = null;
-  let _lastMapSearchKey = '';
-
-  function showMapStatus(html, kind = 'info') {
-    const box = document.getElementById('map-live-preview-box');
-    if (!box) return;
-    const border = kind === 'success' ? 'rgba(16,185,129,.35)' : kind === 'warning' ? 'rgba(245,158,11,.38)' : 'rgba(2,132,199,.24)';
-    const bg = kind === 'success' ? 'rgba(16,185,129,.10)' : kind === 'warning' ? 'rgba(245,158,11,.08)' : 'rgba(2,132,199,.08)';
-    box.style.display = 'block';
-    box.innerHTML = `<div style="padding:12px;border:1px solid ${border};border-radius:12px;background:${bg}">${html}</div>`;
-  }
-
-  function renderMapPreview(coords, label = 'الموقع المحدد') {
-    if (!coords?.lat || !coords?.lng) return;
-    const lat = Number(coords.lat), lng = Number(coords.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-    const mapLink = coords.mapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
-    const mapsInput = document.getElementById('p-maps');
-    if (mapsInput && coords.mapsLink) mapsInput.value = coords.mapsLink;
-
-    const box = document.getElementById('map-live-preview-box');
-    if (!box) return;
-    box.style.display = 'block';
-    box.innerHTML = `
-      <div style="padding:12px;border:1px solid rgba(16,185,129,.35);border-radius:12px;background:rgba(16,185,129,.08)">
-        <div style="font-size:12px;font-weight:800;color:#047857;margin-bottom:8px">✅ ${escHtml(label)}</div>
-        <div style="font-size:11px;color:#475569;margin-bottom:8px;line-height:1.7">
-          الإحداثيات الفعلية: <b dir="ltr">${lat.toFixed(6)}, ${lng.toFixed(6)}</b>
-          ${coords.formattedAddress ? `<br>العنوان المطابق: ${escHtml(coords.formattedAddress)}` : ''}
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-          <a href="${escAttr(mapLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline">🗺️ فتح الموقع على خرائط جوجل</a>
-          <button type="button" class="btn btn-sm btn-outline" id="map-research-btn">🔎 إعادة البحث</button>
-        </div>
-        <iframe src="https://maps.google.com/maps?q=${lat},${lng}&hl=ar&z=18&output=embed"
-          style="border:0;width:100%;height:190px;border-radius:10px;display:block"
-          allowfullscreen="" loading="eager" referrerpolicy="strict-origin-when-cross-origin" title="خريطة الموقع الحقيقي"></iframe>
-      </div>`;
-    box.querySelector('#map-research-btn')?.addEventListener('click', () => geocodeAddressNow(true));
-  }
-
-  function renderMapCandidates(data) {
-    const candidates = Array.isArray(data?.candidates) ? data.candidates : [];
-    const box = document.getElementById('map-live-preview-box');
-    if (!box) return;
-    const reason = data?.coordinateConflict
-      ? `هناك مكان ${data.coordinateConflict.name ? `«${data.coordinateConflict.name}» ` : ''}على بُعد ${Number(data.coordinateConflict.distanceMeters || 0).toFixed(2)} متر من أفضل نتيجة. لن نضع مكانين في نفس الموقع.`
-      : 'التطابق يحتاج تأكيداً قبل الحفظ حتى لا نضع نشاطاً في موقع غير صحيح.';
-
-    box.style.display = 'block';
-    box.innerHTML = `
-      <div style="padding:12px;border:1px solid rgba(245,158,11,.38);border-radius:12px;background:rgba(245,158,11,.08)">
-        <div style="font-weight:900;color:#92400e;margin-bottom:6px">📍 اختر الموقع الحقيقي</div>
-        <div style="font-size:11.5px;line-height:1.7;color:#78350f;margin-bottom:10px">${escHtml(reason)}</div>
-        <div style="display:grid;gap:8px">
-          ${candidates.map((item, idx) => `
-            <button type="button" class="map-candidate-btn" data-candidate-index="${idx}" ${item.safe === false ? 'disabled' : ''}
-              style="text-align:right;padding:10px 12px;border:1px solid ${item.safe === false ? '#fecaca' : '#cbd5e1'};border-radius:10px;background:${item.safe === false ? '#fff1f2' : '#fff'};cursor:${item.safe === false ? 'not-allowed' : 'pointer'}">
-              <div style="font-weight:800;color:${item.safe === false ? '#b91c1c' : '#0f172a'}">${idx + 1}. ${escHtml(item.name || item.formattedAddress || 'نتيجة خرائط')}</div>
-              <div style="font-size:11px;color:#64748b;margin-top:4px">${escHtml(item.formattedAddress || '')}</div>
-              <div style="font-size:10.5px;margin-top:4px;color:${item.safe === false ? '#b91c1c' : '#0369a1'}">
-                دقة التطابق: ${Math.round(Number(item.score || 0) * 100)}% • <span dir="ltr">${Number(item.lat).toFixed(6)}, ${Number(item.lng).toFixed(6)}</span>
-                ${item.coordinateConflict ? ` • تعارض ${Number(item.coordinateConflict.distanceMeters || 0).toFixed(2)}م` : ''}
-              </div>
-            </button>`).join('')}
-        </div>
-      </div>`;
-
-    box.querySelectorAll('.map-candidate-btn:not([disabled])').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const item = candidates[Number(btn.dataset.candidateIndex)];
-        if (!item || item.safe === false || item.coordinateConflict) return;
-        _currentCoords = { lat: Number(item.lat), lng: Number(item.lng) };
-        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.lat},${item.lng}`)}`;
-        const input = document.getElementById('p-maps');
-        if (input) input.value = mapsLink;
-        renderMapPreview({ ...item, mapsLink }, 'تم اختيار الموقع الحقيقي من نتيجة الخريطة');
-      });
-    });
-  }
-
-  async function geocodeAddressNow(force = false) {
-    const name = document.getElementById('p-name')?.value.trim() || '';
-    const address = document.getElementById('p-address')?.value.trim() || '';
-    const area = document.getElementById('p-area')?.value === 'other'
-      ? (document.getElementById('p-custom-area')?.value.trim() || '')
-      : (document.getElementById('p-area')?.value.trim() || '');
-
-    if ((!name && !address) || address.length < 3) return;
-    const key = [name, address, area].join('|');
-    if (!force && key === _lastMapSearchKey) return;
-    _lastMapSearchKey = key;
-
-    const btn = document.getElementById('btn-auto-map-search');
-    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ جاري البحث عن الموقع الحقيقي...'; }
-    showMapStatus('<b>🔎 جاري البحث عن الموقع الحقيقي...</b><br><span style="font-size:11px">سيتم الجمع بين المدينة والشارع واسم المعلم، ثم مقارنة النتائج بالأماكن المسجلة.</span>');
-
-    try {
-      const token = await getIdToken();
-      if (!token) throw new Error('يجب تسجيل الدخول لإجراء البحث الجغرافي');
-      const payload = {
-        placeName: name,
-        address,
-        area,
-        placeId: place?.id || ''
-      };
-      const data = await api.post('/api/maps/geocode', payload, token, { timeout: 20000 });
-
-      if (data?.selected && !data?.coordinateConflict && !data?.requiresConfirmation) {
-        _currentCoords = { lat: Number(data.selected.lat), lng: Number(data.selected.lng) };
-        renderMapPreview(data.selected, `✅ تم العثور على الموقع الحقيقي — ${data.provider === 'google' ? 'Google Places' : 'OpenStreetMap'}`);
-      } else if (data?.candidates?.length) {
-        renderMapCandidates(data);
-      } else {
-        showMapStatus('⚠️ لم يتم العثور على نتيجة موثوقة. أضف اسم معلم قريب أو اكتب الشارع بصورة أكثر تفصيلاً.', 'warning');
-      }
-    } catch (err) {
-      showMapStatus(`⚠️ ${escHtml(err?.message || 'تعذر البحث الجغرافي حالياً')}`, 'warning');
-    } finally {
-      if (btn) { btn.disabled = false; btn.innerHTML = '🔎 ابحث عن الموقع الحقيقي'; }
-    }
-  }
-
-  function scheduleMapSearch() {
-    clearTimeout(_mapSearchTimer);
-    _mapSearchTimer = setTimeout(() => geocodeAddressNow(false), 900);
-  }
-
-  document.getElementById('btn-auto-map-search')?.addEventListener('click', () => geocodeAddressNow(true));
-  document.getElementById('p-name')?.addEventListener('blur', scheduleMapSearch);
-  document.getElementById('p-address')?.addEventListener('blur', scheduleMapSearch);
-  document.getElementById('p-address')?.addEventListener('change', scheduleMapSearch);
-  document.getElementById('p-area')?.addEventListener('change', () => {
-    _lastMapSearchKey = '';
-    scheduleMapSearch();
-  });
-
-  if (place?.location?.lat && place?.location?.lng) {
-    renderMapPreview({
-      lat: Number(place.location.lat),
-      lng: Number(place.location.lng),
-      mapsLink: place.mapsLink || '',
-      formattedAddress: place.address || ''
-    }, 'الموقع المحفوظ للمكان');
-  } else if (place?.address) {
-    setTimeout(() => geocodeAddressNow(false), 120);
-  }
+  // Note: Location picker and interactive map are fully managed by GoogleMapsLocationPicker
 
   // ═══════════════════════════════════════════════════════════
   //  SMART DUPLICATE PLACE DETECTION & SUGGESTION ENGINE
@@ -4398,8 +4236,17 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           ? (document.getElementById('p-custom-area')?.value.trim() || 'المنزلة') 
           : (document.getElementById('p-area')?.value || 'المنزلة')),
         address: document.getElementById('p-address').value,
-        mapsLink: document.getElementById('p-maps').value,
-        location: _currentCoords,
+        mapsLink: document.getElementById('p-maps')?.value?.trim() || '',
+        location: (() => {
+          const mEl = document.getElementById('p-maps');
+          if (mEl?.dataset?.coordinates) {
+            try {
+              const p = JSON.parse(mEl.dataset.coordinates);
+              if (p?.lat && p?.lng) return { lat: Number(p.lat), lng: Number(p.lng) };
+            } catch (_) {}
+          }
+          return _currentCoords;
+        })(),
         coverImageUrl: document.getElementById('p-cover-url').value,
         logoUrl: document.getElementById('p-logo-url').value,
         alwaysOpen,
