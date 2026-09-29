@@ -25,6 +25,21 @@ const SUPERADMIN_PHONES = new Set([
   '+201070007430'
 ]);
 
+function toCleanCategorySlug(str) {
+  let s = String(str || '').trim().toLowerCase();
+  try { s = decodeURIComponent(s); } catch (_) {}
+  return s
+    .replace(/['’`]/g, '')                         // remove apostrophes (women's -> womens)
+    .replace(/&/g, ' ')                           // ampersands to space
+    .replace(/%26/gi, ' ')
+    .replace(/%2c/gi, ' ')
+    .replace(/%27/gi, '')
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')           // keep unicode letters (Arabic + Latin) and numbers, strip punctuation
+    .replace(/\s+/g, '-')                         // spaces to single hyphen
+    .replace(/-+/g, '-')                         // multiple hyphens to single hyphen
+    .replace(/^-+|-+$/g, '');                     // trim leading/trailing hyphens
+}
+
 function safeBackgroundNotify(type, payload, env, ctx) {
   if (!ctx || typeof ctx.waitUntil !== 'function') {
     sendAdminPushNotification(type, payload, env).catch(() => {});
@@ -600,7 +615,10 @@ async function handleDynamicSitemap(request, url, env, ctx) {
     const catSet = new Set();
     for (const r of catRows) {
       const c = r.custom_category || r.category_id;
-      if (c) catSet.add(String(c).trim().toLowerCase().replace(/\s+/g, '-'));
+      if (c) {
+        const clean = toCleanCategorySlug(c);
+        if (clean) catSet.add(clean);
+      }
     }
     let entries = [];
     for (const cat of [...catSet].sort()) {
@@ -1237,6 +1255,62 @@ if (request.method === 'GET' && (
     if (articleResponse) return articleResponse;
   } catch (artErr) {
     console.warn('[handleArticlePublicPage error]:', artErr?.message || artErr);
+  }
+}
+
+// ── Category Route Normalization & 301 Permanent Redirects ────────
+if (request.method === 'GET' && (
+  url.pathname === '/category' ||
+  url.pathname.startsWith('/category/') ||
+  url.pathname === '/en/category' ||
+  url.pathname.startsWith('/en/category/') ||
+  url.pathname === '/categories' ||
+  url.pathname.startsWith('/categories/') ||
+  url.pathname === '/en/categories' ||
+  url.pathname.startsWith('/en/categories/')
+)) {
+  const isEn = url.pathname.startsWith('/en/');
+  const rootListing = isEn ? '/en/categories/' : '/categories.html';
+
+  // 1. Root category listings redirect to canonical listing pages
+  if (
+    url.pathname === '/category' || url.pathname === '/category/' ||
+    url.pathname === '/categories' || url.pathname === '/categories/' ||
+    url.pathname === '/en/category' || url.pathname === '/en/category/' ||
+    url.pathname === '/en/categories'
+  ) {
+    if (url.pathname !== rootListing) {
+      return Response.redirect(`${url.origin}${rootListing}`, 301);
+    }
+  }
+
+  // 2. Extract and sanitize category slug
+  const prefix = isEn ? '/en/category/' : '/category/';
+  let sub = '';
+  if (url.pathname.startsWith(prefix)) {
+    sub = url.pathname.slice(prefix.length).replace(/\/+$/, '');
+  } else if (url.pathname.startsWith(isEn ? '/en/categories/' : '/categories/')) {
+    sub = url.pathname.slice((isEn ? '/en/categories/' : '/categories/').length).replace(/\/+$/, '');
+  }
+
+  if (sub && !sub.includes('.html')) {
+    const cleanSlug = toCleanCategorySlug(sub);
+    if (!cleanSlug) {
+      return Response.redirect(`${url.origin}${rootListing}`, 301);
+    }
+
+    const canonicalPath = `${prefix}${encodeURIComponent(cleanSlug)}/`;
+    const canonicalDecoded = `${prefix}${cleanSlug}/`;
+    let currentDecoded = '';
+    try { currentDecoded = decodeURIComponent(url.pathname); } catch (_) { currentDecoded = url.pathname; }
+
+    // If incoming request has percent encodings (%2C, %26, etc.), symbols, or missing trailing slash:
+    if (url.pathname !== canonicalPath && currentDecoded !== canonicalDecoded) {
+      return Response.redirect(`${url.origin}${canonicalPath}${url.search}`, 301);
+    }
+    if (!url.pathname.endsWith('/')) {
+      return Response.redirect(`${url.origin}${canonicalPath}${url.search}`, 301);
+    }
   }
 }
 
@@ -8430,6 +8504,17 @@ Return a JSON array of matching IDs in order of relevance: ["id1", "id2"]`;
       // If request is not an /api route, pass through to GitHub Pages origin so static files and HTML pages work seamlessly
       if (!url.pathname.startsWith('/api')) {
         const originRes = await fetch(request);
+
+        // Guarantee 0 404 errors for category URLs: redirect any unfound category directly to the directory hub
+        if (originRes.status === 404) {
+          if (url.pathname.startsWith('/category/') || url.pathname.startsWith('/categories/')) {
+            return Response.redirect(`${url.origin}/categories.html`, 301);
+          }
+          if (url.pathname.startsWith('/en/category/') || url.pathname.startsWith('/en/categories/')) {
+            return Response.redirect(`${url.origin}/en/categories/`, 301);
+          }
+        }
+
         const staticAssetRegex = /\.(?:css|js|mjs|woff2?|ttf|eot|png|jpe?g|webp|gif|svg|ico|webmanifest)$/i;
         if (staticAssetRegex.test(url.pathname) && originRes.status === 200) {
           const newHeaders = new Headers(originRes.headers);
