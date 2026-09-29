@@ -38,6 +38,7 @@ import { renderVerifiedBadge, renderPendingBadge, renderDeliveryBadge } from '..
 import { showModal, showConfirm } from '../components/Modal.js';
 import { toast } from '../components/Toast.js';
 import { isAdmin, getIdToken } from '../../core/auth.js';
+import { initGoogleMapsLocationPicker } from '../components/GoogleMapsLocationPicker.js';
 import { api } from '../../core/api.js';
 import { getStoredCoinsBalance, fetchLiveCoinsBalance, setStoredCoinsBalance, applyCoinsBalanceToUI } from '../../core/coins-sync.js';
 import { openCertificateOfAppreciationModal } from '../components/CertificateOfAppreciationModal.js';
@@ -221,10 +222,16 @@ export async function switchDashboardSection(section = 'overview', placeId = nul
       await renderAnalyticsSection($mainArea, _dashUser, placeId);
     } else if (section === 'add' || section === 'add-place') {
       await renderPlaceFormSection($mainArea, _dashUser, null);
-      requestAnimationFrame(() => initPlaceFormWizard());
+      requestAnimationFrame(() => {
+        initPlaceFormWizard();
+        try { initGoogleMapsLocationPicker(); } catch (_) {}
+      });
     } else if (section === 'edit' || section === 'edit-place') {
       await renderPlaceFormSection($mainArea, _dashUser, placeId);
-      requestAnimationFrame(() => initPlaceFormWizard());
+      requestAnimationFrame(() => {
+        initPlaceFormWizard();
+        try { initGoogleMapsLocationPicker(); } catch (_) {}
+      });
     } else if (section === 'offers' || section === 'place-offers') {
       await renderPlaceOffersSection($mainArea, _dashUser, placeId);
     } else if (section === 'products' || section === 'place-products') {
@@ -3625,6 +3632,9 @@ async function renderPlaceFormSection($container, user, placeId = null) {
   // Coordinates within 3m of another place are NEVER auto-assigned.
   let _currentCoords = place?.location || null;
   // Note: Location picker and interactive map are fully managed by GoogleMapsLocationPicker
+  requestAnimationFrame(() => {
+    try { initGoogleMapsLocationPicker(); } catch (_) {}
+  });
 
   // ═══════════════════════════════════════════════════════════
   //  SMART DUPLICATE PLACE DETECTION & SUGGESTION ENGINE
