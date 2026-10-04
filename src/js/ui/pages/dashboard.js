@@ -4283,13 +4283,23 @@ async function renderPlaceFormSection($container, user, placeId = null) {
           const res = [];
           document.querySelectorAll('.branch-form-row').forEach(row => {
             const bName = row.querySelector('.b-name')?.value.trim() || '';
+            const bAddress = row.querySelector('.b-address')?.value.trim() || '';
             let bArea = row.querySelector('.b-area')?.value.trim() || '';
             if (bArea === 'other') {
               bArea = row.querySelector('.custom-area-input')?.value.trim() || 'المنزلة';
             }
             if (!bArea) bArea = 'المنزلة';
-            const bPhone = normalizePhoneNumber(row.querySelector('.b-phone')?.value.trim() || '');
-            const bWhatsapp = normalizePhoneNumber(row.querySelector('.b-whatsapp')?.value.trim() || '');
+
+            const isSamePhone = Boolean(row.querySelector('.b-same-phone-cb')?.checked);
+            let bPhone = normalizePhoneNumber(row.querySelector('.b-phone')?.value.trim() || '');
+            let bWhatsapp = normalizePhoneNumber(row.querySelector('.b-whatsapp')?.value.trim() || '');
+            if (isSamePhone) {
+              const mainPhone = normalizePhoneNumber(document.getElementById('p-phone')?.value.trim() || '');
+              const mainWa = normalizePhoneNumber(document.getElementById('p-whatsapp')?.value.trim() || '');
+              if (!bPhone) bPhone = mainPhone;
+              if (!bWhatsapp) bWhatsapp = mainWa || mainPhone;
+            }
+
             const bId = row.getAttribute('data-branch-id') || '';
             const isSameHours = row.querySelector('.b-same-hours-cb')?.checked ?? true;
             const is24Checked = row.querySelector('.b-hours-24-cb')?.checked ?? false;
@@ -4316,7 +4326,7 @@ async function renderPlaceFormSection($container, user, placeId = null) {
             if (bName || bAddress || bPhone) {
               res.push({
                 id: bId || ('br_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
-                name: bName,
+                name: bName || (document.getElementById('p-name')?.value.trim() ? `${document.getElementById('p-name').value.trim()} - فرع ${bArea}` : 'الفرع الإضافي'),
                 address: bAddress,
                 area: bArea,
                 phone: bPhone,
