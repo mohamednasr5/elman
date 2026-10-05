@@ -45,7 +45,7 @@ The site permits major search and AI crawlers through robots.txt, including OAI-
 ## Blog & Articles
 
 - Blog: https://dalilmanzala.com/blog/
-- Published article profile: https://dalilmanzala.com/article/{slug}/
+- Published article profile: https://dalilmanzala.com/blog/{slug}/
 
 ## Public APIs
 

@@ -23,7 +23,25 @@ export function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Normalizes and sanitizes a category name into a clean, search-engine-friendly slug.
+ * Eliminates punctuation, commas, apostrophes, ampersands, and ensures standard kebab-case.
+ */
+export function toCleanCategorySlug(str) {
+  let s = String(str || '').trim().toLowerCase();
+  try { s = decodeURIComponent(s); } catch (_) {}
+  return s
+    .replace(/['’`]/g, '')                         // remove apostrophes (women's -> womens)
+    .replace(/&/g, ' ')                           // ampersands to space
+    .replace(/%26/gi, ' ')
+    .replace(/%2c/gi, ' ')
+    .replace(/%27/gi, '')
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')           // keep unicode letters (Arabic + Latin) and numbers, strip punctuation
+    .replace(/\s+/g, '-')                         // spaces to single hyphen
+    .replace(/-+/g, '-')                         // multiple hyphens to single hyphen
+    .replace(/^-+|-+$/g, '');                     // trim leading/trailing hyphens
 }
 
 /**
@@ -167,8 +185,8 @@ export function generateBusinessSEO(place) {
 
   // Canonical Clean URL
   const canonicalUrl = `${SITE_DOMAIN}/place/${encodeURIComponent(slug)}/`;
-  const categorySlug = encodeURIComponent(String(rawCategory).toLowerCase().replace(/\s+/g, '-'));
-  const categoryUrl = `${SITE_DOMAIN}/category/${categorySlug}/`;
+  const categorySlug = toCleanCategorySlug(rawCategory);
+  const categoryUrl = `${SITE_DOMAIN}/category/${encodeURIComponent(categorySlug)}/`;
 
   // SEO Title: Natural, compelling, within Google's 60-char display budget
   const title = `${rawName} في ${rawArea} | ${catName} | دليل المنزلة والمطرية`;
@@ -410,9 +428,9 @@ export function generateBusinessSEOEnglish(place) {
   const rawCategory = rawCategoryEn || rawCategoryId || String(place.customCategory || place.category || '').trim();
   const catName = rawCategoryEn || getEnglishCategoryName(rawCategoryId || rawCategory) || 'Local Services';
   const slug = String(place.slug || place.id || '').trim();
-  const categorySlug = encodeURIComponent(String(rawCategoryId || rawCategoryEn || rawCategory || 'local-services').toLowerCase().replace(/\s+/g, '-'));
+  const categorySlug = toCleanCategorySlug(rawCategoryId || rawCategoryEn || rawCategory || 'local-services');
   const canonicalUrl = `${SITE_DOMAIN}/en/place/${encodeURIComponent(slug)}/`;
-  const categoryUrl = `${SITE_DOMAIN}/en/category/${categorySlug}/`;
+  const categoryUrl = `${SITE_DOMAIN}/en/category/${encodeURIComponent(categorySlug)}/`;
   const title = `${rawName} in ${rawArea} | ${catName} | Dalil El Manzala`;
   const description = `Find ${rawName} in ${rawArea}${rawAddress ? ` — Address: ${rawAddress}` : ''}${place.phone ? ` — Phone: ${String(place.phone).trim()}` : ''}. Contact details, location, working hours and local information from Dalil El Manzala & El Matariya.`;
   const image = (() => {
@@ -470,8 +488,8 @@ export function generateBusinessSEOEnglish(place) {
  */
 export function generateCategorySEO(categoryName, places = []) {
   const catName = getArabicCategoryName(categoryName);
-  const categorySlug = encodeURIComponent(String(categoryName).toLowerCase().replace(/\s+/g, '-'));
-  const canonicalUrl = `${SITE_DOMAIN}/category/${categorySlug}/`;
+  const categorySlug = toCleanCategorySlug(categoryName);
+  const canonicalUrl = `${SITE_DOMAIN}/category/${encodeURIComponent(categorySlug)}/`;
 
   const title = `${catName} في المنزلة والمطرية | دليل الأنشطة والخدمات الموثقة`;
   const description = `تصفح قائمة ${catName} في المنزلة والمطرية والقرى المجاورة. عناوين دقيقة، أرقام التواصل الفوري، مواعيد العمل، وتقييمات الأهالي بدليل المنزلة والمطرية.`;

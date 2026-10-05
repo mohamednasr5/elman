@@ -56,7 +56,7 @@ const registry = JSON.parse(read('.indexnow-urls.json'));
 const urls = Array.isArray(registry.urls) ? [...new Set(registry.urls)] : [];
 must(urls.length > 0, 'IndexNow URL registry is empty');
 for (const url of urls) {
-  must(/^https:\/\/dalilmanzala\.com\/(?:en\/)?place\/[^\s]+\/$/.test(String(url)),
+  must(/^https:\/\/dalilmanzala\.com\/(?:(?:en\/)?place|blog)\/[^\s]+\/$/.test(String(url)),
     'Non-canonical IndexNow URL: ' + url);
 }
 
@@ -103,7 +103,7 @@ for (const file of profileFiles) {
   must(/<meta\s+name=["']robots["'][^>]*index,\s*follow/i.test(html), file + ': profile not indexable');
   must(/<link\s+rel=["']canonical["'][^>]*https:\/\/dalilmanzala\.com\//i.test(html), file + ': canonical missing');
   must(/application\/ld\+json/i.test(html) && /BreadcrumbList/i.test(html), file + ': structured data incomplete');
-  const ldScripts = [...html.matchAll(/<script[^>]*type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)]
+  const ldScripts = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)]
     .map(match => { try { return JSON.parse(match[1]); } catch (_) { return null; } })
     .filter(Boolean);
   const businessEntity = ldScripts.find(schema => {

@@ -17,7 +17,8 @@ import {
   escapeHtml,
   generateBusinessSEO,
   generateCategorySEO,
-  getArabicCategoryName
+  getArabicCategoryName,
+  toCleanCategorySlug
 } from './src/js/utils/seo-entity.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -147,7 +148,7 @@ function buildBusinessPageHTML(place, relatedPlaces = [], relatedArticles = []) 
   if (relatedArticles.length > 0) {
     const articleCards = relatedArticles.slice(0, 6).map((article, index) => {
       const articleSlug = String(article.slug || article.id || '').trim();
-      const href = `/article/${encodeURIComponent(articleSlug)}/`;
+      const href = `/blog/${encodeURIComponent(articleSlug)}/`;
       const image = article.coverImageUrl || article.cover_image_url || article.coverUrl || article.cover_url || '';
       return `<article style="overflow:hidden;border:1px solid rgba(0,0,0,.08);border-radius:14px;background:var(--surface,#fff)">
         <a href="${href}" style="display:block;aspect-ratio:16/9;background:#eef2f7;overflow:hidden;text-decoration:none">
@@ -560,7 +561,7 @@ async function run() {
   function categoryMapKeys(items) {
     return new Set(items.map(p => {
       const raw = p.customCategory || p.category || p.categoryId || p.category_id || 'عام';
-      return encodeURIComponent(String(raw).toLowerCase().replace(/\\s+/g, '-'));
+      return toCleanCategorySlug(raw);
     }));
   }
   const removedPlaces = removeStaleGeneratedDirs(path.join(__dirname, 'place'), desiredPlaceSlugs);
@@ -600,7 +601,7 @@ async function run() {
   // 2. Generate Category Pages under /category/:slug/index.html
   let generatedCats = 0;
   for (const [catName, catPlaces] of categoryMap.entries()) {
-    const slug = encodeURIComponent(String(catName).toLowerCase().replace(/\s+/g, '-'));
+    const slug = toCleanCategorySlug(catName);
     if (!slug) continue;
 
     const html = buildCategoryPageHTML(catName, catPlaces);
@@ -647,10 +648,10 @@ async function run() {
   if (fs.existsSync(catHtmlPath)) {
     let catHtml = fs.readFileSync(catHtmlPath, 'utf8');
     const catCardsHtml = Array.from(categoryMap.entries()).map(([cName, cPlaces]) => {
-      const cSlug = encodeURIComponent(String(cName).toLowerCase().replace(/\s+/g, '-'));
+      const cSlug = toCleanCategorySlug(cName);
       const escapedName = escapeHtml(getArabicCategoryName(cName));
       return `
-        <a href="/category/${cSlug}/" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
+        <a href="/category/${encodeURIComponent(cSlug)}/" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
           <span style="font-weight:700;font-size:0.95rem;margin-bottom:0.25rem">${escapedName}</span>
           <span style="font-size:0.8rem;color:var(--text-muted,#64748b)">استكشف الأماكن</span>
         </a>`;
@@ -704,10 +705,10 @@ async function run() {
   if (fs.existsSync(enCatHtmlPath)) {
     let enCatHtml = fs.readFileSync(enCatHtmlPath, 'utf8');
     const enCatCardsHtml = Array.from(categoryMap.entries()).map(([cName, cPlaces]) => {
-      const cSlug = encodeURIComponent(String(cName).toLowerCase().replace(/\s+/g, '-'));
+      const cSlug = toCleanCategorySlug(cName);
       const escapedName = escapeHtml(cName);
       return `
-        <a href="/en/category/${cSlug}/" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
+        <a href="/en/category/${encodeURIComponent(cSlug)}/" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem 0.75rem;background:var(--surface,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:16px;text-decoration:none;color:var(--text-primary,#0f172a);text-align:center">
           <span style="font-weight:700;font-size:0.95rem;margin-bottom:0.25rem">${escapedName}</span>
           <span style="font-size:0.8rem;color:var(--text-muted,#64748b)">${cPlaces.length} places</span>
         </a>`;

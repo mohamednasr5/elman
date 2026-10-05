@@ -1,4 +1,4 @@
-import { generateBusinessSEOEnglish, escapeHtml } from './src/js/utils/seo-entity.js';
+import { generateBusinessSEOEnglish, escapeHtml, toCleanCategorySlug } from './src/js/utils/seo-entity.js';
 import fs from 'fs';
 import path from 'path';
 const ROOT=process.cwd(),EN=path.join(ROOT,'en'),SITE='https://dalilmanzala.com';
@@ -6,7 +6,18 @@ const P={index:['Dalil El Manzala & El Matariya | Local Business Directory','Dis
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const noindex=new Set(['login','dashboard','favorites','search']);
 function html(key,t,d,en,ar){const c=SITE+en,a=SITE+ar,r=noindex.has(key)?'noindex,follow':'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';const schema={'@context':'https://schema.org','@type':'WebPage','@id':c+'#webpage',url:c,name:t,description:d,inLanguage:'en-EG'};return `<!doctype html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="${r}"><meta name="googlebot" content="${r}"><title>${esc(t)}</title><meta name="description" content="${esc(d)}"><link rel="canonical" href="${c}"><link rel="alternate" hreflang="ar" href="${a}"><link rel="alternate" hreflang="en" href="${c}"><link rel="alternate" hreflang="x-default" href="${a}"><meta property="og:type" content="website"><meta property="og:site_name" content="Dalil El Manzala &amp; El Matariya"><meta property="og:locale" content="en_EG"><meta property="og:url" content="${c}"><meta property="og:title" content="${esc(t)}"><meta property="og:description" content="${esc(d)}"><meta property="og:image" content="${SITE}/assets/images/og-whatsapp.jpg"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(t)}"><meta name="twitter:description" content="${esc(d)}"><meta name="twitter:image" content="${SITE}/assets/images/og-whatsapp.jpg"><meta name="theme-color" content="#1B4F72"><link rel="manifest" href="/en/manifest.webmanifest"><link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"><link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96x96.png"><link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png"><link rel="icon" type="image/x-icon" href="/favicon.ico"><link rel="shortcut icon" href="/favicon.ico"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"><link rel="stylesheet" href="/src/css/main.css?v=20260913.9"><link rel="stylesheet" href="/src/css/i18n-layout.css?v=20260913.9"><link rel="stylesheet" href="/src/css/en/index.css?v=20260913.9"><script type="application/ld+json">${JSON.stringify(schema)}</script></head><body data-lang="en"><div id="app"><div id="header-slot"></div><main id="page-container" class="page-main" role="main"><div class="en-container en-section" style="text-align:start">${englishLandingBody(key,t,d)}</div></main><div id="nav-slot"></div><div id="pwa-slot"></div><div id="footer-slot"></div></div><script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script><script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script><script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script><script type="module" src="/src/js/core/english-pages.js?v=20260913.9"></script><script type="module" src="/src/js/core/pwa-install.js?v=20260913.9"></script></body></html>`}
-function write(rel,key,t,d,en,ar){const dir=path.join(EN,rel);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'index.html'),html(key,t,d,en,ar),'utf8')}
+function safeWriteFile(filePath, content) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      fs.writeFileSync(filePath, content, 'utf8');
+      return;
+    } catch (err) {
+      if (attempt === 4) throw err;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 30);
+    }
+  }
+}
+function write(rel,key,t,d,en,ar){const dir=path.join(EN,rel);fs.mkdirSync(dir,{recursive:true});safeWriteFile(path.join(dir,'index.html'),html(key,t,d,en,ar))}
 fs.mkdirSync(EN,{recursive:true});for(const [k,[t,d,en,ar]] of Object.entries(P))write(k==='index'?'':k,k,t,d,en,ar);
 for(const key of ['search','favorites','login','dashboard'])write(key,key,`${key[0].toUpperCase()+key.slice(1)} | Dalil El Manzala & El Matariya`,'Directory account or utility page.',`/en/${key}/`,`/${key}.html`);
 for(const group of ['place','category']){const source=path.join(ROOT,group);if(!fs.existsSync(source))continue;for(const s of fs.readdirSync(source)){if(s==='index')continue;const entry=path.join(source,s,'index.html');if(!fs.existsSync(entry))continue;const label=s.replace(/[-_]+/g,' '),en=`/en/${group}/${encodeURIComponent(s)}/`,ar=`/${group}/${encodeURIComponent(s)}/`;write(`${group}/${s}`,`${group}/${s}`,group==='place'?`${label} | Dalil El Manzala & El Matariya`:`${label} | Business Category`,group==='place'?`Local business profile for ${label} in El Manzala and El Matariya, Dakahlia, Egypt.`:`Local businesses and services in the ${label} category.`,en,ar)}}
@@ -34,25 +45,25 @@ function englishLandingBody(key, title, description) {
 }
 
 function writeEnglishCategory(rel, slug, items) {
+  const cleanSlug = toCleanCategorySlug(slug);
   const matching = items.filter(p => {
     const raw = String(p.customCategoryEn || p.custom_category_en || p.customCategory || p.category || p.categoryId || p.category_id || '').trim();
-    const normalized = raw.toLowerCase().replace(/\s+/g,'-');
-    return normalized === slug.toLowerCase() || normalized === decodeURIComponent(slug).toLowerCase();
+    return toCleanCategorySlug(raw) === cleanSlug;
   });
-  const label = matching[0] ? String(matching[0].customCategoryEn || matching[0].customCategory || matching[0].category || slug).trim().replace(/[-_]+/g,' ') : slug.replace(/[-_]+/g,' ');
+  const label = matching[0] ? String(matching[0].customCategoryEn || matching[0].customCategory || matching[0].category || cleanSlug).trim().replace(/[-_]+/g,' ') : cleanSlug.replace(/[-_]+/g,' ');
   const cards = matching.slice(0,60).map(p => {
     const s=String(p.slug||p.id||'').trim(), n=String(p.nameEn||p.name_en||p.name||'Local Business').trim(), a=String(p.areaEn||p.area_en||p.area||'El Manzala & El Matariya').trim();
     return `<article style="padding:16px;border:1px solid #e2e8f0;border-radius:14px"><h2 style="font-size:1rem;margin:0 0 6px"><a href="/en/place/${encodeURIComponent(s)}/">${esc(n)}</a></h2><p style="margin:0;color:#64748b">${esc(a)}</p></article>`;
   }).join('');
-  const html = `<!doctype html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"><title>${esc(label)} | Businesses & Services | Dalil El Manzala</title><meta name="description" content="Browse ${esc(label)} businesses and services in El Manzala and El Matariya, Dakahlia, Egypt."><link rel="canonical" href="${SITE}/en/category/${encodeURIComponent(slug)}/"><link rel="alternate" hreflang="en" href="${SITE}/en/category/${encodeURIComponent(slug)}/"><link rel="alternate" hreflang="x-default" href="${SITE}/category/${encodeURIComponent(slug)}/"><link rel="alternate" hreflang="ar" href="${SITE}/category/${encodeURIComponent(slug)}/"><meta property="og:title" content="${esc(label)} | Dalil El Manzala"><meta property="og:description" content="Browse ${esc(label)} businesses and services in El Manzala and El Matariya."><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify({'@context':'https://schema.org','@type':'CollectionPage','name':`${label} | Dalil El Manzala`,'url':`${SITE}/en/category/${encodeURIComponent(slug)}/`,'inLanguage':'en-EG'})}</script><link rel="stylesheet" href="/src/css/main.css?v=20260913.9"></head><body data-lang="en"><main id="page-container" class="page-main" role="main"><div class="en-container en-section" style="max-width:1100px;margin:auto;padding:20px"><nav aria-label="Breadcrumb"><a href="/en/">Home</a> / <a href="/en/categories/">Categories</a> / <span>${esc(label)}</span></nav><h1>${esc(label)} businesses and services in El Manzala &amp; El Matariya</h1><p>Browse published local profiles in this category. Individual profiles contain the current available contact and location details.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">${cards || '<p>No published places are currently listed in this category.</p>'}</div></div></main></body></html>`;
-  const dir=path.join(EN,'category',slug);fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'index.html'),html,'utf8');
+  const html = `<!doctype html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"><title>${esc(label)} | Businesses & Services | Dalil El Manzala</title><meta name="description" content="Browse ${esc(label)} businesses and services in El Manzala and El Matariya, Dakahlia, Egypt."><link rel="canonical" href="${SITE}/en/category/${encodeURIComponent(cleanSlug)}/"><link rel="alternate" hreflang="en" href="${SITE}/en/category/${encodeURIComponent(cleanSlug)}/"><link rel="alternate" hreflang="x-default" href="${SITE}/category/${encodeURIComponent(cleanSlug)}/"><link rel="alternate" hreflang="ar" href="${SITE}/category/${encodeURIComponent(cleanSlug)}/"><meta property="og:title" content="${esc(label)} | Dalil El Manzala"><meta property="og:description" content="Browse ${esc(label)} businesses and services in El Manzala and El Matariya."><meta property="og:type" content="website"><script type="application/ld+json">${JSON.stringify({'@context':'https://schema.org','@type':'CollectionPage','name':`${label} | Dalil El Manzala`,'url':`${SITE}/en/category/${encodeURIComponent(cleanSlug)}/`,'inLanguage':'en-EG'})}</script><link rel="stylesheet" href="/src/css/main.css?v=20260913.9"></head><body data-lang="en"><main id="page-container" class="page-main" role="main"><div class="en-container en-section" style="max-width:1100px;margin:auto;padding:20px"><nav aria-label="Breadcrumb"><a href="/en/">Home</a> / <a href="/en/categories/">Categories</a> / <span>${esc(label)}</span></nav><h1>${esc(label)} businesses and services in El Manzala &amp; El Matariya</h1><p>Browse published local profiles in this category. Individual profiles contain the current available contact and location details.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">${cards || '<p>No published places are currently listed in this category.</p>'}</div></div></main></body></html>`;
+  const dir=path.join(EN,'category',cleanSlug);fs.mkdirSync(dir,{recursive:true});safeWriteFile(path.join(dir,'index.html'),html);
 }
 
 function articleCardsForPlace(placeArticles = []) {
   if (!placeArticles.length) return '';
   const cards = placeArticles.slice(0,6).map((a,index)=>{
     const s=String(a.slug||a.id||'').trim();
-    const href=`/article/${encodeURIComponent(s)}/`;
+    const href=`/blog/${encodeURIComponent(s)}/`;
     const img=a.coverImageUrl||a.cover_image_url||a.coverUrl||a.cover_url||'';
     return `<article style="overflow:hidden;border:1px solid #e2e8f0;border-radius:14px;background:#fff">`+
       `<a href="${href}" style="display:block;aspect-ratio:16/9;background:#eef2f7;overflow:hidden">`+
@@ -86,7 +97,7 @@ function writeEnglishPlace(rel, place, placeArticles = []) {
   <section class="place-qa" aria-labelledby="qa-title" style="margin-top:24px;padding:20px;border:1px solid #e2e8f0;border-radius:16px"><h2 id="qa-title">Questions &amp; answers</h2>${qa}</section>
   ${articleCardsForPlace(placeArticles)}
   </article></div></main></div><script type="module" src="/src/js/core/english-pages.js?v=20260913.9"></script></body></html>`;
-  const dir = path.join(EN, rel); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'index.html'), html, 'utf8');
+  const dir = path.join(EN, rel); fs.mkdirSync(dir, { recursive: true }); safeWriteFile(path.join(dir, 'index.html'), html);
 }
 async function fetchAllArticlesForSEO(){
   const out=[];const limit=1000;let offset=0;
@@ -112,7 +123,25 @@ if(fs.existsSync(englishPlaceRoot)){
   }
 }
 for(const p of items){const s=String(p.slug||p.id).trim();if(s){const placeArticles=articles.filter(a=>String(a.placeId||a.place_id||a.place?.id||'').trim()===String(p.id||p._key||'').trim());writeEnglishPlace(`place/${s}`,p,placeArticles)}}
-for(const s of fs.existsSync(path.join(ROOT,'category')) ? fs.readdirSync(path.join(ROOT,'category')) : []) { if(s!=='index' && fs.existsSync(path.join(ROOT,'category',s,'index.html'))) writeEnglishCategory(s,s,items); }
+const desiredEnglishCategorySlugs = new Set(
+  (fs.existsSync(path.join(ROOT,'category')) ? fs.readdirSync(path.join(ROOT,'category')) : [])
+    .filter(s => s !== 'index')
+    .map(s => toCleanCategorySlug(s))
+);
+const englishCategoryRoot = path.join(EN, 'category');
+if (fs.existsSync(englishCategoryRoot)) {
+  for (const entry of fs.readdirSync(englishCategoryRoot, { withFileTypes: true })) {
+    if (entry.isDirectory() && entry.name !== 'index' && !desiredEnglishCategorySlugs.has(entry.name)) {
+      fs.rmSync(path.join(englishCategoryRoot, entry.name), { recursive: true, force: true });
+    }
+  }
+}
+for(const s of fs.existsSync(path.join(ROOT,'category')) ? fs.readdirSync(path.join(ROOT,'category')) : []) {
+  if(s!=='index' && fs.existsSync(path.join(ROOT,'category',s,'index.html'))) {
+    const cleanCat = toCleanCategorySlug(s);
+    writeEnglishCategory(cleanCat, cleanCat, items);
+  }
+}
 const enPlacesFile = path.join(EN, 'places', 'index.html');
 if (fs.existsSync(enPlacesFile)) {
   let enPlacesContent = fs.readFileSync(enPlacesFile, 'utf8');

@@ -146,6 +146,7 @@
 /p/*                /place/:splat       301
 /places/*           /place/:splat       301
 /categories/*       /category/:splat    301
+/article/*          /blog/:splat        301
 
 # Dynamic parameterized place routes are handled by the Worker; do not use a static wildcard fallback.
 
@@ -154,3 +155,30 @@
 /en/place/:splat/index.html /en/place/:splat/ 301
 /category/:splat/index.html   /category/:splat/   301
 /en/category/:splat/index.html /en/category/:splat/ 301
+
+# Legacy Category 301 Redirects (fixes GSC 404s permanently)
+/category/wedding%2C-engagement-and-evening-dress-atelier   /category/wedding-engagement-and-evening-dress-atelier/   301
+/category/wedding%2C-engagement-and-evening-dress-atelier/  /category/wedding-engagement-and-evening-dress-atelier/   301
+/category/wedding,-engagement-and-evening-dress-atelier     /category/wedding-engagement-and-evening-dress-atelier/   301
+/category/wedding,-engagement-and-evening-dress-atelier/    /category/wedding-engagement-and-evening-dress-atelier/   301
+/category/women's-abaya-shop                               /category/womens-abaya-shop/                              301
+/category/women's-abaya-shop/                              /category/womens-abaya-shop/                              301
+/category/womens-abaya-shop                                /category/womens-abaya-shop/                              301
+/category/antiques-%26-chandeliers                         /category/antiques-chandeliers/                           301
+/category/antiques-%26-chandeliers/                        /category/antiques-chandeliers/                           301
+/category/butterfly-weddings-%26-events                    /category/butterfly-weddings-events/                      301
+/category/butterfly-weddings-%26-events/                   /category/butterfly-weddings-events/                      301
+/category/fesikh-%26-herring                               /category/fesikh-herring/                                 301
+/category/fesikh-%26-herring/                              /category/fesikh-herring/                                 301
+/category/henna-art-%26-engraving                          /category/henna-art-engraving/                            301
+/category/henna-art-%26-engraving/                         /category/henna-art-engraving/                            301
+/category/satellite-dish-%26-receiver-installation-%26-maintenance /category/satellite-dish-receiver-installation-maintenance/ 301
+/category/satellite-dish-%26-receiver-installation-%26-maintenance/ /category/satellite-dish-receiver-installation-maintenance/ 301
+/category/children's-clothing                              /category/childrens-clothing/                             301
+/category/children's-clothing/                             /category/childrens-clothing/                             301
+/category/children's-playground-and-games                  /category/childrens-playground-and-games/                 301
+/category/children's-playground-and-games/                 /category/childrens-playground-and-games/                 301
+/category/bride's-supplies                                 /category/brides-supplies/                                301
+/category/bride's-supplies/                                /category/brides-supplies/                                301
+/category/women's-hairdresser                              /category/womens-hairdresser/                             301
+/category/women's-hairdresser/                             /category/womens-hairdresser/                             301
