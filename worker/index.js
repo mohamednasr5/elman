@@ -3486,7 +3486,13 @@ try {
         createdAt: a.created_at,
         createdBy: a.created_by
       }));
-      return jsonResponse({ success: true, data: ads }, 200, corsHeaders);
+      // Ads are public and the homepage filters them client-side by placement.
+      // A short edge/browser cache avoids a Turso read on every cold homepage
+      // visit while keeping dashboard edits visible quickly.
+      return jsonResponse({ success: true, data: ads }, 200, {
+        ...corsHeaders,
+        'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600'
+      });
     } catch (err) {
       console.warn('[GET /api/ads error]:', err?.message || err);
       return jsonResponse({ success: true, data: [] }, 200, corsHeaders);

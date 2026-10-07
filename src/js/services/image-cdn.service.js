@@ -15,6 +15,19 @@ const R2_PROXY_PATH = (() => {
   }
 })();
 
+// The Worker only allows transformations from this public R2 origin.  Keep the
+// public origin here rather than sending an internal /api/r2 URL to /api/image,
+// which would bypass Cloudflare's image-resizing path.
+const R2_IMAGE_ORIGIN = 'https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev';
+
+const TRANSFORM_DIMENSIONS = {
+  [IMAGE_SIZES.LOGO]:   { width: 90, height: 90, quality: 82 },
+  [IMAGE_SIZES.THUMB]:  { width: 300, height: 180, quality: 78 },
+  [IMAGE_SIZES.MEDIUM]: { width: 600, height: 360, quality: 82 },
+  [IMAGE_SIZES.COVER]:  { width: 1200, height: 630, quality: 85 },
+  [IMAGE_SIZES.ORIGINAL]: { width: 1400, height: 0, quality: 88 }
+};
+
 function extractR2Key(value) {
   if (!value || typeof value !== 'string') return '';
   const clean = value.trim();
@@ -64,9 +77,17 @@ export function getOptimizedImageUrl(url, size = IMAGE_SIZES.THUMB, timestamp = 
 
   const r2Key = extractR2Key(cleanUrl);
   if (r2Key) {
-    let target = R2_PROXY_PATH + '/' + encodeURI(r2Key);
-    if (timestamp) target += '?t=' + encodeURIComponent(timestamp);
-    return target;
+    const transform = TRANSFORM_DIMENSIONS[size] || TRANSFORM_DIMENSIONS[IMAGE_SIZES.THUMB];
+    const source = `${R2_IMAGE_ORIGIN}/${encodeURI(r2Key)}`;
+    const params = new URLSearchParams({
+      src: source,
+      w: String(transform.width),
+      q: String(transform.quality),
+      fit: 'cover'
+    });
+    if (transform.height) params.set('h', String(transform.height));
+    if (timestamp) params.set('v', String(timestamp));
+    return `/api/image?${params.toString()}`;
   }
 
   return cleanUrl;
