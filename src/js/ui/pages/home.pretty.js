@@ -19,6 +19,7 @@ import { getCategorySvg } from '../../utils/professions-data.js';
 import { getCategoryVisualMeta, renderCategoryCardIcon } from '../../utils/category-visual.js';
 import { resolveDeliveryVehicle } from '../../utils/delivery-vehicle.js';
 import { resolvePlaceMedia } from '../../utils/category-assets.js?v=20260923_04';
+import { getOptimizedImageUrl, IMAGE_SIZES } from '../../services/image-cdn.service.js';
 // NOTE: mountLivePulseSection, mountAroundMeRadar, renderWhoIsAvailableNow are
 // loaded lazily (dynamic import) because they render below-the-fold content.
 
@@ -253,8 +254,10 @@ export async function renderHomePage($main, { user } = {}) {
   } catch (_) {}
 
   // ── Lazy-load below-fold sections (dynamic imports) ──
-  // These are not visible on first screen — load after critical content
-  Promise.resolve().then(() => {
+  // Do not begin their requests in the same event turn as the initial render.
+  // On a constrained phone this gives the hero and primary search controls a
+  // full frame to paint before secondary feeds start work.
+  const loadBelowFold = () => {
     // WhoIsAvailable (craftsmen on-call) — first below-fold section
     try {
       import('../components/WhoIsAvailableNow.js').then(({ renderWhoIsAvailableNow }) => {
@@ -305,7 +308,12 @@ export async function renderHomePage($main, { user } = {}) {
     try {
       checkAndShowFirstVisitVideo();
     } catch (_) {}
-  });
+  };
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    window.requestIdleCallback(loadBelowFold, { timeout: 3000 });
+  } else {
+    setTimeout(loadBelowFold, 900);
+  }
 
   // ── Universal Realtime Synchronization Listener (Live Updates Without Refresh) ──
   if (typeof window !== 'undefined' && !window._homeRealtimeSyncAttached) {
@@ -490,10 +498,11 @@ function initHomeVerifiedShowcase(allPlaces = null) {
     grid.innerHTML = slice.map((p, index) => {
       const targetSlug = p.slug || p.id || '';
       const catStyle = getCategoryVisualMeta(p.categoryId || p.category || p.categoryName || '');
-      const coverUrl = p.coverImageUrl || p.cover || '';
-      const fallbackCover = p.categoryCover || catStyle.cover || '';
+      const rawCoverUrl = p.coverImageUrl || p.cover || '';
+      const coverUrl = getOptimizedImageUrl(rawCoverUrl, IMAGE_SIZES.THUMB, p.updatedAt || p.updated_at || null);
+      const fallbackCover = getOptimizedImageUrl(p.categoryCover || catStyle.cover || '', IMAGE_SIZES.THUMB, null);
       const coverHtml = coverUrl
-        ? `<img src="${escAttr(coverUrl)}" alt="${escAttr(p.name)}" loading="eager" fetchpriority="high" decoding="async" width="640" height="360"
+        ? `<img src="${escAttr(coverUrl)}" alt="${escAttr(p.name)}" loading="lazy" decoding="async" width="640" height="360"
              data-category-fallback="${escAttr(fallbackCover)}"
              onerror="if(!this.dataset.triedCdn&&this.src.includes('/api/r2/')){this.dataset.triedCdn='1';this.src='https://pub-85efa06866b24efbbd08e79a654ed53f.r2.dev/'+this.src.split('/api/r2/')[1];}else if(!this.dataset.triedCat&&this.dataset.categoryFallback){this.dataset.triedCat='1';this.src=this.dataset.categoryFallback;}else{this.onerror=null;this.closest('.fair-place-card__cover')?.classList.remove('media-missing');this.outerHTML='<div class=\\'fair-place-card__cover-placeholder\\' style=\\'background:${catStyle.gradient};display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;\\'><span>${catStyle.icon}</span></div>';}">`
         : `<div class="fair-place-card__cover-placeholder" style="background:${catStyle.gradient};display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;"><span>${catStyle.icon}</span></div>`;

@@ -220,9 +220,11 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
+  <!-- Avoid a late web-font swap moving the hero during the first paint. -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=optional" crossorigin onload="this.onload=null;this.rel='stylesheet'"/>
   <link rel="stylesheet" href="./src/css/main.css?v=a58f9ed6"/>
-  <link rel="stylesheet" href="./src/css/components/market-widgets.css?v=a58f9ed6"/>
+  <!-- Market widgets are mounted after the shell is interactive and never occupy the first viewport. -->
+  <link rel="preload" as="style" href="./src/css/components/market-widgets.css?v=a58f9ed6" onload="this.onload=null;this.rel='stylesheet'"/>
 
   <!-- ═══════════════════════════════════════════════════════════
        Critical CSS Inline — Hero Above-the-Fold (LCP + CLS Fix)

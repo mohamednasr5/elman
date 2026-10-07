@@ -783,37 +783,33 @@ export async function initPage(activeFile=''){
       _bindHeaderUserEvents(user);
     });
   }catch(_){}
-  try{
-    const isWallet = activeFile === 'wallet.html' || (typeof window !== 'undefined' && window.location.pathname.includes('wallet'));
-    if (!isWallet) {
-      import('../ui/components/ActivityNotification.js').then(m => {
-        m.initActivityNotifications();
-      }).catch(()=>{});
-    }
-  }catch(_){}
-  try{
-    import('../ui/components/MarketWidgets.js').then(m => {
-      m.mountMarketWidgets();
-    }).catch(()=>{});
-  }catch(_){}
-  try{
-    const isDashboard = activeFile === 'dashboard.html' || 
-                        activeFile === 'admin.html' || 
-                        (typeof window !== 'undefined' && (
-                          window.location.pathname.includes('/dashboard') || 
-                          window.location.pathname.includes('/admin')
-                        ));
-    if (!isDashboard) {
-      import('../services/azan-service.js').then(m => {
-        m.initAzanService();
-      }).catch(()=>{});
-    }
-  }catch(_){}
-  try{
-    import('../utils/keyboard-mapper.js').then(m => {
-      m.initGlobalKeyboardCorrection();
-    }).catch(()=>{});
-  }catch(_){}
+  // These enrichments have no role in the initial shell, search, or first paint.
+  // Scheduling them after the browser gets an idle slice keeps their modules and
+  // network work out of the critical rendering path without removing the features.
+  const runNonCritical = () => {
+    try{
+      const isWallet = activeFile === 'wallet.html' || (typeof window !== 'undefined' && window.location.pathname.includes('wallet'));
+      if (!isWallet) {
+        import('../ui/components/ActivityNotification.js').then(m => m.initActivityNotifications()).catch(()=>{});
+      }
+    }catch(_){}
+    try{
+      import('../ui/components/MarketWidgets.js').then(m => m.mountMarketWidgets()).catch(()=>{});
+    }catch(_){}
+    try{
+      const isDashboard = activeFile === 'dashboard.html' || activeFile === 'admin.html' ||
+        (typeof window !== 'undefined' && (window.location.pathname.includes('/dashboard') || window.location.pathname.includes('/admin')));
+      if (!isDashboard) import('../services/azan-service.js').then(m => m.initAzanService()).catch(()=>{});
+    }catch(_){}
+    try{
+      import('../utils/keyboard-mapper.js').then(m => m.initGlobalKeyboardCorrection()).catch(()=>{});
+    }catch(_){}
+  };
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    window.requestIdleCallback(runNonCritical, { timeout: 2500 });
+  } else {
+    setTimeout(runNonCritical, 800);
+  }
 }
 
 if (typeof window !== 'undefined') {
