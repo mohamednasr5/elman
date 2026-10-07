@@ -817,6 +817,18 @@
     </image:image>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/place/gmla-blast/</loc>
+    <lastmod>2026-10-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/gmla-blast/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/gmla-blast/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/gmla-blast/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789268194035-fdkxli5.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/place/mhl-fsatyn-lwly/</loc>
     <lastmod>2026-10-07</lastmod>
     <changefreq>weekly</changefreq>
@@ -1339,18 +1351,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/shrka-alzara-llaghza-alkhrbayya-khlf-bnk-alkahra-branch-2/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789067874483-e6e7x4c.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/gmla-blast/</loc>
-    <lastmod>2026-10-06</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/gmla-blast/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/gmla-blast/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/gmla-blast/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789268194035-fdkxli5.webp</image:loc>
     </image:image>
   </url>
   <url>
