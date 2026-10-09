@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://dalilmanzala.com/place/ahmd-bkr-lsyana-alahhza-alkhrbayya/</loc>
-    <lastmod>2026-10-07</lastmod>
+    <lastmod>2026-10-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/ahmd-bkr-lsyana-alahhza-alkhrbayya/"/>
@@ -10,6 +10,66 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/ahmd-bkr-lsyana-alahhza-alkhrbayya/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1788789621970-ikvttfx.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/mtbkh-eyma-llaakl/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mtbkh-eyma-llaakl/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mtbkh-eyma-llaakl/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mtbkh-eyma-llaakl/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1788801898703-b7hiryq.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/gzara-abw-aarf/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/gzara-abw-aarf/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/gzara-abw-aarf/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/gzara-abw-aarf/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1788558741879-w9f9wnm.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/dktwr-ahmd-hmad/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/dktwr-ahmd-hmad/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/dktwr-ahmd-hmad/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/dktwr-ahmd-hmad/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1788904896621-iqpathn.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/makyna-srf-ala-bnk-alkahra-YRUMtW/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/makyna-srf-ala-bnk-alkahra-YRUMtW/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/makyna-srf-ala-bnk-alkahra-YRUMtW/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/makyna-srf-ala-bnk-alkahra-YRUMtW/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/assets/images/atm-cover.jpg</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/mhnds-mhmd-alrys-abw-mrwan-ltrkyb-alshashat/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mhnds-mhmd-alrys-abw-mrwan-ltrkyb-alshashat/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mhnds-mhmd-alrys-abw-mrwan-ltrkyb-alshashat/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhnds-mhmd-alrys-abw-mrwan-ltrkyb-alshashat/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789604793181-fboscv0.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -133,30 +193,6 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/mhnds-mhmd-alrys-abw-mrwan-ltrkyb-alshashat/</loc>
-    <lastmod>2026-10-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mhnds-mhmd-alrys-abw-mrwan-ltrkyb-alshashat/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mhnds-mhmd-alrys-abw-mrwan-ltrkyb-alshashat/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhnds-mhmd-alrys-abw-mrwan-ltrkyb-alshashat/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789604793181-fboscv0.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/makyna-srf-ala-bnk-alkahra-YRUMtW/</loc>
-    <lastmod>2026-10-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/makyna-srf-ala-bnk-alkahra-YRUMtW/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/makyna-srf-ala-bnk-alkahra-YRUMtW/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/makyna-srf-ala-bnk-alkahra-YRUMtW/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/assets/images/atm-cover.jpg</image:loc>
-    </image:image>
-  </url>
-  <url>
     <loc>https://dalilmanzala.com/place/arbya-shangy-m50-alasta-ahmd-alshafay-lYDDWW/</loc>
     <lastmod>2026-10-07</lastmod>
     <changefreq>weekly</changefreq>
@@ -274,18 +310,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/dknwr-ahmd-alkwsh-T4hooA/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1788356629348-s1s9tra.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/mtbkh-eyma-llaakl/</loc>
-    <lastmod>2026-10-05</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mtbkh-eyma-llaakl/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mtbkh-eyma-llaakl/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mtbkh-eyma-llaakl/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1788801898703-b7hiryq.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -553,18 +577,6 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/gzara-abw-aarf/</loc>
-    <lastmod>2026-09-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/gzara-abw-aarf/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/gzara-abw-aarf/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/gzara-abw-aarf/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1788558741879-w9f9wnm.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
     <loc>https://dalilmanzala.com/place/nbe-atm-_HZRcT/</loc>
     <lastmod>2026-09-27</lastmod>
     <changefreq>weekly</changefreq>
@@ -733,18 +745,6 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/dktwr-ahmd-hmad/</loc>
-    <lastmod>2026-09-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/dktwr-ahmd-hmad/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/dktwr-ahmd-hmad/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/dktwr-ahmd-hmad/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1788904896621-iqpathn.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
     <loc>https://dalilmanzala.com/place/stdyw-slah-hgag-ZgT4SQ/</loc>
     <lastmod>2026-09-26</lastmod>
     <changefreq>weekly</changefreq>
@@ -817,15 +817,156 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/kshry-whlwany-almalm-am-almgal/</loc>
+    <loc>https://dalilmanzala.com/place/atylyh-alf-mbrwk/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/atylyh-alf-mbrwk/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/atylyh-alf-mbrwk/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/atylyh-alf-mbrwk/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789336945939-j9ulexv.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/mhl-aldwly-llmlabs/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mhl-aldwly-llmlabs/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mhl-aldwly-llmlabs/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-aldwly-llmlabs/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789610044102-z86mrih.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/galyra-myn-kdk/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/galyra-myn-kdk/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/galyra-myn-kdk/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/galyra-myn-kdk/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1790083540223-9o9yeqo.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/hdana-ay-ty-gy/</loc>
     <lastmod>2026-10-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/kshry-whlwany-almalm-am-almgal/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/kshry-whlwany-almalm-am-almgal/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/kshry-whlwany-almalm-am-almgal/"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/hdana-ay-ty-gy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/hdana-ay-ty-gy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/hdana-ay-ty-gy/"/>
     <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1788705593297-enxw6ec.webp</image:loc>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789956784405-lrmpu0z.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/bdwn-asm/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/bdwn-asm/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/bdwn-asm/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/bdwn-asm/"/>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/place/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/place/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/place/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/place/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1791303960502-u0xruze.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/mrkz-almtrya-alhdyth-llashaa/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mrkz-almtrya-alhdyth-llashaa/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mrkz-almtrya-alhdyth-llashaa/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mrkz-almtrya-alhdyth-llashaa/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1790337124767-79ooq2j.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/mhl-fyfw/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mhl-fyfw/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mhl-fyfw/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-fyfw/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1790039309694-inlsxec.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/sydlya-altrshwby/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/sydlya-altrshwby/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/sydlya-altrshwby/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/sydlya-altrshwby/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789771504572-9x0qlif.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/abw-salh-llhwatf/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/abw-salh-llhwatf/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/abw-salh-llhwatf/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/abw-salh-llhwatf/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1790038066055-a7np36c.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/nzarat-almstfa/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/nzarat-almstfa/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/nzarat-almstfa/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/nzarat-almstfa/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789472924827-nfcp0jp.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/swbr-markt-alhag-ywsf-sabr-fhfYj9/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/swbr-markt-alhag-ywsf-sabr-fhfYj9/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/swbr-markt-alhag-ywsf-sabr-fhfYj9/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/swbr-markt-alhag-ywsf-sabr-fhfYj9/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1788097932734-tem18xz.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/mtam-tshkn-bwb/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mtam-tshkn-bwb/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mtam-tshkn-bwb/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mtam-tshkn-bwb/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789937774398-gh9x5ty.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -841,6 +982,42 @@
     </image:image>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/place/dktwr-mhmd-abd-almgyd-twbar/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/dktwr-mhmd-abd-almgyd-twbar/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/dktwr-mhmd-abd-almgyd-twbar/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/dktwr-mhmd-abd-almgyd-twbar/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789887032922-7v17yju.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/mhl-ste-ps/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mhl-ste-ps/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mhl-ste-ps/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-ste-ps/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789510523914-7e46et6.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/place/kshry-whlwany-almalm-am-almgal/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/kshry-whlwany-almalm-am-almgal/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/kshry-whlwany-almalm-am-almgal/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/kshry-whlwany-almalm-am-almgal/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1788705593297-enxw6ec.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/place/mhl-alayswy-lladd-wmstlzmat-alwrsh/</loc>
     <lastmod>2026-10-08</lastmod>
     <changefreq>weekly</changefreq>
@@ -850,18 +1027,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-alayswy-lladd-wmstlzmat-alwrsh/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789342187856-jr5bq6f.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/galyra-myn-kdk/</loc>
-    <lastmod>2026-10-08</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/galyra-myn-kdk/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/galyra-myn-kdk/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/galyra-myn-kdk/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1790083540223-9o9yeqo.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -1270,18 +1435,6 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/mhl-ste-ps/</loc>
-    <lastmod>2026-10-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mhl-ste-ps/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mhl-ste-ps/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-ste-ps/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789510523914-7e46et6.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
     <loc>https://dalilmanzala.com/place/mntga-smyr-alhdydy-llhflat/</loc>
     <lastmod>2026-10-07</lastmod>
     <changefreq>weekly</changefreq>
@@ -1378,18 +1531,6 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/place/</loc>
-    <lastmod>2026-10-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/place/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/place/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/place/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1791303960502-u0xruze.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
     <loc>https://dalilmanzala.com/place/bnt-gym/</loc>
     <lastmod>2026-10-07</lastmod>
     <changefreq>weekly</changefreq>
@@ -1447,18 +1588,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/dktwr-hythm-skr/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789961116477-as5mzr8.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/dktwr-mhmd-abd-almgyd-twbar/</loc>
-    <lastmod>2026-10-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/dktwr-mhmd-abd-almgyd-twbar/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/dktwr-mhmd-abd-almgyd-twbar/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/dktwr-mhmd-abd-almgyd-twbar/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789887032922-7v17yju.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -1570,15 +1699,6 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/bdwn-asm/</loc>
-    <lastmod>2026-10-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/bdwn-asm/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/bdwn-asm/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/bdwn-asm/"/>
-  </url>
-  <url>
     <loc>https://dalilmanzala.com/place/star-mykb-sarh-abw-alaz/</loc>
     <lastmod>2026-10-07</lastmod>
     <changefreq>weekly</changefreq>
@@ -1588,18 +1708,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/star-mykb-sarh-abw-alaz/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789016328938-72cdpji.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/atylyh-alf-mbrwk/</loc>
-    <lastmod>2026-10-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/atylyh-alf-mbrwk/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/atylyh-alf-mbrwk/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/atylyh-alf-mbrwk/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789336945939-j9ulexv.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -2011,18 +2119,6 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/swbr-markt-alhag-ywsf-sabr-fhfYj9/</loc>
-    <lastmod>2026-10-05</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/swbr-markt-alhag-ywsf-sabr-fhfYj9/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/swbr-markt-alhag-ywsf-sabr-fhfYj9/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/swbr-markt-alhag-ywsf-sabr-fhfYj9/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1788097932734-tem18xz.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
     <loc>https://dalilmanzala.com/place/ahmd-alatrsh-ldykwrat-algbs-alhdytha/</loc>
     <lastmod>2026-10-05</lastmod>
     <changefreq>weekly</changefreq>
@@ -2056,18 +2152,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-matz-alshrbyny-lgmya-anwaa-alasmak-altazga/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789596688331-drxg3cr.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/mtam-tshkn-bwb/</loc>
-    <lastmod>2026-10-05</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mtam-tshkn-bwb/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mtam-tshkn-bwb/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mtam-tshkn-bwb/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789937774398-gh9x5ty.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -2143,18 +2227,6 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/nzarat-almstfa/</loc>
-    <lastmod>2026-10-05</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/nzarat-almstfa/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/nzarat-almstfa/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/nzarat-almstfa/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789472924827-nfcp0jp.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
     <loc>https://dalilmanzala.com/place/sydlya-fwad/</loc>
     <lastmod>2026-10-05</lastmod>
     <changefreq>weekly</changefreq>
@@ -2164,18 +2236,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/sydlya-fwad/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789720318132-byudlok.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/mrkz-almtrya-alhdyth-llashaa/</loc>
-    <lastmod>2026-10-05</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mrkz-almtrya-alhdyth-llashaa/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mrkz-almtrya-alhdyth-llashaa/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mrkz-almtrya-alhdyth-llashaa/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1790337124767-79ooq2j.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -2200,18 +2260,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhlat-aysy-ltgara-alahzya-alhrymy-walatfal-ktaay-wgmla/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1790855419589-229qviy.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/sydlya-altrshwby/</loc>
-    <lastmod>2026-10-05</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/sydlya-altrshwby/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/sydlya-altrshwby/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/sydlya-altrshwby/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789771504572-9x0qlif.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -2284,18 +2332,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mtaam-flfa/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789265461436-56esexl.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/mhl-aldwly-llmlabs/</loc>
-    <lastmod>2026-10-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mhl-aldwly-llmlabs/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mhl-aldwly-llmlabs/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-aldwly-llmlabs/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789610044102-z86mrih.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -2392,18 +2428,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-krawyh-llmlabs-alrgaly/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789341802335-qyrx0v7.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/abw-salh-llhwatf/</loc>
-    <lastmod>2026-10-04</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/abw-salh-llhwatf/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/abw-salh-llhwatf/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/abw-salh-llhwatf/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1790038066055-a7np36c.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -3436,18 +3460,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-mak-mak/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789184826727-4u3kog1.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/hdana-ay-ty-gy/</loc>
-    <lastmod>2026-09-29</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/hdana-ay-ty-gy/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/hdana-ay-ty-gy/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/hdana-ay-ty-gy/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789956784405-lrmpu0z.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -4939,18 +4951,6 @@
     </image:image>
   </url>
   <url>
-    <loc>https://dalilmanzala.com/place/mhl-fyfw/</loc>
-    <lastmod>2026-09-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mhl-fyfw/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mhl-fyfw/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mhl-fyfw/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1790039309694-inlsxec.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
     <loc>https://dalilmanzala.com/place/dktwr-aly-mnyr-ltb-alatfal-w-hdythy-alwladh/</loc>
     <lastmod>2026-09-26</lastmod>
     <changefreq>weekly</changefreq>
@@ -5515,6 +5515,18 @@
     </image:image>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/place/gmal-hmad-almblt/</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/gmal-hmad-almblt/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/gmal-hmad-almblt/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/gmal-hmad-almblt/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1788970826409-k6lqv5u.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/place/zyn-llhwatf/</loc>
     <lastmod>2026-10-08</lastmod>
     <changefreq>weekly</changefreq>
@@ -5656,18 +5668,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/wrshh-ngarh-almalm-mhmd-altwyl/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1788777713440-bvsem1n.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/gmal-hmad-almblt/</loc>
-    <lastmod>2026-09-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/gmal-hmad-almblt/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/gmal-hmad-almblt/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/gmal-hmad-almblt/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1788970826409-k6lqv5u.webp</image:loc>
     </image:image>
   </url>
   <url>
