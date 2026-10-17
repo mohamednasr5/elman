@@ -1375,6 +1375,48 @@ try {
     }
   }
 
+  // Cache successful IP-ban lookups briefly to avoid querying Turso for every API request.
+  // Positive results are also short-lived, so unbans propagate quickly.
+  const ipBanLookupCache = new Map();
+  const ipBanLookupInFlight = new Map();
+  const IP_BAN_CACHE_TTL_MS = 3000;
+  const IP_BAN_CACHE_MAX_ENTRIES = 512;
+
+  async function getCachedIpBan(env, ipKey) {
+    const now = Date.now();
+    const cached = ipBanLookupCache.get(ipKey);
+    if (cached && cached.expiresAt > now) {
+      ipBanLookupCache.delete(ipKey);
+      ipBanLookupCache.set(ipKey, cached);
+      return cached.ban;
+    }
+    if (cached) ipBanLookupCache.delete(ipKey);
+
+    const pending = ipBanLookupInFlight.get(ipKey);
+    if (pending) return pending;
+
+    const lookup = (async () => {
+      const ban = await createTursoDB(env).prepare(
+        'SELECT is_permanent, banned_until, reason FROM banned_ips WHERE ip_key = ? LIMIT 1'
+      ).bind(ipKey).first({ timeoutMs: 1000, maxAttempts: 1 });
+
+      if (ipBanLookupCache.size >= IP_BAN_CACHE_MAX_ENTRIES && !ipBanLookupCache.has(ipKey)) {
+        const oldestKey = ipBanLookupCache.keys().next().value;
+        if (oldestKey !== undefined) ipBanLookupCache.delete(oldestKey);
+      }
+      ipBanLookupCache.delete(ipKey);
+      ipBanLookupCache.set(ipKey, { ban, expiresAt: Date.now() + IP_BAN_CACHE_TTL_MS });
+      return ban;
+    })();
+
+    ipBanLookupInFlight.set(ipKey, lookup);
+    try {
+      return await lookup;
+    } finally {
+      if (ipBanLookupInFlight.get(ipKey) === lookup) ipBanLookupInFlight.delete(ipKey);
+    }
+  }
+
   // Server-side IP enforcement for API traffic. Admins can still reach
   // the management endpoints so a ban can be reviewed/removed.
   if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/r2/') && !url.pathname.startsWith('/api/ip-bans') && url.pathname !== '/api/health' && url.pathname !== '/api/image' && url.pathname !== '/api/market-widgets' && url.pathname !== '/api/live-indicators' && request.method !== 'OPTIONS') {
@@ -1382,9 +1424,7 @@ try {
       const clientIp = String(request.headers.get('CF-Connecting-IP') || '').trim();
       if (clientIp && clientIp !== '156.197.215.243') {
         const ipKey = clientIp.replace(/[.:%[\]#$]/g, '_');
-        const ban = await createTursoDB(env).prepare(
-          'SELECT is_permanent, banned_until, reason FROM banned_ips WHERE ip_key = ? LIMIT 1'
-        ).bind(ipKey).first();
+        const ban = await getCachedIpBan(env, ipKey);
         const activeBan = ban && (Number(ban.is_permanent) === 1 || (ban.banned_until && Number(ban.banned_until) > Date.now()));
         if (activeBan) {
           const authHeader = request.headers.get('Authorization') || '';
@@ -4733,11 +4773,12 @@ try {
   if (url.pathname === '/api/announcements' && request.method === 'GET') {
     try {
       const db = createTursoDB(env);
-      const newsRows = (await db.prepare("SELECT id, title, text, image_url, inquiry_link, created_at FROM live_news WHERE status = 'published' AND is_announcement = 1 ORDER BY created_at DESC LIMIT 10").all().catch(() => ({ results: [] }))).results || [];
+      const newsRows = (await db.prepare("SELECT id, title, details, image_url, inquiry_link, created_at FROM live_news WHERE status = 'published' AND is_announcement = 1 ORDER BY created_at DESC LIMIT 10").all()).results || [];
       const announcements = newsRows.map(n => ({
         id: n.id,
         title: n.title || 'إشعار من الدليل',
-        content: n.text || '',
+        content: n.details || '',
+        imageUrl: n.image_url || '',
         url: n.inquiry_link || '/',
         createdAt: Number(n.created_at || Date.now())
       }));
