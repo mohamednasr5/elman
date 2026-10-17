@@ -6752,6 +6752,19 @@ try {
     if (targetType === 'verification') {
       const place = await db.prepare('SELECT id, name, slug, owner_id, owner_email, is_verified FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
       if (!place) return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
+
+      // Verification is a paid owner action. Never let a signed-in user pay to
+      // verify or claim another user's place by supplying its public ID/slug.
+      const verificationOwnerId = String(place.owner_id || '').trim();
+      const verificationOwnerEmail = String(place.owner_email || '').trim().toLowerCase();
+      const verificationUserId = String(auth.user?.uid || '').trim();
+      const verificationUserEmail = String(auth.user?.email || '').trim().toLowerCase();
+      const ownsVerificationPlace =
+        (verificationOwnerId && verificationOwnerId === verificationUserId) ||
+        (verificationOwnerEmail && verificationUserEmail && verificationOwnerEmail === verificationUserEmail);
+      if (!auth.user?.isAdmin && !ownsVerificationPlace) {
+        return jsonResponse({ success: false, code: 'PLACE_NOT_OWNED', error: 'يجب أن تكون مالك المكان أو مسؤولاً لتوثيقه' }, 403, corsHeaders);
+      }
       if (place.is_verified) return jsonResponse({ success: false, error: 'هذا المكان موثق بالفعل بالعلامة الزرقاء 👑' }, 400, corsHeaders);
 
       const ok = await deductUserCoins(cost);
