@@ -42,6 +42,8 @@ jobs:
           node --check src/js/services/realtime-sync.service.js
           node --check sw.js
           node --check worker/index.js
+          node --check worker/turso.js
+          node --check worker/repair-turso-schema.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run browser smoke tests
