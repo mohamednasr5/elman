@@ -355,6 +355,107 @@ async function ensureCoinEconomySchema(db) {
   });
 }
 
+async function ensureInteractiveServicesSchema(db) {
+  if (!db) return;
+  return ensureRuntimeSchemaOnce('interactive-services', async () => {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS service_requests (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      title TEXT NOT NULL,
+      village TEXT NOT NULL,
+      timing TEXT NOT NULL,
+      description TEXT,
+      photo_url TEXT,
+      user_id TEXT,
+      user_name TEXT,
+      user_phone TEXT NOT NULL,
+      status TEXT DEFAULT 'open',
+      offers_count INTEGER DEFAULT 0,
+      likes_count INTEGER DEFAULT 0,
+      dislikes_count INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      closed_at INTEGER
+    )`).run();
+    await ensureRuntimeColumns(db, 'service_requests', {
+      likes_count: 'INTEGER DEFAULT 0',
+      dislikes_count: 'INTEGER DEFAULT 0'
+    });
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS craftsman_presence (
+      id TEXT PRIMARY KEY,
+      place_id TEXT,
+      craftsman_name TEXT NOT NULL,
+      profession_id TEXT NOT NULL,
+      profession_name TEXT NOT NULL,
+      is_available_now INTEGER DEFAULT 1,
+      coverage_villages_json TEXT,
+      inspection_fee TEXT,
+      eta_minutes INTEGER DEFAULT 30,
+      phone TEXT,
+      whatsapp TEXT,
+      user_id TEXT,
+      available_until INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      likes_count INTEGER DEFAULT 0,
+      dislikes_count INTEGER DEFAULT 0
+    )`).run();
+    await ensureRuntimeColumns(db, 'craftsman_presence', {
+      place_id: 'TEXT',
+      user_id: 'TEXT',
+      is_available_now: 'INTEGER DEFAULT 1',
+      coverage_villages_json: 'TEXT',
+      inspection_fee: 'TEXT',
+      eta_minutes: 'INTEGER DEFAULT 30',
+      phone: 'TEXT',
+      whatsapp: 'TEXT',
+      available_until: 'INTEGER DEFAULT 0',
+      updated_at: 'INTEGER',
+      likes_count: 'INTEGER DEFAULT 0',
+      dislikes_count: 'INTEGER DEFAULT 0'
+    });
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS interactive_votes (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      vote_type TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`).run();
+    await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_votes_user_target ON interactive_votes(target_id, user_id)').run();
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS interactive_reports (
+      id TEXT PRIMARY KEY,
+      target_id TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      user_name TEXT,
+      reason TEXT,
+      created_at INTEGER NOT NULL
+    )`).run();
+    await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_reports_user ON interactive_reports(target_id, user_id)').run();
+
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests(status, created_at DESC)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_service_requests_village ON service_requests(village)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_service_requests_category ON service_requests(category)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_craftsman_presence_avail ON craftsman_presence(is_available_now, available_until)').run();
+  });
+}
+
+async function ensureUserNotificationsReadSchema(db) {
+  if (!db) return;
+  return ensureRuntimeSchemaOnce('user-notifications-read', async () => {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS user_notifications_read (
+      user_id TEXT NOT NULL,
+      notif_id TEXT NOT NULL,
+      read_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, notif_id)
+    )`).run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)').run();
+  });
+}
+
 async function ensurePlaceEventsSchema(db) {
   if (!db) return;
   return ensureRuntimeSchemaOnce('place-events', async () => {
@@ -4834,41 +4935,24 @@ try {
     return jsonResponse({success:true,id},200,corsHeaders);
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // ── SERVICE REQUESTS («محتاج خدمة» - Job Dispatcher) ──
-  // ═══════════════════════════════════════════════════════════
-  let _hasEnsuredServiceRequestsSchema = false;
-  async function ensureServiceRequestsSchema(db) {
-    if (_hasEnsuredServiceRequestsSchema || !db) return;
+  if (
+    url.pathname === '/api/service-requests' || url.pathname.startsWith('/api/service-requests/') ||
+    url.pathname === '/api/craftsmen/live' || url.pathname.startsWith('/api/craftsmen/live/') ||
+    url.pathname === '/api/interactive/vote' || url.pathname === '/api/interactive/report'
+  ) {
     try {
-      await db.prepare(`CREATE TABLE IF NOT EXISTS service_requests (
-        id TEXT PRIMARY KEY,
-        category TEXT NOT NULL,
-        title TEXT NOT NULL,
-        village TEXT NOT NULL,
-        timing TEXT NOT NULL,
-        description TEXT,
-        photo_url TEXT,
-        user_id TEXT,
-        user_name TEXT,
-        user_phone TEXT NOT NULL,
-        status TEXT DEFAULT 'open',
-        offers_count INTEGER DEFAULT 0,
-        likes_count INTEGER DEFAULT 0,
-        dislikes_count INTEGER DEFAULT 0,
-        created_at INTEGER NOT NULL,
-        expires_at INTEGER NOT NULL,
-        closed_at INTEGER
-      )`).run().catch(() => {});
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests(status, created_at DESC)").run().catch(() => {});
-      _hasEnsuredServiceRequestsSchema = true;
-    } catch (_) {}
+      await ensureInteractiveServicesSchema(createTursoDB(env));
+    } catch (err) {
+      console.error('[Interactive services schema initialization failed]:', err?.message || err);
+      return jsonResponse({ success: false, error: 'تعذر تهيئة قاعدة بيانات الخدمات التفاعلية مؤقتاً' }, 503, corsHeaders);
+    }
   }
 
+  // Service and community schemas are module-scoped and de-duplicated per Worker isolate.
   if (url.pathname === '/api/service-requests' && request.method === 'GET') {
     try {
       const db = createTursoDB(env);
-      await ensureServiceRequestsSchema(db);
+      await ensureInteractiveServicesSchema(db);
       const category = (url.searchParams.get('category') || '').trim();
       const village = (url.searchParams.get('village') || '').trim();
       const status = (url.searchParams.get('status') || 'open').trim();
@@ -7656,18 +7740,7 @@ try {
   if (url.pathname === '/api/notifications/read') {
     try {
       const db = createTursoDB(env);
-      if (!globalThis._hasEnsuredNotifsTable) {
-        try {
-          await db.prepare(`CREATE TABLE IF NOT EXISTS user_notifications_read (
-            user_id TEXT NOT NULL,
-            notif_id TEXT NOT NULL,
-            read_at INTEGER NOT NULL,
-            PRIMARY KEY (user_id, notif_id)
-          )`).run().catch(() => {});
-          await db.prepare("CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)").run().catch(() => {});
-          globalThis._hasEnsuredNotifsTable = true;
-        } catch (_) {}
-      }
+      await ensureUserNotificationsReadSchema(db);
 
       if (request.method === 'GET') {
         const user = await authenticateRequest(request, env).catch(() => null);
