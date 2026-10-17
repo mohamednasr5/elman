@@ -247,9 +247,11 @@ class TursoStatement {
         if (isCategoriesSortOrderError(this.sql, err)) {
           try {
             const fallbackSql = legacyCategoriesSql(this.sql);
-            const fallbackPromise = typeof this.client.all === 'function'
-              ? this.client.all(fallbackSql, this.args)
-              : (await this.client.prepare(fallbackSql)).all(this.args);
+            const fallbackClient = getTursoClient(this.env);
+            this.client = fallbackClient;
+            const fallbackPromise = typeof fallbackClient.all === 'function'
+              ? fallbackClient.all(fallbackSql, this.args)
+              : (await fallbackClient.prepare(fallbackSql)).all(this.args);
             const rows = await withTimeout(fallbackPromise, 7000);
             return { results: rows };
           } catch (fallbackErr) {
@@ -287,9 +289,11 @@ class TursoStatement {
         if (isCategoriesSortOrderError(this.sql, err)) {
           try {
             const fallbackSql = legacyCategoriesSql(this.sql);
-            const fallbackPromise = typeof this.client.get === 'function'
-              ? this.client.get(fallbackSql, this.args)
-              : (await this.client.prepare(fallbackSql)).get(this.args);
+            const fallbackClient = getTursoClient(this.env);
+            this.client = fallbackClient;
+            const fallbackPromise = typeof fallbackClient.get === 'function'
+              ? fallbackClient.get(fallbackSql, this.args)
+              : (await fallbackClient.prepare(fallbackSql)).get(this.args);
             const row = await withTimeout(fallbackPromise, timeoutMs);
             return row ?? null;
           } catch (fallbackErr) {
@@ -327,9 +331,11 @@ class TursoStatement {
         if (isCategoriesSortOrderError(this.sql, err)) {
           try {
             const fallbackSql = legacyCategoriesSql(this.sql);
-            const fallbackPromise = typeof this.client.run === 'function'
-              ? this.client.run(fallbackSql, this.args)
-              : (await this.client.prepare(fallbackSql)).run(this.args);
+            const fallbackClient = getTursoClient(this.env);
+            this.client = fallbackClient;
+            const fallbackPromise = typeof fallbackClient.run === 'function'
+              ? fallbackClient.run(fallbackSql, this.args)
+              : (await fallbackClient.prepare(fallbackSql)).run(this.args);
             const result = await withTimeout(fallbackPromise, 7000);
             return {
               success: true,
