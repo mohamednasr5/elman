@@ -1319,6 +1319,24 @@ ${itemsXml}
   }
 }
 
+let _hasEnsuredAnnouncementSchema = false;
+async function ensureAnnouncementSchema(db) {
+  if (_hasEnsuredAnnouncementSchema || !db) return;
+  try {
+    // Older live_news schemas predate the announcement flag.
+    await db.prepare("ALTER TABLE live_news ADD COLUMN is_announcement INTEGER NOT NULL DEFAULT 0").run();
+    _hasEnsuredAnnouncementSchema = true;
+  } catch (err) {
+    // A duplicate-column error means another request or migration already added it.
+    const message = String(err?.message || err).toLowerCase();
+    if (message.includes('duplicate column') || message.includes('already exists')) {
+      _hasEnsuredAnnouncementSchema = true;
+      return;
+    }
+    console.warn('[ensureAnnouncementSchema warning]:', err?.message || err);
+  }
+}
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
@@ -5270,12 +5288,12 @@ try {
     try {
       await ensureAnnouncementSchema(env);
       const db = createTursoDB(env);
+      await ensureAnnouncementSchema(db);
       const newsRows = (await db.prepare("SELECT id, title, details, image_url, inquiry_link, created_at FROM live_news WHERE status = 'published' AND is_announcement = 1 ORDER BY created_at DESC LIMIT 10").all()).results || [];
       const announcements = newsRows.map(n => ({
         id: n.id,
         title: n.title || 'إشعار من الدليل',
         content: n.details || '',
-        imageUrl: n.image_url || '',
         url: n.inquiry_link || '/',
         createdAt: Number(n.created_at || Date.now())
       }));
