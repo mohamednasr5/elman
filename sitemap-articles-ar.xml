@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
+    <loc>https://dalilmanzala.com/blog/ataraywnsaashabtbyayatwablshrqya/</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/blog/ataraywnsaashabtbyayatwablshrqya/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/blog/ataraywnsaashabtbyayatwablshrqya/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/blog/ataraywnsaashabtbyayatwablshrqya/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1792273970087-3q3gb3p.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/blog/king-barber-elmanzala/</loc>
     <lastmod>2026-10-08</lastmod>
     <changefreq>weekly</changefreq>
