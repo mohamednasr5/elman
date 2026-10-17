@@ -310,47 +310,53 @@ class TursoStatement {
   async run() {
     await ensureRuntimeSchema(this.env);
     let lastErr;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const client = getTursoClient(this.env);
-        this.client = client;
-        const queryPromise = typeof client.run === 'function'
-          ? client.run(this.sql, this.args)
-          : (await client.prepare(this.sql)).run(this.args);
-        const result = await withTimeout(queryPromise, 7000);
-        return {
-          success: true,
-          meta: {
-            changes: Number(result?.rowsAffected || 0),
-            last_row_id: result?.lastInsertRowid ?? null
-          }
-        };
-      } catch (err) {
-        lastErr = err;
-        resetTursoClient(this.env);
-        if (isCategoriesSortOrderError(this.sql, err)) {
-          try {
-            const fallbackSql = legacyCategoriesSql(this.sql);
-            const fallbackClient = getTursoClient(this.env);
-            this.client = fallbackClient;
-            const fallbackPromise = typeof fallbackClient.run === 'function'
-              ? fallbackClient.run(fallbackSql, this.args)
-              : (await fallbackClient.prepare(fallbackSql)).run(this.args);
-            const result = await withTimeout(fallbackPromise, 7000);
-            return {
-              success: true,
-              meta: {
-                changes: Number(result?.rowsAffected || 0),
-                last_row_id: result?.lastInsertRowid ?? null
-              }
-            };
-          } catch (fallbackErr) {
-            lastErr = fallbackErr;
-          }
+
+    // Never blindly retry a mutation after a timeout. The original write may
+    // have committed even when its response was lost; retrying it can debit
+    // coins twice or repeat other non-idempotent updates.
+    try {
+      const client = getTursoClient(this.env);
+      this.client = client;
+      const queryPromise = typeof client.run === 'function'
+        ? client.run(this.sql, this.args)
+        : (await client.prepare(this.sql)).run(this.args);
+      const result = await withTimeout(queryPromise, 7000);
+      return {
+        success: true,
+        meta: {
+          changes: Number(result?.rowsAffected || 0),
+          last_row_id: result?.lastInsertRowid ?? null
         }
-        if (attempt === 0) await new Promise(r => setTimeout(r, 60));
+      };
+    } catch (err) {
+      lastErr = err;
+      resetTursoClient(this.env);
+
+      // A missing legacy category sort column is a deterministic SQL/schema
+      // error (not an ambiguous timeout), so its compatibility query is safe.
+      if (isCategoriesSortOrderError(this.sql, err)) {
+        try {
+          const fallbackSql = legacyCategoriesSql(this.sql);
+          const fallbackClient = getTursoClient(this.env);
+          this.client = fallbackClient;
+          const fallbackPromise = typeof fallbackClient.run === 'function'
+            ? fallbackClient.run(fallbackSql, this.args)
+            : (await fallbackClient.prepare(fallbackSql)).run(this.args);
+          const result = await withTimeout(fallbackPromise, 7000);
+          return {
+            success: true,
+            meta: {
+              changes: Number(result?.rowsAffected || 0),
+              last_row_id: result?.lastInsertRowid ?? null
+            }
+          };
+        } catch (fallbackErr) {
+          lastErr = fallbackErr;
+          resetTursoClient(this.env);
+        }
       }
     }
+
     console.error('[TursoDB Error] run():', lastErr?.message || lastErr, 'SQL:', this.sql);
     throw lastErr;
   }
