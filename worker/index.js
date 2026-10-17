@@ -310,7 +310,8 @@ async function ensureCoinEconomySchema(db) {
       total_earned: 'INTEGER DEFAULT 0',
       loyalty_json: "TEXT DEFAULT '{}'",
       last_daily_bonus_date: 'TEXT',
-      last_redemption_at: 'INTEGER'
+      last_redemption_at: 'INTEGER',
+      photo_url: 'TEXT'
     });
 
     await db.prepare(`CREATE TABLE IF NOT EXISTS loyalty_history (
@@ -379,7 +380,8 @@ async function ensureInteractiveServicesSchema(db) {
     )`).run();
     await ensureRuntimeColumns(db, 'service_requests', {
       likes_count: 'INTEGER DEFAULT 0',
-      dislikes_count: 'INTEGER DEFAULT 0'
+      dislikes_count: 'INTEGER DEFAULT 0',
+      reports_count: 'INTEGER DEFAULT 0'
     });
 
     await db.prepare(`CREATE TABLE IF NOT EXISTS craftsman_presence (
@@ -412,7 +414,8 @@ async function ensureInteractiveServicesSchema(db) {
       available_until: 'INTEGER DEFAULT 0',
       updated_at: 'INTEGER',
       likes_count: 'INTEGER DEFAULT 0',
-      dislikes_count: 'INTEGER DEFAULT 0'
+      dislikes_count: 'INTEGER DEFAULT 0',
+      reports_count: 'INTEGER DEFAULT 0'
     });
 
     await db.prepare(`CREATE TABLE IF NOT EXISTS interactive_votes (
@@ -455,6 +458,44 @@ async function ensureUserNotificationsReadSchema(db) {
     await db.prepare('CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)').run();
   });
 }
+
+async function ensureVillageAppointmentsSchema(db) {
+  if (!db) return;
+  return ensureRuntimeSchemaOnce('village-appointments', async () => {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS village_polls (
+      id TEXT PRIMARY KEY,
+      village_id TEXT NOT NULL,
+      service_key TEXT NOT NULL,
+      service_label TEXT NOT NULL,
+      votes_count INTEGER DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    )`).run();
+    await db.prepare(`CREATE TABLE IF NOT EXISTS village_votes (
+      id TEXT PRIMARY KEY,
+      village_id TEXT NOT NULL,
+      service_key TEXT NOT NULL,
+      voter_fingerprint TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`).run();
+    await db.prepare(`CREATE TABLE IF NOT EXISTS appointment_requests (
+      id TEXT PRIMARY KEY,
+      place_id TEXT NOT NULL,
+      place_name TEXT,
+      client_name TEXT NOT NULL,
+      client_phone TEXT NOT NULL,
+      preferred_date TEXT,
+      preferred_time TEXT,
+      service_needed TEXT,
+      status TEXT DEFAULT 'pending',
+      user_id TEXT,
+      created_at INTEGER NOT NULL
+    )`).run();
+    await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_village_vote_unique ON village_votes(village_id, service_key, voter_fingerprint)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_village_polls_village ON village_polls(village_id, votes_count DESC)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_appointments_place ON appointment_requests(place_id, created_at DESC)').run();
+  });
+}
+
 
 async function ensurePlaceEventsSchema(db) {
   if (!db) return;
@@ -5482,6 +5523,19 @@ try {
     return jsonResponse({ success: true, message: 'شكراً لحرصك. تم تسجيل البلاغ وستتم المراجعة والإجراء فوراً.' }, 200, corsHeaders);
   }
 
+  if (
+    url.pathname === '/api/villages/polls' ||
+    url.pathname === '/api/villages/vote' ||
+    url.pathname === '/api/appointments'
+  ) {
+    try {
+      await ensureVillageAppointmentsSchema(createTursoDB(env));
+    } catch (err) {
+      console.error('[Village/appointment schema initialization failed]:', err?.message || err);
+      return jsonResponse({ success: false, error: 'تعذر تهيئة قاعدة بيانات التصويت والحجوزات مؤقتاً' }, 503, corsHeaders);
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════
   // ── VILLAGE HUB POLLS & VOTING («تصويت خدمات القرى») ──
   // ═══════════════════════════════════════════════════════════
@@ -10051,207 +10105,82 @@ async function ensureSlugsHealedInTurso(env) {
   }
 }
 
-let _hasEnsuredColumns = false;
 async function ensureNewSchemaColumnsInTurso(env) {
-  if (_hasEnsuredColumns) return;
-  _hasEnsuredColumns = true;
-  try {
+  return ensureRuntimeSchemaOnce('new-schema-columns', async () => {
     const db = createTursoDB(env);
-    await db.prepare("ALTER TABLE places ADD COLUMN parent_id TEXT").run().catch(() => {});
-    await db.prepare("ALTER TABLE places ADD COLUMN branches_json TEXT").run().catch(() => {});
-    await db.prepare("ALTER TABLE places ADD COLUMN availability_status TEXT DEFAULT 'available'").run().catch(() => {});
-    await db.prepare("ALTER TABLE places ADD COLUMN description_en TEXT").run().catch(() => {});
-    await db.prepare("ALTER TABLE places ADD COLUMN address_en TEXT").run().catch(() => {});
-    await db.prepare("ALTER TABLE places ADD COLUMN custom_category_en TEXT").run().catch(() => {});
-    await db.prepare("ALTER TABLE places ADD COLUMN services_en_json TEXT").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_places_parent_id ON places(parent_id)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_places_availability ON places(availability_status)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_place_id ON reviews(place_id)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_place_slug ON reviews(place_slug)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at)").run().catch(() => {});
-    
-    // Users Schema Updates
-    await db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run().catch(() => {});
-    await db.prepare("ALTER TABLE users ADD COLUMN photo_url TEXT").run().catch(() => {});
-    await db.prepare("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0").run().catch(() => {});
-    await db.prepare("ALTER TABLE users ADD COLUMN total_earned INTEGER DEFAULT 0").run().catch(() => {});
-    await db.prepare("ALTER TABLE users ADD COLUMN last_daily_bonus_date TEXT").run().catch(() => {});
-    await db.prepare("ALTER TABLE users ADD COLUMN last_redemption_at INTEGER").run().catch(() => {});
-    await db.prepare(`CREATE TABLE IF NOT EXISTS loyalty_history (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      type TEXT NOT NULL,
-      rule_key TEXT NOT NULL,
-      amount INTEGER NOT NULL,
-      label TEXT,
-      place_id TEXT,
-      place_name TEXT,
-      meta_json TEXT,
-      created_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_loyalty_history_user ON loyalty_history(user_id, created_at DESC)").run().catch(() => {});
-    await db.prepare(`CREATE TABLE IF NOT EXISTS loyalty_redemptions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      place_id TEXT NOT NULL,
-      place_name TEXT,
-      points_redeemed INTEGER NOT NULL,
-      created_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_loyalty_redemptions_user ON loyalty_redemptions(user_id)").run().catch(() => {});
 
-    // Interactive features schema (Service Requests, Live Craftsmen On-Call, Village Hub, Appointments)
-    await db.prepare(`CREATE TABLE IF NOT EXISTS service_requests (
-      id TEXT PRIMARY KEY,
-      category TEXT NOT NULL,
-      title TEXT NOT NULL,
-      village TEXT NOT NULL,
-      timing TEXT NOT NULL,
-      description TEXT,
-      photo_url TEXT,
-      user_id TEXT,
-      user_name TEXT,
-      user_phone TEXT NOT NULL,
-      status TEXT DEFAULT 'open',
-      offers_count INTEGER DEFAULT 0,
-      created_at INTEGER NOT NULL,
-      expires_at INTEGER NOT NULL,
-      closed_at INTEGER
-    )`).run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests(status, created_at DESC)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_service_requests_village ON service_requests(village)").run().catch(() => {});
+    await ensureRuntimeColumns(db, 'places', {
+      parent_id: 'TEXT',
+      branches_json: 'TEXT',
+      availability_status: "TEXT DEFAULT 'available'",
+      description_en: 'TEXT',
+      address_en: 'TEXT',
+      custom_category_en: 'TEXT',
+      services_en_json: 'TEXT'
+    });
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_places_parent_id ON places(parent_id)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_places_availability ON places(availability_status)').run();
 
-    await db.prepare(`CREATE TABLE IF NOT EXISTS craftsman_presence (
-      id TEXT PRIMARY KEY,
-      place_id TEXT,
-      craftsman_name TEXT NOT NULL,
-      profession_id TEXT NOT NULL,
-      profession_name TEXT NOT NULL,
-      is_available_now INTEGER DEFAULT 1,
-      coverage_villages_json TEXT,
-      inspection_fee TEXT,
-      eta_minutes INTEGER DEFAULT 30,
-      phone TEXT,
-      whatsapp TEXT,
-      available_until INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_craftsman_presence_avail ON craftsman_presence(is_available_now, available_until)").run().catch(() => {});
-
-    await db.prepare(`CREATE TABLE IF NOT EXISTS interactive_votes (
-      id TEXT PRIMARY KEY,
-      target_id TEXT NOT NULL,
-      target_type TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      vote_type TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-    await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_votes_user_target ON interactive_votes(target_id, user_id)").run().catch(() => {});
-
-    await db.prepare(`CREATE TABLE IF NOT EXISTS interactive_reports (
-      id TEXT PRIMARY KEY,
-      target_id TEXT NOT NULL,
-      target_type TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      user_name TEXT,
-      reason TEXT,
-      created_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-    await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_reports_user ON interactive_reports(target_id, user_id)").run().catch(() => {});
-
-    await db.prepare("ALTER TABLE service_requests ADD COLUMN likes_count INTEGER DEFAULT 0").run().catch(() => {});
-    await db.prepare("ALTER TABLE service_requests ADD COLUMN dislikes_count INTEGER DEFAULT 0").run().catch(() => {});
-    await db.prepare("ALTER TABLE service_requests ADD COLUMN reports_count INTEGER DEFAULT 0").run().catch(() => {});
-
-    await db.prepare("ALTER TABLE craftsman_presence ADD COLUMN likes_count INTEGER DEFAULT 0").run().catch(() => {});
-    await db.prepare("ALTER TABLE craftsman_presence ADD COLUMN dislikes_count INTEGER DEFAULT 0").run().catch(() => {});
-    await db.prepare("ALTER TABLE craftsman_presence ADD COLUMN reports_count INTEGER DEFAULT 0").run().catch(() => {});
-
-    await db.prepare(`CREATE TABLE IF NOT EXISTS village_polls (
-      id TEXT PRIMARY KEY,
-      village_id TEXT NOT NULL,
-      service_key TEXT NOT NULL,
-      service_label TEXT NOT NULL,
-      votes_count INTEGER DEFAULT 0,
-      updated_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-
-    await db.prepare(`CREATE TABLE IF NOT EXISTS village_votes (
-      id TEXT PRIMARY KEY,
-      village_id TEXT NOT NULL,
-      service_key TEXT NOT NULL,
-      voter_fingerprint TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-    await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_village_vote_unique ON village_votes(village_id, service_key, voter_fingerprint)").run().catch(() => {});
-
-    await db.prepare(`CREATE TABLE IF NOT EXISTS appointment_requests (
+    await db.prepare(`CREATE TABLE IF NOT EXISTS reviews (
       id TEXT PRIMARY KEY,
       place_id TEXT NOT NULL,
-      place_name TEXT,
-      client_name TEXT NOT NULL,
-      client_phone TEXT NOT NULL,
-      preferred_date TEXT,
-      preferred_time TEXT,
-      service_needed TEXT,
-      status TEXT DEFAULT 'pending',
       user_id TEXT,
-      created_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-    await db.prepare(`CREATE TABLE IF NOT EXISTS user_notifications_read (
-      user_id TEXT NOT NULL,
-      notif_id TEXT NOT NULL,
-      read_at INTEGER NOT NULL,
-      PRIMARY KEY (user_id, notif_id)
-    )`).run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)").run().catch(() => {});
+      user_name TEXT,
+      user_photo TEXT,
+      place_name TEXT,
+      place_slug TEXT,
+      rating INTEGER,
+      comment TEXT,
+      is_admin_generated INTEGER DEFAULT 0,
+      edit_count INTEGER DEFAULT 0,
+      created_at INTEGER,
+      updated_at INTEGER
+    )`).run();
+    await ensureRuntimeColumns(db, 'reviews', {
+      place_slug: 'TEXT',
+      is_admin_generated: 'INTEGER DEFAULT 0',
+      edit_count: 'INTEGER DEFAULT 0',
+      is_reported: 'INTEGER DEFAULT 0',
+      report_count: 'INTEGER DEFAULT 0',
+      last_report_reason: 'TEXT',
+      reported_at: 'INTEGER',
+      last_reporter_name: 'TEXT',
+      is_reviewed_by_admin: 'INTEGER DEFAULT 0',
+      admin_review_status: 'TEXT',
+      admin_review_note: 'TEXT',
+      reviewed_at: 'INTEGER',
+      created_at: 'INTEGER',
+      updated_at: 'INTEGER'
+    });
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_reviews_place_id ON reviews(place_id)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_reviews_place_slug ON reviews(place_slug)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at)').run();
 
-    // Job Seekers & Available Jobs (باحث عن عمل & وظائف متاحة)
-    await db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      age INTEGER NOT NULL,
-      gender TEXT NOT NULL,
-      phone TEXT NOT NULL,
-      whatsapp TEXT,
-      location TEXT NOT NULL,
-      profession TEXT NOT NULL,
-      experience TEXT,
-      description TEXT NOT NULL,
-      expected_salary REAL,
-      status TEXT DEFAULT 'active',
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_status_created ON job_seekers(status, created_at DESC)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_user ON job_seekers(user_id)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_profession ON job_seekers(profession)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_location ON job_seekers(location)").run().catch(() => {});
+    // User fields are additive and safe to repair on older Turso databases.
+    await ensureRuntimeColumns(db, 'users', {
+      phone: 'TEXT',
+      photo_url: 'TEXT',
+      points: 'INTEGER DEFAULT 0',
+      total_earned: 'INTEGER DEFAULT 0',
+      loyalty_json: "TEXT DEFAULT '{}'",
+      last_daily_bonus_date: 'TEXT',
+      last_redemption_at: 'INTEGER'
+    });
 
-    await db.prepare(`CREATE TABLE IF NOT EXISTS jobs (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      workplace_name TEXT NOT NULL,
-      phone TEXT NOT NULL,
-      whatsapp TEXT,
-      location TEXT NOT NULL,
-      profession TEXT NOT NULL,
-      working_hours REAL NOT NULL,
-      salary_type TEXT DEFAULT 'specified',
-      salary REAL,
-      description TEXT NOT NULL,
-      status TEXT DEFAULT 'active',
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )`).run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)").run().catch(() => {});
-    await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location)").run().catch(() => {});
-  } catch (err) {
-    console.warn('[ensureNewSchemaColumnsInTurso] Notice:', err.message);
-  }
+    // Use the same retryable schema guards as the API routes to avoid divergent
+    // migration logic between hourly maintenance and user-facing requests.
+    await ensureOffersProductsSchema(env);
+    await ensureCoinEconomySchema(db);
+    await ensureInteractiveServicesSchema(db);
+    await ensureUserNotificationsReadSchema(db);
+    await ensureJobBoardSchema(db);
+    await ensurePlaceEventsSchema(db);
+    await ensureVillageAppointmentsSchema(db);
+    await ensureAnnouncementSchema(env);
+  }).catch(err => {
+    console.warn('[ensureNewSchemaColumnsInTurso] Initialization failed; next scheduled run may retry:', err?.message || err);
+    throw err;
+  });
 }
 
 let _legacyCoordinateCleanupPromise = null;
