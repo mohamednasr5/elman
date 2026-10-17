@@ -825,14 +825,16 @@ async function ensureAnnouncementSchema(db) {
   try {
     // Older live_news schemas predate the announcement flag.
     await db.prepare("ALTER TABLE live_news ADD COLUMN is_announcement INTEGER NOT NULL DEFAULT 0").run();
+    _hasEnsuredAnnouncementSchema = true;
   } catch (err) {
     // A duplicate-column error means another request or migration already added it.
     const message = String(err?.message || err).toLowerCase();
-    if (!message.includes('duplicate column') && !message.includes('already exists')) {
-      console.warn('[ensureAnnouncementSchema warning]:', err?.message || err);
+    if (message.includes('duplicate column') || message.includes('already exists')) {
+      _hasEnsuredAnnouncementSchema = true;
+      return;
     }
+    console.warn('[ensureAnnouncementSchema warning]:', err?.message || err);
   }
-  _hasEnsuredAnnouncementSchema = true;
 }
 
 export default {
