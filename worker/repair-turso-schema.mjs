@@ -117,6 +117,36 @@ await addMissingColumns('users', {
   last_redemption_at: 'INTEGER'
 });
 
+await run(`CREATE TABLE IF NOT EXISTS live_news (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  location TEXT NOT NULL,
+  category TEXT NOT NULL,
+  status_tag_key TEXT,
+  details TEXT,
+  city TEXT,
+  image_url TEXT,
+  phone TEXT,
+  inquiry_link TEXT,
+  salary TEXT,
+  user_id TEXT,
+  user_name TEXT,
+  user_photo TEXT,
+  user_points INTEGER DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',
+  reactions_json TEXT,
+  reacted_users_json TEXT,
+  created_at INTEGER NOT NULL,
+  published_at INTEGER,
+  expires_at INTEGER,
+  updated_at INTEGER,
+  deleted_at INTEGER
+)`);
+await addMissingColumns('live_news', {
+  is_announcement: 'INTEGER NOT NULL DEFAULT 0'
+});
+await run('CREATE INDEX IF NOT EXISTS idx_live_news_status_created ON live_news(status, created_at DESC)');
+
 await run(`CREATE TABLE IF NOT EXISTS coin_purchases (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
