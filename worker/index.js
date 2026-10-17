@@ -77,6 +77,299 @@ async function ensureAnnouncementSchema(env) {
   }
 }
 
+const runtimeSchemaPromises = new Map();
+
+function ensureRuntimeSchemaOnce(key, initialize) {
+  const existing = runtimeSchemaPromises.get(key);
+  if (existing) return existing;
+
+  const pending = Promise.resolve()
+    .then(initialize)
+    .catch(err => {
+      if (runtimeSchemaPromises.get(key) === pending) runtimeSchemaPromises.delete(key);
+      throw err;
+    });
+
+  runtimeSchemaPromises.set(key, pending);
+  return pending;
+}
+
+async function ensureRuntimeColumns(db, table, definitions) {
+  const rows = (await db.prepare(`PRAGMA table_info(${table})`).all()).results || [];
+  const existing = new Set(rows.map(row => String(row.name)));
+
+  for (const [name, definition] of Object.entries(definitions)) {
+    if (existing.has(name)) continue;
+    try {
+      await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`).run();
+      existing.add(name);
+    } catch (err) {
+      const message = String(err?.message || err).toLowerCase();
+      // Concurrent isolates may add the same column after both read table_info.
+      if (message.includes('duplicate column') || message.includes('already exists')) {
+        existing.add(name);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+async function ensureOffersProductsSchema(env) {
+  return ensureRuntimeSchemaOnce('offers-products', async () => {
+    const db = createTursoDB(env);
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS offers (
+      id TEXT PRIMARY KEY,
+      place_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      old_price REAL DEFAULT 0,
+      new_price REAL DEFAULT 0,
+      discount_percent REAL DEFAULT 0,
+      image_url TEXT,
+      start_date INTEGER,
+      end_date INTEGER,
+      status TEXT DEFAULT 'active',
+      owner_id TEXT,
+      is_verified_place INTEGER DEFAULT 0,
+      views INTEGER DEFAULT 0,
+      clicks INTEGER DEFAULT 0,
+      created_at INTEGER,
+      updated_at INTEGER
+    )`).run();
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS products (
+      id TEXT PRIMARY KEY,
+      place_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      price REAL DEFAULT 0,
+      old_price REAL DEFAULT 0,
+      image_url TEXT,
+      category TEXT,
+      sku TEXT,
+      in_stock INTEGER DEFAULT 1,
+      is_featured INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'pending',
+      is_approved INTEGER DEFAULT 0,
+      views INTEGER DEFAULT 0,
+      clicks INTEGER DEFAULT 0,
+      created_at INTEGER,
+      updated_at INTEGER
+    )`).run();
+
+    await ensureRuntimeColumns(db, 'offers', {
+      place_id: 'TEXT',
+      title: 'TEXT',
+      description: 'TEXT',
+      old_price: 'REAL DEFAULT 0',
+      new_price: 'REAL DEFAULT 0',
+      discount_percent: 'REAL DEFAULT 0',
+      image_url: 'TEXT',
+      start_date: 'INTEGER',
+      end_date: 'INTEGER',
+      status: "TEXT DEFAULT 'active'",
+      owner_id: 'TEXT',
+      is_verified_place: 'INTEGER DEFAULT 0',
+      views: 'INTEGER DEFAULT 0',
+      clicks: 'INTEGER DEFAULT 0',
+      created_at: 'INTEGER',
+      updated_at: 'INTEGER'
+    });
+    await ensureRuntimeColumns(db, 'products', {
+      place_id: 'TEXT',
+      name: 'TEXT',
+      description: 'TEXT',
+      price: 'REAL DEFAULT 0',
+      old_price: 'REAL DEFAULT 0',
+      image_url: 'TEXT',
+      category: 'TEXT',
+      sku: 'TEXT',
+      in_stock: 'INTEGER DEFAULT 1',
+      is_featured: 'INTEGER DEFAULT 0',
+      status: "TEXT DEFAULT 'pending'",
+      is_approved: 'INTEGER DEFAULT 0',
+      rejection_reason: 'TEXT',
+      views: 'INTEGER DEFAULT 0',
+      clicks: 'INTEGER DEFAULT 0',
+      created_at: 'INTEGER',
+      updated_at: 'INTEGER'
+    });
+    await ensureRuntimeColumns(db, 'places', {
+      offer_count: 'INTEGER DEFAULT 0',
+      product_count: 'INTEGER DEFAULT 0'
+    });
+
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_offers_place ON offers(place_id, created_at DESC)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_offers_status_dates ON offers(status, end_date DESC)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_offers_owner ON offers(owner_id)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_products_place ON products(place_id, created_at DESC)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_products_owner_place ON products(place_id, status)').run();
+  });
+}
+
+async function ensureJobBoardSchema(db) {
+  if (!db) return;
+  return ensureRuntimeSchemaOnce('job-board', async () => {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      age INTEGER NOT NULL,
+      gender TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      whatsapp TEXT,
+      location TEXT NOT NULL,
+      profession TEXT NOT NULL,
+      experience TEXT,
+      description TEXT NOT NULL,
+      expected_salary REAL,
+      status TEXT DEFAULT 'active',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`).run();
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS jobs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      workplace_name TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      whatsapp TEXT,
+      location TEXT NOT NULL,
+      profession TEXT NOT NULL,
+      working_hours REAL NOT NULL,
+      salary_type TEXT DEFAULT 'specified',
+      salary REAL,
+      description TEXT NOT NULL,
+      status TEXT DEFAULT 'active',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`).run();
+
+    await ensureRuntimeColumns(db, 'job_seekers', {
+      is_featured: 'INTEGER DEFAULT 0',
+      featured_until: 'INTEGER DEFAULT 0'
+    });
+    await ensureRuntimeColumns(db, 'jobs', {
+      is_featured: 'INTEGER DEFAULT 0',
+      featured_until: 'INTEGER DEFAULT 0'
+    });
+
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_job_seekers_status_created ON job_seekers(status, created_at DESC)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_job_seekers_user ON job_seekers(user_id)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_job_seekers_profession ON job_seekers(profession)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_job_seekers_location ON job_seekers(location)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location)').run();
+  });
+}
+
+async function ensureCoinEconomySchema(db) {
+  if (!db) return;
+  return ensureRuntimeSchemaOnce('coin-economy', async () => {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS coin_purchases (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      user_name TEXT,
+      user_email TEXT,
+      user_phone TEXT,
+      package_coins INTEGER NOT NULL,
+      amount_egp INTEGER NOT NULL,
+      receipt_url TEXT,
+      payment_method TEXT DEFAULT 'vodafone_cash',
+      vodafone_sender_number TEXT,
+      status TEXT DEFAULT 'pending',
+      admin_notes TEXT,
+      created_at INTEGER NOT NULL,
+      reviewed_at INTEGER,
+      reviewed_by TEXT
+    )`).run();
+
+    await ensureRuntimeColumns(db, 'coin_purchases', {
+      user_name: 'TEXT',
+      user_email: 'TEXT',
+      user_phone: 'TEXT',
+      package_coins: 'INTEGER DEFAULT 0',
+      amount_egp: 'INTEGER DEFAULT 0',
+      receipt_url: 'TEXT',
+      payment_method: "TEXT DEFAULT 'vodafone_cash'",
+      vodafone_sender_number: 'TEXT',
+      status: "TEXT DEFAULT 'pending'",
+      admin_notes: 'TEXT',
+      created_at: 'INTEGER',
+      reviewed_at: 'INTEGER',
+      reviewed_by: 'TEXT'
+    });
+    await ensureRuntimeColumns(db, 'users', {
+      phone: 'TEXT',
+      points: 'INTEGER DEFAULT 0',
+      total_earned: 'INTEGER DEFAULT 0',
+      loyalty_json: "TEXT DEFAULT '{}'",
+      last_daily_bonus_date: 'TEXT',
+      last_redemption_at: 'INTEGER'
+    });
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS loyalty_history (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      rule_key TEXT,
+      amount INTEGER NOT NULL,
+      label TEXT,
+      place_id TEXT,
+      place_name TEXT,
+      meta_json TEXT DEFAULT '{}',
+      created_at INTEGER NOT NULL
+    )`).run();
+    await ensureRuntimeColumns(db, 'loyalty_history', {
+      rule_key: 'TEXT',
+      label: 'TEXT',
+      place_id: 'TEXT',
+      place_name: 'TEXT',
+      meta_json: "TEXT DEFAULT '{}'",
+      created_at: 'INTEGER'
+    });
+
+    await db.prepare(`CREATE TABLE IF NOT EXISTS loyalty_redemptions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      place_id TEXT NOT NULL,
+      place_name TEXT,
+      points_redeemed INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    )`).run();
+    await ensureRuntimeColumns(db, 'loyalty_redemptions', {
+      place_name: 'TEXT',
+      points_redeemed: 'INTEGER DEFAULT 0',
+      created_at: 'INTEGER'
+    });
+
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_coin_purchases_status ON coin_purchases(status, created_at DESC)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_coin_purchases_user ON coin_purchases(user_id)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_loyalty_history_user ON loyalty_history(user_id, created_at DESC)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_loyalty_redemptions_user ON loyalty_redemptions(user_id)').run();
+  });
+}
+
+async function ensurePlaceEventsSchema(db) {
+  if (!db) return;
+  return ensureRuntimeSchemaOnce('place-events', async () => {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS place_events (
+      id TEXT PRIMARY KEY,
+      place_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      session_id TEXT,
+      created_at INTEGER NOT NULL
+    )`).run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_place_events_place_type_time ON place_events(place_id, event_type, created_at)').run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS idx_place_events_time_type ON place_events(created_at, event_type)').run();
+  });
+}
+
 const SUPERADMIN_EMAILS = new Set([
   'elfannanm@gmail.com',
   'mohamednasrofficial@gmail.com'
@@ -3719,6 +4012,15 @@ try {
     }
   }
 
+  if (url.pathname === '/api/offers' || url.pathname.startsWith('/api/offers/')) {
+    try {
+      await ensureOffersProductsSchema(env);
+    } catch (err) {
+      console.error('[Offers schema initialization failed]:', err?.message || err);
+      return jsonResponse({ success: false, error: 'تعذر تهيئة قاعدة بيانات العروض مؤقتاً' }, 503, corsHeaders);
+    }
+  }
+
   // ── Turso: Offers API ─────────────────────────────────────────
   if (url.pathname === '/api/offers' && request.method === 'GET') {
     try {
@@ -3878,6 +4180,15 @@ try {
       : 'UPDATE offers SET views = COALESCE(views,0) + 1 WHERE id = ?';
     await createTursoDB(env).prepare(sql).bind(id).run();
     return jsonResponse({success:true},200,corsHeaders);
+  }
+
+  if (url.pathname === '/api/products' || url.pathname.startsWith('/api/products/')) {
+    try {
+      await ensureOffersProductsSchema(env);
+    } catch (err) {
+      console.error('[Products schema initialization failed]:', err?.message || err);
+      return jsonResponse({ success: false, error: 'تعذر تهيئة قاعدة بيانات المنتجات مؤقتاً' }, 503, corsHeaders);
+    }
   }
 
   // ── Turso: Products API ───────────────────────────────────────
@@ -5192,116 +5503,7 @@ try {
     return jsonResponse({ success: true, id, message: 'تم إرسال طلب الحجز بنجاح' }, 201, corsHeaders);
   }
 
-  // ── Turso Schemas: Job Board & Place Events ──
-  let _hasEnsuredJobBoardSchema = false;
-  async function ensureJobBoardSchema(db) {
-    if (_hasEnsuredJobBoardSchema || !db) return;
-    try {
-      await db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        age INTEGER NOT NULL,
-        gender TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        whatsapp TEXT,
-        location TEXT NOT NULL,
-        profession TEXT NOT NULL,
-        experience TEXT,
-        description TEXT NOT NULL,
-        expected_salary REAL,
-        status TEXT DEFAULT 'active',
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )`).run();
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_status_created ON job_seekers(status, created_at DESC)").run().catch(() => {});
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_user ON job_seekers(user_id)").run().catch(() => {});
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_profession ON job_seekers(profession)").run().catch(() => {});
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_job_seekers_location ON job_seekers(location)").run().catch(() => {});
-
-      await db.prepare(`CREATE TABLE IF NOT EXISTS jobs (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        workplace_name TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        whatsapp TEXT,
-        location TEXT NOT NULL,
-        profession TEXT NOT NULL,
-        working_hours REAL NOT NULL,
-        salary_type TEXT DEFAULT 'specified',
-        salary REAL,
-        description TEXT NOT NULL,
-        status TEXT DEFAULT 'active',
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )`).run();
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)").run().catch(() => {});
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)").run().catch(() => {});
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)").run().catch(() => {});
-      await db.prepare("ALTER TABLE job_seekers ADD COLUMN is_featured INTEGER DEFAULT 0").run().catch(() => {});
-      await db.prepare("ALTER TABLE job_seekers ADD COLUMN featured_until INTEGER DEFAULT 0").run().catch(() => {});
-      await db.prepare("ALTER TABLE jobs ADD COLUMN is_featured INTEGER DEFAULT 0").run().catch(() => {});
-      await db.prepare("ALTER TABLE jobs ADD COLUMN featured_until INTEGER DEFAULT 0").run().catch(() => {});
-
-      _hasEnsuredJobBoardSchema = true;
-    } catch (err) {
-      console.warn('[ensureJobBoardSchema error]:', err?.message || err);
-    }
-  }
-
-  let _hasEnsuredCoinEconomySchema = false;
-  async function ensureCoinEconomySchema(db) {
-    if (_hasEnsuredCoinEconomySchema || !db) return;
-    try {
-      await db.prepare(`CREATE TABLE IF NOT EXISTS coin_purchases (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        user_name TEXT,
-        user_email TEXT,
-        user_phone TEXT,
-        package_coins INTEGER NOT NULL,
-        amount_egp INTEGER NOT NULL,
-        receipt_url TEXT,
-        payment_method TEXT DEFAULT 'vodafone_cash',
-        vodafone_sender_number TEXT,
-        status TEXT DEFAULT 'pending',
-        admin_notes TEXT,
-        created_at INTEGER NOT NULL,
-        reviewed_at INTEGER,
-        reviewed_by TEXT
-      )`).run();
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_coin_purchases_status ON coin_purchases(status, created_at DESC)").run().catch(() => {});
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_coin_purchases_user ON coin_purchases(user_id)").run().catch(() => {});
-
-      // Ensure users table has points / coins columns
-      await db.prepare("ALTER TABLE users ADD COLUMN phone TEXT").run().catch(() => {});
-      await db.prepare("ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0").run().catch(() => {});
-      await db.prepare("ALTER TABLE users ADD COLUMN total_earned INTEGER DEFAULT 0").run().catch(() => {});
-
-      _hasEnsuredCoinEconomySchema = true;
-    } catch (err) {
-      console.warn('[ensureCoinEconomySchema error]:', err?.message || err);
-    }
-  }
-
-  let _hasEnsuredPlaceEventsSchema = false;
-  async function ensurePlaceEventsSchema(db) {
-    if (_hasEnsuredPlaceEventsSchema || !db) return;
-    try {
-      await db.prepare(`CREATE TABLE IF NOT EXISTS place_events (
-        id TEXT PRIMARY KEY,
-        place_id TEXT NOT NULL,
-        event_type TEXT NOT NULL,
-        session_id TEXT,
-        created_at INTEGER NOT NULL
-      )`).run();
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_place_events_place_type_time ON place_events(place_id, event_type, created_at)").run().catch(() => {});
-      await db.prepare("CREATE INDEX IF NOT EXISTS idx_place_events_time_type ON place_events(created_at, event_type)").run().catch(() => {});
-      _hasEnsuredPlaceEventsSchema = true;
-    } catch (err) {
-      console.warn('[ensurePlaceEventsSchema error]:', err?.message || err);
-    }
-  }
+  // Schema initialization helpers are module-scoped and de-duplicated per Worker isolate.
 
   // ═══════════════════════════════════════════════════════════
   // ── JOB SEEKERS («باحث عن عمل في المنزلة والمطرية») ──
