@@ -10140,6 +10140,15 @@ async function ensureNewSchemaColumnsInTurso(env) {
       place_slug: 'TEXT',
       is_admin_generated: 'INTEGER DEFAULT 0',
       edit_count: 'INTEGER DEFAULT 0',
+      is_reported: 'INTEGER DEFAULT 0',
+      report_count: 'INTEGER DEFAULT 0',
+      last_report_reason: 'TEXT',
+      reported_at: 'INTEGER',
+      last_reporter_name: 'TEXT',
+      is_reviewed_by_admin: 'INTEGER DEFAULT 0',
+      admin_review_status: 'TEXT',
+      admin_review_note: 'TEXT',
+      reviewed_at: 'INTEGER',
       created_at: 'INTEGER',
       updated_at: 'INTEGER'
     });
