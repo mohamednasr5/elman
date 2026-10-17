@@ -12,6 +12,12 @@ import { handleMarketWidgetsRequest } from './market-widgets.js';
 import { handleArticlePublicPage, handleArticlesApi, getPublishedArticlesForPlace } from './articles.js';
 import { geocodePlaceAddress } from './geocoding.js';
 import { generateArticleDraft, toArabicCategory } from './article-ai.js';
+// Isolate-local, bounded IP-ban cache: keeps routine API reads from hitting Turso repeatedly.
+const ipBanLookupCache = new Map();
+const ipBanLookupInFlight = new Map();
+const IP_BAN_CACHE_TTL_MS = 3000;
+const IP_BAN_CACHE_MAX_ENTRIES = 512;
+
 const SUPERADMIN_EMAILS = new Set([
   'elfannanm@gmail.com',
   'mohamednasrofficial@gmail.com'
@@ -1377,11 +1383,6 @@ try {
 
   // Cache successful IP-ban lookups briefly to avoid querying Turso for every API request.
   // Positive results are also short-lived, so unbans propagate quickly.
-  const ipBanLookupCache = new Map();
-  const ipBanLookupInFlight = new Map();
-  const IP_BAN_CACHE_TTL_MS = 3000;
-  const IP_BAN_CACHE_MAX_ENTRIES = 512;
-
   async function getCachedIpBan(env, ipKey) {
     const now = Date.now();
     const cached = ipBanLookupCache.get(ipKey);
