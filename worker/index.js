@@ -7105,9 +7105,15 @@ try {
       const currentUntil = Number(job.featured_until || 0);
       const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
 
+      const featureJobSql = auth.user.isAdmin
+        ? 'UPDATE jobs SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ?'
+        : 'UPDATE jobs SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ? AND user_id = ?';
+      const featureJobArgs = auth.user.isAdmin
+        ? [newUntil, now, job.id]
+        : [newUntil, now, job.id, uid];
       await commitCoinPromotion({
-        targetSql: 'UPDATE jobs SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ? AND (COALESCE(user_id, \'\') = \'\' OR user_id = ? OR user_id = ?)',
-        targetArgs: [newUntil, now, job.id, uid, user?.id || uid],
+        targetSql: featureJobSql,
+        targetArgs: featureJobArgs,
         ruleKey: 'FEATURED_JOB',
         label: `تمييز وظيفة "${targetTitle}" لمدة 3 أيام`,
         metaJson: JSON.stringify({ jobId: job.id, until: newUntil })
@@ -7136,9 +7142,15 @@ try {
       const currentUntil = Number(seeker.featured_until || 0);
       const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
 
+      const featureSeekerSql = auth.user.isAdmin
+        ? 'UPDATE job_seekers SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ?'
+        : 'UPDATE job_seekers SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ? AND user_id = ?';
+      const featureSeekerArgs = auth.user.isAdmin
+        ? [newUntil, now, seeker.id]
+        : [newUntil, now, seeker.id, uid];
       await commitCoinPromotion({
-        targetSql: 'UPDATE job_seekers SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ? AND (COALESCE(user_id, \'\') = \'\' OR user_id = ? OR user_id = ?)',
-        targetArgs: [newUntil, now, seeker.id, uid, user?.id || uid],
+        targetSql: featureSeekerSql,
+        targetArgs: featureSeekerArgs,
         ruleKey: 'FEATURED_SEEKER',
         label: `تمييز طلب كادر عمل "${targetTitle}" لمدة 3 أيام`,
         metaJson: JSON.stringify({ seekerId: seeker.id, until: newUntil })
