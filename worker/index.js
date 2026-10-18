@@ -21,7 +21,7 @@ const IP_BAN_CACHE_MAX_ENTRIES = 512;
 let announcementSchemaReady = false;
 let announcementSchemaPromise = null;
 
-async function ensureAnnouncementSchema(env) {
+async function ensureAnnouncementsRuntimeSchema(env) {
   if (announcementSchemaReady) return;
   if (!announcementSchemaPromise) {
     announcementSchemaPromise = (async () => {
@@ -126,7 +126,8 @@ async function ensureOffersProductsSchema(env) {
   return ensureRuntimeSchemaOnce('offers-products', async () => {
     const db = createTursoDB(env);
 
-    await db.prepare(`CREATE TABLE IF NOT EXISTS offers (
+    await db.batch([
+db.prepare(`CREATE TABLE IF NOT EXISTS offers (
       id TEXT PRIMARY KEY,
       place_id TEXT NOT NULL,
       title TEXT NOT NULL,
@@ -144,9 +145,9 @@ async function ensureOffersProductsSchema(env) {
       clicks INTEGER DEFAULT 0,
       created_at INTEGER,
       updated_at INTEGER
-    )`).run();
+    )`),
 
-    await db.prepare(`CREATE TABLE IF NOT EXISTS products (
+      db.prepare(`CREATE TABLE IF NOT EXISTS products (
       id TEXT PRIMARY KEY,
       place_id TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -164,9 +165,11 @@ async function ensureOffersProductsSchema(env) {
       clicks INTEGER DEFAULT 0,
       created_at INTEGER,
       updated_at INTEGER
-    )`).run();
+    )`)
+    ]);
 
-    await ensureRuntimeColumns(db, 'offers', {
+    await Promise.all([
+      ensureRuntimeColumns(db, 'offers', {
       place_id: 'TEXT',
       title: 'TEXT',
       description: 'TEXT',
@@ -183,8 +186,8 @@ async function ensureOffersProductsSchema(env) {
       clicks: 'INTEGER DEFAULT 0',
       created_at: 'INTEGER',
       updated_at: 'INTEGER'
-    });
-    await ensureRuntimeColumns(db, 'products', {
+    }),
+      ensureRuntimeColumns(db, 'products', {
       place_id: 'TEXT',
       name: 'TEXT',
       description: 'TEXT',
@@ -202,11 +205,12 @@ async function ensureOffersProductsSchema(env) {
       clicks: 'INTEGER DEFAULT 0',
       created_at: 'INTEGER',
       updated_at: 'INTEGER'
-    });
-    await ensureRuntimeColumns(db, 'places', {
+    }),
+      ensureRuntimeColumns(db, 'places', {
       offer_count: 'INTEGER DEFAULT 0',
       product_count: 'INTEGER DEFAULT 0'
-    });
+    }),
+    ]);
 
     await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_offers_place ON offers(place_id, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_offers_status_dates ON offers(status, end_date DESC)","CREATE INDEX IF NOT EXISTS idx_offers_owner ON offers(owner_id)","CREATE INDEX IF NOT EXISTS idx_products_place ON products(place_id, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)","CREATE INDEX IF NOT EXISTS idx_products_owner_place ON products(place_id, status)"]);
   });
@@ -215,7 +219,8 @@ async function ensureOffersProductsSchema(env) {
 async function ensureJobBoardSchema(db) {
   if (!db) return;
   return ensureRuntimeSchemaOnce('job-board', async () => {
-    await db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
+    await db.batch([
+db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -231,9 +236,9 @@ async function ensureJobBoardSchema(db) {
       status TEXT DEFAULT 'active',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
-    )`).run();
+    )`),
 
-    await db.prepare(`CREATE TABLE IF NOT EXISTS jobs (
+      db.prepare(`CREATE TABLE IF NOT EXISTS jobs (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       workplace_name TEXT NOT NULL,
@@ -248,16 +253,19 @@ async function ensureJobBoardSchema(db) {
       status TEXT DEFAULT 'active',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
-    )`).run();
+    )`)
+    ]);
 
-    await ensureRuntimeColumns(db, 'job_seekers', {
+    await Promise.all([
+      ensureRuntimeColumns(db, 'job_seekers', {
       is_featured: 'INTEGER DEFAULT 0',
       featured_until: 'INTEGER DEFAULT 0'
-    });
-    await ensureRuntimeColumns(db, 'jobs', {
+    }),
+      ensureRuntimeColumns(db, 'jobs', {
       is_featured: 'INTEGER DEFAULT 0',
       featured_until: 'INTEGER DEFAULT 0'
-    });
+    }),
+    ]);
 
     await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_job_seekers_status_created ON job_seekers(status, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_job_seekers_user ON job_seekers(user_id)","CREATE INDEX IF NOT EXISTS idx_job_seekers_profession ON job_seekers(profession)","CREATE INDEX IF NOT EXISTS idx_job_seekers_location ON job_seekers(location)","CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)","CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)","CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location)"]);
   });
@@ -1302,24 +1310,6 @@ ${itemsXml}
   } catch (err) {
     console.error('[RSS Feed Error]:', err);
     return new Response('Error generating RSS feed', { status: 500 });
-  }
-}
-
-let _hasEnsuredAnnouncementSchema = false;
-async function ensureAnnouncementSchema(db) {
-  if (_hasEnsuredAnnouncementSchema || !db) return;
-  try {
-    // Older live_news schemas predate the announcement flag.
-    await db.prepare("ALTER TABLE live_news ADD COLUMN is_announcement INTEGER NOT NULL DEFAULT 0").run();
-    _hasEnsuredAnnouncementSchema = true;
-  } catch (err) {
-    // A duplicate-column error means another request or migration already added it.
-    const message = String(err?.message || err).toLowerCase();
-    if (message.includes('duplicate column') || message.includes('already exists')) {
-      _hasEnsuredAnnouncementSchema = true;
-      return;
-    }
-    console.warn('[ensureAnnouncementSchema warning]:', err?.message || err);
   }
 }
 
@@ -5272,9 +5262,8 @@ try {
   // ── Turso: System Announcements (GET /api/announcements) ───────────────
   if (url.pathname === '/api/announcements' && request.method === 'GET') {
     try {
-      await ensureAnnouncementSchema(env);
+      await ensureAnnouncementsRuntimeSchema(env);
       const db = createTursoDB(env);
-      await ensureAnnouncementSchema(db);
       const newsRows = (await db.prepare("SELECT id, title, details, image_url, inquiry_link, created_at FROM live_news WHERE status = 'published' AND is_announcement = 1 ORDER BY created_at DESC LIMIT 10").all()).results || [];
       const announcements = newsRows.map(n => ({
         id: n.id,
@@ -10180,7 +10169,7 @@ async function ensureNewSchemaColumnsInTurso(env) {
     await ensureJobBoardSchema(db);
     await ensurePlaceEventsSchema(db);
     await ensureVillageAppointmentsSchema(db);
-    await ensureAnnouncementSchema(env);
+    await ensureAnnouncementsRuntimeSchema(env);
   }).catch(err => {
     console.warn('[ensureNewSchemaColumnsInTurso] Initialization failed; next scheduled run may retry:', err?.message || err);
     throw err;
