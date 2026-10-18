@@ -7033,6 +7033,21 @@ try {
       const shouldDeduct = currentBalance >= cost;
       const statements = [];
 
+      // The ledger uses the current Firebase UID. If coins are still stored on
+      // a legacy email/phone profile row, create the UID profile inside this
+      // same transaction so the loyalty-history foreign key is satisfied.
+      if (deductUserId !== uid) {
+        statements.push(db.prepare(`
+          INSERT INTO users
+            (id, name, email, phone, points, total_earned, role, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 'user', 'active', ?, ?)
+          ON CONFLICT(id) DO NOTHING
+        `).bind(
+          uid, auth.user.name || 'مستخدم', userEmail, userPhone,
+          currentBalance, Number(user?.total_earned || 0), now, now
+        ));
+      }
+
       if (shouldDeduct) {
         statements.push(db.prepare(
           'UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?'
@@ -7043,6 +7058,7 @@ try {
       // If the debit changed no row, the target update is gated off. The
       // following NOT NULL ledger insert then aborts the atomic write batch.
       const guardedTargetSql = shouldDeduct ? `${targetSql} AND changes() > 0` : targetSql;
+      const targetStatementIndex = statements.length;
       statements.push(db.prepare(guardedTargetSql).bind(...targetArgs));
 
       const logId = 'lh_' + crypto.randomUUID();
@@ -7092,8 +7108,7 @@ try {
 
       try {
         const result = await db.batch(statements);
-        const targetIndex = shouldDeduct ? 1 : 0;
-        const targetChanges = Number(result?.[targetIndex]?.rowsAffected || 0);
+        const targetChanges = Number(result?.[targetStatementIndex]?.rowsAffected || 0);
         if (targetChanges !== 1) {
           const conflict = new Error('PROMOTION_CONFLICT');
           conflict.code = 'PROMOTION_CONFLICT';
@@ -7123,19 +7138,21 @@ try {
     function checkJobOwnership(j) {
       if (auth.user.isAdmin) return true;
       if (!j) return false;
+      // Blank legacy ownership must not let any logged-in user spend coins
+      // to promote another person's record.
       const jUserId = String(j.user_id || '').trim();
-      return !jUserId || jUserId === uid || (user?.id && jUserId === user.id);
+      return Boolean(jUserId && (jUserId === uid || jUserId === user?.id));
     }
 
     function checkSeekerOwnership(s) {
       if (auth.user.isAdmin) return true;
       if (!s) return false;
       const sUserId = String(s.user_id || '').trim();
-      return !sUserId || sUserId === uid || (user?.id && sUserId === user.id);
+      return Boolean(sUserId && (sUserId === uid || sUserId === user?.id));
     }
 
     if (targetType === 'job') {
-      const job = await db.prepare('SELECT id, user_id, title, featured_until FROM jobs WHERE id = ? LIMIT 1').bind(targetId).first();
+      const job = await db.prepare("SELECT id, user_id, COALESCE(NULLIF(workplace_name, ''), profession, 'إعلان وظيفة') AS title, featured_until FROM jobs WHERE id = ? LIMIT 1").bind(targetId).first();
       if (!job) return jsonResponse({ success: false, error: 'الوظيفة غير موجودة' }, 404, corsHeaders);
       if (!checkJobOwnership(job)) return jsonResponse({ success: false, error: 'لا تملك هذه الوظيفة' }, 403, corsHeaders);
       const targetTitle = job.title || 'إعلان وظيفة';
@@ -7265,8 +7282,9 @@ try {
       const verificationOwnerEmail = String(place.owner_email || '').trim().toLowerCase();
       const verificationUserId = String(auth.user?.uid || '').trim();
       const verificationUserEmail = String(auth.user?.email || '').trim().toLowerCase();
+      const verificationLegacyUserId = String(user?.id || '').trim();
       const ownsVerificationPlace =
-        (verificationOwnerId && verificationOwnerId === verificationUserId) ||
+        (verificationOwnerId && (verificationOwnerId === verificationUserId || verificationOwnerId === verificationLegacyUserId)) ||
         (verificationOwnerEmail && verificationUserEmail && verificationOwnerEmail === verificationUserEmail);
       if (!auth.user?.isAdmin && !ownsVerificationPlace) {
         return jsonResponse({ success: false, code: 'PLACE_NOT_OWNED', error: 'يجب أن تكون مالك المكان أو مسؤولاً لتوثيقه' }, 403, corsHeaders);
