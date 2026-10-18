@@ -127,7 +127,7 @@ async function ensureOffersProductsSchema(env) {
     const db = createTursoDB(env);
 
     await db.batch([
-await db.prepare(`CREATE TABLE IF NOT EXISTS offers (
+db.prepare(`CREATE TABLE IF NOT EXISTS offers (
       id TEXT PRIMARY KEY,
       place_id TEXT NOT NULL,
       title TEXT NOT NULL,
@@ -145,7 +145,7 @@ await db.prepare(`CREATE TABLE IF NOT EXISTS offers (
       clicks INTEGER DEFAULT 0,
       created_at INTEGER,
       updated_at INTEGER
-    )`).run(),
+    )`),
 
       db.prepare(`CREATE TABLE IF NOT EXISTS products (
       id TEXT PRIMARY KEY,
@@ -165,7 +165,7 @@ await db.prepare(`CREATE TABLE IF NOT EXISTS offers (
       clicks INTEGER DEFAULT 0,
       created_at INTEGER,
       updated_at INTEGER
-    )`).run()
+    )`)
     ]);
 
     await Promise.all([
@@ -220,7 +220,7 @@ async function ensureJobBoardSchema(db) {
   if (!db) return;
   return ensureRuntimeSchemaOnce('job-board', async () => {
     await db.batch([
-await db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
+db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -236,7 +236,7 @@ await db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
       status TEXT DEFAULT 'active',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
-    )`).run(),
+    )`),
 
       db.prepare(`CREATE TABLE IF NOT EXISTS jobs (
       id TEXT PRIMARY KEY,
@@ -253,7 +253,7 @@ await db.prepare(`CREATE TABLE IF NOT EXISTS job_seekers (
       status TEXT DEFAULT 'active',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
-    )`).run()
+    )`)
     ]);
 
     await Promise.all([
