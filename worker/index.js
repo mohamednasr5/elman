@@ -6675,15 +6675,12 @@ try {
       }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
     } catch (err) {
       console.warn('[GET /api/coins/balance warning]:', err?.message || err);
+      // Never report a successful zero balance on a database failure. That
+      // overwrites the user's cached balance and looks like coins disappeared.
       return jsonResponse({
-        success: true,
-        data: {
-          balance: 0,
-          totalEarned: 0,
-          history: [],
-          purchases: []
-        }
-      }, 200, { ...corsHeaders, 'Cache-Control': 'no-store' });
+        success: false,
+        error: 'تعذر تحميل رصيد الذهبيات مؤقتاً. حاول مرة أخرى.'
+      }, 503, { ...corsHeaders, 'Cache-Control': 'no-store' });
     }
   }
 
@@ -6975,7 +6972,9 @@ try {
     try {
       const db = createTursoDB(env);
       await ensureCoinEconomySchema(db);
-      await ensureJobBoardSchema(db);
+      if (targetType === 'job' || targetType === 'job_seeker') {
+        await ensureJobBoardSchema(db);
+      }
 
     const uid = auth.user.uid;
     const userEmail = (auth.user.email || '').trim().toLowerCase();
@@ -7019,27 +7018,106 @@ try {
 
     const deductUserId = user?.id || uid;
 
-    async function deductUserCoins(amount) {
-      if (currentBalance < amount && isUserAdmin) {
-        if (currentBalance > 0) {
-          await db.prepare('UPDATE users SET points = 0, last_redemption_at = ?, updated_at = ? WHERE id = ?')
-            .bind(now, now, deductUserId).run().catch(() => {});
+    async function commitCoinPromotion({
+      targetSql,
+      targetArgs,
+      ruleKey,
+      label,
+      metaJson,
+      placeId = null,
+      placeName = null,
+      recordRedemption = false
+    }) {
+      // If an administrator has insufficient balance, preserve the existing
+      // admin bypass, but do not erase the administrator's remaining coins.
+      const shouldDeduct = currentBalance >= cost;
+      const statements = [];
+
+      if (shouldDeduct) {
+        statements.push(db.prepare(
+          'UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?'
+        ).bind(cost, now, now, deductUserId, cost));
+      }
+
+      // changes() is the row count of the immediately preceding statement.
+      // If the debit changed no row, the target update is gated off. The
+      // following NOT NULL ledger insert then aborts the atomic write batch.
+      const guardedTargetSql = shouldDeduct ? `${targetSql} AND changes() > 0` : targetSql;
+      statements.push(db.prepare(guardedTargetSql).bind(...targetArgs));
+
+      const logId = 'lh_' + crypto.randomUUID();
+      const historyLabel = shouldDeduct ? label : `${label} (إجراء إداري دون خصم)`;
+      statements.push(db.prepare(`
+        INSERT INTO loyalty_history
+          (id, user_id, type, rule_key, amount, label, place_id, place_name, meta_json, created_at)
+        VALUES (?, ?, CASE WHEN changes() > 0 THEN 'redeem' ELSE NULL END, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        logId, uid, ruleKey, shouldDeduct ? -cost : 0, historyLabel,
+        placeId, placeName, metaJson || '{}', now
+      ));
+
+      if (recordRedemption) {
+        statements.push(db.prepare(`
+          INSERT INTO loyalty_redemptions (id, user_id, place_id, place_name, points_redeemed, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).bind(
+          'lr_' + crypto.randomUUID(), uid, placeId, placeName,
+          shouldDeduct ? cost : 0, now
+        ));
+      }
+
+      // Keep duplicate profile rows (Firebase UID and older email/phone IDs)
+      // in sync with the one row debited above. Do not debit both copies.
+      if (shouldDeduct) {
+        statements.push(db.prepare(`
+          UPDATE users
+          SET points = (SELECT points FROM users WHERE id = ?),
+              total_earned = MAX(
+                COALESCE(users.total_earned, 0),
+                COALESCE((SELECT total_earned FROM users WHERE id = ?), 0)
+              ),
+              last_redemption_at = ?,
+              updated_at = ?
+          WHERE id <> ?
+            AND (
+              id = ?
+              OR (? <> '' AND LOWER(COALESCE(email, '')) = ?)
+              OR (? <> '' AND phone = ?)
+            )
+        `).bind(
+          deductUserId, deductUserId, now, now, deductUserId,
+          uid, userEmail, userEmail, userPhone, userPhone
+        ));
+      }
+
+      try {
+        const result = await db.batch(statements);
+        const targetIndex = shouldDeduct ? 1 : 0;
+        const targetChanges = Number(result?.[targetIndex]?.rowsAffected || 0);
+        if (targetChanges !== 1) {
+          const conflict = new Error('PROMOTION_CONFLICT');
+          conflict.code = 'PROMOTION_CONFLICT';
+          throw conflict;
         }
-        return true;
+        return { charged: shouldDeduct };
+      } catch (err) {
+        if (err?.code) throw err;
+        const message = String(err?.message || err).toLowerCase();
+        if (message.includes('not null constraint failed') && message.includes('loyalty_history.type')) {
+          const freshUser = await db.prepare(
+            'SELECT points FROM users WHERE id = ? LIMIT 1'
+          ).bind(deductUserId).first().catch(() => null);
+          if (shouldDeduct && Number(freshUser?.points || 0) < cost) {
+            const insufficient = new Error('INSUFFICIENT_COINS');
+            insufficient.code = 'INSUFFICIENT_COINS';
+            throw insufficient;
+          }
+          const conflict = new Error('PROMOTION_CONFLICT');
+          conflict.code = 'PROMOTION_CONFLICT';
+          throw conflict;
+        }
+        throw err;
       }
-      let res = await db.prepare('UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?')
-        .bind(amount, now, now, deductUserId, amount).run();
-      let affected = Number(res?.meta?.changes || 0);
-      if (affected !== 1 && deductUserId !== uid) {
-        res = await db.prepare('UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?')
-          .bind(amount, now, now, uid, amount).run();
-        affected = Number(res?.meta?.changes || 0);
-      }
-      if (affected === 1 && deductUserId !== uid) {
-        await db.prepare('UPDATE users SET points = points - ?, updated_at = ? WHERE id = ? AND points >= ?')
-          .bind(amount, now, uid, amount).run().catch(() => {});
-      }
-      return affected === 1 || isUserAdmin;
     }
 
     function checkJobOwnership(j) {
@@ -7065,19 +7143,13 @@ try {
       const currentUntil = Number(job.featured_until || 0);
       const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
 
-      const ok = await deductUserCoins(cost);
-      if (!ok) {
-        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات - رصيد غير كافٍ' }, 400, corsHeaders);
-      }
-
-      await db.prepare('UPDATE jobs SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ?')
-        .bind(newUntil, now, job.id).run();
-
-      const logId = 'lh_' + crypto.randomUUID();
-      await db.prepare(`
-        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
-        VALUES (?, ?, 'redeem', 'FEATURED_JOB', ?, ?, ?, ?)
-      `).bind(logId, uid, -cost, `تمييز وظيفة "${targetTitle}" لمدة 3 أيام`, JSON.stringify({ jobId: job.id, until: newUntil }), now).run().catch(() => {});
+      await commitCoinPromotion({
+        targetSql: 'UPDATE jobs SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ? AND (COALESCE(user_id, \'\') = \'\' OR user_id = ? OR user_id = ?)',
+        targetArgs: [newUntil, now, job.id, uid, user?.id || uid],
+        ruleKey: 'FEATURED_JOB',
+        label: `تمييز وظيفة "${targetTitle}" لمدة 3 أيام`,
+        metaJson: JSON.stringify({ jobId: job.id, until: newUntil })
+      });
 
       const updatedUser = await db.prepare(`
         SELECT points FROM users 
@@ -7102,19 +7174,13 @@ try {
       const currentUntil = Number(seeker.featured_until || 0);
       const newUntil = Math.max(now, currentUntil) + (3 * 86400000); // 3 days
 
-      const ok = await deductUserCoins(cost);
-      if (!ok) {
-        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات - رصيد غير كافٍ' }, 400, corsHeaders);
-      }
-
-      await db.prepare('UPDATE job_seekers SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ?')
-        .bind(newUntil, now, seeker.id).run();
-
-      const logId = 'lh_' + crypto.randomUUID();
-      await db.prepare(`
-        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, meta_json, created_at)
-        VALUES (?, ?, 'redeem', 'FEATURED_SEEKER', ?, ?, ?, ?)
-      `).bind(logId, uid, -cost, `تمييز طلب كادر عمل "${targetTitle}" لمدة 3 أيام`, JSON.stringify({ seekerId: seeker.id, until: newUntil }), now).run().catch(() => {});
+      await commitCoinPromotion({
+        targetSql: 'UPDATE job_seekers SET is_featured = 1, featured_until = ?, updated_at = ? WHERE id = ? AND (COALESCE(user_id, \'\') = \'\' OR user_id = ? OR user_id = ?)',
+        targetArgs: [newUntil, now, seeker.id, uid, user?.id || uid],
+        ruleKey: 'FEATURED_SEEKER',
+        label: `تمييز طلب كادر عمل "${targetTitle}" لمدة 3 أيام`,
+        metaJson: JSON.stringify({ seekerId: seeker.id, until: newUntil })
+      });
 
       const updatedUser = await db.prepare(`
         SELECT points FROM users 
@@ -7133,33 +7199,36 @@ try {
     if (targetType === 'place') {
       const place = await db.prepare('SELECT id, name, slug, owner_id, owner_email, sponsored_until FROM places WHERE id = ? OR slug = ? LIMIT 1').bind(targetId, targetId).first();
       if (!place) return jsonResponse({ success: false, error: 'المكان غير موجود' }, 404, corsHeaders);
+      const placeOwnerId = String(place.owner_id || '').trim();
+      const placeOwnerEmail = String(place.owner_email || '').trim().toLowerCase();
+      const ownsPlace = auth.user.isAdmin ||
+        (placeOwnerId && [uid, user?.id].filter(Boolean).includes(placeOwnerId)) ||
+        (placeOwnerEmail && userEmail && placeOwnerEmail === userEmail);
+      if (!ownsPlace) {
+        return jsonResponse({ success: false, code: 'PLACE_NOT_OWNED', error: 'يجب أن تكون مالك المكان أو مسؤولاً لترقيته' }, 403, corsHeaders);
+      }
       const targetTitle = place.name;
 
       const currentUntil = Number(place.sponsored_until || 0);
       const newUntil = Math.max(now, currentUntil) + (30 * 86400000); // 30 days / month
 
-      const ok = await deductUserCoins(cost);
-      if (!ok) {
-        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات - رصيد غير كافٍ' }, 400, corsHeaders);
-      }
-
-      await db.prepare(`
-        UPDATE places 
-        SET is_sponsored = 1, 
-            sponsored_until = ?, 
-            owner_id = COALESCE(NULLIF(owner_id, ''), ?), 
-            owner_email = COALESCE(NULLIF(owner_email, ''), ?),
-            updated_at = ? 
-        WHERE id = ?
-      `).bind(newUntil, uid, userEmail, now, place.id).run();
+      const sponsorSql = auth.user.isAdmin
+        ? 'UPDATE places SET is_sponsored = 1, sponsored_until = ?, owner_id = COALESCE(NULLIF(owner_id, \'\'), ?), owner_email = COALESCE(NULLIF(owner_email, \'\'), ?), updated_at = ? WHERE id = ?'
+        : 'UPDATE places SET is_sponsored = 1, sponsored_until = ?, owner_id = COALESCE(NULLIF(owner_id, \'\'), ?), owner_email = COALESCE(NULLIF(owner_email, \'\'), ?), updated_at = ? WHERE id = ? AND (owner_id = ? OR owner_id = ? OR (LOWER(COALESCE(owner_email, \'\')) = ? AND ? <> \'\'))';
+      const sponsorArgs = auth.user.isAdmin
+        ? [newUntil, uid, userEmail, now, place.id]
+        : [newUntil, uid, userEmail, now, place.id, uid, user?.id || uid, userEmail, userEmail];
+      await commitCoinPromotion({
+        targetSql: sponsorSql,
+        targetArgs: sponsorArgs,
+        ruleKey: 'SPONSORED_PLACE',
+        label: `ترقية المكان "${targetTitle}" لإعلان مميز لمدة 30 يوماً`,
+        metaJson: JSON.stringify({ placeId: place.id, until: newUntil }),
+        placeId: place.id,
+        placeName: place.name
+      });
 
       bumpDataVersion(env, ctx);
-
-      const logId = 'lh_' + crypto.randomUUID();
-      await db.prepare(`
-        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, place_id, place_name, created_at)
-        VALUES (?, ?, 'redeem', 'SPONSORED_PLACE', ?, ?, ?, ?, ?)
-      `).bind(logId, uid, -cost, `ترقية المكان "${targetTitle}" لإعلان مميز لمدة 30 يوماً`, place.id, place.name, now).run().catch(() => {});
 
       broadcastFcmNotification({
         title: `🌟 إعلان مميز جديد: ${place.name}`,
@@ -7204,33 +7273,24 @@ try {
       }
       if (place.is_verified) return jsonResponse({ success: false, error: 'هذا المكان موثق بالفعل بالعلامة الزرقاء 👑' }, 400, corsHeaders);
 
-      const ok = await deductUserCoins(cost);
-      if (!ok) {
-        return jsonResponse({ success: false, error: 'فشل خصم الذهبيات - رصيد غير كافٍ' }, 400, corsHeaders);
-      }
-
-      await db.prepare(`
-        UPDATE places 
-        SET is_verified = 1, 
-            verification_status = 'verified', 
-            owner_id = COALESCE(NULLIF(owner_id, ''), ?), 
-            owner_email = COALESCE(NULLIF(owner_email, ''), ?),
-            updated_at = ? 
-        WHERE id = ?
-      `).bind(uid, userEmail, now, place.id).run();
+      const verifySql = auth.user.isAdmin
+        ? "UPDATE places SET is_verified = 1, verification_status = 'verified', owner_id = COALESCE(NULLIF(owner_id, ''), ?), owner_email = COALESCE(NULLIF(owner_email, ''), ?), updated_at = ? WHERE id = ? AND COALESCE(is_verified, 0) = 0"
+        : "UPDATE places SET is_verified = 1, verification_status = 'verified', owner_id = COALESCE(NULLIF(owner_id, ''), ?), owner_email = COALESCE(NULLIF(owner_email, ''), ?), updated_at = ? WHERE id = ? AND COALESCE(is_verified, 0) = 0 AND (owner_id = ? OR owner_id = ? OR (LOWER(COALESCE(owner_email, '')) = ? AND ? <> ''))";
+      const verifyArgs = auth.user.isAdmin
+        ? [uid, userEmail, now, place.id]
+        : [uid, userEmail, now, place.id, uid, user?.id || uid, userEmail, userEmail];
+      await commitCoinPromotion({
+        targetSql: verifySql,
+        targetArgs: verifyArgs,
+        ruleKey: 'REDEEM_VERIFICATION',
+        label: `استبدال 5000 ذهبية بتوثيق رسمي فوري مدى الحياة للمكان "${place.name}"`,
+        metaJson: JSON.stringify({ placeId: place.id, verifiedAt: now }),
+        placeId: place.id,
+        placeName: place.name,
+        recordRedemption: true
+      });
 
       bumpDataVersion(env, ctx);
-
-      const logId = 'lh_' + crypto.randomUUID();
-      await db.prepare(`
-        INSERT INTO loyalty_history (id, user_id, type, rule_key, amount, label, place_id, place_name, created_at)
-        VALUES (?, ?, 'redeem', 'REDEEM_VERIFICATION', ?, ?, ?, ?, ?)
-      `).bind(logId, uid, -cost, `استبدال 5000 ذهبية بتوثيق رسمي فوري مدى الحياة للمكان "${place.name}"`, place.id, place.name, now).run().catch(() => {});
-
-      await db.prepare(`
-        INSERT INTO loyalty_redemptions (id, user_id, place_id, place_name, points_redeemed, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).bind('lr_' + crypto.randomUUID(), uid, place.id, place.name, cost, now).run().catch(() => {});
 
       broadcastFcmNotification({
         title: `👑 توثيق رسمي جديد: ${place.name}`,
@@ -7271,6 +7331,12 @@ try {
       }
     } catch (err) {
       console.error('[POST /api/coins/promote error]:', err?.message || err);
+      if (err?.code === 'INSUFFICIENT_COINS') {
+        return jsonResponse({ success: false, code: 'INSUFFICIENT_COINS', error: 'رصيدك الحالي غير كافٍ. لم يتم تنفيذ العملية أو خصم أي ذهبيات.' }, 409, corsHeaders);
+      }
+      if (err?.code === 'PROMOTION_CONFLICT') {
+        return jsonResponse({ success: false, code: 'PROMOTION_CONFLICT', error: 'تغيرت حالة الإعلان أثناء العملية. لم يتم خصم الذهبيات؛ حدّث الصفحة وحاول مرة أخرى.' }, 409, corsHeaders);
+      }
       return jsonResponse({ success: false, error: err?.message || 'حدث خطأ أثناء معالجة الطلب' }, 500, corsHeaders);
     }
   }
