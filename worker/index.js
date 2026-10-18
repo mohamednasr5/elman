@@ -105,7 +105,7 @@ async function ensureRuntimeColumns(db, table, definitions) {
   const missing = Object.entries(definitions).filter(([name]) => !existing.has(name));
   if (!missing.length) return;
 
-  // Apply missing columns in one Turso batch instead of one network round-trip per column.
+  // Apply missing columns in one Turso batch instead of one round-trip per column.
   try {
     await db.batch(missing.map(([name, definition]) =>
       db.prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`)
@@ -166,8 +166,7 @@ async function ensureOffersProductsSchema(env) {
       updated_at INTEGER
     )`).run();
 
-    await Promise.all([
-      ensureRuntimeColumns(db, 'offers', {
+    await ensureRuntimeColumns(db, 'offers', {
       place_id: 'TEXT',
       title: 'TEXT',
       description: 'TEXT',
@@ -184,8 +183,8 @@ async function ensureOffersProductsSchema(env) {
       clicks: 'INTEGER DEFAULT 0',
       created_at: 'INTEGER',
       updated_at: 'INTEGER'
-    });,
-      ensureRuntimeColumns(db, 'products', {
+    });
+    await ensureRuntimeColumns(db, 'products', {
       place_id: 'TEXT',
       name: 'TEXT',
       description: 'TEXT',
@@ -203,14 +202,11 @@ async function ensureOffersProductsSchema(env) {
       clicks: 'INTEGER DEFAULT 0',
       created_at: 'INTEGER',
       updated_at: 'INTEGER'
-    });,
-      ensureRuntimeColumns(db, 'places', {
+    });
+    await ensureRuntimeColumns(db, 'places', {
       offer_count: 'INTEGER DEFAULT 0',
       product_count: 'INTEGER DEFAULT 0'
     });
-    ]);
-    @@COLUMNS@@
-    @@COLUMNS@@
 
     await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_offers_place ON offers(place_id, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_offers_status_dates ON offers(status, end_date DESC)","CREATE INDEX IF NOT EXISTS idx_offers_owner ON offers(owner_id)","CREATE INDEX IF NOT EXISTS idx_products_place ON products(place_id, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)","CREATE INDEX IF NOT EXISTS idx_products_owner_place ON products(place_id, status)"]);
   });
@@ -254,17 +250,14 @@ async function ensureJobBoardSchema(db) {
       updated_at INTEGER NOT NULL
     )`).run();
 
-    await Promise.all([
-      ensureRuntimeColumns(db, 'job_seekers', {
-      is_featured: 'INTEGER DEFAULT 0',
-      featured_until: 'INTEGER DEFAULT 0'
-    });,
-      ensureRuntimeColumns(db, 'jobs', {
+    await ensureRuntimeColumns(db, 'job_seekers', {
       is_featured: 'INTEGER DEFAULT 0',
       featured_until: 'INTEGER DEFAULT 0'
     });
-    ]);
-    @@COLUMNS@@
+    await ensureRuntimeColumns(db, 'jobs', {
+      is_featured: 'INTEGER DEFAULT 0',
+      featured_until: 'INTEGER DEFAULT 0'
+    });
 
     await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_job_seekers_status_created ON job_seekers(status, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_job_seekers_user ON job_seekers(user_id)","CREATE INDEX IF NOT EXISTS idx_job_seekers_profession ON job_seekers(profession)","CREATE INDEX IF NOT EXISTS idx_job_seekers_location ON job_seekers(location)","CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)","CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)","CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location)"]);
   });
