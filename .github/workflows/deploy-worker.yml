@@ -75,7 +75,7 @@ jobs:
 
       - name: Deploy Worker
         if: steps.auth_check.outputs.has_token == 'true'
-        run: npx wrangler@latest deploy
+        run: npx wrangler@latest deploy --var "WORKER_BUILD_SHA:${GITHUB_SHA}"
 
       - name: Smoke-test deployed Turso API and critical endpoints
         if: steps.auth_check.outputs.has_token == 'true'
@@ -91,7 +91,7 @@ jobs:
             echo "::error title=Turso health check failed::The deployed Worker cannot confirm Turso health."
             exit 1
           fi
-          node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if(d.success!==true || d.database!=="turso") process.exit(1)' "$health_file"
+          node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); const expected=process.env.EXPECTED_WORKER_BUILD_SHA; if(d.success!==true || d.database!=="turso" || !expected || d.build!==expected) { console.error({success:d.success,database:d.database,build:d.build,expected}); process.exit(1) }' "$health_file"
 
           for path in \
             "/api/announcements" \
@@ -112,6 +112,8 @@ jobs:
             rm -f "$response_file"
           done
           rm -f "$health_file"
+        env:
+          EXPECTED_WORKER_BUILD_SHA: ${{ github.sha }}
 
       - name: Verify Turso coordinate hygiene through deployed Worker
         if: steps.auth_check.outputs.has_token == 'true'
