@@ -16,6 +16,10 @@ export const ADMIN_EMAILS=['elfannanm@gmail.com','mohamednasrofficial@gmail.com'
 export function initAuth(){
   const auth=getAuth();
   if(!auth){appState.set('authLoading',false);return null;}
+  // This module is shared by the page shell and dashboard header. Bind Firebase
+  // auth listeners only once; repeated init calls previously started duplicate
+  // Turso sync requests on the same page.
+  if(_authUnsubscribe) return _authUnsubscribe;
   try{const fb=typeof window!=='undefined'?window.firebase:null;if(fb?.auth?.Auth?.Persistence?.LOCAL)auth.setPersistence(fb.auth.Auth.Persistence.LOCAL).catch(()=>{});}catch(_){}
 
   // Seamlessly process redirect sign-in results if arriving from Google Redirect
@@ -97,6 +101,22 @@ export function waitForAuth(){return new Promise(resolve=>{const cached=appState
 export function onAuthStateChange(callback){if(!appState.get('authLoading'))callback(appState.get('user'));return appState.subscribe('user',user=>callback(user));}
 let _cachedClientIp=null;
 export async function getClientIp(){if(_cachedClientIp)return _cachedClientIp;try{const stored=sessionStorage.getItem('client_ip');if(stored){_cachedClientIp=stored;return stored;}}catch(_){}try{const res=await fetch('https://api.ipify.org?format=json',{signal:AbortSignal.timeout(3000)});if(res.ok){const data=await res.json();if(data?.ip){_cachedClientIp=String(data.ip).trim();try{sessionStorage.setItem('client_ip',_cachedClientIp);}catch(_){}return _cachedClientIp;}}}catch(_){}return null;}
-async function _syncUserToTurso(firebaseUser){const uid=firebaseUser.uid,email=(firebaseUser.email||'').trim().toLowerCase(),name=firebaseUser.displayName||'مستخدم',photoURL=firebaseUser.photoURL||'',isSuper=ADMIN_EMAILS.includes(email);const token=await firebaseUser.getIdToken(true);const syncRes=await fetch(`${WORKER_URL}/api/users/sync`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({uid,name,email,photoURL,role:isSuper?'superadmin':'user',status:'active'}),signal:AbortSignal.timeout(8000),mode:'cors',cache:'no-store'});const syncData=await syncRes.json().catch(()=>({}));if(!syncRes.ok||!syncData?.success)throw new Error(syncData?.error||`User sync HTTP ${syncRes.status}`);const tursoProfile=syncData.data||syncData.user||{};const points=Number(tursoProfile.points||0);const totalEarned=Number(tursoProfile.total_earned||0);try{localStorage.setItem('manzala_user_coins_balance',String(points));if(typeof window!=='undefined'){window.dispatchEvent(new CustomEvent('coins:updated',{detail:{balance:points}}));}}catch(_){}return{uid,name:tursoProfile.name||name,email:tursoProfile.email||firebaseUser.email||'',photoURL:tursoProfile.photo_url||tursoProfile.photoURL||photoURL,role:tursoProfile.role||(isSuper?'superadmin':'user'),status:tursoProfile.status||'active',phone:tursoProfile.phone||null,points,coins:points,totalEarned,createdAt:tursoProfile.created_at||Date.now(),lastLoginAt:Date.now()};}
+const _userSyncInFlight = new Map();
+
+async function _syncUserToTurso(firebaseUser) {
+  const uid = String(firebaseUser?.uid || '');
+  if (!uid) throw new Error('Firebase user ID is required for Turso sync');
+
+  const existing = _userSyncInFlight.get(uid);
+  if (existing) return existing;
+
+  const pending = _performUserSyncToTurso(firebaseUser).finally(() => {
+    if (_userSyncInFlight.get(uid) === pending) _userSyncInFlight.delete(uid);
+  });
+  _userSyncInFlight.set(uid, pending);
+  return pending;
+}
+
+async function _performUserSyncToTurso(firebaseUser){const uid=firebaseUser.uid,email=(firebaseUser.email||'').trim().toLowerCase(),name=firebaseUser.displayName||'مستخدم',photoURL=firebaseUser.photoURL||'',isSuper=ADMIN_EMAILS.includes(email);const token=await firebaseUser.getIdToken();const syncRes=await fetch(`${WORKER_URL}/api/users/sync`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({uid,name,email,photoURL,role:isSuper?'superadmin':'user',status:'active'}),signal:AbortSignal.timeout(12000),mode:'cors',cache:'no-store'});const syncData=await syncRes.json().catch(()=>({}));if(!syncRes.ok||!syncData?.success)throw new Error(syncData?.error||`User sync HTTP ${syncRes.status}`);const tursoProfile=syncData.data||syncData.user||{};const points=Number(tursoProfile.points||0);const totalEarned=Number(tursoProfile.total_earned||0);try{localStorage.setItem('manzala_user_coins_balance',String(points));if(typeof window!=='undefined'){window.dispatchEvent(new CustomEvent('coins:updated',{detail:{balance:points}}));}}catch(_){}return{uid,name:tursoProfile.name||name,email:tursoProfile.email||firebaseUser.email||'',photoURL:tursoProfile.photo_url||tursoProfile.photoURL||photoURL,role:tursoProfile.role||(isSuper?'superadmin':'user'),status:tursoProfile.status||'active',phone:tursoProfile.phone||null,points,coins:points,totalEarned,createdAt:tursoProfile.created_at||Date.now(),lastLoginAt:Date.now()};}
 function _buildBasicProfile(firebaseUser){const email=(firebaseUser.email||'').trim().toLowerCase(),isSuper=ADMIN_EMAILS.includes(email);return{uid:firebaseUser.uid,name:firebaseUser.displayName||'مستخدم',email:firebaseUser.email||'',photoURL:firebaseUser.photoURL||'',role:isSuper?'superadmin':'user',status:'active',phone:null};}
 export function destroyAuth(){if(_authUnsubscribe){_authUnsubscribe();_authUnsubscribe=null;}}
