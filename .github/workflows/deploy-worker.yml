@@ -30,13 +30,13 @@ jobs:
       TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Verify place route in Worker
         run: node -e "const s = require('fs').readFileSync('index.js', 'utf8'); if (!s.includes('isPlaceRoute')) throw new Error('Place route handler not found in index.js');"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
