@@ -7033,6 +7033,21 @@ try {
       const shouldDeduct = currentBalance >= cost;
       const statements = [];
 
+      // The ledger uses the current Firebase UID. If coins are still stored on
+      // a legacy email/phone profile row, create the UID profile inside this
+      // same transaction so the loyalty-history foreign key is satisfied.
+      if (deductUserId !== uid) {
+        statements.push(db.prepare(`
+          INSERT INTO users
+            (id, name, email, phone, points, total_earned, role, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 'user', 'active', ?, ?)
+          ON CONFLICT(id) DO NOTHING
+        `).bind(
+          uid, auth.user.name || 'مستخدم', userEmail, userPhone,
+          currentBalance, Number(user?.total_earned || 0), now, now
+        ));
+      }
+
       if (shouldDeduct) {
         statements.push(db.prepare(
           'UPDATE users SET points = points - ?, last_redemption_at = ?, updated_at = ? WHERE id = ? AND points >= ?'
@@ -7265,8 +7280,9 @@ try {
       const verificationOwnerEmail = String(place.owner_email || '').trim().toLowerCase();
       const verificationUserId = String(auth.user?.uid || '').trim();
       const verificationUserEmail = String(auth.user?.email || '').trim().toLowerCase();
+      const verificationLegacyUserId = String(user?.id || '').trim();
       const ownsVerificationPlace =
-        (verificationOwnerId && verificationOwnerId === verificationUserId) ||
+        (verificationOwnerId && (verificationOwnerId === verificationUserId || verificationOwnerId === verificationLegacyUserId)) ||
         (verificationOwnerEmail && verificationUserEmail && verificationOwnerEmail === verificationUserEmail);
       if (!auth.user?.isAdmin && !ownsVerificationPlace) {
         return jsonResponse({ success: false, code: 'PLACE_NOT_OWNED', error: 'يجب أن تكون مالك المكان أو مسؤولاً لتوثيقه' }, 403, corsHeaders);
