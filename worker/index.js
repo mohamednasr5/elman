@@ -7058,6 +7058,7 @@ try {
       // If the debit changed no row, the target update is gated off. The
       // following NOT NULL ledger insert then aborts the atomic write batch.
       const guardedTargetSql = shouldDeduct ? `${targetSql} AND changes() > 0` : targetSql;
+      const targetStatementIndex = statements.length;
       statements.push(db.prepare(guardedTargetSql).bind(...targetArgs));
 
       const logId = 'lh_' + crypto.randomUUID();
@@ -7107,8 +7108,7 @@ try {
 
       try {
         const result = await db.batch(statements);
-        const targetIndex = shouldDeduct ? 1 : 0;
-        const targetChanges = Number(result?.[targetIndex]?.rowsAffected || 0);
+        const targetChanges = Number(result?.[targetStatementIndex]?.rowsAffected || 0);
         if (targetChanges !== 1) {
           const conflict = new Error('PROMOTION_CONFLICT');
           conflict.code = 'PROMOTION_CONFLICT';
