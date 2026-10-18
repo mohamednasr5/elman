@@ -77,6 +77,42 @@ jobs:
         if: steps.auth_check.outputs.has_token == 'true'
         run: npx wrangler@latest deploy
 
+      - name: Smoke-test deployed Turso API and critical endpoints
+        if: steps.auth_check.outputs.has_token == 'true'
+        run: |
+          set -euo pipefail
+          base="https://elmanzala.nonm1724.workers.dev"
+
+          health_file="$(mktemp)"
+          health_status="$(curl -sS --max-time 12 -o "$health_file" -w '%{http_code}' "$base/api/health")"
+          echo "Turso health HTTP status: $health_status"
+          cat "$health_file"
+          if [ "$health_status" != "200" ]; then
+            echo "::error title=Turso health check failed::The deployed Worker cannot confirm Turso health."
+            exit 1
+          fi
+          node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if(d.success!==true || d.database!=="turso") process.exit(1)' "$health_file"
+
+          for path in \
+            "/api/announcements" \
+            "/api/offers" \
+            "/api/products" \
+            "/api/job-seekers?status=active" \
+            "/api/service-requests?status=open&limit=4" \
+            "/api/craftsmen/live"; do
+            response_file="$(mktemp)"
+            status="$(curl -sS --max-time 12 -o "$response_file" -w '%{http_code}' "$base$path")"
+            echo "$path -> HTTP $status"
+            if [ "$status" != "200" ]; then
+              cat "$response_file"
+              echo "::error title=API smoke test failed::A critical public API endpoint did not return HTTP 200."
+              exit 1
+            fi
+            node -e 'const d=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if(d.success===false) { console.error(d); process.exit(1) }' "$response_file"
+            rm -f "$response_file"
+          done
+          rm -f "$health_file"
+
       - name: Verify Turso coordinate hygiene through deployed Worker
         if: steps.auth_check.outputs.has_token == 'true'
         run: |
