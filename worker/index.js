@@ -15,67 +15,11 @@ import { generateArticleDraft, toArabicCategory } from './article-ai.js';
 // Isolate-local, bounded IP-ban cache: keeps routine API reads from hitting Turso repeatedly.
 const ipBanLookupCache = new Map();
 const ipBanLookupInFlight = new Map();
-const IP_BAN_CACHE_TTL_MS = 3000;
-const IP_BAN_CACHE_MAX_ENTRIES = 512;
+const IP_BAN_CACHE_TTL_MS = 30_000;
+const IP_BAN_CACHE_MAX_ENTRIES = 2048;
 
-let announcementSchemaReady = false;
-let announcementSchemaPromise = null;
-
-async function ensureAnnouncementsRuntimeSchema(env) {
-  if (announcementSchemaReady) return;
-  if (!announcementSchemaPromise) {
-    announcementSchemaPromise = (async () => {
-      const db = createTursoDB(env);
-      await db.prepare(`CREATE TABLE IF NOT EXISTS live_news (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        location TEXT NOT NULL,
-        category TEXT NOT NULL,
-        status_tag_key TEXT,
-        details TEXT,
-        city TEXT,
-        image_url TEXT,
-        phone TEXT,
-        inquiry_link TEXT,
-        salary TEXT,
-        user_id TEXT,
-        user_name TEXT,
-        user_photo TEXT,
-        user_points INTEGER DEFAULT 0,
-        status TEXT NOT NULL DEFAULT 'pending',
-        reactions_json TEXT,
-        reacted_users_json TEXT,
-        created_at INTEGER NOT NULL,
-        published_at INTEGER,
-        expires_at INTEGER,
-        updated_at INTEGER,
-        deleted_at INTEGER,
-        is_announcement INTEGER NOT NULL DEFAULT 0
-      )`).run();
-
-      const columns = (await db.prepare('PRAGMA table_info(live_news)').all()).results || [];
-      if (!columns.some(column => String(column.name) === 'is_announcement')) {
-        try {
-          await db.prepare('ALTER TABLE live_news ADD COLUMN is_announcement INTEGER NOT NULL DEFAULT 0').run();
-        } catch (err) {
-          const message = String(err?.message || err).toLowerCase();
-          // Concurrent Worker isolates may observe the same missing column;
-          // a duplicate-column response means the other isolate completed the migration.
-          if (!message.includes('duplicate column') && !message.includes('already exists')) throw err;
-        }
-      }
-      announcementSchemaReady = true;
-    })();
-  }
-
-  try {
-    await announcementSchemaPromise;
-  } catch (err) {
-    // Permit a later request to retry after transient Turso failures.
-    announcementSchemaPromise = null;
-    throw err;
-  }
-}
+// Announcement schema is repaired by worker/repair-turso-schema.mjs during CI deployment.
+// Keep DDL out of request handlers so cold isolates do not add latency to public reads.
 
 const runtimeSchemaPromises = new Map();
 
@@ -2001,7 +1945,8 @@ try {
       return jsonResponse({
         success: healthy,
         status: healthy ? 'ok' : 'error',
-        database: 'turso'
+        database: 'turso',
+        build: env.WORKER_BUILD_SHA || null
       }, healthy ? 200 : 503, {
         ...corsHeaders,
         'Cache-Control': 'no-store'
@@ -2011,6 +1956,7 @@ try {
         success: false,
         status: 'error',
         database: 'turso',
+        build: env.WORKER_BUILD_SHA || null,
         error: err?.message || String(err)
       }, 503, {
         ...corsHeaders,
@@ -5262,7 +5208,6 @@ try {
   // ── Turso: System Announcements (GET /api/announcements) ───────────────
   if (url.pathname === '/api/announcements' && request.method === 'GET') {
     try {
-      await ensureAnnouncementsRuntimeSchema(env);
       const db = createTursoDB(env);
       const newsRows = (await db.prepare("SELECT id, title, details, image_url, inquiry_link, created_at FROM live_news WHERE status = 'published' AND is_announcement = 1 ORDER BY created_at DESC LIMIT 10").all()).results || [];
       const announcements = newsRows.map(n => ({
@@ -10254,7 +10199,6 @@ async function ensureNewSchemaColumnsInTurso(env) {
     await ensureJobBoardSchema(db);
     await ensurePlaceEventsSchema(db);
     await ensureVillageAppointmentsSchema(db);
-    await ensureAnnouncementsRuntimeSchema(env);
   }).catch(err => {
     console.warn('[ensureNewSchemaColumnsInTurso] Initialization failed; next scheduled run may retry:', err?.message || err);
     throw err;
