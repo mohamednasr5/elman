@@ -1945,7 +1945,8 @@ try {
       return jsonResponse({
         success: healthy,
         status: healthy ? 'ok' : 'error',
-        database: 'turso'
+        database: 'turso',
+        build: env.WORKER_BUILD_SHA || null
       }, healthy ? 200 : 503, {
         ...corsHeaders,
         'Cache-Control': 'no-store'
