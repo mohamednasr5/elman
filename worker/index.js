@@ -21,7 +21,7 @@ const IP_BAN_CACHE_MAX_ENTRIES = 512;
 let announcementSchemaReady = false;
 let announcementSchemaPromise = null;
 
-async function ensureAnnouncementSchema(env) {
+async function ensureAnnouncementsRuntimeSchema(env) {
   if (announcementSchemaReady) return;
   if (!announcementSchemaPromise) {
     announcementSchemaPromise = (async () => {
@@ -1310,24 +1310,6 @@ ${itemsXml}
   } catch (err) {
     console.error('[RSS Feed Error]:', err);
     return new Response('Error generating RSS feed', { status: 500 });
-  }
-}
-
-let _hasEnsuredAnnouncementSchema = false;
-async function ensureAnnouncementSchema(db) {
-  if (_hasEnsuredAnnouncementSchema || !db) return;
-  try {
-    // Older live_news schemas predate the announcement flag.
-    await db.prepare("ALTER TABLE live_news ADD COLUMN is_announcement INTEGER NOT NULL DEFAULT 0").run();
-    _hasEnsuredAnnouncementSchema = true;
-  } catch (err) {
-    // A duplicate-column error means another request or migration already added it.
-    const message = String(err?.message || err).toLowerCase();
-    if (message.includes('duplicate column') || message.includes('already exists')) {
-      _hasEnsuredAnnouncementSchema = true;
-      return;
-    }
-    console.warn('[ensureAnnouncementSchema warning]:', err?.message || err);
   }
 }
 
@@ -5280,9 +5262,8 @@ try {
   // ── Turso: System Announcements (GET /api/announcements) ───────────────
   if (url.pathname === '/api/announcements' && request.method === 'GET') {
     try {
-      await ensureAnnouncementSchema(env);
+      await ensureAnnouncementsRuntimeSchema(env);
       const db = createTursoDB(env);
-      await ensureAnnouncementSchema(db);
       const newsRows = (await db.prepare("SELECT id, title, details, image_url, inquiry_link, created_at FROM live_news WHERE status = 'published' AND is_announcement = 1 ORDER BY created_at DESC LIMIT 10").all()).results || [];
       const announcements = newsRows.map(n => ({
         id: n.id,
@@ -10188,7 +10169,7 @@ async function ensureNewSchemaColumnsInTurso(env) {
     await ensureJobBoardSchema(db);
     await ensurePlaceEventsSchema(db);
     await ensureVillageAppointmentsSchema(db);
-    await ensureAnnouncementSchema(env);
+    await ensureAnnouncementsRuntimeSchema(env);
   }).catch(err => {
     console.warn('[ensureNewSchemaColumnsInTurso] Initialization failed; next scheduled run may retry:', err?.message || err);
     throw err;
