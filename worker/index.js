@@ -7138,19 +7138,21 @@ try {
     function checkJobOwnership(j) {
       if (auth.user.isAdmin) return true;
       if (!j) return false;
+      // Blank legacy ownership must not let any logged-in user spend coins
+      // to promote another person's record.
       const jUserId = String(j.user_id || '').trim();
-      return !jUserId || jUserId === uid || (user?.id && jUserId === user.id);
+      return Boolean(jUserId && (jUserId === uid || jUserId === user?.id));
     }
 
     function checkSeekerOwnership(s) {
       if (auth.user.isAdmin) return true;
       if (!s) return false;
       const sUserId = String(s.user_id || '').trim();
-      return !sUserId || sUserId === uid || (user?.id && sUserId === user.id);
+      return Boolean(sUserId && (sUserId === uid || sUserId === user?.id));
     }
 
     if (targetType === 'job') {
-      const job = await db.prepare('SELECT id, user_id, title, featured_until FROM jobs WHERE id = ? LIMIT 1').bind(targetId).first();
+      const job = await db.prepare("SELECT id, user_id, COALESCE(NULLIF(workplace_name, ''), profession, 'إعلان وظيفة') AS title, featured_until FROM jobs WHERE id = ? LIMIT 1").bind(targetId).first();
       if (!job) return jsonResponse({ success: false, error: 'الوظيفة غير موجودة' }, 404, corsHeaders);
       if (!checkJobOwnership(job)) return jsonResponse({ success: false, error: 'لا تملك هذه الوظيفة' }, 403, corsHeaders);
       const targetTitle = job.title || 'إعلان وظيفة';
