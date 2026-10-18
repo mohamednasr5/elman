@@ -94,24 +94,31 @@ function ensureRuntimeSchemaOnce(key, initialize) {
   return pending;
 }
 
+async function ensureRuntimeIndexes(db, statements) {
+  if (!db || !Array.isArray(statements) || statements.length === 0) return;
+  await db.batch(statements.map(sql => db.prepare(sql)));
+}
+
 async function ensureRuntimeColumns(db, table, definitions) {
   const rows = (await db.prepare(`PRAGMA table_info(${table})`).all()).results || [];
   const existing = new Set(rows.map(row => String(row.name)));
+  const missing = Object.entries(definitions).filter(([name]) => !existing.has(name));
+  if (!missing.length) return;
 
-  for (const [name, definition] of Object.entries(definitions)) {
-    if (existing.has(name)) continue;
-    try {
-      await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`).run();
-      existing.add(name);
-    } catch (err) {
-      const message = String(err?.message || err).toLowerCase();
-      // Concurrent isolates may add the same column after both read table_info.
-      if (message.includes('duplicate column') || message.includes('already exists')) {
-        existing.add(name);
-        continue;
-      }
-      throw err;
-    }
+  // Apply missing columns in one Turso batch instead of one network round-trip per column.
+  try {
+    await db.batch(missing.map(([name, definition]) =>
+      db.prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`)
+    ));
+  } catch (err) {
+    const message = String(err?.message || err).toLowerCase();
+    if (!message.includes('duplicate column') && !message.includes('already exists')) throw err;
+
+    // Concurrent isolates may have applied the same additions; verify instead of
+    // silently ignoring unrelated database or permission errors.
+    const latestRows = (await db.prepare(`PRAGMA table_info(${table})`).all()).results || [];
+    const latest = new Set(latestRows.map(row => String(row.name)));
+    if (missing.some(([name]) => !latest.has(name))) throw err;
   }
 }
 
@@ -159,7 +166,8 @@ async function ensureOffersProductsSchema(env) {
       updated_at INTEGER
     )`).run();
 
-    await ensureRuntimeColumns(db, 'offers', {
+    await Promise.all([
+      ensureRuntimeColumns(db, 'offers', {
       place_id: 'TEXT',
       title: 'TEXT',
       description: 'TEXT',
@@ -176,8 +184,8 @@ async function ensureOffersProductsSchema(env) {
       clicks: 'INTEGER DEFAULT 0',
       created_at: 'INTEGER',
       updated_at: 'INTEGER'
-    });
-    await ensureRuntimeColumns(db, 'products', {
+    });,
+      ensureRuntimeColumns(db, 'products', {
       place_id: 'TEXT',
       name: 'TEXT',
       description: 'TEXT',
@@ -195,18 +203,16 @@ async function ensureOffersProductsSchema(env) {
       clicks: 'INTEGER DEFAULT 0',
       created_at: 'INTEGER',
       updated_at: 'INTEGER'
-    });
-    await ensureRuntimeColumns(db, 'places', {
+    });,
+      ensureRuntimeColumns(db, 'places', {
       offer_count: 'INTEGER DEFAULT 0',
       product_count: 'INTEGER DEFAULT 0'
     });
+    ]);
+    @@COLUMNS@@
+    @@COLUMNS@@
 
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_offers_place ON offers(place_id, created_at DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_offers_status_dates ON offers(status, end_date DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_offers_owner ON offers(owner_id)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_products_place ON products(place_id, created_at DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_products_owner_place ON products(place_id, status)').run();
+    await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_offers_place ON offers(place_id, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_offers_status_dates ON offers(status, end_date DESC)","CREATE INDEX IF NOT EXISTS idx_offers_owner ON offers(owner_id)","CREATE INDEX IF NOT EXISTS idx_products_place ON products(place_id, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)","CREATE INDEX IF NOT EXISTS idx_products_owner_place ON products(place_id, status)"]);
   });
 }
 
@@ -248,23 +254,19 @@ async function ensureJobBoardSchema(db) {
       updated_at INTEGER NOT NULL
     )`).run();
 
-    await ensureRuntimeColumns(db, 'job_seekers', {
+    await Promise.all([
+      ensureRuntimeColumns(db, 'job_seekers', {
+      is_featured: 'INTEGER DEFAULT 0',
+      featured_until: 'INTEGER DEFAULT 0'
+    });,
+      ensureRuntimeColumns(db, 'jobs', {
       is_featured: 'INTEGER DEFAULT 0',
       featured_until: 'INTEGER DEFAULT 0'
     });
-    await ensureRuntimeColumns(db, 'jobs', {
-      is_featured: 'INTEGER DEFAULT 0',
-      featured_until: 'INTEGER DEFAULT 0'
-    });
+    ]);
+    @@COLUMNS@@
 
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_job_seekers_status_created ON job_seekers(status, created_at DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_job_seekers_user ON job_seekers(user_id)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_job_seekers_profession ON job_seekers(profession)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_job_seekers_location ON job_seekers(location)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location)').run();
+    await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_job_seekers_status_created ON job_seekers(status, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_job_seekers_user ON job_seekers(user_id)","CREATE INDEX IF NOT EXISTS idx_job_seekers_profession ON job_seekers(profession)","CREATE INDEX IF NOT EXISTS idx_job_seekers_location ON job_seekers(location)","CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)","CREATE INDEX IF NOT EXISTS idx_jobs_profession ON jobs(profession)","CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location)"]);
   });
 }
 
@@ -349,10 +351,7 @@ async function ensureCoinEconomySchema(db) {
       created_at: 'INTEGER'
     });
 
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_coin_purchases_status ON coin_purchases(status, created_at DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_coin_purchases_user ON coin_purchases(user_id)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_loyalty_history_user ON loyalty_history(user_id, created_at DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_loyalty_redemptions_user ON loyalty_redemptions(user_id)').run();
+    await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_coin_purchases_status ON coin_purchases(status, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_coin_purchases_user ON coin_purchases(user_id)","CREATE INDEX IF NOT EXISTS idx_loyalty_history_user ON loyalty_history(user_id, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_loyalty_redemptions_user ON loyalty_redemptions(user_id)"]);
   });
 }
 
@@ -426,7 +425,7 @@ async function ensureInteractiveServicesSchema(db) {
       vote_type TEXT NOT NULL,
       created_at INTEGER NOT NULL
     )`).run();
-    await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_votes_user_target ON interactive_votes(target_id, user_id)').run();
+    await ensureRuntimeIndexes(db, ["CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_votes_user_target ON interactive_votes(target_id, user_id)"]);
 
     await db.prepare(`CREATE TABLE IF NOT EXISTS interactive_reports (
       id TEXT PRIMARY KEY,
@@ -437,12 +436,9 @@ async function ensureInteractiveServicesSchema(db) {
       reason TEXT,
       created_at INTEGER NOT NULL
     )`).run();
-    await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_reports_user ON interactive_reports(target_id, user_id)').run();
+    await ensureRuntimeIndexes(db, ["CREATE UNIQUE INDEX IF NOT EXISTS idx_interactive_reports_user ON interactive_reports(target_id, user_id)"]);
 
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests(status, created_at DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_service_requests_village ON service_requests(village)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_service_requests_category ON service_requests(category)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_craftsman_presence_avail ON craftsman_presence(is_available_now, available_until)').run();
+    await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests(status, created_at DESC)","CREATE INDEX IF NOT EXISTS idx_service_requests_village ON service_requests(village)","CREATE INDEX IF NOT EXISTS idx_service_requests_category ON service_requests(category)","CREATE INDEX IF NOT EXISTS idx_craftsman_presence_avail ON craftsman_presence(is_available_now, available_until)"]);
   });
 }
 
@@ -455,7 +451,7 @@ async function ensureUserNotificationsReadSchema(db) {
       read_at INTEGER NOT NULL,
       PRIMARY KEY (user_id, notif_id)
     )`).run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)').run();
+    await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_user_notifs_read ON user_notifications_read(user_id, read_at DESC)"]);
   });
 }
 
@@ -490,9 +486,7 @@ async function ensureVillageAppointmentsSchema(db) {
       user_id TEXT,
       created_at INTEGER NOT NULL
     )`).run();
-    await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_village_vote_unique ON village_votes(village_id, service_key, voter_fingerprint)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_village_polls_village ON village_polls(village_id, votes_count DESC)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_appointments_place ON appointment_requests(place_id, created_at DESC)').run();
+    await ensureRuntimeIndexes(db, ["CREATE UNIQUE INDEX IF NOT EXISTS idx_village_vote_unique ON village_votes(village_id, service_key, voter_fingerprint)","CREATE INDEX IF NOT EXISTS idx_village_polls_village ON village_polls(village_id, votes_count DESC)","CREATE INDEX IF NOT EXISTS idx_appointments_place ON appointment_requests(place_id, created_at DESC)"]);
   });
 }
 
@@ -507,8 +501,7 @@ async function ensurePlaceEventsSchema(db) {
       session_id TEXT,
       created_at INTEGER NOT NULL
     )`).run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_place_events_place_type_time ON place_events(place_id, event_type, created_at)').run();
-    await db.prepare('CREATE INDEX IF NOT EXISTS idx_place_events_time_type ON place_events(created_at, event_type)').run();
+    await ensureRuntimeIndexes(db, ["CREATE INDEX IF NOT EXISTS idx_place_events_place_type_time ON place_events(place_id, event_type, created_at)","CREATE INDEX IF NOT EXISTS idx_place_events_time_type ON place_events(created_at, event_type)"]);
   });
 }
 
