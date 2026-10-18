@@ -41,6 +41,10 @@ function normalizeArgs(args) {
   return (args || []).map(value => value === undefined ? null : value);
 }
 
+function isTursoTimeoutError(err) {
+  return /(?:timed? out|timeout)/i.test(String(err?.message || err || ''));
+}
+
 function isCategoriesSortOrderError(sql, err) {
   const text = `${err?.message || err || ''}`.toLowerCase();
   const query = String(sql || '').toLowerCase();
@@ -258,6 +262,8 @@ class TursoStatement {
             lastErr = fallbackErr;
           }
         }
+        // Avoid multiplying load after a timeout; the remote query may still be in flight.
+        if (isTursoTimeoutError(err)) break;
         if (attempt === 0) await new Promise(r => setTimeout(r, 60));
       }
     }
@@ -300,6 +306,8 @@ class TursoStatement {
             lastErr = fallbackErr;
           }
         }
+        // Avoid multiplying load after a timeout; the remote query may still be in flight.
+        if (isTursoTimeoutError(err)) break;
         if (attempt === 0 && maxAttempts > 1) await new Promise(r => setTimeout(r, 60));
       }
     }
