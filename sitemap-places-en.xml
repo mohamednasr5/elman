@@ -829,6 +829,18 @@
     </image:image>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/place/alabydy-grwb-alfra-alawl/</loc>
+    <lastmod>2026-10-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/alabydy-grwb-alfra-alawl/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/alabydy-grwb-alfra-alawl/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/alabydy-grwb-alfra-alawl/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789718244420-npf32lo.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/place/akadymya-dwgw-gdydh-almnzla/</loc>
     <lastmod>2026-10-18</lastmod>
     <changefreq>weekly</changefreq>
@@ -3310,18 +3322,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/alzyny-llalktrwnyat/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789794983976-drsbzck.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/en/place/alabydy-grwb-alfra-alawl/</loc>
-    <lastmod>2026-10-15</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/alabydy-grwb-alfra-alawl/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/alabydy-grwb-alfra-alawl/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/alabydy-grwb-alfra-alawl/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789718244420-npf32lo.webp</image:loc>
     </image:image>
   </url>
   <url>
