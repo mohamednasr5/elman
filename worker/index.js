@@ -6455,21 +6455,17 @@ try {
     try {
       const db = createTursoDB(env);
 
-      // Check if existing record with email has points
-      let existingPoints = 0;
-      let existingEarned = 0;
-      if (email) {
-        const prev = await db.prepare('SELECT points, total_earned FROM users WHERE LOWER(email) = ? AND id != ? ORDER BY points DESC LIMIT 1').bind(email, id).first();
-        if (prev) {
-          existingPoints = Number(prev.points || 0);
-          existingEarned = Number(prev.total_earned || 0);
-        }
-      }
-
-      // Upsert: preserve existing role in Turso (server-side protection)
+      // Preserve coins from a legacy Firebase UID without a separate SELECT round-trip.
+      // Scalar lookups run inside the upsert statement, and only consider a non-empty email
+      // so users without email addresses never inherit another empty-email profile.
       await db.prepare(`
         INSERT INTO users (id, name, email, photo_url, role, status, points, total_earned, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (
+          ?, ?, ?, ?, ?, ?,
+          COALESCE((SELECT points FROM users WHERE ? <> '' AND LOWER(email) = ? AND id <> ? ORDER BY points DESC LIMIT 1), 0),
+          COALESCE((SELECT total_earned FROM users WHERE ? <> '' AND LOWER(email) = ? AND id <> ? ORDER BY points DESC LIMIT 1), 0),
+          ?, ?
+        )
         ON CONFLICT(id) DO UPDATE SET
           name = excluded.name,
           email = excluded.email,
@@ -6482,7 +6478,12 @@ try {
             ELSE excluded.role
           END,
           updated_at = excluded.updated_at
-      `).bind(id, name, email, photoUrl, requestedRole, status, existingPoints, existingEarned, now, now).run();
+      `).bind(
+        id, name, email, photoUrl, requestedRole, status,
+        email, email, id,
+        email, email, id,
+        now, now
+      ).run();
 
       // Return full Turso profile so auth.js can use actual DB role
       const profile = await db.prepare(
