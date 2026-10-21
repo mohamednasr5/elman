@@ -829,6 +829,30 @@
     </image:image>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/place/shrka-alkhryby-ltgara-almwad-alghzayya-balgmla/</loc>
+    <lastmod>2026-10-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/shrka-alkhryby-ltgara-almwad-alghzayya-balgmla/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/shrka-alkhryby-ltgara-almwad-alghzayya-balgmla/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/shrka-alkhryby-ltgara-almwad-alghzayya-balgmla/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789650270369-aj0gwnf.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://dalilmanzala.com/en/place/gafr-llbsryat/</loc>
+    <lastmod>2026-10-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/gafr-llbsryat/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/gafr-llbsryat/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/gafr-llbsryat/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1788563997376-3tr143y.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/place/mtam-ays-rwl/</loc>
     <lastmod>2026-10-21</lastmod>
     <changefreq>weekly</changefreq>
@@ -1414,18 +1438,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/antryhat-kwrh/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789959722869-jv3ynjl.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/en/place/gafr-llbsryat/</loc>
-    <lastmod>2026-10-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/gafr-llbsryat/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/gafr-llbsryat/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/gafr-llbsryat/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1788563997376-3tr143y.webp</image:loc>
     </image:image>
   </url>
   <url>
@@ -2230,18 +2242,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/abw-hany-llmwblyat-alhdytha/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789010018251-z2y85ic.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/en/place/shrka-alkhryby-ltgara-almwad-alghzayya-balgmla/</loc>
-    <lastmod>2026-10-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/shrka-alkhryby-ltgara-almwad-alghzayya-balgmla/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/shrka-alkhryby-ltgara-almwad-alghzayya-balgmla/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/shrka-alkhryby-ltgara-almwad-alghzayya-balgmla/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789650270369-aj0gwnf.webp</image:loc>
     </image:image>
   </url>
   <url>
