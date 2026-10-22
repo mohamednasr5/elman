@@ -829,6 +829,18 @@
     </image:image>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/place/nzarat-almstfa/</loc>
+    <lastmod>2026-10-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/nzarat-almstfa/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/nzarat-almstfa/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/nzarat-almstfa/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789472924827-nfcp0jp.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/place/dktwr-hsam-abd-alnasr-1_KrJ6/</loc>
     <lastmod>2026-10-22</lastmod>
     <changefreq>weekly</changefreq>
@@ -3196,18 +3208,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mrkz-alrys-llalag-altbyay-waltahyl-D5X49U/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1788378138530-r45q4nb.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/place/nzarat-almstfa/</loc>
-    <lastmod>2026-10-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/nzarat-almstfa/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/nzarat-almstfa/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/nzarat-almstfa/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789472924827-nfcp0jp.webp</image:loc>
     </image:image>
   </url>
   <url>
