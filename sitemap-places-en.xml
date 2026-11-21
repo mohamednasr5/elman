@@ -829,6 +829,18 @@
     </image:image>
   </url>
   <url>
+    <loc>https://dalilmanzala.com/en/place/mstshfa-almnzla-almrkza/</loc>
+    <lastmod>2026-11-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mstshfa-almnzla-almrkza/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mstshfa-almnzla-almrkza/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mstshfa-almnzla-almrkza/"/>
+    <image:image>
+      <image:loc>https://dalilmanzala.com/api/r2/places/1789697508176-z58mgww.webp</image:loc>
+    </image:image>
+  </url>
+  <url>
     <loc>https://dalilmanzala.com/en/place/wrsha-almalm-llrkham-walgranyt-yIQiqD/</loc>
     <lastmod>2026-11-21</lastmod>
     <changefreq>weekly</changefreq>
@@ -4171,18 +4183,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/atlyh-alma/"/>
     <image:image>
       <image:loc>https://dalilmanzala.com/api/r2/places/1789016170745-ceuy9bf.webp</image:loc>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://dalilmanzala.com/en/place/mstshfa-almnzla-almrkza/</loc>
-    <lastmod>2026-11-16</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://dalilmanzala.com/place/mstshfa-almnzla-almrkza/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://dalilmanzala.com/en/place/mstshfa-almnzla-almrkza/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://dalilmanzala.com/place/mstshfa-almnzla-almrkza/"/>
-    <image:image>
-      <image:loc>https://dalilmanzala.com/api/r2/places/1789697508176-z58mgww.webp</image:loc>
     </image:image>
   </url>
   <url>
